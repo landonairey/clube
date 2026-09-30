@@ -58,6 +58,9 @@ shading (both A6 variants chosen once per chunk build), V5 winding toggle.
   saved into the scene. Check scene diffs before committing.
 - MCP gotcha: `ManageAsset` Move/Rename reports "failed unexpectedly" but
   usually succeeds; check the filesystem before retrying.
+- MCP gotcha: GameObject instance IDs change on every domain reload
+  (entering Play mode, recompiling). Look objects up again with `find`
+  before passing an ID to tools like `Camera_Capture`.
 - Naming/formatting: follow the existing code (private fields camelCase,
   `[SerializeField] private`, XML doc comments on public types). Formalize
   later if needed.
