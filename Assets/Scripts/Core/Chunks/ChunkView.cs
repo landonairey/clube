@@ -79,7 +79,7 @@ namespace Clube.Core
 
         private void RebuildMesh()
         {
-            ChunkMesher.Build(Chunk, config.IsoLevel, config.VoxelSize, vertices, triangles);
+            ChunkMesher.Build(Chunk, config.MeshSettings, vertices, triangles);
 
             mesh.Clear();
             mesh.SetVertices(vertices);

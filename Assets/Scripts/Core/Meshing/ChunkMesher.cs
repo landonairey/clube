@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -16,13 +17,16 @@ namespace Clube.Core
         /// </summary>
         public static void Build(
             Chunk chunk,
-            float isoLevel,
-            float voxelSize,
+            ChunkMeshSettings settings,
             List<Vector3> vertices,
             List<int> triangles)
         {
             vertices.Clear();
             triangles.Clear();
+
+            // Variants are resolved once here, never per vertex (A6).
+            IEdgeVertexPlacer placer = CreatePlacer(settings.EdgePlacement);
+            IVertexWriter writer = CreateWriter(settings.Shading, vertices, chunk.SampleCount);
 
             var cornerValues = new float[MarchingCubes.CornerCount];
             Vector3Int voxelCount = chunk.VoxelCount;
@@ -39,10 +43,38 @@ namespace Clube.Core
                             cornerValues[corner] = chunk.GetDensity(voxel + MarchingCubes.CornerOffset(corner));
                         }
 
-                        Vector3 origin = (Vector3)voxel * voxelSize;
-                        MarchingCubes.Polygonise(cornerValues, isoLevel, origin, voxelSize, vertices, triangles);
+                        writer.BeginVoxel(voxel);
+                        Vector3 origin = (Vector3)voxel * settings.VoxelSize;
+                        MarchingCubes.Polygonise(
+                            cornerValues, settings.IsoLevel, origin, settings.VoxelSize, placer, writer, triangles);
                     }
                 }
+            }
+        }
+
+        private static IEdgeVertexPlacer CreatePlacer(EdgePlacement placement)
+        {
+            switch (placement)
+            {
+                case EdgePlacement.Interpolated:
+                    return InterpolatedEdgePlacer.Instance;
+                case EdgePlacement.Midpoint:
+                    return MidpointEdgePlacer.Instance;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(placement), placement, null);
+            }
+        }
+
+        private static IVertexWriter CreateWriter(Shading shading, List<Vector3> vertices, Vector3Int sampleCount)
+        {
+            switch (shading)
+            {
+                case Shading.Flat:
+                    return new FlatVertexWriter(vertices);
+                case Shading.Smooth:
+                    return new SharedVertexWriter(vertices, sampleCount);
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(shading), shading, null);
             }
         }
     }
