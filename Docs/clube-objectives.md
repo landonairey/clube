@@ -40,8 +40,8 @@ A combined tag like `Core + Lab` means the logic lives in the core and a lab com
 - [ ] **A4** Core exposes read-only debug data (densities, per-voxel case index, build timings) rather than calling into debug code. If debug needs something, the core exposes more data.
 - [ ] **A5** Debug-only data collection (e.g. storing case indices) wrapped in `[Conditional("CLUBE_DEBUG")]` or `#if DEVELOPMENT_BUILD` so it compiles out of release builds.
 - [ ] **A6** Algorithm variants (interpolated vs midpoint edges, flat vs smooth shading) are chosen **once per chunk build** — strategy object, or generic type parameters under Burst — never checked per vertex. Labs can switch variants; the game locks one in.
-- [ ] **A7** One density-edit path in the core (write densities → mark chunk dirty → rebuild). Lab corner sliders and the in-game brush are both just callers of it.
-- [ ] **A8** A single voxel is a 1×1×1 chunk. No separate single-voxel meshing code.
+- [x] **A7** One density-edit path in the core (write densities → mark chunk dirty → rebuild). Lab corner sliders and the in-game brush are both just callers of it.
+- [x] **A8** A single voxel is a 1×1×1 chunk. No separate single-voxel meshing code.
 - [ ] **A9** Scenes as stages over the same core:
   - `VoxelLab` — 1×1×1 chunk + heavy debug components
   - `ChunkLab` — one chunk + selection, generator switching, benchmarks
@@ -78,17 +78,17 @@ A combined tag like `Core + Lab` means the logic lives in the core and a lab com
 
 Goal: fully interrogate marching cubes mechanics on one cube at runtime via the inspector. Built on a 1×1×1 chunk (A8).
 
-Note: the pre-plan prototype (PR #1) already covers rough versions of V1, V2 and V6, but as a dedicated `SingleVoxel` component. Those stay unchecked until they run on the 1×1×1 chunk through the A7 edit path.
+Note: V1, V2 and V6 now run on the 1×1×1 chunk through the A7 edit path (the pre-plan `SingleVoxel` component is gone). A2 and A12 are started but not complete: `WorldConfig` has no generator or seed yet (K9, K10), and `IVoxelStorage` has density only (materials M10, iteration and serialization K26).
 
 ### 1A — Core controls
-- [ ] **V1** `Config` Iso value slider.
-- [ ] **V2** `Core + Lab` Individual sliders for the 8 corner values (via the A7 edit path).
+- [x] **V1** `Config` Iso value slider.
+- [x] **V2** `Core + Lab` Individual sliders for the 8 corner values (via the A7 edit path).
 - [ ] **V3** `Core + Lab` Interpolated edge vertices vs edge midpoints (A6 variant).
 - [ ] **V4** `Core + Lab` Smooth vs flat shading (A6 variant).
 - [ ] **V5** `Lab` Toggle triangle winding / draw direction.
 
 ### 1B — Visual debugging
-- [ ] **V6** `Lab` Corner gizmo spheres, grayscale by corner value.
+- [x] **V6** `Lab` Corner gizmo spheres, grayscale by corner value.
 - [ ] **V7** `Lab` *(added)* Show current case index (0–255) and which of the 15 base configurations it maps to.
 - [ ] **V8** `Lab` *(added)* Normal gizmos per vertex/face (verifies V4 and V5).
 - [ ] **V9** `Lab` *(added)* Highlight active edges from the edge table.
@@ -172,7 +172,7 @@ Extends Chapter 1 playback (V15–V19) so the mesh can be watched growing voxel 
 ### 2G — Voxel data storage exploration
 Compare storage schemes on a single chunk, behind the A12 interface. Measured again at scale in Chapter 3 (M12).
 
-- [ ] **K23** `Core` Flat array baseline (current storage).
+- [x] **K23** `Core` Flat array baseline (current storage).
 - [ ] **K24** `Core` Run-length encoding: runs along one axis; test at least two run orders (e.g. X-first vs Y-first) since terrain is mostly vertical layers.
 - [ ] **K25** `Core` Sparse octree: uniform regions collapse into single nodes; configurable max depth.
 - [ ] **K26** `Lab` Benchmark each scheme for memory size, read speed during meshing, write speed during brush edits, and serialized size.

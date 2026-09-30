@@ -25,10 +25,11 @@ design exploration. Do not build ahead of the current chapter; flag it if a
 change starts pulling in a later chapter's direction.
 
 ## Current focus: Chapter 1 — Single voxel (`VoxelLab`)
-Chapter 0 is done: assemblies, `VoxelLab` with a debug free-fly camera,
-README, `.gitattributes`. The pre-plan `SingleVoxel` component
-(`Assets/Scripts/Debug/Voxel/`) is a stopgap; Chapter 1 starts by replacing
-it with a 1×1×1 chunk (A8) edited through the single density-edit path (A7).
+`VoxelLab` now runs on the Core chunk model: `IVoxelStorage` →
+`FlatVoxelStorage`, `Chunk` (single edit path, A7), `ChunkMesher`,
+`ChunkView`, and a `WorldConfig` asset (`Assets/Config/`). V1, V2, V6 done.
+Next: the rest of 1A — V3 interpolation vs midpoint, V4 flat vs smooth
+shading (both A6 variants chosen once per chunk build), V5 winding toggle.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
@@ -41,7 +42,15 @@ it with a 1×1×1 chunk (A8) edited through the single density-edit path (A7).
   branch = one PR, listing the objective IDs it closes.
 - Folder structure: code under `Assets/Scripts/{Core,Debug,Game}/`, one
   asmdef per folder, grouped by feature inside (e.g. `Core/Meshing/`).
-  Scenes in `Assets/Scenes/`.
+  Inspector/editor code goes in `Debug/Editor/` (`Clube.Debug.Editor`,
+  editor-only); write `UnityEditor.Editor` in full there, since `Editor`
+  alone names that namespace.
+  Scenes in `Assets/Scenes/`, `WorldConfig` assets in `Assets/Config/`,
+  edit-mode tests in `Assets/Tests/EditMode/` (`Clube.Core.Tests`, G3).
+- Running tests: MCP can't drive the Test Runner and the project can't be
+  opened twice, so clone the branch and run Unity in batch mode:
+  `Unity.exe -batchmode -nographics -projectPath <clone> -runTests
+  -testPlatform EditMode -testResults <clone>/results.xml`.
 - Move, rename and delete assets through Unity (AssetDatabase / MCP), not
   the filesystem, so `.meta` GUIDs and scene references survive.
 - Code in `Clube.Debug` must write `UnityEngine.Debug.Log`, not `Debug.Log`:
@@ -50,6 +59,11 @@ it with a 1×1×1 chunk (A8) edited through the single density-edit path (A7).
 - MCP gotcha: inspecting a MeshRenderer/MeshFilter's full properties in edit
   mode reads `.material`/`.mesh`, which creates instance copies that get
   saved into the scene. Check scene diffs before committing.
+- MCP gotcha: `ManageAsset` Move/Rename reports "failed unexpectedly" but
+  usually succeeds; check the filesystem before retrying.
+- MCP gotcha: GameObject instance IDs change on every domain reload
+  (entering Play mode, recompiling). Look objects up again with `find`
+  before passing an ID to tools like `Camera_Capture`.
 - Naming/formatting: follow the existing code (private fields camelCase,
   `[SerializeField] private`, XML doc comments on public types). Formalize
   later if needed.
