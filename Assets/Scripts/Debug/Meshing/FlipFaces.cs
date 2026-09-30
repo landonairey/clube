@@ -4,17 +4,17 @@ using UnityEngine;
 namespace Clube.Debug
 {
     /// <summary>
-    /// Reverses the vertex order of every triangle after each chunk build (V5).
-    /// Unity culls back faces, so with reversed winding the surface is only
-    /// visible from the solid side, and recalculated normals point inwards.
-    /// Lab-only: the core mesher always produces the correct winding.
+    /// Flips every triangle after each chunk build by reversing its winding order
+    /// (V5). Unity culls back faces, so flipped faces are only visible from the
+    /// solid side, and recalculated normals point inwards. Lab-only: the core
+    /// mesher always produces the correct winding.
     /// </summary>
     [RequireComponent(typeof(ChunkView))]
-    public class WindingToggle : MonoBehaviour
+    public class FlipFaces : MonoBehaviour
     {
-        [Tooltip("Reverse triangle winding (draw direction) after each rebuild.")]
+        [Tooltip("Reverse each triangle's winding order after every rebuild, flipping which side is the front face.")]
         [SerializeField]
-        private bool reverseWinding;
+        private bool flipFaces;
 
         private ChunkView chunkView;
 
@@ -53,7 +53,7 @@ namespace Clube.Debug
 
         private void OnMeshRebuilt(Mesh mesh)
         {
-            if (!reverseWinding)
+            if (!flipFaces)
             {
                 return;
             }

@@ -85,7 +85,7 @@ Note: V1, V2 and V6 now run on the 1×1×1 chunk through the A7 edit path (the p
 - [x] **V2** `Core + Lab` Individual sliders for the 8 corner values (via the A7 edit path).
 - [x] **V3** `Core + Lab` Interpolated edge vertices vs edge midpoints (A6 variant).
 - [x] **V4** `Core + Lab` Smooth vs flat shading (A6 variant).
-- [x] **V5** `Lab` Toggle triangle winding / draw direction.
+- [x] **V5** `Lab` Toggle triangle winding / draw direction (`FlipFaces` component).
 
 ### 1B — Visual debugging
 - [x] **V6** `Lab` Corner gizmo spheres, grayscale by corner value.
