@@ -70,12 +70,19 @@ namespace Clube.Core
             return Vector3.Lerp(CornerPosition(cornerA), CornerPosition(cornerB), t);
         }
 
-        public static Vector3 CornerPosition(int corner)
+        /// <summary>Offset of a corner from corner 0, in whole voxels.</summary>
+        public static Vector3Int CornerOffset(int corner)
         {
-            return new Vector3(
+            return new Vector3Int(
                 MarchingCubesTables.CornerOffsets[corner, 0],
                 MarchingCubesTables.CornerOffsets[corner, 1],
                 MarchingCubesTables.CornerOffsets[corner, 2]);
+        }
+
+        /// <summary>Position of a corner in unit-cube space.</summary>
+        public static Vector3 CornerPosition(int corner)
+        {
+            return CornerOffset(corner);
         }
     }
 }
