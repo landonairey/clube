@@ -133,6 +133,7 @@ GameObject:
   - component: {fileID: 190024693}
   - component: {fileID: 190024692}
   - component: {fileID: 190024694}
+  - component: {fileID: 190024695}
   m_Layer: 0
   m_Name: Voxel
   m_TagString: Untagged
@@ -260,6 +261,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ChunkView
   config: {fileID: 11400000, guid: f9e6eb73875978e4495a42f451dbb0e3, type: 2}
+--- !u!114 &190024695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 190024688}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b836eae06bbc484dbeceedbe82ab90c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.WindingToggle
+  reverseWinding: 0
 --- !u!1 &1578836785
 GameObject:
   m_ObjectHideFlags: 0
