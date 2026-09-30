@@ -1,7 +1,8 @@
 using System.Collections.Generic;
+using Clube.Core;
 using UnityEngine;
 
-namespace Clube.Voxel
+namespace Clube.Debug
 {
     /// <summary>
     /// A single Marching Cubes voxel whose 8 corner values are editable in the

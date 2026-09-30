@@ -1,6 +1,7 @@
+using Clube.Core;
 using UnityEngine;
 
-namespace Clube.Voxel
+namespace Clube.Debug
 {
     /// <summary>
     /// Draws the voxel's cube outline and its corner values as spheres
