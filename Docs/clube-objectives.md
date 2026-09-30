@@ -39,7 +39,7 @@ A combined tag like `Core + Lab` means the logic lives in the core and a lab com
 - [ ] **A3** Player settings (render distance, brush size, sensitivity) live in a separate settings object owned by `Clube.Game`, changed through an in-game menu.
 - [ ] **A4** Core exposes read-only debug data (densities, per-voxel case index, build timings) rather than calling into debug code. If debug needs something, the core exposes more data.
 - [ ] **A5** Debug-only data collection (e.g. storing case indices) wrapped in `[Conditional("CLUBE_DEBUG")]` or `#if DEVELOPMENT_BUILD` so it compiles out of release builds.
-- [ ] **A6** Algorithm variants (interpolated vs midpoint edges, flat vs smooth shading) are chosen **once per chunk build** — strategy object, or generic type parameters under Burst — never checked per vertex. Labs can switch variants; the game locks one in.
+- [x] **A6** Algorithm variants (interpolated vs midpoint edges, flat vs smooth shading) are chosen **once per chunk build** — strategy object, or generic type parameters under Burst — never checked per vertex. Labs can switch variants; the game locks one in.
 - [x] **A7** One density-edit path in the core (write densities → mark chunk dirty → rebuild). Lab corner sliders and the in-game brush are both just callers of it.
 - [x] **A8** A single voxel is a 1×1×1 chunk. No separate single-voxel meshing code.
 - [ ] **A9** Scenes as stages over the same core:
@@ -83,9 +83,9 @@ Note: V1, V2 and V6 now run on the 1×1×1 chunk through the A7 edit path (the p
 ### 1A — Core controls
 - [x] **V1** `Config` Iso value slider.
 - [x] **V2** `Core + Lab` Individual sliders for the 8 corner values (via the A7 edit path).
-- [ ] **V3** `Core + Lab` Interpolated edge vertices vs edge midpoints (A6 variant).
-- [ ] **V4** `Core + Lab` Smooth vs flat shading (A6 variant).
-- [ ] **V5** `Lab` Toggle triangle winding / draw direction.
+- [x] **V3** `Core + Lab` Interpolated edge vertices vs edge midpoints (A6 variant).
+- [x] **V4** `Core + Lab` Smooth vs flat shading (A6 variant).
+- [x] **V5** `Lab` Toggle triangle winding / draw direction (`FlipFaces` component).
 
 ### 1B — Visual debugging
 - [x] **V6** `Lab` Corner gizmo spheres, grayscale by corner value.

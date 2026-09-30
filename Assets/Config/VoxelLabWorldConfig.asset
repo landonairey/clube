@@ -15,3 +15,5 @@ MonoBehaviour:
   chunkSize: {x: 1, y: 1, z: 1}
   voxelSize: 1
   isoLevel: 0.5
+  edgePlacement: 0
+  shading: 0

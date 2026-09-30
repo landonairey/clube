@@ -23,6 +23,14 @@ namespace Clube.Core
         [SerializeField, Range(0f, 1f)]
         private float isoLevel = 0.5f;
 
+        [Tooltip("Where surface vertices sit on crossed edges (V3). Labs switch it; the game locks one in.")]
+        [SerializeField]
+        private EdgePlacement edgePlacement = EdgePlacement.Interpolated;
+
+        [Tooltip("Flat (per-face normals) or smooth (shared vertices) shading (V4).")]
+        [SerializeField]
+        private Shading shading = Shading.Flat;
+
         /// <summary>Raised when a value is edited in the Inspector.</summary>
         public event Action Changed;
 
@@ -31,6 +39,12 @@ namespace Clube.Core
         public float VoxelSize => voxelSize;
 
         public float IsoLevel => isoLevel;
+
+        public EdgePlacement EdgePlacement => edgePlacement;
+
+        public Shading Shading => shading;
+
+        public ChunkMeshSettings MeshSettings => new ChunkMeshSettings(isoLevel, voxelSize, edgePlacement, shading);
 
         private void OnValidate()
         {

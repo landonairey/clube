@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -18,6 +19,12 @@ namespace Clube.Core
         private readonly List<int> triangles = new List<int>();
 
         private Mesh mesh;
+
+        /// <summary>
+        /// Raised after the mesh is rebuilt, with normals and bounds already set.
+        /// Lab tools hook in here (A4) rather than the core calling into them.
+        /// </summary>
+        public event Action<Mesh> MeshRebuilt;
 
         /// <summary>The chunk this view renders. Created in Awake; null outside Play mode.</summary>
         public Chunk Chunk { get; private set; }
@@ -79,7 +86,7 @@ namespace Clube.Core
 
         private void RebuildMesh()
         {
-            ChunkMesher.Build(Chunk, config.IsoLevel, config.VoxelSize, vertices, triangles);
+            ChunkMesher.Build(Chunk, config.MeshSettings, vertices, triangles);
 
             mesh.Clear();
             mesh.SetVertices(vertices);
@@ -88,6 +95,7 @@ namespace Clube.Core
             mesh.RecalculateBounds();
 
             Chunk.MarkClean();
+            MeshRebuilt?.Invoke(mesh);
         }
     }
 }

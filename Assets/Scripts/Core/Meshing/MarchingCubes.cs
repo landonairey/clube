@@ -13,8 +13,8 @@ namespace Clube.Core
         public const int CornerCount = 8;
 
         /// <summary>
-        /// Appends the isosurface triangles for a single cube to the given lists.
-        /// Corners with a value at or above <paramref name="isoLevel"/> are treated as solid.
+        /// Appends the isosurface triangles for a single cube, with interpolated
+        /// edge vertices and no vertex sharing (flat shading).
         /// </summary>
         /// <param name="cornerValues">8 values, ordered as in <see cref="MarchingCubesTables.CornerOffsets"/>.</param>
         /// <param name="isoLevel">Threshold separating solid from empty.</param>
@@ -30,6 +30,27 @@ namespace Clube.Core
             List<Vector3> vertices,
             List<int> triangles)
         {
+            Polygonise(
+                cornerValues, isoLevel, origin, size,
+                InterpolatedEdgePlacer.Instance, new FlatVertexWriter(vertices), triangles);
+        }
+
+        /// <summary>
+        /// Appends the isosurface triangles for a single cube. Corners with a value
+        /// at or above <paramref name="isoLevel"/> are treated as solid.
+        /// </summary>
+        /// <param name="placer">Decides where each vertex sits on its edge (V3).</param>
+        /// <param name="writer">Decides whether vertices are shared (V4). The caller calls
+        /// <see cref="IVertexWriter.BeginVoxel"/> first if the writer needs to know the voxel.</param>
+        public static void Polygonise(
+            IReadOnlyList<float> cornerValues,
+            float isoLevel,
+            Vector3 origin,
+            float size,
+            IEdgeVertexPlacer placer,
+            IVertexWriter writer,
+            List<int> triangles)
+        {
             int cubeIndex = GetCubeIndex(cornerValues, isoLevel);
 
             // With solid corners setting the index bits, the table's winding gives
@@ -37,8 +58,13 @@ namespace Clube.Core
             for (int i = 0; MarchingCubesTables.Triangles[cubeIndex, i] != -1; i++)
             {
                 int edge = MarchingCubesTables.Triangles[cubeIndex, i];
-                triangles.Add(vertices.Count);
-                vertices.Add(origin + size * InterpolateEdge(edge, cornerValues, isoLevel));
+                int cornerA = MarchingCubesTables.EdgeCorners[edge, 0];
+                int cornerB = MarchingCubesTables.EdgeCorners[edge, 1];
+
+                Vector3 local = placer.Place(
+                    CornerPosition(cornerA), CornerPosition(cornerB),
+                    cornerValues[cornerA], cornerValues[cornerB], isoLevel);
+                triangles.Add(writer.Write(edge, origin + size * local));
             }
         }
 
@@ -53,21 +79,6 @@ namespace Clube.Core
                 }
             }
             return cubeIndex;
-        }
-
-        /// <summary>
-        /// Returns the point (in unit-cube space) where the isosurface crosses the edge.
-        /// </summary>
-        private static Vector3 InterpolateEdge(int edge, IReadOnlyList<float> cornerValues, float isoLevel)
-        {
-            int cornerA = MarchingCubesTables.EdgeCorners[edge, 0];
-            int cornerB = MarchingCubesTables.EdgeCorners[edge, 1];
-            float valueA = cornerValues[cornerA];
-            float valueB = cornerValues[cornerB];
-
-            // InverseLerp returns 0 when the values are equal, which is a safe fallback.
-            float t = Mathf.InverseLerp(valueA, valueB, isoLevel);
-            return Vector3.Lerp(CornerPosition(cornerA), CornerPosition(cornerB), t);
         }
 
         /// <summary>Offset of a corner from corner 0, in whole voxels.</summary>
