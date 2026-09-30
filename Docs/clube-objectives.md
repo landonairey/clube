@@ -1,9 +1,15 @@
 # clube — Destructible Terrain Demo: Scoped Objectives
 
 Project: `E:\Repos\Unity3D\clube` (fresh restart; earlier terrain-demo repo is reference only, not ported)
-Target: Milestone 1 — Destructible Terrain Demo
+Target: Milestone 1 — Destructible Terrain Demo = **Chapters 0–3** (ends at Checkpoint 3.2)
 
-Each objective has an ID so it can map 1:1 to a GitHub issue / branch / PR. Items marked *(added)* are suggestions beyond the original list — keep, cut, or defer as you like.
+Each objective has an ID so it maps 1:1 to a GitHub issue; PRs group objectives per sub-section (see G2). Items marked *(added)* are suggestions beyond the original list — keep, cut, or defer as you like.
+
+**Plan maturity:** Chapters 0–3 are scoped and schedulable. Chapters 4–5 are drafts. Chapters 6–8 are design exploration — context for decisions, not work to schedule.
+
+**Settled decisions:**
+- Render pipeline: **URP** (project created from the URP template). Shader work (M11, M13, M14) targets URP.
+- Engine: Unity 6.3 LTS, Windows build via IL2CPP.
 
 **Game vision:** an economic success story in a medieval world. The player starts their own venture and grows it through ore extraction, refining, crafting, and trade, until they out-compete or take control of the local towns.
 
@@ -50,7 +56,8 @@ A combined tag like `Core + Lab` means the logic lives in the core and a lab com
 ## Ground rules (apply to every chapter)
 
 - [ ] **G1** Every runtime-editable parameter triggers a regenerate via a dirty flag (no regen every frame).
-- [ ] **G2** One objective = one branch = one PR; PR description states which acceptance criteria were met.
+- [ ] **G2** One objective = one GitHub issue. One sub-section (e.g. 1A, 2C) = one branch = one PR, which lists the objective IDs it closes and which acceptance criteria were met. Split a sub-section into several PRs if the diff stops being reviewable in one sitting; never bundle across sub-sections.
+- [ ] **G5** *(added)* Docs live in `Docs/` (capital D — CI runs on case-sensitive Linux, so match it exactly).
 - [ ] **G3** *(added)* Edit-mode unit tests (Unity Test Framework) for pure `Core` logic: case index lookup, interpolation, volume math, coordinates, seams, determinism.
 - [ ] **G4** *(added)* Tests run on every push/PR via GitHub Actions (GameCI).
 
@@ -58,17 +65,20 @@ A combined tag like `Core + Lab` means the logic lives in the core and a lab com
 
 ## Chapter 0 — Minimal scene *(added — current step)*
 
-- [ ] **C0.1** `Game` Empty scene with camera, directional light, free-fly/orbit camera controller.
+- [ ] **C0.1** `Lab` `VoxelLab` scene shell: camera, directional light, free-fly/orbit camera controller. The controller lives in `Clube.Debug` and is the same debug camera M7 toggles to; the `Game` scene gets its own player camera in M6.
 - [ ] **C0.2** `Core` Folder + namespace structure and assembly definitions per A1.
-- [ ] **C0.3** `.gitignore`, LFS config if needed, README with how to run.
+- [ ] **C0.3** `.gitignore`, `.gitattributes` (line endings, Unity YAML merge, LFS if needed), README with how to run.
+- [ ] **C0.4** *(added)* Migrate the pre-plan single-voxel prototype (PR #1): move the stateless `MarchingCubes` mesher and tables into `Clube.Core`, the gizmos into `Clube.Debug`, rename `SingleVoxel.unity` → `VoxelLab.unity`, remove the template `SampleScene`. (Rebuilding `SingleVoxel` as a 1×1×1 chunk per A8 happens in Chapter 1, not here.)
 
-**Done when:** scene plays, camera moves, repo is clean on a fresh clone.
+**Done when:** `VoxelLab` plays, camera moves, assemblies compile with Core referencing neither Debug nor Game, and the repo is clean on a fresh clone.
 
 ---
 
 ## Chapter 1 — Single voxel (`VoxelLab`)
 
 Goal: fully interrogate marching cubes mechanics on one cube at runtime via the inspector. Built on a 1×1×1 chunk (A8).
+
+Note: the pre-plan prototype (PR #1) already covers rough versions of V1, V2 and V6, but as a dedicated `SingleVoxel` component. Those stay unchecked until they run on the 1×1×1 chunk through the A7 edit path.
 
 ### 1A — Core controls
 - [ ] **V1** `Config` Iso value slider.
@@ -140,7 +150,7 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 ### 2D — Performance
 - [ ] **K11** `Lab` Benchmark: `List<T>` vs preallocated arrays for mesh building.
   - Method: Stopwatch over N runs after warmup; record ms and GC allocations (Profiler / `GC.GetAllocatedBytesForCurrentThread`); test at 3+ chunk sizes.
-  - Output: results table in the repo (`/docs/benchmarks.md`). Winner becomes the `Core` implementation.
+  - Output: results table in the repo (`Docs/benchmarks.md`). Winner becomes the `Core` implementation.
 - [ ] **K12** `Lab` *(added, optional)* Third variant: `NativeArray` + Jobs/Burst — sets up Chapter 4 threading.
 
 ### 2E — Terrain editing
@@ -167,7 +177,7 @@ Compare storage schemes on a single chunk, behind the A12 interface. Measured ag
 - [ ] **K25** `Core` Sparse octree: uniform regions collapse into single nodes; configurable max depth.
 - [ ] **K26** `Lab` Benchmark each scheme for memory size, read speed during meshing, write speed during brush edits, and serialized size.
   - Note: smooth marching cubes needs varied densities near the surface, so compression mostly comes from solid and air regions. Also test with quantized densities (e.g. byte instead of float) to see how that changes the results.
-  - Output: results added to `/docs/benchmarks.md`.
+  - Output: results added to `Docs/benchmarks.md`.
 - [ ] **K27** `Lab` *(added)* Visualize the storage: RLE runs as coloured bars, octree nodes as wireframe boxes at each depth.
 
 **Done when:** a 32³ chunk can be generated with any K9 generator, edited in play mode, and benchmark results are committed; a 4×4×4 chunk can be played through at voxel granularity in about a minute.
@@ -184,17 +194,19 @@ This is where the shift happens: lab controls stay in `WorldLab`, and `Game` get
 - [ ] **M3** `Game` Render distance setting controls how many chunks are loaded (player setting per A3, not a config value).
 - [ ] **M4** `Lab` Focus mode: select and highlight an individual chunk; show its stats.
 - [ ] **M5** `Core` *(added)* Terrain edits that cross chunk borders update all affected chunks.
-- [ ] **M12** `Lab` Storage at scale: repeat the K26 benchmark across many loaded chunks (total memory, load/unload time) and choose the `Core` storage for the game. Record the decision in `/docs/benchmarks.md`.
+- [ ] **M12** `Lab` Storage at scale: repeat the K26 benchmark across many loaded chunks (total memory, load/unload time) and choose the `Core` storage for the game. Record the decision in `Docs/benchmarks.md`.
 
 ### 3B — Player
 - [ ] **M6** `Game` Basic character: walk, jump, collide with terrain (MeshCollider regenerated on edit).
 - [ ] **M7** `Lab` *(added)* Toggle between player camera and debug free-fly camera.
 - [ ] **M8** `Game` *(added)* In-game dig/place controls calling the A7 edit path; brush size as a player setting.
 
+**Checkpoint 3.1 — playable terrain (after 3A + 3B):** in the `Game` scene, the player can walk across a multi-chunk area and dig through a chunk border without seams, using a single placeholder material. No debug components present (A10).
+
 ### 3C — Materials
 - [ ] **M9** `Core` Material registry: one definition per material (id, category aggregate/ore, texture, colour, hardness, drop item). Starts with aggregates **grass, dirt, stone** and ores **gold, silver, copper**; built so more of each can be added later without code changes, and so a material can later carry hidden mineral species (PR2).
 - [ ] **M10** `Core` Per-voxel material ID stored alongside density in voxel storage (A12). Aggregates assigned by depth below the surface: grass on top, a dirt band, stone below.
-- [ ] **M11** `Core` Terrain shader using a texture array indexed by material ID, so one material handles all six types.
+- [ ] **M11** `Core` Terrain shader (URP — Shader Graph or hand-written URP HLSL) using a texture array indexed by material ID, so one material handles all six types.
 - [ ] **M13** `Core` Blending where materials meet: marching cubes vertices sit on edges between voxels, so pass per-vertex material weights (e.g. vertex colours or UV channels) and blend in the shader instead of hard seams.
 - [ ] **M14** `Core` *(added)* Triplanar mapping so steep faces don't stretch.
 - [ ] **M15** `Core + Lab` Toggle between material display modes in `WorldLab` and `ChunkLab`, as an A6 mesh variant chosen once per chunk build:
@@ -216,7 +228,7 @@ Ore nodes are generated as a procedural centroid with a 3D Gaussian falloff. Eac
 - [ ] **O8** `Lab` Live ore parameter tuning in `WorldLab` with regenerate, plus a readout of ore voxel count per type per chunk.
 - [ ] **O9** `Core` Unit tests: same seed gives same centroids and ore voxels; probability falls off correctly with distance; border chunks agree.
 
-**Done when:** in the `Game` scene, the player can walk across a multi-chunk area, dig through a chunk border without seams, and see all six materials, with ore nodes spanning chunk borders consistently. No debug components present (A10).
+**Checkpoint 3.2 — materials and ore (after 3C + 3D), completes Milestone 1:** the Checkpoint 3.1 scene now shows all six materials, with ore nodes spanning chunk borders consistently. Still no debug components (A10).
 
 ---
 
@@ -278,7 +290,7 @@ Features that make the procedural world feel like a game.
 ### 6A — Skill progression feel test
 - [ ] **SK1** `Game` Prototype a minimal skill system (XP from an activity, levels, one visible effect per level) and playtest whether skill progression feels right for the demo, for later gameplay, or not at all.
 - [ ] **SK2** `Lab` Toggle skills on/off and override skill levels, so the same world can be compared at novice vs expert.
-- [ ] **SK3** Decision record in `/docs/` on whether skills stay, and in which chapter they land.
+- [ ] **SK3** Decision record in `Docs/` on whether skills stay, and in which chapter they land.
 
 ### 6B — Prospecting skill
 Prospecting reads the same probability field that ore generation uses (O1–O4). Skill controls how clearly the player sees it.
@@ -450,7 +462,6 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
 ## Open questions
 
 - Target chunk size for Chapter 3+ (16³ vs 32³)?
-- Unity render pipeline (Built-in / URP / HDRP) — affects shader work in M11 and M13.
 - Which A6 variants does the game lock in (likely interpolated + smooth)?
 - Density type for storage: float, half, or byte (affects K26 results and save size)?
 - Save file format: binary (compact, fast) vs JSON (readable, easier to debug)?
