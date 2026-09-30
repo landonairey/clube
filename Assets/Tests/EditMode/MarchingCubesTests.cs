@@ -11,6 +11,14 @@ namespace Clube.Core.Tests
         private readonly List<Vector3> vertices = new List<Vector3>();
         private readonly List<int> triangles = new List<int>();
 
+        // NUnit reuses one fixture instance for every test in the class.
+        [SetUp]
+        public void ClearBuffers()
+        {
+            vertices.Clear();
+            triangles.Clear();
+        }
+
         [Test]
         public void AllEmpty_ProducesNoTriangles()
         {
