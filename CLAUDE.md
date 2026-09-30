@@ -27,9 +27,12 @@ change starts pulling in a later chapter's direction.
 ## Current focus: Chapter 1 — Single voxel (`VoxelLab`)
 `VoxelLab` now runs on the Core chunk model: `IVoxelStorage` →
 `FlatVoxelStorage`, `Chunk` (single edit path, A7), `ChunkMesher`,
-`ChunkView`, and a `WorldConfig` asset (`Assets/Config/`). V1, V2, V6 done.
-Next: the rest of 1A — V3 interpolation vs midpoint, V4 flat vs smooth
-shading (both A6 variants chosen once per chunk build), V5 winding toggle.
+`ChunkView`, and a `WorldConfig` asset (`Assets/Config/`). 1A is done
+(V1–V5): mesh variants are strategy objects (`IEdgeVertexPlacer`,
+`IVertexWriter`) picked once per build from `ChunkMeshSettings` (A6); lab
+tools hook `ChunkView.MeshRebuilt` rather than adding flags to the core.
+Next: 1B visual debugging (V7 case index readout, V8 normal gizmos, V9
+active edges, V10 preset cases).
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
