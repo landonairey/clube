@@ -42,6 +42,9 @@ shading (both A6 variants chosen once per chunk build), V5 winding toggle.
   branch = one PR, listing the objective IDs it closes.
 - Folder structure: code under `Assets/Scripts/{Core,Debug,Game}/`, one
   asmdef per folder, grouped by feature inside (e.g. `Core/Meshing/`).
+  Inspector/editor code goes in `Debug/Editor/` (`Clube.Debug.Editor`,
+  editor-only); write `UnityEditor.Editor` in full there, since `Editor`
+  alone names that namespace.
   Scenes in `Assets/Scenes/`, `WorldConfig` assets in `Assets/Config/`,
   edit-mode tests in `Assets/Tests/EditMode/` (`Clube.Core.Tests`, G3).
 - Running tests: MCP can't drive the Test Runner and the project can't be
