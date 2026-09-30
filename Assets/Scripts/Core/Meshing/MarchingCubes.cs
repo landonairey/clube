@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Clube.Voxel
+namespace Clube.Core
 {
     /// <summary>
     /// Pure Marching Cubes polygoniser: turns the 8 corner values of one cube

@@ -1,4 +1,4 @@
-namespace Clube.Voxel
+namespace Clube.Core
 {
     /// <summary>
     /// Lookup tables for the Marching Cubes algorithm.

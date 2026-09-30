@@ -1,0 +1,16 @@
+{
+    "name": "Clube.Game",
+    "rootNamespace": "Clube.Game",
+    "references": [
+        "Clube.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

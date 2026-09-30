@@ -24,11 +24,11 @@ Milestone 1 = Chapters 0–3. Chapters 4–5 are drafts; Chapters 6–8 are
 design exploration. Do not build ahead of the current chapter; flag it if a
 change starts pulling in a later chapter's direction.
 
-## Current focus: Chapter 0 — Minimal scene
-Close out C0.1–C0.4: assembly definitions per A1, a `VoxelLab` scene shell
-with a debug free-fly camera, README and `.gitattributes`, and migrating the
-pre-plan single-voxel prototype (PR #1, `Assets/Scripts/Voxel/`) into the
-new assembly layout. Rebuilding it as a 1×1×1 chunk (A8) is Chapter 1 work.
+## Current focus: Chapter 1 — Single voxel (`VoxelLab`)
+Chapter 0 is done: assemblies, `VoxelLab` with a debug free-fly camera,
+README, `.gitattributes`. The pre-plan `SingleVoxel` component
+(`Assets/Scripts/Debug/Voxel/`) is a stopgap; Chapter 1 starts by replacing
+it with a 1×1×1 chunk (A8) edited through the single density-edit path (A7).
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
@@ -39,7 +39,17 @@ new assembly layout. Rebuilding it as a 1×1×1 chunk (A8) is Chapter 1 work.
 - Docs go in `Docs/` (capital D, G5).
 - Workflow (G2): one objective = one GitHub issue; one sub-section = one
   branch = one PR, listing the objective IDs it closes.
-- Folder structure under `Assets/`: to be set in C0.2.
+- Folder structure: code under `Assets/Scripts/{Core,Debug,Game}/`, one
+  asmdef per folder, grouped by feature inside (e.g. `Core/Meshing/`).
+  Scenes in `Assets/Scenes/`.
+- Move, rename and delete assets through Unity (AssetDatabase / MCP), not
+  the filesystem, so `.meta` GUIDs and scene references survive.
+- Code in `Clube.Debug` must write `UnityEngine.Debug.Log`, not `Debug.Log`:
+  inside the `Clube.*` namespaces, `Debug` resolves to the `Clube.Debug`
+  namespace.
+- MCP gotcha: inspecting a MeshRenderer/MeshFilter's full properties in edit
+  mode reads `.material`/`.mesh`, which creates instance copies that get
+  saved into the scene. Check scene diffs before committing.
 - Naming/formatting: follow the existing code (private fields camelCase,
   `[SerializeField] private`, XML doc comments on public types). Formalize
   later if needed.
