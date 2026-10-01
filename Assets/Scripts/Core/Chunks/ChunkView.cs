@@ -20,6 +20,11 @@ namespace Clube.Core
 
         private Mesh mesh;
 
+        // Play mode works on a copy, so Inspector tweaks during Play revert on
+        // exit like scene values do, instead of being saved into the asset.
+        // (A chunk manager will own one shared copy once there are many chunks.)
+        private WorldConfig runtimeConfig;
+
         /// <summary>
         /// Raised after the mesh is rebuilt, with normals and bounds already set.
         /// Lab tools hook in here (A4) rather than the core calling into them.
@@ -29,7 +34,11 @@ namespace Clube.Core
         /// <summary>The chunk this view renders. Created in Awake; null outside Play mode.</summary>
         public Chunk Chunk { get; private set; }
 
-        public WorldConfig Config => config;
+        /// <summary>The config in use: the Play mode copy while playing, otherwise the assigned asset.</summary>
+        public WorldConfig Config => runtimeConfig != null ? runtimeConfig : config;
+
+        /// <summary>True while <see cref="Config"/> is a Play mode copy whose edits are discarded on exit.</summary>
+        public bool IsUsingRuntimeConfig => runtimeConfig != null;
 
         private void Awake()
         {
@@ -40,7 +49,10 @@ namespace Clube.Core
                 return;
             }
 
-            Chunk = new Chunk(config.ChunkSize);
+            runtimeConfig = Instantiate(config);
+            runtimeConfig.name = $"{config.name} (Play mode copy)";
+
+            Chunk = new Chunk(Config.ChunkSize);
 
             mesh = new Mesh { name = "Chunk" };
             mesh.MarkDynamic();
@@ -49,17 +61,17 @@ namespace Clube.Core
 
         private void OnEnable()
         {
-            if (config != null)
+            if (Config != null)
             {
-                config.Changed += OnConfigChanged;
+                Config.Changed += OnConfigChanged;
             }
         }
 
         private void OnDisable()
         {
-            if (config != null)
+            if (Config != null)
             {
-                config.Changed -= OnConfigChanged;
+                Config.Changed -= OnConfigChanged;
             }
         }
 
@@ -77,6 +89,11 @@ namespace Clube.Core
             {
                 Destroy(mesh);
             }
+
+            if (runtimeConfig != null)
+            {
+                Destroy(runtimeConfig);
+            }
         }
 
         private void OnConfigChanged()
@@ -86,7 +103,7 @@ namespace Clube.Core
 
         private void RebuildMesh()
         {
-            ChunkMesher.Build(Chunk, config.MeshSettings, vertices, triangles);
+            ChunkMesher.Build(Chunk, Config.MeshSettings, vertices, triangles);
 
             mesh.Clear();
             mesh.SetVertices(vertices);
