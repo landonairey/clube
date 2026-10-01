@@ -67,7 +67,9 @@ namespace Clube.Debug.Editor
 
             foreach (VoxelCornerEditor corners in UnityEngine.Object.FindObjectsByType<VoxelCornerEditor>(FindObjectsSortMode.None))
             {
-                if (corners.isActiveAndEnabled)
+                // Not isActiveAndEnabled: that only becomes true once OnEnable has run,
+                // which never happens outside Play mode for a regular MonoBehaviour.
+                if (corners.enabled && corners.gameObject.activeInHierarchy)
                 {
                     Draw(corners, sceneView.camera);
                 }
