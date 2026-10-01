@@ -509,6 +509,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 54c895a7651fdf5429e4715adf3169ea, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.AxesHud
+  showAxes: 1
   axisLength: 45
   margin: {x: 70, y: 70}
   lineThickness: 3

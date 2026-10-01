@@ -52,6 +52,32 @@ namespace Clube.Debug.Editor
                 VolumeReadoutGui.Draw(volumeLab);
                 VolumeReadoutGui.DrawViewControls(volumeLab);
             }
+
+            AxesHud axesHud = FindFirstObjectByType<AxesHud>();
+            if (axesHud != null)
+            {
+                EditorGUILayout.Space();
+                DrawAxesToggle(axesHud);
+            }
+        }
+
+        private static void DrawAxesToggle(AxesHud axesHud)
+        {
+            EditorGUILayout.LabelField("View", EditorStyles.boldLabel);
+
+            EditorGUI.BeginChangeCheck();
+            bool show = EditorGUILayout.Toggle(
+                new GUIContent("Show axes", "X / Y / Z triad in the Game view's corner (AxesHud on the camera)."),
+                axesHud.ShowAxes);
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(axesHud, "Toggle axes HUD");
+                axesHud.ShowAxes = show;
+                EditorUtility.SetDirty(axesHud);
+
+                // The Game view only repaints on its own when something in it changes.
+                UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
+            }
         }
 
         // Labelled c0-c7 to match the corner labels in the views, instead of Element 0-7.
