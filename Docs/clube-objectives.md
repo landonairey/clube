@@ -97,11 +97,11 @@ Note: V1, V2 and V6 now run on the 1×1×1 chunk through the A7 edit path (the p
 - [x] **V21** `Lab` *(added)* Teaching labels on the cube corners: each corner's index and the bit it sets in the case index (e.g. "c3 → bit 3 = 8"), marked solid or empty, alongside the resulting case index in binary and decimal. Shows how corners map to the case index and from there to the triangles.
 
 ### 1C — Volume inspection
-- [ ] **V11** `Lab` Approximate fill: weighted-percentage volume from corner values. *(Core candidate later — useful for measuring material mined in Milestone 2.)*
-- [ ] **V12** `Lab` Exact fill via tetrahedralisation of the enclosed solid.
+- [x] **V11** `Lab` Approximate fill: weighted-percentage volume from corner values. *(Already in Core as `VoxelVolume`, alongside V12 and the V14 reference, since mining (I5) will need it.)*
+- [x] **V12** `Lab` Exact fill via tetrahedralisation of the enclosed solid.
   - Note: the MC surface alone is open; the enclosed solid is the mesh **plus** the cube faces clipped to the inside region. Close it first, then fan into tetrahedra from a reference point and sum signed volumes.
-- [ ] **V13** `Lab` Exploded view of the tetrahedra (explode-distance slider, per-tet colouring).
-- [ ] **V14** `Lab` *(added)* Readout comparing V11 vs V12 (absolute and % error); optional Monte Carlo sample count as a third reference.
+- [x] **V13** `Lab` Exploded view of the tetrahedra (explode-distance slider, per-tet colouring).
+- [x] **V14** `Lab` *(added)* Readout comparing V11 vs V12 (absolute and % error); optional Monte Carlo sample count as a third reference.
 
 ### 1D — Step-through animation
 Record the real algorithm once (A11), then replay the log. Stepping back just rebuilds state up to an earlier point in the log.
