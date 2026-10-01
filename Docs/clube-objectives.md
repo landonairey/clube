@@ -457,6 +457,44 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
   - Needs systems not in the plan yet: vegetation, crops or fruit, and animals.
   - Open design points: global vs per-region, whether it can recover or be restored, whether the player is ever told, and whether it affects the economic goal (e.g. towns decline too).
 
+- **PK4 Day/night cycle.** Sun and moon movement with lighting changes across a day.
+  - Gives time a visible meaning, and pairs with PK6 (bells as the villages' clock), NPC schedules (NP2) and market hours (7C).
+  - Open design points: day length in real minutes, whether night is dangerous or just darker, and whether work (mining, smelting) changes at night.
+
+- **PK5 Climate-driven biomes.** Biomes chosen from parameters such as elevation, temperature and precipitation (and possibly others, e.g. distance to water), instead of being placed directly.
+  - A more concrete version of P8. Each parameter is its own noise field from the world seed (P4), so biomes stay deterministic and independent of which chunks are loaded.
+  - Biome would then drive surface material (M10), trees (PK7) and settlement scoring (ST1).
+
+- **PK6 Bronze church bells.** Casting a large bronze bell is a late bronze-working achievement that unlocks timekeeping in villages.
+  - Depends on bronze (copper + tin, HF4 and X1), large-scale casting, and a village to hang it in (7B).
+  - Timekeeping could unlock scheduled markets, NPC work hours, or contracts with deadlines; PK4 gives the hours something to measure.
+
+- **PK7 Trees and woodcutting.** Trees that can be chopped for wood, with several species, value tiers and growth mechanics, with a sense of progression similar to Old School RuneScape's woodcutting (common to rare woods, higher tiers needing better tools or skill).
+  - Wood is already in the plan as fuel and charcoal (HF1); species could differ in burn temperature, building or tool use, and trade value (TR1).
+  - Growth over time, saplings and replanting tie into PK3 (ecology) and PK5 (which species grow where).
+  - Fits the skill question in 6A (woodcutting as a skill).
+
+- **PK8 Water.** Oceans, lakes and rivers.
+  - Static water bodies are needed anyway for settlement scoring (ST1) and water power (DV2); see Open questions.
+  - **Stretch goal:** flowing water physics (filling dug holes, flooding mines, the "pumping water out of deep mines" problem in DV3).
+
+- **PK9 Gravity voxels.** Loose materials such as sand and gravel fall when nothing supports them, like Minecraft's gravity blocks.
+  - A material property in the M9 registry (e.g. "loose"), checked after edits through the A7 path; falling voxels move density and material, then dirty the affected chunks (M5).
+  - Raises a smooth-terrain question Minecraft doesn't have: what "unsupported" means for densities rather than whole blocks.
+
+- **PK10 Detached terrain bodies (advanced gravity).** When digging fully separates a piece of terrain from the rest, it breaks off and falls and tumbles as its own physics body.
+  - Detection: after an edit, check whether the solid voxels near the edit are still connected to the anchored world (flood fill or connected components on the voxel grid). If a region is cut off, extract it into its own mesh.
+  - The detached piece becomes a rigidbody with a convex hull (or a set of convex pieces) as its collider, since Unity's MeshCollider must be convex on moving bodies.
+  - Open design points: does it re-merge into the terrain when it lands, or stay a separate object; size limits; performance across chunk borders.
+
+- **PK11 Explosives.** TNT/dynamite (or black powder, to fit the setting) for blasting rock.
+  - An explosion is just a large, falloff-shaped call to the A7 edit path (like K16's smooth brush), so the core cost is small; the work is effects, damage and drops (I5).
+  - Could feed PK10 (blasting chunks loose) and fits the alchemy line (DV4) as a crafted chemical.
+
+- **PK12 Semi-automatic digging machines.** Machines that partly automate ore extraction, e.g. powered drills or dredges that dig while tended.
+  - Extends the existing "automate what the player has mastered" principle (Chapter 6, DV2 water power).
+  - **Guardrail: this is not a factory game.** Machines should help with the tedious part of a step the player already understands, need tending (fuel, repairs, supervision), and stay local. No sprawling conveyor networks or production lines that run the economy on their own.
+
 ---
 
 ## Open questions
@@ -469,7 +507,7 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
 - Should the tech tree gate which ores the player can mine (by tool hardness) or which they can process?
 - Skills vs tech tree: separate systems, or does skill level gate tech nodes?
 - Mixed ore (PK1): single composite item or auto-split into separate items?
-- Water bodies (rivers, lakes) are needed for settlement scoring (ST1) and water power (DV2) — which chapter adds them?
+- Water bodies (rivers, lakes) are needed for settlement scoring (ST1) and water power (DV2) — which chapter adds them? (Parked as PK8, with flowing water as a stretch goal.)
 - Settlement generation before or after the economy design is settled (EC1)?
 - Setting fit: a Computational tribe and the Combined sequence's computational era clash with the medieval + Da Vinci setting. Reframe (e.g. clockwork, counting machines, runes/sigils as 'bits'), push to a later era, or relax the setting?
 - Do settlements (7B) belong to tribes, so a town's culture shapes what it makes and trades?
