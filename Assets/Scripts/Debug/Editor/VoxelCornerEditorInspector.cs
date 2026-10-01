@@ -1,0 +1,189 @@
+using System;
+using System.Collections.Generic;
+using Clube.Core;
+using UnityEditor;
+using UnityEngine;
+
+namespace Clube.Debug.Editor
+{
+    /// <summary>
+    /// Lab panel under the corner sliders: the case index the corners produce and
+    /// what it means (V7, V9), a field to jump to any case (V20), one preset button
+    /// per base configuration (V10), and toggles for the Scene-view overlays (V21).
+    /// </summary>
+    [CustomEditor(typeof(VoxelCornerEditor))]
+    public class VoxelCornerEditorInspector : UnityEditor.Editor
+    {
+        private const int PresetColumns = 3;
+
+        private static readonly Color AmbiguousTint = new Color(1f, 0.8f, 0.4f);
+
+        public override void OnInspectorGUI()
+        {
+            DrawDefaultInspector();
+
+            var corners = (VoxelCornerEditor)target;
+            int caseIndex = corners.CaseIndex;
+
+            EditorGUILayout.Space();
+            DrawCaseSection(corners, caseIndex);
+
+            EditorGUILayout.Space();
+            DrawPresets(corners, caseIndex);
+
+            EditorGUILayout.Space();
+            DrawOverlayToggles();
+        }
+
+        private static void DrawCaseSection(VoxelCornerEditor corners, int caseIndex)
+        {
+            EditorGUILayout.LabelField("Case", EditorStyles.boldLabel);
+
+            int typed = EditorGUILayout.DelayedIntField(
+                new GUIContent("Case index", "Type 0-255 and press Enter to jump to that case (V20)."),
+                caseIndex);
+            if (typed != caseIndex)
+            {
+                ApplyCase(corners, Mathf.Clamp(typed, 0, MarchingCubes.CaseCount - 1));
+                caseIndex = corners.CaseIndex;
+            }
+
+            BaseConfiguration configuration = MarchingCubesCases.GetBaseConfiguration(caseIndex);
+            int triangleCount = CountTriangles(caseIndex);
+
+            using (new EditorGUI.IndentLevelScope())
+            {
+                EditorGUILayout.LabelField("Binary (corner 7 → 0)", FormatBinary(caseIndex));
+                EditorGUILayout.LabelField("Solid corners", FormatList(SolidCorners(caseIndex)));
+                EditorGUILayout.LabelField(
+                    "Base configuration",
+                    $"{(int)configuration} · {BaseConfigurationText.Name(configuration)}");
+                EditorGUILayout.LabelField(" ", BaseConfigurationText.Description(configuration), EditorStyles.wordWrappedMiniLabel);
+                EditorGUILayout.LabelField("Ambiguous face", MarchingCubesCases.HasAmbiguousFace(caseIndex) ? "Yes" : "No");
+                EditorGUILayout.LabelField("Crossed edges", FormatList(CrossedEdges(caseIndex)));
+                EditorGUILayout.LabelField("Triangles", triangleCount.ToString());
+            }
+        }
+
+        private static void DrawPresets(VoxelCornerEditor corners, int currentCase)
+        {
+            EditorGUILayout.LabelField("Presets (one per base configuration, ⚠ = ambiguous face)", EditorStyles.boldLabel);
+
+            BaseConfiguration current = MarchingCubesCases.GetBaseConfiguration(currentCase);
+            for (int row = 0; row * PresetColumns < MarchingCubesCases.BaseConfigurationCount; row++)
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    for (int column = 0; column < PresetColumns; column++)
+                    {
+                        int index = row * PresetColumns + column;
+                        if (index >= MarchingCubesCases.BaseConfigurationCount)
+                        {
+                            break;
+                        }
+
+                        DrawPresetButton(corners, (BaseConfiguration)index, isCurrent: (BaseConfiguration)index == current);
+                    }
+                }
+            }
+        }
+
+        private static void DrawPresetButton(VoxelCornerEditor corners, BaseConfiguration configuration, bool isCurrent)
+        {
+            int representative = MarchingCubesCases.GetRepresentativeCase(configuration);
+            bool ambiguous = MarchingCubesCases.HasAmbiguousFace(representative);
+
+            string label = $"{(int)configuration} {BaseConfigurationText.Name(configuration)}{(ambiguous ? " ⚠" : "")}";
+            string tooltip = $"Case {representative}. {BaseConfigurationText.Description(configuration)}";
+
+            Color previous = GUI.backgroundColor;
+            if (ambiguous)
+            {
+                GUI.backgroundColor = AmbiguousTint;
+            }
+
+            using (new EditorGUI.DisabledScope(isCurrent))
+            {
+                if (GUILayout.Button(new GUIContent(label, tooltip)))
+                {
+                    ApplyCase(corners, representative);
+                }
+            }
+
+            GUI.backgroundColor = previous;
+        }
+
+        private static void DrawOverlayToggles()
+        {
+            EditorGUILayout.LabelField("Scene view", EditorStyles.boldLabel);
+
+            EditorGUI.BeginChangeCheck();
+            bool labels = EditorGUILayout.Toggle(
+                new GUIContent("Corner bit labels", "Each corner's index and the bit it sets in the case index (V21)."),
+                VoxelLabViewSettings.ShowCornerLabels);
+            bool edges = EditorGUILayout.Toggle(
+                new GUIContent("Crossed edges", "Highlight the edges the surface crosses (V9)."),
+                VoxelLabViewSettings.ShowCrossedEdges);
+            if (EditorGUI.EndChangeCheck())
+            {
+                VoxelLabViewSettings.ShowCornerLabels = labels;
+                VoxelLabViewSettings.ShowCrossedEdges = edges;
+                SceneView.RepaintAll();
+            }
+        }
+
+        private static void ApplyCase(VoxelCornerEditor corners, int caseIndex)
+        {
+            Undo.RecordObject(corners, $"Set voxel case {caseIndex}");
+            corners.ApplyCase(caseIndex);
+            EditorUtility.SetDirty(corners);
+            SceneView.RepaintAll();
+        }
+
+        private static int CountTriangles(int caseIndex)
+        {
+            int indices = 0;
+            while (MarchingCubesTables.Triangles[caseIndex, indices] != -1)
+            {
+                indices++;
+            }
+            return indices / 3;
+        }
+
+        private static IEnumerable<int> SolidCorners(int caseIndex)
+        {
+            for (int corner = 0; corner < MarchingCubes.CornerCount; corner++)
+            {
+                if (MarchingCubes.IsCornerSolid(caseIndex, corner))
+                {
+                    yield return corner;
+                }
+            }
+        }
+
+        private static IEnumerable<int> CrossedEdges(int caseIndex)
+        {
+            int mask = MarchingCubes.GetCrossedEdgeMask(caseIndex);
+            for (int edge = 0; edge < MarchingCubes.EdgeCount; edge++)
+            {
+                if ((mask & (1 << edge)) != 0)
+                {
+                    yield return edge;
+                }
+            }
+        }
+
+        /// <summary>e.g. 41 → "0010 1001", most significant bit (corner 7) first.</summary>
+        private static string FormatBinary(int caseIndex)
+        {
+            string bits = Convert.ToString(caseIndex, 2).PadLeft(8, '0');
+            return $"{bits.Substring(0, 4)} {bits.Substring(4)}";
+        }
+
+        private static string FormatList(IEnumerable<int> values)
+        {
+            string text = string.Join(", ", values);
+            return text.Length > 0 ? text : "none";
+        }
+    }
+}
