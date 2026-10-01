@@ -8,8 +8,9 @@ namespace Clube.Debug.Editor
 {
     /// <summary>
     /// Lab panel under the corner sliders: the case index the corners produce and
-    /// what it means (V7, V9), a slider to jump to any case (V20), and one preset
-    /// button per base configuration (V10). Label toggles live on VoxelLabels.
+    /// what it means (V7, V9), a slider to jump to any case (V20), one preset
+    /// button per base configuration (V10), and the volume readout (V11, V12, V14)
+    /// when the voxel has a Volume Lab child. Label toggles live on VoxelLabels.
     /// </summary>
     [CustomEditor(typeof(VoxelCornerEditor))]
     public class VoxelCornerEditorInspector : UnityEditor.Editor
@@ -42,6 +43,14 @@ namespace Clube.Debug.Editor
 
             EditorGUILayout.Space();
             DrawPresets(corners, caseIndex);
+
+            // Volume readout here too, so it stays in view while dragging corners.
+            VoxelVolumeLab volumeLab = corners.GetComponentInChildren<VoxelVolumeLab>();
+            if (volumeLab != null)
+            {
+                EditorGUILayout.Space();
+                VolumeReadoutGui.Draw(volumeLab);
+            }
         }
 
         // Labelled c0-c7 to match the corner labels in the views, instead of Element 0-7.
