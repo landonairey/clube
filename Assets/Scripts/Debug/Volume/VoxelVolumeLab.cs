@@ -49,6 +49,13 @@ namespace Clube.Debug
 
         public VoxelCornerEditor Corners => GetComponentInParent<VoxelCornerEditor>();
 
+        /// <summary>How far tetrahedra are pushed out from the cube centre, 0 (assembled) to 1.</summary>
+        public float ExplodeDistance
+        {
+            get => explodeDistance;
+            set => explodeDistance = Mathf.Clamp01(value);
+        }
+
         /// <summary>Current measurements, recomputed only when the corners or settings changed.</summary>
         public VolumeReport Measure()
         {
