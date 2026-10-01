@@ -71,6 +71,9 @@ tetrahedra, V13 exploded view, V14 comparison readout).
   skipped once its renderer bounds leave the view. Scene-view lab overlays
   that must always show go through `SceneView.duringSceneGui` instead
   (see `VoxelLabSceneOverlay`); Game-view HUDs use `OnGUI` (`AxesHud`).
+- Unity gotcha: `isActiveAndEnabled` stays false outside Play mode for a
+  regular (non-`[ExecuteAlways]`) MonoBehaviour, because `OnEnable` never
+  runs. Editor code should check `enabled && gameObject.activeInHierarchy`.
 - Lab `WorldConfig` edits made in Play mode go to `ChunkView`'s private
   copy and reset on exit; only edits made outside Play mode are saved.
 - MCP gotcha: GameObject instance IDs change on every domain reload
