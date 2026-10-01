@@ -33,6 +33,16 @@ namespace Clube.Debug
             }
         }
 
+        /// <summary>Edge placement from the chunk's config (V3), for tools that re-run the mesher.</summary>
+        public EdgePlacement EdgePlacement
+        {
+            get
+            {
+                WorldConfig config = GetComponent<ChunkView>().Config;
+                return config != null ? config.EdgePlacement : EdgePlacement.Interpolated;
+            }
+        }
+
         public float VoxelSize
         {
             get

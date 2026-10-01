@@ -27,10 +27,15 @@ The full plan, architecture rules and objective IDs are in
 | W / A / S / D | Move |
 | Q / E | Move down / up |
 | Shift | Move faster |
-| Scroll wheel | Change base speed |
+| Right mouse + scroll wheel | Change base speed |
+| Scroll wheel | Explode / collapse the volume tetrahedra |
+| Left / Right arrow | Previous / next case index |
 
-Select the **Voxel** object and change its corner values and iso level in
-the Inspector during Play mode to see the mesh update.
+Select the **Voxel** object to edit its corners (c0–c7), jump between cases,
+pick presets and read the volume measures. The iso level, edge placement and
+shading are in the config foldout under **Chunk View**; edits made during
+Play mode reset when it ends. **Voxel → Volume Lab** shows the volume
+tetrahedra.
 
 ## Project layout
 

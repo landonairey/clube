@@ -7,8 +7,10 @@ namespace Clube.Debug
     /// Game-view HUD showing the world X, Y and Z axes as seen from this camera,
     /// like the orientation gizmo in the Scene view. The triad sits in a screen
     /// corner and turns as the camera turns. Axes pointing away from the viewer
-    /// are dimmed and drawn behind the others.
+    /// are dimmed and drawn behind the others. Runs in edit mode too, so the Game
+    /// view shows it before pressing Play.
     /// </summary>
+    [ExecuteAlways]
     [RequireComponent(typeof(Camera))]
     public class AxesHud : MonoBehaviour
     {
@@ -20,6 +22,10 @@ namespace Clube.Debug
             new Color(0.45f, 0.9f, 0.3f),
             new Color(0.3f, 0.55f, 1f),
         };
+
+        [Tooltip("Show the X / Y / Z triad in the Game view.")]
+        [SerializeField]
+        private bool showAxes = true;
 
         [Tooltip("Length of each axis in screen pixels.")]
         [SerializeField, Min(10f)]
@@ -38,9 +44,15 @@ namespace Clube.Debug
 
         private GUIStyle labelStyle;
 
+        public bool ShowAxes
+        {
+            get => showAxes;
+            set => showAxes = value;
+        }
+
         private void OnGUI()
         {
-            if (Event.current.type != EventType.Repaint)
+            if (!showAxes || Event.current.type != EventType.Repaint)
             {
                 return;
             }

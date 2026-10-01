@@ -33,9 +33,11 @@ change starts pulling in a later chapter's direction.
 tools hook `ChunkView.MeshRebuilt` rather than adding flags to the core.
 1B is done (V6–V10, V20, V21): `MarchingCubesCases` (Core) classifies
 cases into 15 base configurations; the voxel lab panel is a custom
-inspector plus an editor-only `[DrawGizmo]` Scene overlay.
-Next: 1C volume inspection (V11 approximate fill, V12 exact fill via
-tetrahedra, V13 exploded view, V14 comparison readout).
+inspector, and labels are drawn by `VoxelLabelPainter` in both views.
+1C is done (V11–V14): `VoxelVolume` (Core) gives approximate, exact
+(signed tetrahedra fanned from c0) and Monte Carlo trilinear volumes;
+the `Volume Lab` child of the Voxel draws the exploded tetrahedra.
+Next: 1D step-through animation (V15 step recorder, V16–V19 playback).
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
