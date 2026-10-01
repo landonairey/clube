@@ -89,12 +89,12 @@ Note: V1, V2 and V6 now run on the 1×1×1 chunk through the A7 edit path (the p
 
 ### 1B — Visual debugging
 - [x] **V6** `Lab` Corner gizmo spheres, grayscale by corner value.
-- [ ] **V7** `Lab` *(added)* Show current case index (0–255) and which of the 15 base configurations it maps to.
-- [ ] **V8** `Lab` *(added)* Normal gizmos per vertex/face (verifies V4 and V5).
-- [ ] **V9** `Lab` *(added)* Highlight active edges from the edge table.
-- [ ] **V10** `Lab` *(added)* Preset buttons for known cases, including ambiguous ones.
-- [ ] **V20** `Lab` *(added)* Type a case index (0–255) to jump straight to it: corners whose bit is set become solid, the rest empty.
-- [ ] **V21** `Lab` *(added)* Teaching labels on the cube corners: each corner's index and the bit it sets in the case index (e.g. "c3 → bit 3 = 8"), marked solid or empty, alongside the resulting case index in binary and decimal. Shows how corners map to the case index and from there to the triangles.
+- [x] **V7** `Lab` *(added)* Show current case index (0–255) and which of the 15 base configurations it maps to.
+- [x] **V8** `Lab` *(added)* Normal gizmos per vertex/face (verifies V4 and V5).
+- [x] **V9** `Lab` *(added)* Highlight active edges from the edge table.
+- [x] **V10** `Lab` *(added)* Preset buttons for known cases, including ambiguous ones.
+- [x] **V20** `Lab` *(added)* Type a case index (0–255) to jump straight to it: corners whose bit is set become solid, the rest empty.
+- [x] **V21** `Lab` *(added)* Teaching labels on the cube corners: each corner's index and the bit it sets in the case index (e.g. "c3 → bit 3 = 8"), marked solid or empty, alongside the resulting case index in binary and decimal. Shows how corners map to the case index and from there to the triangles.
 
 ### 1C — Volume inspection
 - [ ] **V11** `Lab` Approximate fill: weighted-percentage volume from corner values. *(Core candidate later — useful for measuring material mined in Milestone 2.)*

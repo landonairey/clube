@@ -31,8 +31,11 @@ change starts pulling in a later chapter's direction.
 (V1–V5): mesh variants are strategy objects (`IEdgeVertexPlacer`,
 `IVertexWriter`) picked once per build from `ChunkMeshSettings` (A6); lab
 tools hook `ChunkView.MeshRebuilt` rather than adding flags to the core.
-Next: 1B visual debugging (V7 case index readout, V8 normal gizmos, V9
-active edges, V10 preset cases).
+1B is done (V6–V10, V20, V21): `MarchingCubesCases` (Core) classifies
+cases into 15 base configurations; the voxel lab panel is a custom
+inspector plus an editor-only `[DrawGizmo]` Scene overlay.
+Next: 1C volume inspection (V11 approximate fill, V12 exact fill via
+tetrahedra, V13 exploded view, V14 comparison readout).
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
