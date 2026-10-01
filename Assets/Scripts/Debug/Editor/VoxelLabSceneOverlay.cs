@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Clube.Core;
 using UnityEditor;
 using UnityEngine;
@@ -7,27 +6,31 @@ using UnityEngine;
 namespace Clube.Debug.Editor
 {
     /// <summary>
-    /// Scene-view teaching overlay for <see cref="VoxelCornerEditor"/>:
+    /// Scene-view teaching overlay for every <see cref="VoxelCornerEditor"/>:
     /// <list type="bullet">
     /// <item>V21: corners labelled c0-c7 (green when solid), and a table above the
-    /// cube showing which bit of the case index each corner sets, with its place
-    /// value, so corner → bit → case index reads left to right.</item>
+    /// cube lining each corner up with the bit it sets in the case index.</item>
     /// <item>V9: the edges the surface crosses, highlighted and numbered.</item>
-    /// <item>X, Y, Z axis arrows for the coordinate system corner positions use.</item>
     /// </list>
     /// Reads the corner sliders, not the chunk, so it works outside Play mode too.
     /// </summary>
+    /// <remarks>
+    /// Drawn from <see cref="SceneView.duringSceneGui"/> rather than as a gizmo:
+    /// Unity skips an object's gizmos once its renderer bounds leave the view, and
+    /// before Play mode the voxel's renderer has no mesh, so its bounds are a point
+    /// at corner c0. Panning c0 off screen made all the labels vanish.
+    /// </remarks>
+    [InitializeOnLoad]
     internal static class VoxelLabSceneOverlay
     {
         private const float CrossedEdgeThickness = 4f;
-        private const float AxisLength = 0.6f;
 
         // Case table layout, in GUI pixels.
         private const float TablePadding = 6f;
         private const float RowLabelWidth = 48f;
         private const float CellWidth = 30f;
         private const float RowHeight = 16f;
-        private const int TableRows = 5;
+        private const int TableRows = 3;
 
         private static readonly Color SolidColor = new Color(0.35f, 0.95f, 0.45f);
         private static readonly Color EmptyColor = new Color(0.75f, 0.75f, 0.75f);
@@ -42,25 +45,41 @@ namespace Clube.Debug.Editor
         private static GUIStyle rowLabelStyle;
         private static GUIStyle solidCellStyle;
         private static GUIStyle emptyCellStyle;
-        private static GUIStyle mutedCellStyle;
-        private static GUIStyle xAxisStyle;
-        private static GUIStyle yAxisStyle;
-        private static GUIStyle zAxisStyle;
 
-        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected)]
-        private static void Draw(VoxelCornerEditor corners, GizmoType gizmoType)
+        static VoxelLabSceneOverlay()
         {
+            SceneView.duringSceneGui += OnSceneGui;
+        }
+
+        private static void OnSceneGui(SceneView sceneView)
+        {
+            if (Event.current.type != EventType.Repaint)
+            {
+                return;
+            }
+
+            if (!VoxelLabViewSettings.ShowCornerLabels && !VoxelLabViewSettings.ShowCrossedEdges)
+            {
+                return;
+            }
+
             EnsureStyles();
 
+            foreach (VoxelCornerEditor corners in UnityEngine.Object.FindObjectsByType<VoxelCornerEditor>(FindObjectsSortMode.None))
+            {
+                if (corners.isActiveAndEnabled)
+                {
+                    Draw(corners, sceneView.camera);
+                }
+            }
+        }
+
+        private static void Draw(VoxelCornerEditor corners, Camera camera)
+        {
             int caseIndex = corners.CaseIndex;
             Transform transform = corners.transform;
             float voxelSize = corners.VoxelSize;
             Func<Vector3, Vector3> toWorld = local => transform.TransformPoint(local * voxelSize);
-
-            if (VoxelLabViewSettings.ShowAxes)
-            {
-                DrawAxes(transform, voxelSize, toWorld);
-            }
 
             if (VoxelLabViewSettings.ShowCrossedEdges)
             {
@@ -70,27 +89,8 @@ namespace Clube.Debug.Editor
             if (VoxelLabViewSettings.ShowCornerLabels)
             {
                 DrawCornerLabels(caseIndex, toWorld);
-                DrawCaseTable(caseIndex, toWorld(new Vector3(0.5f, 1.35f, 0.5f)));
+                DrawCaseTable(caseIndex, toWorld(new Vector3(0.5f, 1.35f, 0.5f)), camera);
             }
-        }
-
-        // Arrows start just off corner c0 so they don't hide the cube's own edges.
-        private static void DrawAxes(Transform transform, float voxelSize, Func<Vector3, Vector3> toWorld)
-        {
-            Vector3 origin = toWorld(new Vector3(-0.35f, -0.35f, -0.35f));
-            float length = AxisLength * voxelSize;
-
-            DrawAxis(origin, transform.right, length, Handles.xAxisColor, xAxisStyle, "+X");
-            DrawAxis(origin, transform.up, length, Handles.yAxisColor, yAxisStyle, "+Y");
-            DrawAxis(origin, transform.forward, length, Handles.zAxisColor, zAxisStyle, "+Z");
-        }
-
-        private static void DrawAxis(Vector3 origin, Vector3 direction, float length, Color color, GUIStyle style, string label)
-        {
-            Handles.color = color;
-            Handles.ArrowHandleCap(0, origin, Quaternion.LookRotation(direction), length, EventType.Repaint);
-
-            Handles.Label(origin + direction * (length * 1.15f), label, style);
         }
 
         private static void DrawCrossedEdges(int caseIndex, Func<Vector3, Vector3> toWorld)
@@ -132,16 +132,13 @@ namespace Clube.Debug.Editor
         /// <code>
         /// case 41
         /// corner  c7  c6  c5  c4  c3  c2  c1  c0
-        /// value  128  64  32  16   8   4   2   1
         /// bit      0   0   1   0   1   0   0   1
-        ///         = 32 + 8 + 1 = 41
         /// </code>
         /// Drawn as screen-space GUI so the columns line up exactly.
         /// </summary>
-        private static void DrawCaseTable(int caseIndex, Vector3 worldAnchor)
+        private static void DrawCaseTable(int caseIndex, Vector3 worldAnchor, Camera camera)
         {
-            Camera camera = Camera.current;
-            if (camera != null && camera.WorldToViewportPoint(worldAnchor).z < 0f)
+            if (camera.WorldToViewportPoint(worldAnchor).z < 0f)
             {
                 return;
             }
@@ -155,14 +152,12 @@ namespace Clube.Debug.Editor
             EditorGUI.DrawRect(panel, TableBackground);
 
             float left = panel.x + TablePadding;
-            float top = panel.y + TablePadding;
-            GUI.Label(new Rect(left, top, width, RowHeight), $"case {caseIndex}", titleStyle);
+            float rowTitle = panel.y + TablePadding;
+            float rowCorner = rowTitle + RowHeight;
+            float rowBit = rowCorner + RowHeight;
 
-            float rowCorner = top + RowHeight;
-            float rowValue = rowCorner + RowHeight;
-            float rowBit = rowValue + RowHeight;
+            GUI.Label(new Rect(left, rowTitle, width, RowHeight), $"case {caseIndex}", titleStyle);
             GUI.Label(new Rect(left, rowCorner, RowLabelWidth, RowHeight), "corner", rowLabelStyle);
-            GUI.Label(new Rect(left, rowValue, RowLabelWidth, RowHeight), "value", rowLabelStyle);
             GUI.Label(new Rect(left, rowBit, RowLabelWidth, RowHeight), "bit", rowLabelStyle);
 
             // Most significant bit (corner 7) first, matching how binary is written.
@@ -170,34 +165,14 @@ namespace Clube.Debug.Editor
             {
                 int corner = MarchingCubes.CornerCount - 1 - column;
                 bool solid = MarchingCubes.IsCornerSolid(caseIndex, corner);
+                GUIStyle style = solid ? solidCellStyle : emptyCellStyle;
                 float x = left + RowLabelWidth + column * CellWidth;
 
-                GUI.Label(new Rect(x, rowCorner, CellWidth, RowHeight), $"c{corner}", solid ? solidCellStyle : emptyCellStyle);
-                GUI.Label(new Rect(x, rowValue, CellWidth, RowHeight), (1 << corner).ToString(), mutedCellStyle);
-                GUI.Label(new Rect(x, rowBit, CellWidth, RowHeight), solid ? "1" : "0", solid ? solidCellStyle : emptyCellStyle);
+                GUI.Label(new Rect(x, rowCorner, CellWidth, RowHeight), $"c{corner}", style);
+                GUI.Label(new Rect(x, rowBit, CellWidth, RowHeight), solid ? "1" : "0", style);
             }
-
-            GUI.Label(
-                new Rect(left + RowLabelWidth, rowBit + RowHeight, width, RowHeight),
-                $"= {FormatSum(caseIndex)}",
-                rowLabelStyle);
 
             Handles.EndGUI();
-        }
-
-        /// <summary>e.g. 41 → "32 + 8 + 1 = 41"; 0 → "0".</summary>
-        private static string FormatSum(int caseIndex)
-        {
-            var terms = new List<string>();
-            for (int corner = MarchingCubes.CornerCount - 1; corner >= 0; corner--)
-            {
-                if (MarchingCubes.IsCornerSolid(caseIndex, corner))
-                {
-                    terms.Add((1 << corner).ToString());
-                }
-            }
-
-            return terms.Count > 1 ? $"{string.Join(" + ", terms)} = {caseIndex}" : caseIndex.ToString();
         }
 
         private static void EnsureStyles()
@@ -214,10 +189,6 @@ namespace Clube.Debug.Editor
             rowLabelStyle = new GUIStyle(EditorStyles.label) { normal = { textColor = MutedColor } };
             solidCellStyle = new GUIStyle(EditorStyles.boldLabel) { alignment = TextAnchor.MiddleCenter, normal = { textColor = SolidColor } };
             emptyCellStyle = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleCenter, normal = { textColor = EmptyColor } };
-            mutedCellStyle = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleCenter, normal = { textColor = MutedColor } };
-            xAxisStyle = new GUIStyle(EditorStyles.boldLabel) { normal = { textColor = Handles.xAxisColor } };
-            yAxisStyle = new GUIStyle(EditorStyles.boldLabel) { normal = { textColor = Handles.yAxisColor } };
-            zAxisStyle = new GUIStyle(EditorStyles.boldLabel) { normal = { textColor = Handles.zAxisColor } };
         }
     }
 }

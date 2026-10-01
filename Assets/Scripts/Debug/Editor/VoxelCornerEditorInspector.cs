@@ -70,12 +70,14 @@ namespace Clube.Debug.Editor
         {
             EditorGUILayout.LabelField("Case", EditorStyles.boldLabel);
 
-            int typed = EditorGUILayout.DelayedIntField(
-                new GUIContent("Case index", "Type 0-255 and press Enter to jump to that case (V20)."),
-                caseIndex);
-            if (typed != caseIndex)
+            // Not a delayed field: dragging the slider (or the label) applies every
+            // step, so the mesh updates live instead of only on release.
+            int chosen = EditorGUILayout.IntSlider(
+                new GUIContent("Case index", "Type or drag to any case 0-255 to jump to it (V20)."),
+                caseIndex, 0, MarchingCubes.CaseCount - 1);
+            if (chosen != caseIndex)
             {
-                ApplyCase(corners, Mathf.Clamp(typed, 0, MarchingCubes.CaseCount - 1));
+                ApplyCase(corners, chosen);
                 caseIndex = corners.CaseIndex;
             }
 
@@ -153,14 +155,10 @@ namespace Clube.Debug.Editor
             bool edges = EditorGUILayout.Toggle(
                 new GUIContent("Crossed edges", "Highlight the edges the surface crosses (V9)."),
                 VoxelLabViewSettings.ShowCrossedEdges);
-            bool axes = EditorGUILayout.Toggle(
-                new GUIContent("Axes", "X, Y, Z arrows showing the coordinate system the corner positions use."),
-                VoxelLabViewSettings.ShowAxes);
             if (EditorGUI.EndChangeCheck())
             {
                 VoxelLabViewSettings.ShowCornerLabels = labels;
                 VoxelLabViewSettings.ShowCrossedEdges = edges;
-                VoxelLabViewSettings.ShowAxes = axes;
                 SceneView.RepaintAll();
             }
         }

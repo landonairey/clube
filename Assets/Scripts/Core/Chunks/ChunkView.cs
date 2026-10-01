@@ -109,7 +109,12 @@ namespace Clube.Core
             mesh.SetVertices(vertices);
             mesh.SetTriangles(triangles, 0);
             mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
+
+            // Bounds cover the whole chunk rather than just the current surface, so
+            // the renderer (and gizmos Unity culls with it) stays visible whenever
+            // any part of the chunk is in view.
+            Vector3 chunkSize = (Vector3)Chunk.VoxelCount * Config.VoxelSize;
+            mesh.bounds = new Bounds(chunkSize * 0.5f, chunkSize);
 
             Chunk.MarkClean();
             MeshRebuilt?.Invoke(mesh);

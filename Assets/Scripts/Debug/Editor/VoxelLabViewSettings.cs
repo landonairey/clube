@@ -4,13 +4,12 @@ namespace Clube.Debug.Editor
 {
     /// <summary>
     /// Scene-view overlay toggles for the voxel lab, shared by the Inspector that
-    /// sets them and the gizmo drawer that reads them. Kept per editor session.
+    /// sets them and the Scene overlay that reads them. Kept per editor session.
     /// </summary>
     internal static class VoxelLabViewSettings
     {
         private const string CornerLabelsKey = "Clube.VoxelLab.ShowCornerLabels";
         private const string CrossedEdgesKey = "Clube.VoxelLab.ShowCrossedEdges";
-        private const string AxesKey = "Clube.VoxelLab.ShowAxes";
 
         /// <summary>Corner index, bit and solid/empty labels (V21).</summary>
         public static bool ShowCornerLabels
@@ -24,13 +23,6 @@ namespace Clube.Debug.Editor
         {
             get => SessionState.GetBool(CrossedEdgesKey, true);
             set => SessionState.SetBool(CrossedEdgesKey, value);
-        }
-
-        /// <summary>X, Y, Z axis arrows next to the voxel.</summary>
-        public static bool ShowAxes
-        {
-            get => SessionState.GetBool(AxesKey, true);
-            set => SessionState.SetBool(AxesKey, value);
         }
     }
 }
