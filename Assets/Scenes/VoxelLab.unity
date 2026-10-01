@@ -135,6 +135,7 @@ GameObject:
   - component: {fileID: 190024694}
   - component: {fileID: 190024695}
   - component: {fileID: 190024696}
+  - component: {fileID: 190024697}
   m_Layer: 0
   m_Name: Voxel
   m_TagString: Untagged
@@ -294,6 +295,21 @@ MonoBehaviour:
   vertexNormalColor: {r: 0.3, g: 0.8, b: 1, a: 1}
   faceNormalColor: {r: 1, g: 0.9, b: 0.2, a: 1}
   triangleEdgeColor: {r: 1, g: 1, b: 1, a: 0.6}
+--- !u!114 &190024697
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 190024688}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce24c1991f76ec040b52f74dfa845382, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelLabels
+  showCornerLabels: 1
+  showCrossedEdges: 1
+  targetCamera: {fileID: 0}
 --- !u!1 &1578836785
 GameObject:
   m_ObjectHideFlags: 0

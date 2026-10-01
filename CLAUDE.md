@@ -70,7 +70,9 @@ tetrahedra, V13 exploded view, V14 comparison readout).
 - Unity gotcha: an object's gizmos (`OnDrawGizmos`, `[DrawGizmo]`) are
   skipped once its renderer bounds leave the view. Scene-view lab overlays
   that must always show go through `SceneView.duringSceneGui` instead
-  (see `VoxelLabSceneOverlay`); Game-view HUDs use `OnGUI` (`AxesHud`).
+  (see `VoxelLabSceneOverlay`); Game-view HUDs use `OnGUI` (`AxesHud`,
+  `VoxelLabels`). Labels needed in both views share one IMGUI painter
+  (`VoxelLabelPainter`) so the two never drift apart.
 - Unity gotcha: `isActiveAndEnabled` stays false outside Play mode for a
   regular (non-`[ExecuteAlways]`) MonoBehaviour, because `OnEnable` never
   runs. Editor code should check `enabled && gameObject.activeInHierarchy`.

@@ -8,8 +8,8 @@ namespace Clube.Debug.Editor
 {
     /// <summary>
     /// Lab panel under the corner sliders: the case index the corners produce and
-    /// what it means (V7, V9), a field to jump to any case (V20), one preset button
-    /// per base configuration (V10), and toggles for the Scene-view overlays (V21).
+    /// what it means (V7, V9), a slider to jump to any case (V20), and one preset
+    /// button per base configuration (V10). Label toggles live on VoxelLabels.
     /// </summary>
     [CustomEditor(typeof(VoxelCornerEditor))]
     public class VoxelCornerEditorInspector : UnityEditor.Editor
@@ -42,12 +42,9 @@ namespace Clube.Debug.Editor
 
             EditorGUILayout.Space();
             DrawPresets(corners, caseIndex);
-
-            EditorGUILayout.Space();
-            DrawOverlayToggles();
         }
 
-        // Labelled c0-c7 to match the Scene view corner labels, instead of Element 0-7.
+        // Labelled c0-c7 to match the corner labels in the views, instead of Element 0-7.
         private void DrawCornerSliders()
         {
             using (new EditorGUI.DisabledScope(true))
@@ -142,25 +139,6 @@ namespace Clube.Debug.Editor
             }
 
             GUI.backgroundColor = previous;
-        }
-
-        private static void DrawOverlayToggles()
-        {
-            EditorGUILayout.LabelField("Scene view", EditorStyles.boldLabel);
-
-            EditorGUI.BeginChangeCheck();
-            bool labels = EditorGUILayout.Toggle(
-                new GUIContent("Corner labels", "c0-c7 on the corners, and a table of which bit each one sets in the case index (V21)."),
-                VoxelLabViewSettings.ShowCornerLabels);
-            bool edges = EditorGUILayout.Toggle(
-                new GUIContent("Crossed edges", "Highlight the edges the surface crosses (V9)."),
-                VoxelLabViewSettings.ShowCrossedEdges);
-            if (EditorGUI.EndChangeCheck())
-            {
-                VoxelLabViewSettings.ShowCornerLabels = labels;
-                VoxelLabViewSettings.ShowCrossedEdges = edges;
-                SceneView.RepaintAll();
-            }
         }
 
         private static void ApplyCase(VoxelCornerEditor corners, int caseIndex)

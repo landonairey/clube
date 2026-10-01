@@ -77,33 +77,12 @@ namespace Clube.Debug
                 Color color = direction.z > 0f ? AxisColors[axis] * awayDimming : AxisColors[axis];
                 color.a = 1f;
 
-                DrawLine(origin, origin + screenDirection * axisLength, color);
+                GuiDrawing.Line(origin, origin + screenDirection * axisLength, color, lineThickness);
 
                 Vector2 labelCentre = origin + screenDirection * (axisLength + 12f);
                 labelStyle.normal.textColor = color;
                 GUI.Label(new Rect(labelCentre.x - 10f, labelCentre.y - 10f, 20f, 20f), AxisLabels[axis], labelStyle);
             }
-        }
-
-        private void DrawLine(Vector2 from, Vector2 to, Color color)
-        {
-            Vector2 delta = to - from;
-            float length = delta.magnitude;
-            if (length < 0.5f)
-            {
-                return;
-            }
-
-            float angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
-            Matrix4x4 previousMatrix = GUI.matrix;
-            Color previousColor = GUI.color;
-
-            GUIUtility.RotateAroundPivot(angle, from);
-            GUI.color = color;
-            GUI.DrawTexture(new Rect(from.x, from.y - lineThickness * 0.5f, length, lineThickness), Texture2D.whiteTexture);
-
-            GUI.matrix = previousMatrix;
-            GUI.color = previousColor;
         }
     }
 }
