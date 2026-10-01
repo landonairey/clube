@@ -12,6 +12,10 @@ namespace Clube.Core
     {
         public const int CornerCount = 8;
 
+        public const int EdgeCount = 12;
+
+        public const int CaseCount = 256;
+
         /// <summary>
         /// Appends the isosurface triangles for a single cube, with interpolated
         /// edge vertices and no vertex sharing (flat shading).
@@ -51,7 +55,7 @@ namespace Clube.Core
             IVertexWriter writer,
             List<int> triangles)
         {
-            int cubeIndex = GetCubeIndex(cornerValues, isoLevel);
+            int cubeIndex = GetCaseIndex(cornerValues, isoLevel);
 
             // With solid corners setting the index bits, the table's winding gives
             // faces pointing from solid towards empty under Unity's clockwise convention.
@@ -68,17 +72,48 @@ namespace Clube.Core
             }
         }
 
-        private static int GetCubeIndex(IReadOnlyList<float> cornerValues, float isoLevel)
+        /// <summary>
+        /// The 8-bit case index (0-255): bit <c>i</c> is set when corner <c>i</c> is solid,
+        /// i.e. its value is at or above <paramref name="isoLevel"/>.
+        /// </summary>
+        public static int GetCaseIndex(IReadOnlyList<float> cornerValues, float isoLevel)
         {
-            int cubeIndex = 0;
+            int caseIndex = 0;
             for (int corner = 0; corner < CornerCount; corner++)
             {
                 if (cornerValues[corner] >= isoLevel)
                 {
-                    cubeIndex |= 1 << corner;
+                    caseIndex |= 1 << corner;
                 }
             }
-            return cubeIndex;
+            return caseIndex;
+        }
+
+        /// <summary>True when bit <paramref name="corner"/> of the case index is set (the corner is solid).</summary>
+        public static bool IsCornerSolid(int caseIndex, int corner)
+        {
+            return (caseIndex & (1 << corner)) != 0;
+        }
+
+        /// <summary>
+        /// 12-bit mask of the edges the surface crosses for a case (the classic
+        /// "edge table"): bit <c>e</c> is set when edge <c>e</c> joins a solid and an
+        /// empty corner. Computed rather than stored, since it follows directly
+        /// from the case index.
+        /// </summary>
+        public static int GetCrossedEdgeMask(int caseIndex)
+        {
+            int mask = 0;
+            for (int edge = 0; edge < EdgeCount; edge++)
+            {
+                bool solidA = IsCornerSolid(caseIndex, MarchingCubesTables.EdgeCorners[edge, 0]);
+                bool solidB = IsCornerSolid(caseIndex, MarchingCubesTables.EdgeCorners[edge, 1]);
+                if (solidA != solidB)
+                {
+                    mask |= 1 << edge;
+                }
+            }
+            return mask;
         }
 
         /// <summary>Offset of a corner from corner 0, in whole voxels.</summary>

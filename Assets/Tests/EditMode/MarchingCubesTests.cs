@@ -83,6 +83,38 @@ namespace Clube.Core.Tests
             }
         }
 
+        [Test]
+        public void GetCaseIndex_SetsOneBitPerSolidCorner()
+        {
+            // Corners 0, 3 and 5 solid: 1 + 8 + 32.
+            float[] corners = { 1f, 0f, 0f, 1f, 0f, 1f, 0f, 0f };
+
+            Assert.That(MarchingCubes.GetCaseIndex(corners, 0.5f), Is.EqualTo(41));
+        }
+
+        [Test]
+        public void GetCaseIndex_CornerExactlyAtIsoLevel_IsSolid()
+        {
+            float[] corners = { 0.5f, 0f, 0f, 0f, 0f, 0f, 0f, 0f };
+
+            Assert.That(MarchingCubes.GetCaseIndex(corners, 0.5f), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void CrossedEdgeMask_MatchesEdgesUsedByTriangleTable()
+        {
+            for (int caseIndex = 0; caseIndex < MarchingCubes.CaseCount; caseIndex++)
+            {
+                int usedEdges = 0;
+                for (int i = 0; MarchingCubesTables.Triangles[caseIndex, i] != -1; i++)
+                {
+                    usedEdges |= 1 << MarchingCubesTables.Triangles[caseIndex, i];
+                }
+
+                Assert.That(MarchingCubes.GetCrossedEdgeMask(caseIndex), Is.EqualTo(usedEdges), $"Case {caseIndex}");
+            }
+        }
+
         private void Polygonise(float[] corners, float isoLevel)
         {
             MarchingCubes.Polygonise(corners, isoLevel, Vector3.zero, 1f, vertices, triangles);
