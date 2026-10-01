@@ -105,6 +105,65 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Tetrahedra_AreNeverInsideOut_ForAnyBinaryCase()
+        {
+            // Every tetrahedron should lie inside the solid; a negative one would be
+            // volume outside the solid cancelled by others.
+            var tetrahedra = new List<Tetrahedron>();
+            for (int caseIndex = 0; caseIndex < MarchingCubes.CaseCount; caseIndex++)
+            {
+                VoxelVolume.Tetrahedralise(Binary(caseIndex), 0.5f, Interpolated, tetrahedra);
+                foreach (Tetrahedron tetrahedron in tetrahedra)
+                {
+                    Assert.That(tetrahedron.SignedVolume, Is.GreaterThan(0f), $"Case {caseIndex}");
+                }
+            }
+        }
+
+        [Test]
+        public void Tetrahedra_AreNeverInsideOut_ForRandomDensities()
+        {
+            // In-between densities can fold the surface, so a piece may not be fully
+            // visible from any of its solid corners; the apex search must still find
+            // a point that sees every boundary triangle from the front.
+            const int runsPerIso = 1000;
+            var random = new System.Random(42);
+            var tetrahedra = new List<Tetrahedron>();
+            var corners = new float[MarchingCubes.CornerCount];
+            var failingRuns = new List<string>();
+            foreach (float iso in new[] { 0.3f, 0.5f, 0.7f })
+            {
+                for (int run = 0; run < runsPerIso; run++)
+                {
+                    for (int corner = 0; corner < corners.Length; corner++)
+                    {
+                        corners[corner] = (float)random.NextDouble();
+                    }
+
+                    VoxelVolume.Tetrahedralise(corners, iso, Interpolated, tetrahedra);
+                    if (tetrahedra.Exists(t => t.SignedVolume <= 0f))
+                    {
+                        failingRuns.Add($"iso {iso} run {run} case {MarchingCubes.GetCaseIndex(corners, iso)}");
+                    }
+                }
+            }
+
+            Assert.That(failingRuns, Is.Empty, $"{failingRuns.Count} failing: {string.Join("; ", failingRuns)}");
+        }
+
+        [TestCase(0b0000_1000, 1)] // case 8, c3 alone: the corner tetrahedron itself
+        [TestCase(0b0000_1010, 2)] // case 10, c1 and c3 across a face: two separate corners
+        [TestCase(0b0000_1100, 3)] // case 12, edge c2-c3: a triangular prism
+        [TestCase(0b1111_1111, 6)] // full cube from one corner: six tetrahedra
+        public void Tetrahedra_UseTheFewestPieces(int caseIndex, int expectedCount)
+        {
+            var tetrahedra = new List<Tetrahedron>();
+            VoxelVolume.Tetrahedralise(Binary(caseIndex), 0.5f, Interpolated, tetrahedra);
+
+            Assert.That(tetrahedra.Count, Is.EqualTo(expectedCount));
+        }
+
+        [Test]
         public void Approximate_IsMeanOfClampedCorners()
         {
             float[] corners = { 1f, 1f, 0f, 0f, 0.5f, 0.5f, 2f, -1f };

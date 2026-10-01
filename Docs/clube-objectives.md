@@ -99,7 +99,7 @@ Note: V1, V2 and V6 now run on the 1×1×1 chunk through the A7 edit path (the p
 ### 1C — Volume inspection
 - [x] **V11** `Lab` Approximate fill: weighted-percentage volume from corner values. *(Already in Core as `VoxelVolume`, alongside V12 and the V14 reference, since mining (I5) will need it.)*
 - [x] **V12** `Lab` Exact fill via tetrahedralisation of the enclosed solid.
-  - Note: the MC surface alone is open; the enclosed solid is the mesh **plus** the cube faces clipped to the inside region. Close it first, then fan into tetrahedra from a reference point and sum signed volumes.
+  - Note: the MC surface alone is open; the enclosed solid is the mesh **plus** the cube faces clipped to the inside region. Close it first, then split it into separate pieces and fan each piece into tetrahedra from one of its own solid corners, so every tetrahedron lies inside the solid (a single corner is one tetrahedron). Fanning from an arbitrary reference point also sums to the right volume, but produces inside-out tetrahedra that make the exploded view misleading.
 - [x] **V13** `Lab` Exploded view of the tetrahedra (explode-distance slider, per-tet colouring).
 - [x] **V14** `Lab` *(added)* Readout comparing V11 vs V12 (absolute and % error); optional Monte Carlo sample count as a third reference.
 

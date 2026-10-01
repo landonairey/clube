@@ -13,8 +13,8 @@ namespace Clube.Core
     }
 
     /// <summary>
-    /// One tetrahedron of the exact volume fan (V12): the reference point plus
-    /// one triangle of the closed solid's boundary.
+    /// One tetrahedron of the exact volume decomposition (V12): an apex (a solid
+    /// corner of its piece) plus one triangle of the closed solid's boundary.
     /// </summary>
     public readonly struct Tetrahedron
     {
@@ -40,7 +40,8 @@ namespace Clube.Core
 
         /// <summary>
         /// Positive when the base triangle faces away from the apex, negative when it
-        /// faces towards it. Negative tetrahedra cancel volume counted twice by others.
+        /// faces towards it (the tetrahedron then lies outside the solid). The volume
+        /// decomposition picks apexes that avoid negative tetrahedra.
         /// </summary>
         public float SignedVolume { get; }
 
