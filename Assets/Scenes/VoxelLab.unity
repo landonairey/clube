@@ -289,7 +289,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.NormalGizmos
   showVertexNormals: 1
   showFaceNormals: 1
-  length: 0.3
+  length: 0.2
   vertexNormalColor: {r: 0.3, g: 0.8, b: 1, a: 1}
   faceNormalColor: {r: 1, g: 0.9, b: 0.2, a: 1}
 --- !u!1 &1578836785

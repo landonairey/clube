@@ -20,7 +20,7 @@ namespace Clube.Debug
 
         [Tooltip("Normal length as a fraction of the voxel size.")]
         [SerializeField, Min(0f)]
-        private float length = 0.3f;
+        private float length = 0.2f;
 
         [SerializeField]
         private Color vertexNormalColor = new Color(0.3f, 0.8f, 1f);
