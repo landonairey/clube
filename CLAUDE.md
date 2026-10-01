@@ -67,6 +67,12 @@ tetrahedra, V13 exploded view, V14 comparison readout).
   saved into the scene. Check scene diffs before committing.
 - MCP gotcha: `ManageAsset` Move/Rename reports "failed unexpectedly" but
   usually succeeds; check the filesystem before retrying.
+- Unity gotcha: an object's gizmos (`OnDrawGizmos`, `[DrawGizmo]`) are
+  skipped once its renderer bounds leave the view. Scene-view lab overlays
+  that must always show go through `SceneView.duringSceneGui` instead
+  (see `VoxelLabSceneOverlay`); Game-view HUDs use `OnGUI` (`AxesHud`).
+- Lab `WorldConfig` edits made in Play mode go to `ChunkView`'s private
+  copy and reset on exit; only edits made outside Play mode are saved.
 - MCP gotcha: GameObject instance IDs change on every domain reload
   (entering Play mode, recompiling). Look objects up again with `find`
   before passing an ID to tools like `Camera_Capture`.
