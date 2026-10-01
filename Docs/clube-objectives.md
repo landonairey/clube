@@ -89,10 +89,12 @@ Note: V1, V2 and V6 now run on the 1×1×1 chunk through the A7 edit path (the p
 
 ### 1B — Visual debugging
 - [x] **V6** `Lab` Corner gizmo spheres, grayscale by corner value.
-- [ ] **V7** `Lab` *(added)* Show current case index (0–255) and which of the 15 base configurations it maps to.
-- [ ] **V8** `Lab` *(added)* Normal gizmos per vertex/face (verifies V4 and V5).
-- [ ] **V9** `Lab` *(added)* Highlight active edges from the edge table.
-- [ ] **V10** `Lab` *(added)* Preset buttons for known cases, including ambiguous ones.
+- [x] **V7** `Lab` *(added)* Show current case index (0–255) and which of the 15 base configurations it maps to.
+- [x] **V8** `Lab` *(added)* Normal gizmos per vertex/face (verifies V4 and V5).
+- [x] **V9** `Lab` *(added)* Highlight active edges from the edge table.
+- [x] **V10** `Lab` *(added)* Preset buttons for known cases, including ambiguous ones.
+- [x] **V20** `Lab` *(added)* Type a case index (0–255) to jump straight to it: corners whose bit is set become solid, the rest empty. Step one case at a time with ◀ ▶ in the Inspector or the left/right arrow keys in Play mode.
+- [x] **V21** `Lab` *(added)* Teaching labels on the cube corners: each corner's index and the bit it sets in the case index (e.g. "c3 → bit 3 = 8"), marked solid or empty, alongside the resulting case index in binary and decimal. Shows how corners map to the case index and from there to the triangles.
 
 ### 1C — Volume inspection
 - [ ] **V11** `Lab` Approximate fill: weighted-percentage volume from corner values. *(Core candidate later — useful for measuring material mined in Milestone 2.)*
@@ -112,7 +114,7 @@ Record the real algorithm once (A11), then replay the log. Stepping back just re
   4. Edge table — highlight crossed edges
   5. Interpolate — slide each vertex along its edge (or snap to midpoint per V3)
   6. Triangle table — add triangles one at a time, showing winding order
-- [ ] **V17** `Lab` Controls: play/pause, step forward/back (e.g. right/left arrow keys, new Input System), restart, speed slider, per-step-type durations.
+- [ ] **V17** `Lab` Controls: play/pause, step forward/back (e.g. right/left arrow keys, new Input System), restart, speed slider, per-step-type durations. Note: the arrow keys currently step case indices in VoxelLab (V20, `CaseStepInput`); give V17 a mode switch or different keys.
 - [ ] **V18** `Lab` Info line describing the current step, e.g. "Voxel (3,1,2): corners 0, 3, 5 inside → case 41 → edges 0, 3, 8."
 - [ ] **V19** `Lab` Visuals that work in the game window, not Gizmos: pooled spheres for corners, `LineRenderer` for edges, separate mesh for the partial surface, on-screen UI for the info line.
 

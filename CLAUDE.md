@@ -31,8 +31,11 @@ change starts pulling in a later chapter's direction.
 (V1–V5): mesh variants are strategy objects (`IEdgeVertexPlacer`,
 `IVertexWriter`) picked once per build from `ChunkMeshSettings` (A6); lab
 tools hook `ChunkView.MeshRebuilt` rather than adding flags to the core.
-Next: 1B visual debugging (V7 case index readout, V8 normal gizmos, V9
-active edges, V10 preset cases).
+1B is done (V6–V10, V20, V21): `MarchingCubesCases` (Core) classifies
+cases into 15 base configurations; the voxel lab panel is a custom
+inspector plus an editor-only `[DrawGizmo]` Scene overlay.
+Next: 1C volume inspection (V11 approximate fill, V12 exact fill via
+tetrahedra, V13 exploded view, V14 comparison readout).
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
@@ -64,6 +67,17 @@ active edges, V10 preset cases).
   saved into the scene. Check scene diffs before committing.
 - MCP gotcha: `ManageAsset` Move/Rename reports "failed unexpectedly" but
   usually succeeds; check the filesystem before retrying.
+- Unity gotcha: an object's gizmos (`OnDrawGizmos`, `[DrawGizmo]`) are
+  skipped once its renderer bounds leave the view. Scene-view lab overlays
+  that must always show go through `SceneView.duringSceneGui` instead
+  (see `VoxelLabSceneOverlay`); Game-view HUDs use `OnGUI` (`AxesHud`,
+  `VoxelLabels`). Labels needed in both views share one IMGUI painter
+  (`VoxelLabelPainter`) so the two never drift apart.
+- Unity gotcha: `isActiveAndEnabled` stays false outside Play mode for a
+  regular (non-`[ExecuteAlways]`) MonoBehaviour, because `OnEnable` never
+  runs. Editor code should check `enabled && gameObject.activeInHierarchy`.
+- Lab `WorldConfig` edits made in Play mode go to `ChunkView`'s private
+  copy and reset on exit; only edits made outside Play mode are saved.
 - MCP gotcha: GameObject instance IDs change on every domain reload
   (entering Play mode, recompiling). Look objects up again with `find`
   before passing an ID to tools like `Camera_Capture`.

@@ -2,7 +2,8 @@
     "name": "Clube.Debug.Editor",
     "rootNamespace": "Clube.Debug.Editor",
     "references": [
-        "Clube.Core"
+        "Clube.Core",
+        "Clube.Debug"
     ],
     "includePlatforms": [
         "Editor"

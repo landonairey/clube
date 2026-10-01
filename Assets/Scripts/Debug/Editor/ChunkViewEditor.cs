@@ -4,9 +4,10 @@ using UnityEditor;
 namespace Clube.Debug.Editor
 {
     /// <summary>
-    /// Draws the assigned <see cref="WorldConfig"/> inline under <see cref="ChunkView"/>,
+    /// Draws the view's <see cref="WorldConfig"/> inline under <see cref="ChunkView"/>,
     /// so config values such as the iso level (V1) can be tuned next to the
-    /// per-voxel lab controls. Edits still go to the shared config asset.
+    /// per-voxel lab controls. Outside Play mode that is the shared asset; in
+    /// Play mode it is the view's private copy, so tweaks are discarded on exit.
     /// </summary>
     // Written as UnityEditor.Editor because inside Clube.Debug.Editor, "Editor" names this namespace.
     [CustomEditor(typeof(ChunkView))]
@@ -20,16 +21,19 @@ namespace Clube.Debug.Editor
         {
             DrawDefaultInspector();
 
-            WorldConfig config = ((ChunkView)target).Config;
+            var view = (ChunkView)target;
+            WorldConfig config = view.Config;
             if (config == null)
             {
                 return;
             }
 
+            // In Play mode this is the view's private copy, so edits here reset on exit.
+            string title = view.IsUsingRuntimeConfig
+                ? $"{config.name}: edits reset when Play mode ends"
+                : $"{config.name} (shared asset, edits are saved)";
             bool showConfig = EditorGUILayout.Foldout(
-                SessionState.GetBool(FoldoutStateKey, true),
-                $"{config.name} (shared asset, changes persist after Play mode)",
-                toggleOnLabelClick: true);
+                SessionState.GetBool(FoldoutStateKey, true), title, toggleOnLabelClick: true);
             SessionState.SetBool(FoldoutStateKey, showConfig);
             if (!showConfig)
             {
