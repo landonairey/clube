@@ -25,7 +25,7 @@ namespace Clube.Core
             triangles.Clear();
 
             // Variants are resolved once here, never per vertex (A6).
-            IEdgeVertexPlacer placer = CreatePlacer(settings.EdgePlacement);
+            IEdgeVertexPlacer placer = EdgeVertexPlacers.For(settings.EdgePlacement);
             IVertexWriter writer = CreateWriter(settings.Shading, vertices, chunk.SampleCount);
 
             var cornerValues = new float[MarchingCubes.CornerCount];
@@ -49,19 +49,6 @@ namespace Clube.Core
                             cornerValues, settings.IsoLevel, origin, settings.VoxelSize, placer, writer, triangles);
                     }
                 }
-            }
-        }
-
-        private static IEdgeVertexPlacer CreatePlacer(EdgePlacement placement)
-        {
-            switch (placement)
-            {
-                case EdgePlacement.Interpolated:
-                    return InterpolatedEdgePlacer.Instance;
-                case EdgePlacement.Midpoint:
-                    return MidpointEdgePlacer.Instance;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(placement), placement, null);
             }
         }
 
