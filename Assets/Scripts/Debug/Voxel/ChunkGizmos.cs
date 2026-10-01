@@ -11,8 +11,9 @@ namespace Clube.Debug
     [RequireComponent(typeof(ChunkView))]
     public class ChunkGizmos : MonoBehaviour
     {
-        [Tooltip("Sphere radius as a fraction of the voxel size.")]
-        [SerializeField, Min(0f)]
+        // Capped at half a voxel: any larger and neighbouring corner spheres overlap.
+        [Tooltip("Sphere radius as a fraction of the voxel size (at most half an edge).")]
+        [SerializeField, Range(0f, 0.5f)]
         private float cornerRadius = 0.05f;
 
         [SerializeField]
