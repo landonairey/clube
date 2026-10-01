@@ -69,10 +69,32 @@ namespace Clube.Debug.Editor
 
             // Not a delayed field: dragging the slider (or the label) applies every
             // step, so the mesh updates live instead of only on release.
-            int chosen = EditorGUILayout.IntSlider(
-                new GUIContent("Case index", "Type or drag to any case 0-255 to jump to it (V20)."),
-                caseIndex, 0, MarchingCubes.CaseCount - 1);
-            if (chosen != caseIndex)
+            int chosen;
+            int step = 0;
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                chosen = EditorGUILayout.IntSlider(
+                    new GUIContent("Case index", "Type or drag to any case 0-255 to jump to it (V20)."),
+                    caseIndex, 0, MarchingCubes.CaseCount - 1);
+                if (GUILayout.Button(new GUIContent("◀", "Previous case (Left arrow in Play mode)"), GUILayout.Width(24f)))
+                {
+                    step = -1;
+                }
+                if (GUILayout.Button(new GUIContent("▶", "Next case (Right arrow in Play mode)"), GUILayout.Width(24f)))
+                {
+                    step = +1;
+                }
+            }
+
+            if (step != 0)
+            {
+                Undo.RecordObject(corners, step > 0 ? "Next voxel case" : "Previous voxel case");
+                corners.StepCase(step);
+                EditorUtility.SetDirty(corners);
+                SceneView.RepaintAll();
+                caseIndex = corners.CaseIndex;
+            }
+            else if (chosen != caseIndex)
             {
                 ApplyCase(corners, chosen);
                 caseIndex = corners.CaseIndex;

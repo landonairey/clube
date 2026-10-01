@@ -59,6 +59,13 @@ namespace Clube.Debug
             ApplyCorners();
         }
 
+        /// <summary>Moves to the next (+1) or previous (-1) case index, wrapping 255 ↔ 0.</summary>
+        public void StepCase(int delta)
+        {
+            int next = ((CaseIndex + delta) % MarchingCubes.CaseCount + MarchingCubes.CaseCount) % MarchingCubes.CaseCount;
+            ApplyCase(next);
+        }
+
         private void Awake()
         {
             chunkView = GetComponent<ChunkView>();
