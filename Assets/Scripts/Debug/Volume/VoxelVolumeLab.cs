@@ -7,8 +7,8 @@ namespace Clube.Debug
     /// <summary>
     /// Volume inspection for the voxel lab (1C): measures the parent voxel's fill
     /// three ways (V11, V12, V14) and draws the exact method's tetrahedra, pulled
-    /// apart by an explode slider (V13). Positive tetrahedra get their own colour;
-    /// negative ones (which subtract volume) are red.
+    /// apart by an explode slider (V13). Each tetrahedron gets its own colour; red
+    /// is reserved for an inside-out (negative) tetrahedron, which would be a bug.
     /// </summary>
     /// <remarks>
     /// Sits on a child object with no renderer of its own. Unity skips an object's
@@ -48,6 +48,12 @@ namespace Clube.Debug
         private VolumeReport report;
 
         public VoxelCornerEditor Corners => GetComponentInParent<VoxelCornerEditor>();
+
+        public bool ShowTetrahedra
+        {
+            get => showTetrahedra;
+            set => showTetrahedra = value;
+        }
 
         /// <summary>How far tetrahedra are pushed out from the cube centre, 0 (assembled) to 1.</summary>
         public float ExplodeDistance

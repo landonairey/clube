@@ -10,6 +10,34 @@ namespace Clube.Debug.Editor
     /// </summary>
     internal static class VolumeReadoutGui
     {
+        /// <summary>
+        /// Show/hide and explode controls, for panels other than the Volume Lab's own
+        /// Inspector (which already shows them as fields).
+        /// </summary>
+        public static void DrawViewControls(VoxelVolumeLab lab)
+        {
+            EditorGUI.BeginChangeCheck();
+            bool show = EditorGUILayout.Toggle(
+                new GUIContent("Show tetrahedra", "Draw the tetrahedra the exact volume is made of (V13)."),
+                lab.ShowTetrahedra);
+            float explode;
+            using (new EditorGUI.DisabledScope(!show))
+            {
+                explode = EditorGUILayout.Slider(
+                    new GUIContent("Explode distance", "Pull the tetrahedra apart (also the scroll wheel in Play mode)."),
+                    lab.ExplodeDistance, 0f, 1f);
+            }
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(lab, "Change tetrahedra view");
+                lab.ShowTetrahedra = show;
+                lab.ExplodeDistance = explode;
+                EditorUtility.SetDirty(lab);
+                SceneView.RepaintAll();
+            }
+        }
+
         public static void Draw(VoxelVolumeLab lab)
         {
             VoxelCornerEditor corners = lab.Corners;
@@ -33,11 +61,14 @@ namespace Clube.Debug.Editor
                     new GUIContent("Exact (V12)", "The solid Marching Cubes builds, closed with the cube faces and summed as tetrahedra fanned from c0."),
                     new GUIContent(FormatVolume(report.Exact, cubeVolume)));
 
-                EditorGUILayout.LabelField(
-                    " ",
-                    $"{report.PositiveTetrahedra + report.NegativeTetrahedra} tetrahedra: " +
-                    $"{report.PositiveTetrahedra} add, {report.NegativeTetrahedra} subtract (red)",
-                    EditorStyles.miniLabel);
+                EditorGUILayout.LabelField(" ", $"{report.PositiveTetrahedra} tetrahedra", EditorStyles.miniLabel);
+                if (report.NegativeTetrahedra > 0)
+                {
+                    EditorGUILayout.HelpBox(
+                        $"{report.NegativeTetrahedra} inside-out tetrahedra (drawn red). The decomposition " +
+                        "should never produce these; the volume is still right, but please report this case.",
+                        MessageType.Warning);
+                }
 
                 EditorGUILayout.LabelField(
                     new GUIContent("Approximate − exact", "Absolute difference in percentage points, and relative to the exact volume."),

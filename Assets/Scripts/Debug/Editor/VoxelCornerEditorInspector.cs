@@ -50,6 +50,7 @@ namespace Clube.Debug.Editor
             {
                 EditorGUILayout.Space();
                 VolumeReadoutGui.Draw(volumeLab);
+                VolumeReadoutGui.DrawViewControls(volumeLab);
             }
         }
 
