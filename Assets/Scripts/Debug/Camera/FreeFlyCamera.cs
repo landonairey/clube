@@ -5,9 +5,10 @@ namespace Clube.Debug
 {
     /// <summary>
     /// Debug free-fly camera for lab scenes. Hold the right mouse button to look,
-    /// WASD to move, Q/E to move down/up, Shift to move faster, and scroll to
-    /// change the base speed. Reads devices directly rather than through input
-    /// actions, since it is a lab tool and never ships in the Game scene.
+    /// WASD to move, Q/E to move down/up, Shift to move faster, and scroll while
+    /// looking to change the base speed (as in Unity's Scene view), which leaves
+    /// plain scrolling free for lab tools. Reads devices directly rather than
+    /// through input actions, since it is a lab tool and never ships in the Game scene.
     /// </summary>
     public class FreeFlyCamera : MonoBehaviour
     {
@@ -25,7 +26,7 @@ namespace Clube.Debug
         [SerializeField, Min(0f)]
         private float lookSensitivity = 0.15f;
 
-        [Tooltip("Fraction of the base speed added or removed per scroll notch.")]
+        [Tooltip("Fraction of the base speed added or removed per scroll notch while looking.")]
         [SerializeField, Range(0f, 1f)]
         private float scrollSpeedStep = 0.1f;
 
@@ -58,9 +59,9 @@ namespace Clube.Debug
             if (isLooking)
             {
                 Look(mouse.delta.ReadValue());
+                AdjustSpeed(mouse.scroll.ReadValue().y);
             }
 
-            AdjustSpeed(mouse.scroll.ReadValue().y);
             Move(ReadMoveInput(keyboard), keyboard.shiftKey.isPressed);
         }
 
