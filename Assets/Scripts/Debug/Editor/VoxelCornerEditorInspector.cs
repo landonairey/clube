@@ -16,11 +16,23 @@ namespace Clube.Debug.Editor
     {
         private const int PresetColumns = 3;
 
-        private static readonly Color AmbiguousTint = new Color(1f, 0.8f, 0.4f);
+        // Must match the serialized field name in VoxelCornerEditor.
+        private const string CornerValuesField = "cornerValues";
+
+        private static readonly Color CurrentPresetTint = new Color(1f, 0.8f, 0.4f);
+
+        private SerializedProperty cornerValues;
+
+        private void OnEnable()
+        {
+            cornerValues = serializedObject.FindProperty(CornerValuesField);
+        }
 
         public override void OnInspectorGUI()
         {
-            DrawDefaultInspector();
+            serializedObject.Update();
+            DrawCornerSliders();
+            serializedObject.ApplyModifiedProperties();
 
             var corners = (VoxelCornerEditor)target;
             int caseIndex = corners.CaseIndex;
@@ -33,6 +45,25 @@ namespace Clube.Debug.Editor
 
             EditorGUILayout.Space();
             DrawOverlayToggles();
+        }
+
+        // Labelled c0-c7 to match the Scene view corner labels, instead of Element 0-7.
+        private void DrawCornerSliders()
+        {
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("m_Script"));
+            }
+
+            EditorGUILayout.LabelField("Corner values (0 = empty, 1 = solid)", EditorStyles.boldLabel);
+            for (int corner = 0; corner < cornerValues.arraySize; corner++)
+            {
+                Vector3Int offset = MarchingCubes.CornerOffset(corner);
+                var label = new GUIContent(
+                    $"c{corner}",
+                    $"Corner {corner} at ({offset.x}, {offset.y}, {offset.z}). When solid it sets bit {corner} (= {1 << corner}) of the case index.");
+                EditorGUILayout.Slider(cornerValues.GetArrayElementAtIndex(corner), 0f, 1f, label);
+            }
         }
 
         private static void DrawCaseSection(VoxelCornerEditor corners, int caseIndex)
@@ -68,6 +99,7 @@ namespace Clube.Debug.Editor
         private static void DrawPresets(VoxelCornerEditor corners, int currentCase)
         {
             EditorGUILayout.LabelField("Presets (one per base configuration, ⚠ = ambiguous face)", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("The highlighted preset is the current configuration.", EditorStyles.miniLabel);
 
             BaseConfiguration current = MarchingCubesCases.GetBaseConfiguration(currentCase);
             for (int row = 0; row * PresetColumns < MarchingCubesCases.BaseConfigurationCount; row++)
@@ -97,17 +129,14 @@ namespace Clube.Debug.Editor
             string tooltip = $"Case {representative}. {BaseConfigurationText.Description(configuration)}";
 
             Color previous = GUI.backgroundColor;
-            if (ambiguous)
+            if (isCurrent)
             {
-                GUI.backgroundColor = AmbiguousTint;
+                GUI.backgroundColor = CurrentPresetTint;
             }
 
-            using (new EditorGUI.DisabledScope(isCurrent))
+            if (GUILayout.Button(new GUIContent(label, tooltip)))
             {
-                if (GUILayout.Button(new GUIContent(label, tooltip)))
-                {
-                    ApplyCase(corners, representative);
-                }
+                ApplyCase(corners, representative);
             }
 
             GUI.backgroundColor = previous;
@@ -119,15 +148,19 @@ namespace Clube.Debug.Editor
 
             EditorGUI.BeginChangeCheck();
             bool labels = EditorGUILayout.Toggle(
-                new GUIContent("Corner bit labels", "Each corner's index and the bit it sets in the case index (V21)."),
+                new GUIContent("Corner labels", "c0-c7 on the corners, and a table of which bit each one sets in the case index (V21)."),
                 VoxelLabViewSettings.ShowCornerLabels);
             bool edges = EditorGUILayout.Toggle(
                 new GUIContent("Crossed edges", "Highlight the edges the surface crosses (V9)."),
                 VoxelLabViewSettings.ShowCrossedEdges);
+            bool axes = EditorGUILayout.Toggle(
+                new GUIContent("Axes", "X, Y, Z arrows showing the coordinate system the corner positions use."),
+                VoxelLabViewSettings.ShowAxes);
             if (EditorGUI.EndChangeCheck())
             {
                 VoxelLabViewSettings.ShowCornerLabels = labels;
                 VoxelLabViewSettings.ShowCrossedEdges = edges;
+                VoxelLabViewSettings.ShowAxes = axes;
                 SceneView.RepaintAll();
             }
         }
