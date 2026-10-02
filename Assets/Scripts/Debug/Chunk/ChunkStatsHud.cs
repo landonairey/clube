@@ -7,21 +7,21 @@ namespace Clube.Debug
     /// Game-view readout for the chunk lab (K4): frame rate, chunk size, vertex
     /// and triangle counts, how long meshing and the Unity mesh upload took, the
     /// solid volume when a <see cref="ChunkVolumeStats"/> is present, and a warning
-    /// when <see cref="ChunkGizmos"/> has to suppress its sample spheres.
+    /// when <see cref="ChunkDebugView"/> has to suppress its sample spheres.
     /// Reads <see cref="ChunkView.LastBuildStats"/> only (A4).
     /// </summary>
     [RequireComponent(typeof(ChunkView))]
     public class ChunkStatsHud : MonoBehaviour
     {
         public const string SamplesSuppressedWarning =
-            "Too many density samples to draw as gizmos: the spheres would exceed Unity's gizmo limit, so they are suppressed.";
+            "Too many density samples to draw: the sample spheres are suppressed above 40,000 samples (about a 33³ chunk).";
 
         // The frame rate is frames counted over this many seconds, so one long frame
         // (e.g. a big rebuild) only affects one window instead of dragging an average.
         private const float FpsWindowSeconds = 0.5f;
 
         private ChunkView chunkView;
-        private ChunkGizmos chunkGizmos;
+        private ChunkDebugView debugView;
         private ChunkVolumeStats volumeStats;
         private GUIStyle style;
 
@@ -32,7 +32,7 @@ namespace Clube.Debug
         private void Awake()
         {
             chunkView = GetComponent<ChunkView>();
-            chunkGizmos = GetComponent<ChunkGizmos>();
+            debugView = GetComponent<ChunkDebugView>();
             volumeStats = GetComponent<ChunkVolumeStats>();
         }
 
@@ -75,7 +75,7 @@ namespace Clube.Debug
             {
                 text += "\n" + DescribeVolume(volumeStats);
             }
-            if (chunkGizmos != null && chunkGizmos.enabled && chunkGizmos.AreSamplesSuppressed)
+            if (debugView != null && debugView.enabled && debugView.AreSamplesSuppressed)
             {
                 text += $"\n<color=#ffcc44><b>Warning:</b> {SamplesSuppressedWarning}</color>";
             }

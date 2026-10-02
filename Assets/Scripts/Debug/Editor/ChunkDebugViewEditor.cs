@@ -4,11 +4,11 @@ using UnityEngine;
 namespace Clube.Debug.Editor
 {
     /// <summary>
-    /// <see cref="ChunkGizmos"/> settings, plus a warning while its sample spheres
-    /// are suppressed because the chunk is too big for Unity's gizmo limit.
+    /// <see cref="ChunkDebugView"/> settings, plus a warning while its sample spheres
+    /// are suppressed because the chunk has too many samples.
     /// </summary>
-    [CustomEditor(typeof(ChunkGizmos))]
-    public class ChunkGizmosEditor : UnityEditor.Editor
+    [CustomEditor(typeof(ChunkDebugView))]
+    public class ChunkDebugViewEditor : UnityEditor.Editor
     {
         public override bool RequiresConstantRepaint()
         {
@@ -19,7 +19,7 @@ namespace Clube.Debug.Editor
         {
             DrawDefaultInspector();
 
-            if (((ChunkGizmos)target).AreSamplesSuppressed)
+            if (((ChunkDebugView)target).AreSamplesSuppressed)
             {
                 EditorGUILayout.HelpBox(ChunkStatsHud.SamplesSuppressedWarning, MessageType.Warning);
             }

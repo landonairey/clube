@@ -135,7 +135,7 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 ### 2A — Structure
 - [x] **K1** `Config` Chunk size (X, Y, Z integers). Changing it in a lab replaces the chunk with a new, empty one (`ChunkView.ChunkCreated`); meshes switch to 32-bit indices past 65,535 vertices.
 - [x] **K2** `Config` Voxel unit size.
-- [x] **K3** `Lab` Chapter 1 global toggles (iso, interpolation, shading, winding, gizmos) apply chunk-wide. `ChunkGizmos` can hide its density spheres, and skips them above 20,000 samples.
+- [x] **K3** `Lab` Chapter 1 global toggles (iso, interpolation, shading, winding, gizmos) apply chunk-wide. `ChunkDebugView` draws the density spheres, chunk outline and optional voxel grid as real meshes (not gizmos, which Unity mis-dims on D3D12), and suppresses the spheres above 40,000 samples.
 - [x] **K4** `Lab` *(added)* Stats readout: vertex count, triangle count, last mesh build time (ms), split into meshing and Unity mesh upload (`ChunkMeshStats`, shown by `ChunkStatsHud` and the `ChunkView` Inspector).
 - [x] **K30** `Core + Lab` *(added)* Chunk volume readout: the solid volume inside the chunk by both Chapter 1 methods, approximate (V11) and exact tetrahedra (V12), summed over every voxel (`ChunkVolume`, shown via `ChunkVolumeStats`). The exact sum costs about 165 ms at 32³, so turn the component off when editing large chunks.
 

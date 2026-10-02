@@ -77,6 +77,13 @@ selection (K6); next is K7, the per-voxel corner controls.
   (see `VoxelLabSceneOverlay`); Game-view HUDs use `OnGUI` (`AxesHud`,
   `VoxelLabels`). Labels needed in both views share one IMGUI painter
   (`VoxelLabelPainter`) so the two never drift apart.
+- Unity gotcha: in this project (Unity 6.3 URP on Direct3D 12) the gizmo
+  pass dims gizmos against a vertically flipped depth buffer, so they fade
+  in a mirror image of the mesh and show through it. Not fixed by turning
+  off the depth texture, SSAO, or switching the intermediate texture.
+  3D lab visuals that matter use real meshes instead (`ChunkDebugView`,
+  `StepThroughVisuals`, `VoxelSelector`'s highlight); `NormalGizmos` is
+  still a gizmo and still affected.
 - Unity gotcha: `isActiveAndEnabled` stays false outside Play mode for a
   regular (non-`[ExecuteAlways]`) MonoBehaviour, because `OnEnable` never
   runs. Editor code should check `enabled && gameObject.activeInHierarchy`.

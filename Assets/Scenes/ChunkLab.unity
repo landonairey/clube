@@ -204,8 +204,10 @@ MonoBehaviour:
   showSamples: 1
   cornerRadius: 0.05
   showVoxelGrid: 0
-  voxelGridColor: {r: 1, g: 1, b: 1, a: 0.12}
-  outlineColor: {r: 1, g: 1, b: 1, a: 0.3}
+  voxelGridColor: {r: 0.32, g: 0.33, b: 0.36, a: 1}
+  outlineColor: {r: 0.6, g: 0.6, b: 0.6, a: 1}
+  sampleMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
+  lineMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
 --- !u!114 &1265142442
 MonoBehaviour:
   m_ObjectHideFlags: 0
