@@ -140,7 +140,7 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 - [x] **K30** `Core + Lab` *(added)* Chunk volume readout: the solid volume inside the chunk by both Chapter 1 methods, approximate (V11) and exact tetrahedra (V12), summed over every voxel (`ChunkVolume`, shown via `ChunkVolumeStats`). The exact sum costs about 165 ms at 32³, so turn the component off when editing large chunks.
 
 ### 2B — Voxel selection
-- [x] **K5** `Lab` Click to select a voxel; highlight it. Picks the first voxel the surface passes through along the click ray (`VoxelRaycast`, Core), shown with a line-mesh wireframe.
+- [x] **K5** `Lab` Click to select a voxel; highlight it. Picks the voxel whose surface the click ray hits first (`SurfaceRaycast` on top of `VoxelRaycast`, Core); voxels without surface can't be picked. Shown with a line-mesh wireframe.
 - [x] **K6** `Lab` Focus camera on selected voxel (F, gliding the free-fly camera).
 - [ ] **K7** `Lab` Selected voxel exposes the Chapter 1 per-voxel controls. Editing a corner goes through A7 and updates neighbouring voxels that share it.
 

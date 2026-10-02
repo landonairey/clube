@@ -137,6 +137,7 @@ GameObject:
   - component: {fileID: 1265142439}
   - component: {fileID: 1265142438}
   - component: {fileID: 1265142447}
+  - component: {fileID: 1265142448}
   m_Layer: 0
   m_Name: Chunk
   m_TagString: Untagged
@@ -202,7 +203,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkGizmos
   showSamples: 1
   cornerRadius: 0.05
-  sampleOutlineColor: {r: 0.75, g: 0.75, b: 0.75, a: 0.5}
   showVoxelGrid: 0
   voxelGridColor: {r: 1, g: 1, b: 1, a: 0.12}
   outlineColor: {r: 1, g: 1, b: 1, a: 0.3}
@@ -317,11 +317,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a81c998881ca46f48a6fbb1b2f3e9a47, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelSelector
-  surfaceVoxelsOnly: 1
   highlightColor: {r: 1, g: 0.85, b: 0.2, a: 1}
   highlightMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
   focusDistance: 4
   targetCamera: {fileID: 0}
+--- !u!114 &1265142448
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265142437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 811a131db9bb18e43a7060e435792245, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkVolumeStats
 --- !u!1 &1578836785
 GameObject:
   m_ObjectHideFlags: 0
