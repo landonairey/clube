@@ -11,10 +11,11 @@ namespace Clube.Debug
     [RequireComponent(typeof(ChunkView))]
     public class ChunkGizmos : MonoBehaviour
     {
-        // Above this, Unity's gizmo buffer overflows (one sphere is a few hundred vertices).
-        private const int MaxSampleSpheres = 50000;
+        // Unity's gizmo buffer holds about 38 million vertices, shared by every gizmo, and one
+        // sphere is several hundred; 64³ chunks overflowed it. This leaves plenty of margin.
+        private const int MaxSampleSpheres = 20000;
 
-        [Tooltip("Draw a sphere on every density sample. Skipped automatically above 50,000 samples (about 36³), " +
+        [Tooltip("Draw a sphere on every density sample. Skipped automatically above 20,000 samples (about a 26³ chunk), " +
                  "and slow well before that.")]
         [SerializeField]
         private bool showSamples = true;
