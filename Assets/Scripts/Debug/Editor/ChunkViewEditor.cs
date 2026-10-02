@@ -1,12 +1,13 @@
 using Clube.Core;
 using UnityEditor;
+using UnityEngine;
 
 namespace Clube.Debug.Editor
 {
     /// <summary>
-    /// Draws the view's <see cref="WorldConfig"/> inline under <see cref="ChunkView"/>,
-    /// so config values such as the iso level (V1) can be tuned next to the
-    /// per-voxel lab controls. Outside Play mode that is the shared asset; in
+    /// Draws the view's last build stats in Play mode (K4) and its <see cref="WorldConfig"/>
+    /// inline under <see cref="ChunkView"/>, so config values such as the iso level (V1)
+    /// can be tuned next to the per-voxel lab controls. Outside Play mode that is the shared asset; in
     /// Play mode it is the view's private copy, so tweaks are discarded on exit.
     /// </summary>
     // Written as UnityEditor.Editor because inside Clube.Debug.Editor, "Editor" names this namespace.
@@ -17,11 +18,25 @@ namespace Clube.Debug.Editor
 
         private UnityEditor.Editor configEditor;
 
+        private GUIStyle statsStyle;
+
+        // Keeps the build stats current in Play mode, where the chunk can rebuild every frame.
+        public override bool RequiresConstantRepaint()
+        {
+            return Application.isPlaying;
+        }
+
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();
 
             var view = (ChunkView)target;
+            if (view.Chunk != null)
+            {
+                statsStyle ??= new GUIStyle(EditorStyles.helpBox) { richText = true, fontSize = 11 };
+                EditorGUILayout.LabelField(ChunkStatsHud.Describe(view.Chunk.VoxelCount, view.LastBuildStats), statsStyle);
+            }
+
             WorldConfig config = view.Config;
             if (config == null)
             {

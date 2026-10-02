@@ -11,6 +11,14 @@ namespace Clube.Debug
     [RequireComponent(typeof(ChunkView))]
     public class ChunkGizmos : MonoBehaviour
     {
+        // Above this, Unity's gizmo buffer overflows (one sphere is a few hundred vertices).
+        private const int MaxSampleSpheres = 50000;
+
+        [Tooltip("Draw a sphere on every density sample. Skipped automatically above 50,000 samples (about 36³), " +
+                 "and slow well before that.")]
+        [SerializeField]
+        private bool showSamples = true;
+
         // Capped at half a voxel: any larger and neighbouring corner spheres overlap.
         [Tooltip("Sphere radius as a fraction of the voxel size (at most half an edge).")]
         [SerializeField, Range(0f, 0.5f)]
@@ -40,10 +48,16 @@ namespace Clube.Debug
             Gizmos.DrawWireCube(size * 0.5f, size);
 
             // Step-through draws the samples itself, coloured by step.
-            if (chunk != null && !StepThroughMode.IsOn(this))
+            if (chunk != null && showSamples && !StepThroughMode.IsOn(this) && SampleTotal(chunk) <= MaxSampleSpheres)
             {
                 DrawSamples(chunk, voxelSize);
             }
+        }
+
+        private static int SampleTotal(Chunk chunk)
+        {
+            Vector3Int count = chunk.SampleCount;
+            return count.x * count.y * count.z;
         }
 
         private void DrawSamples(Chunk chunk, float voxelSize)
