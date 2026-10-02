@@ -11,7 +11,7 @@ namespace Clube.Core
     [CreateAssetMenu(fileName = "WorldConfig", menuName = "Clube/World Config")]
     public class WorldConfig : ScriptableObject
     {
-        [Tooltip("Voxels per chunk along each axis. Read when a chunk is created; live resizing comes with K1.")]
+        [Tooltip("Voxels per chunk along each axis (K1). Changing it in a lab replaces the chunk with a new, empty one.")]
         [SerializeField]
         private Vector3Int chunkSize = Vector3Int.one;
 
