@@ -133,10 +133,10 @@ Record the real algorithm once (A11), then replay the log. Stepping back just re
 Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 
 ### 2A — Structure
-- [ ] **K1** `Config` Chunk size (X, Y, Z integers).
-- [ ] **K2** `Config` Voxel unit size.
-- [ ] **K3** `Lab` Chapter 1 global toggles (iso, interpolation, shading, winding, gizmos) apply chunk-wide.
-- [ ] **K4** `Lab` *(added)* Stats readout: vertex count, triangle count, last mesh build time (ms).
+- [x] **K1** `Config` Chunk size (X, Y, Z integers). Changing it in a lab replaces the chunk with a new, empty one (`ChunkView.ChunkCreated`); meshes switch to 32-bit indices past 65,535 vertices.
+- [x] **K2** `Config` Voxel unit size.
+- [x] **K3** `Lab` Chapter 1 global toggles (iso, interpolation, shading, winding, gizmos) apply chunk-wide. `ChunkGizmos` can hide its density spheres, and skips them above 50,000 samples.
+- [x] **K4** `Lab` *(added)* Stats readout: vertex count, triangle count, last mesh build time (ms), split into meshing and Unity mesh upload (`ChunkMeshStats`, shown by `ChunkStatsHud` and the `ChunkView` Inspector).
 
 ### 2B — Voxel selection
 - [ ] **K5** `Lab` Click to select a voxel; highlight it.
@@ -145,7 +145,7 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 
 ### 2C — Terrain surface generation
 - [ ] **K8** `Config` Base surface level + amplitude parameters.
-- [ ] **K9** `Core` Generators, selected via `Config`:
+- [ ] **K9** `Core` Generators, selected via `Config` (these replace the lab-only `ChunkTestFill` sphere that 2A uses as placeholder terrain):
   - Flat
   - Sine wave
   - 2D Perlin
