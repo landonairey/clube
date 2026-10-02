@@ -7,6 +7,11 @@ namespace Clube.Debug
     /// edges; V9, V21) in the Game view while playing. The Scene view shows the
     /// same labels through an editor overlay, which reads the toggles from here.
     /// </summary>
+    /// <remarks>
+    /// The labels hide while step-through mode is on (a <see cref="StepThroughLab"/>
+    /// child is enabled): they show the finished answer, which the animation
+    /// reveals one step at a time.
+    /// </remarks>
     [RequireComponent(typeof(VoxelCornerEditor))]
     public class VoxelLabels : MonoBehaviour
     {
@@ -24,11 +29,21 @@ namespace Clube.Debug
 
         private VoxelCornerEditor corners;
 
-        public bool ShowCornerLabels => showCornerLabels;
+        public bool ShowCornerLabels => showCornerLabels && !IsStepThroughOn;
 
-        public bool ShowCrossedEdges => showCrossedEdges;
+        public bool ShowCrossedEdges => showCrossedEdges && !IsStepThroughOn;
 
         public VoxelCornerEditor Corners => corners != null ? corners : GetComponent<VoxelCornerEditor>();
+
+        // Plain enabled check, so it also works outside Play mode for the Scene view overlay.
+        private bool IsStepThroughOn
+        {
+            get
+            {
+                StepThroughLab stepThrough = GetComponentInChildren<StepThroughLab>(true);
+                return stepThrough != null && stepThrough.enabled && stepThrough.gameObject.activeInHierarchy;
+            }
+        }
 
         private void Awake()
         {
@@ -37,7 +52,9 @@ namespace Clube.Debug
 
         private void OnGUI()
         {
-            if (Event.current.type != EventType.Repaint || (!showCornerLabels && !showCrossedEdges))
+            bool cornerLabels = ShowCornerLabels;
+            bool crossedEdges = ShowCrossedEdges;
+            if (Event.current.type != EventType.Repaint || (!cornerLabels && !crossedEdges))
             {
                 return;
             }
@@ -48,7 +65,7 @@ namespace Clube.Debug
                 return;
             }
 
-            VoxelLabelPainter.Draw(corners, showCornerLabels, showCrossedEdges, (Vector3 world, out Vector2 gui) =>
+            VoxelLabelPainter.Draw(corners, cornerLabels, crossedEdges, (Vector3 world, out Vector2 gui) =>
             {
                 Vector3 screen = viewCamera.WorldToScreenPoint(world);
 

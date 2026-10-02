@@ -9,8 +9,9 @@ namespace Clube.Debug.Editor
     /// <summary>
     /// Lab panel under the corner sliders: the case index the corners produce and
     /// what it means (V7, V9), a slider to jump to any case (V20), one preset
-    /// button per base configuration (V10), and the volume readout (V11, V12, V14)
-    /// when the voxel has a Volume Lab child. Label toggles live on VoxelLabels.
+    /// button per base configuration (V10), the step-through controls (1D) when the
+    /// voxel has a Step Through child, and the volume readout (V11, V12, V14) when
+    /// it has a Volume Lab child. Label toggles live on VoxelLabels.
     /// </summary>
     [CustomEditor(typeof(VoxelCornerEditor))]
     public class VoxelCornerEditorInspector : UnityEditor.Editor
@@ -44,6 +45,13 @@ namespace Clube.Debug.Editor
             EditorGUILayout.Space();
             DrawPresets(corners, caseIndex);
 
+            StepThroughLab stepThrough = StepThroughOf(corners);
+            if (stepThrough != null)
+            {
+                EditorGUILayout.Space();
+                StepThroughPanelGui.Draw(stepThrough);
+            }
+
             // Volume readout here too, so it stays in view while dragging corners.
             VoxelVolumeLab volumeLab = corners.GetComponentInChildren<VoxelVolumeLab>();
             if (volumeLab != null)
@@ -59,6 +67,17 @@ namespace Clube.Debug.Editor
                 EditorGUILayout.Space();
                 DrawAxesToggle(axesHud);
             }
+        }
+
+        public override bool RequiresConstantRepaint()
+        {
+            return StepThroughPanelGui.NeedsConstantRepaint(StepThroughOf((VoxelCornerEditor)target));
+        }
+
+        // Includes a disabled lab: disabled is just step-through mode being off.
+        private static StepThroughLab StepThroughOf(VoxelCornerEditor corners)
+        {
+            return corners.GetComponentInChildren<StepThroughLab>(true);
         }
 
         private static void DrawAxesToggle(AxesHud axesHud)
