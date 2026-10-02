@@ -11,12 +11,13 @@ namespace Clube.Debug
     /// wireframe of every voxel. Reads the chunk's public data only (A4).
     /// </summary>
     /// <remarks>
-    /// These are real meshes rather than gizmos. Unity's gizmo pass dims gizmos it
-    /// thinks are hidden, and in this project (URP on Direct3D 12) it gets that
-    /// test vertically flipped, so gizmos dimmed in a mirror image of the surface.
-    /// All spheres are one combined mesh with vertex colours (one draw call); a
-    /// density edit only rewrites the colours. Outside Play mode, where there is
-    /// no chunk yet, the outline is drawn as a gizmo from the config.
+    /// These are real meshes rather than gizmos. Unity's gizmo pass draws gizmo
+    /// parts it thinks are hidden more faintly, and in this project (URP on
+    /// Direct3D 12) it reads that from a vertically flipped depth buffer, so mirror
+    /// images of opaque objects showed up inside gizmos. All spheres are one
+    /// combined mesh with vertex colours (one draw call); a density edit only
+    /// rewrites the colours. Outside Play mode, where there is no chunk yet, the
+    /// outline is drawn as a gizmo from the config.
     /// </remarks>
     [RequireComponent(typeof(ChunkView))]
     public class ChunkDebugView : MonoBehaviour
@@ -26,7 +27,6 @@ namespace Clube.Debug
 
         private const string VertexColorShader = "Universal Render Pipeline/Particles/Unlit";
         private const string LineShader = "Universal Render Pipeline/Unlit";
-        private const string ColorProperty = "_BaseColor";
 
         [Tooltip("Draw a sphere on every density sample. Suppressed above 40,000 samples (about a 33³ chunk).")]
         [SerializeField]
@@ -61,20 +61,12 @@ namespace Clube.Debug
         private readonly List<Vector3> scratchVertices = new List<Vector3>();
         private readonly List<int> scratchIndices = new List<int>();
 
-        // Meshes, objects and fallback materials created here, destroyed with this component.
-        private readonly List<Object> owned = new List<Object>();
-
         private ChunkView chunkView;
-
-        // Created in Awake: Unity doesn't allow it in a field initializer.
-        private MaterialPropertyBlock properties;
-
-        private MeshRenderer samplesRenderer;
-        private MeshRenderer outlineRenderer;
-        private MeshRenderer gridRenderer;
-        private Mesh samplesMesh;
-        private Mesh outlineMesh;
-        private Mesh gridMesh;
+        private LabMeshObject samples;
+        private LabMeshObject outline;
+        private LabMeshObject grid;
+        private Material ownedSampleMaterial;
+        private Material ownedLineMaterial;
 
         // What the current meshes were built for, so they are only rebuilt when it changes.
         private Vector3Int builtSampleCount;
@@ -98,29 +90,29 @@ namespace Clube.Debug
         private void Awake()
         {
             chunkView = GetComponent<ChunkView>();
-            properties = new MaterialPropertyBlock();
         }
 
         private void OnEnable()
         {
             chunkView.MeshRebuilt += OnMeshRebuilt;
-            Refresh();
+            refreshRequested = true;
         }
 
         private void OnDisable()
         {
             chunkView.MeshRebuilt -= OnMeshRebuilt;
-            SetVisible(samplesRenderer, false);
-            SetVisible(outlineRenderer, false);
-            SetVisible(gridRenderer, false);
+            SetVisible(samples, false);
+            SetVisible(outline, false);
+            SetVisible(grid, false);
         }
 
         private void OnDestroy()
         {
-            foreach (Object item in owned)
-            {
-                Destroy(item);
-            }
+            samples?.Dispose();
+            outline?.Dispose();
+            grid?.Dispose();
+            LabMeshObject.DestroyNow(ownedSampleMaterial);
+            LabMeshObject.DestroyNow(ownedLineMaterial);
         }
 
         // Called by Unity whenever an Inspector value changes, including in Play mode.
@@ -140,9 +132,9 @@ namespace Clube.Debug
 
             // Step-through draws the samples itself, coloured by step; this check is
             // per frame because the mode can be switched at any time.
-            if (samplesRenderer != null)
+            if (samples != null)
             {
-                samplesRenderer.enabled = WantsSamples();
+                samples.Visible = WantsSamples();
             }
         }
 
@@ -191,11 +183,11 @@ namespace Clube.Debug
         {
             if (!showSamples || SampleTotal(chunk) > MaxSampleSpheres)
             {
-                SetVisible(samplesRenderer, false);
+                SetVisible(samples, false);
                 return;
             }
 
-            EnsureRenderer(ref samplesRenderer, ref samplesMesh, "Density Samples", SampleMaterial());
+            samples ??= new LabMeshObject(transform, "Density Samples", SampleMaterial());
             Vector3Int count = chunk.SampleCount;
             if (count != builtSampleCount || voxelSize != builtVoxelSize || cornerRadius != builtRadius)
             {
@@ -220,8 +212,8 @@ namespace Clube.Debug
                     }
                 }
             }
-            samplesMesh.SetColors(sampleColors);
-            samplesRenderer.enabled = WantsSamples();
+            samples.Mesh.SetColors(sampleColors);
+            samples.Visible = WantsSamples();
         }
 
         private void BuildSampleGeometry(Vector3Int count, float voxelSize)
@@ -254,11 +246,12 @@ namespace Clube.Debug
                 }
             }
 
-            samplesMesh.Clear();
-            samplesMesh.indexFormat = scratchVertices.Count > ushort.MaxValue ? IndexFormat.UInt32 : IndexFormat.UInt16;
-            samplesMesh.SetVertices(scratchVertices);
-            samplesMesh.SetTriangles(scratchIndices, 0);
-            samplesMesh.RecalculateBounds();
+            Mesh mesh = samples.Mesh;
+            mesh.Clear();
+            mesh.indexFormat = scratchVertices.Count > ushort.MaxValue ? IndexFormat.UInt32 : IndexFormat.UInt16;
+            mesh.SetVertices(scratchVertices);
+            mesh.SetTriangles(scratchIndices, 0);
+            mesh.RecalculateBounds();
 
             builtSampleCount = count;
             builtVoxelSize = voxelSize;
@@ -267,7 +260,7 @@ namespace Clube.Debug
 
         private void RefreshOutline(Vector3Int voxelCount, float voxelSize)
         {
-            EnsureRenderer(ref outlineRenderer, ref outlineMesh, "Chunk Outline", LineMaterial());
+            outline ??= new LabMeshObject(transform, "Chunk Outline", LineMaterial());
             scratchVertices.Clear();
             scratchIndices.Clear();
             Vector3 size = (Vector3)voxelCount * voxelSize;
@@ -281,11 +274,11 @@ namespace Clube.Debug
                 scratchIndices.Add(MarchingCubesTables.EdgeCorners[edge, 1]);
             }
 
-            outlineMesh.Clear();
-            outlineMesh.SetVertices(scratchVertices);
-            outlineMesh.SetIndices(scratchIndices, MeshTopology.Lines, 0);
-            SetColor(outlineRenderer, outlineColor);
-            outlineRenderer.enabled = true;
+            outline.Mesh.Clear();
+            outline.Mesh.SetVertices(scratchVertices);
+            outline.Mesh.SetIndices(scratchIndices, MeshTopology.Lines, 0);
+            outline.SetColor(outlineColor);
+            outline.Visible = true;
         }
 
         // Lines through every sample row along each axis, which together outline every voxel.
@@ -293,13 +286,13 @@ namespace Clube.Debug
         {
             if (!showVoxelGrid)
             {
-                SetVisible(gridRenderer, false);
+                SetVisible(grid, false);
                 return;
             }
 
-            EnsureRenderer(ref gridRenderer, ref gridMesh, "Voxel Grid", LineMaterial());
-            SetColor(gridRenderer, voxelGridColor);
-            gridRenderer.enabled = true;
+            grid ??= new LabMeshObject(transform, "Voxel Grid", LineMaterial());
+            grid.SetColor(voxelGridColor);
+            grid.Visible = true;
             if (voxelCount == builtGridCount && voxelSize == builtGridSize)
             {
                 return;
@@ -330,67 +323,41 @@ namespace Clube.Debug
                 }
             }
 
-            gridMesh.Clear();
-            gridMesh.indexFormat = scratchVertices.Count > ushort.MaxValue ? IndexFormat.UInt32 : IndexFormat.UInt16;
-            gridMesh.SetVertices(scratchVertices);
-            gridMesh.SetIndices(scratchIndices, MeshTopology.Lines, 0);
+            Mesh mesh = grid.Mesh;
+            mesh.Clear();
+            mesh.indexFormat = scratchVertices.Count > ushort.MaxValue ? IndexFormat.UInt32 : IndexFormat.UInt16;
+            mesh.SetVertices(scratchVertices);
+            mesh.SetIndices(scratchIndices, MeshTopology.Lines, 0);
             builtGridCount = voxelCount;
             builtGridSize = voxelSize;
         }
 
-        private void EnsureRenderer(ref MeshRenderer renderer, ref Mesh mesh, string name, Material material)
-        {
-            if (renderer != null)
-            {
-                return;
-            }
-
-            mesh = new Mesh { name = name };
-            mesh.MarkDynamic();
-            owned.Add(mesh);
-
-            var child = new GameObject(name) { hideFlags = HideFlags.DontSave };
-            child.transform.SetParent(transform, false);
-            owned.Add(child);
-            child.AddComponent<MeshFilter>().sharedMesh = mesh;
-            renderer = child.AddComponent<MeshRenderer>();
-            renderer.sharedMaterial = material;
-            renderer.shadowCastingMode = ShadowCastingMode.Off;
-            renderer.receiveShadows = false;
-        }
-
         private Material SampleMaterial()
         {
-            if (sampleMaterial == null)
+            if (sampleMaterial != null)
             {
-                sampleMaterial = new Material(Shader.Find(VertexColorShader)) { name = "Density Samples" };
-                owned.Add(sampleMaterial);
+                return sampleMaterial;
             }
-            return sampleMaterial;
+            ownedSampleMaterial ??= new Material(Shader.Find(VertexColorShader)) { name = "Density Samples" };
+            return ownedSampleMaterial;
         }
 
-        // The tint is applied per renderer, so one material serves every line mesh.
+        // The tint is applied per object, so one material serves every line mesh.
         private Material LineMaterial()
         {
-            if (lineMaterial == null)
+            if (lineMaterial != null)
             {
-                lineMaterial = new Material(Shader.Find(LineShader)) { name = "Chunk Lines" };
-                owned.Add(lineMaterial);
+                return lineMaterial;
             }
-            return lineMaterial;
+            ownedLineMaterial ??= new Material(Shader.Find(LineShader)) { name = "Chunk Lines" };
+            return ownedLineMaterial;
         }
 
-        private void SetColor(Renderer renderer, Color color)
+        private static void SetVisible(LabMeshObject meshObject, bool visible)
         {
-            properties.SetColor(ColorProperty, color);
-            renderer.SetPropertyBlock(properties);
-        }
-
-        private static void SetVisible(Renderer renderer, bool visible)
-        {
-            if (renderer != null)
+            if (meshObject != null)
             {
-                renderer.enabled = visible;
+                meshObject.Visible = visible;
             }
         }
 

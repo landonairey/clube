@@ -370,7 +370,8 @@ MonoBehaviour:
   length: 0.2
   vertexNormalColor: {r: 0.3, g: 0.8, b: 1, a: 1}
   faceNormalColor: {r: 1, g: 0.9, b: 0.2, a: 1}
-  triangleEdgeColor: {r: 1, g: 1, b: 1, a: 0.6}
+  triangleEdgeColor: {r: 0.75, g: 0.75, b: 0.75, a: 1}
+  lineMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
 --- !u!114 &190024697
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -446,6 +447,8 @@ MonoBehaviour:
   exactVolume: 1
   explodeDistance: 0.25
   faceOpacity: 0.35
+  faceMaterial: {fileID: 2100000, guid: 7306c3d226f246045a04b0c391c5dfd0, type: 2}
+  edgeMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
   monteCarloSamples: 10000
 --- !u!114 &1408007344
 MonoBehaviour:
