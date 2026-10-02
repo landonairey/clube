@@ -6,8 +6,8 @@ namespace Clube.Core
     /// <summary>
     /// Walks a ray through a chunk's voxel grid one voxel at a time, in the order
     /// the ray enters them (Amanatides &amp; Woo), and returns the first voxel a
-    /// caller-supplied test accepts. Used to pick voxels with the mouse (K5), and
-    /// later by the in-game dig and place controls (M8).
+    /// caller-supplied test accepts. <see cref="SurfaceRaycast"/> builds on it to
+    /// pick the voxel whose surface a mouse click hits (K5).
     /// </summary>
     public static class VoxelRaycast
     {

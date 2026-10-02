@@ -9,8 +9,9 @@ namespace Clube.Debug
     /// <summary>
     /// Click a voxel in the Game view to select it (K5): the selected voxel's
     /// wireframe is highlighted, and F glides the free-fly camera to frame it (K6).
-    /// Clicking empty space clears the selection. By default only voxels the
-    /// surface passes through can be picked, which is what you see and click on.
+    /// The click selects the voxel whose piece of surface the click ray hits first
+    /// (<see cref="SurfaceRaycast"/>), so voxels without surface can't be picked.
+    /// Clicking anywhere else clears the selection.
     /// </summary>
     /// <remarks>
     /// The highlight is a real line mesh rather than a gizmo, so it shows in the
@@ -21,11 +22,6 @@ namespace Clube.Debug
     {
         private const string HighlightShader = "Universal Render Pipeline/Unlit";
         private const string ColorProperty = "_BaseColor";
-
-        [Tooltip("Only pick voxels the surface passes through (not all solid or all empty). " +
-                 "Off picks the first voxel the click ray enters.")]
-        [SerializeField]
-        private bool surfaceVoxelsOnly = true;
 
         [SerializeField]
         private Color highlightColor = new Color(1f, 0.85f, 0.2f);
@@ -86,9 +82,7 @@ namespace Clube.Debug
                 transform.InverseTransformPoint(worldRay.origin),
                 transform.InverseTransformDirection(worldRay.direction));
 
-            float iso = chunkView.Config.IsoLevel;
-            Func<Vector3Int, bool> accept = voxel => !surfaceVoxelsOnly || HasSurface(voxel, iso);
-            return VoxelRaycast.Cast(localRay, chunk.VoxelCount, chunkView.Config.VoxelSize, accept, out Vector3Int hit)
+            return SurfaceRaycast.Cast(localRay, chunk, chunkView.Config.MeshSettings, out Vector3Int hit, out _)
                 ? hit
                 : (Vector3Int?)null;
         }
@@ -189,13 +183,6 @@ namespace Clube.Debug
         private void OnChunkCreated(Chunk chunk)
         {
             Select(null);
-        }
-
-        // Cases 0 and 255 (all corners on one side) produce no triangles.
-        private bool HasSurface(Vector3Int voxel, float iso)
-        {
-            int caseIndex = MarchingCubes.GetCaseIndex(ReadCorners(voxel), iso);
-            return caseIndex != 0 && caseIndex != MarchingCubes.CaseCount - 1;
         }
 
         private float[] ReadCorners(Vector3Int voxel)
