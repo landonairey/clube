@@ -52,6 +52,13 @@ namespace Clube.Debug
         private void OnEnable()
         {
             chunkView.MeshRebuilt += OnMeshRebuilt;
+
+            // Turned on after the chunk was built: no rebuild is coming, so pick up
+            // the current mesh now instead of drawing nothing until the next edit.
+            if (chunkView.Chunk != null)
+            {
+                OnMeshRebuilt(GetComponent<MeshFilter>().sharedMesh);
+            }
         }
 
         private void OnDisable()
@@ -70,7 +77,7 @@ namespace Clube.Debug
         private void OnDrawGizmos()
         {
             // Step-through hides the finished mesh, so its normals would give the answer away.
-            if (mesh == null || chunkView == null || chunkView.Config == null || StepThroughMode.IsOn(this))
+            if (!enabled || mesh == null || chunkView == null || chunkView.Config == null || StepThroughMode.IsOn(this))
             {
                 return;
             }

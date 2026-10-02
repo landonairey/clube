@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Clube.Core
 {
@@ -31,8 +33,17 @@ namespace Clube.Core
         /// </summary>
         public event Action<Mesh> MeshRebuilt;
 
+        /// <summary>
+        /// Raised when the chunk is replaced by a new, empty one because the
+        /// config's chunk size changed (K1). Whatever filled the old chunk refills this one.
+        /// </summary>
+        public event Action<Chunk> ChunkCreated;
+
         /// <summary>The chunk this view renders. Created in Awake; null outside Play mode.</summary>
         public Chunk Chunk { get; private set; }
+
+        /// <summary>Counts and timings from the last mesh build (K4).</summary>
+        public ChunkMeshStats LastBuildStats { get; private set; }
 
         /// <summary>The config in use: the Play mode copy while playing, otherwise the assigned asset.</summary>
         public WorldConfig Config => runtimeConfig != null ? runtimeConfig : config;
@@ -98,17 +109,37 @@ namespace Clube.Core
 
         private void OnConfigChanged()
         {
-            Chunk?.MarkDirty();
+            if (Chunk == null)
+            {
+                return;
+            }
+
+            // A new size means new storage: the old densities can't be kept (K1).
+            if (Chunk.VoxelCount != Config.ChunkSize)
+            {
+                Chunk = new Chunk(Config.ChunkSize);
+                ChunkCreated?.Invoke(Chunk);
+            }
+
+            Chunk.MarkDirty();
         }
 
         private void RebuildMesh()
         {
+            var stopwatch = Stopwatch.StartNew();
             ChunkMesher.Build(Chunk, Config.MeshSettings, vertices, triangles);
+            double meshingMilliseconds = stopwatch.Elapsed.TotalMilliseconds;
 
+            stopwatch.Restart();
             mesh.Clear();
+
+            // 16-bit indices top out at 65,535 vertices, which a 32³ chunk can pass.
+            mesh.indexFormat = vertices.Count > ushort.MaxValue ? IndexFormat.UInt32 : IndexFormat.UInt16;
             mesh.SetVertices(vertices);
             mesh.SetTriangles(triangles, 0);
             mesh.RecalculateNormals();
+            LastBuildStats = new ChunkMeshStats(
+                vertices.Count, triangles.Count / 3, meshingMilliseconds, stopwatch.Elapsed.TotalMilliseconds);
 
             // Bounds cover the whole chunk rather than just the current surface, so
             // the renderer (and gizmos Unity culls with it) stays visible whenever

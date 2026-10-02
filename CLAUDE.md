@@ -24,25 +24,21 @@ Milestone 1 = Chapters 0–3. Chapters 4–5 are drafts; Chapters 6–8 are
 design exploration. Do not build ahead of the current chapter; flag it if a
 change starts pulling in a later chapter's direction.
 
-## Current focus: Chapter 1 — Single voxel (`VoxelLab`)
-`VoxelLab` now runs on the Core chunk model: `IVoxelStorage` →
-`FlatVoxelStorage`, `Chunk` (single edit path, A7), `ChunkMesher`,
-`ChunkView`, and a `WorldConfig` asset (`Assets/Config/`). 1A is done
-(V1–V5): mesh variants are strategy objects (`IEdgeVertexPlacer`,
-`IVertexWriter`) picked once per build from `ChunkMeshSettings` (A6); lab
-tools hook `ChunkView.MeshRebuilt` rather than adding flags to the core.
-1B is done (V6–V10, V20, V21): `MarchingCubesCases` (Core) classifies
-cases into 15 base configurations; the voxel lab panel is a custom
-inspector, and labels are drawn by `VoxelLabelPainter` in both views.
-1C is done (V11–V14): `VoxelVolume` (Core) gives approximate, exact
-(signed tetrahedra fanned from c0) and Monte Carlo trilinear volumes;
-the `Volume Lab` child of the Voxel draws the exploded tetrahedra.
-1D is done (V15–V19): `ChunkMesher.Build` takes an optional
-`MeshingRecorder` (Core, compiled out of release builds) that logs each
-step; the `Step Through` child of the Voxel (`StepThroughLab`, off by
-default = step-through mode off) replays the log with scene objects
-(`StepThroughVisuals`) and never re-runs the mesher. Chapter 1 is
-complete apart from the optional 1E standalone build (V22).
+## Current focus: Chapter 2 — Single chunk (`ChunkLab`)
+Chapter 1 (`VoxelLab`) is complete apart from V23 (code panel) and the
+optional 1E standalone build (V22); the scene stays as the single-voxel
+lab. Both labs run on the same Core chunk model: `IVoxelStorage` →
+`FlatVoxelStorage`, `Chunk` (single edit path, A7), `ChunkMesher` (mesh
+variants as strategy objects picked once per build, A6), `ChunkView`,
+and one `WorldConfig` asset per lab (`Assets/Config/`). Lab tools hook
+`ChunkView.MeshRebuilt` / `ChunkCreated` rather than adding flags to the
+core. VoxelLab extras: `MarchingCubesCases`, `VoxelVolume` (Volume Lab),
+and `MeshingRecorder` + the `Step Through` child (`StepThroughLab`;
+other lab tools defer to it via `StepThroughMode`).
+2A is done (K1–K4): `ChunkLab` scene with live chunk resizing,
+`ChunkMeshStats` + FPS shown by `ChunkStatsHud`, and `ChunkTestFill`
+(ball, or solid with a shaft) as test shapes that stay alongside K9.
+Next: 2B voxel selection (K5–K7).
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
@@ -93,6 +89,10 @@ complete apart from the optional 1E standalone build (V22).
   To test frame-driven behaviour, pause and advance with
   `EditorApplication.Step()` from `RunCommand`. `Camera_Capture` skips
   IMGUI; use `ScreenCapture.CaptureScreenshot` to see `OnGUI` HUDs.
+- MCP gotcha: an asset created in a `RunCommand` script and then assigned
+  after `EditorSceneManager.OpenScene` saves as a null reference (the
+  object goes stale). Re-load it with `AssetDatabase.LoadAssetAtPath`
+  right before assigning, and check the saved scene for `{fileID: 0}`.
 - MCP gotcha: GameObject instance IDs change on every domain reload
   (entering Play mode, recompiling). Look objects up again with `find`
   before passing an ID to tools like `Camera_Capture`.
