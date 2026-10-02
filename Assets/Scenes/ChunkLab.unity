@@ -136,6 +136,7 @@ GameObject:
   - component: {fileID: 1265142440}
   - component: {fileID: 1265142439}
   - component: {fileID: 1265142438}
+  - component: {fileID: 1265142447}
   m_Layer: 0
   m_Name: Chunk
   m_TagString: Untagged
@@ -304,6 +305,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1265142447
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265142437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a81c998881ca46f48a6fbb1b2f3e9a47, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelSelector
+  surfaceVoxelsOnly: 1
+  highlightColor: {r: 1, g: 0.85, b: 0.2, a: 1}
+  highlightMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
+  focusDistance: 4
+  targetCamera: {fileID: 0}
 --- !u!1 &1578836785
 GameObject:
   m_ObjectHideFlags: 0
@@ -415,6 +433,7 @@ MonoBehaviour:
   fastMultiplier: 4
   lookSensitivity: 0.15
   scrollSpeedStep: 0.1
+  focusTime: 0.25
 --- !u!114 &1578836790
 MonoBehaviour:
   m_ObjectHideFlags: 0

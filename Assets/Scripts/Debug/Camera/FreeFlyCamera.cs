@@ -7,7 +7,8 @@ namespace Clube.Debug
     /// Debug free-fly camera for lab scenes. Hold the right mouse button to look,
     /// WASD to move, Q/E to move down/up, Shift to move faster, and scroll while
     /// looking to change the base speed (as in Unity's Scene view), which leaves
-    /// plain scrolling free for lab tools. Reads devices directly rather than
+    /// plain scrolling free for lab tools. Lab tools can call <see cref="Focus"/>
+    /// to frame a point. Reads devices directly rather than
     /// through input actions, since it is a lab tool and never ships in the Game scene.
     /// </summary>
     public class FreeFlyCamera : MonoBehaviour
@@ -30,8 +31,27 @@ namespace Clube.Debug
         [SerializeField, Range(0f, 1f)]
         private float scrollSpeedStep = 0.1f;
 
+        [Tooltip("Seconds a Focus move takes to settle.")]
+        [SerializeField, Min(0f)]
+        private float focusTime = 0.25f;
+
         private float yaw;
         private float pitch;
+
+        // Where an in-progress Focus is gliding to, if any.
+        private Vector3? focusTarget;
+        private Vector3 focusVelocity;
+
+        /// <summary>
+        /// Glides the camera, keeping its rotation, until <paramref name="point"/> sits
+        /// <paramref name="distance"/> ahead of it, like F in the Scene view (K6).
+        /// Any movement input cancels the glide.
+        /// </summary>
+        public void Focus(Vector3 point, float distance)
+        {
+            focusTarget = point - transform.forward * distance;
+            focusVelocity = Vector3.zero;
+        }
 
         private void OnEnable()
         {
@@ -62,7 +82,31 @@ namespace Clube.Debug
                 AdjustSpeed(mouse.scroll.ReadValue().y);
             }
 
-            Move(ReadMoveInput(keyboard), keyboard.shiftKey.isPressed);
+            Vector3 input = ReadMoveInput(keyboard);
+            if (input != Vector3.zero || isLooking)
+            {
+                focusTarget = null;
+            }
+
+            Move(input, keyboard.shiftKey.isPressed);
+            GlideToFocus();
+        }
+
+        private void GlideToFocus()
+        {
+            if (focusTarget == null)
+            {
+                return;
+            }
+
+            Vector3 target = focusTarget.Value;
+            transform.position = Vector3.SmoothDamp(
+                transform.position, target, ref focusVelocity, focusTime, Mathf.Infinity, Time.unscaledDeltaTime);
+            if ((transform.position - target).sqrMagnitude < 1e-6f)
+            {
+                transform.position = target;
+                focusTarget = null;
+            }
         }
 
         private void Look(Vector2 mouseDelta)
