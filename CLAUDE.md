@@ -38,8 +38,9 @@ other lab tools defer to it via `StepThroughMode`).
 2A is done (K1–K4): `ChunkLab` scene with live chunk resizing,
 `ChunkMeshStats` + FPS shown by `ChunkStatsHud`, and `ChunkTestFill`
 (ball, or solid with a shaft) as test shapes that stay alongside K9.
-2B in progress: `VoxelSelector` picks voxels by click (K5) and F frames the
-selection (K6); next is K7, the per-voxel corner controls.
+2B is done (K5–K7): `VoxelSelector` picks voxels by click, F frames the
+selection, and `SelectedVoxelEditor` edits its corners. Next: 2C terrain
+surface generation (K8–K10).
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
