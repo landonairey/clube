@@ -175,7 +175,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1265142437}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6abcbc4b0e3e4a444a9da39fedd28045, type: 3}
   m_Name: 
@@ -201,6 +201,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkGizmos
   showSamples: 1
   cornerRadius: 0.05
+  sampleOutlineColor: {r: 0.75, g: 0.75, b: 0.75, a: 0.5}
+  showVoxelGrid: 0
+  voxelGridColor: {r: 1, g: 1, b: 1, a: 0.12}
   outlineColor: {r: 1, g: 1, b: 1, a: 0.3}
 --- !u!114 &1265142442
 MonoBehaviour:
@@ -214,8 +217,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: efe69ceba5ffccc40b81b5b24f8e49ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkTestFill
+  shape: 0
   radius: 0.4
-  falloff: 1
 --- !u!114 &1265142443
 MonoBehaviour:
   m_ObjectHideFlags: 0

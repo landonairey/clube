@@ -4,21 +4,31 @@ using UnityEngine;
 namespace Clube.Debug
 {
     /// <summary>
-    /// Placeholder terrain for <c>ChunkLab</c> until the 2C generators (K9) exist:
-    /// fills the chunk with a sphere of density centred in it, fading from solid
-    /// to empty across its surface, so there is a surface to look at. Writes go
-    /// through <see cref="Chunk.SetDensity"/> (A7). Remove once K9 lands.
+    /// Test shapes for <c>ChunkLab</c>, independent of the terrain generators (K9):
+    /// a ball of dirt in the middle of the chunk, or a chunk filled solid with a
+    /// shaft carved from top to bottom. Densities fade from 1 to 0 over one voxel
+    /// across each surface, so the default iso level traces the shape smoothly.
+    /// Writes go through <see cref="Chunk.SetDensity"/> (A7).
     /// </summary>
     [RequireComponent(typeof(ChunkView))]
     public class ChunkTestFill : MonoBehaviour
     {
-        [Tooltip("Sphere radius as a fraction of the chunk's smallest side.")]
+        /// <summary>The shapes this tool can fill the chunk with.</summary>
+        public enum Shape
+        {
+            /// <summary>A ball centred in the chunk, empty around it.</summary>
+            Ball,
+
+            /// <summary>Solid everywhere except a vertical shaft through the centre.</summary>
+            SolidWithShaft,
+        }
+
+        [SerializeField]
+        private Shape shape = Shape.Ball;
+
+        [Tooltip("Ball or shaft radius, as a fraction of the chunk's smallest horizontal or overall side.")]
         [SerializeField, Range(0f, 1f)]
         private float radius = 0.4f;
-
-        [Tooltip("Distance, in voxels, over which density fades from 1 to 0 across the sphere's surface.")]
-        [SerializeField, Min(0.01f)]
-        private float falloff = 1f;
 
         private ChunkView chunkView;
 
@@ -58,10 +68,12 @@ namespace Clube.Debug
                 return;
             }
 
-            Vector3Int samples = chunk.SampleCount;
-            Vector3 centre = (Vector3)chunk.VoxelCount * 0.5f;
-            float sphereRadius = radius * Mathf.Min(chunk.VoxelCount.x, Mathf.Min(chunk.VoxelCount.y, chunk.VoxelCount.z));
+            Vector3Int voxels = chunk.VoxelCount;
+            Vector3 centre = (Vector3)voxels * 0.5f;
+            float ballRadius = radius * Mathf.Min(voxels.x, Mathf.Min(voxels.y, voxels.z));
+            float shaftRadius = radius * Mathf.Min(voxels.x, voxels.z);
 
+            Vector3Int samples = chunk.SampleCount;
             for (int z = 0; z < samples.z; z++)
             {
                 for (int y = 0; y < samples.y; y++)
@@ -69,11 +81,14 @@ namespace Clube.Debug
                     for (int x = 0; x < samples.x; x++)
                     {
                         var sample = new Vector3Int(x, y, z);
-                        float distance = Vector3.Distance(sample, centre);
 
-                        // 0.5 exactly on the sphere's surface, so the default iso level traces it.
-                        float density = Mathf.Clamp01(0.5f + (sphereRadius - distance) / (2f * falloff));
-                        chunk.SetDensity(sample, density);
+                        // Signed distance inside the solid: positive inside, negative outside.
+                        float inside = shape == Shape.Ball
+                            ? ballRadius - Vector3.Distance(sample, centre)
+                            : Vector2.Distance(new Vector2(x, z), new Vector2(centre.x, centre.z)) - shaftRadius;
+
+                        // 0.5 exactly on the surface, reaching 0 and 1 one voxel either side.
+                        chunk.SetDensity(sample, Mathf.Clamp01(0.5f + inside * 0.5f));
                     }
                 }
             }

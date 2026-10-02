@@ -145,7 +145,7 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 
 ### 2C — Terrain surface generation
 - [ ] **K8** `Config` Base surface level + amplitude parameters.
-- [ ] **K9** `Core` Generators, selected via `Config` (these replace the lab-only `ChunkTestFill` sphere that 2A uses as placeholder terrain):
+- [ ] **K9** `Core` Generators, selected via `Config` (the lab-only `ChunkTestFill` shapes from 2A, a ball and a solid block with a shaft, stay alongside them as test fixtures):
   - Flat
   - Sine wave
   - 2D Perlin

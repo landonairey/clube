@@ -36,8 +36,8 @@ core. VoxelLab extras: `MarchingCubesCases`, `VoxelVolume` (Volume Lab),
 and `MeshingRecorder` + the `Step Through` child (`StepThroughLab`;
 other lab tools defer to it via `StepThroughMode`).
 2A is done (K1–K4): `ChunkLab` scene with live chunk resizing,
-`ChunkMeshStats` shown by `ChunkStatsHud`, and `ChunkTestFill` as
-placeholder terrain until the 2C generators (K9) replace it.
+`ChunkMeshStats` + FPS shown by `ChunkStatsHud`, and `ChunkTestFill`
+(ball, or solid with a shaft) as test shapes that stay alongside K9.
 Next: 2B voxel selection (K5–K7).
 
 ## Conventions

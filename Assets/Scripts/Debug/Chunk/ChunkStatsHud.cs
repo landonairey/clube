@@ -4,19 +4,46 @@ using UnityEngine;
 namespace Clube.Debug
 {
     /// <summary>
-    /// Game-view readout of the chunk's last mesh build (K4): size, vertex and
-    /// triangle counts, and how long meshing and the Unity mesh upload took.
+    /// Game-view readout for the chunk lab (K4): frame rate, chunk size, vertex
+    /// and triangle counts, how long meshing and the Unity mesh upload took, and
+    /// a warning when <see cref="ChunkGizmos"/> has to suppress its sample spheres.
     /// Reads <see cref="ChunkView.LastBuildStats"/> only (A4).
     /// </summary>
     [RequireComponent(typeof(ChunkView))]
     public class ChunkStatsHud : MonoBehaviour
     {
+        public const string SamplesSuppressedWarning =
+            "Too many density samples to draw as gizmos: the spheres would exceed Unity's gizmo limit, so they are suppressed.";
+
+        // The frame rate is frames counted over this many seconds, so one long frame
+        // (e.g. a big rebuild) only affects one window instead of dragging an average.
+        private const float FpsWindowSeconds = 0.5f;
+
         private ChunkView chunkView;
+        private ChunkGizmos chunkGizmos;
         private GUIStyle style;
+
+        private int windowFrames;
+        private float windowSeconds;
+        private float framesPerSecond;
 
         private void Awake()
         {
             chunkView = GetComponent<ChunkView>();
+            chunkGizmos = GetComponent<ChunkGizmos>();
+        }
+
+        private void Update()
+        {
+            // Unscaled, so the counter stays honest while the game is paused (timeScale = 0).
+            windowFrames++;
+            windowSeconds += Time.unscaledDeltaTime;
+            if (windowSeconds >= FpsWindowSeconds)
+            {
+                framesPerSecond = windowFrames / windowSeconds;
+                windowFrames = 0;
+                windowSeconds = 0f;
+            }
         }
 
         private void OnGUI()
@@ -31,22 +58,31 @@ namespace Clube.Debug
                 style = new GUIStyle(GUI.skin.label)
                 {
                     richText = true,
+                    wordWrap = true,
                     fontSize = 13,
                     padding = new RectOffset(10, 10, 8, 8),
                     normal = { textColor = Color.white },
                 };
             }
 
-            string text = Describe(chunkView.Chunk.VoxelCount, chunkView.LastBuildStats);
+            string frameTime = framesPerSecond > 0f ? $"{1000f / framesPerSecond:0.0} ms" : "measuring";
+            string text = $"<b>{framesPerSecond:0} FPS</b>  ({frameTime})\n" +
+                          Describe(chunkView.Chunk.VoxelCount, chunkView.LastBuildStats);
+            if (chunkGizmos != null && chunkGizmos.enabled && chunkGizmos.AreSamplesSuppressed)
+            {
+                text += $"\n<color=#ffcc44><b>Warning:</b> {SamplesSuppressedWarning}</color>";
+            }
+
             var content = new GUIContent(text);
-            Vector2 size = style.CalcSize(content);
-            var rect = new Rect(10f, 10f, size.x, size.y);
+            const float width = 380f;
+            float height = style.CalcHeight(content, width);
+            var rect = new Rect(10f, 10f, width, height);
 
             GuiDrawing.Rect(rect, new Color(0f, 0f, 0f, 0.65f));
             GUI.Label(rect, content, style);
         }
 
-        /// <summary>The readout text, shared with the Inspector.</summary>
+        /// <summary>The build part of the readout, shared with the Inspector.</summary>
         public static string Describe(Vector3Int voxelCount, ChunkMeshStats stats)
         {
             int voxels = voxelCount.x * voxelCount.y * voxelCount.z;
