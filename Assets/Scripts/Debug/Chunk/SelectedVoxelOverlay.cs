@@ -6,20 +6,20 @@ namespace Clube.Debug
 {
     /// <summary>
     /// Game-view extras for <see cref="VoxelSelector"/>'s selection (K7): labels on
-    /// the selected voxel's corners ("c3 0.52", green when solid), and a tint over
-    /// the triangles that voxel contributes, so its piece of the surface stands
-    /// out from the rest of the chunk.
+    /// the selected voxel's corners ("c3 0.52", green when solid), and coloured
+    /// lines along the edges of the triangles that voxel contributes, so its piece
+    /// of the surface stands out from the rest of the chunk.
     /// </summary>
     /// <remarks>
-    /// The tint is the voxel re-polygonised on its own and nudged a hair along each
-    /// face normal, so it sits just in front of the chunk's own triangles.
+    /// The lines come from the voxel re-polygonised on its own, nudged a hair along
+    /// each face normal so they sit just in front of the chunk's own triangles.
     /// </remarks>
     [RequireComponent(typeof(ChunkView), typeof(VoxelSelector))]
     public class SelectedVoxelOverlay : MonoBehaviour
     {
         private const string HighlightShader = "Universal Render Pipeline/Unlit";
 
-        // How far the tint sits in front of the surface, as a fraction of the voxel size.
+        // How far the lines sit in front of the surface, as a fraction of the voxel size.
         private const float SurfaceOffset = 0.004f;
 
         private static readonly Color SolidColor = new Color(0.35f, 0.95f, 0.45f);
@@ -29,14 +29,14 @@ namespace Clube.Debug
         [SerializeField]
         private bool showCornerLabels = true;
 
-        [Tooltip("Tint the triangles the selected voxel contributes to the chunk mesh.")]
+        [Tooltip("Outline the edges of the triangles the selected voxel contributes to the chunk mesh.")]
         [SerializeField]
         private bool highlightTriangles = true;
 
         [SerializeField]
         private Color highlightColor = new Color(1f, 0.6f, 0.15f);
 
-        [Tooltip("Unlit material for the tint. Falls back to URP Unlit if empty.")]
+        [Tooltip("Unlit material for the lines. Falls back to URP Unlit if empty.")]
         [SerializeField]
         private Material highlightMaterial;
 
@@ -47,10 +47,11 @@ namespace Clube.Debug
         private readonly float[] corners = new float[MarchingCubes.CornerCount];
         private readonly List<Vector3> vertices = new List<Vector3>();
         private readonly List<int> triangles = new List<int>();
+        private readonly List<int> lineIndices = new List<int>();
 
         private ChunkView chunkView;
         private VoxelSelector selector;
-        private LabMeshObject tint;
+        private LabMeshObject edges;
         private Material ownedMaterial;
         private GUIStyle labelStyle;
         private bool rebuildRequested;
@@ -72,15 +73,15 @@ namespace Clube.Debug
         {
             chunkView.MeshRebuilt -= OnMeshRebuilt;
             selector.SelectionChanged -= OnSelectionChanged;
-            if (tint != null)
+            if (edges != null)
             {
-                tint.Visible = false;
+                edges.Visible = false;
             }
         }
 
         private void OnDestroy()
         {
-            tint?.Dispose();
+            edges?.Dispose();
             LabMeshObject.DestroyNow(ownedMaterial);
         }
 
@@ -105,7 +106,7 @@ namespace Clube.Debug
             if (rebuildRequested)
             {
                 rebuildRequested = false;
-                RebuildTint();
+                RebuildEdges();
             }
         }
 
@@ -145,15 +146,15 @@ namespace Clube.Debug
             }
         }
 
-        private void RebuildTint()
+        private void RebuildEdges()
         {
             Vector3Int? selected = selector.SelectedVoxel;
             Chunk chunk = chunkView.Chunk;
             if (!highlightTriangles || selected == null || chunk == null)
             {
-                if (tint != null)
+                if (edges != null)
                 {
-                    tint.Visible = false;
+                    edges.Visible = false;
                 }
                 return;
             }
@@ -183,12 +184,24 @@ namespace Clube.Debug
                 vertices[triangles[i + 2]] = c + normal;
             }
 
-            tint ??= new LabMeshObject(transform, "Selected Voxel Tint", Material());
-            tint.Mesh.Clear();
-            tint.Mesh.SetVertices(vertices);
-            tint.Mesh.SetTriangles(triangles, 0);
-            tint.SetColor(highlightColor);
-            tint.Visible = true;
+            // Each triangle's three edges as line segments.
+            lineIndices.Clear();
+            for (int i = 0; i < triangles.Count; i += 3)
+            {
+                lineIndices.Add(triangles[i]);
+                lineIndices.Add(triangles[i + 1]);
+                lineIndices.Add(triangles[i + 1]);
+                lineIndices.Add(triangles[i + 2]);
+                lineIndices.Add(triangles[i + 2]);
+                lineIndices.Add(triangles[i]);
+            }
+
+            edges ??= new LabMeshObject(transform, "Selected Voxel Triangle Edges", Material());
+            edges.Mesh.Clear();
+            edges.Mesh.SetVertices(vertices);
+            edges.Mesh.SetIndices(lineIndices, MeshTopology.Lines, 0);
+            edges.SetColor(highlightColor);
+            edges.Visible = true;
         }
 
         private Material Material()
@@ -197,7 +210,7 @@ namespace Clube.Debug
             {
                 return highlightMaterial;
             }
-            ownedMaterial ??= new Material(Shader.Find(HighlightShader)) { name = "Selected Voxel Tint" };
+            ownedMaterial ??= new Material(Shader.Find(HighlightShader)) { name = "Selected Voxel Triangle Edges" };
             return ownedMaterial;
         }
     }
