@@ -88,6 +88,12 @@ surface generation (K8–K10).
   `LabVertexColorTransparent` materials: `ChunkDebugView`, `NormalLines`,
   `TetrahedraView`, `StepThroughVisuals`, `VoxelSelector`. Don't add new
   `OnDrawGizmos` visuals for anything that matters in Play mode.
+- Unity gotcha: URP's Lit shader never writes depth when its surface type is
+  Transparent (there's no Depth Write override in this version, and `_ZWrite`
+  is reset on validation), so a transparent mesh shows its own back walls.
+  Chunk renderers carry a second material, `ChunkDepthPrepass`
+  (`Assets/Shaders/ChunkDepthPrepass.shader`), which writes the chunk's depth
+  just before the transparent pass. Keep it when setting up new chunk views.
 - Unity gotcha: `isActiveAndEnabled` stays false outside Play mode for a
   regular (non-`[ExecuteAlways]`) MonoBehaviour, because `OnEnable` never
   runs. Editor code should check `enabled && gameObject.activeInHierarchy`.
