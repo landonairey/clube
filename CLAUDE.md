@@ -38,7 +38,8 @@ other lab tools defer to it via `StepThroughMode`).
 2A is done (K1–K4): `ChunkLab` scene with live chunk resizing,
 `ChunkMeshStats` + FPS shown by `ChunkStatsHud`, and `ChunkTestFill`
 (ball, or solid with a shaft) as test shapes that stay alongside K9.
-Next: 2B voxel selection (K5–K7).
+2B in progress: `VoxelSelector` picks voxels by click (K5) and F frames the
+selection (K6); next is K7, the per-voxel corner controls.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and

@@ -139,8 +139,8 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 - [x] **K4** `Lab` *(added)* Stats readout: vertex count, triangle count, last mesh build time (ms), split into meshing and Unity mesh upload (`ChunkMeshStats`, shown by `ChunkStatsHud` and the `ChunkView` Inspector).
 
 ### 2B — Voxel selection
-- [ ] **K5** `Lab` Click to select a voxel; highlight it.
-- [ ] **K6** `Lab` Focus camera on selected voxel.
+- [x] **K5** `Lab` Click to select a voxel; highlight it. Picks the first voxel the surface passes through along the click ray (`VoxelRaycast`, Core), shown with a line-mesh wireframe.
+- [x] **K6** `Lab` Focus camera on selected voxel (F, gliding the free-fly camera).
 - [ ] **K7** `Lab` Selected voxel exposes the Chapter 1 per-voxel controls. Editing a corner goes through A7 and updates neighbouring voxels that share it.
 
 ### 2C — Terrain surface generation
