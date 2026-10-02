@@ -5,8 +5,8 @@ namespace Clube.Debug
 {
     /// <summary>
     /// Test shapes for <c>ChunkLab</c>, independent of the terrain generators (K9):
-    /// a ball of dirt in the middle of the chunk, or a chunk filled solid with a
-    /// shaft carved from top to bottom. Densities fade from 1 to 0 over one voxel
+    /// a ball of dirt in the middle of the chunk, or a solid block (inside a skirt
+    /// of air) with a shaft carved from top to bottom. Densities fade from 1 to 0 over one voxel
     /// across each surface, so the default iso level traces the shape smoothly.
     /// Writes go through <see cref="Chunk.SetDensity"/> (A7).
     /// </summary>
@@ -19,7 +19,10 @@ namespace Clube.Debug
             /// <summary>A ball centred in the chunk, empty around it.</summary>
             Ball,
 
-            /// <summary>Solid everywhere except a vertical shaft through the centre.</summary>
+            /// <summary>
+            /// A solid block filling the chunk inside a one-sample skirt of air, with a
+            /// vertical shaft through the centre.
+            /// </summary>
             SolidWithShaft,
         }
 
@@ -82,6 +85,16 @@ namespace Clube.Debug
                     {
                         var sample = new Vector3Int(x, y, z);
 
+                        // The block keeps a one-sample skirt of air on every face of the chunk.
+                        // Marching Cubes only meshes where the field crosses the iso level inside
+                        // the chunk, so a block that is solid right up to the faces has no outer
+                        // surface and only the shaft wall would render.
+                        if (shape == Shape.SolidWithShaft && IsOnChunkFace(sample, voxels))
+                        {
+                            chunk.SetDensity(sample, 0f);
+                            continue;
+                        }
+
                         // Signed distance inside the solid: positive inside, negative outside.
                         float inside = shape == Shape.Ball
                             ? ballRadius - Vector3.Distance(sample, centre)
@@ -92,6 +105,12 @@ namespace Clube.Debug
                     }
                 }
             }
+        }
+
+        private static bool IsOnChunkFace(Vector3Int sample, Vector3Int voxels)
+        {
+            return sample.x == 0 || sample.y == 0 || sample.z == 0 ||
+                   sample.x == voxels.x || sample.y == voxels.y || sample.z == voxels.z;
         }
     }
 }

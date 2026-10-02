@@ -201,6 +201,40 @@ namespace Clube.Core.Tests
                 Is.EqualTo(VoxelVolume.SampleTrilinear(corners, 0.5f, 1000, seed: 7)));
         }
 
+        [Test]
+        public void Exact_CornersExactlyOnTheIsoLevel_NeverThrowsAndStaysInRange()
+        {
+            // Every mix of empty (0), exactly-on-iso (0.5) and solid (1) corners: 3^8 sets.
+            // A corner at the iso level puts surface vertices on the corner itself,
+            // which used to leave face outlines that couldn't close.
+            var corners = new float[MarchingCubes.CornerCount];
+            for (int combination = 0; combination < 6561; combination++)
+            {
+                int digits = combination;
+                for (int corner = 0; corner < corners.Length; corner++)
+                {
+                    corners[corner] = digits % 3 * 0.5f;
+                    digits /= 3;
+                }
+
+                float volume = 0f;
+                Assert.DoesNotThrow(
+                    () => volume = VoxelVolume.Exact(corners, 0.5f, Interpolated),
+                    $"Corners {string.Join(", ", corners)}");
+                Assert.That(volume, Is.InRange(-Tolerance, 1f + Tolerance), $"Corners {string.Join(", ", corners)}");
+            }
+        }
+
+        [Test]
+        public void Exact_CornerExactlyOnTheIsoLevel_MatchesAHairAbove()
+        {
+            float[] onIso = { 0.5f, 0f, 0f, 0f, 0f, 0f, 0f, 1f };
+            float[] justAbove = { 0.5001f, 0f, 0f, 0f, 0f, 0f, 0f, 1f };
+
+            Assert.That(VoxelVolume.Exact(onIso, 0.5f, Interpolated),
+                Is.EqualTo(VoxelVolume.Exact(justAbove, 0.5f, Interpolated)).Within(Tolerance));
+        }
+
         /// <summary>Corner values of 1 (solid) or 0 (empty) matching a case index.</summary>
         private static float[] Binary(int caseIndex)
         {

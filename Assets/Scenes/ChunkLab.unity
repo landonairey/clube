@@ -138,6 +138,8 @@ GameObject:
   - component: {fileID: 1265142438}
   - component: {fileID: 1265142447}
   - component: {fileID: 1265142448}
+  - component: {fileID: 1265142449}
+  - component: {fileID: 1265142450}
   m_Layer: 0
   m_Name: Chunk
   m_TagString: Untagged
@@ -204,9 +206,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkGizmos
   showSamples: 1
   cornerRadius: 0.05
-  showVoxelGrid: 0
-  voxelGridColor: {r: 0.32, g: 0.33, b: 0.36, a: 1}
+  wireframe: 1
   outlineColor: {r: 0.6, g: 0.6, b: 0.6, a: 1}
+  voxelGridColor: {r: 0.32, g: 0.33, b: 0.36, a: 1}
   sampleMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
   lineMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
 --- !u!114 &1265142442
@@ -262,6 +264,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: db20d97dcef134e47a2f62f0de8e8892, type: 2}
+  - {fileID: 2100000, guid: e5b5bd7efafffaf47bb512594cde1c28, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -336,6 +339,35 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 811a131db9bb18e43a7060e435792245, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkVolumeStats
+--- !u!114 &1265142449
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265142437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e91557e953d18034faa5912be8f6c18f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.SelectedVoxelEditor
+--- !u!114 &1265142450
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265142437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66389047198f3a940ad1317f97752f8d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.SelectedVoxelOverlay
+  showCornerLabels: 1
+  highlightTriangles: 1
+  highlightColor: {r: 1, g: 0.6, b: 0.15, a: 1}
+  highlightMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
+  targetCamera: {fileID: 0}
 --- !u!1 &1578836785
 GameObject:
   m_ObjectHideFlags: 0

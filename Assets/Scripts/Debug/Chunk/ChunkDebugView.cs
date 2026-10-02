@@ -7,8 +7,8 @@ namespace Clube.Debug
 {
     /// <summary>
     /// In Play mode, draws a sphere on every density sample shaded by its value,
-    /// black = 0 to white = 1 (V6), the chunk's outline, and optionally the
-    /// wireframe of every voxel. Reads the chunk's public data only (A4).
+    /// black = 0 to white = 1 (V6), and a wireframe: none, the chunk's outline, or
+    /// the outline plus every voxel's edges. Reads the chunk's public data only (A4).
     /// </summary>
     /// <remarks>
     /// These are real meshes rather than gizmos. Unity's gizmo pass draws gizmo
@@ -22,6 +22,18 @@ namespace Clube.Debug
     [RequireComponent(typeof(ChunkView))]
     public class ChunkDebugView : MonoBehaviour
     {
+        /// <summary>How much of the chunk's wireframe to draw.</summary>
+        public enum Wireframe
+        {
+            None,
+
+            /// <summary>The chunk's bounding box.</summary>
+            Outline,
+
+            /// <summary>The bounding box plus the grid lines between every voxel.</summary>
+            VoxelGrid,
+        }
+
         /// <summary>Above this many samples the spheres are suppressed, to keep the mesh and its rebuilds light.</summary>
         public const int MaxSampleSpheres = 40000;
 
@@ -37,15 +49,18 @@ namespace Clube.Debug
         [SerializeField, Range(0f, 0.5f)]
         private float cornerRadius = 0.05f;
 
-        [Tooltip("Draw the grid lines between voxels, showing every voxel's wireframe.")]
+        [Tooltip("None, the chunk's bounding box, or the box plus every voxel's wireframe. " +
+                 "In a 1×1×1 chunk (VoxelLab) the outline already is the voxel's wireframe.")]
         [SerializeField]
-        private bool showVoxelGrid;
+        private Wireframe wireframe = Wireframe.Outline;
 
-        [SerializeField]
-        private Color voxelGridColor = new Color(0.32f, 0.33f, 0.36f);
-
+        [Tooltip("Colour of the chunk's bounding box.")]
         [SerializeField]
         private Color outlineColor = new Color(0.6f, 0.6f, 0.6f);
+
+        [Tooltip("Colour of the inner voxel grid lines, dimmer so the outline still reads.")]
+        [SerializeField]
+        private Color voxelGridColor = new Color(0.32f, 0.33f, 0.36f);
 
         [Tooltip("Material that shows vertex colours, for the spheres. Falls back to URP Particles/Unlit if empty.")]
         [SerializeField]
@@ -142,7 +157,7 @@ namespace Clube.Debug
         private void OnDrawGizmos()
         {
             var view = GetComponent<ChunkView>();
-            if (!enabled || view.Chunk != null || view.Config == null)
+            if (!enabled || wireframe == Wireframe.None || view.Chunk != null || view.Config == null)
             {
                 return;
             }
@@ -260,6 +275,12 @@ namespace Clube.Debug
 
         private void RefreshOutline(Vector3Int voxelCount, float voxelSize)
         {
+            if (wireframe == Wireframe.None)
+            {
+                SetVisible(outline, false);
+                return;
+            }
+
             outline ??= new LabMeshObject(transform, "Chunk Outline", LineMaterial());
             scratchVertices.Clear();
             scratchIndices.Clear();
@@ -284,7 +305,7 @@ namespace Clube.Debug
         // Lines through every sample row along each axis, which together outline every voxel.
         private void RefreshGrid(Vector3Int voxelCount, float voxelSize)
         {
-            if (!showVoxelGrid)
+            if (wireframe != Wireframe.VoxelGrid)
             {
                 SetVisible(grid, false);
                 return;

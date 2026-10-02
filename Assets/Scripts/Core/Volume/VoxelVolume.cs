@@ -17,6 +17,9 @@ namespace Clube.Core
         // the apex) and are dropped.
         private const float DegenerateVolume = 1e-7f;
 
+        // Corner values this close to the iso level are moved this far above it. See NudgeOffIsoLevel.
+        private const float IsoNudge = 1e-4f;
+
         // Corner offsets of a cube face in counter-clockwise order in that face's
         // (u, v) coordinates. See FacePoint.
         private static readonly Vector2Int[] FaceCornersCcw =
@@ -80,10 +83,11 @@ namespace Clube.Core
         {
             output.Clear();
 
-            List<BoundaryTriangle> boundary = BuildClosedBoundary(cornerValues, isoLevel, placer);
+            float[] values = NudgeOffIsoLevel(cornerValues, isoLevel);
+            List<BoundaryTriangle> boundary = BuildClosedBoundary(values, isoLevel, placer);
             foreach (List<BoundaryTriangle> piece in SplitIntoPieces(boundary))
             {
-                Vector3 apex = ChooseApex(piece, cornerValues, isoLevel);
+                Vector3 apex = ChooseApex(piece, values, isoLevel);
                 foreach (BoundaryTriangle triangle in piece)
                 {
                     var tetrahedron = new Tetrahedron(apex, triangle.A, triangle.B, triangle.C, triangle.Source);
@@ -373,6 +377,23 @@ namespace Clube.Core
                 sum += triangle.A + triangle.B + triangle.C;
             }
             return sum / (piece.Count * 3);
+        }
+
+        // A corner exactly on (or within a hair of) the iso level puts its surface vertices
+        // on the corner itself: zero-length edges and flat triangles that leave the face
+        // outlines unable to close. Moving such corners IsoNudge away from the iso level,
+        // on the side Marching Cubes already puts them ("at or above" is solid), lifts the
+        // vertices just off the corner; the volume changes far below display precision.
+        private static float[] NudgeOffIsoLevel(IReadOnlyList<float> cornerValues, float isoLevel)
+        {
+            var values = new float[MarchingCubes.CornerCount];
+            for (int corner = 0; corner < values.Length; corner++)
+            {
+                float value = cornerValues[corner];
+                bool tooClose = Mathf.Abs(value - isoLevel) < IsoNudge;
+                values[corner] = !tooClose ? value : value >= isoLevel ? isoLevel + IsoNudge : isoLevel - IsoNudge;
+            }
+            return values;
         }
 
         // Point on the face `axis` = `side`, with (u, v) along the next two axes in

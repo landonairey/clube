@@ -142,7 +142,7 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 ### 2B — Voxel selection
 - [x] **K5** `Lab` Click to select a voxel; highlight it. Picks the voxel whose surface the click ray hits first (`SurfaceRaycast` on top of `VoxelRaycast`, Core); voxels without surface can't be picked. Shown with a line-mesh wireframe.
 - [x] **K6** `Lab` Focus camera on selected voxel (F, gliding the free-fly camera).
-- [ ] **K7** `Lab` Selected voxel exposes the Chapter 1 per-voxel controls. Editing a corner goes through A7 and updates neighbouring voxels that share it.
+- [x] **K7** `Lab` Selected voxel exposes the Chapter 1 per-voxel controls. Editing a corner goes through A7 and updates neighbouring voxels that share it. (`SelectedVoxelEditor`: corner sliders noting how many voxels share each corner, plus the case and preset panel shared with VoxelLab via `VoxelCaseGui`.)
 
 ### 2C — Terrain surface generation
 - [ ] **K8** `Config` Base surface level + amplitude parameters.

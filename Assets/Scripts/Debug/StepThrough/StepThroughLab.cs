@@ -23,8 +23,6 @@ namespace Clube.Debug
         // Above this many samples the density field is drawn without value labels.
         private const int MaxLabelledSamples = 64;
 
-        private const float LabelGap = 4f;
-
         [Tooltip("Playback speed multiplier.")]
         [SerializeField, Range(0.1f, 5f)]
         private float speed = 1f;
@@ -265,33 +263,7 @@ namespace Clube.Debug
         /// </summary>
         private void DrawLabelBeside(Camera viewCamera, Vector3 localPoint, Vector3 localCentre, float markerRadius, string text, Color color)
         {
-            Transform chunk = chunkView.transform;
-            Vector3 world = chunk.TransformPoint(localPoint);
-            if (!ToGui(viewCamera, world, out Vector2 point) ||
-                !ToGui(viewCamera, chunk.TransformPoint(localCentre), out Vector2 centre) ||
-                !ToGui(viewCamera, world + viewCamera.transform.up * (markerRadius * chunk.lossyScale.y), out Vector2 rim))
-            {
-                return;
-            }
-
-            Vector2 outwards = point - centre;
-            outwards = outwards.sqrMagnitude > 1f ? outwards.normalized : Vector2.up;
-
-            var content = new GUIContent(text);
-            Vector2 textSize = labelStyle.CalcSize(content);
-
-            // Far enough out that the label's box clears the marker in that direction.
-            float radius = Vector2.Distance(point, rim);
-            float halfExtent = Mathf.Abs(outwards.x) * textSize.x * 0.5f + Mathf.Abs(outwards.y) * textSize.y * 0.5f;
-            Vector2 labelCentre = point + outwards * (radius + LabelGap + halfExtent);
-
-            var rect = new Rect(labelCentre - textSize * 0.5f, textSize);
-            GuiDrawing.Rect(new Rect(rect.x - 3f, rect.y - 1f, rect.width + 6f, rect.height + 2f), new Color(0f, 0f, 0f, 0.6f));
-
-            Color previous = labelStyle.normal.textColor;
-            labelStyle.normal.textColor = color;
-            GUI.Label(rect, content, labelStyle);
-            labelStyle.normal.textColor = previous;
+            GuiDrawing.LabelBeside(viewCamera, chunkView.transform, localPoint, localCentre, markerRadius, text, color, labelStyle);
         }
 
         private void DrawInfoBox()
@@ -333,15 +305,6 @@ namespace Clube.Debug
                 case MeshingStepType.Triangle: return "Triangle table";
                 default: return type.ToString();
             }
-        }
-
-        private static bool ToGui(Camera viewCamera, Vector3 world, out Vector2 gui)
-        {
-            Vector3 screen = viewCamera.WorldToScreenPoint(world);
-
-            // Screen y grows upwards, GUI y grows downwards.
-            gui = new Vector2(screen.x, Screen.height - screen.y);
-            return screen.z > 0f;
         }
 
         private void EnsureStyles()

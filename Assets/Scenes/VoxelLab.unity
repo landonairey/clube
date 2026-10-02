@@ -238,6 +238,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: db20d97dcef134e47a2f62f0de8e8892, type: 2}
+  - {fileID: 2100000, guid: e5b5bd7efafffaf47bb512594cde1c28, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -300,9 +301,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Clube.Voxel.SingleVoxelGizmos
   showSamples: 1
   cornerRadius: 0.05
-  showVoxelGrid: 0
-  voxelGridColor: {r: 0.32, g: 0.33, b: 0.36, a: 1}
+  wireframe: 1
   outlineColor: {r: 0.6, g: 0.6, b: 0.6, a: 1}
+  voxelGridColor: {r: 0.32, g: 0.33, b: 0.36, a: 1}
   sampleMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
   lineMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
 --- !u!114 &190024693
@@ -386,6 +387,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelLabels
   showCornerLabels: 1
   showCrossedEdges: 1
+  showEdgeLabels: 1
   targetCamera: {fileID: 0}
 --- !u!114 &190024698
 MonoBehaviour:

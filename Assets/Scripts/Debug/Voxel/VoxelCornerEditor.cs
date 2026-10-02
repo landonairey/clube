@@ -11,7 +11,7 @@ namespace Clube.Debug
     /// path the in-game brush will use (A7).
     /// </summary>
     [RequireComponent(typeof(ChunkView))]
-    public class VoxelCornerEditor : MonoBehaviour
+    public class VoxelCornerEditor : MonoBehaviour, IVoxelCaseTarget
     {
         private const float DefaultIsoLevel = 0.5f;
 
