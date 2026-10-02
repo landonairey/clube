@@ -29,10 +29,6 @@ namespace Clube.Debug
         [SerializeField, Range(0f, 0.5f)]
         private float cornerRadius = 0.05f;
 
-        [Tooltip("Outline every sample sphere, so dark (empty) samples stay visible against a dark background.")]
-        [SerializeField]
-        private Color sampleOutlineColor = new Color(0.75f, 0.75f, 0.75f, 0.5f);
-
         [Tooltip("Draw the grid lines between voxels, showing every voxel's wireframe.")]
         [SerializeField]
         private bool showVoxelGrid;
@@ -143,8 +139,6 @@ namespace Clube.Debug
 
                         Gizmos.color = Color.Lerp(Color.black, Color.white, chunk.GetDensity(sample));
                         Gizmos.DrawSphere(position, radius);
-                        Gizmos.color = sampleOutlineColor;
-                        Gizmos.DrawWireSphere(position, radius);
                     }
                 }
             }

@@ -137,6 +137,7 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 - [x] **K2** `Config` Voxel unit size.
 - [x] **K3** `Lab` Chapter 1 global toggles (iso, interpolation, shading, winding, gizmos) apply chunk-wide. `ChunkGizmos` can hide its density spheres, and skips them above 20,000 samples.
 - [x] **K4** `Lab` *(added)* Stats readout: vertex count, triangle count, last mesh build time (ms), split into meshing and Unity mesh upload (`ChunkMeshStats`, shown by `ChunkStatsHud` and the `ChunkView` Inspector).
+- [x] **K30** `Core + Lab` *(added)* Chunk volume readout: the solid volume inside the chunk by both Chapter 1 methods, approximate (V11) and exact tetrahedra (V12), summed over every voxel (`ChunkVolume`, shown via `ChunkVolumeStats`). The exact sum costs about 165 ms at 32³, so turn the component off when editing large chunks.
 
 ### 2B — Voxel selection
 - [x] **K5** `Lab` Click to select a voxel; highlight it. Picks the first voxel the surface passes through along the click ray (`VoxelRaycast`, Core), shown with a line-mesh wireframe.
