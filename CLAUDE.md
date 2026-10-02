@@ -37,7 +37,12 @@ inspector, and labels are drawn by `VoxelLabelPainter` in both views.
 1C is done (V11–V14): `VoxelVolume` (Core) gives approximate, exact
 (signed tetrahedra fanned from c0) and Monte Carlo trilinear volumes;
 the `Volume Lab` child of the Voxel draws the exploded tetrahedra.
-Next: 1D step-through animation (V15 step recorder, V16–V19 playback).
+1D is done (V15–V19): `ChunkMesher.Build` takes an optional
+`MeshingRecorder` (Core, compiled out of release builds) that logs each
+step; the `Step Through` child of the Voxel (`StepThroughLab`, off by
+default = step-through mode off) replays the log with scene objects
+(`StepThroughVisuals`) and never re-runs the mesher. Chapter 1 is
+complete apart from the optional 1E standalone build (V22).
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
@@ -80,6 +85,14 @@ Next: 1D step-through animation (V15 step recorder, V16–V19 playback).
   runs. Editor code should check `enabled && gameObject.activeInHierarchy`.
 - Lab `WorldConfig` edits made in Play mode go to `ChunkView`'s private
   copy and reset on exit; only edits made outside Play mode are saved.
+- MCP gotcha: during a domain reload (recompile, entering/leaving Play
+  mode) the bridge drops and tools report "Unity not detected"; it comes
+  back once `~/.unity/mcp/connections/bridge-*.json` is rewritten. Wait for
+  it rather than switching to batch mode.
+- MCP gotcha: Play mode doesn't tick while the editor window is unfocused.
+  To test frame-driven behaviour, pause and advance with
+  `EditorApplication.Step()` from `RunCommand`. `Camera_Capture` skips
+  IMGUI; use `ScreenCapture.CaptureScreenshot` to see `OnGUI` HUDs.
 - MCP gotcha: GameObject instance IDs change on every domain reload
   (entering Play mode, recompiling). Look objects up again with `find`
   before passing an ID to tools like `Camera_Capture`.
