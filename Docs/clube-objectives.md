@@ -3,7 +3,7 @@
 Project: `E:\Repos\Unity3D\clube` (fresh restart; earlier terrain-demo repo is reference only, not ported)
 Target: Milestone 1 — Destructible Terrain Demo = **Chapters 0–3** (ends at Checkpoint 3.2)
 
-Each objective has an ID so it maps 1:1 to a GitHub issue; PRs group objectives per sub-section (see G2). Items marked *(added)* are suggestions beyond the original list — keep, cut, or defer as you like.
+Each objective has an ID so it maps 1:1 to a GitHub issue; PRs group objectives per sub-section (see G2). Items marked *(added)* are suggestions beyond the original list — keep, cut, or defer as you like. Items marked *(backlog)* were imported from the 2026-10-01 ideas backlog and are just as open to change.
 
 **Plan maturity:** Chapters 0–3 are scoped and schedulable. Chapters 4–5 are drafts. Chapters 6–8 are design exploration — context for decisions, not work to schedule.
 
@@ -117,6 +117,12 @@ Record the real algorithm once (A11), then replay the log. Stepping back just re
 - [x] **V17** `Lab` Controls: play/pause (Space), step forward/back (right/left arrow keys, new Input System), restart (R), speed slider, per-step-type durations. The arrows are shared with V20 case stepping through a mode switch: while step-through mode is on, they step the animation.
 - [x] **V18** `Lab` Info line describing the current step, e.g. "Voxel (3,1,2): corners 0, 3, 5 inside → case 41 → edges 0, 3, 8."
 - [x] **V19** `Lab` Visuals that work in the game window, not Gizmos: pooled spheres for corners, `LineRenderer` for edges, separate mesh for the partial surface, on-screen UI for the info line.
+- [ ] **V23** `Lab` *(backlog)* Code panel beside the playback: show the snippet of mesher code that the current step runs, with the active line highlighted, so the animation doubles as a code walkthrough.
+  - Note: show curated, simplified snippets (stored as lab text assets keyed by step type) rather than the real source, so refactoring the mesher doesn't silently break the lesson.
+
+### 1E — Standalone build *(backlog, optional)*
+- [ ] **V22** `Lab` Build `VoxelLab` as a standalone Windows exe (development build) and check it runs.
+  - Note: the voxel lab panel is a custom inspector (`Clube.Debug.Editor`), which doesn't exist in a build. The exe needs in-game controls, which overlaps with V19's game-window visuals — do this after 1D. It also needs `Clube.Debug` included, so it's a development build, unlike the release check in A10.
 
 **Done when:** every toggle updates the mesh live, V12 returns 0 for an all-outside cube and 1 (× unit volume) for all-inside, and the V16 sequence can be played through or stepped both ways for any preset case (V10).
 
@@ -148,12 +154,14 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
   - Spline-based (height remapping curve)
   - Heightmap import (PNG/RAW)
 - [ ] **K10** `Config` *(added)* Seed parameter for all noise generators.
+- [ ] **K29** `Lab` *(backlog)* Heightmap export: write the chunk's surface height per column as a grayscale image (one byte per pixel). Round-trips with K9's heightmap import, which makes a handy test.
+  - Note: the chunk is 3D, so "height" means the topmost iso-crossing in each column; overhangs and caves are lost.
 
 ### 2D — Performance
 - [ ] **K11** `Lab` Benchmark: `List<T>` vs preallocated arrays for mesh building.
   - Method: Stopwatch over N runs after warmup; record ms and GC allocations (Profiler / `GC.GetAllocatedBytesForCurrentThread`); test at 3+ chunk sizes.
   - Output: results table in the repo (`Docs/benchmarks.md`). Winner becomes the `Core` implementation.
-- [ ] **K12** `Lab` *(added, optional)* Third variant: `NativeArray` + Jobs/Burst — sets up Chapter 4 threading.
+- [ ] **K12** `Lab` *(added, optional)* Third variant: `NativeArray` + Jobs/Burst — sets up Chapter 4 threading. *(Also a backlog item: "code test of Burst-compiled jobs".)*
 
 ### 2E — Terrain editing
 - [ ] **K13** `Core + Lab` Click to add terrain (A7 path).
@@ -181,6 +189,8 @@ Compare storage schemes on a single chunk, behind the A12 interface. Measured ag
   - Note: smooth marching cubes needs varied densities near the surface, so compression mostly comes from solid and air regions. Also test with quantized densities (e.g. byte instead of float) to see how that changes the results.
   - Output: results added to `Docs/benchmarks.md`.
 - [ ] **K27** `Lab` *(added)* Visualize the storage: RLE runs as coloured bars, octree nodes as wireframe boxes at each depth.
+- [ ] **K28** `Core` *(backlog)* Single-byte densities: store each density as one byte to keep data tight and simple, and benchmark it against float in K26.
+  - Note: density is signed around the iso surface (negative = air, positive = solid), so use `sbyte`, or `byte` with 128 as the zero point. 256 levels is plenty for smooth surfaces but coarse for gentle brush falloff (K16); check for visible stepping. Answers the "density type" open question.
 
 **Done when:** a 32³ chunk can be generated with any K9 generator, edited in play mode, and benchmark results are committed; a 4×4×4 chunk can be played through at voxel granularity in about a minute.
 
@@ -197,11 +207,14 @@ This is where the shift happens: lab controls stay in `WorldLab`, and `Game` get
 - [ ] **M4** `Lab` Focus mode: select and highlight an individual chunk; show its stats.
 - [ ] **M5** `Core` *(added)* Terrain edits that cross chunk borders update all affected chunks.
 - [ ] **M12** `Lab` Storage at scale: repeat the K26 benchmark across many loaded chunks (total memory, load/unload time) and choose the `Core` storage for the game. Record the decision in `Docs/benchmarks.md`.
+- [ ] **M17** `Lab` *(backlog)* Chunk shape comparison: tall column chunks (Minecraft-style, full world height) vs cubic chunks stacked vertically to fill the elevation. Compare memory, mesh count and load time over the same terrain, and record the choice. Decide before M1 fixes the coordinate system.
+  - Note: stacked cubic chunks allow tall peaks without paying for empty sky everywhere, which matters for mountain terrain and the mountaineering skill (SK5).
 
 ### 3B — Player
 - [ ] **M6** `Game` Basic character: walk, jump, collide with terrain (MeshCollider regenerated on edit).
 - [ ] **M7** `Lab` *(added)* Toggle between player camera and debug free-fly camera.
 - [ ] **M8** `Game` *(added)* In-game dig/place controls calling the A7 edit path; brush size as a player setting.
+- [ ] **M16** `Lab` *(backlog)* Gravity multiplier: debug slider scaling the player's gravity, for tuning jump and fall feel.
 
 **Checkpoint 3.1 — playable terrain (after 3A + 3B):** in the `Game` scene, the player can walk across a multi-chunk area and dig through a chunk border without seams, using a single placeholder material. No debug components present (A10).
 
@@ -229,6 +242,8 @@ Ore nodes are generated as a procedural centroid with a 3D Gaussian falloff. Eac
 - [ ] **O7** `Lab` Ore visualization: centroid markers, translucent spheres at 1σ/2σ/3σ, and an X-ray mode that hides aggregates to show ore voxels only.
 - [ ] **O8** `Lab` Live ore parameter tuning in `WorldLab` with regenerate, plus a readout of ore voxel count per type per chunk.
 - [ ] **O9** `Core` Unit tests: same seed gives same centroids and ore voxels; probability falls off correctly with distance; border chunks agree.
+- [ ] **O10** `Core` *(backlog)* Rarity from real crustal abundance: set each ore's O1 parameters (nodes per region, peak probability) so overall abundance loosely follows real composition rates in Earth's crust.
+  - Note: the real spread is enormous (iron ~5% vs gold at parts per billion), so compress it on a log scale: keep the real ordering while keeping rare ores findable. O8's per-chunk counts verify the result.
 
 **Checkpoint 3.2 — materials and ore (after 3C + 3D), completes Milestone 1:** the Checkpoint 3.1 scene now shows all six materials, with ore nodes spanning chunk borders consistently. Still no debug components (A10).
 
@@ -245,7 +260,9 @@ Ore nodes are generated as a procedural centroid with a 3D Gaussian falloff. Eac
 - [ ] **P7** `Core` Level of detail for distant chunks.
 - [ ] **P8** `Core` Biomes / region-based generator blending.
 - [ ] **P9** `Core` Ore generation (O1–O5) works with streaming: unloading and reloading a chunk gives identical ore placement.
-- [ ] **P10** `Game` *(added)* Settings menu: render distance, sensitivity, graphics options.
+- [ ] **P10** `Game` *(added)* Settings menu: render distance, sensitivity, graphics options, and *(backlog)* rebinding the player controller's key binds (Input System rebinding, saved with the player settings, A3).
+- [ ] **P11** `Core` *(backlog)* GPU marching cubes: run chunk meshing as a compute shader to speed up world generation. Benchmark against the CPU and Burst paths (K11, K12).
+  - Note: colliders (M6) and volume math (I5) need the mesh back on the CPU, and that readback can eat the gain; measure end to end, not just the dispatch.
 
 ---
 
@@ -260,10 +277,11 @@ Features that make the procedural world feel like a game.
 - [ ] **I4** `Game` Drop items from inventory back into the world.
 - [ ] **I5** `Game` *(added)* Mining produces items: removed terrain adds material to the inventory based on material type and volume removed (reuses V11 volume math — move it to `Core` at this point).
 - [ ] **I6** `Game` *(added)* Placing terrain uses up material from the inventory.
+- [ ] **I7** `Game` *(backlog)* Consumables with timed effects. First one: coffee, a daytime stimulant boost (pairs with PK4 day/night). See the setting-fit open question.
 
 ### 5B — Inventory management
 - [ ] **N1** `Core` Inventory data model separate from UI: slots, stacking, add/remove/move/split, capacity limits. Keep capacity rules pluggable so tribe progressions and mixed-item bundles (Chapter 8) can slot in later.
-- [ ] **N2** `Game` Inventory UI: grid of slots, drag and drop, stack counts.
+- [ ] **N2** `Game` Inventory UI (the inventory screen): grid of slots, drag and drop, stack counts.
 - [ ] **N3** `Game` Hotbar with number-key and scroll-wheel selection; selected item determines what the player does (dig, place, use).
 - [ ] **N4** `Core` Unit tests for inventory rules (stacking, overflow, split, capacity) per G3.
 
@@ -280,6 +298,18 @@ Features that make the procedural world feel like a game.
 ### 5D — More materials *(placeholder)*
 - [ ] **X1** `Core` Additional ore types (e.g. tin, iron, lead, coal) — new entries in the M9 registry, likely driven by what the tech tree needs.
 - [ ] **X2** `Core` Alternative aggregates (e.g. sand, gravel, clay, granite, limestone), with rules for where each appears.
+- [ ] **X3** `Core` *(backlog)* Gemstones as a drop chance from certain host ores, with rarity set the same way as O10. Feeds jewelry crafting (CR8).
+
+### 5E — HUD *(backlog)*
+Other screens are already planned elsewhere: inventory (N2), settings and key binds (P10), skill tree (SK4), tech tree (T3).
+
+- [ ] **U1** `Game` Mini map HUD element.
+- [ ] **U2** `Game` Ore gathered readout: a short pickup notice and running totals as material enters the inventory (I5).
+
+### 5F — Mining feel *(backlog)*
+- [ ] **MF1** `Core + Game` Hardness and tool upgrades: material hardness (M9) sets how fast a voxel can be extracted, and an upgrade path for extraction tools raises extraction efficiency. Ties to CR3 (better metals give better tools).
+- [ ] **MF2** `Game` Test different ore-cracking and pickaxe-swinging animations.
+- [ ] **MF3** `Game` Dropped material behaviour: compare the feel of loose dirt and ore clumping back into the terrain mesh (an A7 edit, like PK9) vs dropping as items to pick back up (I2). Decision recorded in `Docs/`.
 
 ---
 
@@ -293,6 +323,10 @@ Features that make the procedural world feel like a game.
 - [ ] **SK1** `Game` Prototype a minimal skill system (XP from an activity, levels, one visible effect per level) and playtest whether skill progression feels right for the demo, for later gameplay, or not at all.
 - [ ] **SK2** `Lab` Toggle skills on/off and override skill levels, so the same world can be compared at novice vs expert.
 - [ ] **SK3** Decision record in `Docs/` on whether skills stay, and in which chapter they land.
+- [ ] **SK4** `Game` *(backlog)* Skill tree screen, if skills stay (SK3).
+- [ ] **SK5** `Core + Game` *(backlog)* Mountaineering skill: higher skill lets the player walk up steeper gradients and climb more mountains. A good candidate for the SK1 feel test, since the effect is immediately visible.
+  - Note: compare the surface normal angle against a max slope that rises with skill; it can drive `CharacterController.slopeLimit` directly. Benefits from tall terrain (M17).
+- [ ] **SK6** `Game` *(backlog)* Skill books hidden in merchant shops (7C) and blacksmith camps (ST2) that raise a skill once read.
 
 ### 6B — Prospecting skill
 Prospecting reads the same probability field that ore generation uses (O1–O4). Skill controls how clearly the player sees it.
@@ -328,10 +362,15 @@ Furnace temperature is the key that unlocks metals.
 - [ ] **DV4** Alchemy workbench: the unlock that reveals mineral species (PR2) and enables chemical refining steps.
 
 ### 6F — Crafting
-- [ ] **CR1** `Core` Recipe data model: inputs, outputs, required station, required tech or skill.
+- [ ] **CR1** `Core` Recipe data model: inputs, outputs, required station (workbench, anvil, …), required tools in hand *(backlog)*, required tech or skill.
 - [ ] **CR2** `Core` Medieval item set: tools (pick, shovel, hammer), weapons (sword, axe, spear), armour (mail, plate pieces).
 - [ ] **CR3** `Core` Item quality inherited from metal quality (PR4); better metals and processes give better tools, which can mine harder materials (M9 hardness).
 - [ ] **CR4** `Game` Crafting stations: forge, anvil, kiln, alchemy bench.
+- [ ] **CR5** `Core` *(backlog)* Item state of health: tools, weapons and armour lose durability with use, faster or harder use wearing them down quicker. Repairs can't restore them to 100%: irrecoverable damage builds up slowly, modelled on battery capacity retention over cycle life.
+  - Implementation sketch: two values per item, current durability and max capacity (SOH). Repairs refill durability up to max; max only ever decreases. Saved with the item (S3).
+- [ ] **CR6** `Core` *(backlog)* Repair: costs some time and base materials, with the cost driven by a repair, blacksmith, or general crafting skill (6A).
+- [ ] **CR7** `Core` *(backlog)* Recycling: break items and tools back down to base materials. Yield depends on a recycling (or general crafting) skill and scales with the item's state of health (CR5), so worn items return less.
+- [ ] **CR8** `Core` *(backlog)* Jewelry crafting from precious metals (PR5) and gems (X3), sold alongside blacksmithed weapons and armour (TR5).
 
 ### 6G — Tech tree
 - [ ] **T1** Research pass: map the historical order from surface gathering and native metals → copper smelting → bronze (needs tin) → iron bloomery → steel, alongside clay/brick, charcoal, glass, water power, and alchemy. Choose which steps become nodes.
@@ -361,6 +400,12 @@ Villages and towns are placed where the natural resources would support them.
 - [ ] **ST5** `Core` Deterministic from seed, using the same world-cell approach as ore centroids (O2), so settlements exist before their chunks are loaded.
 - [ ] **ST6** `Core` Flatten/clear terrain under building footprints.
 - [ ] **ST7** `Lab` Map overlay showing region scores, chosen settlement sites, and why each specialization was picked.
+- [ ] **ST8** `Core` *(backlog)* Town name generator, seeded per settlement (ST5).
+  - Pattern: `[Descriptor] [Geological feature] [Settlement type]`, e.g. *Wind River Village*, *Stone Mountain City*, *Gold Coast Outpost*.
+  - Descriptors: colours, adjectives, and resource types (copper, silver, gold, steel, iron, bronze, brick, clay, cedar, maple, oak, …).
+  - Settlement types: Camp, Outpost, Village, Town, City. The type tracks the ST4 tier, so a town can grow from *Iron Creek Camp* to *Iron Creek City*.
+  - Suffixes where they fit, attached to a single word: -ville, -shire, -stead, -borough (e.g. *Copperville*). -stead for the smallest places, -borough for market towns, -shire for regions.
+  - Names carry meaning: natural resources (copper, clay, cedar) hint at nearby deposits from ST1 scoring, while manufactured ones (steel, bronze, brick) mark what the town produces (ST2).
 - Dependencies: coal and iron (5D X1) and water bodies (not yet in the plan — see open questions).
 
 ### 7C — Merchants and trade
@@ -369,13 +414,21 @@ Villages and towns are placed where the natural resources would support them.
 - [ ] **TR3** `Core` Currency, possibly silver and gold coin (ties to precious metal refining, PR5).
 - [ ] **TR4** `Game` Buy/sell UI with merchant NPCs, showing the town's prices.
 - [ ] **TR5** `Core` Item quality (CR3) affects sale price.
+- [ ] **TR6** `Core` *(backlog)* Ore value from contained metal: value is the weight of the valuable element locked in the mineral (PR2 species), with the amount of ore measured as volume from marching cubes extraction (I5, V11).
 
 ### 7D — Economic goal
 - [ ] **EC1** Design pass: what "taking control" of a town means (e.g. market share of key goods, owning its workshops, becoming its main supplier) and the win condition.
+  - *(backlog)* Candidate end goals to test: make a city the largest economic power; reach a target amount of money; gather every type of ore, mineral and gem; unlock everything in the skill tree; advance to space asteroid mining (see the setting-fit open question).
 - [ ] **EC2** `Core` Player venture: owning property or workshops, and possibly hiring NPC workers.
 - [ ] **EC3** `Core` Per-town influence meter driven by the player's share of trade and production.
 - [ ] **EC4** `Core` Rival businesses or town guilds that compete for the same markets.
 - [ ] **EC5** `Game` Ledger UI: wealth over time, influence per town, best trade routes.
+- [ ] **EC6** *(backlog)* Core loop design pass: collecting → crafting → selling. Explore what makes each leg enjoyable and how they hand off to each other; playtest before building more systems on top.
+- [ ] **EC7** `Core` *(backlog)* Mining rights: the player pays a fee to unlock mining in an area. Fees are set by the nearby city or lord and tied to the player's standing with them (EC3), feeding the town-dominance goal. Needs a region map (ST1).
+
+### 7E — World events *(backlog)*
+- [ ] **WE1** `Core` Meteor event: a rare meteor crash-lands on the terrain (crater via a large A7 edit, like PK11), leaving a good source of high-quality iron.
+  - Note: meteoric iron is real — nickel-iron that was worked before smelting existed — so it fits the "native metals" start of the tech tree (T1) as an early, rare iron source.
 
 ---
 
@@ -497,13 +550,24 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
   - Extends the existing "automate what the player has mastered" principle (Chapter 6, DV2 water power).
   - **Guardrail: this is not a factory game.** Machines should help with the tedious part of a step the player already understands, need tending (fuel, repairs, supervision), and stay local. No sprawling conveyor networks or production lines that run the economy on their own.
 
+- **PK13 Fauna and flora collection.** *(backlog)* A collection system for plants and animals.
+  - Needs vegetation and animals, which aren't in the plan yet (same gap as PK3); pairs with PK7 trees.
+
+- **PK14 Grandfather's cottage.** *(backlog)* An old cottage that, as part of the story line, turns out to be the player's grandfather's house. A mountain climber game demo is still on his computer, and the player must figure out how to turn it on or unlock it.
+
+- **PK15 Evolving title music.** *(backlog)* Menu music gains instruments as the player unlocks things: leather making adds drums and percussion; brass or another metal adds stringed instruments.
+
+- **PK16 Timepiece Easter egg.** *(backlog)* A side quest to gift a timepiece to the local ore miner; afterwards he mines on beat with the title music (PK15). Timepieces tie into PK6 timekeeping.
+
+- **PK17 Building system.** *(backlog)* Parked; it was in an earlier "Milestone 3 / Alpha" plan with undecided status. Would overlap with EC2 (owning property and workshops).
+
 ---
 
 ## Open questions
 
-- Target chunk size for Chapter 3+ (16³ vs 32³)?
+- Target chunk size for Chapter 3+ (16³ vs 32³)? And chunk shape: tall columns or stacked cubes (M17)?
 - Which A6 variants does the game lock in (likely interpolated + smooth)?
-- Density type for storage: float, half, or byte (affects K26 results and save size)?
+- Density type for storage: float, half, or byte (affects K26 results and save size)? The backlog leans byte (K28).
 - Save file format: binary (compact, fast) vs JSON (readable, easier to debug)?
 - Ore spread: single σ (spherical nodes) or per-axis σ (flattened/elongated veins) from the start?
 - Should the tech tree gate which ores the player can mine (by tool hardness) or which they can process?
@@ -511,5 +575,6 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
 - Mixed ore (PK1): single composite item or auto-split into separate items?
 - Water bodies (rivers, lakes) are needed for settlement scoring (ST1) and water power (DV2) — which chapter adds them? (Parked as PK8, with flowing water as a stretch goal.)
 - Settlement generation before or after the economy design is settled (EC1)?
-- Setting fit: a Computational tribe and the Combined sequence's computational era clash with the medieval + Da Vinci setting. Reframe (e.g. clockwork, counting machines, runes/sigils as 'bits'), push to a later era, or relax the setting?
+- Setting fit: a Computational tribe and the Combined sequence's computational era clash with the medieval + Da Vinci setting. Reframe (e.g. clockwork, counting machines, runes/sigils as 'bits'), push to a later era, or relax the setting? The backlog adds two more cases: coffee (I7) only reached Europe in the 1600s (an exotic import, or a period stimulant instead?), and asteroid mining as an end goal (EC1) leaves the medieval world entirely.
+- Dropped material (MF3): clump back into terrain, or drop as items? Interacts with mixed ore (PK1) and gravity voxels (PK9).
 - Do settlements (7B) belong to tribes, so a town's culture shapes what it makes and trades?
