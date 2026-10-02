@@ -9,27 +9,40 @@ namespace Clube.Debug
 {
     /// <summary>
     /// Draws a point in a recorded mesh build with real scene objects, so it shows
-    /// in the Game view as well as the Scene view (V19): spheres on the current
-    /// voxel's corners and edge vertices, a line per cube edge, an outline for the
-    /// triangle being added, and a mesh of every triangle finished so far.
+    /// in the Game view as well as the Scene view (V19): spheres on the density
+    /// samples, on the current voxel's corners and edge vertices, a line per cube
+    /// edge, an outline for the triangle being added, and a mesh of every triangle
+    /// finished so far.
     /// </summary>
     /// <remarks>
-    /// Only the current voxel gets markers, so the same fixed set of objects is
-    /// reused for every voxel and chunk size. The objects live under one root,
-    /// parented to the chunk so they share its transform.
+    /// Only the current voxel gets corner and edge markers, so that set is reused
+    /// for every voxel and chunk size. The density field gets one sphere per sample,
+    /// which suits the voxel lab; Chapter 2's chunk-scale field (K17) will need a
+    /// cheaper way to draw thousands of points. Everything lives under one root,
+    /// parented to the chunk so it shares its transform.
     /// </remarks>
     public sealed class StepThroughVisuals : IDisposable
     {
+        /// <summary>Corner sphere radius, as a fraction of the voxel size.</summary>
+        public const float CornerRadius = 0.08f;
+
+        /// <summary>Radius of a corner whose bit is being added to the case index.</summary>
+        public const float HighlightedCornerRadius = 0.14f;
+
+        private const float VertexRadius = 0.06f;
         private const string ColorProperty = "_BaseColor";
 
-        private static readonly Color SolidColor = new Color(1f, 0.55f, 0.15f);
-        private static readonly Color EmptyColor = new Color(0.35f, 0.65f, 1f);
-        private static readonly Color HighlightColor = new Color(1f, 0.95f, 0.3f);
+        public static readonly Color SolidColor = new Color(1f, 0.55f, 0.15f);
+        public static readonly Color EmptyColor = new Color(0.35f, 0.65f, 1f);
+        public static readonly Color CrossedEdgeColor = new Color(1f, 0.95f, 0.3f);
+
         private static readonly Color CubeEdgeColor = new Color(0.55f, 0.55f, 0.55f);
         private static readonly Color VertexColor = new Color(1f, 0.95f, 0.3f);
         private static readonly Color TriangleOutlineColor = new Color(0.3f, 1f, 0.85f);
 
         private readonly GameObject root;
+        private readonly Material markerMaterial;
+        private readonly List<MeshRenderer> sampleSpheres = new List<MeshRenderer>();
         private readonly MeshRenderer[] cornerSpheres = new MeshRenderer[MarchingCubes.CornerCount];
         private readonly MeshRenderer[] vertexSpheres = new MeshRenderer[MarchingCubes.EdgeCount];
         private readonly LineRenderer[] edgeLines = new LineRenderer[MarchingCubes.EdgeCount];
@@ -40,7 +53,7 @@ namespace Clube.Debug
         private readonly List<Vector3> surfaceVertices = new List<Vector3>();
         private readonly List<int> surfaceTriangles = new List<int>();
 
-        // Recording index into the triangle steps, and how many are in the surface mesh.
+        // Recording index of each triangle step, and how many are in the surface mesh.
         private readonly List<int> triangleSteps = new List<int>();
         private int surfaceTriangleCount = -1;
 
@@ -51,19 +64,20 @@ namespace Clube.Debug
         /// <param name="surfaceMaterial">Material for the partial surface, normally the chunk's own.</param>
         public StepThroughVisuals(Transform chunk, Material markerMaterial, Material surfaceMaterial)
         {
+            this.markerMaterial = markerMaterial;
             root = new GameObject("Step Through Visuals");
             root.transform.SetParent(chunk, false);
 
             for (int corner = 0; corner < cornerSpheres.Length; corner++)
             {
-                cornerSpheres[corner] = CreateSphere($"Corner {corner}", markerMaterial);
+                cornerSpheres[corner] = CreateSphere($"Corner {corner}");
             }
             for (int edge = 0; edge < MarchingCubes.EdgeCount; edge++)
             {
-                vertexSpheres[edge] = CreateSphere($"Vertex {edge}", markerMaterial);
-                edgeLines[edge] = CreateLine($"Edge {edge}", markerMaterial, 2);
+                vertexSpheres[edge] = CreateSphere($"Vertex {edge}");
+                edgeLines[edge] = CreateLine($"Edge {edge}", 2);
             }
-            triangleOutline = CreateLine("Triangle Outline", markerMaterial, 0);
+            triangleOutline = CreateLine("Triangle Outline", 0);
 
             surface = new Mesh { name = "Step Through Surface" };
             surface.MarkDynamic();
@@ -93,6 +107,13 @@ namespace Clube.Debug
                 }
             }
             surfaceTriangleCount = -1;
+
+            Vector3Int count = recording.SampleCount;
+            int samples = count.x * count.y * count.z;
+            while (sampleSpheres.Count < samples)
+            {
+                sampleSpheres.Add(CreateSphere($"Sample {sampleSpheres.Count}"));
+            }
         }
 
         /// <summary>Shows the build as it stands <paramref name="progress"/> (0-1) of the way through step <paramref name="stepIndex"/>.</summary>
@@ -105,10 +126,18 @@ namespace Clube.Debug
             }
 
             MeshingStep step = recording.Steps[stepIndex];
+            ShowSurface(stepIndex, progress);
+
+            bool isField = step.Type == MeshingStepType.DensityField;
+            ShowSamples(isField ? progress : -1f);
+            if (isField)
+            {
+                HideVoxelMarkers();
+                return;
+            }
+
             RecordedVoxel voxel = recording.Voxels[step.VoxelIndex];
             float size = recording.Settings.VoxelSize;
-
-            ShowSurface(stepIndex, progress);
             ShowCorners(voxel, step.Type, progress, size);
             ShowEdges(voxel, step.Type, progress, size);
             ShowVertices(voxel, stepIndex, progress, size);
@@ -119,6 +148,45 @@ namespace Clube.Debug
         {
             Object.Destroy(surface);
             Object.Destroy(root);
+        }
+
+        // The density field, samples appearing in storage order; hidden when progress < 0.
+        private void ShowSamples(float progress)
+        {
+            Vector3Int count = recording.SampleCount;
+            int total = count.x * count.y * count.z;
+            int shown = progress < 0f ? 0 : StepReveal.Revealed(progress, total);
+            float size = recording.Settings.VoxelSize;
+
+            for (int i = 0; i < sampleSpheres.Count; i++)
+            {
+                if (i >= shown)
+                {
+                    sampleSpheres[i].gameObject.SetActive(false);
+                    continue;
+                }
+
+                var sample = new Vector3Int(i % count.x, i / count.x % count.y, i / (count.x * count.y));
+                float density = recording.GetDensity(sample);
+                Place(sampleSpheres[i], (Vector3)sample * size, CornerRadius * size, Grey(density));
+            }
+        }
+
+        private void HideVoxelMarkers()
+        {
+            foreach (MeshRenderer sphere in cornerSpheres)
+            {
+                sphere.gameObject.SetActive(false);
+            }
+            foreach (MeshRenderer sphere in vertexSpheres)
+            {
+                sphere.gameObject.SetActive(false);
+            }
+            foreach (LineRenderer line in edgeLines)
+            {
+                line.gameObject.SetActive(false);
+            }
+            triangleOutline.positionCount = 0;
         }
 
         // Every triangle whose step is complete: steps before this one, plus this one at the end.
@@ -157,49 +225,35 @@ namespace Clube.Debug
             surface.RecalculateBounds();
         }
 
-        // Grey by density until classified; then orange (solid) or blue (empty). While
-        // the case index is built, the corner adding its bit is enlarged.
+        // Grey by density until sampled; then orange (solid) or blue (empty). While the
+        // case index is built, solid corners grow as their bit is added.
         private void ShowCorners(RecordedVoxel voxel, MeshingStepType type, float progress, float size)
         {
-            int classified = type == MeshingStepType.ReadCorners ? 0
-                : type == MeshingStepType.Classify ? RevealedCount(progress, MarchingCubes.CornerCount)
-                : MarchingCubes.CornerCount;
-            int bitCorner = type == MeshingStepType.CaseIndex
-                ? Mathf.Min(RevealedCount(progress, MarchingCubes.CornerCount), MarchingCubes.CornerCount - 1)
-                : -1;
-
+            int sampled = StepReveal.CornersSampled(type, progress);
             for (int corner = 0; corner < cornerSpheres.Length; corner++)
             {
-                float value = voxel.CornerValues[corner];
-                Color color = corner < classified
+                Color color = corner < sampled
                     ? (MarchingCubes.IsCornerSolid(voxel.CaseIndex, corner) ? SolidColor : EmptyColor)
-                    : Color.Lerp(Color.black, Color.white, value);
+                    : Grey(voxel.CornerValues[corner]);
 
-                float radius = (corner == bitCorner ? 0.14f : 0.08f) * size;
-                Place(cornerSpheres[corner], CornerPosition(voxel, corner, size), radius, color);
+                float radius = StepReveal.IsBitHighlighted(voxel, corner, type, progress) ? HighlightedCornerRadius : CornerRadius;
+                Place(cornerSpheres[corner], CornerPosition(voxel, corner, size), radius * size, color);
             }
         }
 
-        // Faint cube outline; crossed edges highlighted from the edge table step on,
-        // lighting up one at a time during it.
+        // Faint cube outline; crossed edges highlighted from the edge table step on.
         private void ShowEdges(RecordedVoxel voxel, MeshingStepType type, float progress, float size)
         {
-            int crossedCount = CountBits(voxel.CrossedEdgeMask);
-            int highlighted = type < MeshingStepType.EdgeTable ? 0
-                : type == MeshingStepType.EdgeTable ? RevealedCount(progress, crossedCount)
-                : crossedCount;
-
-            int crossedSoFar = 0;
             for (int edge = 0; edge < MarchingCubes.EdgeCount; edge++)
             {
-                bool crossed = (voxel.CrossedEdgeMask & (1 << edge)) != 0;
-                bool lit = crossed && crossedSoFar++ < highlighted;
+                bool lit = StepReveal.IsEdgeLit(voxel, edge, type, progress);
 
                 LineRenderer line = edgeLines[edge];
+                line.gameObject.SetActive(true);
                 line.SetPosition(0, CornerPosition(voxel, MarchingCubesTables.EdgeCorners[edge, 0], size));
                 line.SetPosition(1, CornerPosition(voxel, MarchingCubesTables.EdgeCorners[edge, 1], size));
                 line.widthMultiplier = (lit ? 0.035f : 0.012f) * size;
-                SetColor(line, lit ? HighlightColor : CubeEdgeColor);
+                SetColor(line, lit ? CrossedEdgeColor : CubeEdgeColor);
             }
         }
 
@@ -212,7 +266,8 @@ namespace Clube.Debug
                 sphere.gameObject.SetActive(false);
             }
 
-            for (int i = stepIndex; i >= 0 && recording.Steps[i].VoxelIndex == recording.Steps[stepIndex].VoxelIndex; i--)
+            int voxelIndex = recording.Steps[stepIndex].VoxelIndex;
+            for (int i = stepIndex; i >= 0 && recording.Steps[i].VoxelIndex == voxelIndex; i--)
             {
                 MeshingStep step = recording.Steps[i];
                 if (step.Type != MeshingStepType.Interpolate)
@@ -228,7 +283,7 @@ namespace Clube.Debug
                     position = Vector3.Lerp(start, target, Mathf.SmoothStep(0f, 1f, progress));
                 }
 
-                Place(vertexSpheres[step.Edge], position, 0.06f * size, VertexColor);
+                Place(vertexSpheres[step.Edge], position, VertexRadius * size, VertexColor);
             }
         }
 
@@ -258,26 +313,27 @@ namespace Clube.Debug
             SetColor(triangleOutline, TriangleOutlineColor);
         }
 
-        private MeshRenderer CreateSphere(string name, Material material)
+        private MeshRenderer CreateSphere(string name)
         {
             GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             sphere.name = name;
             Object.Destroy(sphere.GetComponent<Collider>());
             sphere.transform.SetParent(root.transform, false);
+            sphere.SetActive(false);
 
             var renderer = sphere.GetComponent<MeshRenderer>();
-            renderer.sharedMaterial = material;
+            renderer.sharedMaterial = markerMaterial;
             renderer.shadowCastingMode = ShadowCastingMode.Off;
             return renderer;
         }
 
-        private LineRenderer CreateLine(string name, Material material, int positionCount)
+        private LineRenderer CreateLine(string name, int positionCount)
         {
             var lineObject = new GameObject(name);
             lineObject.transform.SetParent(root.transform, false);
 
             var line = lineObject.AddComponent<LineRenderer>();
-            line.sharedMaterial = material;
+            line.sharedMaterial = markerMaterial;
             line.useWorldSpace = false;
             line.positionCount = positionCount;
             line.numCapVertices = 2;
@@ -299,6 +355,11 @@ namespace Clube.Debug
             renderer.SetPropertyBlock(properties);
         }
 
+        private static Color Grey(float density)
+        {
+            return Color.Lerp(Color.black, Color.white, density);
+        }
+
         private static Vector3 CornerPosition(RecordedVoxel voxel, int corner, float size)
         {
             return voxel.Origin + (Vector3)MarchingCubes.CornerOffset(corner) * size;
@@ -308,22 +369,6 @@ namespace Clube.Debug
         {
             int cornerA = MarchingCubesTables.EdgeCorners[edge, 0];
             return MarchingCubes.IsCornerSolid(voxel.CaseIndex, cornerA) ? cornerA : MarchingCubesTables.EdgeCorners[edge, 1];
-        }
-
-        // How many of `count` items have appeared, revealing one per equal slice of the step.
-        private static int RevealedCount(float progress, int count)
-        {
-            return progress >= 1f ? count : Mathf.FloorToInt(progress * count);
-        }
-
-        private static int CountBits(int mask)
-        {
-            int count = 0;
-            for (; mask != 0; mask &= mask - 1)
-            {
-                count++;
-            }
-            return count;
         }
     }
 }

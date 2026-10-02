@@ -8,12 +8,13 @@ namespace Clube.Debug
     [Serializable]
     public class StepTimings
     {
+        [Tooltip("Density samples appear one at a time.")]
         [SerializeField, Min(0f)]
-        private float readCorners = 1.5f;
+        private float densityField = 1.5f;
 
-        [Tooltip("Corners light up one at a time.")]
+        [Tooltip("Corners are sampled and turn solid or empty one at a time.")]
         [SerializeField, Min(0f)]
-        private float classify = 2f;
+        private float sampleCorners = 2f;
 
         [Tooltip("The case index is built one bit (corner) at a time.")]
         [SerializeField, Min(0f)]
@@ -35,8 +36,8 @@ namespace Clube.Debug
         {
             switch (type)
             {
-                case MeshingStepType.ReadCorners: return readCorners;
-                case MeshingStepType.Classify: return classify;
+                case MeshingStepType.DensityField: return densityField;
+                case MeshingStepType.SampleCorners: return sampleCorners;
                 case MeshingStepType.CaseIndex: return caseIndex;
                 case MeshingStepType.EdgeTable: return edgeTable;
                 case MeshingStepType.Interpolate: return interpolate;

@@ -21,8 +21,8 @@ namespace Clube.Core.Tests
 
             MeshingStepType[] expected =
             {
-                MeshingStepType.ReadCorners,
-                MeshingStepType.Classify,
+                MeshingStepType.DensityField,
+                MeshingStepType.SampleCorners,
                 MeshingStepType.CaseIndex,
                 MeshingStepType.EdgeTable,
                 MeshingStepType.Interpolate,
@@ -88,8 +88,24 @@ namespace Clube.Core.Tests
             ChunkMesher.Build(new Chunk(new Vector3Int(2, 1, 1)), Settings, vertices, triangles, recorder);
 
             Assert.That(recorder.Voxels.Count, Is.EqualTo(2));
-            Assert.That(recorder.Steps.Count, Is.EqualTo(2 * 4));
+            Assert.That(recorder.Steps.Count, Is.EqualTo(1 + 2 * 3));
             Assert.That(recorder.Steps.Any(step => step.Type == MeshingStepType.Interpolate), Is.False);
+        }
+
+        [Test]
+        public void DensityField_IsRecordedOnceBeforeAnyVoxel()
+        {
+            var chunk = new Chunk(new Vector3Int(2, 1, 1));
+            chunk.SetDensity(new Vector3Int(2, 1, 0), 0.7f);
+
+            ChunkMesher.Build(chunk, Settings, vertices, triangles, recorder);
+
+            Assert.That(recorder.Steps[0].Type, Is.EqualTo(MeshingStepType.DensityField));
+            Assert.That(recorder.Steps[0].VoxelIndex, Is.EqualTo(-1));
+            Assert.That(recorder.Steps.Count(step => step.Type == MeshingStepType.DensityField), Is.EqualTo(1));
+            Assert.That(recorder.SampleCount, Is.EqualTo(new Vector3Int(3, 2, 2)));
+            Assert.That(recorder.GetDensity(new Vector3Int(2, 1, 0)), Is.EqualTo(0.7f));
+            Assert.That(recorder.GetDensity(new Vector3Int(1, 1, 0)), Is.EqualTo(0f));
         }
 
         [Test]

@@ -28,7 +28,7 @@ namespace Clube.Core
             triangles.Clear();
             if (recorder != null)
             {
-                recorder.Begin(settings);
+                recorder.Begin(settings, chunk);
             }
 
             // Variants are resolved once here, never per vertex (A6).

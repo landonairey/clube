@@ -16,18 +16,16 @@ namespace Clube.Debug
     public class CaseStepInput : MonoBehaviour
     {
         private VoxelCornerEditor corners;
-        private StepThroughLab stepThrough;
 
         private void Awake()
         {
             corners = GetComponent<VoxelCornerEditor>();
-            stepThrough = GetComponentInChildren<StepThroughLab>(true);
         }
 
         private void Update()
         {
             Keyboard keyboard = Keyboard.current;
-            if (keyboard == null || (stepThrough != null && stepThrough.isActiveAndEnabled))
+            if (keyboard == null || StepThroughMode.IsOn(this))
             {
                 return;
             }

@@ -12,17 +12,24 @@ namespace Clube.Debug
     /// the step-through mode: it hides the real mesh and takes the arrow keys.
     /// </summary>
     /// <remarks>
-    /// Play mode only: the chunk doesn't exist before then.
+    /// Play mode only: the chunk doesn't exist before then. A rebuild (corner,
+    /// case or iso change) starts the new recording from the first step, playing
+    /// or paused as before.
     /// </remarks>
     public class StepThroughLab : MonoBehaviour
     {
         private const string MarkerShader = "Universal Render Pipeline/Unlit";
 
+        // Above this many samples the density field is drawn without value labels.
+        private const int MaxLabelledSamples = 64;
+
+        private const float LabelGap = 4f;
+
         [Tooltip("Playback speed multiplier.")]
         [SerializeField, Range(0.1f, 5f)]
         private float speed = 1f;
 
-        [Tooltip("Start playing as soon as a new recording is made.")]
+        [Tooltip("Start playing when step-through mode is turned on.")]
         [SerializeField]
         private bool autoPlay = true;
 
@@ -46,8 +53,12 @@ namespace Clube.Debug
         private MeshRenderer chunkRenderer;
         private StepThroughVisuals visuals;
         private Material ownedMarkerMaterial;
+
+        // Set when turned on before the chunk exists; the first rebuild then autoplays.
+        private bool awaitingFirstRecording;
+
         private GUIStyle infoStyle;
-        private GUIStyle valueStyle;
+        private GUIStyle labelStyle;
 
         public StepPlayback Playback => playback;
 
@@ -60,6 +71,8 @@ namespace Clube.Debug
             get => speed;
             set => speed = Mathf.Clamp(value, 0.1f, 5f);
         }
+
+        private Camera ViewCamera => targetCamera != null ? targetCamera : Camera.main;
 
         private void Awake()
         {
@@ -90,7 +103,11 @@ namespace Clube.Debug
             // The chunk may already be clean, with no rebuild coming to trigger a recording.
             if (chunkView.Chunk != null)
             {
-                Record();
+                Record(autoPlay);
+            }
+            else
+            {
+                awaitingFirstRecording = true;
             }
         }
 
@@ -138,22 +155,28 @@ namespace Clube.Debug
             }
 
             EnsureStyles();
-            DrawCornerLabels();
+            Camera viewCamera = ViewCamera;
+            if (viewCamera != null)
+            {
+                DrawSceneLabels(viewCamera);
+            }
             DrawInfoBox();
         }
 
         private void OnMeshRebuilt(Mesh mesh)
         {
-            Record();
+            Record(awaitingFirstRecording ? autoPlay : playback.IsPlaying);
+            awaitingFirstRecording = false;
         }
 
         // Re-runs the real mesher once with a recorder; playback only ever reads the log.
-        private void Record()
+        // Always starts again from the first step, since the old steps no longer apply.
+        private void Record(bool play)
         {
             ChunkMesher.Build(chunkView.Chunk, chunkView.Config.MeshSettings, scratchVertices, scratchTriangles, recording);
             playback.Load(recording.Steps.Count);
             visuals.Load(recording);
-            if (autoPlay)
+            if (play)
             {
                 playback.Play();
             }
@@ -178,32 +201,97 @@ namespace Clube.Debug
             visuals = new StepThroughVisuals(chunkView.transform, marker, chunkRenderer.sharedMaterial);
         }
 
-        // Name and density next to each corner of the current voxel, e.g. "c3 0.20".
-        // VoxelLabels hides while step-through is on, so these replace its corner names.
-        private void DrawCornerLabels()
+        private void DrawSceneLabels(Camera viewCamera)
         {
             MeshingStep step = recording.Steps[playback.StepIndex];
-            Camera viewCamera = targetCamera != null ? targetCamera : Camera.main;
-            if (viewCamera == null)
+            float progress = playback.Progress;
+            float size = recording.Settings.VoxelSize;
+
+            if (step.Type == MeshingStepType.DensityField)
             {
+                DrawSampleLabels(viewCamera, progress, size);
                 return;
             }
 
             RecordedVoxel voxel = recording.Voxels[step.VoxelIndex];
-            float size = recording.Settings.VoxelSize;
+            Vector3 centre = voxel.Origin + Vector3.one * (0.5f * size);
+            int sampled = StepReveal.CornersSampled(step.Type, progress);
+
             for (int corner = 0; corner < MarchingCubes.CornerCount; corner++)
             {
-                Vector3 local = voxel.Origin + (Vector3)MarchingCubes.CornerOffset(corner) * size;
-                Vector3 screen = viewCamera.WorldToScreenPoint(chunkView.transform.TransformPoint(local));
-                if (screen.z <= 0f)
+                Color color = corner >= sampled ? Color.white
+                    : MarchingCubes.IsCornerSolid(voxel.CaseIndex, corner) ? StepThroughVisuals.SolidColor
+                    : StepThroughVisuals.EmptyColor;
+                Vector3 position = voxel.Origin + (Vector3)MarchingCubes.CornerOffset(corner) * size;
+                DrawLabelBeside(viewCamera, position, centre, StepThroughVisuals.HighlightedCornerRadius * size,
+                    $"c{corner} {voxel.CornerValues[corner]:0.00}", color);
+            }
+
+            for (int edge = 0; edge < MarchingCubes.EdgeCount; edge++)
+            {
+                if (!StepReveal.IsEdgeLit(voxel, edge, step.Type, progress))
                 {
                     continue;
                 }
 
-                // Screen y grows upwards, GUI y grows downwards; sit just below the corner.
-                var gui = new Vector2(screen.x, Screen.height - screen.y + 18f);
-                GuiDrawing.CentredLabel(gui, $"c{corner} {voxel.CornerValues[corner]:0.00}", valueStyle);
+                Vector3 a = voxel.Origin + (Vector3)MarchingCubes.CornerOffset(MarchingCubesTables.EdgeCorners[edge, 0]) * size;
+                Vector3 b = voxel.Origin + (Vector3)MarchingCubes.CornerOffset(MarchingCubesTables.EdgeCorners[edge, 1]) * size;
+                DrawLabelBeside(viewCamera, (a + b) * 0.5f, centre, 0.06f * size, $"e{edge}", StepThroughVisuals.CrossedEdgeColor);
             }
+        }
+
+        private void DrawSampleLabels(Camera viewCamera, float progress, float size)
+        {
+            Vector3Int count = recording.SampleCount;
+            int total = count.x * count.y * count.z;
+            if (total > MaxLabelledSamples)
+            {
+                return;
+            }
+
+            Vector3 centre = (Vector3)(count - Vector3Int.one) * (0.5f * size);
+            int shown = StepReveal.Revealed(progress, total);
+            for (int i = 0; i < shown; i++)
+            {
+                var sample = new Vector3Int(i % count.x, i / count.x % count.y, i / (count.x * count.y));
+                DrawLabelBeside(viewCamera, (Vector3)sample * size, centre, StepThroughVisuals.HighlightedCornerRadius * size,
+                    recording.GetDensity(sample).ToString("0.00"), Color.white);
+            }
+        }
+
+        /// <summary>
+        /// Draws a label just outside a marker of the given radius, pushed away from
+        /// <paramref name="centre"/> on screen so it never sits on top of the marker.
+        /// </summary>
+        private void DrawLabelBeside(Camera viewCamera, Vector3 localPoint, Vector3 localCentre, float markerRadius, string text, Color color)
+        {
+            Transform chunk = chunkView.transform;
+            Vector3 world = chunk.TransformPoint(localPoint);
+            if (!ToGui(viewCamera, world, out Vector2 point) ||
+                !ToGui(viewCamera, chunk.TransformPoint(localCentre), out Vector2 centre) ||
+                !ToGui(viewCamera, world + viewCamera.transform.up * (markerRadius * chunk.lossyScale.y), out Vector2 rim))
+            {
+                return;
+            }
+
+            Vector2 outwards = point - centre;
+            outwards = outwards.sqrMagnitude > 1f ? outwards.normalized : Vector2.up;
+
+            var content = new GUIContent(text);
+            Vector2 textSize = labelStyle.CalcSize(content);
+
+            // Far enough out that the label's box clears the marker in that direction.
+            float radius = Vector2.Distance(point, rim);
+            float halfExtent = Mathf.Abs(outwards.x) * textSize.x * 0.5f + Mathf.Abs(outwards.y) * textSize.y * 0.5f;
+            Vector2 labelCentre = point + outwards * (radius + LabelGap + halfExtent);
+
+            var rect = new Rect(labelCentre - textSize * 0.5f, textSize);
+            GuiDrawing.Rect(new Rect(rect.x - 3f, rect.y - 1f, rect.width + 6f, rect.height + 2f), new Color(0f, 0f, 0f, 0.6f));
+
+            Color previous = labelStyle.normal.textColor;
+            labelStyle.normal.textColor = color;
+            GUI.Label(rect, content, labelStyle);
+            labelStyle.normal.textColor = previous;
         }
 
         private void DrawInfoBox()
@@ -211,14 +299,12 @@ namespace Clube.Debug
             int index = playback.StepIndex;
             MeshingStep step = recording.Steps[index];
 
-            string title = $"Step {index + 1} / {playback.StepCount} · {step.Type}{(playback.IsPlaying ? "" : " (paused)")}";
+            string title = $"Step {index + 1} / {playback.StepCount} · {StepTitle(step.Type)}{(playback.IsPlaying ? "" : " (paused)")}";
             string detail = StepDescriber.Describe(recording, index);
             if (step.Type == MeshingStepType.CaseIndex)
             {
                 RecordedVoxel voxel = recording.Voxels[step.VoxelIndex];
-                int known = playback.Progress >= 1f
-                    ? MarchingCubes.CornerCount
-                    : Mathf.Min(Mathf.FloorToInt(playback.Progress * MarchingCubes.CornerCount) + 1, MarchingCubes.CornerCount);
+                int known = StepReveal.CaseBitsKnown(step.Type, playback.Progress);
                 detail += $"\nBits so far (c7 → c0): {StepDescriber.PartialBinary(voxel.CaseIndex, known)}";
             }
 
@@ -233,6 +319,29 @@ namespace Clube.Debug
 
             GuiDrawing.Rect(rect, new Color(0f, 0f, 0f, 0.65f));
             GUI.Label(rect, text, infoStyle);
+        }
+
+        private static string StepTitle(MeshingStepType type)
+        {
+            switch (type)
+            {
+                case MeshingStepType.DensityField: return "Density field";
+                case MeshingStepType.SampleCorners: return "Sample corners";
+                case MeshingStepType.CaseIndex: return "Case index";
+                case MeshingStepType.EdgeTable: return "Edge table";
+                case MeshingStepType.Interpolate: return "Interpolate";
+                case MeshingStepType.Triangle: return "Triangle table";
+                default: return type.ToString();
+            }
+        }
+
+        private static bool ToGui(Camera viewCamera, Vector3 world, out Vector2 gui)
+        {
+            Vector3 screen = viewCamera.WorldToScreenPoint(world);
+
+            // Screen y grows upwards, GUI y grows downwards.
+            gui = new Vector2(screen.x, Screen.height - screen.y);
+            return screen.z > 0f;
         }
 
         private void EnsureStyles()
@@ -250,11 +359,13 @@ namespace Clube.Debug
                 padding = new RectOffset(10, 10, 8, 8),
                 normal = { textColor = Color.white },
             };
-            valueStyle = new GUIStyle(GUI.skin.label)
+            labelStyle = new GUIStyle(GUI.skin.label)
             {
                 fontSize = 12,
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = new Color(0.85f, 0.95f, 1f) },
+                padding = new RectOffset(0, 0, 0, 0),
+                margin = new RectOffset(0, 0, 0, 0),
+                alignment = TextAnchor.MiddleCenter,
             };
         }
     }

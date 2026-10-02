@@ -9,7 +9,7 @@ namespace Clube.Debug
     /// <summary>
     /// Plain-language text for the step-through info line (V18): what the current
     /// step does, and a running summary of the voxel so far, e.g.
-    /// "Voxel (0,0,0): corners 0, 3, 5 inside → case 41 → edges 0, 3, 8."
+    /// "Voxel (0,0,0): c0, c3, c5 solid → case 41 → edges e0, e2, e4, …"
     /// Reads only the recorded log.
     /// </summary>
     public static class StepDescriber
@@ -18,31 +18,32 @@ namespace Clube.Debug
         public static string Describe(MeshingRecorder recording, int stepIndex)
         {
             MeshingStep step = recording.Steps[stepIndex];
-            RecordedVoxel voxel = recording.Voxels[step.VoxelIndex];
             float iso = recording.Settings.IsoLevel;
+            if (step.Type == MeshingStepType.DensityField)
+            {
+                Vector3Int count = recording.SampleCount;
+                return $"Density field: the terrain data is a 3D grid of density samples ({count.x} × {count.y} × {count.z} here), " +
+                       $"shaded black (0) to white (1). The surface will pass wherever the field crosses the iso level, {iso:0.00}.";
+            }
 
+            RecordedVoxel voxel = recording.Voxels[step.VoxelIndex];
             switch (step.Type)
             {
-                case MeshingStepType.ReadCorners:
-                    string values = string.Join("  ", Enumerable.Range(0, MarchingCubes.CornerCount)
-                        .Select(corner => $"c{corner} {voxel.CornerValues[corner]:0.00}"));
-                    return $"Read the 8 corner densities: {values}";
-
-                case MeshingStepType.Classify:
-                    return $"Classify against iso {iso:0.00}: a corner at or above it is solid (inside). " +
-                           $"Solid: {List(SolidCorners(voxel.CaseIndex))}.";
+                case MeshingStepType.SampleCorners:
+                    return $"Sample the cube's 8 corners from the field and compare each with iso {iso:0.00}: " +
+                           $"at or above → solid (1, orange), below → empty (0, blue). Solid: {CornerList(SolidCorners(voxel.CaseIndex))}.";
 
                 case MeshingStepType.CaseIndex:
                     IEnumerable<int> solid = SolidCorners(voxel.CaseIndex);
                     string bits = solid.Any() ? string.Join(" + ", solid.Select(corner => 1 << corner)) : "0";
-                    return $"Case index: each solid corner c sets bit c, so {bits} = {voxel.CaseIndex} " +
-                           $"({Binary(voxel.CaseIndex)}).";
+                    return $"Combine the 8 solid/empty bits into one number, corner c setting bit c: {bits} = {voxel.CaseIndex} " +
+                           $"({Binary(voxel.CaseIndex)}). This case index is the row to look up in the marching cubes tables.";
 
                 case MeshingStepType.EdgeTable:
                     return voxel.CrossedEdgeMask == 0
-                        ? $"Edge table: case {voxel.CaseIndex} crosses no edges (all corners on one side), so no surface here."
-                        : $"Edge table: case {voxel.CaseIndex} → the surface crosses edges {List(Edges(voxel.CrossedEdgeMask))}, " +
-                          "each joining a solid and an empty corner.";
+                        ? $"Edge table, row {voxel.CaseIndex}: no edges crossed (every corner is on the same side), so no surface in this cube."
+                        : $"Edge table, row {voxel.CaseIndex}: the surface crosses {EdgeList(Edges(voxel.CrossedEdgeMask))}. " +
+                          "Each joins a solid and an empty corner, so each gets one vertex.";
 
                 case MeshingStepType.Interpolate:
                     return DescribeInterpolate(recording, voxel, step.Edge, iso);
@@ -50,24 +51,29 @@ namespace Clube.Debug
                 case MeshingStepType.Triangle:
                     (int number, int total) = TrianglePosition(recording, stepIndex);
                     EdgeTriangle triangle = step.Triangle;
-                    return $"Triangle table: triangle {number} of {total} joins the vertices on edges " +
-                           $"{triangle.A} → {triangle.B} → {triangle.C} (clockwise seen from outside the solid).";
+                    return $"Triangle table, row {voxel.CaseIndex}: triangle {number} of {total} joins the vertices on " +
+                           $"e{triangle.A} → e{triangle.B} → e{triangle.C} (clockwise seen from outside the solid).";
 
                 default:
                     throw new ArgumentOutOfRangeException(nameof(step.Type), step.Type, null);
             }
         }
 
-        /// <summary>What is known about the step's voxel once this step has run.</summary>
+        /// <summary>What is known so far once this step has run.</summary>
         public static string Summarise(MeshingRecorder recording, int stepIndex)
         {
             MeshingStep step = recording.Steps[stepIndex];
-            RecordedVoxel voxel = recording.Voxels[step.VoxelIndex];
-
-            string text = $"Voxel ({voxel.Voxel.x},{voxel.Voxel.y},{voxel.Voxel.z})";
-            if (step.Type >= MeshingStepType.Classify)
+            if (step.Type == MeshingStepType.DensityField)
             {
-                text += $": corners {List(SolidCorners(voxel.CaseIndex))} inside";
+                Vector3Int count = recording.SampleCount;
+                return $"Density field: {count.x * count.y * count.z} samples, iso level {recording.Settings.IsoLevel:0.00}.";
+            }
+
+            RecordedVoxel voxel = recording.Voxels[step.VoxelIndex];
+            string text = $"Voxel ({voxel.Voxel.x},{voxel.Voxel.y},{voxel.Voxel.z})";
+            if (step.Type >= MeshingStepType.SampleCorners)
+            {
+                text += $": {CornerList(SolidCorners(voxel.CaseIndex))} solid";
             }
             if (step.Type >= MeshingStepType.CaseIndex)
             {
@@ -75,7 +81,7 @@ namespace Clube.Debug
             }
             if (step.Type >= MeshingStepType.EdgeTable)
             {
-                text += $" → edges {List(Edges(voxel.CrossedEdgeMask))}";
+                text += $" → edges {EdgeList(Edges(voxel.CrossedEdgeMask))}";
             }
             return text + ".";
         }
@@ -111,7 +117,7 @@ namespace Clube.Debug
             string how = recording.Settings.EdgePlacement == EdgePlacement.Midpoint
                 ? "midpoint placement puts it halfway"
                 : $"t = ({iso:0.00} − {valueA:0.00}) / ({valueB:0.00} − {valueA:0.00})";
-            return $"Interpolate edge {edge} (c{cornerA} {valueA:0.00} → c{cornerB} {valueB:0.00}): " +
+            return $"Place a vertex on e{edge} (c{cornerA} {valueA:0.00} → c{cornerB} {valueB:0.00}): " +
                    $"{how}, so the vertex sits {t:0.00} of the way along.";
         }
 
@@ -152,9 +158,21 @@ namespace Clube.Debug
             return PartialBinary(caseIndex, MarchingCubes.CornerCount);
         }
 
-        private static string List(IEnumerable<int> values)
+        /// <summary>e.g. "c0, c3", or "none".</summary>
+        private static string CornerList(IEnumerable<int> corners)
         {
-            string text = string.Join(", ", values);
+            return PrefixedList("c", corners);
+        }
+
+        /// <summary>e.g. "e0, e3, e8", or "none".</summary>
+        private static string EdgeList(IEnumerable<int> edges)
+        {
+            return PrefixedList("e", edges);
+        }
+
+        private static string PrefixedList(string prefix, IEnumerable<int> values)
+        {
+            string text = string.Join(", ", values.Select(value => prefix + value));
             return text.Length > 0 ? text : "none";
         }
     }

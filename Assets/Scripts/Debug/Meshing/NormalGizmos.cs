@@ -69,7 +69,8 @@ namespace Clube.Debug
 
         private void OnDrawGizmos()
         {
-            if (mesh == null || chunkView == null || chunkView.Config == null)
+            // Step-through hides the finished mesh, so its normals would give the answer away.
+            if (mesh == null || chunkView == null || chunkView.Config == null || StepThroughMode.IsOn(this))
             {
                 return;
             }

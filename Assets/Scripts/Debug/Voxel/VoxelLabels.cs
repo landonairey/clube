@@ -29,21 +29,11 @@ namespace Clube.Debug
 
         private VoxelCornerEditor corners;
 
-        public bool ShowCornerLabels => showCornerLabels && !IsStepThroughOn;
+        public bool ShowCornerLabels => showCornerLabels && !StepThroughMode.IsOn(this);
 
-        public bool ShowCrossedEdges => showCrossedEdges && !IsStepThroughOn;
+        public bool ShowCrossedEdges => showCrossedEdges && !StepThroughMode.IsOn(this);
 
         public VoxelCornerEditor Corners => corners != null ? corners : GetComponent<VoxelCornerEditor>();
-
-        // Plain enabled check, so it also works outside Play mode for the Scene view overlay.
-        private bool IsStepThroughOn
-        {
-            get
-            {
-                StepThroughLab stepThrough = GetComponentInChildren<StepThroughLab>(true);
-                return stepThrough != null && stepThrough.enabled && stepThrough.gameObject.activeInHierarchy;
-            }
-        }
 
         private void Awake()
         {

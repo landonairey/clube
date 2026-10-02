@@ -179,8 +179,8 @@ MonoBehaviour:
   speed: 1
   autoPlay: 1
   timings:
-    readCorners: 1.5
-    classify: 2
+    densityField: 1.5
+    sampleCorners: 2
     caseIndex: 2.5
     edgeTable: 1.5
     interpolate: 0.8
@@ -438,7 +438,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2297273b2f8273a4cae31b6620c39490, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelVolumeLab
-  showTetrahedra: 1
+  exactVolume: 1
   explodeDistance: 0.25
   faceOpacity: 0.35
   monteCarloSamples: 10000

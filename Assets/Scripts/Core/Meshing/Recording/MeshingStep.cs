@@ -18,7 +18,7 @@ namespace Clube.Core
 
         public MeshingStepType Type { get; }
 
-        /// <summary>Index into <see cref="MeshingRecorder.Voxels"/>.</summary>
+        /// <summary>Index into <see cref="MeshingRecorder.Voxels"/>; -1 for <see cref="MeshingStepType.DensityField"/>.</summary>
         public int VoxelIndex { get; }
 
         /// <summary>The edge (0-11) given a vertex, for <see cref="MeshingStepType.Interpolate"/>; otherwise -1.</summary>

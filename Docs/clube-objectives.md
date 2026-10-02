@@ -107,10 +107,10 @@ Note: V1, V2 and V6 now run on the 1×1×1 chunk through the A7 edit path (the p
 Record the real algorithm once (A11), then replay the log. Stepping back just rebuilds state up to an earlier point in the log.
 
 - [x] **V15** `Core` Step recorder logging a struct per step: step type, voxel coordinate, corner values, case index, edge mask, vertex positions, triangle.
-- [x] **V16** `Lab` Playback of the per-voxel steps:
-  1. Read corners — highlight cube and its 8 corner values
-  2. Classify — colour corners inside/outside against the iso value
-  3. Case index — build the 8-bit number corner by corner, shown in binary and decimal
+- [x] **V16** `Lab` Playback of the steps:
+  1. Density field — the terrain data, a 3D grid of density samples in grayscale (once per build)
+  2. Sample corners — sample the cube's 8 corners and colour each solid/empty against the iso value
+  3. Case index — combine the 8 bits into the case index, corner by corner, shown in binary and decimal: the row to look up in the tables
   4. Edge table — highlight crossed edges
   5. Interpolate — slide each vertex along its edge (or snap to midpoint per V3)
   6. Triangle table — add triangles one at a time, showing winding order
