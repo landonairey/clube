@@ -106,17 +106,17 @@ Note: V1, V2 and V6 now run on the 1×1×1 chunk through the A7 edit path (the p
 ### 1D — Step-through animation
 Record the real algorithm once (A11), then replay the log. Stepping back just rebuilds state up to an earlier point in the log.
 
-- [ ] **V15** `Core` Step recorder logging a struct per step: step type, voxel coordinate, corner values, case index, edge mask, vertex positions, triangle.
-- [ ] **V16** `Lab` Playback of the per-voxel steps:
-  1. Read corners — highlight cube and its 8 corner values
-  2. Classify — colour corners inside/outside against the iso value
-  3. Case index — build the 8-bit number corner by corner, shown in binary and decimal
+- [x] **V15** `Core` Step recorder logging a struct per step: step type, voxel coordinate, corner values, case index, edge mask, vertex positions, triangle.
+- [x] **V16** `Lab` Playback of the steps:
+  1. Density field — the terrain data, a 3D grid of density samples in grayscale (once per build)
+  2. Sample corners — sample the cube's 8 corners and colour each solid/empty against the iso value
+  3. Case index — combine the 8 bits into the case index, corner by corner, shown in binary and decimal: the row to look up in the tables
   4. Edge table — highlight crossed edges
   5. Interpolate — slide each vertex along its edge (or snap to midpoint per V3)
   6. Triangle table — add triangles one at a time, showing winding order
-- [ ] **V17** `Lab` Controls: play/pause, step forward/back (e.g. right/left arrow keys, new Input System), restart, speed slider, per-step-type durations. Note: the arrow keys currently step case indices in VoxelLab (V20, `CaseStepInput`); give V17 a mode switch or different keys.
-- [ ] **V18** `Lab` Info line describing the current step, e.g. "Voxel (3,1,2): corners 0, 3, 5 inside → case 41 → edges 0, 3, 8."
-- [ ] **V19** `Lab` Visuals that work in the game window, not Gizmos: pooled spheres for corners, `LineRenderer` for edges, separate mesh for the partial surface, on-screen UI for the info line.
+- [x] **V17** `Lab` Controls: play/pause (Space), step forward/back (right/left arrow keys, new Input System), restart (R), speed slider, per-step-type durations. The arrows are shared with V20 case stepping through a mode switch: while step-through mode is on, they step the animation.
+- [x] **V18** `Lab` Info line describing the current step, e.g. "Voxel (3,1,2): corners 0, 3, 5 inside → case 41 → edges 0, 3, 8."
+- [x] **V19** `Lab` Visuals that work in the game window, not Gizmos: pooled spheres for corners, `LineRenderer` for edges, separate mesh for the partial surface, on-screen UI for the info line.
 - [ ] **V23** `Lab` *(backlog)* Code panel beside the playback: show the snippet of mesher code that the current step runs, with the active line highlighted, so the animation doubles as a code walkthrough.
   - Note: show curated, simplified snippets (stored as lab text assets keyed by step type) rather than the real source, so refactoring the mesher doesn't silently break the lesson.
 

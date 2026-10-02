@@ -9,8 +9,8 @@ namespace Clube.Debug
     /// mode, the ◀ ▶ buttons next to the case slider do the same.
     /// </summary>
     /// <remarks>
-    /// V17 (step-through animation) also plans to use the arrow keys; when it
-    /// lands, these need a mode switch or different keys.
+    /// While step-through mode is on (a <see cref="StepThroughLab"/> child is
+    /// enabled), the arrows step the animation instead (V17).
     /// </remarks>
     [RequireComponent(typeof(VoxelCornerEditor))]
     public class CaseStepInput : MonoBehaviour
@@ -25,7 +25,7 @@ namespace Clube.Debug
         private void Update()
         {
             Keyboard keyboard = Keyboard.current;
-            if (keyboard == null)
+            if (keyboard == null || StepThroughMode.IsOn(this))
             {
                 return;
             }

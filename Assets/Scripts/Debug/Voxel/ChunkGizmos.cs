@@ -39,7 +39,8 @@ namespace Clube.Debug
             Gizmos.color = outlineColor;
             Gizmos.DrawWireCube(size * 0.5f, size);
 
-            if (chunk != null)
+            // Step-through draws the samples itself, coloured by step.
+            if (chunk != null && !StepThroughMode.IsOn(this))
             {
                 DrawSamples(chunk, voxelSize);
             }

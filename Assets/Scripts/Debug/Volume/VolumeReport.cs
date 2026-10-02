@@ -5,6 +5,7 @@ namespace Clube.Debug
     {
         public VolumeReport(
             float approximate,
+            bool hasExact,
             float exact,
             float trilinearEstimate,
             int monteCarloSamples,
@@ -12,6 +13,7 @@ namespace Clube.Debug
             int negativeTetrahedra)
         {
             Approximate = approximate;
+            HasExact = hasExact;
             Exact = exact;
             TrilinearEstimate = trilinearEstimate;
             MonteCarloSamples = monteCarloSamples;
@@ -22,7 +24,10 @@ namespace Clube.Debug
         /// <summary>V11: mean corner density.</summary>
         public float Approximate { get; }
 
-        /// <summary>V12: signed tetrahedra sum of the closed Marching Cubes solid.</summary>
+        /// <summary>False when the exact volume is turned off; <see cref="Exact"/> and the tetrahedra counts are then not computed.</summary>
+        public bool HasExact { get; }
+
+        /// <summary>V12: signed tetrahedra sum of the closed Marching Cubes solid. Only valid when <see cref="HasExact"/>.</summary>
         public float Exact { get; }
 
         /// <summary>V14: Monte Carlo estimate of the smooth trilinear field; only valid when <see cref="MonteCarloSamples"/> &gt; 0.</summary>

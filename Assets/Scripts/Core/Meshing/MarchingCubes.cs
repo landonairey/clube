@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -46,6 +47,8 @@ namespace Clube.Core
         /// <param name="placer">Decides where each vertex sits on its edge (V3).</param>
         /// <param name="writer">Decides whether vertices are shared (V4). The caller calls
         /// <see cref="IVertexWriter.BeginVoxel"/> first if the writer needs to know the voxel.</param>
+        /// <param name="recorder">Optional step log (A11). The caller calls
+        /// <see cref="MeshingRecorder.BeginVoxel"/> first.</param>
         public static void Polygonise(
             IReadOnlyList<float> cornerValues,
             float isoLevel,
@@ -53,22 +56,60 @@ namespace Clube.Core
             float size,
             IEdgeVertexPlacer placer,
             IVertexWriter writer,
-            List<int> triangles)
+            List<int> triangles,
+            MeshingRecorder recorder = null)
         {
-            int cubeIndex = GetCaseIndex(cornerValues, isoLevel);
-
-            // With solid corners setting the index bits, the table's winding gives
-            // faces pointing from solid towards empty under Unity's clockwise convention.
-            for (int i = 0; MarchingCubesTables.Triangles[cubeIndex, i] != -1; i++)
+            int caseIndex = GetCaseIndex(cornerValues, isoLevel);
+            int edgeMask = GetCrossedEdgeMask(caseIndex);
+            if (recorder != null)
             {
-                int edge = MarchingCubesTables.Triangles[cubeIndex, i];
+                recorder.RecordCase(caseIndex, edgeMask);
+            }
+
+            if (edgeMask == 0)
+            {
+                return;
+            }
+
+            // One vertex per crossed edge, placed before any triangle uses it.
+            Span<Vector3> edgeVertices = stackalloc Vector3[EdgeCount];
+            for (int edge = 0; edge < EdgeCount; edge++)
+            {
+                if ((edgeMask & (1 << edge)) == 0)
+                {
+                    continue;
+                }
+
                 int cornerA = MarchingCubesTables.EdgeCorners[edge, 0];
                 int cornerB = MarchingCubesTables.EdgeCorners[edge, 1];
-
                 Vector3 local = placer.Place(
                     CornerPosition(cornerA), CornerPosition(cornerB),
                     cornerValues[cornerA], cornerValues[cornerB], isoLevel);
-                triangles.Add(writer.Write(edge, origin + size * local));
+                edgeVertices[edge] = origin + size * local;
+
+                if (recorder != null)
+                {
+                    recorder.RecordVertex(edge, edgeVertices[edge]);
+                }
+            }
+
+            // With solid corners setting the index bits, the table's winding gives
+            // faces pointing from solid towards empty under Unity's clockwise convention.
+            for (int i = 0; MarchingCubesTables.Triangles[caseIndex, i] != -1; i += 3)
+            {
+                for (int k = 0; k < 3; k++)
+                {
+                    int edge = MarchingCubesTables.Triangles[caseIndex, i + k];
+                    triangles.Add(writer.Write(edge, edgeVertices[edge]));
+                }
+
+                if (recorder != null)
+                {
+                    recorder.RecordTriangle(
+                        MarchingCubesTables.Triangles[caseIndex, i],
+                        MarchingCubesTables.Triangles[caseIndex, i + 1],
+                        MarchingCubesTables.Triangles[caseIndex, i + 2]);
+                }
             }
         }
 

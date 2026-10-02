@@ -15,14 +15,21 @@ namespace Clube.Core
         /// Replaces the contents of <paramref name="vertices"/> and <paramref name="triangles"/>
         /// with the chunk's surface, in chunk-local space with sample (0,0,0) at the origin.
         /// </summary>
+        /// <param name="recorder">Optional step log for lab playback (A11), cleared and refilled.
+        /// Leave null in the game: nothing is recorded and nothing extra is computed.</param>
         public static void Build(
             Chunk chunk,
             ChunkMeshSettings settings,
             List<Vector3> vertices,
-            List<int> triangles)
+            List<int> triangles,
+            MeshingRecorder recorder = null)
         {
             vertices.Clear();
             triangles.Clear();
+            if (recorder != null)
+            {
+                recorder.Begin(settings, chunk);
+            }
 
             // Variants are resolved once here, never per vertex (A6).
             IEdgeVertexPlacer placer = EdgeVertexPlacers.For(settings.EdgePlacement);
@@ -45,8 +52,14 @@ namespace Clube.Core
 
                         writer.BeginVoxel(voxel);
                         Vector3 origin = (Vector3)voxel * settings.VoxelSize;
+                        if (recorder != null)
+                        {
+                            recorder.BeginVoxel(voxel, origin, cornerValues);
+                        }
+
                         MarchingCubes.Polygonise(
-                            cornerValues, settings.IsoLevel, origin, settings.VoxelSize, placer, writer, triangles);
+                            cornerValues, settings.IsoLevel, origin, settings.VoxelSize,
+                            placer, writer, triangles, recorder);
                     }
                 }
             }

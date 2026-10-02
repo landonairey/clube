@@ -119,6 +119,74 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &91522117
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 91522118}
+  - component: {fileID: 91522120}
+  - component: {fileID: 91522119}
+  m_Layer: 0
+  m_Name: Step Through
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &91522118
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 91522117}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 190024691}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &91522119
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 91522117}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1a3656f546ec47448ec97ca694f37c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughInput
+--- !u!114 &91522120
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 91522117}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb924dfe74fd7a148a2fb8a5706b180e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughLab
+  speed: 1
+  autoPlay: 1
+  timings:
+    densityField: 1.5
+    sampleCorners: 2
+    caseIndex: 2.5
+    edgeTable: 1.5
+    interpolate: 0.8
+    triangle: 1
+  markerMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
+  targetCamera: {fileID: 0}
 --- !u!1 &190024688
 GameObject:
   m_ObjectHideFlags: 0
@@ -215,6 +283,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1408007342}
+  - {fileID: 91522118}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &190024692
@@ -369,7 +438,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2297273b2f8273a4cae31b6620c39490, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelVolumeLab
-  showTetrahedra: 1
+  exactVolume: 1
   explodeDistance: 0.25
   faceOpacity: 0.35
   monteCarloSamples: 10000

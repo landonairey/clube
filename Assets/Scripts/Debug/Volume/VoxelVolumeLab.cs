@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Clube.Debug
 {
@@ -20,9 +21,11 @@ namespace Clube.Debug
         private static readonly Color NegativeColor = new Color(1f, 0.25f, 0.2f);
         private static readonly Vector3 CubeCentre = new Vector3(0.5f, 0.5f, 0.5f);
 
-        [Header("Tetrahedra (V13)")]
-        [SerializeField]
-        private bool showTetrahedra = true;
+        [Header("Exact volume (V12, V13)")]
+        [Tooltip("Decompose the solid into tetrahedra for the exact volume and draw them. " +
+                 "Off skips that work entirely, and the readout has no exact volume.")]
+        [SerializeField, FormerlySerializedAs("showTetrahedra")]
+        private bool exactVolume = true;
 
         [Tooltip("How far each tetrahedron moves out from the cube centre, in voxel units.")]
         [SerializeField, Range(0f, 1f)]
@@ -44,15 +47,17 @@ namespace Clube.Debug
         private float measuredIso = float.NaN;
         private EdgePlacement measuredPlacement;
         private int measuredSamples = -1;
+        private bool measuredExact;
 
         private VolumeReport report;
 
         public VoxelCornerEditor Corners => GetComponentInParent<VoxelCornerEditor>();
 
-        public bool ShowTetrahedra
+        /// <summary>Whether the exact volume and its tetrahedra are computed (and drawn) at all.</summary>
+        public bool ExactVolume
         {
-            get => showTetrahedra;
-            set => showTetrahedra = value;
+            get => exactVolume;
+            set => exactVolume = value;
         }
 
         /// <summary>How far tetrahedra are pushed out from the cube centre, 0 (assembled) to 1.</summary>
@@ -72,7 +77,7 @@ namespace Clube.Debug
         private void OnDrawGizmos()
         {
             VoxelCornerEditor corners = Corners;
-            if (!showTetrahedra || corners == null)
+            if (!exactVolume || corners == null)
             {
                 return;
             }
@@ -131,8 +136,14 @@ namespace Clube.Debug
             measuredIso = iso;
             measuredPlacement = placement;
             measuredSamples = monteCarloSamples;
+            measuredExact = exactVolume;
 
-            VoxelVolume.Tetrahedralise(values, iso, EdgeVertexPlacers.For(placement), tetrahedra);
+            // With the exact volume off, the tetrahedra are never built at all.
+            tetrahedra.Clear();
+            if (exactVolume)
+            {
+                VoxelVolume.Tetrahedralise(values, iso, EdgeVertexPlacers.For(placement), tetrahedra);
+            }
 
             float exact = 0f;
             int positive = 0;
@@ -147,14 +158,16 @@ namespace Clube.Debug
 
             float trilinear = monteCarloSamples > 0 ? VoxelVolume.SampleTrilinear(values, iso, monteCarloSamples) : 0f;
             report = new VolumeReport(
-                VoxelVolume.Approximate(values), exact, trilinear, monteCarloSamples, positive, tetrahedra.Count - positive);
+                VoxelVolume.Approximate(values), exactVolume, exact, trilinear, monteCarloSamples,
+                positive, tetrahedra.Count - positive);
 
             RebuildMeshes();
         }
 
         private bool IsUpToDate(IReadOnlyList<float> values, float iso, EdgePlacement placement)
         {
-            if (iso != measuredIso || placement != measuredPlacement || monteCarloSamples != measuredSamples)
+            if (iso != measuredIso || placement != measuredPlacement || monteCarloSamples != measuredSamples ||
+                exactVolume != measuredExact)
             {
                 return false;
             }
