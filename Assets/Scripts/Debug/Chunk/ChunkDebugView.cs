@@ -44,6 +44,10 @@ namespace Clube.Debug
         [SerializeField]
         private Color voxelGridColor = new Color(0.32f, 0.33f, 0.36f);
 
+        [Tooltip("Draw the chunk's bounding box. In a 1×1×1 chunk (VoxelLab) this is the voxel's wireframe.")]
+        [SerializeField]
+        private bool showOutline = true;
+
         [SerializeField]
         private Color outlineColor = new Color(0.6f, 0.6f, 0.6f);
 
@@ -142,7 +146,7 @@ namespace Clube.Debug
         private void OnDrawGizmos()
         {
             var view = GetComponent<ChunkView>();
-            if (!enabled || view.Chunk != null || view.Config == null)
+            if (!enabled || !showOutline || view.Chunk != null || view.Config == null)
             {
                 return;
             }
@@ -260,6 +264,12 @@ namespace Clube.Debug
 
         private void RefreshOutline(Vector3Int voxelCount, float voxelSize)
         {
+            if (!showOutline)
+            {
+                SetVisible(outline, false);
+                return;
+            }
+
             outline ??= new LabMeshObject(transform, "Chunk Outline", LineMaterial());
             scratchVertices.Clear();
             scratchIndices.Clear();

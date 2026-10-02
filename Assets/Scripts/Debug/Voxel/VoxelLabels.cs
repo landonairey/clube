@@ -4,8 +4,8 @@ namespace Clube.Debug
 {
     /// <summary>
     /// Shows the voxel lab's teaching labels (corner labels, case table, crossed
-    /// edges; V9, V21) in the Game view while playing. The Scene view shows the
-    /// same labels through an editor overlay, which reads the toggles from here.
+    /// edges, edge numbers; V9, V21) in the Game view while playing. The Scene view
+    /// shows the same labels through an editor overlay, which reads the toggles from here.
     /// </summary>
     /// <remarks>
     /// The labels hide while step-through mode is on (a <see cref="StepThroughLab"/>
@@ -19,9 +19,13 @@ namespace Clube.Debug
         [SerializeField]
         private bool showCornerLabels = true;
 
-        [Tooltip("Highlight and number the edges the surface crosses (V9).")]
+        [Tooltip("Highlight the edges the surface crosses (V9).")]
         [SerializeField]
         private bool showCrossedEdges = true;
+
+        [Tooltip("Number all 12 edges (e0-e11); crossed edges are labelled in the highlight colour.")]
+        [SerializeField]
+        private bool showEdgeLabels = true;
 
         [Tooltip("Camera the Game-view labels are projected with. Defaults to the main camera.")]
         [SerializeField]
@@ -32,6 +36,8 @@ namespace Clube.Debug
         public bool ShowCornerLabels => showCornerLabels && !StepThroughMode.IsOn(this);
 
         public bool ShowCrossedEdges => showCrossedEdges && !StepThroughMode.IsOn(this);
+
+        public bool ShowEdgeLabels => showEdgeLabels && !StepThroughMode.IsOn(this);
 
         public VoxelCornerEditor Corners => corners != null ? corners : GetComponent<VoxelCornerEditor>();
 
@@ -44,7 +50,8 @@ namespace Clube.Debug
         {
             bool cornerLabels = ShowCornerLabels;
             bool crossedEdges = ShowCrossedEdges;
-            if (Event.current.type != EventType.Repaint || (!cornerLabels && !crossedEdges))
+            bool edgeLabels = ShowEdgeLabels;
+            if (Event.current.type != EventType.Repaint || (!cornerLabels && !crossedEdges && !edgeLabels))
             {
                 return;
             }
@@ -55,7 +62,7 @@ namespace Clube.Debug
                 return;
             }
 
-            VoxelLabelPainter.Draw(corners, cornerLabels, crossedEdges, (Vector3 world, out Vector2 gui) =>
+            VoxelLabelPainter.Draw(corners, cornerLabels, crossedEdges, edgeLabels, (Vector3 world, out Vector2 gui) =>
             {
                 Vector3 screen = viewCamera.WorldToScreenPoint(world);
 

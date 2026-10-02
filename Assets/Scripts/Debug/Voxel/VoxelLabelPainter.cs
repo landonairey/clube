@@ -9,7 +9,8 @@ namespace Clube.Debug
     /// <list type="bullet">
     /// <item>V21: corners labelled c0-c7 (green when solid), and a table above the
     /// cube lining each corner up with the bit it sets in the case index.</item>
-    /// <item>V9: the edges the surface crosses, highlighted and numbered.</item>
+    /// <item>V9: the edges the surface crosses, highlighted.</item>
+    /// <item>Edge labels: all 12 edges numbered, crossed ones in the highlight colour.</item>
     /// </list>
     /// Shared by the Game view (<see cref="VoxelLabels"/>, runtime OnGUI) and the
     /// Scene view (an editor overlay), so both show exactly the same thing. Drawn
@@ -41,13 +42,17 @@ namespace Clube.Debug
         private static GUIStyle solidCornerStyle;
         private static GUIStyle emptyCornerStyle;
         private static GUIStyle edgeStyle;
+        private static GUIStyle mutedEdgeStyle;
         private static GUIStyle titleStyle;
         private static GUIStyle rowLabelStyle;
         private static GUIStyle solidCellStyle;
         private static GUIStyle emptyCellStyle;
 
         /// <summary>Call from inside a GUI pass (OnGUI, or Handles.BeginGUI in the editor).</summary>
-        public static void Draw(VoxelCornerEditor corners, bool showCornerLabels, bool showCrossedEdges, WorldToGui worldToGui)
+        /// <param name="showCrossedEdges">Highlight the edges the surface crosses (V9).</param>
+        /// <param name="showEdgeLabels">Number all 12 edges, crossed ones in the highlight colour.</param>
+        public static void Draw(
+            VoxelCornerEditor corners, bool showCornerLabels, bool showCrossedEdges, bool showEdgeLabels, WorldToGui worldToGui)
         {
             EnsureStyles();
 
@@ -60,6 +65,11 @@ namespace Clube.Debug
             if (showCrossedEdges)
             {
                 DrawCrossedEdges(caseIndex, ToGui);
+            }
+
+            if (showEdgeLabels)
+            {
+                DrawEdgeLabels(caseIndex, ToGui);
             }
 
             if (showCornerLabels)
@@ -89,7 +99,24 @@ namespace Clube.Debug
                 if (toGui(a, out Vector2 guiA) && toGui(b, out Vector2 guiB))
                 {
                     GuiDrawing.Line(guiA, guiB, CrossedEdgeColor, CrossedEdgeThickness);
-                    GuiDrawing.CentredLabel((guiA + guiB) * 0.5f + new Vector2(12f, 0f), $"e{edge}", edgeStyle);
+                }
+            }
+        }
+
+        // Labels sit beside each edge's midpoint, nudged away from the cube centre.
+        private static void DrawEdgeLabels(int caseIndex, LocalToGui toGui)
+        {
+            var centre = new Vector3(0.5f, 0.5f, 0.5f);
+            int mask = MarchingCubes.GetCrossedEdgeMask(caseIndex);
+            for (int edge = 0; edge < MarchingCubes.EdgeCount; edge++)
+            {
+                Vector3 a = MarchingCubes.CornerPosition(MarchingCubesTables.EdgeCorners[edge, 0]);
+                Vector3 b = MarchingCubes.CornerPosition(MarchingCubesTables.EdgeCorners[edge, 1]);
+                Vector3 middle = (a + b) * 0.5f;
+                if (toGui(middle + (middle - centre) * 0.15f, out Vector2 gui))
+                {
+                    bool crossed = (mask & (1 << edge)) != 0;
+                    GuiDrawing.CentredLabel(gui, $"e{edge}", crossed ? edgeStyle : mutedEdgeStyle);
                 }
             }
         }
@@ -161,6 +188,7 @@ namespace Clube.Debug
             solidCornerStyle = Style(label, SolidColor, FontStyle.Bold, 13);
             emptyCornerStyle = Style(label, EmptyColor, FontStyle.Bold, 13);
             edgeStyle = Style(label, CrossedEdgeColor, FontStyle.Bold, 11);
+            mutedEdgeStyle = Style(label, MutedColor, FontStyle.Normal, 11);
             titleStyle = Style(label, Color.white, FontStyle.Bold, 12);
             rowLabelStyle = Style(label, MutedColor, FontStyle.Normal, 12);
             solidCellStyle = Style(label, SolidColor, FontStyle.Bold, 12, TextAnchor.MiddleCenter);
