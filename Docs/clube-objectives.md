@@ -90,7 +90,7 @@ Note: V1, V2 and V6 now run on the 1×1×1 chunk through the A7 edit path (the p
 ### 1B — Visual debugging
 - [x] **V6** `Lab` Corner gizmo spheres, grayscale by corner value.
 - [x] **V7** `Lab` *(added)* Show current case index (0–255) and which of the 15 base configurations it maps to.
-- [x] **V8** `Lab` *(added)* Normal gizmos per vertex/face (verifies V4 and V5).
+- [x] **V8** `Lab` *(added)* Normal gizmos per vertex/face (verifies V4 and V5). Drawn as a line mesh (`NormalLines`), not gizmos.
 - [x] **V9** `Lab` *(added)* Highlight active edges from the edge table.
 - [x] **V10** `Lab` *(added)* Preset buttons for known cases, including ambiguous ones.
 - [x] **V20** `Lab` *(added)* Type a case index (0–255) to jump straight to it: corners whose bit is set become solid, the rest empty. Step one case at a time with ◀ ▶ in the Inspector or the left/right arrow keys in Play mode.

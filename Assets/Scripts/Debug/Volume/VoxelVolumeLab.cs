@@ -7,19 +7,17 @@ namespace Clube.Debug
 {
     /// <summary>
     /// Volume inspection for the voxel lab (1C): measures the parent voxel's fill
-    /// three ways (V11, V12, V14) and draws the exact method's tetrahedra, pulled
-    /// apart by an explode slider (V13). Each tetrahedron gets its own colour; red
-    /// is reserved for an inside-out (negative) tetrahedron, which would be a bug.
+    /// three ways (V11, V12, V14) and shows the exact method's tetrahedra, pulled
+    /// apart by an explode slider (V13), through a <see cref="TetrahedraView"/>.
     /// </summary>
     /// <remarks>
-    /// Sits on a child object with no renderer of its own. Unity skips an object's
-    /// gizmos once its renderer bounds leave the view, and the voxel's renderer has
-    /// no bounds worth speaking of outside Play mode.
+    /// Runs in edit mode too, since the voxel's corners are edited outside Play
+    /// mode; the tetrahedra objects are never saved and are removed on disable.
     /// </remarks>
+    [ExecuteAlways]
     public class VoxelVolumeLab : MonoBehaviour
     {
-        private static readonly Color NegativeColor = new Color(1f, 0.25f, 0.2f);
-        private static readonly Vector3 CubeCentre = new Vector3(0.5f, 0.5f, 0.5f);
+        private const string VertexColorShader = "Universal Render Pipeline/Particles/Unlit";
 
         [Header("Exact volume (V12, V13)")]
         [Tooltip("Decompose the solid into tetrahedra for the exact volume and draw them. " +
@@ -34,13 +32,20 @@ namespace Clube.Debug
         [SerializeField, Range(0f, 1f)]
         private float faceOpacity = 0.35f;
 
+        [Tooltip("Transparent material showing vertex colours and alpha, for the faces.")]
+        [SerializeField]
+        private Material faceMaterial;
+
+        [Tooltip("Material showing vertex colours, for the edges. Falls back to URP Particles/Unlit if empty.")]
+        [SerializeField]
+        private Material edgeMaterial;
+
         [Header("Reference (V14)")]
         [Tooltip("Monte Carlo samples of the smooth trilinear field. 0 turns it off.")]
         [SerializeField, Min(0)]
         private int monteCarloSamples = 10000;
 
         private readonly List<Tetrahedron> tetrahedra = new List<Tetrahedron>();
-        private readonly List<Mesh> tetrahedronMeshes = new List<Mesh>();
 
         // Inputs of the last measurement, so it only reruns when something changed.
         private readonly float[] measuredCorners = new float[MarchingCubes.CornerCount];
@@ -50,6 +55,16 @@ namespace Clube.Debug
         private bool measuredExact;
 
         private VolumeReport report;
+
+        private TetrahedraView view;
+        private Material ownedEdgeMaterial;
+
+        // What the view last showed, so it is only rebuilt when something changed.
+        private int measurementVersion;
+        private int shownVersion = -1;
+        private float shownExplode = -1f;
+        private float shownOpacity = -1f;
+        private float shownVoxelSize = -1f;
 
         public VoxelCornerEditor Corners => GetComponentInParent<VoxelCornerEditor>();
 
@@ -71,35 +86,8 @@ namespace Clube.Debug
         public VolumeReport Measure()
         {
             Refresh();
+            RefreshView();
             return report;
-        }
-
-        private void OnDrawGizmos()
-        {
-            VoxelCornerEditor corners = Corners;
-            if (!exactVolume || corners == null)
-            {
-                return;
-            }
-
-            Refresh();
-            Gizmos.matrix = corners.transform.localToWorldMatrix * Matrix4x4.Scale(Vector3.one * corners.VoxelSize);
-
-            int positiveIndex = 0;
-            for (int i = 0; i < tetrahedra.Count; i++)
-            {
-                Tetrahedron tetrahedron = tetrahedra[i];
-                Color color = tetrahedron.SignedVolume >= 0f ? DistinctColor(positiveIndex++) : NegativeColor;
-
-                Vector3 outwards = tetrahedron.Centroid - CubeCentre;
-                Vector3 offset = outwards.sqrMagnitude > 1e-8f ? outwards.normalized * explodeDistance : Vector3.zero;
-
-                Gizmos.color = new Color(color.r, color.g, color.b, faceOpacity);
-                Gizmos.DrawMesh(tetrahedronMeshes[i], offset);
-
-                Gizmos.color = color;
-                DrawEdges(tetrahedron, offset);
-            }
         }
 
         private void OnValidate()
@@ -108,9 +96,67 @@ namespace Clube.Debug
             measuredSamples = -1;
         }
 
+        private void LateUpdate()
+        {
+            Refresh();
+            RefreshView();
+        }
+
+        private void OnDisable()
+        {
+            view?.Dispose();
+            view = null;
+            shownVersion = -1;
+        }
+
         private void OnDestroy()
         {
-            DestroyMeshes();
+            LabMeshObject.DestroyNow(ownedEdgeMaterial);
+        }
+
+        private void RefreshView()
+        {
+            VoxelCornerEditor corners = Corners;
+            if (!isActiveAndEnabled || corners == null)
+            {
+                return;
+            }
+
+            if (!exactVolume || faceMaterial == null)
+            {
+                if (view != null)
+                {
+                    view.Visible = false;
+                }
+                return;
+            }
+
+            view ??= new TetrahedraView(transform, faceMaterial, EdgeMaterial());
+            view.Visible = true;
+
+            float voxelSize = corners.VoxelSize;
+            if (shownVersion == measurementVersion && shownExplode == explodeDistance &&
+                shownOpacity == faceOpacity && shownVoxelSize == voxelSize)
+            {
+                return;
+            }
+
+            view.Scale = voxelSize;
+            view.Show(tetrahedra, explodeDistance, faceOpacity);
+            shownVersion = measurementVersion;
+            shownExplode = explodeDistance;
+            shownOpacity = faceOpacity;
+            shownVoxelSize = voxelSize;
+        }
+
+        private Material EdgeMaterial()
+        {
+            if (edgeMaterial != null)
+            {
+                return edgeMaterial;
+            }
+            ownedEdgeMaterial ??= new Material(Shader.Find(VertexColorShader)) { name = "Tetrahedra Edges" };
+            return ownedEdgeMaterial;
         }
 
         private void Refresh()
@@ -160,8 +206,7 @@ namespace Clube.Debug
             report = new VolumeReport(
                 VoxelVolume.Approximate(values), exactVolume, exact, trilinear, monteCarloSamples,
                 positive, tetrahedra.Count - positive);
-
-            RebuildMeshes();
+            measurementVersion++;
         }
 
         private bool IsUpToDate(IReadOnlyList<float> values, float iso, EdgePlacement placement)
@@ -180,70 +225,6 @@ namespace Clube.Debug
                 }
             }
             return true;
-        }
-
-        private void RebuildMeshes()
-        {
-            DestroyMeshes();
-            foreach (Tetrahedron tetrahedron in tetrahedra)
-            {
-                tetrahedronMeshes.Add(BuildMesh(tetrahedron));
-            }
-        }
-
-        private void DestroyMeshes()
-        {
-            foreach (Mesh mesh in tetrahedronMeshes)
-            {
-                if (Application.isPlaying)
-                {
-                    Destroy(mesh);
-                }
-                else
-                {
-                    DestroyImmediate(mesh);
-                }
-            }
-            tetrahedronMeshes.Clear();
-        }
-
-        // Four outward-facing triangles. A negative tetrahedron is inside out, so two
-        // corners are swapped to keep its faces pointing outwards for shading.
-        private static Mesh BuildMesh(Tetrahedron tetrahedron)
-        {
-            Vector3 p0 = tetrahedron.Apex;
-            Vector3 p1 = tetrahedron.A;
-            Vector3 p2 = tetrahedron.SignedVolume >= 0f ? tetrahedron.B : tetrahedron.C;
-            Vector3 p3 = tetrahedron.SignedVolume >= 0f ? tetrahedron.C : tetrahedron.B;
-
-            var mesh = new Mesh { name = "Tetrahedron", hideFlags = HideFlags.HideAndDontSave };
-            mesh.SetVertices(new List<Vector3> { p1, p2, p3, p0, p3, p2, p0, p1, p3, p0, p2, p1 });
-            mesh.SetTriangles(new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }, 0);
-            mesh.RecalculateNormals();
-            return mesh;
-        }
-
-        private static void DrawEdges(Tetrahedron tetrahedron, Vector3 offset)
-        {
-            Vector3 apex = tetrahedron.Apex + offset;
-            Vector3 a = tetrahedron.A + offset;
-            Vector3 b = tetrahedron.B + offset;
-            Vector3 c = tetrahedron.C + offset;
-
-            Gizmos.DrawLine(apex, a);
-            Gizmos.DrawLine(apex, b);
-            Gizmos.DrawLine(apex, c);
-            Gizmos.DrawLine(a, b);
-            Gizmos.DrawLine(b, c);
-            Gizmos.DrawLine(c, a);
-        }
-
-        // Golden-ratio hue steps keep neighbouring tetrahedra visibly different. Hues
-        // stay between orange and violet, leaving red for negative tetrahedra.
-        private static Color DistinctColor(int index)
-        {
-            float hue = 0.08f + (index * 0.618034f % 1f) * 0.8f;
-            return Color.HSVToRGB(hue, 0.6f, 1f);
         }
     }
 }
