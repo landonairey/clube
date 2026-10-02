@@ -1,0 +1,403 @@
+using System.Collections.Generic;
+using Clube.Core;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+namespace Clube.Debug
+{
+    /// <summary>
+    /// In Play mode, draws a sphere on every density sample shaded by its value,
+    /// black = 0 to white = 1 (V6), the chunk's outline, and optionally the
+    /// wireframe of every voxel. Reads the chunk's public data only (A4).
+    /// </summary>
+    /// <remarks>
+    /// These are real meshes rather than gizmos. Unity's gizmo pass dims gizmos it
+    /// thinks are hidden, and in this project (URP on Direct3D 12) it gets that
+    /// test vertically flipped, so gizmos dimmed in a mirror image of the surface.
+    /// All spheres are one combined mesh with vertex colours (one draw call); a
+    /// density edit only rewrites the colours. Outside Play mode, where there is
+    /// no chunk yet, the outline is drawn as a gizmo from the config.
+    /// </remarks>
+    [RequireComponent(typeof(ChunkView))]
+    public class ChunkDebugView : MonoBehaviour
+    {
+        /// <summary>Above this many samples the spheres are suppressed, to keep the mesh and its rebuilds light.</summary>
+        public const int MaxSampleSpheres = 40000;
+
+        private const string VertexColorShader = "Universal Render Pipeline/Particles/Unlit";
+        private const string LineShader = "Universal Render Pipeline/Unlit";
+        private const string ColorProperty = "_BaseColor";
+
+        [Tooltip("Draw a sphere on every density sample. Suppressed above 40,000 samples (about a 33³ chunk).")]
+        [SerializeField]
+        private bool showSamples = true;
+
+        // Capped at half a voxel: any larger and neighbouring corner spheres overlap.
+        [Tooltip("Sphere radius as a fraction of the voxel size (at most half an edge).")]
+        [SerializeField, Range(0f, 0.5f)]
+        private float cornerRadius = 0.05f;
+
+        [Tooltip("Draw the grid lines between voxels, showing every voxel's wireframe.")]
+        [SerializeField]
+        private bool showVoxelGrid;
+
+        [SerializeField]
+        private Color voxelGridColor = new Color(0.32f, 0.33f, 0.36f);
+
+        [SerializeField]
+        private Color outlineColor = new Color(0.6f, 0.6f, 0.6f);
+
+        [Tooltip("Material that shows vertex colours, for the spheres. Falls back to URP Particles/Unlit if empty.")]
+        [SerializeField]
+        private Material sampleMaterial;
+
+        [Tooltip("Unlit material for the outline and grid. Falls back to URP Unlit if empty.")]
+        [SerializeField]
+        private Material lineMaterial;
+
+        private readonly List<Vector3> sphereVertices = new List<Vector3>();
+        private readonly List<int> sphereTriangles = new List<int>();
+        private readonly List<Color32> sampleColors = new List<Color32>();
+        private readonly List<Vector3> scratchVertices = new List<Vector3>();
+        private readonly List<int> scratchIndices = new List<int>();
+
+        // Meshes, objects and fallback materials created here, destroyed with this component.
+        private readonly List<Object> owned = new List<Object>();
+
+        private ChunkView chunkView;
+
+        // Created in Awake: Unity doesn't allow it in a field initializer.
+        private MaterialPropertyBlock properties;
+
+        private MeshRenderer samplesRenderer;
+        private MeshRenderer outlineRenderer;
+        private MeshRenderer gridRenderer;
+        private Mesh samplesMesh;
+        private Mesh outlineMesh;
+        private Mesh gridMesh;
+
+        // What the current meshes were built for, so they are only rebuilt when it changes.
+        private Vector3Int builtSampleCount;
+        private float builtVoxelSize;
+        private float builtRadius;
+        private Vector3Int builtGridCount;
+        private float builtGridSize;
+
+        private bool refreshRequested;
+
+        /// <summary>True when sample spheres are wanted but the chunk has too many samples to draw them.</summary>
+        public bool AreSamplesSuppressed
+        {
+            get
+            {
+                Chunk chunk = GetComponent<ChunkView>().Chunk;
+                return showSamples && chunk != null && SampleTotal(chunk) > MaxSampleSpheres;
+            }
+        }
+
+        private void Awake()
+        {
+            chunkView = GetComponent<ChunkView>();
+            properties = new MaterialPropertyBlock();
+        }
+
+        private void OnEnable()
+        {
+            chunkView.MeshRebuilt += OnMeshRebuilt;
+            Refresh();
+        }
+
+        private void OnDisable()
+        {
+            chunkView.MeshRebuilt -= OnMeshRebuilt;
+            SetVisible(samplesRenderer, false);
+            SetVisible(outlineRenderer, false);
+            SetVisible(gridRenderer, false);
+        }
+
+        private void OnDestroy()
+        {
+            foreach (Object item in owned)
+            {
+                Destroy(item);
+            }
+        }
+
+        // Called by Unity whenever an Inspector value changes, including in Play mode.
+        // Objects can't be created during OnValidate, so the refresh waits for LateUpdate.
+        private void OnValidate()
+        {
+            refreshRequested = true;
+        }
+
+        private void LateUpdate()
+        {
+            if (refreshRequested)
+            {
+                refreshRequested = false;
+                Refresh();
+            }
+
+            // Step-through draws the samples itself, coloured by step; this check is
+            // per frame because the mode can be switched at any time.
+            if (samplesRenderer != null)
+            {
+                samplesRenderer.enabled = WantsSamples();
+            }
+        }
+
+        // Before Play mode there is no chunk yet, so outline the config's chunk size.
+        private void OnDrawGizmos()
+        {
+            var view = GetComponent<ChunkView>();
+            if (!enabled || view.Chunk != null || view.Config == null)
+            {
+                return;
+            }
+
+            Vector3 size = (Vector3)view.Config.ChunkSize * view.Config.VoxelSize;
+            Gizmos.matrix = transform.localToWorldMatrix;
+            Gizmos.color = outlineColor;
+            Gizmos.DrawWireCube(size * 0.5f, size);
+        }
+
+        private void OnMeshRebuilt(Mesh mesh)
+        {
+            Refresh();
+        }
+
+        private void Refresh()
+        {
+            Chunk chunk = chunkView.Chunk;
+            if (chunk == null || !enabled)
+            {
+                return;
+            }
+
+            float voxelSize = chunkView.Config.VoxelSize;
+            RefreshOutline(chunk.VoxelCount, voxelSize);
+            RefreshGrid(chunk.VoxelCount, voxelSize);
+            RefreshSamples(chunk, voxelSize);
+        }
+
+        private bool WantsSamples()
+        {
+            Chunk chunk = chunkView.Chunk;
+            return enabled && showSamples && chunk != null && SampleTotal(chunk) <= MaxSampleSpheres
+                   && !StepThroughMode.IsOn(this);
+        }
+
+        private void RefreshSamples(Chunk chunk, float voxelSize)
+        {
+            if (!showSamples || SampleTotal(chunk) > MaxSampleSpheres)
+            {
+                SetVisible(samplesRenderer, false);
+                return;
+            }
+
+            EnsureRenderer(ref samplesRenderer, ref samplesMesh, "Density Samples", SampleMaterial());
+            Vector3Int count = chunk.SampleCount;
+            if (count != builtSampleCount || voxelSize != builtVoxelSize || cornerRadius != builtRadius)
+            {
+                BuildSampleGeometry(count, voxelSize);
+            }
+
+            // Densities are the only thing an ordinary edit changes: rewrite just the colours.
+            int perSphere = sphereVertices.Count;
+            sampleColors.Clear();
+            for (int z = 0; z < count.z; z++)
+            {
+                for (int y = 0; y < count.y; y++)
+                {
+                    for (int x = 0; x < count.x; x++)
+                    {
+                        byte grey = (byte)(Mathf.Clamp01(chunk.GetDensity(new Vector3Int(x, y, z))) * 255f);
+                        var color = new Color32(grey, grey, grey, 255);
+                        for (int i = 0; i < perSphere; i++)
+                        {
+                            sampleColors.Add(color);
+                        }
+                    }
+                }
+            }
+            samplesMesh.SetColors(sampleColors);
+            samplesRenderer.enabled = WantsSamples();
+        }
+
+        private void BuildSampleGeometry(Vector3Int count, float voxelSize)
+        {
+            if (sphereVertices.Count == 0)
+            {
+                LabMeshes.Icosphere(sphereVertices, sphereTriangles);
+            }
+
+            float radius = cornerRadius * voxelSize;
+            scratchVertices.Clear();
+            scratchIndices.Clear();
+            for (int z = 0; z < count.z; z++)
+            {
+                for (int y = 0; y < count.y; y++)
+                {
+                    for (int x = 0; x < count.x; x++)
+                    {
+                        Vector3 centre = new Vector3(x, y, z) * voxelSize;
+                        int first = scratchVertices.Count;
+                        foreach (Vector3 vertex in sphereVertices)
+                        {
+                            scratchVertices.Add(centre + vertex * radius);
+                        }
+                        foreach (int index in sphereTriangles)
+                        {
+                            scratchIndices.Add(first + index);
+                        }
+                    }
+                }
+            }
+
+            samplesMesh.Clear();
+            samplesMesh.indexFormat = scratchVertices.Count > ushort.MaxValue ? IndexFormat.UInt32 : IndexFormat.UInt16;
+            samplesMesh.SetVertices(scratchVertices);
+            samplesMesh.SetTriangles(scratchIndices, 0);
+            samplesMesh.RecalculateBounds();
+
+            builtSampleCount = count;
+            builtVoxelSize = voxelSize;
+            builtRadius = cornerRadius;
+        }
+
+        private void RefreshOutline(Vector3Int voxelCount, float voxelSize)
+        {
+            EnsureRenderer(ref outlineRenderer, ref outlineMesh, "Chunk Outline", LineMaterial());
+            scratchVertices.Clear();
+            scratchIndices.Clear();
+            Vector3 size = (Vector3)voxelCount * voxelSize;
+            for (int corner = 0; corner < MarchingCubes.CornerCount; corner++)
+            {
+                scratchVertices.Add(Vector3.Scale(MarchingCubes.CornerOffset(corner), size));
+            }
+            for (int edge = 0; edge < MarchingCubes.EdgeCount; edge++)
+            {
+                scratchIndices.Add(MarchingCubesTables.EdgeCorners[edge, 0]);
+                scratchIndices.Add(MarchingCubesTables.EdgeCorners[edge, 1]);
+            }
+
+            outlineMesh.Clear();
+            outlineMesh.SetVertices(scratchVertices);
+            outlineMesh.SetIndices(scratchIndices, MeshTopology.Lines, 0);
+            SetColor(outlineRenderer, outlineColor);
+            outlineRenderer.enabled = true;
+        }
+
+        // Lines through every sample row along each axis, which together outline every voxel.
+        private void RefreshGrid(Vector3Int voxelCount, float voxelSize)
+        {
+            if (!showVoxelGrid)
+            {
+                SetVisible(gridRenderer, false);
+                return;
+            }
+
+            EnsureRenderer(ref gridRenderer, ref gridMesh, "Voxel Grid", LineMaterial());
+            SetColor(gridRenderer, voxelGridColor);
+            gridRenderer.enabled = true;
+            if (voxelCount == builtGridCount && voxelSize == builtGridSize)
+            {
+                return;
+            }
+
+            scratchVertices.Clear();
+            scratchIndices.Clear();
+            Vector3 size = (Vector3)voxelCount * voxelSize;
+            for (int axis = 0; axis < 3; axis++)
+            {
+                int a = (axis + 1) % 3;
+                int b = (axis + 2) % 3;
+                for (int i = 0; i <= voxelCount[a]; i++)
+                {
+                    for (int j = 0; j <= voxelCount[b]; j++)
+                    {
+                        Vector3 start = Vector3.zero;
+                        start[a] = i * voxelSize;
+                        start[b] = j * voxelSize;
+                        Vector3 end = start;
+                        end[axis] = size[axis];
+
+                        scratchIndices.Add(scratchVertices.Count);
+                        scratchVertices.Add(start);
+                        scratchIndices.Add(scratchVertices.Count);
+                        scratchVertices.Add(end);
+                    }
+                }
+            }
+
+            gridMesh.Clear();
+            gridMesh.indexFormat = scratchVertices.Count > ushort.MaxValue ? IndexFormat.UInt32 : IndexFormat.UInt16;
+            gridMesh.SetVertices(scratchVertices);
+            gridMesh.SetIndices(scratchIndices, MeshTopology.Lines, 0);
+            builtGridCount = voxelCount;
+            builtGridSize = voxelSize;
+        }
+
+        private void EnsureRenderer(ref MeshRenderer renderer, ref Mesh mesh, string name, Material material)
+        {
+            if (renderer != null)
+            {
+                return;
+            }
+
+            mesh = new Mesh { name = name };
+            mesh.MarkDynamic();
+            owned.Add(mesh);
+
+            var child = new GameObject(name) { hideFlags = HideFlags.DontSave };
+            child.transform.SetParent(transform, false);
+            owned.Add(child);
+            child.AddComponent<MeshFilter>().sharedMesh = mesh;
+            renderer = child.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+        }
+
+        private Material SampleMaterial()
+        {
+            if (sampleMaterial == null)
+            {
+                sampleMaterial = new Material(Shader.Find(VertexColorShader)) { name = "Density Samples" };
+                owned.Add(sampleMaterial);
+            }
+            return sampleMaterial;
+        }
+
+        // The tint is applied per renderer, so one material serves every line mesh.
+        private Material LineMaterial()
+        {
+            if (lineMaterial == null)
+            {
+                lineMaterial = new Material(Shader.Find(LineShader)) { name = "Chunk Lines" };
+                owned.Add(lineMaterial);
+            }
+            return lineMaterial;
+        }
+
+        private void SetColor(Renderer renderer, Color color)
+        {
+            properties.SetColor(ColorProperty, color);
+            renderer.SetPropertyBlock(properties);
+        }
+
+        private static void SetVisible(Renderer renderer, bool visible)
+        {
+            if (renderer != null)
+            {
+                renderer.enabled = visible;
+            }
+        }
+
+        private static int SampleTotal(Chunk chunk)
+        {
+            Vector3Int count = chunk.SampleCount;
+            return count.x * count.y * count.z;
+        }
+    }
+}
