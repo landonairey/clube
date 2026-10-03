@@ -178,10 +178,10 @@ K11 is done. K12 and K32 wait until 3A gives a multi-chunk world to measure on.
 - [ ] **K32** `Core + Lab` *(added, from K11)* Speed up the mesher's per-voxel loop, benchmarked against the K11 baseline (77 ms at 64³). Candidates: read densities straight from the flat storage, not through `IVoxelStorage` per corner; reuse the 4 corners shared with the previous voxel; store the crossed-edge mask as a 256-entry table; and skip all-solid or all-empty runs early.
 
 ### 2E — Terrain editing
-- [ ] **K13** `Core + Lab` Click to add terrain (A7 path).
-- [ ] **K14** `Core + Lab` Click to remove terrain (A7 path).
-- [ ] **K15** `Core + Lab` Brush radius control.
-- [ ] **K16** `Core + Lab` *(added)* Brush strength / falloff (hard vs smooth sphere).
+- [x] **K13** `Core + Lab` Click to add terrain (A7 path). (`TerrainBrush` in Core; `TerrainBrushTool` in ChunkLab: 1/2/3 pick Select, Dig or Add, and holding the button repeats.)
+- [x] **K14** `Core + Lab` Click to remove terrain (A7 path).
+- [x] **K15** `Core + Lab` Brush radius control (in world units; [ and ] in Play mode; a translucent sphere previews it).
+- [x] **K16** `Core + Lab` *(added)* Brush strength / falloff (hard vs smooth sphere). Hard uses the terrain density ramp, so at full strength the surface lands exactly on the radius; smooth fades as (1 - (d/r)²)².
 - [ ] **K33** `Lab` *(added)* Demo exe: a Windows development build of `ChunkLab` that can be played: fly around, pick a generator, dig and add terrain with the brush (K13–K16), with the stats HUD.
   - The custom inspectors don't exist in a build, so the demo needs in-game controls. This starts K31's control panel with only what the demo needs: generator and seed, brush mode, radius and strength, wireframe, and show samples.
   - Repeatable build: a menu item (*Clube → Build → ChunkLab demo*) writing to `Builds/` (already gitignored). It's a development build because it includes `Clube.Debug`; A10's release check still applies to `Game`.
