@@ -56,7 +56,9 @@ of 2D (K12, K32) and 2G come after 3A.
 through A7; `TerrainBrushTool` (ChunkLab) picks Select, Dig or Add with
 1/2/3 and switches `VoxelSelector` off while editing. `ChunkLabPanel` is the
 in-game control panel (the start of K31), and *Clube → Build → ChunkLab demo*
-(`DemoBuild`) builds the playable exe to `Builds/ChunkLab/`. Next: 2F.
+(`DemoBuild`) builds the playable exe to `Builds/ChunkLab/`.
+**Paused here. First when resuming: K34** (demo exe window resizable, and fix
+text cut off in the exe), then 2F.
 K31 (lab control panel) is queued.
 
 ## Conventions
