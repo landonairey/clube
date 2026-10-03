@@ -4,13 +4,14 @@ using UnityEngine.InputSystem;
 namespace Clube.Debug
 {
     /// <summary>
-    /// The demo exe's welcome screen (K34): a title, Play to launch ChunkLab and Exit
-    /// to close the program. Enter plays, Esc exits. Drawn with IMGUI like the lab
-    /// panels, centred and sized to fit small windows.
+    /// The demo exe's welcome screen (K34): a title, a choice of demo, and Exit to close
+    /// the program. "Single voxel" launches VoxelLab (V22), "Single chunk" launches
+    /// ChunkLab; 1 and 2 do the same, Esc exits. Drawn with IMGUI like the lab panels,
+    /// centred and sized to fit small windows.
     /// </summary>
     public class DemoMenu : MonoBehaviour
     {
-        private const float ButtonWidth = 220f;
+        private const float ButtonWidth = 260f;
         private const float ButtonHeight = 44f;
 
         [SerializeField]
@@ -22,6 +23,7 @@ namespace Clube.Debug
         private GUIStyle titleStyle;
         private GUIStyle subtitleStyle;
         private GUIStyle buttonStyle;
+        private GUIStyle captionStyle;
         private GUIStyle hintStyle;
 
         private void Update()
@@ -32,9 +34,13 @@ namespace Clube.Debug
                 return;
             }
 
-            if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)
+            if (keyboard.digit1Key.wasPressedThisFrame || keyboard.numpad1Key.wasPressedThisFrame)
             {
-                DemoScenes.LoadLab();
+                DemoScenes.LoadLab(DemoScenes.VoxelLab);
+            }
+            else if (keyboard.digit2Key.wasPressedThisFrame || keyboard.numpad2Key.wasPressedThisFrame)
+            {
+                DemoScenes.LoadLab(DemoScenes.ChunkLab);
             }
             else if (keyboard.escapeKey.wasPressedThisFrame)
             {
@@ -52,16 +58,15 @@ namespace Clube.Debug
             GUILayout.FlexibleSpace();
             GUILayout.Label(title, titleStyle);
             GUILayout.Label(subtitle, subtitleStyle);
-            GUILayout.Space(32f);
+            GUILayout.Space(28f);
 
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
             GUILayout.BeginVertical(GUILayout.Width(Mathf.Min(ButtonWidth, width)));
-            if (GUILayout.Button("Play", buttonStyle, GUILayout.Height(ButtonHeight)))
-            {
-                DemoScenes.LoadLab();
-            }
-            GUILayout.Space(12f);
+            DrawLaunch("Single voxel", "One voxel and its 256 cases, step by step.", DemoScenes.VoxelLab);
+            GUILayout.Space(10f);
+            DrawLaunch("Single chunk", "A chunk of terrain to fly over, dig and build.", DemoScenes.ChunkLab);
+            GUILayout.Space(10f);
             if (GUILayout.Button("Exit", buttonStyle, GUILayout.Height(ButtonHeight)))
             {
                 DemoScenes.Quit();
@@ -70,10 +75,19 @@ namespace Clube.Debug
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
 
-            GUILayout.Space(24f);
-            GUILayout.Label("Enter play · Esc exit", hintStyle);
+            GUILayout.Space(20f);
+            GUILayout.Label("1 single voxel · 2 single chunk · Esc exit", hintStyle);
             GUILayout.FlexibleSpace();
             GUILayout.EndArea();
+        }
+
+        private void DrawLaunch(string label, string caption, string scene)
+        {
+            if (GUILayout.Button(label, buttonStyle, GUILayout.Height(ButtonHeight)))
+            {
+                DemoScenes.LoadLab(scene);
+            }
+            GUILayout.Label(caption, captionStyle);
         }
 
         private void CreateStyles()
@@ -92,6 +106,7 @@ namespace Clube.Debug
                 normal = { textColor = Color.white },
             };
             subtitleStyle = new GUIStyle(titleStyle) { fontSize = 16, fontStyle = FontStyle.Normal, normal = { textColor = new Color(0.75f, 0.75f, 0.75f) } };
+            captionStyle = new GUIStyle(subtitleStyle) { fontSize = 12, normal = { textColor = new Color(0.7f, 0.7f, 0.7f) } };
             hintStyle = new GUIStyle(subtitleStyle) { fontSize = 12, normal = { textColor = new Color(0.65f, 0.65f, 0.65f) } };
             buttonStyle = new GUIStyle(GUI.skin.button) { fontSize = 18 };
         }

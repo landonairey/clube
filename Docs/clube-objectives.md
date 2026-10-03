@@ -123,6 +123,7 @@ Record the real algorithm once (A11), then replay the log. Stepping back just re
 ### 1E — Standalone build *(backlog, optional)*
 - [ ] **V22** `Lab` Build `VoxelLab` as a standalone Windows exe (development build) and check it runs.
   - Note: the voxel lab panel is a custom inspector (`Clube.Debug.Editor`), which doesn't exist in a build. The exe needs in-game controls, which overlaps with V19's game-window visuals — do this after 1D. It also needs `Clube.Debug` included, so it's a development build, unlike the release check in A10.
+  - *(Update)* VoxelLab is now in the demo exe: the `DemoMenu` "Single voxel" button launches it, with an Exit button and a `ControlsHint` line listing its keys (arrows step the 256 cases, fly camera, scroll explodes the volume). It's a normal build, not a development one, so step-through recording (A5) is compiled out there. Left unticked until it's been playtested in the exe.
 
 **Done when:** every toggle updates the mesh live, V12 returns 0 for an all-outside cube and 1 (× unit volume) for all-inside, and the V16 sequence can be played through or stepped both ways for any preset case (V10).
 
@@ -184,12 +185,12 @@ K11 is done. K12 and K32 wait until 3A gives a multi-chunk world to measure on.
 - [x] **K16** `Core + Lab` *(added)* Brush strength / falloff (hard vs smooth sphere). Hard uses the terrain density ramp, so at full strength the surface lands exactly on the radius; smooth fades as (1 - (d/r)²)².
 - [x] **K33** `Lab` *(added)* Demo exe: a Windows build of `ChunkLab` that can be played: fly around, pick a generator, dig and add terrain with the brush (K13–K16), with the stats HUD.
   - The custom inspectors don't exist in a build, so the demo needs in-game controls. This starts K31's control panel with only what the demo needs: generator and seed, brush mode, radius and strength, wireframe, and show samples.
-  - Repeatable build: a menu item (*Clube → Build → ChunkLab demo*) writing to `Builds/` (already gitignored). It includes `Clube.Debug`, which is fine for a lab build; A10's check still applies to `Game`. Not a development build, which would open a profiler port (a firewall prompt) and add a watermark.
+  - Repeatable build: a menu item (*Clube → Build → Lab demo*, formerly "ChunkLab demo") writing to `Builds/` (already gitignored). It includes `Clube.Debug`, which is fine for a lab build; A10's check still applies to `Game`. Not a development build, which would open a profiler port (a firewall prompt) and add a watermark.
   - Does for `ChunkLab` what V22 planned for `VoxelLab`; V22 stays optional.
 - [x] **K34** `Lab` *(added, from K33 playtest)* Demo exe window fixes:
   - Make the window resizable. Player Settings has `resizableWindow: 0` and `fullscreenMode: 1` (fullscreen window); switch to a resizable window, probably windowed by default.
   - Fix text that gets cut off in the exe. The IMGUI panel and labels assume an Editor-sized screen: check the control panel, the stats HUD and the bottom tool label at small window sizes (e.g. 1280×720, 853×480), and let wrapped or long lines grow instead of clipping.
-  - Welcome screen: a `DemoMenu` scene ("Welcome to clube") opens the exe, with Play (loads ChunkLab) and Exit (closes the program). In ChunkLab an "Exit to menu" button (and Esc) returns to it. (`DemoMenu`, `DemoExitButton`, `DemoScenes` in `Clube.Debug`.)
+  - Welcome screen: a `DemoMenu` scene ("Welcome to clube") opens the exe, with Play (loads ChunkLab) and Exit (closes the program). Later: Single voxel (VoxelLab, V22) and Single chunk (ChunkLab) instead of Play. In ChunkLab an "Exit to menu" button (and Esc) returns to it. (`DemoMenu`, `DemoExitButton`, `DemoScenes` in `Clube.Debug`.)
   - Result: windowed 1280×720 and resizable; the panel scrolls when the window is too short and drops its fixed-width labels; the bottom tool label wraps. Playtested in the exe.
 
 ### 2F — Step-through animation at chunk scale
