@@ -5,7 +5,8 @@ namespace Clube.Debug
 {
     /// <summary>
     /// Keyboard controls for step-through playback (V17): Space plays or pauses,
-    /// right / left arrow step one step, R restarts. Only listens while the
+    /// right / left arrow step one step, R restarts, G cycles what one step covers
+    /// (sub-step, voxel, Z slice; K19). Only listens while the
     /// <see cref="StepThroughLab"/> is on; otherwise the arrows go back to case
     /// stepping (<see cref="CaseStepInput"/>).
     /// </summary>
@@ -43,6 +44,11 @@ namespace Clube.Debug
             else if (keyboard.rKey.wasPressedThisFrame)
             {
                 playback.Restart();
+            }
+            else if (keyboard.gKey.wasPressedThisFrame)
+            {
+                int next = ((int)lab.Granularity + 1) % System.Enum.GetValues(typeof(StepGranularity)).Length;
+                lab.Granularity = (StepGranularity)next;
             }
         }
     }
