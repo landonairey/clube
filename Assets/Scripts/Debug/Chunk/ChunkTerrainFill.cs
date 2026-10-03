@@ -34,13 +34,16 @@ namespace Clube.Debug
 
             chunkView.ChunkCreated += OnChunkCreated;
 
-            // The config is the Play mode copy, which ChunkView makes in its Awake.
-            subscribedConfig = chunkView.Config;
-            if (subscribedConfig != null)
-            {
-                subscribedConfig.Changed += Fill;
-            }
+            // When the scene starts, this can run before ChunkView's Awake makes the Play
+            // mode config copy and the chunk; Start handles that case. When re-enabled later,
+            // everything already exists.
+            SubscribeToConfig();
+            Fill();
+        }
 
+        private void Start()
+        {
+            SubscribeToConfig();
             Fill();
         }
 
@@ -51,6 +54,27 @@ namespace Clube.Debug
             {
                 subscribedConfig.Changed -= Fill;
                 subscribedConfig = null;
+            }
+        }
+
+        // Follows whichever config the view uses now: the Play mode copy once it exists,
+        // which is the one Inspector edits go to.
+        private void SubscribeToConfig()
+        {
+            WorldConfig config = chunkView.Config;
+            if (config == subscribedConfig)
+            {
+                return;
+            }
+
+            if (subscribedConfig != null)
+            {
+                subscribedConfig.Changed -= Fill;
+            }
+            subscribedConfig = config;
+            if (subscribedConfig != null)
+            {
+                subscribedConfig.Changed += Fill;
             }
         }
 

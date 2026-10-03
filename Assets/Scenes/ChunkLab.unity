@@ -140,6 +140,7 @@ GameObject:
   - component: {fileID: 1265142448}
   - component: {fileID: 1265142449}
   - component: {fileID: 1265142450}
+  - component: {fileID: 1265142451}
   m_Layer: 0
   m_Name: Chunk
   m_TagString: Untagged
@@ -218,7 +219,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1265142437}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: efe69ceba5ffccc40b81b5b24f8e49ce, type: 3}
   m_Name: 
@@ -368,6 +369,18 @@ MonoBehaviour:
   highlightColor: {r: 1, g: 0.6, b: 0.15, a: 1}
   highlightMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
   targetCamera: {fileID: 0}
+--- !u!114 &1265142451
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265142437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e449e2fe59621242a72e4a8a4ee2a0a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkTerrainFill
 --- !u!1 &1578836785
 GameObject:
   m_ObjectHideFlags: 0

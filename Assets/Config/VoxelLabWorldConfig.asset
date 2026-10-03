@@ -17,3 +17,12 @@ MonoBehaviour:
   isoLevel: 0.5
   edgePlacement: 0
   shading: 0
+  terrain:
+    generator: 4
+    surfaceLevel: 4
+    amplitude: 2
+    frequency: 0.15
+    octaves: 4
+    lacunarity: 2
+    persistence: 0.5
+    seed: 1
