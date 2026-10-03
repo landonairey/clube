@@ -186,6 +186,9 @@ K11 is done. K12 and K32 wait until 3A gives a multi-chunk world to measure on.
   - The custom inspectors don't exist in a build, so the demo needs in-game controls. This starts K31's control panel with only what the demo needs: generator and seed, brush mode, radius and strength, wireframe, and show samples.
   - Repeatable build: a menu item (*Clube → Build → ChunkLab demo*) writing to `Builds/` (already gitignored). It includes `Clube.Debug`, which is fine for a lab build; A10's check still applies to `Game`. Not a development build, which would open a profiler port (a firewall prompt) and add a watermark.
   - Does for `ChunkLab` what V22 planned for `VoxelLab`; V22 stays optional.
+- [ ] **K34** `Lab` *(added, from K33 playtest — do first when work resumes)* Demo exe window fixes:
+  - Make the window resizable. Player Settings has `resizableWindow: 0` and `fullscreenMode: 1` (fullscreen window); switch to a resizable window, probably windowed by default.
+  - Fix text that gets cut off in the exe. The IMGUI panel and labels assume an Editor-sized screen: check the control panel, the stats HUD and the bottom tool label at small window sizes (e.g. 1280×720, 853×480), and let wrapped or long lines grow instead of clipping.
 
 ### 2F — Step-through animation at chunk scale
 Extends Chapter 1 playback (V15–V19) so the mesh can be watched growing voxel by voxel.
