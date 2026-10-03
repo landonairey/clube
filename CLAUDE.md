@@ -39,8 +39,12 @@ other lab tools defer to it via `StepThroughMode`).
 `ChunkMeshStats` + FPS shown by `ChunkStatsHud`, and `ChunkTestFill`
 (ball, or solid with a shaft) as test shapes that stay alongside K9.
 2B is done (K5–K7): `VoxelSelector` picks voxels by click, F frames the
-selection, and `SelectedVoxelEditor` edits its corners. Next: 2C terrain
-surface generation (K8–K10).
+selection, and `SelectedVoxelEditor` edits its corners.
+2C in progress: `TerrainSettings` (in `WorldConfig`) picks an
+`ITerrainGenerator` (Flat, Sine, 2D/3D Perlin, fractal 2D Perlin, all
+seeded via `PerlinNoise`); `ChunkGenerator.Fill` samples world positions;
+`ChunkTerrainFill` regenerates ChunkLab on config changes. Next: the spline
+and heightmap generators (rest of K9). K31 (lab control panel) is queued.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
@@ -111,6 +115,11 @@ surface generation (K8–K10).
   after `EditorSceneManager.OpenScene` saves as a null reference (the
   object goes stale). Re-load it with `AssetDatabase.LoadAssetAtPath`
   right before assigning, and check the saved scene for `{fileID: 0}`.
+- Unity gotcha: when splitting a type out into a new file from the shell,
+  create the new file first and edit the old one after. If Unity compiles
+  in between, it can register the edited file without the new one and keep
+  failing ("type not found") even after a clean rebuild. Fix: move the new
+  file out and back with `AssetDatabase.MoveAsset` (keeps the GUID).
 - MCP gotcha: GameObject instance IDs change on every domain reload
   (entering Play mode, recompiling). Look objects up again with `find`
   before passing an ID to tools like `Camera_Capture`.

@@ -152,16 +152,16 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 - [x] **K7** `Lab` Selected voxel exposes the Chapter 1 per-voxel controls. Editing a corner goes through A7 and updates neighbouring voxels that share it. (`SelectedVoxelEditor`: corner sliders noting how many voxels share each corner, plus the case and preset panel shared with VoxelLab via `VoxelCaseGui`.)
 
 ### 2C — Terrain surface generation
-- [ ] **K8** `Config` Base surface level + amplitude parameters.
+- [x] **K8** `Config` Base surface level + amplitude parameters (`TerrainSettings` in `WorldConfig`).
 - [ ] **K9** `Core` Generators, selected via `Config` (the lab-only `ChunkTestFill` shapes from 2A, a ball and a solid block with a shaft, stay alongside them as test fixtures):
-  - Flat
-  - Sine wave
-  - 2D Perlin
-  - 3D Perlin
-  - 2D Perlin with octaves (frequency, lacunarity, persistence)
-  - Spline-based (height remapping curve)
-  - Heightmap import (PNG/RAW)
-- [ ] **K10** `Config` *(added)* Seed parameter for all noise generators.
+  - [x] Flat
+  - [x] Sine wave
+  - [x] 2D Perlin
+  - [x] 3D Perlin
+  - [x] 2D Perlin with octaves (frequency, lacunarity, persistence)
+  - [ ] Spline-based (height remapping curve)
+  - [ ] Heightmap import (PNG/RAW)
+- [x] **K10** `Config` *(added)* Seed parameter for all noise generators (seeded `PerlinNoise`, so the same seed always gives the same terrain).
 - [ ] **K29** `Lab` *(backlog)* Heightmap export: write the chunk's surface height per column as a grayscale image (one byte per pixel). Round-trips with K9's heightmap import, which makes a handy test.
   - Note: the chunk is 3D, so "height" means the topmost iso-crossing in each column; overhangs and caves are lost.
 
