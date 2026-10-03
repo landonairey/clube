@@ -17,5 +17,11 @@ namespace Clube.Core
 
         /// <summary>A heightfield from several octaves of 2D Perlin noise (fractal Brownian motion).</summary>
         FractalPerlin2D,
+
+        /// <summary>Fractal 2D Perlin noise remapped through an editable height curve.</summary>
+        Spline,
+
+        /// <summary>Heights read from a grayscale image or RAW file.</summary>
+        Heightmap,
     }
 }

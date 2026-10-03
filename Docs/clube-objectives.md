@@ -78,7 +78,7 @@ A combined tag like `Core + Lab` means the logic lives in the core and a lab com
 
 Goal: fully interrogate marching cubes mechanics on one cube at runtime via the inspector. Built on a 1×1×1 chunk (A8).
 
-Note: V1, V2 and V6 now run on the 1×1×1 chunk through the A7 edit path (the pre-plan `SingleVoxel` component is gone). A2 and A12 are started but not complete: `WorldConfig` has no generator or seed yet (K9, K10), and `IVoxelStorage` has density only (materials M10, iteration and serialization K26).
+Note: V1, V2 and V6 now run on the 1×1×1 chunk through the A7 edit path (the pre-plan `SingleVoxel` component is gone). A2 and A12 are started but not complete: `IVoxelStorage` has density only (materials M10, iteration and serialization K26).
 
 ### 1A — Core controls
 - [x] **V1** `Config` Iso value slider.
@@ -137,7 +137,7 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 - [x] **K2** `Config` Voxel unit size.
 - [x] **K3** `Lab` Chapter 1 global toggles (iso, interpolation, shading, winding, gizmos) apply chunk-wide. `ChunkDebugView` draws the density spheres, chunk outline and optional voxel grid as real meshes (not gizmos, which Unity mis-dims on D3D12), and suppresses the spheres above 40,000 samples.
 - [x] **K4** `Lab` *(added)* Stats readout: vertex count, triangle count, last mesh build time (ms), split into meshing and Unity mesh upload (`ChunkMeshStats`, shown by `ChunkStatsHud` and the `ChunkView` Inspector).
-- [x] **K30** `Core + Lab` *(added)* Chunk volume readout: the solid volume inside the chunk by both Chapter 1 methods, approximate (V11) and exact tetrahedra (V12), summed over every voxel (`ChunkVolume`, shown via `ChunkVolumeStats`). The exact sum costs about 165 ms at 32³, so turn the component off when editing large chunks.
+- [x] **K30** `Core + Lab` *(added)* Chunk volume readout: the solid volume inside the chunk by both Chapter 1 methods, approximate (V11) and exact tetrahedra (V12), summed over every voxel (`ChunkVolume`, shown via `ChunkVolumeStats`). The exact sum costs about 165 ms at 32³, so its *Calculate* toggle switches the measurement off when editing large chunks.
 - [ ] **K31** `Lab` *(added)* Lab control panel: one place for the settings used all the time, instead of hunting through every component's Inspector (colours, materials and rarely used toggles stay on the components). Probably an in-game settings GUI, which would also give the standalone exe (V22) its controls. Settings:
   - Config: voxel size, iso level, edge placement, shading
   - Test fill: shape, radius
@@ -153,16 +153,16 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 
 ### 2C — Terrain surface generation
 - [x] **K8** `Config` Base surface level + amplitude parameters (`TerrainSettings` in `WorldConfig`).
-- [ ] **K9** `Core` Generators, selected via `Config` (the lab-only `ChunkTestFill` shapes from 2A, a ball and a solid block with a shaft, stay alongside them as test fixtures):
+- [x] **K9** `Core` Generators, selected via `Config` (the lab-only `ChunkTestFill` shapes from 2A, a ball and a solid block with a shaft, stay alongside them as test fixtures):
   - [x] Flat
   - [x] Sine wave
   - [x] 2D Perlin
   - [x] 3D Perlin
   - [x] 2D Perlin with octaves (frequency, lacunarity, persistence)
-  - [ ] Spline-based (height remapping curve)
-  - [ ] Heightmap import (PNG/RAW)
+  - [x] Spline-based (height remapping curve over fractal 2D Perlin)
+  - [x] Heightmap import (PNG/RAW: red channel of a readable texture, or a square 8/16-bit RAW)
 - [x] **K10** `Config` *(added)* Seed parameter for all noise generators (seeded `PerlinNoise`, so the same seed always gives the same terrain).
-- [ ] **K29** `Lab` *(backlog)* Heightmap export: write the chunk's surface height per column as a grayscale image (one byte per pixel). Round-trips with K9's heightmap import, which makes a handy test.
+- [x] **K29** `Lab` *(backlog)* Heightmap export: write the chunk's surface height per column as a grayscale image (one byte per pixel). Round-trips with K9's heightmap import, which makes a handy test. (`HeightmapExport` in Core; "Export heightmap PNG" button on `ChunkView` in Play mode, saved to `Assets/Heightmaps/`; a round-trip test checks the surface comes back within one 8-bit step.)
   - Note: the chunk is 3D, so "height" means the topmost iso-crossing in each column; overhangs and caves are lost.
 
 ### 2D — Performance
@@ -271,6 +271,12 @@ Ore nodes are generated as a procedural centroid with a 3D Gaussian falloff. Eac
 - [ ] **P10** `Game` *(added)* Settings menu: render distance, sensitivity, graphics options, and *(backlog)* rebinding the player controller's key binds (Input System rebinding, saved with the player settings, A3).
 - [ ] **P11** `Core` *(backlog)* GPU marching cubes: run chunk meshing as a compute shader to speed up world generation. Benchmark against the CPU and Burst paths (K11, K12).
   - Note: colliders (M6) and volume math (I5) need the mesh back on the CPU, and that readback can eat the gain; measure end to end, not just the dispatch.
+- [ ] **P12** `Core + Config` *(added)* Multi-noise spline terrain, Minecraft style: grows K9's single-curve Spline generator into several independent noise fields, each with its own spline, combined into the final height (and shape, for 3D density):
+  - Continentalness: ocean ↔ coast ↔ inland ↔ far inland, at a very low frequency; sets the base height.
+  - Erosion: how worn down the land is; high erosion flattens, low erosion allows mountains.
+  - Peaks & valleys (folded "weirdness" noise): adds ridges and river valleys on top.
+  - Splines that depend on more than one input (e.g. the peaks curve chosen by erosion), editable in `WorldConfig` and previewable in a lab (a 2D map of each field, like K29's export).
+  - The same fields can drive biomes (P8, PK5) and caves (P5). Builds on P4 (seeded fields); needs a world larger than one chunk to show anything, which is why it sits here and not in 2C.
 
 ---
 

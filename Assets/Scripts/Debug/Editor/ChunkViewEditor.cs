@@ -35,6 +35,16 @@ namespace Clube.Debug.Editor
             {
                 statsStyle ??= new GUIStyle(EditorStyles.helpBox) { richText = true, fontSize = 11 };
                 EditorGUILayout.LabelField(ChunkStatsHud.Describe(view.Chunk.VoxelCount, view.LastBuildStats), statsStyle);
+
+                if (GUILayout.Button(new GUIContent(
+                        "Export heightmap PNG",
+                        "Save the surface height of each column as a grayscale PNG in Assets/Heightmaps (K29). " +
+                        "Import it with surface level = amplitude = half the chunk height to get the same surface back.")))
+                {
+                    string path = HeightmapPngExporter.Export(view);
+                    EditorGUIUtility.PingObject(AssetDatabase.LoadMainAssetAtPath(path));
+                    UnityEngine.Debug.Log($"Heightmap exported to {path}", AssetDatabase.LoadMainAssetAtPath(path));
+                }
             }
 
             WorldConfig config = view.Config;

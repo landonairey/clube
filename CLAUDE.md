@@ -40,11 +40,15 @@ other lab tools defer to it via `StepThroughMode`).
 (ball, or solid with a shaft) as test shapes that stay alongside K9.
 2B is done (K5–K7): `VoxelSelector` picks voxels by click, F frames the
 selection, and `SelectedVoxelEditor` edits its corners.
-2C in progress: `TerrainSettings` (in `WorldConfig`) picks an
-`ITerrainGenerator` (Flat, Sine, 2D/3D Perlin, fractal 2D Perlin, all
-seeded via `PerlinNoise`); `ChunkGenerator.Fill` samples world positions;
-`ChunkTerrainFill` regenerates ChunkLab on config changes. Next: the spline
-and heightmap generators (rest of K9). K31 (lab control panel) is queued.
+2C is done (K8–K10, K29): `TerrainSettings` (in `WorldConfig`) picks an
+`ITerrainGenerator` (Flat, Sine, 2D/3D Perlin, fractal 2D Perlin, Spline,
+Heightmap; noise seeded via `PerlinNoise`); `ChunkGenerator.Fill` samples
+world positions; `ChunkTerrainFill` regenerates ChunkLab on config changes
+and reports a missing heightmap as "Generate skipped" in the HUD.
+`TerrainDensity` ramps over ±1 unit so extracted surfaces are exact for
+voxel sizes up to 1. `HeightmapExport` and the ChunkView "Export heightmap
+PNG" button write to `Assets/Heightmaps/`. Next: 2D performance (K11+).
+K31 (lab control panel) is queued.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
@@ -120,6 +124,10 @@ and heightmap generators (rest of K9). K31 (lab control panel) is queued.
   in between, it can register the edited file without the new one and keep
   failing ("type not found") even after a clean rebuild. Fix: move the new
   file out and back with `AssetDatabase.MoveAsset` (keeps the GUID).
+- MCP gotcha: `AssetDatabase.DeleteAsset` inside `Unity_RunCommand` is
+  refused as a "user interaction"; delete through `ManageAsset` Delete.
+- Running tests: several Unity versions are installed; use
+  `C:/Program Files/Unity/Hub/Editor/6000.3.25f1/Editor/Unity.exe`.
 - MCP gotcha: GameObject instance IDs change on every domain reload
   (entering Play mode, recompiling). Look objects up again with `find`
   before passing an ID to tools like `Camera_Capture`.

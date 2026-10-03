@@ -135,15 +135,33 @@ namespace Clube.Core.Tests
         {
             foreach (TerrainGeneratorType type in System.Enum.GetValues(typeof(TerrainGeneratorType)))
             {
-                var settings = new TerrainSettings();
-                typeof(TerrainSettings)
-                    .GetField("generator", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                    .SetValue(settings, type);
+                // The heightmap generator needs an asset; covered by its own tests.
+                if (type == TerrainGeneratorType.Heightmap)
+                {
+                    continue;
+                }
 
-                ITerrainGenerator generator = TerrainGenerators.Create(settings);
+                ITerrainGenerator generator = TerrainGenerators.Create(SettingsFor(type));
                 Assert.That(generator, Is.Not.Null, type.ToString());
                 Assert.That(generator.Density(new Vector3(0.5f, -10f, 0.5f)), Is.EqualTo(1f), type.ToString());
             }
+        }
+
+        [Test]
+        public void Create_HeightmapWithoutAnAsset_ExplainsWhatIsMissing()
+        {
+            var exception = Assert.Throws<System.InvalidOperationException>(
+                () => TerrainGenerators.Create(SettingsFor(TerrainGeneratorType.Heightmap)));
+            Assert.That(exception.Message, Does.Contain("heightmap"));
+        }
+
+        private static TerrainSettings SettingsFor(TerrainGeneratorType type)
+        {
+            var settings = new TerrainSettings();
+            typeof(TerrainSettings)
+                .GetField("generator", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .SetValue(settings, type);
+            return settings;
         }
     }
 }

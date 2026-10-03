@@ -43,6 +43,32 @@ namespace Clube.Core
         [SerializeField]
         private int seed = 1;
 
+        [Header("Spline")]
+        [Tooltip("Remaps the fractal noise (0-1 along the bottom) to a height (0 = level - amplitude, " +
+                 "1 = level + amplitude). Flat stretches make plateaus, steep ones cliffs.")]
+        [SerializeField]
+        private AnimationCurve heightCurve = new AnimationCurve(
+            new Keyframe(0f, 0f), new Keyframe(0.4f, 0.15f), new Keyframe(0.55f, 0.75f), new Keyframe(1f, 1f));
+
+        [Header("Heightmap")]
+        [Tooltip("Grayscale heightmap image (PNG). Needs Read/Write enabled and no compression in its import settings. " +
+                 "Assigning one (or switching to the Heightmap generator) resets the surface level, amplitude and " +
+                 "units per pixel so the image maps onto the chunk as exported: black at the base, white at the top.")]
+        [SerializeField]
+        private Texture2D heightmap;
+
+        [Tooltip("RAW heightmap (a square .bytes file of 8- or 16-bit heights). Used instead of the image when set.")]
+        [SerializeField]
+        private TextAsset heightmapRaw;
+
+        [Tooltip("The RAW file stores two bytes (little-endian) per pixel.")]
+        [SerializeField]
+        private bool rawIs16Bit = true;
+
+        [Tooltip("World units covered by one heightmap pixel. Pixel (0, 0) sits at the world origin.")]
+        [SerializeField, Min(0.01f)]
+        private float heightmapUnitsPerPixel = 1f;
+
         public TerrainGeneratorType Generator => generator;
 
         public float SurfaceLevel => surfaceLevel;
@@ -58,5 +84,40 @@ namespace Clube.Core
         public float Persistence => persistence;
 
         public int Seed => seed;
+
+        public AnimationCurve HeightCurve => heightCurve;
+
+        public Texture2D HeightmapTexture => heightmap;
+
+        public TextAsset HeightmapRaw => heightmapRaw;
+
+        public bool RawIs16Bit => rawIs16Bit;
+
+        public float HeightmapUnitsPerPixel => heightmapUnitsPerPixel;
+
+        /// <summary>The asset the heightmap comes from (the RAW file if set, else the image), or null.</summary>
+        public UnityEngine.Object HeightmapSource => heightmapRaw != null ? heightmapRaw : heightmap;
+
+        /// <summary>
+        /// Maps the heightmap onto the chunk the way <see cref="HeightmapExport"/> writes
+        /// it: black at the chunk's base, white at its top, one pixel per sample column.
+        /// A freshly imported heightmap then shows its own terrain before any tweaking.
+        /// </summary>
+        public void FitHeightmapToChunk(float chunkHeight, float voxelSize)
+        {
+            surfaceLevel = chunkHeight / 2f;
+            amplitude = chunkHeight / 2f;
+            heightmapUnitsPerPixel = voxelSize;
+        }
+
+        /// <summary>The heightmap to generate from: the RAW file if set, else the image, else null.</summary>
+        public Heightmap LoadHeightmap()
+        {
+            if (heightmapRaw != null)
+            {
+                return Heightmap.FromRaw(heightmapRaw.bytes, rawIs16Bit);
+            }
+            return heightmap != null ? Heightmap.FromTexture(heightmap) : null;
+        }
     }
 }
