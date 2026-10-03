@@ -78,7 +78,7 @@ A combined tag like `Core + Lab` means the logic lives in the core and a lab com
 
 Goal: fully interrogate marching cubes mechanics on one cube at runtime via the inspector. Built on a 1×1×1 chunk (A8).
 
-Note: V1, V2 and V6 now run on the 1×1×1 chunk through the A7 edit path (the pre-plan `SingleVoxel` component is gone). A2 and A12 are started but not complete: `WorldConfig` has no generator or seed yet (K9, K10), and `IVoxelStorage` has density only (materials M10, iteration and serialization K26).
+Note: V1, V2 and V6 now run on the 1×1×1 chunk through the A7 edit path (the pre-plan `SingleVoxel` component is gone). A2 and A12 are started but not complete: `IVoxelStorage` has density only (materials M10, iteration and serialization K26).
 
 ### 1A — Core controls
 - [x] **V1** `Config` Iso value slider.
@@ -153,16 +153,16 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 
 ### 2C — Terrain surface generation
 - [x] **K8** `Config` Base surface level + amplitude parameters (`TerrainSettings` in `WorldConfig`).
-- [ ] **K9** `Core` Generators, selected via `Config` (the lab-only `ChunkTestFill` shapes from 2A, a ball and a solid block with a shaft, stay alongside them as test fixtures):
+- [x] **K9** `Core` Generators, selected via `Config` (the lab-only `ChunkTestFill` shapes from 2A, a ball and a solid block with a shaft, stay alongside them as test fixtures):
   - [x] Flat
   - [x] Sine wave
   - [x] 2D Perlin
   - [x] 3D Perlin
   - [x] 2D Perlin with octaves (frequency, lacunarity, persistence)
-  - [ ] Spline-based (height remapping curve)
-  - [ ] Heightmap import (PNG/RAW)
+  - [x] Spline-based (height remapping curve over fractal 2D Perlin)
+  - [x] Heightmap import (PNG/RAW: red channel of a readable texture, or a square 8/16-bit RAW)
 - [x] **K10** `Config` *(added)* Seed parameter for all noise generators (seeded `PerlinNoise`, so the same seed always gives the same terrain).
-- [ ] **K29** `Lab` *(backlog)* Heightmap export: write the chunk's surface height per column as a grayscale image (one byte per pixel). Round-trips with K9's heightmap import, which makes a handy test.
+- [x] **K29** `Lab` *(backlog)* Heightmap export: write the chunk's surface height per column as a grayscale image (one byte per pixel). Round-trips with K9's heightmap import, which makes a handy test. (`HeightmapExport` in Core; "Export heightmap PNG" button on `ChunkView` in Play mode, saved to `Assets/Heightmaps/`; a round-trip test checks the surface comes back within one 8-bit step.)
   - Note: the chunk is 3D, so "height" means the topmost iso-crossing in each column; overhangs and caves are lost.
 
 ### 2D — Performance
