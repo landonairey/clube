@@ -52,10 +52,11 @@ PNG" button write to `Assets/Heightmaps/`.
 difference between reused lists and arrays, so Core keeps lists; results
 are in `Docs/benchmarks.md`. Order changed: 2E, then 2F, then 3A; the rest
 of 2D (K12, K32) and 2G come after 3A.
-2E: K13–K16 are done. `TerrainBrush` (Core) adds or removes a sphere
+2E is done (K13–K16, K33). `TerrainBrush` (Core) adds or removes a sphere
 through A7; `TerrainBrushTool` (ChunkLab) picks Select, Dig or Add with
-1/2/3 and switches `VoxelSelector` off while editing. Next: the demo exe
-(K33).
+1/2/3 and switches `VoxelSelector` off while editing. `ChunkLabPanel` is the
+in-game control panel (the start of K31), and *Clube → Build → ChunkLab demo*
+(`DemoBuild`) builds the playable exe to `Builds/ChunkLab/`. Next: 2F.
 K31 (lab control panel) is queued.
 
 ## Conventions
@@ -138,6 +139,11 @@ K31 (lab control panel) is queued.
   doesn't resolve; time with `EditorApplication.timeSinceStartup`.
 - MCP gotcha: `AssetDatabase.DeleteAsset` inside `Unity_RunCommand` is
   refused as a "user interaction"; delete through `ManageAsset` Delete.
+- Batch builds from a copy: keep the copy's path short (e.g. map it to a
+  drive letter with `subst Q: <copy>`). Under the long scratchpad path,
+  files in `Library/PackageCache` pass Windows' 260-character limit, so
+  URP and Shader Graph import partly; tests still pass, but the player
+  hangs at startup on mismatched URP assets.
 - Running tests: several Unity versions are installed; use
   `C:/Program Files/Unity/Hub/Editor/6000.3.25f1/Editor/Unity.exe`.
 - MCP gotcha: GameObject instance IDs change on every domain reload

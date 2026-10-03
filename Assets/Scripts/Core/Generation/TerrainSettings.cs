@@ -69,7 +69,12 @@ namespace Clube.Core
         [SerializeField, Min(0.01f)]
         private float heightmapUnitsPerPixel = 1f;
 
-        public TerrainGeneratorType Generator => generator;
+        /// <summary>Settable so lab controls can switch it at runtime; call <see cref="WorldConfig.NotifyChanged"/> after.</summary>
+        public TerrainGeneratorType Generator
+        {
+            get => generator;
+            set => generator = value;
+        }
 
         public float SurfaceLevel => surfaceLevel;
 
@@ -83,7 +88,12 @@ namespace Clube.Core
 
         public float Persistence => persistence;
 
-        public int Seed => seed;
+        /// <summary>Settable so lab controls can reseed at runtime; call <see cref="WorldConfig.NotifyChanged"/> after.</summary>
+        public int Seed
+        {
+            get => seed;
+            set => seed = value;
+        }
 
         public AnimationCurve HeightCurve => heightCurve;
 

@@ -182,9 +182,9 @@ K11 is done. K12 and K32 wait until 3A gives a multi-chunk world to measure on.
 - [x] **K14** `Core + Lab` Click to remove terrain (A7 path).
 - [x] **K15** `Core + Lab` Brush radius control (in world units; [ and ] in Play mode; a translucent sphere previews it).
 - [x] **K16** `Core + Lab` *(added)* Brush strength / falloff (hard vs smooth sphere). Hard uses the terrain density ramp, so at full strength the surface lands exactly on the radius; smooth fades as (1 - (d/r)²)².
-- [ ] **K33** `Lab` *(added)* Demo exe: a Windows development build of `ChunkLab` that can be played: fly around, pick a generator, dig and add terrain with the brush (K13–K16), with the stats HUD.
+- [x] **K33** `Lab` *(added)* Demo exe: a Windows build of `ChunkLab` that can be played: fly around, pick a generator, dig and add terrain with the brush (K13–K16), with the stats HUD.
   - The custom inspectors don't exist in a build, so the demo needs in-game controls. This starts K31's control panel with only what the demo needs: generator and seed, brush mode, radius and strength, wireframe, and show samples.
-  - Repeatable build: a menu item (*Clube → Build → ChunkLab demo*) writing to `Builds/` (already gitignored). It's a development build because it includes `Clube.Debug`; A10's release check still applies to `Game`.
+  - Repeatable build: a menu item (*Clube → Build → ChunkLab demo*) writing to `Builds/` (already gitignored). It includes `Clube.Debug`, which is fine for a lab build; A10's check still applies to `Game`. Not a development build, which would open a profiler port (a firewall prompt) and add a watermark.
   - Does for `ChunkLab` what V22 planned for `VoxelLab`; V22 stays optional.
 
 ### 2F — Step-through animation at chunk scale

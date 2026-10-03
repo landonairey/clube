@@ -142,6 +142,7 @@ GameObject:
   - component: {fileID: 1265142450}
   - component: {fileID: 1265142451}
   - component: {fileID: 1265142452}
+  - component: {fileID: 1265142453}
   m_Layer: 0
   m_Name: Chunk
   m_TagString: Untagged
@@ -405,6 +406,21 @@ MonoBehaviour:
   addPreviewColor: {r: 0.3, g: 1, b: 0.4, a: 0.45}
   previewMaterial: {fileID: 2100000, guid: 7306c3d226f246045a04b0c391c5dfd0, type: 2}
   targetCamera: {fileID: 0}
+--- !u!114 &1265142453
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265142437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f3ebb9d7d125ed4382b64dd68996d96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkLabPanel
+  startOpen: 1
+  width: 300
+  background: {r: 0, g: 0, b: 0, a: 0.7}
 --- !u!1 &1578836785
 GameObject:
   m_ObjectHideFlags: 0

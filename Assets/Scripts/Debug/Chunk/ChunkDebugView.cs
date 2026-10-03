@@ -97,6 +97,28 @@ namespace Clube.Debug
 
         private bool refreshRequested;
 
+        /// <summary>Draw a sphere on every density sample.</summary>
+        public bool ShowSamples
+        {
+            get => showSamples;
+            set
+            {
+                showSamples = value;
+                refreshRequested = true;
+            }
+        }
+
+        /// <summary>How much of the wireframe to draw.</summary>
+        public Wireframe WireframeMode
+        {
+            get => wireframe;
+            set
+            {
+                wireframe = value;
+                refreshRequested = true;
+            }
+        }
+
         /// <summary>True when sample spheres are wanted but the chunk has too many samples to draw them.</summary>
         public bool AreSamplesSuppressed
         {

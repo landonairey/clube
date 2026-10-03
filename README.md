@@ -37,11 +37,35 @@ shading are in the config foldout under **Chunk View**; edits made during
 Play mode reset when it ends. **Voxel → Volume Lab** shows the volume
 tetrahedra.
 
+### ChunkLab controls
+
+Open `Assets/Scenes/ChunkLab.unity` for a whole chunk of generated terrain.
+The panel on the right picks the generator and seed, sets up the brush, and
+switches the display options (Tab hides it).
+
+| Input | Action |
+|---|---|
+| Right mouse, WASD, Q / E, Shift | Fly the camera, as in VoxelLab |
+| 1 / 2 / 3 | Select voxels / Dig / Add terrain |
+| Left mouse | Select a voxel, or dig or add (hold to keep going) |
+| [ / ] | Smaller / larger brush |
+| F | Frame the selected voxel |
+| Tab | Show / hide the control panel |
+
+### Demo exe
+
+**Clube → Build → ChunkLab demo (K33)** builds a playable Windows version of
+ChunkLab to `Builds/ChunkLab/ChunkLab.exe`, lab code included. Esc quits. From the command line:
+
+```
+Unity.exe -batchmode -quit -projectPath <project> -executeMethod Clube.Debug.Editor.DemoBuild.Build
+```
+
 ## Project layout
 
 ```
 Assets/
-  Scenes/          VoxelLab (later ChunkLab, WorldLab, Game)
+  Scenes/          VoxelLab, ChunkLab (later WorldLab, Game)
   Scripts/
     Core/          Clube.Core   - engine code: data, meshing, generation
     Debug/         Clube.Debug  - lab components, gizmos, debug camera
