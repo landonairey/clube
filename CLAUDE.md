@@ -47,7 +47,12 @@ world positions; `ChunkTerrainFill` regenerates ChunkLab on config changes
 and reports a missing heightmap as "Generate skipped" in the HUD.
 `TerrainDensity` ramps over ±1 unit so extracted surfaces are exact for
 voxel sizes up to 1. `HeightmapExport` and the ChunkView "Export heightmap
-PNG" button write to `Assets/Heightmaps/`. Next: 2D performance (K11+).
+PNG" button write to `Assets/Heightmaps/`.
+2D: K11 is done. `MeshStorageBenchmark` (*Clube → Benchmarks*) found no
+difference between reused lists and arrays, so Core keeps lists; results
+are in `Docs/benchmarks.md`. Order changed: next is 2E (terrain editing)
+with the first demo exe (K33), then 2F, then 3A; the rest of 2D (K12,
+K32) and 2G come after 3A.
 K31 (lab control panel) is queued.
 
 ## Conventions
@@ -124,6 +129,10 @@ K31 (lab control panel) is queued.
   in between, it can register the edited file without the new one and keep
   failing ("type not found") even after a clean rebuild. Fix: move the new
   file out and back with `AssetDatabase.MoveAsset` (keeps the GUID).
+- Benchmarks: `GC.GetAllocatedBytesForCurrentThread` always reads 0 on
+  Unity's Mono; measure allocations by heap growth (`GC.GetTotalMemory`)
+  averaged over runs. In `RunCommand` scripts `System.Diagnostics.Stopwatch`
+  doesn't resolve; time with `EditorApplication.timeSinceStartup`.
 - MCP gotcha: `AssetDatabase.DeleteAsset` inside `Unity_RunCommand` is
   refused as a "user interaction"; delete through `ManageAsset` Delete.
 - Running tests: several Unity versions are installed; use
