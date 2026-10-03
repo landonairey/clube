@@ -8,11 +8,16 @@ namespace Clube.Debug
     /// Measures the solid volume inside the chunk after every rebuild, both ways
     /// from Chapter 1: the approximate mean-density sum (V11) and the exact sum of
     /// tetrahedra (V12), via <see cref="ChunkVolume"/>. <see cref="ChunkStatsHud"/>
-    /// shows the results.
+    /// shows the results. The exact sum takes milliseconds on bigger chunks, so
+    /// <see cref="calculate"/> can switch the measurement off.
     /// </summary>
     [RequireComponent(typeof(ChunkView))]
     public class ChunkVolumeStats : MonoBehaviour
     {
+        [Tooltip("Measure the volume after every rebuild. Off skips the work (the exact sum costs a few ms on bigger chunks) and hides the HUD line.")]
+        [SerializeField]
+        private bool calculate = true;
+
         private ChunkView chunkView;
 
         public bool HasMeasurement { get; private set; }
@@ -37,10 +42,7 @@ namespace Clube.Debug
         private void OnEnable()
         {
             chunkView.MeshRebuilt += OnMeshRebuilt;
-            if (chunkView.Chunk != null)
-            {
-                Measure();
-            }
+            MeasureIfWanted();
         }
 
         private void OnDisable()
@@ -49,9 +51,30 @@ namespace Clube.Debug
             HasMeasurement = false;
         }
 
+        // Toggling in the Inspector applies at once instead of waiting for the next rebuild.
+        private void OnValidate()
+        {
+            if (chunkView != null && isActiveAndEnabled)
+            {
+                MeasureIfWanted();
+            }
+        }
+
         private void OnMeshRebuilt(Mesh mesh)
         {
-            Measure();
+            MeasureIfWanted();
+        }
+
+        private void MeasureIfWanted()
+        {
+            if (calculate && chunkView.Chunk != null)
+            {
+                Measure();
+            }
+            else
+            {
+                HasMeasurement = false;
+            }
         }
 
         private void Measure()
