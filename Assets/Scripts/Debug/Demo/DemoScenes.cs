@@ -4,17 +4,19 @@ using UnityEngine.SceneManagement;
 namespace Clube.Debug
 {
     /// <summary>
-    /// Moves between the demo exe's scenes (K34): the <c>DemoMenu</c> welcome screen and
-    /// the <c>ChunkLab</c> scene it launches. Both must be in the build's scene list.
+    /// Moves between the demo exe's scenes (K34, V22): the <c>DemoMenu</c> welcome screen
+    /// and the two labs it launches, <c>VoxelLab</c> (a single voxel) and <c>ChunkLab</c>
+    /// (a single chunk). All of them must be in the build's scene list.
     /// </summary>
     public static class DemoScenes
     {
         public const string Menu = "DemoMenu";
-        public const string Lab = "ChunkLab";
+        public const string VoxelLab = "VoxelLab";
+        public const string ChunkLab = "ChunkLab";
 
         /// <summary>
         /// True when the menu scene can be loaded, i.e. it's in the build's scene list.
-        /// The lab scene hides its Exit button otherwise.
+        /// A lab scene hides its Exit button otherwise.
         /// </summary>
         public static bool HasMenu => Application.CanStreamedLevelBeLoaded(Menu);
 
@@ -23,9 +25,10 @@ namespace Clube.Debug
             SceneManager.LoadScene(Menu);
         }
 
-        public static void LoadLab()
+        /// <summary>Loads a lab scene by name, e.g. <see cref="VoxelLab"/> or <see cref="ChunkLab"/>.</summary>
+        public static void LoadLab(string scene)
         {
-            SceneManager.LoadScene(Lab);
+            SceneManager.LoadScene(scene);
         }
 
         /// <summary>Closes the exe, or stops Play mode in the Editor, where Application.Quit does nothing.</summary>
