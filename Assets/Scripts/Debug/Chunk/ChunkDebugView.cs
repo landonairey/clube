@@ -49,6 +49,11 @@ namespace Clube.Debug
         [SerializeField, Range(0f, 0.5f)]
         private float cornerRadius = 0.05f;
 
+        [Tooltip("How opaque the sample spheres are, so a full grid of them doesn't hide the surface. " +
+                 "Needs a transparent vertex-colour material (LabVertexColorTransparent).")]
+        [SerializeField, Range(0f, 1f)]
+        private float sampleOpacity = 0.35f;
+
         [Tooltip("None, the chunk's bounding box, or the box plus every voxel's wireframe. " +
                  "In a 1×1×1 chunk (VoxelLab) the outline already is the voxel's wireframe.")]
         [SerializeField]
@@ -62,7 +67,7 @@ namespace Clube.Debug
         [SerializeField]
         private Color voxelGridColor = new Color(0.32f, 0.33f, 0.36f);
 
-        [Tooltip("Material that shows vertex colours, for the spheres. Falls back to URP Particles/Unlit if empty.")]
+        [Tooltip("Material that shows vertex colours and alpha, for the spheres (LabVertexColorTransparent). Falls back to URP Particles/Unlit if empty.")]
         [SerializeField]
         private Material sampleMaterial;
 
@@ -211,6 +216,7 @@ namespace Clube.Debug
 
             // Densities are the only thing an ordinary edit changes: rewrite just the colours.
             int perSphere = sphereVertices.Count;
+            byte alpha = (byte)(sampleOpacity * 255f);
             sampleColors.Clear();
             for (int z = 0; z < count.z; z++)
             {
@@ -219,7 +225,7 @@ namespace Clube.Debug
                     for (int x = 0; x < count.x; x++)
                     {
                         byte grey = (byte)(Mathf.Clamp01(chunk.GetDensity(new Vector3Int(x, y, z))) * 255f);
-                        var color = new Color32(grey, grey, grey, 255);
+                        var color = new Color32(grey, grey, grey, alpha);
                         for (int i = 0; i < perSphere; i++)
                         {
                             sampleColors.Add(color);

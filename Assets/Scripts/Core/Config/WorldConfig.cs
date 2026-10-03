@@ -31,6 +31,10 @@ namespace Clube.Core
         [SerializeField]
         private Shading shading = Shading.Flat;
 
+        [Tooltip("How the terrain is generated: generator, surface level and amplitude, noise shape, seed (K8-K10).")]
+        [SerializeField]
+        private TerrainSettings terrain = new TerrainSettings();
+
         /// <summary>Raised when a value is edited in the Inspector.</summary>
         public event Action Changed;
 
@@ -45,6 +49,8 @@ namespace Clube.Core
         public Shading Shading => shading;
 
         public ChunkMeshSettings MeshSettings => new ChunkMeshSettings(isoLevel, voxelSize, edgePlacement, shading);
+
+        public TerrainSettings Terrain => terrain;
 
         private void OnValidate()
         {

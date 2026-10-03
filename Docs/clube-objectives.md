@@ -138,6 +138,13 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 - [x] **K3** `Lab` Chapter 1 global toggles (iso, interpolation, shading, winding, gizmos) apply chunk-wide. `ChunkDebugView` draws the density spheres, chunk outline and optional voxel grid as real meshes (not gizmos, which Unity mis-dims on D3D12), and suppresses the spheres above 40,000 samples.
 - [x] **K4** `Lab` *(added)* Stats readout: vertex count, triangle count, last mesh build time (ms), split into meshing and Unity mesh upload (`ChunkMeshStats`, shown by `ChunkStatsHud` and the `ChunkView` Inspector).
 - [x] **K30** `Core + Lab` *(added)* Chunk volume readout: the solid volume inside the chunk by both Chapter 1 methods, approximate (V11) and exact tetrahedra (V12), summed over every voxel (`ChunkVolume`, shown via `ChunkVolumeStats`). The exact sum costs about 165 ms at 32³, so turn the component off when editing large chunks.
+- [ ] **K31** `Lab` *(added)* Lab control panel: one place for the settings used all the time, instead of hunting through every component's Inspector (colours, materials and rarely used toggles stay on the components). Probably an in-game settings GUI, which would also give the standalone exe (V22) its controls. Settings:
+  - Config: voxel size, iso level, edge placement, shading
+  - Test fill: shape, radius
+  - Display: show samples, wireframe (none / outline / voxel grid), show face normals (vertex normals stay tucked away on `NormalLines`), flip faces
+  - Triangle edges: one toggle that covers both the whole mesh's triangle edges and the selected voxel's highlighted triangles
+  - Selected voxel: show corner labels
+  - Volume: exact (tetrahedra) or approximate only
 
 ### 2B — Voxel selection
 - [x] **K5** `Lab` Click to select a voxel; highlight it. Picks the voxel whose surface the click ray hits first (`SurfaceRaycast` on top of `VoxelRaycast`, Core); voxels without surface can't be picked. Shown with a line-mesh wireframe.
@@ -145,16 +152,16 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 - [x] **K7** `Lab` Selected voxel exposes the Chapter 1 per-voxel controls. Editing a corner goes through A7 and updates neighbouring voxels that share it. (`SelectedVoxelEditor`: corner sliders noting how many voxels share each corner, plus the case and preset panel shared with VoxelLab via `VoxelCaseGui`.)
 
 ### 2C — Terrain surface generation
-- [ ] **K8** `Config` Base surface level + amplitude parameters.
+- [x] **K8** `Config` Base surface level + amplitude parameters (`TerrainSettings` in `WorldConfig`).
 - [ ] **K9** `Core` Generators, selected via `Config` (the lab-only `ChunkTestFill` shapes from 2A, a ball and a solid block with a shaft, stay alongside them as test fixtures):
-  - Flat
-  - Sine wave
-  - 2D Perlin
-  - 3D Perlin
-  - 2D Perlin with octaves (frequency, lacunarity, persistence)
-  - Spline-based (height remapping curve)
-  - Heightmap import (PNG/RAW)
-- [ ] **K10** `Config` *(added)* Seed parameter for all noise generators.
+  - [x] Flat
+  - [x] Sine wave
+  - [x] 2D Perlin
+  - [x] 3D Perlin
+  - [x] 2D Perlin with octaves (frequency, lacunarity, persistence)
+  - [ ] Spline-based (height remapping curve)
+  - [ ] Heightmap import (PNG/RAW)
+- [x] **K10** `Config` *(added)* Seed parameter for all noise generators (seeded `PerlinNoise`, so the same seed always gives the same terrain).
 - [ ] **K29** `Lab` *(backlog)* Heightmap export: write the chunk's surface height per column as a grayscale image (one byte per pixel). Round-trips with K9's heightmap import, which makes a handy test.
   - Note: the chunk is 3D, so "height" means the topmost iso-crossing in each column; overhangs and caves are lost.
 
