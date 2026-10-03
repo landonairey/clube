@@ -132,6 +132,8 @@ Record the real algorithm once (A11), then replay the log. Stepping back just re
 
 Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 
+Build order *(changed)*: 2A–2C, 2E (with the first demo exe, K33), 2F, then Chapter 3A. The rest of 2D and all of 2G come after 3A: Jobs/Burst, loop speed-ups and storage schemes are measured on a multi-chunk world, where they matter.
+
 ### 2A — Structure
 - [x] **K1** `Config` Chunk size (X, Y, Z integers). Changing it in a lab replaces the chunk with a new, empty one (`ChunkView.ChunkCreated`); meshes switch to 32-bit indices past 65,535 vertices.
 - [x] **K2** `Config` Voxel unit size.
@@ -165,7 +167,9 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 - [x] **K29** `Lab` *(backlog)* Heightmap export: write the chunk's surface height per column as a grayscale image (one byte per pixel). Round-trips with K9's heightmap import, which makes a handy test. (`HeightmapExport` in Core; "Export heightmap PNG" button on `ChunkView` in Play mode, saved to `Assets/Heightmaps/`; a round-trip test checks the surface comes back within one 8-bit step.)
   - Note: the chunk is 3D, so "height" means the topmost iso-crossing in each column; overhangs and caves are lost.
 
-### 2D — Performance
+### 2D — Performance *(rest after 3A)*
+K11 is done. K12 and K32 wait until 3A gives a multi-chunk world to measure on.
+
 - [x] **K11** `Lab` Benchmark: `List<T>` vs preallocated arrays for mesh building.
   - Method: Stopwatch over N runs after warmup; record ms and GC allocations (Profiler / `GC.GetAllocatedBytesForCurrentThread`); test at 3+ chunk sizes.
   - Output: results table in the repo (`Docs/benchmarks.md`). Winner becomes the `Core` implementation.
@@ -178,6 +182,10 @@ Goal: scale to an X×Y×Z grid while keeping all Chapter 1 controls reachable.
 - [ ] **K14** `Core + Lab` Click to remove terrain (A7 path).
 - [ ] **K15** `Core + Lab` Brush radius control.
 - [ ] **K16** `Core + Lab` *(added)* Brush strength / falloff (hard vs smooth sphere).
+- [ ] **K33** `Lab` *(added)* Demo exe: a Windows development build of `ChunkLab` that can be played: fly around, pick a generator, dig and add terrain with the brush (K13–K16), with the stats HUD.
+  - The custom inspectors don't exist in a build, so the demo needs in-game controls. This starts K31's control panel with only what the demo needs: generator and seed, brush mode, radius and strength, wireframe, and show samples.
+  - Repeatable build: a menu item (*Clube → Build → ChunkLab demo*) writing to `Builds/` (already gitignored). It's a development build because it includes `Clube.Debug`; A10's release check still applies to `Game`.
+  - Does for `ChunkLab` what V22 planned for `VoxelLab`; V22 stays optional.
 
 ### 2F — Step-through animation at chunk scale
 Extends Chapter 1 playback (V15–V19) so the mesh can be watched growing voxel by voxel.
@@ -189,8 +197,8 @@ Extends Chapter 1 playback (V15–V19) so the mesh can be watched growing voxel 
 - [ ] **K21** `Lab` Jump to voxel, tied to voxel selection (K5).
 - [ ] **K22** `Lab` Optional camera follow on the current voxel.
 
-### 2G — Voxel data storage exploration
-Compare storage schemes on a single chunk, behind the A12 interface. Measured again at scale in Chapter 3 (M12).
+### 2G — Voxel data storage exploration *(after 3A)*
+Compare storage schemes on a single chunk, behind the A12 interface, then measured again at scale (M12). Moved after 3A so both run against the same multi-chunk world.
 
 - [x] **K23** `Core` Flat array baseline (current storage).
 - [ ] **K24** `Core` Run-length encoding: runs along one axis; test at least two run orders (e.g. X-first vs Y-first) since terrain is mostly vertical layers.
@@ -202,7 +210,7 @@ Compare storage schemes on a single chunk, behind the A12 interface. Measured ag
 - [ ] **K28** `Core` *(backlog)* Single-byte densities: store each density as one byte to keep data tight and simple, and benchmark it against float in K26.
   - Note: density is signed around the iso surface (negative = air, positive = solid), so use `sbyte`, or `byte` with 128 as the zero point. 256 levels is plenty for smooth surfaces but coarse for gentle brush falloff (K16); check for visible stepping. Answers the "density type" open question.
 
-**Done when:** a 32³ chunk can be generated with any K9 generator, edited in play mode, and benchmark results are committed; a 4×4×4 chunk can be played through at voxel granularity in about a minute.
+**Done when:** a 32³ chunk can be generated with any K9 generator and edited in play mode and in the demo exe (K33); a 4×4×4 chunk can be played through at voxel granularity in about a minute. (2D's and 2G's benchmark results are committed after 3A.)
 
 ---
 
@@ -211,12 +219,14 @@ Compare storage schemes on a single chunk, behind the A12 interface. Measured ag
 This is where the shift happens: lab controls stay in `WorldLab`, and `Game` gets its first playable form.
 
 ### 3A — Chunk management
+After 3A: return to 2D (K12, K32) and 2G, then M12.
+
 - [ ] **M1** `Core` *(added — prerequisite)* Chunk coordinate system and chunk manager (world pos ↔ chunk ↔ voxel).
 - [ ] **M2** `Core` *(added — prerequisite)* Seamless borders: chunks share edge density samples so no cracks/gaps.
 - [ ] **M3** `Game` Render distance setting controls how many chunks are loaded (player setting per A3, not a config value).
 - [ ] **M4** `Lab` Focus mode: select and highlight an individual chunk; show its stats.
 - [ ] **M5** `Core` *(added)* Terrain edits that cross chunk borders update all affected chunks.
-- [ ] **M12** `Lab` Storage at scale: repeat the K26 benchmark across many loaded chunks (total memory, load/unload time) and choose the `Core` storage for the game. Record the decision in `Docs/benchmarks.md`.
+- [ ] **M12** `Lab` *(after 2G)* Storage at scale: repeat the K26 benchmark across many loaded chunks (total memory, load/unload time) and choose the `Core` storage for the game. Record the decision in `Docs/benchmarks.md`.
 - [ ] **M17** `Lab` *(backlog)* Chunk shape comparison: tall column chunks (Minecraft-style, full world height) vs cubic chunks stacked vertically to fill the elevation. Compare memory, mesh count and load time over the same terrain, and record the choice. Decide before M1 fixes the coordinate system.
   - Note: stacked cubic chunks allow tall peaks without paying for empty sky everywhere, which matters for mountain terrain and the mountaineering skill (SK5).
 

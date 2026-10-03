@@ -48,10 +48,11 @@ and reports a missing heightmap as "Generate skipped" in the HUD.
 `TerrainDensity` ramps over ±1 unit so extracted surfaces are exact for
 voxel sizes up to 1. `HeightmapExport` and the ChunkView "Export heightmap
 PNG" button write to `Assets/Heightmaps/`.
-2D in progress: K11 is done. `MeshStorageBenchmark` (*Clube → Benchmarks*)
-found no difference between reused lists and arrays, so Core keeps lists;
-results and method are in `Docs/benchmarks.md`. Next: K32 (per-voxel loop)
-or the optional K12 (Jobs/Burst).
+2D: K11 is done. `MeshStorageBenchmark` (*Clube → Benchmarks*) found no
+difference between reused lists and arrays, so Core keeps lists; results
+are in `Docs/benchmarks.md`. Order changed: next is 2E (terrain editing)
+with the first demo exe (K33), then 2F, then 3A; the rest of 2D (K12,
+K32) and 2G come after 3A.
 K31 (lab control panel) is queued.
 
 ## Conventions
