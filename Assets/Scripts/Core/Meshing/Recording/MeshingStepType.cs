@@ -2,7 +2,8 @@ namespace Clube.Core
 {
     /// <summary>
     /// The stages of a Marching Cubes build, in the order <see cref="MeshingRecorder"/>
-    /// logs them (V15): the density field once, then the rest per voxel.
+    /// logs them (V15): the density field once, then the rest per voxel, then the
+    /// normals once (K18).
     /// </summary>
     public enum MeshingStepType
     {
@@ -23,5 +24,12 @@ namespace Clube.Core
 
         /// <summary>A triangle from the triangle table's row is emitted. One step per triangle.</summary>
         Triangle,
+
+        /// <summary>
+        /// The finished mesh gets its vertex normals, for lighting. Once per build, after
+        /// the last voxel. The mesher doesn't compute them: <see cref="ChunkView"/> does,
+        /// with Unity's Mesh.RecalculateNormals. The step marks where that happens.
+        /// </summary>
+        Normals,
     }
 }

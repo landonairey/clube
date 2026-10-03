@@ -4,10 +4,22 @@ using UnityEngine;
 
 namespace Clube.Debug
 {
-    /// <summary>Seconds each kind of step takes to play at speed 1 (V17).</summary>
+    /// <summary>
+    /// Seconds each kind of step takes to play at speed 1 (V17), and how long a whole
+    /// voxel or Z slice takes when playback steps by those (K19).
+    /// </summary>
     [Serializable]
     public class StepTimings
     {
+        // At 0.8 s a voxel, a 4×4×4 chunk plays through in about a minute (2F).
+        [Tooltip("Stepping by voxel: seconds per voxel. Its sub-steps share this time in proportion to their own durations.")]
+        [SerializeField, Min(0f)]
+        private float voxel = 0.8f;
+
+        [Tooltip("Stepping by Z slice: seconds per slice.")]
+        [SerializeField, Min(0f)]
+        private float slice = 3f;
+
         [Tooltip("Density samples appear one at a time.")]
         [SerializeField, Min(0f)]
         private float densityField = 1.5f;
@@ -32,6 +44,14 @@ namespace Clube.Debug
         [SerializeField, Min(0f)]
         private float triangle = 1f;
 
+        [Tooltip("Once, at the end: a normal grows from every triangle, then the finished mesh is shaded.")]
+        [SerializeField, Min(0f)]
+        private float normals = 2f;
+
+        public float Voxel => voxel;
+
+        public float Slice => slice;
+
         public float For(MeshingStepType type)
         {
             switch (type)
@@ -42,6 +62,7 @@ namespace Clube.Debug
                 case MeshingStepType.EdgeTable: return edgeTable;
                 case MeshingStepType.Interpolate: return interpolate;
                 case MeshingStepType.Triangle: return triangle;
+                case MeshingStepType.Normals: return normals;
                 default: throw new ArgumentOutOfRangeException(nameof(type), type, null);
             }
         }

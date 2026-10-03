@@ -185,7 +185,9 @@ MonoBehaviour:
     edgeTable: 1.5
     interpolate: 0.8
     triangle: 1
+    normals: 2
   markerMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
+  sampleMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
   targetCamera: {fileID: 0}
 --- !u!1 &190024688
 GameObject:

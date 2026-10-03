@@ -25,6 +25,10 @@ namespace Clube.Debug
                 return $"Density field: the terrain data is a 3D grid of density samples ({count.x} × {count.y} × {count.z} here), " +
                        $"shaded black (0) to white (1). The surface will pass wherever the field crosses the iso level, {iso:0.00}.";
             }
+            if (step.Type == MeshingStepType.Normals)
+            {
+                return DescribeNormals(recording.Settings.Shading);
+            }
 
             RecordedVoxel voxel = recording.Voxels[step.VoxelIndex];
             switch (step.Type)
@@ -67,6 +71,12 @@ namespace Clube.Debug
             {
                 Vector3Int count = recording.SampleCount;
                 return $"Density field: {count.x * count.y * count.z} samples, iso level {recording.Settings.IsoLevel:0.00}.";
+            }
+            if (step.Type == MeshingStepType.Normals)
+            {
+                int triangles = recording.Steps.Count(other => other.Type == MeshingStepType.Triangle);
+                return $"Mesh finished: {recording.Voxels.Count} voxels → {triangles} triangles, " +
+                       $"{recording.Settings.Shading.ToString().ToLowerInvariant()} shading.";
             }
 
             RecordedVoxel voxel = recording.Voxels[step.VoxelIndex];
@@ -121,25 +131,40 @@ namespace Clube.Debug
                    $"{how}, so the vertex sits {t:0.00} of the way along.";
         }
 
-        // Which of the voxel's triangles this step is, counted from 1.
+        private static string DescribeNormals(Shading shading)
+        {
+            string how = shading == Shading.Smooth
+                ? "Smooth shading: neighbouring triangles share their vertices, so each vertex averages the face normals around it and the surface looks rounded."
+                : "Flat shading: every triangle has its own three vertices, so each vertex just takes its face's normal and the facets show.";
+            return "Normals: each triangle faces the way its winding says: the cross product of two of its edges, " +
+                   "pointing out of the solid (shown from each triangle's centre). Lighting uses per-vertex normals built from these. " +
+                   $"{how} The mesher doesn't do this; ChunkView calls Unity's RecalculateNormals on the finished mesh.";
+        }
+
+        // Which of the voxel's triangles this step is, counted from 1. A voxel's steps
+        // are contiguous, so only its own run of steps is scanned.
         private static (int Number, int Total) TrianglePosition(MeshingRecorder recording, int stepIndex)
         {
-            int voxelIndex = recording.Steps[stepIndex].VoxelIndex;
+            IReadOnlyList<MeshingStep> steps = recording.Steps;
+            int voxelIndex = steps[stepIndex].VoxelIndex;
             int number = 0;
-            int total = 0;
-            for (int i = 0; i < recording.Steps.Count; i++)
+            for (int i = stepIndex; i >= 0 && steps[i].VoxelIndex == voxelIndex; i--)
             {
-                MeshingStep other = recording.Steps[i];
-                if (other.VoxelIndex == voxelIndex && other.Type == MeshingStepType.Triangle)
+                if (steps[i].Type == MeshingStepType.Triangle)
                 {
-                    total++;
-                    if (i <= stepIndex)
-                    {
-                        number++;
-                    }
+                    number++;
                 }
             }
-            return (number, total);
+
+            int later = 0;
+            for (int i = stepIndex + 1; i < steps.Count && steps[i].VoxelIndex == voxelIndex; i++)
+            {
+                if (steps[i].Type == MeshingStepType.Triangle)
+                {
+                    later++;
+                }
+            }
+            return (number, number + later);
         }
 
         private static IEnumerable<int> SolidCorners(int caseIndex)

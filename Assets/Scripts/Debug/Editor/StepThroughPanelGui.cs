@@ -51,6 +51,13 @@ namespace Clube.Debug.Editor
                 return;
             }
 
+            lab.Granularity = (StepGranularity)EditorGUILayout.EnumPopup(
+                new GUIContent("Step by", "How much one step covers: a recorded sub-step, a whole voxel, or a whole Z slice (G)."),
+                lab.Granularity);
+            lab.SkipEmptyVoxels = EditorGUILayout.Toggle(
+                new GUIContent("Skip empty voxels", "Skip voxels that make no surface (case 0 or 255) (H)."),
+                lab.SkipEmptyVoxels);
+
             StepPlayback playback = lab.Playback;
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -74,16 +81,18 @@ namespace Clube.Debug.Editor
 
             int shown = playback.StepIndex + 1;
             int chosen = EditorGUILayout.IntSlider(
-                new GUIContent("Step", "Drag to scrub through the recorded steps."), shown, 1, playback.StepCount);
+                new GUIContent("Position", "Drag to scrub through the build, one step (sub-step, voxel or slice) at a time."),
+                shown, 1, playback.StepCount);
             if (chosen != shown)
             {
                 playback.Seek(chosen - 1);
             }
 
-            MeshingStep step = lab.Recording.Steps[playback.StepIndex];
+            (int index, float progress) = lab.Current;
+            MeshingStep step = lab.Recording.Steps[index];
             using (new EditorGUI.IndentLevelScope())
             {
-                EditorGUILayout.LabelField("Current", $"{step.Type} ({playback.Progress:P0})");
+                EditorGUILayout.LabelField("Current", $"Step {index + 1} / {lab.Recording.Steps.Count}: {step.Type} ({progress:P0})");
             }
 
             lab.Speed = EditorGUILayout.Slider(new GUIContent("Speed", "Playback speed multiplier."), lab.Speed, 0.1f, 5f);
