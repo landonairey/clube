@@ -32,6 +32,8 @@ namespace Clube.Debug
     [RequireComponent(typeof(ChunkView))]
     public class TerrainBrushTool : MonoBehaviour
     {
+        public const float MinRadius = 0.25f;
+        public const float MaxRadius = 16f;
         private const float RadiusStep = 1.25f;
 
         [Tooltip("What left clicks do. Keys 1, 2 and 3 switch in Play mode.")]
@@ -88,6 +90,26 @@ namespace Clube.Debug
                 tool = value;
                 ApplyTool();
             }
+        }
+
+        /// <summary>Brush radius in world units (K15).</summary>
+        public float Radius
+        {
+            get => radius;
+            set => radius = Mathf.Clamp(value, MinRadius, MaxRadius);
+        }
+
+        /// <summary>Density per application at full effect, 0.01-1 (K16).</summary>
+        public float Strength
+        {
+            get => strength;
+            set => strength = Mathf.Clamp(value, 0.01f, 1f);
+        }
+
+        public BrushFalloff Falloff
+        {
+            get => falloff;
+            set => falloff = value;
         }
 
         public BrushSettings Brush => new BrushSettings(radius, strength, falloff);
@@ -150,9 +172,10 @@ namespace Clube.Debug
                 return;
             }
 
-            // Right mouse is the fly camera's look button.
+            // Right mouse is the fly camera's look button; clicks on a lab panel are for the panel.
+            Vector2 pointer = mouse.position.ReadValue();
             Vector3 centre = default;
-            bool hasTarget = !mouse.rightButton.isPressed && Aim(mouse.position.ReadValue(), out centre);
+            bool hasTarget = !mouse.rightButton.isPressed && !LabGuiBlocker.IsOverGui(pointer) && Aim(pointer, out centre);
             UpdatePreview(hasTarget, centre);
             if (!hasTarget)
             {
@@ -212,11 +235,11 @@ namespace Clube.Debug
 
             if (keyboard.leftBracketKey.wasPressedThisFrame)
             {
-                radius = Mathf.Max(0.25f, radius / RadiusStep);
+                Radius = radius / RadiusStep;
             }
             else if (keyboard.rightBracketKey.wasPressedThisFrame)
             {
-                radius = Mathf.Min(16f, radius * RadiusStep);
+                Radius = radius * RadiusStep;
             }
         }
 

@@ -135,7 +135,7 @@ namespace Clube.Debug
         {
             Mouse mouse = Mouse.current;
             Keyboard keyboard = Keyboard.current;
-            if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame && !LabGuiBlocker.IsOverGui(mouse.position.ReadValue()))
             {
                 Select(Pick(mouse.position.ReadValue()));
             }
