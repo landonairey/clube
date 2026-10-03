@@ -134,9 +134,10 @@ namespace Clube.Debug
         private static string DescribeNormals(Shading shading)
         {
             string how = shading == Shading.Smooth
-                ? "Smooth shading: neighbouring triangles share their vertices, so each vertex normal averages the faces around it and the surface looks rounded."
-                : "Flat shading: every triangle has its own three vertices, so each vertex normal is just its face's normal and the facets show.";
-            return "Normals: each vertex gets the direction the surface faces there, which is what lighting uses. " +
+                ? "Smooth shading: neighbouring triangles share their vertices, so each vertex averages the face normals around it and the surface looks rounded."
+                : "Flat shading: every triangle has its own three vertices, so each vertex just takes its face's normal and the facets show.";
+            return "Normals: each triangle faces the way its winding says: the cross product of two of its edges, " +
+                   "pointing out of the solid (shown from each triangle's centre). Lighting uses per-vertex normals built from these. " +
                    $"{how} The mesher doesn't do this; ChunkView calls Unity's RecalculateNormals on the finished mesh.";
         }
 

@@ -12,8 +12,9 @@ namespace Clube.Debug
     /// in the Game view as well as the Scene view (V19): spheres on the density
     /// samples, on the current voxel's corners and edge vertices, a line per cube
     /// edge, an outline for the triangle being added, and a mesh of every triangle
-    /// finished so far. The closing normals step (K18) grows a line along each
-    /// vertex normal, then swaps in the finished mesh, shaded as the chunk is.
+    /// finished so far. The closing normals step (K18) grows a line from each
+    /// triangle's centre along its face normal, then swaps in the finished mesh,
+    /// shaded as the chunk is.
     /// </summary>
     /// <remarks>
     /// Only the current voxel gets corner and edge markers, so that set is reused
@@ -67,6 +68,8 @@ namespace Clube.Debug
         private readonly List<Vector3> finishedVertices = new List<Vector3>();
         private readonly List<int> finishedTriangles = new List<int>();
         private readonly List<Vector3> finishedNormals = new List<Vector3>();
+        private readonly List<Vector3> faceCentres = new List<Vector3>();
+        private readonly List<Vector3> faceNormals = new List<Vector3>();
         private readonly List<Vector3> lineVertices = new List<Vector3>();
         private readonly List<int> lineIndices = new List<int>();
 
@@ -220,6 +223,19 @@ namespace Clube.Debug
             scratch.RecalculateNormals();
             scratch.GetNormals(finishedNormals);
             Object.Destroy(scratch);
+
+            // Each triangle's normal from its winding, the same convention Unity uses
+            // (clockwise faces the viewer). Vertex normals are built from these.
+            faceCentres.Clear();
+            faceNormals.Clear();
+            for (int i = 0; i + 2 < finishedTriangles.Count; i += 3)
+            {
+                Vector3 a = finishedVertices[finishedTriangles[i]];
+                Vector3 b = finishedVertices[finishedTriangles[i + 1]];
+                Vector3 c = finishedVertices[finishedTriangles[i + 2]];
+                faceCentres.Add((a + b + c) / 3f);
+                faceNormals.Add(Vector3.Cross(b - a, c - a).normalized);
+            }
         }
 
         // Every triangle, with the shared vertices and normals the chunk's mesh has.
@@ -239,11 +255,11 @@ namespace Clube.Debug
             surface.RecalculateBounds();
         }
 
-        // A line along each vertex normal, growing from 0 to full length as the step
-        // plays; hidden when progress < 0.
+        // A line from each triangle's centre along its face normal, growing from 0 to
+        // full length as the step plays; hidden when progress < 0.
         private void ShowNormals(float progress)
         {
-            if (progress < 0f || finishedVertices.Count == 0)
+            if (progress < 0f || faceCentres.Count == 0)
             {
                 normalLines.Visible = false;
                 return;
@@ -259,12 +275,12 @@ namespace Clube.Debug
             shownNormalLength = length;
             lineVertices.Clear();
             lineIndices.Clear();
-            for (int i = 0; i < finishedVertices.Count; i++)
+            for (int i = 0; i < faceCentres.Count; i++)
             {
                 lineIndices.Add(lineVertices.Count);
-                lineVertices.Add(finishedVertices[i]);
+                lineVertices.Add(faceCentres[i]);
                 lineIndices.Add(lineVertices.Count);
-                lineVertices.Add(finishedVertices[i] + finishedNormals[i] * length);
+                lineVertices.Add(faceCentres[i] + faceNormals[i] * length);
             }
 
             Mesh mesh = normalLines.Mesh;

@@ -32,7 +32,7 @@ namespace Clube.Debug
         [SerializeField, Min(0f)]
         private float triangle = 1f;
 
-        [Tooltip("Once, at the end: normals grow from every vertex, then the finished mesh is shaded.")]
+        [Tooltip("Once, at the end: a normal grows from every triangle, then the finished mesh is shaded.")]
         [SerializeField, Min(0f)]
         private float normals = 2f;
 
