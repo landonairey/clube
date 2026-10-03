@@ -271,6 +271,12 @@ Ore nodes are generated as a procedural centroid with a 3D Gaussian falloff. Eac
 - [ ] **P10** `Game` *(added)* Settings menu: render distance, sensitivity, graphics options, and *(backlog)* rebinding the player controller's key binds (Input System rebinding, saved with the player settings, A3).
 - [ ] **P11** `Core` *(backlog)* GPU marching cubes: run chunk meshing as a compute shader to speed up world generation. Benchmark against the CPU and Burst paths (K11, K12).
   - Note: colliders (M6) and volume math (I5) need the mesh back on the CPU, and that readback can eat the gain; measure end to end, not just the dispatch.
+- [ ] **P12** `Core + Config` *(added)* Multi-noise spline terrain, Minecraft style: grows K9's single-curve Spline generator into several independent noise fields, each with its own spline, combined into the final height (and shape, for 3D density):
+  - Continentalness: ocean ↔ coast ↔ inland ↔ far inland, at a very low frequency; sets the base height.
+  - Erosion: how worn down the land is; high erosion flattens, low erosion allows mountains.
+  - Peaks & valleys (folded "weirdness" noise): adds ridges and river valleys on top.
+  - Splines that depend on more than one input (e.g. the peaks curve chosen by erosion), editable in `WorldConfig` and previewable in a lab (a 2D map of each field, like K29's export).
+  - The same fields can drive biomes (P8, PK5) and caves (P5). Builds on P4 (seeded fields); needs a world larger than one chunk to show anything, which is why it sits here and not in 2C.
 
 ---
 
