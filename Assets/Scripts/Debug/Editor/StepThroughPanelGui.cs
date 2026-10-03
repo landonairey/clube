@@ -54,6 +54,9 @@ namespace Clube.Debug.Editor
             lab.Granularity = (StepGranularity)EditorGUILayout.EnumPopup(
                 new GUIContent("Step by", "How much one step covers: a recorded sub-step, a whole voxel, or a whole Z slice (G)."),
                 lab.Granularity);
+            lab.SkipEmptyVoxels = EditorGUILayout.Toggle(
+                new GUIContent("Skip empty voxels", "Skip voxels that make no surface (case 0 or 255) (H)."),
+                lab.SkipEmptyVoxels);
 
             StepPlayback playback = lab.Playback;
             using (new EditorGUILayout.HorizontalScope())

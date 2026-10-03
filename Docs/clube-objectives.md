@@ -198,7 +198,7 @@ Extends Chapter 1 playback (V15–V19) so the mesh can be watched growing voxel 
 - [x] **K17** `Lab` Opening step: show the sampled density field as a grid of grayscale points before any voxel is processed. (One combined sphere mesh, `SampleSpheres`, shared with `ChunkDebugView`; revealed by shortening the drawn index range. Not drawn above 40,000 samples.)
 - [x] **K18** `Lab` Closing step: calculate normals and show the finished shaded mesh. (`MeshingStepType.Normals`, logged once after the last voxel. The mesher doesn't compute normals, `ChunkView` does with `Mesh.RecalculateNormals`, so the step grows a line from each triangle's centre along its face normal (from its winding), then shows the mesher's real output shaded with Unity's vertex normals.)
 - [x] **K19** `Lab` Granularity setting: step by sub-step, whole voxel, or whole Z slice. *(Changed from "Y layer": the mesher's outer loop is z, so a Z slice is one run of the build in true order (A11); a Y layer isn't.)* (`StepUnits` groups the steps; a voxel or slice plays its sub-steps in proportion to their timings. G cycles it. 0.8 s per voxel, so a 4×4×4 chunk plays through in about a minute.)
-- [ ] **K20** `Lab` Skip-empty-voxels toggle (cases 0 and 255 produce no triangles and dominate terrain chunks).
+- [x] **K20** `Lab` Skip-empty-voxels toggle (cases 0 and 255 produce no triangles and dominate terrain chunks). (H, or the Inspector. Skipped voxels get no units and take no time inside a slice; an all-empty slice is skipped. In ChunkLab's 8³ terrain 418 of 512 voxels are empty, and voxel stepping drops from 413 s to 79 s.)
 - [ ] **K21** `Lab` Jump to voxel, tied to voxel selection (K5).
 - [ ] **K22** `Lab` Optional camera follow on the current voxel.
 

@@ -37,6 +37,10 @@ namespace Clube.Debug
         [SerializeField]
         private StepGranularity granularity = StepGranularity.SubStep;
 
+        [Tooltip("Skip voxels that make no surface (case 0 or 255), which are most of a terrain chunk (K20). H toggles it.")]
+        [SerializeField]
+        private bool skipEmptyVoxels;
+
         [Tooltip("Start playing when step-through mode is turned on.")]
         [SerializeField]
         private bool autoPlay = true;
@@ -97,6 +101,17 @@ namespace Clube.Debug
             set
             {
                 granularity = value;
+                Regroup();
+            }
+        }
+
+        /// <summary>Skip voxels that make no surface. Changing it keeps the build where it is, as for <see cref="Granularity"/>.</summary>
+        public bool SkipEmptyVoxels
+        {
+            get => skipEmptyVoxels;
+            set
+            {
+                skipEmptyVoxels = value;
                 Regroup();
             }
         }
@@ -188,17 +203,17 @@ namespace Clube.Debug
             ShowCurrent();
         }
 
-        // Regroups the steps for a new granularity, keeping the build where it is.
+        // Regroups the steps for a new granularity or skip setting, keeping the build where it is.
         private void Regroup()
         {
-            if (!HasRecording || units.Granularity == granularity)
+            if (!HasRecording || (units.Granularity == granularity && units.SkipEmpty == skipEmptyVoxels))
             {
                 return;
             }
 
             int step = Current.Step;
             bool wasPlaying = playback.IsPlaying;
-            units.Build(recording, granularity);
+            units.Build(recording, granularity, skipEmptyVoxels);
             playback.Load(units.Count);
             playback.Seek(units.UnitOf(step));
             if (wasPlaying)
@@ -234,7 +249,7 @@ namespace Clube.Debug
         private void Record(bool play)
         {
             ChunkMesher.Build(chunkView.Chunk, chunkView.Config.MeshSettings, scratchVertices, scratchTriangles, recording);
-            units.Build(recording, granularity);
+            units.Build(recording, granularity, skipEmptyVoxels);
             playback.Load(units.Count);
             visuals.Load(recording, scratchVertices, scratchTriangles);
             if (play)
@@ -364,7 +379,8 @@ namespace Clube.Debug
             }
 
             string text = $"<b>{title}</b>\n{StepDescriber.Summarise(recording, index)}\n{detail}\n" +
-                          $"<color=#aaaaaa>Space play/pause · ← → step by {GranularityName(granularity)} · G change · R restart</color>";
+                          $"<color=#aaaaaa>Space play/pause · ← → step by {GranularityName(granularity)} · G change · " +
+                          $"H {(skipEmptyVoxels ? $"show the {units.EmptyVoxelCount} skipped empty voxels" : "skip empty voxels")} · R restart</color>";
 
             // Bottom right, clear of the axes HUD in the bottom-left corner.
             const float margin = 10f;
