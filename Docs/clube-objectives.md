@@ -195,8 +195,8 @@ K11 is done. K12 and K32 wait until 3A gives a multi-chunk world to measure on.
 ### 2F — Step-through animation at chunk scale
 Extends Chapter 1 playback (V15–V19) so the mesh can be watched growing voxel by voxel.
 
-- [ ] **K17** `Lab` Opening step: show the sampled density field as a grid of grayscale points before any voxel is processed.
-- [ ] **K18** `Lab` Closing step: calculate normals and show the finished shaded mesh.
+- [x] **K17** `Lab` Opening step: show the sampled density field as a grid of grayscale points before any voxel is processed. (One combined sphere mesh, `SampleSpheres`, shared with `ChunkDebugView`; revealed by shortening the drawn index range. Not drawn above 40,000 samples.)
+- [x] **K18** `Lab` Closing step: calculate normals and show the finished shaded mesh. (`MeshingStepType.Normals`, logged once after the last voxel. The mesher doesn't compute normals, `ChunkView` does with `Mesh.RecalculateNormals`, so the step grows a line along each vertex normal, then shows the mesher's real output with those normals.)
 - [ ] **K19** `Lab` Granularity setting: step by sub-step, whole voxel, or whole Y layer.
 - [ ] **K20** `Lab` Skip-empty-voxels toggle (cases 0 and 255 produce no triangles and dominate terrain chunks).
 - [ ] **K21** `Lab` Jump to voxel, tied to voxel selection (K5).
