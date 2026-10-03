@@ -50,9 +50,12 @@ voxel sizes up to 1. `HeightmapExport` and the ChunkView "Export heightmap
 PNG" button write to `Assets/Heightmaps/`.
 2D: K11 is done. `MeshStorageBenchmark` (*Clube → Benchmarks*) found no
 difference between reused lists and arrays, so Core keeps lists; results
-are in `Docs/benchmarks.md`. Order changed: next is 2E (terrain editing)
-with the first demo exe (K33), then 2F, then 3A; the rest of 2D (K12,
-K32) and 2G come after 3A.
+are in `Docs/benchmarks.md`. Order changed: 2E, then 2F, then 3A; the rest
+of 2D (K12, K32) and 2G come after 3A.
+2E: K13–K16 are done. `TerrainBrush` (Core) adds or removes a sphere
+through A7; `TerrainBrushTool` (ChunkLab) picks Select, Dig or Add with
+1/2/3 and switches `VoxelSelector` off while editing. Next: the demo exe
+(K33).
 K31 (lab control panel) is queued.
 
 ## Conventions
