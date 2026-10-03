@@ -10,9 +10,9 @@ namespace Clube.Debug
     /// In-game control panel for ChunkLab (K33, the start of K31): the settings the
     /// demo needs, drawn with IMGUI so they work in a build, where the custom
     /// inspectors don't exist. Terrain (generator, seed, reset), the brush (tool,
-    /// radius, strength, falloff) and display (samples, wireframe). Tab hides it; in a
-    /// build, Esc quits. Clicks on it never reach the brush or voxel selection
-    /// (<see cref="LabGuiBlocker"/>).
+    /// radius, strength, falloff) and display (samples, wireframe). Tab hides it. It
+    /// scrolls when the window is too short to show it all (K34). Clicks on it never
+    /// reach the brush or voxel selection (<see cref="LabGuiBlocker"/>).
     /// </summary>
     /// <remarks>
     /// Edits the view's runtime config copy, then calls
@@ -23,6 +23,8 @@ namespace Clube.Debug
     public class ChunkLabPanel : MonoBehaviour
     {
         private const float Margin = 10f;
+        // Keeps the bottom-right corner free for buttons (the demo's Exit, K34).
+        private const float BottomReserve = 45f;
 
         private static readonly string[] ToolNames = { "Select", "Dig", "Add" };
         private static readonly string[] FalloffNames = { "Hard", "Smooth" };
@@ -47,6 +49,8 @@ namespace Clube.Debug
         private ChunkDebugView debugView;
         private bool open;
         private Rect panelRect;
+        private Vector2 scroll;
+        private float contentHeight = float.MaxValue;
 
         private GUIStyle padding;
         private GUIStyle header;
@@ -85,10 +89,6 @@ namespace Clube.Debug
                     LabGuiBlocker.SetArea(this, null);
                 }
             }
-            if (keyboard.escapeKey.wasPressedThisFrame && !Application.isEditor)
-            {
-                Application.Quit();
-            }
         }
 
         private void OnGUI()
@@ -105,13 +105,23 @@ namespace Clube.Debug
                 GuiDrawing.Rect(panelRect, background);
             }
 
-            GUILayout.BeginArea(new Rect(x, Margin, width, Screen.height - 2f * Margin));
+            // Scrolls only when the window is too short for the contents, measured on the
+            // last repaint; otherwise the view is exactly as tall as they are, with no scrollbar.
+            float available = Screen.height - 2f * Margin - BottomReserve;
+            GUILayout.BeginArea(new Rect(x, Margin, width, available));
+            scroll = GUILayout.BeginScrollView(scroll, GUIStyle.none, GUI.skin.verticalScrollbar,
+                GUILayout.Height(Mathf.Min(contentHeight, available)));
             GUILayout.BeginVertical(padding);
             DrawTerrain(chunkView.Config);
             DrawBrush();
             DrawDisplay();
             DrawHelp();
             GUILayout.EndVertical();
+            if (Event.current.type == EventType.Repaint)
+            {
+                contentHeight = GUILayoutUtility.GetLastRect().height;
+            }
+            GUILayout.EndScrollView();
 
             // The background and click blocking use the size the layout came out at.
             if (Event.current.type == EventType.Repaint)
@@ -149,7 +159,7 @@ namespace Clube.Debug
             }
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"Seed {terrain.Seed}", label, GUILayout.Width(110f));
+            GUILayout.Label($"Seed {terrain.Seed}", label);
             int seed = terrain.Seed;
             if (GUILayout.Button("−", button))
             {
@@ -219,7 +229,7 @@ namespace Clube.Debug
                 debugView.ShowSamples = showSamples;
             }
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Wireframe", label, GUILayout.Width(80f));
+            GUILayout.Label("Wireframe", label, GUILayout.ExpandWidth(false));
             var wireframe = (ChunkDebugView.Wireframe)GUILayout.Toolbar((int)debugView.WireframeMode, WireframeNames, button);
             if (wireframe != debugView.WireframeMode)
             {
@@ -231,10 +241,9 @@ namespace Clube.Debug
         private void DrawHelp()
         {
             GUILayout.Space(8f);
-            string quit = Application.isEditor ? "" : " · Esc quit";
             GUILayout.Label(
                 "Right mouse look · WASD move · Q/E down/up · Shift fast\n" +
-                $"1/2/3 tool · [ ] radius · Tab hide panel{quit}",
+                "1/2/3 tool · [ ] radius · Tab hide panel",
                 hint);
         }
 

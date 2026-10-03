@@ -6,7 +6,8 @@ using UnityEngine;
 namespace Clube.Debug.Editor
 {
     /// <summary>
-    /// Builds the playable ChunkLab demo (K33): a Windows build of the ChunkLab scene in
+    /// Builds the playable ChunkLab demo (K33): a Windows build of the DemoMenu welcome
+    /// screen and the ChunkLab scene it launches (K34), in
     /// <c>Builds/ChunkLab/</c> (gitignored). It ships <c>Clube.Debug</c>, which is fine for a
     /// lab demo; the A10 check (no debug components) is for the Game scene. Not a
     /// development build: that opens a profiler port (a firewall prompt on first run)
@@ -14,7 +15,8 @@ namespace Clube.Debug.Editor
     /// </summary>
     public static class DemoBuild
     {
-        private const string Scene = "Assets/Scenes/ChunkLab.unity";
+        // The welcome screen (K34) comes first: the player starts in the first scene listed.
+        private static readonly string[] Scenes = { "Assets/Scenes/DemoMenu.unity", "Assets/Scenes/ChunkLab.unity" };
         private const string Output = "Builds/ChunkLab/ChunkLab.exe";
 
         [MenuItem("Clube/Build/ChunkLab demo (K33)")]
@@ -33,7 +35,7 @@ namespace Clube.Debug.Editor
             Directory.CreateDirectory(Path.GetDirectoryName(Output));
             var options = new BuildPlayerOptions
             {
-                scenes = new[] { Scene },
+                scenes = Scenes,
                 locationPathName = Output,
                 target = BuildTarget.StandaloneWindows64,
                 options = BuildOptions.None,
