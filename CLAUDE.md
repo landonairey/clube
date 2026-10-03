@@ -69,7 +69,10 @@ the mesher's outer loop, so playback stays in true build order.
 `StepUnits` groups the recorded steps into what playback moves through
 (sub-step, voxel, slice; K20 skips empty voxels); `StepThroughLab.Current`
 maps that back to the recorded step. Next: K21 + K22.
-K31 (lab control panel) is queued.
+K31 (lab control panel) is under way: `VoxelLabPanel` and `ChunkLabPanel`
+are in-game panels on a shared `LabPanelFrame`, with shared
+`StepThroughControls` and `MeshingControls`. The demo build sets
+`CLUBE_LAB_BUILD` so step-through recording works in the exe.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and

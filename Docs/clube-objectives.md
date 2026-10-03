@@ -148,6 +148,7 @@ Build order *(changed)*: 2A–2C, 2E (with the first demo exe, K33), 2F, then Ch
   - Triangle edges: one toggle that covers both the whole mesh's triangle edges and the selected voxel's highlighted triangles
   - Selected voxel: show corner labels
   - Volume: exact (tetrahedra) or approximate only
+  - *(Progress)* In-game panels now exist for both labs on a shared `LabPanelFrame` (foldout sections, scrolling, click blocking): `VoxelLabPanel` (corners, case, presets, meshing, step-through, volume, display) and `ChunkLabPanel` (terrain, brush, meshing, step-through, display), with shared `MeshingControls` and `StepThroughControls`. Still open: voxel size, test fill, the selected voxel's controls (K7) in ChunkLab, and one triangle-edges toggle. The demo exe keeps step-through recording via `CLUBE_LAB_BUILD`.
 
 ### 2B — Voxel selection
 - [x] **K5** `Lab` Click to select a voxel; highlight it. Picks the voxel whose surface the click ray hits first (`SurfaceRaycast` on top of `VoxelRaycast`, Core); voxels without surface can't be picked. Shown with a line-mesh wireframe.
