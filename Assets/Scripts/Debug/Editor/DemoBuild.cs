@@ -6,20 +6,27 @@ using UnityEngine;
 namespace Clube.Debug.Editor
 {
     /// <summary>
-    /// Builds the playable ChunkLab demo (K33): a Windows build of the DemoMenu welcome
-    /// screen and the ChunkLab scene it launches (K34), in
-    /// <c>Builds/ChunkLab/</c> (gitignored). It ships <c>Clube.Debug</c>, which is fine for a
-    /// lab demo; the A10 check (no debug components) is for the Game scene. Not a
-    /// development build: that opens a profiler port (a firewall prompt on first run)
-    /// and stamps a watermark, neither of which a demo needs.
+    /// Builds the playable lab demo (K33, K34, V22): a Windows build of the DemoMenu
+    /// welcome screen and the two labs it launches, VoxelLab (single voxel) and ChunkLab
+    /// (single chunk), in <c>Builds/Demo/</c> (gitignored). It ships <c>Clube.Debug</c>,
+    /// which is fine for a lab demo; the A10 check (no debug components) is for the Game
+    /// scene. Not a development build: that opens a profiler port (a firewall prompt on
+    /// first run) and stamps a watermark, neither of which a demo needs. That also means
+    /// step-through recording (A5) is compiled out, so the labs' step-through stays off.
     /// </summary>
     public static class DemoBuild
     {
-        // The welcome screen (K34) comes first: the player starts in the first scene listed.
-        private static readonly string[] Scenes = { "Assets/Scenes/DemoMenu.unity", "Assets/Scenes/ChunkLab.unity" };
-        private const string Output = "Builds/ChunkLab/ChunkLab.exe";
+        // The welcome screen comes first: the player starts in the first scene listed.
+        private static readonly string[] Scenes =
+        {
+            "Assets/Scenes/DemoMenu.unity",
+            "Assets/Scenes/VoxelLab.unity",
+            "Assets/Scenes/ChunkLab.unity",
+        };
 
-        [MenuItem("Clube/Build/ChunkLab demo (K33)")]
+        private const string Output = "Builds/Demo/clube.exe";
+
+        [MenuItem("Clube/Build/Lab demo")]
         private static void BuildFromMenu()
         {
             BuildReport report = Build();

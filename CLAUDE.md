@@ -55,10 +55,11 @@ of 2D (K12, K32) and 2G come after 3A.
 2E is done (K13–K16, K33). `TerrainBrush` (Core) adds or removes a sphere
 through A7; `TerrainBrushTool` (ChunkLab) picks Select, Dig or Add with
 1/2/3 and switches `VoxelSelector` off while editing. `ChunkLabPanel` is the
-in-game control panel (the start of K31), and *Clube → Build → ChunkLab demo*
-(`DemoBuild`) builds the playable exe to `Builds/ChunkLab/`.
-K34 is done: the exe opens on the `DemoMenu` welcome scene (Play / Exit;
-`DemoExitButton` and Esc in ChunkLab return to it), in a resizable 1280×720
+in-game control panel (the start of K31), and *Clube → Build → Lab demo*
+(`DemoBuild`) builds the playable exe to `Builds/Demo/`.
+K34 is done: the exe opens on the `DemoMenu` welcome scene (Single voxel =
+VoxelLab, Single chunk = ChunkLab, Exit; `DemoExitButton` and Esc in either
+lab return to it; VoxelLab lists its keys with `ControlsHint`), in a resizable 1280×720
 window, and the lab panels fit small windows. **Next: 2F.**
 K31 (lab control panel) is queued.
 
