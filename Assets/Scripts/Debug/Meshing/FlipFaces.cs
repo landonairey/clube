@@ -18,6 +18,17 @@ namespace Clube.Debug
 
         private ChunkView chunkView;
 
+        /// <summary>Reverse every triangle's winding; changing it rebuilds the mesh.</summary>
+        public bool Flip
+        {
+            get => flipFaces;
+            set
+            {
+                flipFaces = value;
+                RequestRebuild();
+            }
+        }
+
         private void Awake()
         {
             chunkView = GetComponent<ChunkView>();

@@ -177,8 +177,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughLab
   speed: 1
+  granularity: 0
+  skipEmptyVoxels: 0
   autoPlay: 1
   timings:
+    voxel: 0.8
+    slice: 3
     densityField: 1.5
     sampleCorners: 2
     caseIndex: 2.5
@@ -207,6 +211,7 @@ GameObject:
   - component: {fileID: 190024696}
   - component: {fileID: 190024697}
   - component: {fileID: 190024698}
+  - component: {fileID: 190024699}
   m_Layer: 0
   m_Name: Voxel
   m_TagString: Untagged
@@ -404,6 +409,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 701e34ebff3a0fe4690bea5f0943647a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.CaseStepInput
+--- !u!114 &190024699
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 190024688}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8900e807f8aba2d438ebf0bf86ff9a96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelLabPanel
+  startOpen: 1
+  width: 340
+  background: {r: 0, g: 0, b: 0, a: 0.7}
 --- !u!1 &1408007341
 GameObject:
   m_ObjectHideFlags: 0
@@ -478,7 +498,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1576569282}
   - component: {fileID: 1576569281}
-  - component: {fileID: 1576569283}
   m_Layer: 0
   m_Name: Demo Exit
   m_TagString: Untagged
@@ -513,21 +532,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1576569283
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1576569280}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 66b0aeb2ee8ae404496ae59fb94798bf, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ControlsHint
-  text: "<b>\u2190 \u2192</b> step through the 256 cases \xB7 <b>Right mouse</b>
-    look \xB7 <b>WASD</b> move \xB7 <b>Q/E</b> down/up \xB7 <b>Scroll</b> pull the
-    volume pieces apart"
 --- !u!1 &1578836785
 GameObject:
   m_ObjectHideFlags: 0

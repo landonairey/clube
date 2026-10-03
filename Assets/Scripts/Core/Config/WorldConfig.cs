@@ -42,11 +42,26 @@ namespace Clube.Core
 
         public float VoxelSize => voxelSize;
 
-        public float IsoLevel => isoLevel;
+        // The setters are for lab controls (A2: labs may change the config). Call
+        // NotifyChanged afterwards so views rebuild; the game only reads these.
 
-        public EdgePlacement EdgePlacement => edgePlacement;
+        public float IsoLevel
+        {
+            get => isoLevel;
+            set => isoLevel = Mathf.Clamp01(value);
+        }
 
-        public Shading Shading => shading;
+        public EdgePlacement EdgePlacement
+        {
+            get => edgePlacement;
+            set => edgePlacement = value;
+        }
+
+        public Shading Shading
+        {
+            get => shading;
+            set => shading = value;
+        }
 
         public ChunkMeshSettings MeshSettings => new ChunkMeshSettings(isoLevel, voxelSize, edgePlacement, shading);
 

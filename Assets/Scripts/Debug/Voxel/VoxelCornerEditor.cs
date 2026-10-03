@@ -69,6 +69,13 @@ namespace Clube.Debug
             ApplyCorners();
         }
 
+        /// <summary>Sets one corner's density (0 = empty, 1 = solid), e.g. from an in-game slider.</summary>
+        public void SetCornerValue(int corner, float value)
+        {
+            cornerValues[corner] = Mathf.Clamp01(value);
+            ApplyCorners();
+        }
+
         /// <summary>Moves to the next (+1) or previous (-1) case index, wrapping 255 ↔ 0.</summary>
         public void StepCase(int delta)
         {

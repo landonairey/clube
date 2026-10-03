@@ -7,12 +7,11 @@ using UnityEngine.InputSystem;
 namespace Clube.Debug
 {
     /// <summary>
-    /// In-game control panel for ChunkLab (K33, the start of K31): the settings the
-    /// demo needs, drawn with IMGUI so they work in a build, where the custom
-    /// inspectors don't exist. Terrain (generator, seed, reset), the brush (tool,
-    /// radius, strength, falloff) and display (samples, wireframe). Tab hides it. It
-    /// scrolls when the window is too short to show it all (K34). Clicks on it never
-    /// reach the brush or voxel selection (<see cref="LabGuiBlocker"/>).
+    /// In-game control panel for ChunkLab (K33, K31): drawn with IMGUI so it works in a
+    /// build, where the custom inspectors don't exist. Foldout sections for the terrain
+    /// (generator, seed, reset), the brush (tool, radius, strength, falloff), meshing
+    /// (iso, edges, shading), step-through and display (samples, wireframe). Tab hides
+    /// it. The frame (scrolling, click blocking, styles) is <see cref="LabPanelFrame"/>.
     /// </summary>
     /// <remarks>
     /// Edits the view's runtime config copy, then calls
@@ -22,10 +21,6 @@ namespace Clube.Debug
     [RequireComponent(typeof(ChunkView))]
     public class ChunkLabPanel : MonoBehaviour
     {
-        private const float Margin = 10f;
-        // Keeps the bottom-right corner free for buttons (the demo's Exit, K34).
-        private const float BottomReserve = 45f;
-
         private static readonly string[] ToolNames = { "Select", "Dig", "Add" };
         private static readonly string[] FalloffNames = { "Hard", "Smooth" };
         private static readonly string[] WireframeNames = { "None", "Outline", "Grid" };
@@ -35,10 +30,27 @@ namespace Clube.Debug
         private bool startOpen = true;
 
         [SerializeField, Min(200f)]
-        private float width = 300f;
+        private float width = 320f;
 
         [SerializeField]
         private Color background = new Color(0f, 0f, 0f, 0.7f);
+
+        // Which sections are open; serialized so each scene picks its starting layout.
+        [Header("Sections open at start")]
+        [SerializeField]
+        private bool terrainOpen = true;
+
+        [SerializeField]
+        private bool brushOpen = true;
+
+        [SerializeField]
+        private bool meshingOpen;
+
+        [SerializeField]
+        private bool stepThroughOpen;
+
+        [SerializeField]
+        private bool displayOpen = true;
 
         private readonly List<TerrainGeneratorType> generatorChoices = new List<TerrainGeneratorType>();
         private readonly List<string> generatorNames = new List<string>();
@@ -47,17 +59,9 @@ namespace Clube.Debug
         private ChunkTerrainFill terrainFill;
         private TerrainBrushTool brush;
         private ChunkDebugView debugView;
+        private StepThroughLab stepThrough;
+        private LabPanelFrame frame;
         private bool open;
-        private Rect panelRect;
-        private Vector2 scroll;
-        private float contentHeight = float.MaxValue;
-
-        private GUIStyle padding;
-        private GUIStyle header;
-        private GUIStyle label;
-        private GUIStyle hint;
-        private GUIStyle button;
-        private GUIStyle toggle;
 
         private void Awake()
         {
@@ -65,28 +69,25 @@ namespace Clube.Debug
             terrainFill = GetComponent<ChunkTerrainFill>();
             brush = GetComponent<TerrainBrushTool>();
             debugView = GetComponent<ChunkDebugView>();
+            stepThrough = GetComponentInChildren<StepThroughLab>(true);
+            frame = new LabPanelFrame(this, width, background);
             open = startOpen;
         }
 
         private void OnDisable()
         {
-            LabGuiBlocker.SetArea(this, null);
+            frame.Hide();
         }
 
         private void Update()
         {
             Keyboard keyboard = Keyboard.current;
-            if (keyboard == null)
-            {
-                return;
-            }
-
-            if (keyboard.tabKey.wasPressedThisFrame)
+            if (keyboard != null && keyboard.tabKey.wasPressedThisFrame)
             {
                 open = !open;
                 if (!open)
                 {
-                    LabGuiBlocker.SetArea(this, null);
+                    frame.Hide();
                 }
             }
         }
@@ -98,45 +99,35 @@ namespace Clube.Debug
                 return;
             }
 
-            CreateStyles();
-            float x = Screen.width - width - Margin;
-            if (Event.current.type == EventType.Repaint && panelRect.width > 0f)
+            frame.Width = width;
+            frame.Begin();
+            if (frame.Section("Terrain", ref terrainOpen))
             {
-                GuiDrawing.Rect(panelRect, background);
+                DrawTerrain(chunkView.Config);
             }
-
-            // Scrolls only when the window is too short for the contents, measured on the
-            // last repaint; otherwise the view is exactly as tall as they are, with no scrollbar.
-            float available = Screen.height - 2f * Margin - BottomReserve;
-            GUILayout.BeginArea(new Rect(x, Margin, width, available));
-            scroll = GUILayout.BeginScrollView(scroll, GUIStyle.none, GUI.skin.verticalScrollbar,
-                GUILayout.Height(Mathf.Min(contentHeight, available)));
-            GUILayout.BeginVertical(padding);
-            DrawTerrain(chunkView.Config);
-            DrawBrush();
-            DrawDisplay();
+            if (brush != null && frame.Section("Brush", ref brushOpen))
+            {
+                DrawBrush();
+            }
+            if (frame.Section("Meshing", ref meshingOpen))
+            {
+                MeshingControls.Draw(frame, chunkView.Config);
+            }
+            if (stepThrough != null && frame.Section("Step-through", ref stepThroughOpen))
+            {
+                StepThroughControls.Draw(frame, stepThrough);
+            }
+            if (debugView != null && frame.Section("Display", ref displayOpen))
+            {
+                DrawDisplay();
+            }
             DrawHelp();
-            GUILayout.EndVertical();
-            if (Event.current.type == EventType.Repaint)
-            {
-                contentHeight = GUILayoutUtility.GetLastRect().height;
-            }
-            GUILayout.EndScrollView();
-
-            // The background and click blocking use the size the layout came out at.
-            if (Event.current.type == EventType.Repaint)
-            {
-                Rect laidOut = GUILayoutUtility.GetLastRect();
-                panelRect = new Rect(x + laidOut.x, Margin + laidOut.y, laidOut.width, laidOut.height);
-                LabGuiBlocker.SetArea(this, panelRect);
-            }
-            GUILayout.EndArea();
+            frame.End();
         }
 
         private void DrawTerrain(WorldConfig config)
         {
             TerrainSettings terrain = config.Terrain;
-            GUILayout.Label("Terrain", header);
 
             // Heightmap needs an image asset, so it's only offered when one is assigned.
             generatorChoices.Clear();
@@ -151,7 +142,7 @@ namespace Clube.Debug
             }
 
             int current = generatorChoices.IndexOf(terrain.Generator);
-            int picked = GUILayout.SelectionGrid(current, generatorNames.ToArray(), 2, button);
+            int picked = GUILayout.SelectionGrid(current, generatorNames.ToArray(), 2, frame.Button);
             if (picked != current && picked >= 0)
             {
                 terrain.Generator = generatorChoices[picked];
@@ -159,17 +150,17 @@ namespace Clube.Debug
             }
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"Seed {terrain.Seed}", label);
+            GUILayout.Label($"Seed {terrain.Seed}", frame.Label);
             int seed = terrain.Seed;
-            if (GUILayout.Button("−", button))
+            if (GUILayout.Button("−", frame.Button))
             {
                 seed--;
             }
-            if (GUILayout.Button("+", button))
+            if (GUILayout.Button("+", frame.Button))
             {
                 seed++;
             }
-            if (GUILayout.Button("Random", button))
+            if (GUILayout.Button("Random", frame.Button))
             {
                 seed = UnityEngine.Random.Range(0, 100000);
             }
@@ -181,61 +172,42 @@ namespace Clube.Debug
             }
 
             // Regenerating from the config also throws away every brush edit.
-            if (GUILayout.Button("Reset terrain (undo all edits)", button))
+            if (GUILayout.Button("Reset terrain (undo all edits)", frame.Button))
             {
                 config.NotifyChanged();
             }
             if (terrainFill != null && terrainFill.IsOverridden)
             {
-                GUILayout.Label("The test fill is on and overrides the generator.", hint);
+                GUILayout.Label("The test fill is on and overrides the generator.", frame.Hint);
             }
         }
 
         private void DrawBrush()
         {
-            if (brush == null)
-            {
-                return;
-            }
-
-            GUILayout.Space(8f);
-            GUILayout.Label("Brush", header);
-            var tool = (ChunkClickTool)GUILayout.Toolbar((int)brush.Tool, ToolNames, button);
+            var tool = (ChunkClickTool)GUILayout.Toolbar((int)brush.Tool, ToolNames, frame.Button);
             if (tool != brush.Tool)
             {
                 brush.Tool = tool;
             }
 
-            GUILayout.Label($"Radius {brush.Radius:0.##}", label);
-            brush.Radius = GUILayout.HorizontalSlider(brush.Radius, TerrainBrushTool.MinRadius, TerrainBrushTool.MaxRadius);
-            GUILayout.Label($"Strength {brush.Strength:0.##}", label);
-            brush.Strength = GUILayout.HorizontalSlider(brush.Strength, 0.01f, 1f);
-            brush.Falloff = (BrushFalloff)GUILayout.Toolbar((int)brush.Falloff, FalloffNames, button);
+            brush.Radius = frame.Slider("Radius", brush.Radius, TerrainBrushTool.MinRadius, TerrainBrushTool.MaxRadius, "0.##");
+            brush.Strength = frame.Slider("Strength", brush.Strength, 0.01f, 1f, "0.##");
+            brush.Falloff = (BrushFalloff)GUILayout.Toolbar((int)brush.Falloff, FalloffNames, frame.Button);
         }
 
         private void DrawDisplay()
         {
-            if (debugView == null)
-            {
-                return;
-            }
-
-            GUILayout.Space(8f);
-            GUILayout.Label("Display", header);
             // Only write real changes: each write makes the view rebuild its meshes.
-            bool showSamples = GUILayout.Toggle(debugView.ShowSamples, " Show density samples", toggle);
+            bool showSamples = frame.ToggleField("Show density samples", debugView.ShowSamples);
             if (showSamples != debugView.ShowSamples)
             {
                 debugView.ShowSamples = showSamples;
             }
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Wireframe", label, GUILayout.ExpandWidth(false));
-            var wireframe = (ChunkDebugView.Wireframe)GUILayout.Toolbar((int)debugView.WireframeMode, WireframeNames, button);
+            var wireframe = (ChunkDebugView.Wireframe)frame.Toolbar("Wireframe", (int)debugView.WireframeMode, WireframeNames);
             if (wireframe != debugView.WireframeMode)
             {
                 debugView.WireframeMode = wireframe;
             }
-            GUILayout.EndHorizontal();
         }
 
         private void DrawHelp()
@@ -244,22 +216,7 @@ namespace Clube.Debug
             GUILayout.Label(
                 "Right mouse look · WASD move · Q/E down/up · Shift fast\n" +
                 "1/2/3 tool · [ ] radius · Tab hide panel",
-                hint);
-        }
-
-        private void CreateStyles()
-        {
-            if (padding != null)
-            {
-                return;
-            }
-
-            padding = new GUIStyle { padding = new RectOffset(12, 12, 10, 10) };
-            header = new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
-            label = new GUIStyle(GUI.skin.label) { fontSize = 13, normal = { textColor = Color.white } };
-            hint = new GUIStyle(label) { fontSize = 12, wordWrap = true, normal = { textColor = new Color(0.7f, 0.7f, 0.7f) } };
-            button = new GUIStyle(GUI.skin.button) { fontSize = 13 };
-            toggle = new GUIStyle(GUI.skin.toggle) { fontSize = 13, normal = { textColor = Color.white }, onNormal = { textColor = Color.white } };
+                frame.Hint);
         }
     }
 }

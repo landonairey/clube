@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Clube.Core;
 using UnityEditor;
 using UnityEngine;
@@ -60,15 +58,15 @@ namespace Clube.Debug.Editor
             BaseConfiguration configuration = MarchingCubesCases.GetBaseConfiguration(caseIndex);
             using (new EditorGUI.IndentLevelScope())
             {
-                EditorGUILayout.LabelField("Binary (corner 7 → 0)", FormatBinary(caseIndex));
-                EditorGUILayout.LabelField("Solid corners", FormatList(SolidCorners(caseIndex)));
+                EditorGUILayout.LabelField("Binary (corner 7 → 0)", VoxelCaseText.Binary(caseIndex));
+                EditorGUILayout.LabelField("Solid corners", VoxelCaseText.List(VoxelCaseText.SolidCorners(caseIndex)));
                 EditorGUILayout.LabelField(
                     "Base configuration",
                     $"{(int)configuration} · {BaseConfigurationText.Name(configuration)}");
                 EditorGUILayout.LabelField(" ", BaseConfigurationText.Description(configuration), EditorStyles.wordWrappedMiniLabel);
                 EditorGUILayout.LabelField("Ambiguous face", MarchingCubesCases.HasAmbiguousFace(caseIndex) ? "Yes" : "No");
-                EditorGUILayout.LabelField("Crossed edges", FormatList(CrossedEdges(caseIndex)));
-                EditorGUILayout.LabelField("Triangles", CountTriangles(caseIndex).ToString());
+                EditorGUILayout.LabelField("Crossed edges", VoxelCaseText.List(VoxelCaseText.CrossedEdges(caseIndex)));
+                EditorGUILayout.LabelField("Triangles", VoxelCaseText.TriangleCount(caseIndex).ToString());
             }
         }
 
@@ -141,52 +139,6 @@ namespace Clube.Debug.Editor
                 EditorUtility.SetDirty(undoTarget);
             }
             SceneView.RepaintAll();
-        }
-
-        private static int CountTriangles(int caseIndex)
-        {
-            int indices = 0;
-            while (MarchingCubesTables.Triangles[caseIndex, indices] != -1)
-            {
-                indices++;
-            }
-            return indices / 3;
-        }
-
-        private static IEnumerable<int> SolidCorners(int caseIndex)
-        {
-            for (int corner = 0; corner < MarchingCubes.CornerCount; corner++)
-            {
-                if (MarchingCubes.IsCornerSolid(caseIndex, corner))
-                {
-                    yield return corner;
-                }
-            }
-        }
-
-        private static IEnumerable<int> CrossedEdges(int caseIndex)
-        {
-            int mask = MarchingCubes.GetCrossedEdgeMask(caseIndex);
-            for (int edge = 0; edge < MarchingCubes.EdgeCount; edge++)
-            {
-                if ((mask & (1 << edge)) != 0)
-                {
-                    yield return edge;
-                }
-            }
-        }
-
-        /// <summary>e.g. 41 → "0010 1001", most significant bit (corner 7) first.</summary>
-        private static string FormatBinary(int caseIndex)
-        {
-            string bits = Convert.ToString(caseIndex, 2).PadLeft(8, '0');
-            return $"{bits.Substring(0, 4)} {bits.Substring(4)}";
-        }
-
-        private static string FormatList(IEnumerable<int> values)
-        {
-            string text = string.Join(", ", values);
-            return text.Length > 0 ? text : "none";
         }
     }
 }

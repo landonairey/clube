@@ -57,6 +57,36 @@ namespace Clube.Debug
         private Material ownedMaterial;
         private bool rebuildRequested;
 
+        public bool ShowVertexNormals
+        {
+            get => showVertexNormals;
+            set
+            {
+                showVertexNormals = value;
+                rebuildRequested = true;
+            }
+        }
+
+        public bool ShowFaceNormals
+        {
+            get => showFaceNormals;
+            set
+            {
+                showFaceNormals = value;
+                rebuildRequested = true;
+            }
+        }
+
+        public bool ShowTriangleEdges
+        {
+            get => showTriangleEdges;
+            set
+            {
+                showTriangleEdges = value;
+                rebuildRequested = true;
+            }
+        }
+
         private void Awake()
         {
             chunkView = GetComponent<ChunkView>();

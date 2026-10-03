@@ -33,6 +33,25 @@ namespace Clube.Debug
 
         private VoxelCornerEditor corners;
 
+        /// <summary>The corner-labels toggle itself; <see cref="ShowCornerLabels"/> also checks step-through.</summary>
+        public bool CornerLabelsOn
+        {
+            get => showCornerLabels;
+            set => showCornerLabels = value;
+        }
+
+        public bool CrossedEdgesOn
+        {
+            get => showCrossedEdges;
+            set => showCrossedEdges = value;
+        }
+
+        public bool EdgeLabelsOn
+        {
+            get => showEdgeLabels;
+            set => showEdgeLabels = value;
+        }
+
         public bool ShowCornerLabels => showCornerLabels && !StepThroughMode.IsOn(this);
 
         public bool ShowCrossedEdges => showCrossedEdges && !StepThroughMode.IsOn(this);
