@@ -35,6 +35,7 @@ namespace Clube.Debug
         public const float MinRadius = 0.25f;
         public const float MaxRadius = 16f;
         private const float RadiusStep = 1.25f;
+        private const float BottomCornerReserve = 150f;
 
         [Tooltip("What left clicks do. Keys 1, 2 and 3 switch in Play mode.")]
         [SerializeField]
@@ -202,6 +203,7 @@ namespace Clube.Debug
                 richText = true,
                 fontSize = 13,
                 alignment = TextAnchor.MiddleCenter,
+                wordWrap = true,
                 padding = new RectOffset(10, 10, 6, 6),
                 normal = { textColor = Color.white },
             };
@@ -212,8 +214,11 @@ namespace Clube.Debug
             var content = new GUIContent(
                 $"<b>{tool}</b>{brush}   <color=#aaaaaa>1 select · 2 dig · 3 add · [ ] radius</color>");
 
-            Vector2 size = labelStyle.CalcSize(content);
-            var rect = new Rect((Screen.width - size.x) * 0.5f, Screen.height - size.y - 10f, size.x, size.y);
+            // One line when it fits; in a narrow window it wraps instead of running off the
+            // edges, keeping the bottom corners free for buttons (the demo's Exit, K34).
+            float width = Mathf.Min(labelStyle.CalcSize(content).x, Screen.width - 2f * BottomCornerReserve);
+            float height = labelStyle.CalcHeight(content, width);
+            var rect = new Rect((Screen.width - width) * 0.5f, Screen.height - height - 10f, width, height);
             GuiDrawing.Rect(rect, new Color(0f, 0f, 0f, 0.65f));
             GUI.Label(rect, content, labelStyle);
         }
