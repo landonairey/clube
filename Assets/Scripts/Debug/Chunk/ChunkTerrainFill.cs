@@ -8,30 +8,35 @@ namespace Clube.Debug
     /// Fills the chunk with the terrain the config's <see cref="TerrainSettings"/>
     /// describe (K8–K10), and regenerates whenever the config changes, including a
     /// new chunk size (G1). In the game the chunk manager will do this; in the lab
-    /// it's this component. Turning it on turns <see cref="ChunkTestFill"/> off, and
-    /// the other way round, since both write the whole chunk.
+    /// it's this component.
     /// </summary>
+    /// <remarks>
+    /// <see cref="ChunkTestFill"/> overrides it: while the test fill is on, this
+    /// holds back, and as soon as the test fill is turned off it regenerates the
+    /// terrain. Both write the whole chunk, so only one may own it at a time.
+    /// </remarks>
     [RequireComponent(typeof(ChunkView))]
     public class ChunkTerrainFill : MonoBehaviour
     {
         private ChunkView chunkView;
+        private ChunkTestFill testFill;
         private WorldConfig subscribedConfig;
+        private bool testFillWasActive;
 
         /// <summary>How long the last fill took, generator and density writes together.</summary>
         public double LastFillMilliseconds { get; private set; }
 
+        /// <summary>True while the test fill overrides this one.</summary>
+        public bool IsOverridden => testFill != null && testFill.isActiveAndEnabled;
+
         private void Awake()
         {
             chunkView = GetComponent<ChunkView>();
+            testFill = GetComponent<ChunkTestFill>();
         }
 
         private void OnEnable()
         {
-            if (TryGetComponent(out ChunkTestFill testFill))
-            {
-                testFill.enabled = false;
-            }
-
             chunkView.ChunkCreated += OnChunkCreated;
 
             // When the scene starts, this can run before ChunkView's Awake makes the Play
@@ -55,6 +60,17 @@ namespace Clube.Debug
                 subscribedConfig.Changed -= Fill;
                 subscribedConfig = null;
             }
+        }
+
+        // Takes the chunk back when the test fill is turned off.
+        private void LateUpdate()
+        {
+            bool overridden = IsOverridden;
+            if (testFillWasActive && !overridden)
+            {
+                Fill();
+            }
+            testFillWasActive = overridden;
         }
 
         // Follows whichever config the view uses now: the Play mode copy once it exists,
@@ -87,7 +103,7 @@ namespace Clube.Debug
         {
             Chunk chunk = chunkView.Chunk;
             WorldConfig config = chunkView.Config;
-            if (chunk == null || config == null)
+            if (chunk == null || config == null || IsOverridden)
             {
                 return;
             }

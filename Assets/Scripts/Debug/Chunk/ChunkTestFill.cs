@@ -5,7 +5,7 @@ namespace Clube.Debug
 {
     /// <summary>
     /// Test shapes for <c>ChunkLab</c>, independent of the terrain generators (K9, see
-    /// <see cref="ChunkTerrainFill"/>; turning one on turns the other off):
+    /// <see cref="ChunkTerrainFill"/>, which holds back while this is on):
     /// a ball of dirt in the middle of the chunk, or a solid block (inside a skirt
     /// of air) with a shaft carved from top to bottom. Densities fade from 1 to 0 over one voxel
     /// across each surface, so the default iso level traces the shape smoothly.
@@ -41,14 +41,9 @@ namespace Clube.Debug
             chunkView = GetComponent<ChunkView>();
         }
 
-        // Both fills write the whole chunk, so turning this one on turns the generator fill off.
+        // While this is on, ChunkTerrainFill holds back; it takes the chunk back when this turns off.
         private void OnEnable()
         {
-            if (TryGetComponent(out ChunkTerrainFill terrainFill))
-            {
-                terrainFill.enabled = false;
-            }
-
             chunkView.ChunkCreated += Fill;
             Fill(chunkView.Chunk);
         }

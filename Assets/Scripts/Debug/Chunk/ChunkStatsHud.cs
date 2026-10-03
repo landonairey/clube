@@ -73,7 +73,7 @@ namespace Clube.Debug
             string frameTime = framesPerSecond > 0f ? $"{1000f / framesPerSecond:0.0} ms" : "measuring";
             string text = $"<b>{framesPerSecond:0} FPS</b>  ({frameTime})\n" +
                           Describe(chunkView.Chunk.VoxelCount, chunkView.LastBuildStats);
-            if (terrainFill != null && terrainFill.enabled)
+            if (terrainFill != null && terrainFill.enabled && !terrainFill.IsOverridden)
             {
                 text += $"\nGenerate   {terrainFill.LastFillMilliseconds:0.00} ms  ({chunkView.Config.Terrain.Generator})";
             }
