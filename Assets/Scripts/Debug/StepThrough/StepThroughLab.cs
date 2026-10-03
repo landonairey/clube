@@ -26,6 +26,10 @@ namespace Clube.Debug
         // Lifts the info box clear of bottom-corner buttons (ChunkLab's Exit) and the tool label.
         private const float InfoBottomReserve = 45f;
 
+        // Lines the info box always has room for: title, summary, a two-line detail, the
+        // case-index bits line and the key hint.
+        private const int InfoMinLines = 6;
+
         // Above this many samples the density field is drawn without value labels.
         private const int MaxLabelledSamples = 64;
 
@@ -385,7 +389,10 @@ namespace Clube.Debug
             // Bottom right, clear of the axes HUD in the bottom-left corner.
             const float margin = 10f;
             float width = Mathf.Min(Screen.width - 2f * margin, 760f);
-            float height = infoStyle.CalcHeight(new GUIContent(text), width);
+            // At least InfoMinLines tall, so the box doesn't jump as step texts of different
+            // lengths play past; only an unusually long text grows it.
+            float minHeight = infoStyle.CalcHeight(new GUIContent(new string('\n', InfoMinLines - 1)), width);
+            float height = Mathf.Max(minHeight, infoStyle.CalcHeight(new GUIContent(text), width));
             var rect = new Rect(Screen.width - width - margin, Screen.height - height - margin - InfoBottomReserve, width, height);
 
             GuiDrawing.Rect(rect, new Color(0f, 0f, 0f, 0.65f));

@@ -36,31 +36,28 @@ namespace Clube.Debug
                 return;
             }
 
+            // Everything below keeps a fixed size while playback runs: equal-width buttons
+            // and single clipped lines, so the panel never resizes from frame to frame.
             StepPlayback playback = lab.Playback;
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Restart", frame.Button))
+            switch (frame.ButtonRow("Restart", "◄", playback.IsPlaying ? "Pause" : "Play", "►"))
             {
-                playback.Restart();
+                case 0:
+                    playback.Restart();
+                    break;
+                case 1:
+                    playback.Step(-1);
+                    break;
+                case 2:
+                    playback.TogglePlay();
+                    break;
+                case 3:
+                    playback.Step(+1);
+                    break;
             }
-            if (GUILayout.Button("◄", frame.Button))
-            {
-                playback.Step(-1);
-            }
-            if (GUILayout.Button(playback.IsPlaying ? "Pause" : "Play", frame.Button))
-            {
-                playback.TogglePlay();
-            }
-            if (GUILayout.Button("►", frame.Button))
-            {
-                playback.Step(+1);
-            }
-            GUILayout.EndHorizontal();
 
-            (int step, float progress) = lab.Current;
-            GUILayout.Label(
-                $"Position {playback.StepIndex + 1} / {playback.StepCount} · step {step + 1} / {lab.Recording.Steps.Count} " +
-                $"({lab.Recording.Steps[step].Type}, {progress:P0})",
-                frame.Label);
+            int step = lab.Current.Step;
+            frame.Line($"Position {playback.StepIndex + 1} / {playback.StepCount}");
+            frame.Line($"Step {step + 1} / {lab.Recording.Steps.Count} · {lab.Recording.Steps[step].Type}");
             float position = GUILayout.HorizontalSlider(playback.StepIndex, 0f, Mathf.Max(0, playback.StepCount - 1));
             int target = Mathf.RoundToInt(position);
             if (target != playback.StepIndex)

@@ -21,6 +21,9 @@ namespace Clube.Debug
         // Keeps the bottom-right corner free for buttons (the demo's Exit, K34).
         private const float BottomReserve = 45f;
 
+        private const int PaddingX = 12;
+        private const float ScrollbarAllowance = 16f;
+
         private readonly Object owner;
         private readonly Color background;
 
@@ -41,6 +44,12 @@ namespace Clube.Debug
 
         public float Width { get; set; }
 
+        /// <summary>
+        /// Width left for controls inside the padding, also allowing for the scrollbar,
+        /// so a row sized to it fits whether or not the panel is scrolling.
+        /// </summary>
+        public float InnerWidth => Width - 2f * PaddingX - ScrollbarAllowance;
+
         public GUIStyle Header { get; private set; }
 
         public GUIStyle Label { get; private set; }
@@ -50,6 +59,9 @@ namespace Clube.Debug
         public GUIStyle Button { get; private set; }
 
         public GUIStyle Toggle { get; private set; }
+
+        /// <summary>A label that never wraps and clips instead, for text that changes as it plays.</summary>
+        public GUIStyle FixedLine { get; private set; }
 
         public GUIStyle SectionButton { get; private set; }
 
@@ -115,6 +127,36 @@ namespace Clube.Debug
             return GUILayout.HorizontalSlider(value, min, max);
         }
 
+        /// <summary>
+        /// One line of text at the full inner width that never wraps (it clips), so text
+        /// that changes every frame can't change the panel's size.
+        /// </summary>
+        public void Line(string text)
+        {
+            GUILayout.Label(text, FixedLine, GUILayout.Width(InnerWidth));
+        }
+
+        /// <summary>
+        /// A row of equal-width buttons spanning the inner width, so a button whose label
+        /// changes (Play / Pause) doesn't shift the others. Returns the clicked index, or -1.
+        /// </summary>
+        public int ButtonRow(params string[] labels)
+        {
+            const float spacing = 4f;
+            float buttonWidth = (InnerWidth - spacing * (labels.Length - 1)) / labels.Length;
+            int clicked = -1;
+            GUILayout.BeginHorizontal(GUILayout.Width(InnerWidth));
+            for (int i = 0; i < labels.Length; i++)
+            {
+                if (GUILayout.Button(labels[i], Button, GUILayout.Width(buttonWidth)))
+                {
+                    clicked = i;
+                }
+            }
+            GUILayout.EndHorizontal();
+            return clicked;
+        }
+
         public bool ToggleField(string label, bool value)
         {
             return GUILayout.Toggle(value, " " + label, Toggle);
@@ -137,9 +179,10 @@ namespace Clube.Debug
                 return;
             }
 
-            padding = new GUIStyle { padding = new RectOffset(12, 12, 10, 10) };
+            padding = new GUIStyle { padding = new RectOffset(PaddingX, PaddingX, 10, 10) };
             Header = new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
             Label = new GUIStyle(GUI.skin.label) { fontSize = 13, wordWrap = true, normal = { textColor = Color.white } };
+            FixedLine = new GUIStyle(Label) { wordWrap = false, clipping = TextClipping.Clip };
             Hint = new GUIStyle(Label) { fontSize = 12, normal = { textColor = new Color(0.7f, 0.7f, 0.7f) } };
             Button = new GUIStyle(GUI.skin.button) { fontSize = 13 };
             Toggle = new GUIStyle(GUI.skin.toggle) { fontSize = 13, normal = { textColor = Color.white }, onNormal = { textColor = Color.white } };
