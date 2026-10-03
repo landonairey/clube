@@ -75,7 +75,9 @@ namespace Clube.Debug
                           Describe(chunkView.Chunk.VoxelCount, chunkView.LastBuildStats);
             if (terrainFill != null && terrainFill.enabled && !terrainFill.IsOverridden)
             {
-                text += $"\nGenerate   {terrainFill.LastFillMilliseconds:0.00} ms  ({chunkView.Config.Terrain.Generator})";
+                text += terrainFill.Problem == null
+                    ? $"\nGenerate   {terrainFill.LastFillMilliseconds:0.00} ms  ({chunkView.Config.Terrain.Generator})"
+                    : $"\n<color=#ffcc44><b>Generate skipped:</b> {terrainFill.Problem}</color>";
             }
             if (volumeStats != null && volumeStats.enabled && volumeStats.HasMeasurement)
             {

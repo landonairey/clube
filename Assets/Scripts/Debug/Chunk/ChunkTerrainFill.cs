@@ -26,6 +26,9 @@ namespace Clube.Debug
         /// <summary>How long the last fill took, generator and density writes together.</summary>
         public double LastFillMilliseconds { get; private set; }
 
+        /// <summary>Why the last fill was skipped (e.g. no heightmap assigned), or null if it ran.</summary>
+        public string Problem { get; private set; }
+
         /// <summary>True while the test fill overrides this one.</summary>
         public bool IsOverridden => testFill != null && testFill.isActiveAndEnabled;
 
@@ -109,7 +112,23 @@ namespace Clube.Debug
             }
 
             var stopwatch = Stopwatch.StartNew();
-            ITerrainGenerator generator = TerrainGenerators.Create(config.Terrain);
+            ITerrainGenerator generator;
+            try
+            {
+                generator = TerrainGenerators.Create(config.Terrain);
+            }
+            catch (System.Exception exception) when (exception is System.InvalidOperationException || exception is System.ArgumentException)
+            {
+                // e.g. the heightmap generator with no heightmap assigned: keep the chunk as it is.
+                if (Problem != exception.Message)
+                {
+                    UnityEngine.Debug.LogWarning($"Terrain fill skipped: {exception.Message}", this);
+                }
+                Problem = exception.Message;
+                return;
+            }
+
+            Problem = null;
 
             // The chunk sits at the world origin; later chunks are offset by their coordinate (M1).
             ChunkGenerator.Fill(chunk, generator, Vector3.zero, config.VoxelSize);
