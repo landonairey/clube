@@ -23,6 +23,7 @@ namespace Clube.Debug
         private ChunkView chunkView;
         private ChunkDebugView debugView;
         private ChunkVolumeStats volumeStats;
+        private ChunkTerrainFill terrainFill;
         private GUIStyle style;
 
         private int windowFrames;
@@ -34,6 +35,7 @@ namespace Clube.Debug
             chunkView = GetComponent<ChunkView>();
             debugView = GetComponent<ChunkDebugView>();
             volumeStats = GetComponent<ChunkVolumeStats>();
+            terrainFill = GetComponent<ChunkTerrainFill>();
         }
 
         private void Update()
@@ -71,6 +73,10 @@ namespace Clube.Debug
             string frameTime = framesPerSecond > 0f ? $"{1000f / framesPerSecond:0.0} ms" : "measuring";
             string text = $"<b>{framesPerSecond:0} FPS</b>  ({frameTime})\n" +
                           Describe(chunkView.Chunk.VoxelCount, chunkView.LastBuildStats);
+            if (terrainFill != null && terrainFill.enabled)
+            {
+                text += $"\nGenerate   {terrainFill.LastFillMilliseconds:0.00} ms  ({chunkView.Config.Terrain.Generator})";
+            }
             if (volumeStats != null && volumeStats.enabled && volumeStats.HasMeasurement)
             {
                 text += "\n" + DescribeVolume(volumeStats);
