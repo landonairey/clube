@@ -29,6 +29,7 @@ namespace Clube.Core.Tests
                 MeshingStepType.Interpolate,
                 MeshingStepType.Interpolate,
                 MeshingStepType.Triangle,
+                MeshingStepType.Normals,
             };
             Assert.That(recorder.Steps.Select(step => step.Type), Is.EqualTo(expected));
         }
@@ -88,7 +89,7 @@ namespace Clube.Core.Tests
             ChunkMesher.Build(new Chunk(new Vector3Int(2, 1, 1)), Settings, vertices, triangles, recorder);
 
             Assert.That(recorder.Voxels.Count, Is.EqualTo(2));
-            Assert.That(recorder.Steps.Count, Is.EqualTo(1 + 2 * 3));
+            Assert.That(recorder.Steps.Count, Is.EqualTo(1 + 2 * 3 + 1));
             Assert.That(recorder.Steps.Any(step => step.Type == MeshingStepType.Interpolate), Is.False);
         }
 
@@ -115,7 +116,21 @@ namespace Clube.Core.Tests
             ChunkMesher.Build(SingleVoxel(0), Settings, vertices, triangles, recorder);
 
             Assert.That(recorder.Voxels.Count, Is.EqualTo(1));
-            Assert.That(recorder.Steps.Count, Is.EqualTo(4));
+            Assert.That(recorder.Steps.Count, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void Normals_IsRecordedOnceAfterTheLastVoxel()
+        {
+            var chunk = new Chunk(new Vector3Int(2, 1, 1));
+            chunk.SetDensity(new Vector3Int(2, 1, 0), 0.7f);
+
+            ChunkMesher.Build(chunk, Settings, vertices, triangles, recorder);
+
+            MeshingStep last = recorder.Steps[recorder.Steps.Count - 1];
+            Assert.That(last.Type, Is.EqualTo(MeshingStepType.Normals));
+            Assert.That(last.VoxelIndex, Is.EqualTo(-1));
+            Assert.That(recorder.Steps.Count(step => step.Type == MeshingStepType.Normals), Is.EqualTo(1));
         }
 
         [Test]

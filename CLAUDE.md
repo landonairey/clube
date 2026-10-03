@@ -59,7 +59,12 @@ in-game control panel (the start of K31), and *Clube → Build → ChunkLab demo
 (`DemoBuild`) builds the playable exe to `Builds/ChunkLab/`.
 K34 is done: the exe opens on the `DemoMenu` welcome scene (Play / Exit;
 `DemoExitButton` and Esc in ChunkLab return to it), in a resizable 1280×720
-window, and the lab panels fit small windows. **Next: 2F.**
+window, and the lab panels fit small windows.
+2F in progress, in three PRs: (1) step-through in ChunkLab + K17 + K18,
+(2) K19 + K20, (3) K21 + K22. ChunkLab's chunk has a `Step Through`
+child (off by default; its Inspector has the controls). The recorder
+logs a closing `Normals` step. K19's "layer" granularity steps Z slices,
+the mesher's outer loop, so playback stays in true build order.
 K31 (lab control panel) is queued.
 
 ## Conventions

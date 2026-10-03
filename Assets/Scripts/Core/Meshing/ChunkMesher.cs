@@ -63,6 +63,11 @@ namespace Clube.Core
                     }
                 }
             }
+
+            if (recorder != null)
+            {
+                recorder.End();
+            }
         }
 
         private static IVertexWriter CreateWriter(Shading shading, List<Vector3> vertices, Vector3Int sampleCount)
