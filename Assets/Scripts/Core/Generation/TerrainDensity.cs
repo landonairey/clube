@@ -6,16 +6,18 @@ namespace Clube.Core
     public static class TerrainDensity
     {
         /// <summary>
-        /// World units over which density fades from 1 to 0 across the surface. Wide
-        /// enough to span at least a voxel at sensible voxel sizes, so the iso level
-        /// can interpolate a smooth surface.
+        /// Density ramps linearly from 1 at this depth below the surface to 0 at this
+        /// height above it, in world units. Marching Cubes interpolates between the two
+        /// samples either side of the surface, so it places the surface exactly where
+        /// the generator put it as long as neither is clamped: true for voxel sizes up
+        /// to this value. A narrower ramp clamps one of them and biases the surface.
         /// </summary>
-        public const float SurfaceThickness = 1f;
+        public const float RampHalfWidth = 1f;
 
-        /// <summary>0.5 on the surface, 1 at half a thickness below it and deeper, 0 at half above.</summary>
+        /// <summary>0.5 on the surface, 1 at <see cref="RampHalfWidth"/> below it and deeper, 0 as far above.</summary>
         public static float FromDepth(float depth)
         {
-            return Mathf.Clamp01(0.5f + depth / SurfaceThickness);
+            return Mathf.Clamp01(0.5f + depth / (2f * RampHalfWidth));
         }
     }
 }
