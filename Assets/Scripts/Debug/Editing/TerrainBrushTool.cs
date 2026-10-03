@@ -1,0 +1,289 @@
+using System.Collections.Generic;
+using Clube.Core;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+namespace Clube.Debug
+{
+    /// <summary>The click tools a <see cref="TerrainBrushTool"/> switches between.</summary>
+    public enum ChunkClickTool
+    {
+        /// <summary>Clicks select voxels (<see cref="VoxelSelector"/>, K5).</summary>
+        Select,
+
+        /// <summary>Clicks remove terrain (K14).</summary>
+        Dig,
+
+        /// <summary>Clicks add terrain (K13).</summary>
+        Add,
+    }
+
+    /// <summary>
+    /// Edits the chunk with a sphere brush in the Game view (K13–K16): 1, 2 and 3
+    /// pick Select, Dig or Add; in Dig and Add, the left mouse button applies the
+    /// brush where the cursor meets the surface, repeating while held; [ and ] change
+    /// the radius. A translucent sphere previews the brush. Edits go through
+    /// <see cref="TerrainBrush"/> and so through the chunk's single edit path (A7).
+    /// </summary>
+    /// <remarks>
+    /// In Dig and Add it switches the <see cref="VoxelSelector"/> off, so clicks edit
+    /// instead of selecting. Play mode only, like the chunk itself.
+    /// </remarks>
+    [RequireComponent(typeof(ChunkView))]
+    public class TerrainBrushTool : MonoBehaviour
+    {
+        private const float RadiusStep = 1.25f;
+
+        [Tooltip("What left clicks do. Keys 1, 2 and 3 switch in Play mode.")]
+        [SerializeField]
+        private ChunkClickTool tool = ChunkClickTool.Select;
+
+        [Tooltip("Brush radius in world units (K15). [ and ] change it in Play mode.")]
+        [SerializeField, Range(0.25f, 16f)]
+        private float radius = 2f;
+
+        [Tooltip("Density added or removed per application at full effect (K16). 1 fills or empties a sample at once.")]
+        [SerializeField, Range(0.01f, 1f)]
+        private float strength = 1f;
+
+        [Tooltip("Hard: an exact sphere at full strength. Smooth: fades to nothing at the radius, for gradual sculpting (K16).")]
+        [SerializeField]
+        private BrushFalloff falloff = BrushFalloff.Hard;
+
+        [Tooltip("Applications per second while the mouse button is held.")]
+        [SerializeField, Range(1f, 60f)]
+        private float repeatRate = 10f;
+
+        [SerializeField]
+        private Color digPreviewColor = new Color(1f, 0.3f, 0.2f, 0.45f);
+
+        [SerializeField]
+        private Color addPreviewColor = new Color(0.3f, 1f, 0.4f, 0.45f);
+
+        [Tooltip("Material that shows vertex colours and alpha (LabVertexColorTransparent), for the preview sphere.")]
+        [SerializeField]
+        private Material previewMaterial;
+
+        [Tooltip("Camera the brush is aimed from. Defaults to the main camera.")]
+        [SerializeField]
+        private Camera targetCamera;
+
+        private readonly List<Vector3> sphereVertices = new List<Vector3>();
+        private readonly List<int> sphereTriangles = new List<int>();
+        private readonly List<Color32> sphereColors = new List<Color32>();
+
+        private ChunkView chunkView;
+        private VoxelSelector selector;
+        private LabMeshObject preview;
+        private Color32 previewColor;
+        private Color32? meshColor;
+        private float nextApplyTime;
+        private GUIStyle labelStyle;
+
+        public ChunkClickTool Tool
+        {
+            get => tool;
+            set
+            {
+                tool = value;
+                ApplyTool();
+            }
+        }
+
+        public BrushSettings Brush => new BrushSettings(radius, strength, falloff);
+
+        /// <summary>Samples changed by the last application, for the readout.</summary>
+        public int LastChangedSamples { get; private set; }
+
+        private Camera ViewCamera => targetCamera != null ? targetCamera : Camera.main;
+
+        private bool IsEditing => tool != ChunkClickTool.Select;
+
+        private void Awake()
+        {
+            chunkView = GetComponent<ChunkView>();
+            selector = GetComponent<VoxelSelector>();
+        }
+
+        private void OnEnable()
+        {
+            ApplyTool();
+        }
+
+        private void OnDisable()
+        {
+            if (selector != null)
+            {
+                selector.enabled = true;
+            }
+            if (preview != null)
+            {
+                preview.Visible = false;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            preview?.Dispose();
+        }
+
+        // Inspector changes to the tool apply at once in Play mode.
+        private void OnValidate()
+        {
+            if (chunkView != null && enabled && gameObject.activeInHierarchy)
+            {
+                ApplyTool();
+            }
+        }
+
+        private void Update()
+        {
+            Mouse mouse = Mouse.current;
+            Keyboard keyboard = Keyboard.current;
+            if (keyboard != null)
+            {
+                ReadKeys(keyboard);
+            }
+
+            if (!IsEditing || mouse == null || chunkView.Chunk == null)
+            {
+                return;
+            }
+
+            // Right mouse is the fly camera's look button.
+            Vector3 centre = default;
+            bool hasTarget = !mouse.rightButton.isPressed && Aim(mouse.position.ReadValue(), out centre);
+            UpdatePreview(hasTarget, centre);
+            if (!hasTarget)
+            {
+                return;
+            }
+
+            if (mouse.leftButton.wasPressedThisFrame || (mouse.leftButton.isPressed && Time.unscaledTime >= nextApplyTime))
+            {
+                var operation = tool == ChunkClickTool.Add ? BrushOperation.Add : BrushOperation.Remove;
+                LastChangedSamples = TerrainBrush.Apply(chunkView.Chunk, centre, chunkView.Config.VoxelSize, Brush, operation);
+                nextApplyTime = Time.unscaledTime + 1f / repeatRate;
+            }
+        }
+
+        private void OnGUI()
+        {
+            if (Event.current.type != EventType.Repaint || chunkView.Chunk == null)
+            {
+                return;
+            }
+
+            labelStyle ??= new GUIStyle(GUI.skin.label)
+            {
+                richText = true,
+                fontSize = 13,
+                alignment = TextAnchor.MiddleCenter,
+                padding = new RectOffset(10, 10, 6, 6),
+                normal = { textColor = Color.white },
+            };
+
+            string brush = IsEditing
+                ? $"   radius {radius:0.##} · strength {strength:0.##} · {falloff.ToString().ToLowerInvariant()}"
+                : "";
+            var content = new GUIContent(
+                $"<b>{tool}</b>{brush}   <color=#aaaaaa>1 select · 2 dig · 3 add · [ ] radius</color>");
+
+            Vector2 size = labelStyle.CalcSize(content);
+            var rect = new Rect((Screen.width - size.x) * 0.5f, Screen.height - size.y - 10f, size.x, size.y);
+            GuiDrawing.Rect(rect, new Color(0f, 0f, 0f, 0.65f));
+            GUI.Label(rect, content, labelStyle);
+        }
+
+        private void ReadKeys(Keyboard keyboard)
+        {
+            if (keyboard.digit1Key.wasPressedThisFrame)
+            {
+                Tool = ChunkClickTool.Select;
+            }
+            else if (keyboard.digit2Key.wasPressedThisFrame)
+            {
+                Tool = ChunkClickTool.Dig;
+            }
+            else if (keyboard.digit3Key.wasPressedThisFrame)
+            {
+                Tool = ChunkClickTool.Add;
+            }
+
+            if (keyboard.leftBracketKey.wasPressedThisFrame)
+            {
+                radius = Mathf.Max(0.25f, radius / RadiusStep);
+            }
+            else if (keyboard.rightBracketKey.wasPressedThisFrame)
+            {
+                radius = Mathf.Min(16f, radius * RadiusStep);
+            }
+        }
+
+        // Selecting and editing share the left mouse button, so only one has it at a time.
+        private void ApplyTool()
+        {
+            if (selector != null)
+            {
+                selector.enabled = !IsEditing;
+            }
+            if (!IsEditing && preview != null)
+            {
+                preview.Visible = false;
+            }
+            previewColor = tool == ChunkClickTool.Add ? addPreviewColor : digPreviewColor;
+        }
+
+        /// <summary>Where the cursor's ray meets the surface, chunk-local.</summary>
+        private bool Aim(Vector2 screenPoint, out Vector3 centre)
+        {
+            centre = default;
+            Camera viewCamera = ViewCamera;
+            if (viewCamera == null)
+            {
+                return false;
+            }
+
+            Ray worldRay = viewCamera.ScreenPointToRay(screenPoint);
+            var localRay = new Ray(
+                transform.InverseTransformPoint(worldRay.origin),
+                transform.InverseTransformDirection(worldRay.direction));
+            return SurfaceRaycast.Cast(localRay, chunkView.Chunk, chunkView.Config.MeshSettings, out _, out centre);
+        }
+
+        private void UpdatePreview(bool visible, Vector3 centre)
+        {
+            if (!visible)
+            {
+                if (preview != null)
+                {
+                    preview.Visible = false;
+                }
+                return;
+            }
+
+            if (preview == null)
+            {
+                preview = new LabMeshObject(transform, "Brush Preview", previewMaterial);
+                LabMeshes.Icosphere(sphereVertices, sphereTriangles);
+                preview.Mesh.SetVertices(sphereVertices);
+                preview.Mesh.SetTriangles(sphereTriangles, 0);
+            }
+
+            if (!meshColor.HasValue || !meshColor.Value.Equals(previewColor))
+            {
+                sphereColors.Clear();
+                for (int i = 0; i < sphereVertices.Count; i++)
+                {
+                    sphereColors.Add(previewColor);
+                }
+                preview.Mesh.SetColors(sphereColors);
+                meshColor = previewColor;
+            }
+
+            preview.Visible = true;
+            preview.Transform.localPosition = centre;
+            preview.Transform.localScale = Vector3.one * radius;
+        }
+    }
+}
