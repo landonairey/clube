@@ -204,7 +204,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 62f34283be239fe44aa505f93e6f6170, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkGizmos
-  showSamples: 1
+  showSamples: 0
   cornerRadius: 0.05
   wireframe: 1
   outlineColor: {r: 0.6, g: 0.6, b: 0.6, a: 1}
@@ -224,7 +224,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkTestFill
   shape: 0
-  radius: 0.4
+  radius: 0
 --- !u!114 &1265142443
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -456,13 +456,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1578836785}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.21735993, y: -0.37194166, z: 0.090033434, w: 0.8979466}
-  m_LocalPosition: {x: 15, y: 12, z: -7}
+  m_LocalRotation: {x: 0.3115525, y: -0.3591247, z: 0.12871765, w: 0.8702852}
+  m_LocalPosition: {x: 12.7, y: 13.79, z: -4.72}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 39.4, y: -44.84, z: 0.02}
 --- !u!114 &1578836789
 MonoBehaviour:
   m_ObjectHideFlags: 0
