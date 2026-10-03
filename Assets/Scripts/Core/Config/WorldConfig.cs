@@ -52,6 +52,16 @@ namespace Clube.Core
 
         public TerrainSettings Terrain => terrain;
 
+        /// <summary>
+        /// Raises <see cref="Changed"/> after a lab tool edits the config from code. Inspector
+        /// edits raise it through OnValidate, which never runs in a build, so in-game lab
+        /// controls (K33) call this instead.
+        /// </summary>
+        public void NotifyChanged()
+        {
+            Changed?.Invoke();
+        }
+
         // What the heightmap fields held at the last validation, to spot a newly imported heightmap.
         [NonSerialized] private bool heightmapStateKnown;
         [NonSerialized] private UnityEngine.Object lastHeightmapSource;
