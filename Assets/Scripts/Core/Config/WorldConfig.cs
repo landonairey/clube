@@ -52,10 +52,45 @@ namespace Clube.Core
 
         public TerrainSettings Terrain => terrain;
 
+        // What the heightmap fields held at the last validation, to spot a newly imported heightmap.
+        [NonSerialized] private bool heightmapStateKnown;
+        [NonSerialized] private UnityEngine.Object lastHeightmapSource;
+        [NonSerialized] private TerrainGeneratorType lastGenerator;
+
+        private void OnEnable()
+        {
+            RememberHeightmapState();
+        }
+
         private void OnValidate()
         {
             chunkSize = Vector3Int.Max(chunkSize, Vector3Int.one);
+            FitNewHeightmapToChunk();
             Changed?.Invoke();
+        }
+
+        /// <summary>
+        /// When a heightmap is assigned, or the Heightmap generator picked, resets the
+        /// terrain's level and amplitude so the image first shows as it was exported.
+        /// </summary>
+        private void FitNewHeightmapToChunk()
+        {
+            UnityEngine.Object source = terrain.HeightmapSource;
+            bool imported = heightmapStateKnown && source != null && source != lastHeightmapSource;
+            bool switchedTo = heightmapStateKnown && terrain.Generator == TerrainGeneratorType.Heightmap
+                              && lastGenerator != TerrainGeneratorType.Heightmap;
+            if (imported || switchedTo)
+            {
+                terrain.FitHeightmapToChunk(chunkSize.y * voxelSize, voxelSize);
+            }
+            RememberHeightmapState();
+        }
+
+        private void RememberHeightmapState()
+        {
+            lastHeightmapSource = terrain.HeightmapSource;
+            lastGenerator = terrain.Generator;
+            heightmapStateKnown = true;
         }
     }
 }

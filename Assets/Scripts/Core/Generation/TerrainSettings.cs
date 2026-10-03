@@ -51,7 +51,9 @@ namespace Clube.Core
             new Keyframe(0f, 0f), new Keyframe(0.4f, 0.15f), new Keyframe(0.55f, 0.75f), new Keyframe(1f, 1f));
 
         [Header("Heightmap")]
-        [Tooltip("Grayscale heightmap image (PNG). Needs Read/Write enabled and no compression in its import settings.")]
+        [Tooltip("Grayscale heightmap image (PNG). Needs Read/Write enabled and no compression in its import settings. " +
+                 "Assigning one (or switching to the Heightmap generator) resets the surface level, amplitude and " +
+                 "units per pixel so the image maps onto the chunk as exported: black at the base, white at the top.")]
         [SerializeField]
         private Texture2D heightmap;
 
@@ -92,6 +94,21 @@ namespace Clube.Core
         public bool RawIs16Bit => rawIs16Bit;
 
         public float HeightmapUnitsPerPixel => heightmapUnitsPerPixel;
+
+        /// <summary>The asset the heightmap comes from (the RAW file if set, else the image), or null.</summary>
+        public UnityEngine.Object HeightmapSource => heightmapRaw != null ? heightmapRaw : heightmap;
+
+        /// <summary>
+        /// Maps the heightmap onto the chunk the way <see cref="HeightmapExport"/> writes
+        /// it: black at the chunk's base, white at its top, one pixel per sample column.
+        /// A freshly imported heightmap then shows its own terrain before any tweaking.
+        /// </summary>
+        public void FitHeightmapToChunk(float chunkHeight, float voxelSize)
+        {
+            surfaceLevel = chunkHeight / 2f;
+            amplitude = chunkHeight / 2f;
+            heightmapUnitsPerPixel = voxelSize;
+        }
 
         /// <summary>The heightmap to generate from: the RAW file if set, else the image, else null.</summary>
         public Heightmap LoadHeightmap()

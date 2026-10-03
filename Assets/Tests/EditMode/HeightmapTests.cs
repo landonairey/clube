@@ -56,6 +56,18 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void FitHeightmapToChunk_MapsBlackToTheBaseAndWhiteToTheTop()
+        {
+            var settings = new TerrainSettings();
+            settings.FitHeightmapToChunk(chunkHeight: 6f, voxelSize: 0.5f);
+            var map = new Heightmap(2, 1, new[] { 0f, 1f });
+            var generator = new HeightmapGenerator(map, settings.SurfaceLevel, settings.Amplitude, settings.HeightmapUnitsPerPixel);
+
+            Assert.That(generator.Height(0f, 0f), Is.EqualTo(0f).Within(Tolerance));
+            Assert.That(generator.Height(0.5f, 0f), Is.EqualTo(6f).Within(Tolerance));
+        }
+
+        [Test]
         public void Spline_StraightCurve_SpansTheSameRangeAsTheNoise()
         {
             var straight = AnimationCurve.Linear(0f, 0f, 1f, 1f);
