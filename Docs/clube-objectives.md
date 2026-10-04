@@ -593,6 +593,9 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
 - **PK16 Timepiece Easter egg.** *(backlog)* A side quest to gift a timepiece to the local ore miner; afterwards he mines on beat with the title music (PK15). Timepieces tie into PK6 timekeeping.
 
 - **PK17 Building system.** *(backlog)* Parked; it was in an earlier "Milestone 3 / Alpha" plan with undecided status. Would overlap with EC2 (owning property and workshops).
+- **PK18 Seasons and calendar.** *(added 2026-10-03)* A calendar of days, months and years, with seasons that change the world over the year.
+  - Builds on PK4 (day/night) for the passing of days; pairs with PK6 (bells keeping village time), market days and seasonal prices (7C), NPC schedules (NP2), and growth cycles for trees and plants (PK7, PK13).
+  - Open design points: year length in real time, which systems seasons touch (snow on terrain, frozen water with PK8, crop and tree growth, travel, prices), and whether the calendar drives events (festivals, fairs, harvest; 7E world events).
 
 ---
 
