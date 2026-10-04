@@ -24,7 +24,7 @@ Milestone 1 = Chapters 0–3. Chapters 4–5 are drafts; Chapters 6–8 are
 design exploration. Do not build ahead of the current chapter; flag it if a
 change starts pulling in a later chapter's direction.
 
-## Current focus: Chapter 2 — Single chunk (`ChunkLab`)
+## Current focus: Chapter 2 — Single chunk (`ChunkLab`), and Chapter 3
 Chapter 1 (`VoxelLab`) is complete apart from V23 (code panel) and the
 optional 1E standalone build (V22); the scene stays as the single-voxel
 lab. Both labs run on the same Core chunk model: `IVoxelStorage` →
@@ -59,8 +59,8 @@ in-game control panel (the start of K31), and *Clube → Build → Lab demo*
 (`DemoBuild`) builds the playable exe to `Builds/Demo/`.
 K34 is done: the exe opens on the `DemoMenu` welcome scene (Single voxel =
 VoxelLab, Single chunk = ChunkLab, Exit; `DemoExitButton` and Esc in either
-lab return to it; VoxelLab lists its keys with `ControlsHint`), in a resizable 1280×720
-window, and the lab panels fit small windows.
+lab return to it), in a resizable 1280×720 window, and the lab panels fit
+small windows.
 2F is done (K17–K22). ChunkLab's chunk has a `Step Through`
 child (off by default; its Inspector and the in-game panel have the
 controls), with `StepThroughVoxelLink` (selecting a voxel jumps there, K21)
@@ -69,12 +69,30 @@ logs a closing `Normals` step. K19's "layer" granularity steps Z slices,
 the mesher's outer loop, so playback stays in true build order.
 `StepUnits` groups the recorded steps into what playback moves through
 (sub-step, voxel, slice; K20 skips empty voxels); `StepThroughLab.Current`
-maps that back to the recorded step. **Next: 3A** (then the rest of 2D
-and 2G, per the build order above).
-K31 (lab control panel) is under way: `VoxelLabPanel` and `ChunkLabPanel`
-are in-game panels on a shared `LabPanelFrame`, with shared
-`StepThroughControls` and `MeshingControls`. The demo build sets
-`CLUBE_LAB_BUILD` so step-through recording works in the exe.
+maps that back to the recorded step.
+K31 (lab control panel) is under way: `VoxelLabPanel`, `ChunkLabPanel` and
+`WorldLabPanel` are in-game panels on a shared `LabPanelFrame`, with shared
+`TerrainControls`, `BrushControls`, `StepThroughControls` and
+`MeshingControls`. The demo build sets `CLUBE_LAB_BUILD` so step-through
+recording works in the exe.
+
+## Chapter 3 — Collection of chunks (`WorldLab`)
+3A is done (M1–M5). `WorldGrid` converts world positions, global samples,
+chunk coordinates and local samples (floored, so negatives work). `World`
+(plain data) holds the loaded chunks and the world-wide edit paths:
+`SetDensity` writes every copy of a border sample, `ApplyBrush` edits every
+chunk a brush reaches, and a newly loaded chunk takes its border from edited
+neighbours, so borders stay seamless (M2, M5). Edited chunks are kept in
+memory when unloaded. `WorldView` is the chunk manager: streams chunks
+around its focus (the camera), nearest first, a few per frame, with pooled
+`ChunkRenderer`s; `ChunkMeshBuilder` builds meshes for it and `ChunkView`.
+Chunks are cubic, stacked `WorldHeightInChunks` layers from y = 0 (the M17
+decision). Render distance is a player setting: `PlayerSettings` in
+`Clube.Game` (A3), applied by `RenderDistanceSetting` (M3). WorldLab adds
+`ChunkFocus` (M4), `WorldDebugView` (chunk borders) and `WorldLabPanel`;
+`TerrainBrushTool` edits any `IEditableTerrain` (a `ChunkView` or a
+`WorldView`). World chunks use the opaque `Terrain` material.
+**Next:** back to 2D (K12, K32) and 2G, then M12, per the build order.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
