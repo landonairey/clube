@@ -119,198 +119,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &80167450
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 80167458}
-  - component: {fileID: 80167457}
-  - component: {fileID: 80167456}
-  - component: {fileID: 80167455}
-  - component: {fileID: 80167454}
-  - component: {fileID: 80167459}
-  - component: {fileID: 80167451}
-  - component: {fileID: 80167462}
-  - component: {fileID: 80167461}
-  - component: {fileID: 80167460}
-  m_Layer: 0
-  m_Name: Chunk Tools
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &80167451
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 80167450}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 811a131db9bb18e43a7060e435792245, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkVolumeStats
-  calculate: 1
-  minInterval: 0.25
---- !u!114 &80167454
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 80167450}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0b836eae06bbc484dbeceedbe82ab90c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.FlipFaces
-  flipFaces: 0
---- !u!114 &80167455
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 80167450}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6abcbc4b0e3e4a444a9da39fedd28045, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.NormalGizmos
-  showVertexNormals: 1
-  showFaceNormals: 1
-  showTriangleEdges: 1
-  length: 0.2
-  vertexNormalColor: {r: 0.3, g: 0.8, b: 1, a: 1}
-  faceNormalColor: {r: 1, g: 0.9, b: 0.2, a: 1}
-  triangleEdgeColor: {r: 0.75, g: 0.75, b: 0.75, a: 1}
-  lineMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
---- !u!114 &80167456
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 80167450}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 62f34283be239fe44aa505f93e6f6170, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkGizmos
-  showSamples: 0
-  cornerRadius: 0.05
-  sampleOpacity: 0.35
-  wireframe: 1
-  outlineColor: {r: 0.6, g: 0.6, b: 0.6, a: 1}
-  voxelGridColor: {r: 0.32, g: 0.33, b: 0.36, a: 1}
-  sampleMaterial: {fileID: 2100000, guid: 7306c3d226f246045a04b0c391c5dfd0, type: 2}
-  lineMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
---- !u!114 &80167457
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 80167450}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: eded84a93b39a61449b533d02375feed, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.LabChunkTarget
-  focus: {fileID: 1350119458}
---- !u!4 &80167458
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 80167450}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 211239822}
-  - {fileID: 1642004500}
-  m_Father: {fileID: 1350119461}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &80167459
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 80167450}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a81c998881ca46f48a6fbb1b2f3e9a47, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelSelector
-  highlightColor: {r: 1, g: 0.85, b: 0.2, a: 1}
-  highlightMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
-  focusDistance: 4
-  handleInput: 0
-  targetCamera: {fileID: 0}
---- !u!114 &80167460
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 80167450}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 701e34ebff3a0fe4690bea5f0943647a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.CaseStepInput
---- !u!114 &80167461
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 80167450}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ce24c1991f76ec040b52f74dfa845382, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelLabels
-  showCornerLabels: 1
-  showCornerValues: 1
-  showCrossedEdges: 1
-  showEdgeLabels: 0
-  showTriangleEdges: 1
-  triangleEdgeColor: {r: 1, g: 0.6, b: 0.15, a: 1}
-  triangleEdgeMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
-  targetCamera: {fileID: 0}
---- !u!114 &80167462
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 80167450}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0aa3511fe48d30244957d00f9a84e6b7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelCornerEditor
-  cornerValues:
-  - 1
-  - 1
-  - 1
-  - 1
-  - 0
-  - 0
-  - 0
-  - 0
 --- !u!1 &159121154
 GameObject:
   m_ObjectHideFlags: 0
@@ -484,109 +292,98 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 39.4, y: -44.84, z: 0.02}
---- !u!1 &211239821
-GameObject:
+--- !u!1001 &817266636
+PrefabInstance:
   m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 211239822}
-  - component: {fileID: 211239826}
-  - component: {fileID: 211239825}
-  - component: {fileID: 211239824}
-  - component: {fileID: 211239823}
-  m_Layer: 0
-  m_Name: Step Through
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &211239822
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 211239821}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 80167458}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &211239823
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1350119461}
+    m_Modifications:
+    - target: {fileID: 1502145125330933740, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_Name
+      value: Chunk Tools
+      objectReference: {fileID: 0}
+    - target: {fileID: 3752303365008404134, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: handleInput
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3808405997376298067, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: focus
+      value: 
+      objectReference: {fileID: 1350119458}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+--- !u!114 &817266637 stripped
 MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
+  m_CorrespondingSourceObject: {fileID: 8261155977479047332, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+  m_PrefabInstance: {fileID: 817266636}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 211239821}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 281bd56a0e09c884e80883a2c24d0a76, type: 3}
+  m_Script: {fileID: 11500000, guid: 811a131db9bb18e43a7060e435792245, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughCameraFollow
-  follow: 0
-  distance: 4
-  targetCamera: {fileID: 0}
---- !u!114 &211239824
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkVolumeStats
+--- !u!4 &817266638 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+  m_PrefabInstance: {fileID: 817266636}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 211239821}
+--- !u!114 &817266639 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3752303365008404134, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+  m_PrefabInstance: {fileID: 817266636}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 315ed5da85fe2404798c0223bb378ae1, type: 3}
+  m_Script: {fileID: 11500000, guid: a81c998881ca46f48a6fbb1b2f3e9a47, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughVoxelLink
---- !u!114 &211239825
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 211239821}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d1a3656f546ec47448ec97ca694f37c4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughInput
---- !u!114 &211239826
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 211239821}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cb924dfe74fd7a148a2fb8a5706b180e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughLab
-  speed: 1
-  granularity: 0
-  skipEmptyVoxels: 0
-  autoPlay: 1
-  timings:
-    voxel: 0.8
-    slice: 3
-    densityField: 1.5
-    sampleCorners: 2
-    caseIndex: 2.5
-    edgeTable: 1.5
-    interpolate: 0.8
-    triangle: 1
-    normals: 2
-  markerMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
-  sampleMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
-  targetCamera: {fileID: 0}
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelSelector
 --- !u!1 &1350119454
 GameObject:
   m_ObjectHideFlags: 0
@@ -655,8 +452,8 @@ MonoBehaviour:
   lineMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
   focusDistance: 1.5
   targetCamera: {fileID: 0}
-  voxelSelector: {fileID: 80167459}
-  volumeStats: {fileID: 80167451}
+  voxelSelector: {fileID: 817266639}
+  volumeStats: {fileID: 817266637}
 --- !u!114 &1350119459
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -709,7 +506,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 80167458}
+  - {fileID: 817266638}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1350119462
@@ -878,70 +675,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
---- !u!1 &1642004499
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1642004500}
-  - component: {fileID: 1642004502}
-  - component: {fileID: 1642004501}
-  m_Layer: 0
-  m_Name: Volume Lab
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1642004500
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1642004499}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 80167458}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1642004501
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1642004499}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c75d1c1fec6c73c4985661ad8b8e1f1d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ExplodeScrollInput
-  stepPerNotch: 0.05
---- !u!114 &1642004502
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1642004499}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2297273b2f8273a4cae31b6620c39490, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelVolumeLab
-  exactVolume: 1
-  explodeDistance: 0.25
-  faceOpacity: 0.35
-  faceMaterial: {fileID: 2100000, guid: 7306c3d226f246045a04b0c391c5dfd0, type: 2}
-  edgeMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
-  monteCarloSamples: 10000
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

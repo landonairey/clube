@@ -118,8 +118,8 @@ namespace Clube.Debug
         private void Awake()
         {
             cornerEditor = GetComponent<VoxelCornerEditor>();
-            target = GetComponent<LabChunkTarget>();
-            selector = GetComponent<VoxelSelector>();
+            target = GetComponentInParent<LabChunkTarget>();
+            selector = GetComponentInParent<VoxelSelector>();
         }
 
         private void OnEnable()

@@ -1,0 +1,303 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1502145125330933740
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8140273291154395217}
+  - component: {fileID: 3808405997376298067}
+  - component: {fileID: 1884524563657092886}
+  - component: {fileID: 5084683655518541341}
+  - component: {fileID: 7567848092458911831}
+  - component: {fileID: 3752303365008404134}
+  - component: {fileID: 8261155977479047332}
+  m_Layer: 0
+  m_Name: Chunk Tools
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8140273291154395217
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1502145125330933740}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2957254718040484333}
+  - {fileID: 8980292651734599093}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3808405997376298067
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1502145125330933740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eded84a93b39a61449b533d02375feed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.LabChunkTarget
+  focus: {fileID: 0}
+--- !u!114 &1884524563657092886
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1502145125330933740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62f34283be239fe44aa505f93e6f6170, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkGizmos
+  showSamples: 0
+  cornerRadius: 0.05
+  sampleOpacity: 0.35
+  wireframe: 1
+  outlineColor: {r: 0.6, g: 0.6, b: 0.6, a: 1}
+  voxelGridColor: {r: 0.32, g: 0.33, b: 0.36, a: 1}
+  sampleMaterial: {fileID: 2100000, guid: 7306c3d226f246045a04b0c391c5dfd0, type: 2}
+  lineMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
+--- !u!114 &5084683655518541341
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1502145125330933740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6abcbc4b0e3e4a444a9da39fedd28045, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.NormalGizmos
+  showVertexNormals: 1
+  showFaceNormals: 1
+  showTriangleEdges: 1
+  length: 0.2
+  vertexNormalColor: {r: 0.3, g: 0.8, b: 1, a: 1}
+  faceNormalColor: {r: 1, g: 0.9, b: 0.2, a: 1}
+  triangleEdgeColor: {r: 0.75, g: 0.75, b: 0.75, a: 1}
+  lineMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
+--- !u!114 &7567848092458911831
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1502145125330933740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b836eae06bbc484dbeceedbe82ab90c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.FlipFaces
+  flipFaces: 0
+--- !u!114 &3752303365008404134
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1502145125330933740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a81c998881ca46f48a6fbb1b2f3e9a47, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelSelector
+  highlightColor: {r: 1, g: 0.85, b: 0.2, a: 1}
+  highlightMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
+  focusDistance: 4
+  handleInput: 1
+  targetCamera: {fileID: 0}
+--- !u!114 &8261155977479047332
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1502145125330933740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 811a131db9bb18e43a7060e435792245, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkVolumeStats
+  calculate: 1
+  minInterval: 0.25
+--- !u!1 &6306708137915254983
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8980292651734599093}
+  - component: {fileID: 3864389014907318294}
+  - component: {fileID: 6080942754563285667}
+  - component: {fileID: 3219056033556651947}
+  - component: {fileID: 781406396702902520}
+  m_Layer: 0
+  m_Name: Step Through
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8980292651734599093
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6306708137915254983}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8140273291154395217}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3864389014907318294
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6306708137915254983}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb924dfe74fd7a148a2fb8a5706b180e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughLab
+  speed: 1
+  granularity: 0
+  skipEmptyVoxels: 0
+  autoPlay: 1
+  timings:
+    voxel: 0.8
+    slice: 3
+    densityField: 1.5
+    sampleCorners: 2
+    caseIndex: 2.5
+    edgeTable: 1.5
+    interpolate: 0.8
+    triangle: 1
+    normals: 2
+  markerMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
+  sampleMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
+  targetCamera: {fileID: 0}
+--- !u!114 &6080942754563285667
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6306708137915254983}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1a3656f546ec47448ec97ca694f37c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughInput
+--- !u!114 &3219056033556651947
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6306708137915254983}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 315ed5da85fe2404798c0223bb378ae1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughVoxelLink
+--- !u!114 &781406396702902520
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6306708137915254983}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 281bd56a0e09c884e80883a2c24d0a76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughCameraFollow
+  follow: 0
+  distance: 4
+  targetCamera: {fileID: 0}
+--- !u!1001 &234569967520063072
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 8140273291154395217}
+    m_Modifications:
+    - target: {fileID: 1649244611288609031, guid: 17e35eb6a68b3f949ba7ff23e6650d95, type: 3}
+      propertyPath: m_Name
+      value: Voxel Tools
+      objectReference: {fileID: 0}
+    - target: {fileID: 3047559654631847821, guid: 17e35eb6a68b3f949ba7ff23e6650d95, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3047559654631847821, guid: 17e35eb6a68b3f949ba7ff23e6650d95, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3047559654631847821, guid: 17e35eb6a68b3f949ba7ff23e6650d95, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3047559654631847821, guid: 17e35eb6a68b3f949ba7ff23e6650d95, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3047559654631847821, guid: 17e35eb6a68b3f949ba7ff23e6650d95, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3047559654631847821, guid: 17e35eb6a68b3f949ba7ff23e6650d95, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3047559654631847821, guid: 17e35eb6a68b3f949ba7ff23e6650d95, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3047559654631847821, guid: 17e35eb6a68b3f949ba7ff23e6650d95, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3047559654631847821, guid: 17e35eb6a68b3f949ba7ff23e6650d95, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3047559654631847821, guid: 17e35eb6a68b3f949ba7ff23e6650d95, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 17e35eb6a68b3f949ba7ff23e6650d95, type: 3}
+--- !u!4 &2957254718040484333 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3047559654631847821, guid: 17e35eb6a68b3f949ba7ff23e6650d95, type: 3}
+  m_PrefabInstance: {fileID: 234569967520063072}
+  m_PrefabAsset: {fileID: 0}

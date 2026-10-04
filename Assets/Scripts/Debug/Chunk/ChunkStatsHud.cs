@@ -33,8 +33,8 @@ namespace Clube.Debug
         private void Awake()
         {
             chunkView = GetComponent<ChunkView>();
-            debugView = GetComponent<ChunkDebugView>();
-            volumeStats = GetComponent<ChunkVolumeStats>();
+            debugView = GetComponentInChildren<ChunkDebugView>();
+            volumeStats = GetComponentInChildren<ChunkVolumeStats>();
             terrainFill = GetComponent<ChunkTerrainFill>();
         }
 

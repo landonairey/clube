@@ -81,7 +81,8 @@ namespace Clube.Debug.Editor
         // Includes a disabled lab: disabled is just step-through mode being off.
         private static StepThroughLab StepThroughOf(VoxelCornerEditor corners)
         {
-            return corners.GetComponentInChildren<StepThroughLab>(true);
+            var chunkTools = corners.GetComponentInParent<LabChunkTarget>(true);
+            return (chunkTools != null ? (Component)chunkTools : corners).GetComponentInChildren<StepThroughLab>(true);
         }
 
         private static void DrawAxesToggle(AxesHud axesHud)

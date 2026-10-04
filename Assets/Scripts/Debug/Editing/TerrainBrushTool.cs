@@ -140,7 +140,7 @@ namespace Clube.Debug
         private void Awake()
         {
             terrain = GetComponent<IEditableTerrain>();
-            selector = GetComponent<VoxelSelector>();
+            selector = GetComponentInChildren<VoxelSelector>();
         }
 
         private void OnEnable()

@@ -16,7 +16,6 @@ namespace Clube.Debug
     /// corners then, and is applied to the chunk once it exists. With a selector, the values
     /// always come from the chunk and that field is unused.
     /// </remarks>
-    [RequireComponent(typeof(LabChunkTarget))]
     public class VoxelCornerEditor : MonoBehaviour
     {
         private const float DefaultIsoLevel = 0.5f;
@@ -36,7 +35,7 @@ namespace Clube.Debug
         public Vector3Int? Voxel => Selector != null ? Selector.SelectedVoxel : Vector3Int.zero;
 
         /// <summary>True when there's a voxel to edit: one is selected, or VoxelLab's voxel (also outside Play mode).</summary>
-        public bool HasVoxel => Voxel.HasValue && (Target.Chunk != null || UsesStoredCorners);
+        public bool HasVoxel => Voxel.HasValue && (TargetChunk != null || UsesStoredCorners);
 
         /// <summary>
         /// The voxel's corner densities: read from the chunk, or VoxelLab's stored corners
@@ -46,7 +45,7 @@ namespace Clube.Debug
         {
             get
             {
-                Chunk chunk = Target.Chunk;
+                Chunk chunk = TargetChunk;
                 if (chunk == null || !Voxel.HasValue)
                 {
                     return UsesStoredCorners ? cornerValues : (IReadOnlyList<float>)ClearCorners();
@@ -61,12 +60,12 @@ namespace Clube.Debug
         }
 
         /// <summary>Iso level of the target chunk, or its config outside Play mode, so readouts work there too.</summary>
-        public float IsoLevel => Target.Current != null ? Target.MeshSettings.IsoLevel : DefaultIsoLevel;
+        public float IsoLevel => HasSettings ? Target.MeshSettings.IsoLevel : DefaultIsoLevel;
 
         /// <summary>Edge placement of the target chunk (V3), for tools that re-run the mesher.</summary>
-        public EdgePlacement EdgePlacement => Target.Current != null ? Target.MeshSettings.EdgePlacement : EdgePlacement.Interpolated;
+        public EdgePlacement EdgePlacement => HasSettings ? Target.MeshSettings.EdgePlacement : EdgePlacement.Interpolated;
 
-        public float VoxelSize => Target.Current != null ? Target.MeshSettings.VoxelSize : 1f;
+        public float VoxelSize => HasSettings ? Target.MeshSettings.VoxelSize : 1f;
 
         /// <summary>Where the voxel's corner 0 sits, in this object's local space.</summary>
         public Vector3 VoxelOrigin => (Vector3)Voxel.GetValueOrDefault() * VoxelSize;
@@ -74,7 +73,12 @@ namespace Clube.Debug
         /// <summary>The case index the corner values produce (V7).</summary>
         public int CaseIndex => HasVoxel ? MarchingCubes.GetCaseIndex(CornerValues, IsoLevel) : 0;
 
-        private LabChunkTarget Target => target != null ? target : target = GetComponent<LabChunkTarget>();
+        private LabChunkTarget Target => target != null ? target : target = GetComponentInParent<LabChunkTarget>();
+
+        // Null-safe: in the prefab asset on its own there's no chunk tools above this.
+        private Chunk TargetChunk => Target != null ? Target.Chunk : null;
+
+        private bool HasSettings => Target != null && Target.Current != null;
 
         private VoxelSelector Selector
         {
@@ -82,7 +86,7 @@ namespace Clube.Debug
             {
                 if (!selectorLooked)
                 {
-                    selector = GetComponent<VoxelSelector>();
+                    selector = GetComponentInParent<VoxelSelector>();
                     selectorLooked = true;
                 }
                 return selector;
@@ -106,7 +110,7 @@ namespace Clube.Debug
             {
                 cornerValues[corner] = density;
             }
-            if (Voxel.HasValue)
+            if (Voxel.HasValue && Target != null)
             {
                 Target.SetDensity(SampleOf(corner), density);
             }
@@ -115,7 +119,7 @@ namespace Clube.Debug
         /// <summary>How many voxels in the chunk share this corner sample (1 at a chunk corner, up to 8 inside).</summary>
         public int VoxelsSharing(int corner)
         {
-            Chunk chunk = Target.Chunk;
+            Chunk chunk = TargetChunk;
             if (chunk == null)
             {
                 return 1;
@@ -156,6 +160,14 @@ namespace Clube.Debug
             ApplyStoredCorners();
         }
 
+        // Moved under other chunk tools: look the target and selector up again.
+        private void OnTransformParentChanged()
+        {
+            target = null;
+            selector = null;
+            selectorLooked = false;
+        }
+
         // Called by Unity whenever an Inspector value changes, including in Play mode.
         private void OnValidate()
         {
@@ -170,7 +182,7 @@ namespace Clube.Debug
         // VoxelLab: write the stored corners into the chunk, once it exists.
         private void ApplyStoredCorners()
         {
-            if (!UsesStoredCorners || Target.Chunk == null)
+            if (!UsesStoredCorners || TargetChunk == null)
             {
                 return;
             }
