@@ -15,6 +15,11 @@ namespace Clube.Core
         [SerializeField]
         private Vector3Int chunkSize = Vector3Int.one;
 
+        [Tooltip("How many layers of chunks the world stacks from chunk y = 0 upwards (M1). " +
+                 "Chunks are cubes stacked vertically; render distance only limits them horizontally. Single-chunk labs ignore it.")]
+        [SerializeField, Min(1)]
+        private int worldHeightInChunks = 2;
+
         [Tooltip("Edge length of one voxel in world units.")]
         [SerializeField, Min(0.01f)]
         private float voxelSize = 1f;
@@ -39,6 +44,9 @@ namespace Clube.Core
         public event Action Changed;
 
         public Vector3Int ChunkSize => chunkSize;
+
+        /// <summary>Layers of chunks stacked from chunk y = 0 (M1).</summary>
+        public int WorldHeightInChunks => worldHeightInChunks;
 
         public float VoxelSize => voxelSize;
 
