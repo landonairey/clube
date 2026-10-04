@@ -89,9 +89,17 @@ around its focus (the camera), nearest first, a few per frame, with pooled
 Chunks are cubic, stacked `WorldHeightInChunks` layers from y = 0 (the M17
 decision). Render distance is a player setting: `PlayerSettings` in
 `Clube.Game` (A3), applied by `RenderDistanceSetting` (M3). WorldLab adds
-`ChunkFocus` (M4), `WorldDebugView` (chunk borders) and `WorldLabPanel`;
+`ChunkFocus` (M4, with the chunk's volume), `WorldDebugView` (chunk
+borders, each grid edge drawn once with the focused chunk's in the highlight
+colour), `WorldLabHud` (position, voxel, chunk; brush volume totals) and
+`WorldLabPanel` (incl. chunk size, voxel size, layers and terrain shape);
+`WorldViewEditor` shows the live config in the Inspector.
 `TerrainBrushTool` edits any `IEditableTerrain` (a `ChunkView` or a
-`WorldView`). World chunks use the opaque `Terrain` material.
+`WorldView`). `TerrainBrush` runs on an `IDensityField` (a `Chunk`, or the
+`World` as one field across borders): Hard changes every sample in the
+radius, Soft only the surface layer (fills next to solid, empties next to
+air), and it returns a `BrushResult` for volume tracking. World chunks use
+the opaque `Terrain` material.
 **Next:** back to 2D (K12, K32) and 2G, then M12, per the build order.
 
 ## Conventions
