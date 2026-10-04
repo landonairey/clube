@@ -39,6 +39,12 @@ namespace Clube.Core
             return storage.GetDensity(sample.x, sample.y, sample.z);
         }
 
+        /// <summary>Copies one Z layer of samples, X fastest then Y (see <see cref="IVoxelStorage.ReadLayer"/>).</summary>
+        public void ReadLayer(int z, Span<float> layer)
+        {
+            storage.ReadLayer(z, layer);
+        }
+
         /// <summary>The density at a sample, or false outside the chunk.</summary>
         public bool TryGetDensity(Vector3Int sample, out float density)
         {
