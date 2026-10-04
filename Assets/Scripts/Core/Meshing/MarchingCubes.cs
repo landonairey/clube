@@ -59,7 +59,31 @@ namespace Clube.Core
             List<int> triangles,
             MeshingRecorder recorder = null)
         {
-            int caseIndex = GetCaseIndex(cornerValues, isoLevel);
+            Span<float> corners = stackalloc float[CornerCount];
+            for (int corner = 0; corner < CornerCount; corner++)
+            {
+                corners[corner] = cornerValues[corner];
+            }
+
+            Polygonise(
+                corners, GetCaseIndex(cornerValues, isoLevel), isoLevel, origin, size,
+                placer, writer, triangles, recorder);
+        }
+
+        /// <summary>
+        /// As above, for a caller that already knows the case index (the chunk loop, K32).
+        /// </summary>
+        internal static void Polygonise(
+            ReadOnlySpan<float> cornerValues,
+            int caseIndex,
+            float isoLevel,
+            Vector3 origin,
+            float size,
+            IEdgeVertexPlacer placer,
+            IVertexWriter writer,
+            List<int> triangles,
+            MeshingRecorder recorder)
+        {
             int edgeMask = GetCrossedEdgeMask(caseIndex);
             if (recorder != null)
             {

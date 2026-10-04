@@ -50,6 +50,14 @@ namespace Clube.Core
                             cornerValues[corner] = chunk.GetDensity(voxel + MarchingCubes.CornerOffset(corner));
                         }
 
+                        // Most voxels are all solid or all empty: no surface, nothing to do.
+                        // Step-through still logs them, so only skip when not recording.
+                        int caseIndex = MarchingCubes.GetCaseIndex(cornerValues, settings.IsoLevel);
+                        if (recorder == null && MarchingCubes.GetCrossedEdgeMask(caseIndex) == 0)
+                        {
+                            continue;
+                        }
+
                         writer.BeginVoxel(voxel);
                         Vector3 origin = (Vector3)voxel * settings.VoxelSize;
                         if (recorder != null)
@@ -58,7 +66,7 @@ namespace Clube.Core
                         }
 
                         MarchingCubes.Polygonise(
-                            cornerValues, settings.IsoLevel, origin, settings.VoxelSize,
+                            cornerValues, caseIndex, settings.IsoLevel, origin, settings.VoxelSize,
                             placer, writer, triangles, recorder);
                     }
                 }
