@@ -126,6 +126,44 @@ namespace Clube.Debug
             set => speed = Mathf.Clamp(value, 0.1f, 5f);
         }
 
+        /// <summary>The chunk voxel the current step works on, or null for the once-per-build steps.</summary>
+        public Vector3Int? CurrentVoxel
+        {
+            get
+            {
+                if (!HasRecording)
+                {
+                    return null;
+                }
+                int voxelIndex = recording.Steps[Current.Step].VoxelIndex;
+                return voxelIndex >= 0 ? recording.Voxels[voxelIndex].Voxel : (Vector3Int?)null;
+            }
+        }
+
+        /// <summary>
+        /// Pauses playback at the start of a voxel's build (K21), at whatever granularity
+        /// is set, so Play then shows it being built. Returns false if the voxel isn't in
+        /// the recording.
+        /// </summary>
+        public bool JumpToVoxel(Vector3Int voxel)
+        {
+            if (!HasRecording)
+            {
+                return false;
+            }
+
+            int step = units.FirstStepOfVoxel(voxel);
+            if (step < 0)
+            {
+                return false;
+            }
+
+            (int unit, float progress) = units.Find(step, timings);
+            playback.Seek(unit, progress);
+            ShowCurrent();
+            return true;
+        }
+
         private Camera ViewCamera => targetCamera != null ? targetCamera : Camera.main;
 
         private void Awake()

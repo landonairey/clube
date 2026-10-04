@@ -130,6 +130,8 @@ GameObject:
   - component: {fileID: 112445880}
   - component: {fileID: 112445882}
   - component: {fileID: 112445881}
+  - component: {fileID: 112445884}
+  - component: {fileID: 112445883}
   m_Layer: 0
   m_Name: Step Through
   m_TagString: Untagged
@@ -193,6 +195,33 @@ MonoBehaviour:
   markerMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
   sampleMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
   targetCamera: {fileID: 0}
+--- !u!114 &112445883
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 112445879}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 281bd56a0e09c884e80883a2c24d0a76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughCameraFollow
+  follow: 0
+  distance: 4
+  targetCamera: {fileID: 0}
+--- !u!114 &112445884
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 112445879}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 315ed5da85fe2404798c0223bb378ae1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughVoxelLink
 --- !u!1 &1265142437
 GameObject:
   m_ObjectHideFlags: 0
@@ -496,6 +525,11 @@ MonoBehaviour:
   startOpen: 1
   width: 320
   background: {r: 0, g: 0, b: 0, a: 0.7}
+  terrainOpen: 1
+  brushOpen: 1
+  meshingOpen: 0
+  stepThroughOpen: 0
+  displayOpen: 1
 --- !u!1 &1507819481
 GameObject:
   m_ObjectHideFlags: 0

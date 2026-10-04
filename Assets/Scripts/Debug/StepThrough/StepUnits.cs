@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Clube.Core;
+using UnityEngine;
 
 namespace Clube.Debug
 {
@@ -145,6 +146,54 @@ namespace Clube.Debug
                 }
             }
             return first;
+        }
+
+        /// <summary>
+        /// The inverse of <see cref="Locate"/>: the unit holding <paramref name="step"/> and
+        /// the progress through that unit at which the step begins.
+        /// </summary>
+        public (int Unit, float Progress) Find(int step, StepTimings timings)
+        {
+            int unit = UnitOf(step);
+            int first = FirstStep(unit);
+            int last = LastStep(unit);
+            if (step <= first || step > last)
+            {
+                return (unit, 0f);
+            }
+
+            float before = 0f;
+            float total = 0f;
+            for (int i = first; i <= last; i++)
+            {
+                float weight = Weight(i, timings);
+                if (i < step)
+                {
+                    before += weight;
+                }
+                total += weight;
+            }
+
+            // Aim a hair past the boundary (a thousandth of the step's own time): exactly on
+            // it, float rounding in Locate can land on the end of the previous step instead.
+            float nudge = Weight(step, timings) * 1e-3f;
+            return (unit, total > 0f ? (before + nudge) / total : 0f);
+        }
+
+        /// <summary>The first recorded step of a voxel (its corner sampling), or -1 if it isn't in the recording.</summary>
+        public int FirstStepOfVoxel(Vector3Int voxel)
+        {
+            IReadOnlyList<RecordedVoxel> voxels = recording.Voxels;
+            IReadOnlyList<MeshingStep> steps = recording.Steps;
+            for (int i = 0; i < steps.Count; i++)
+            {
+                int index = steps[i].VoxelIndex;
+                if (index >= 0 && voxels[index].Voxel == voxel)
+                {
+                    return i;
+                }
+            }
+            return -1;
         }
 
         /// <summary>e.g. "Voxel 37 / 512" or "Slice z = 3 (4 / 8)"; empty for single steps and the once-per-build steps.</summary>
