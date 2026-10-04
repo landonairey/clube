@@ -6,8 +6,8 @@ using UnityEngine.Serialization;
 namespace Clube.Debug
 {
     /// <summary>
-    /// Volume inspection for the voxel lab (1C): measures the parent voxel's fill
-    /// three ways (V11, V12, V14) and shows the exact method's tetrahedra, pulled
+    /// Volume inspection for the lab's voxel (1C; the selected voxel in ChunkLab and
+    /// WorldLab, M19): measures its fill three ways (V11, V12, V14) and shows the exact method's tetrahedra, pulled
     /// apart by an explode slider (V13), through a <see cref="TetrahedraView"/>.
     /// </summary>
     /// <remarks>
@@ -122,13 +122,20 @@ namespace Clube.Debug
                 return;
             }
 
-            if (!exactVolume || faceMaterial == null)
+            if (!exactVolume || faceMaterial == null || !corners.HasVoxel)
             {
                 if (view != null)
                 {
                     view.Visible = false;
                 }
                 return;
+            }
+
+            // The tetrahedra are built in the voxel's own space, so this object sits on the voxel.
+            Vector3 origin = corners.VoxelOrigin;
+            if (transform.localPosition != origin)
+            {
+                transform.localPosition = origin;
             }
 
             view ??= new TetrahedraView(transform, faceMaterial, EdgeMaterial());
@@ -162,7 +169,7 @@ namespace Clube.Debug
         private void Refresh()
         {
             VoxelCornerEditor corners = Corners;
-            if (corners == null)
+            if (corners == null || !corners.HasVoxel)
             {
                 return;
             }

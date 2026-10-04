@@ -18,7 +18,7 @@ namespace Clube.Debug.Editor
         private static readonly Color CurrentPresetTint = new Color(1f, 0.8f, 0.4f);
 
         /// <param name="undoTarget">Object to record for Undo when the case changes, or null if the edit isn't undoable.</param>
-        public static void DrawCaseSection(IVoxelCaseTarget voxel, Object undoTarget)
+        public static void DrawCaseSection(VoxelCornerEditor voxel, Object undoTarget)
         {
             int caseIndex = voxel.CaseIndex;
             EditorGUILayout.LabelField("Case", EditorStyles.boldLabel);
@@ -70,7 +70,7 @@ namespace Clube.Debug.Editor
             }
         }
 
-        public static void DrawPresets(IVoxelCaseTarget voxel, Object undoTarget)
+        public static void DrawPresets(VoxelCornerEditor voxel, Object undoTarget)
         {
             EditorGUILayout.LabelField("Presets (one per base configuration, ⚠ = ambiguous face)", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("The highlighted preset is the current configuration.", EditorStyles.miniLabel);
@@ -95,7 +95,7 @@ namespace Clube.Debug.Editor
             }
         }
 
-        private static void DrawPresetButton(IVoxelCaseTarget voxel, Object undoTarget, BaseConfiguration configuration, bool isCurrent)
+        private static void DrawPresetButton(VoxelCornerEditor voxel, Object undoTarget, BaseConfiguration configuration, bool isCurrent)
         {
             int representative = MarchingCubesCases.GetRepresentativeCase(configuration);
             bool ambiguous = MarchingCubesCases.HasAmbiguousFace(representative);
@@ -117,7 +117,7 @@ namespace Clube.Debug.Editor
             GUI.backgroundColor = previous;
         }
 
-        private static void ApplyCase(IVoxelCaseTarget voxel, Object undoTarget, int caseIndex)
+        private static void ApplyCase(VoxelCornerEditor voxel, Object undoTarget, int caseIndex)
         {
             Record(undoTarget, $"Set voxel case {caseIndex}");
             voxel.ApplyCase(caseIndex);

@@ -169,7 +169,7 @@ namespace Clube.Debug
                 GUILayout.EndHorizontal();
                 if (!Mathf.Approximately(chosen, value))
                 {
-                    corners.SetCornerValue(corner, chosen);
+                    corners.SetCorner(corner, chosen);
                 }
             }
             GUILayout.Label("0 = empty, 1 = solid. Solid corner c sets bit c of the case index.", frame.Hint);
