@@ -17,7 +17,7 @@ namespace Clube.Debug
     /// The highlight is a real line mesh rather than a gizmo, so it shows in the
     /// Game view even with gizmos off. Play mode only, like the chunk itself.
     /// </remarks>
-    [RequireComponent(typeof(ChunkView))]
+    [RequireComponent(typeof(LabChunkTarget))]
     public class VoxelSelector : MonoBehaviour
     {
         private const string HighlightShader = "Universal Render Pipeline/Unlit";
@@ -34,13 +34,17 @@ namespace Clube.Debug
         [SerializeField, Min(0.5f)]
         private float focusDistance = 4f;
 
+        [Tooltip("Pick on left click and frame on F. Off where something else drives the selection (WorldLab's ChunkFocus picks the chunk and voxel together).")]
+        [SerializeField]
+        private bool handleInput = true;
+
         [Tooltip("Camera clicks are cast from and F moves. Defaults to the main camera.")]
         [SerializeField]
         private Camera targetCamera;
 
         private readonly float[] cornerValues = new float[MarchingCubes.CornerCount];
 
-        private ChunkView chunkView;
+        private LabChunkTarget target;
         private GameObject highlight;
         private Mesh highlightMesh;
         private Material ownedMaterial;
@@ -71,7 +75,7 @@ namespace Clube.Debug
         public Vector3Int? Pick(Vector2 screenPoint)
         {
             Camera viewCamera = ViewCamera;
-            Chunk chunk = chunkView.Chunk;
+            Chunk chunk = target.Chunk;
             if (viewCamera == null || chunk == null)
             {
                 return null;
@@ -82,7 +86,7 @@ namespace Clube.Debug
                 transform.InverseTransformPoint(worldRay.origin),
                 transform.InverseTransformDirection(worldRay.direction));
 
-            return SurfaceRaycast.Cast(localRay, chunk, chunkView.Config.MeshSettings, out Vector3Int hit, out _)
+            return SurfaceRaycast.Cast(localRay, chunk, target.MeshSettings, out Vector3Int hit, out _)
                 ? hit
                 : (Vector3Int?)null;
         }
@@ -97,24 +101,24 @@ namespace Clube.Debug
                 return;
             }
 
-            float size = chunkView.Config.VoxelSize;
+            float size = target.VoxelSize;
             Vector3 centre = transform.TransformPoint(((Vector3)SelectedVoxel.Value + Vector3.one * 0.5f) * size);
             flyCamera.Focus(centre, focusDistance * size * transform.lossyScale.x);
         }
 
         private void Awake()
         {
-            chunkView = GetComponent<ChunkView>();
+            target = GetComponent<LabChunkTarget>();
         }
 
         private void OnEnable()
         {
-            chunkView.ChunkCreated += OnChunkCreated;
+            target.Changed += OnTargetChanged;
         }
 
         private void OnDisable()
         {
-            chunkView.ChunkCreated -= OnChunkCreated;
+            target.Changed -= OnTargetChanged;
             Select(null);
         }
 
@@ -135,11 +139,11 @@ namespace Clube.Debug
         {
             Mouse mouse = Mouse.current;
             Keyboard keyboard = Keyboard.current;
-            if (mouse != null && mouse.leftButton.wasPressedThisFrame && !LabGuiBlocker.IsOverGui(mouse.position.ReadValue()))
+            if (handleInput && mouse != null && mouse.leftButton.wasPressedThisFrame && !LabGuiBlocker.IsOverGui(mouse.position.ReadValue()))
             {
                 Select(Pick(mouse.position.ReadValue()));
             }
-            if (keyboard != null && keyboard.fKey.wasPressedThisFrame)
+            if (handleInput && keyboard != null && keyboard.fKey.wasPressedThisFrame)
             {
                 FocusSelected();
             }
@@ -147,13 +151,13 @@ namespace Clube.Debug
             // Follows voxel size changes, which move the voxel without a new selection.
             if (highlight != null && highlight.activeSelf)
             {
-                highlight.transform.localScale = Vector3.one * chunkView.Config.VoxelSize;
+                highlight.transform.localScale = Vector3.one * target.VoxelSize;
             }
         }
 
         private void OnGUI()
         {
-            if (Event.current.type != EventType.Repaint || SelectedVoxel == null || chunkView.Chunk == null)
+            if (Event.current.type != EventType.Repaint || SelectedVoxel == null || target.Chunk == null)
             {
                 return;
             }
@@ -171,19 +175,21 @@ namespace Clube.Debug
             Vector3Int voxel = SelectedVoxel.Value;
             string caseText = StepThroughMode.IsOn(this)
                 ? ""
-                : $"case {MarchingCubes.GetCaseIndex(ReadCorners(voxel), chunkView.Config.IsoLevel)}   ";
+                : $"case {MarchingCubes.GetCaseIndex(ReadCorners(voxel), target.IsoLevel)}   ";
             var content = new GUIContent(
                 $"<b>Voxel ({voxel.x}, {voxel.y}, {voxel.z})</b>  {caseText}" +
                 "<color=#aaaaaa>F focus · click empty space to clear</color>");
 
             Vector2 size = labelStyle.CalcSize(content);
-            var rect = new Rect((Screen.width - size.x) * 0.5f, 10f, size.x, size.y);
+            // Under WorldLab's focus label, which names the chunk this voxel is in.
+            float top = target.FollowsFocus ? 10f + size.y + 4f : 10f;
+            var rect = new Rect((Screen.width - size.x) * 0.5f, top, size.x, size.y);
             GuiDrawing.Rect(rect, new Color(0f, 0f, 0f, 0.65f));
             GUI.Label(rect, content, labelStyle);
         }
 
-        // A new chunk size may leave the old selection outside the chunk.
-        private void OnChunkCreated(Chunk chunk)
+        // Another chunk (a new chunk size, or WorldLab's focus moved): the old selection doesn't apply.
+        private void OnTargetChanged()
         {
             Select(null);
         }
@@ -192,7 +198,7 @@ namespace Clube.Debug
         {
             for (int corner = 0; corner < MarchingCubes.CornerCount; corner++)
             {
-                cornerValues[corner] = chunkView.Chunk.GetDensity(voxel + MarchingCubes.CornerOffset(corner));
+                cornerValues[corner] = target.Chunk.GetDensity(voxel + MarchingCubes.CornerOffset(corner));
             }
             return cornerValues;
         }
@@ -210,7 +216,7 @@ namespace Clube.Debug
 
             EnsureHighlight();
             highlight.SetActive(true);
-            float size = chunkView.Config.VoxelSize;
+            float size = target.VoxelSize;
             highlight.transform.localPosition = (Vector3)SelectedVoxel.Value * size;
             highlight.transform.localScale = Vector3.one * size;
         }

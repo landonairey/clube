@@ -15,7 +15,7 @@ namespace Clube.Debug
     /// each face normal so they sit just in front of the chunk's own triangles. Both
     /// hide while step-through mode is on, which draws its own labels for the voxel.
     /// </remarks>
-    [RequireComponent(typeof(ChunkView), typeof(VoxelSelector))]
+    [RequireComponent(typeof(LabChunkTarget), typeof(VoxelSelector))]
     public class SelectedVoxelOverlay : MonoBehaviour
     {
         private const string HighlightShader = "Universal Render Pipeline/Unlit";
@@ -50,7 +50,7 @@ namespace Clube.Debug
         private readonly List<int> triangles = new List<int>();
         private readonly List<int> lineIndices = new List<int>();
 
-        private ChunkView chunkView;
+        private LabChunkTarget target;
         private VoxelSelector selector;
         private LabMeshObject edges;
         private Material ownedMaterial;
@@ -62,20 +62,20 @@ namespace Clube.Debug
 
         private void Awake()
         {
-            chunkView = GetComponent<ChunkView>();
+            target = GetComponent<LabChunkTarget>();
             selector = GetComponent<VoxelSelector>();
         }
 
         private void OnEnable()
         {
-            chunkView.MeshRebuilt += OnMeshRebuilt;
+            target.MeshRebuilt += OnMeshRebuilt;
             selector.SelectionChanged += OnSelectionChanged;
             rebuildRequested = true;
         }
 
         private void OnDisable()
         {
-            chunkView.MeshRebuilt -= OnMeshRebuilt;
+            target.MeshRebuilt -= OnMeshRebuilt;
             selector.SelectionChanged -= OnSelectionChanged;
             if (edges != null)
             {
@@ -125,7 +125,7 @@ namespace Clube.Debug
         private void OnGUI()
         {
             Vector3Int? selected = selector.SelectedVoxel;
-            if (Event.current.type != EventType.Repaint || !showCornerLabels || selected == null || chunkView.Chunk == null
+            if (Event.current.type != EventType.Repaint || !showCornerLabels || selected == null || target.Chunk == null
                 || StepThroughMode.IsOn(this))
             {
                 return;
@@ -146,13 +146,13 @@ namespace Clube.Debug
                 alignment = TextAnchor.MiddleCenter,
             };
 
-            float size = chunkView.Config.VoxelSize;
-            float iso = chunkView.Config.IsoLevel;
+            float size = target.VoxelSize;
+            float iso = target.IsoLevel;
             Vector3 voxelCentre = ((Vector3)selected.Value + Vector3.one * 0.5f) * size;
             for (int corner = 0; corner < MarchingCubes.CornerCount; corner++)
             {
                 Vector3Int sample = selected.Value + MarchingCubes.CornerOffset(corner);
-                float density = chunkView.Chunk.GetDensity(sample);
+                float density = target.Chunk.GetDensity(sample);
                 GuiDrawing.LabelBeside(
                     viewCamera, transform, (Vector3)sample * size, voxelCentre, 0.08f * size,
                     $"c{corner} {density:0.00}", density >= iso ? SolidColor : EmptyColor, labelStyle);
@@ -162,7 +162,7 @@ namespace Clube.Debug
         private void RebuildEdges()
         {
             Vector3Int? selected = selector.SelectedVoxel;
-            Chunk chunk = chunkView.Chunk;
+            Chunk chunk = target.Chunk;
             if (!highlightTriangles || selected == null || chunk == null)
             {
                 hasEdges = false;
@@ -173,7 +173,7 @@ namespace Clube.Debug
                 return;
             }
 
-            ChunkMeshSettings settings = chunkView.Config.MeshSettings;
+            ChunkMeshSettings settings = target.MeshSettings;
             for (int corner = 0; corner < MarchingCubes.CornerCount; corner++)
             {
                 corners[corner] = chunk.GetDensity(selected.Value + MarchingCubes.CornerOffset(corner));

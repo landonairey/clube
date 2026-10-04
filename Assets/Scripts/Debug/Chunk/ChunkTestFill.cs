@@ -44,13 +44,13 @@ namespace Clube.Debug
         // While this is on, ChunkTerrainFill holds back; it takes the chunk back when this turns off.
         private void OnEnable()
         {
-            chunkView.ChunkCreated += Fill;
+            chunkView.ChunkChanged += Fill;
             Fill(chunkView.Chunk);
         }
 
         private void OnDisable()
         {
-            chunkView.ChunkCreated -= Fill;
+            chunkView.ChunkChanged -= Fill;
         }
 
         // Called by Unity whenever an Inspector value changes, including in Play mode.

@@ -32,8 +32,8 @@ namespace Clube.Debug
         private void Awake()
         {
             lab = GetComponent<StepThroughLab>();
-            ChunkView chunkView = GetComponentInParent<ChunkView>();
-            selector = chunkView != null ? chunkView.GetComponent<VoxelSelector>() : null;
+            var target = GetComponentInParent<LabChunkTarget>();
+            selector = target != null ? target.GetComponent<VoxelSelector>() : null;
         }
 
         private void OnEnable()

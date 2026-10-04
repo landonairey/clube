@@ -5,20 +5,27 @@ using UnityEngine;
 namespace Clube.Debug
 {
     /// <summary>
-    /// Measures the solid volume inside the chunk after every rebuild, both ways
+    /// Measures the solid volume inside the target chunk after it rebuilds, both ways
     /// from Chapter 1: the approximate mean-density sum (V11) and the exact sum of
-    /// tetrahedra (V12), via <see cref="ChunkVolume"/>. <see cref="ChunkStatsHud"/>
-    /// shows the results. The exact sum takes milliseconds on bigger chunks, so
-    /// <see cref="calculate"/> can switch the measurement off.
+    /// tetrahedra (V12), via <see cref="ChunkVolume"/>. <see cref="ChunkStatsHud"/> and
+    /// WorldLab's panel show the results. The exact sum takes milliseconds on bigger
+    /// chunks, so <see cref="calculate"/> can switch the measurement off, and while a
+    /// brush keeps rebuilding the chunk it's measured at most a few times a second.
     /// </summary>
-    [RequireComponent(typeof(ChunkView))]
+    [RequireComponent(typeof(LabChunkTarget))]
     public class ChunkVolumeStats : MonoBehaviour
     {
         [Tooltip("Measure the volume after every rebuild. Off skips the work (the exact sum costs a few ms on bigger chunks) and hides the HUD line.")]
         [SerializeField]
         private bool calculate = true;
 
-        private ChunkView chunkView;
+        [Tooltip("Seconds between measurements while the chunk keeps rebuilding (e.g. holding the brush).")]
+        [SerializeField, Min(0f)]
+        private float minInterval = 0.25f;
+
+        private LabChunkTarget target;
+        private bool measureRequested;
+        private float nextMeasureTime;
 
         public bool HasMeasurement { get; private set; }
 
@@ -36,25 +43,35 @@ namespace Clube.Debug
 
         private void Awake()
         {
-            chunkView = GetComponent<ChunkView>();
+            target = GetComponent<LabChunkTarget>();
         }
 
         private void OnEnable()
         {
-            chunkView.MeshRebuilt += OnMeshRebuilt;
-            MeasureIfWanted();
+            target.MeshRebuilt += OnMeshRebuilt;
+            target.Changed += OnTargetChanged;
+            RequestMeasure(immediately: true);
         }
 
         private void OnDisable()
         {
-            chunkView.MeshRebuilt -= OnMeshRebuilt;
+            target.MeshRebuilt -= OnMeshRebuilt;
+            target.Changed -= OnTargetChanged;
             HasMeasurement = false;
         }
 
         // Toggling in the Inspector applies at once instead of waiting for the next rebuild.
         private void OnValidate()
         {
-            if (chunkView != null && isActiveAndEnabled)
+            if (target != null && isActiveAndEnabled)
+            {
+                RequestMeasure(immediately: true);
+            }
+        }
+
+        private void LateUpdate()
+        {
+            if (measureRequested && Time.unscaledTime >= nextMeasureTime)
             {
                 MeasureIfWanted();
             }
@@ -62,14 +79,32 @@ namespace Clube.Debug
 
         private void OnMeshRebuilt(Mesh mesh)
         {
-            MeasureIfWanted();
+            RequestMeasure(immediately: false);
+        }
+
+        // Another chunk's figures don't apply: measure the new one straight away.
+        private void OnTargetChanged()
+        {
+            HasMeasurement = false;
+            RequestMeasure(immediately: true);
+        }
+
+        private void RequestMeasure(bool immediately)
+        {
+            measureRequested = true;
+            if (immediately)
+            {
+                nextMeasureTime = 0f;
+            }
         }
 
         private void MeasureIfWanted()
         {
-            if (calculate && chunkView.Chunk != null)
+            measureRequested = false;
+            if (calculate && target.Chunk != null)
             {
                 Measure();
+                nextMeasureTime = Time.unscaledTime + minInterval;
             }
             else
             {
@@ -79,13 +114,13 @@ namespace Clube.Debug
 
         private void Measure()
         {
-            Chunk chunk = chunkView.Chunk;
-            WorldConfig config = chunkView.Config;
-            float size = config.VoxelSize;
+            Chunk chunk = target.Chunk;
+            ChunkMeshSettings settings = target.MeshSettings;
+            float size = settings.VoxelSize;
 
             var stopwatch = Stopwatch.StartNew();
             Approximate = ChunkVolume.Approximate(chunk, size);
-            Exact = ChunkVolume.Exact(chunk, config.IsoLevel, EdgeVertexPlacers.For(config.EdgePlacement), size);
+            Exact = ChunkVolume.Exact(chunk, settings.IsoLevel, EdgeVertexPlacers.For(settings.EdgePlacement), size);
             Milliseconds = stopwatch.Elapsed.TotalMilliseconds;
 
             Vector3Int count = chunk.VoxelCount;

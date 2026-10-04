@@ -9,14 +9,17 @@ namespace Clube.Debug
     /// solid side, and recalculated normals point inwards. Lab-only: the core
     /// mesher always produces the correct winding.
     /// </summary>
-    [RequireComponent(typeof(ChunkView))]
+    [RequireComponent(typeof(LabChunkTarget))]
     public class FlipFaces : MonoBehaviour
     {
         [Tooltip("Reverse each triangle's winding order after every rebuild, flipping which side is the front face.")]
         [SerializeField]
         private bool flipFaces;
 
-        private ChunkView chunkView;
+        private LabChunkTarget target;
+
+        // The chunk last asked to rebuild, so a focus change can restore its normal winding.
+        private Chunk flippedChunk;
 
         /// <summary>Reverse every triangle's winding; changing it rebuilds the mesh.</summary>
         public bool Flip
@@ -31,18 +34,20 @@ namespace Clube.Debug
 
         private void Awake()
         {
-            chunkView = GetComponent<ChunkView>();
+            target = GetComponent<LabChunkTarget>();
         }
 
         private void OnEnable()
         {
-            chunkView.MeshRebuilt += OnMeshRebuilt;
+            target.MeshRebuilt += OnMeshRebuilt;
+            target.Changed += RequestRebuild;
             RequestRebuild();
         }
 
         private void OnDisable()
         {
-            chunkView.MeshRebuilt -= OnMeshRebuilt;
+            target.MeshRebuilt -= OnMeshRebuilt;
+            target.Changed -= RequestRebuild;
             RequestRebuild();
         }
 
@@ -53,13 +58,20 @@ namespace Clube.Debug
         }
 
         // Rebuilding from scratch keeps this simple: the mesher always starts from
-        // the correct winding, and this component only ever flips a fresh mesh.
+        // the correct winding, and this component only ever flips a fresh mesh. A chunk
+        // that stopped being the target (WorldLab's focus moved) rebuilds unflipped.
         private void RequestRebuild()
         {
-            if (chunkView != null && chunkView.Chunk != null)
+            if (target == null)
             {
-                chunkView.Chunk.MarkDirty();
+                return;
             }
+            if (flippedChunk != null && flippedChunk != target.Chunk)
+            {
+                flippedChunk.MarkDirty();
+            }
+            flippedChunk = target.Chunk;
+            target.RequestRebuild();
         }
 
         private void OnMeshRebuilt(Mesh mesh)

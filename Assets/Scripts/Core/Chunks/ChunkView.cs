@@ -10,7 +10,7 @@ namespace Clube.Core
     /// The single-chunk labs use it; a world of chunks uses <see cref="WorldView"/>.
     /// </summary>
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
-    public class ChunkView : MonoBehaviour, IEditableTerrain
+    public class ChunkView : MonoBehaviour, IEditableTerrain, IRenderedChunk
     {
         [SerializeField]
         private WorldConfig config;
@@ -31,7 +31,8 @@ namespace Clube.Core
         /// Raised when the chunk is replaced by a new, empty one because the
         /// config's chunk size changed (K1). Whatever filled the old chunk refills this one.
         /// </summary>
-        public event Action<Chunk> ChunkCreated;
+        /// <remarks>Not raised when the chunk is first created in Awake.</remarks>
+        public event Action<Chunk> ChunkChanged;
 
         /// <summary>The chunk this view renders. Created in Awake; null outside Play mode.</summary>
         public Chunk Chunk { get; private set; }
@@ -46,6 +47,20 @@ namespace Clube.Core
         public bool IsUsingRuntimeConfig => runtimeConfig != null;
 
         public bool IsReady => Chunk != null;
+
+        public Transform Transform => transform;
+
+        public ChunkMeshSettings MeshSettings => Config.MeshSettings;
+
+        public Mesh Mesh => meshBuilder?.Mesh;
+
+        public Renderer Renderer => GetComponent<MeshRenderer>();
+
+        /// <summary>Writes a sample through <see cref="Chunk.SetDensity"/> (A7).</summary>
+        public void SetDensity(Vector3Int sample, float density)
+        {
+            Chunk?.SetDensity(sample, density);
+        }
 
         /// <summary>Where a world-space ray first meets the chunk's surface (<see cref="SurfaceRaycast"/>).</summary>
         public bool Raycast(Ray worldRay, out Vector3 worldPoint)
@@ -139,7 +154,7 @@ namespace Clube.Core
             if (Chunk.VoxelCount != Config.ChunkSize)
             {
                 Chunk = new Chunk(Config.ChunkSize);
-                ChunkCreated?.Invoke(Chunk);
+                ChunkChanged?.Invoke(Chunk);
             }
 
             Chunk.MarkDirty();

@@ -246,6 +246,7 @@ GameObject:
   - component: {fileID: 1265142451}
   - component: {fileID: 1265142452}
   - component: {fileID: 1265142453}
+  - component: {fileID: 1265142454}
   m_Layer: 0
   m_Name: Chunk
   m_TagString: Untagged
@@ -434,6 +435,7 @@ MonoBehaviour:
   highlightColor: {r: 1, g: 0.85, b: 0.2, a: 1}
   highlightMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
   focusDistance: 4
+  handleInput: 1
   targetCamera: {fileID: 0}
 --- !u!114 &1265142448
 MonoBehaviour:
@@ -448,6 +450,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkVolumeStats
   calculate: 1
+  minInterval: 0.25
 --- !u!114 &1265142449
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -530,6 +533,20 @@ MonoBehaviour:
   meshingOpen: 0
   stepThroughOpen: 0
   displayOpen: 1
+  cameraOpen: 0
+--- !u!114 &1265142454
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265142437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eded84a93b39a61449b533d02375feed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.LabChunkTarget
+  focus: {fileID: 0}
 --- !u!1 &1507819481
 GameObject:
   m_ObjectHideFlags: 0

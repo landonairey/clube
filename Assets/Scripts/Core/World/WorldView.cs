@@ -326,7 +326,7 @@ namespace Clube.Core
                 Chunk chunk = World.Load(coord, generator);
                 ChunkRenderer chunkRenderer = pool.Count > 0 ? pool.Pop() : CreateRenderer();
                 chunkRenderer.transform.localPosition = World.Grid.ChunkOrigin(coord);
-                chunkRenderer.Show(coord, chunk, () => Config.MeshSettings);
+                chunkRenderer.Show(World, coord, chunk, () => Config.MeshSettings);
                 renderers.Add(coord, chunkRenderer);
                 loadedThisFrame++;
                 ChunkLoaded?.Invoke(coord, chunkRenderer);

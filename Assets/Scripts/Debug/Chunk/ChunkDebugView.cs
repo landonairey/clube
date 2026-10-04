@@ -19,7 +19,7 @@ namespace Clube.Debug
     /// the colours. Outside Play mode, where there is no chunk yet, the
     /// outline is drawn as a gizmo from the config.
     /// </remarks>
-    [RequireComponent(typeof(ChunkView))]
+    [RequireComponent(typeof(LabChunkTarget))]
     public class ChunkDebugView : MonoBehaviour
     {
         /// <summary>How much of the chunk's wireframe to draw.</summary>
@@ -75,7 +75,7 @@ namespace Clube.Debug
         private readonly List<Vector3> scratchVertices = new List<Vector3>();
         private readonly List<int> scratchIndices = new List<int>();
 
-        private ChunkView chunkView;
+        private LabChunkTarget target;
         private SampleSpheres samples;
         private LabMeshObject outline;
         private LabMeshObject grid;
@@ -115,25 +115,27 @@ namespace Clube.Debug
         {
             get
             {
-                Chunk chunk = GetComponent<ChunkView>().Chunk;
+                Chunk chunk = GetComponent<LabChunkTarget>().Chunk;
                 return showSamples && chunk != null && SampleTotal(chunk) > SampleSpheres.MaxSamples;
             }
         }
 
         private void Awake()
         {
-            chunkView = GetComponent<ChunkView>();
+            target = GetComponent<LabChunkTarget>();
         }
 
         private void OnEnable()
         {
-            chunkView.MeshRebuilt += OnMeshRebuilt;
+            target.MeshRebuilt += OnMeshRebuilt;
+            target.Changed += OnTargetChanged;
             refreshRequested = true;
         }
 
         private void OnDisable()
         {
-            chunkView.MeshRebuilt -= OnMeshRebuilt;
+            target.MeshRebuilt -= OnMeshRebuilt;
+            target.Changed -= OnTargetChanged;
             if (samples != null)
             {
                 samples.Visible = false;
@@ -177,8 +179,8 @@ namespace Clube.Debug
         // Before Play mode there is no chunk yet, so outline the config's chunk size.
         private void OnDrawGizmos()
         {
-            var view = GetComponent<ChunkView>();
-            if (!enabled || wireframe == Wireframe.None || view.Chunk != null || view.Config == null)
+            var view = GetComponentInParent<ChunkView>();
+            if (!enabled || wireframe == Wireframe.None || view == null || view.Chunk != null || view.Config == null)
             {
                 return;
             }
@@ -194,15 +196,27 @@ namespace Clube.Debug
             Refresh();
         }
 
+        // Another chunk (WorldLab's focus moved), or none: redraw for it, or hide.
+        private void OnTargetChanged()
+        {
+            refreshRequested = true;
+        }
+
         private void Refresh()
         {
-            Chunk chunk = chunkView.Chunk;
+            Chunk chunk = target.Chunk;
             if (chunk == null || !enabled)
             {
+                if (samples != null)
+                {
+                    samples.Visible = false;
+                }
+                SetVisible(outline, false);
+                SetVisible(grid, false);
                 return;
             }
 
-            float voxelSize = chunkView.Config.VoxelSize;
+            float voxelSize = target.VoxelSize;
             RefreshOutline(chunk.VoxelCount, voxelSize);
             RefreshGrid(chunk.VoxelCount, voxelSize);
             RefreshSamples(chunk, voxelSize);
@@ -210,7 +224,7 @@ namespace Clube.Debug
 
         private bool WantsSamples()
         {
-            Chunk chunk = chunkView.Chunk;
+            Chunk chunk = target.Chunk;
             return enabled && showSamples && chunk != null && SampleTotal(chunk) <= SampleSpheres.MaxSamples
                    && !StepThroughMode.IsOn(this);
         }
