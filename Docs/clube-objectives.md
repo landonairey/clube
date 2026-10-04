@@ -47,6 +47,7 @@ A combined tag like `Core + Lab` means the logic lives in the core and a lab com
   - `ChunkLab` — one chunk + selection, generator switching, benchmarks
   - `WorldLab` — chunk manager + chunk focus mode, stats
   - `Game` — chunk manager, player, settings menu, **no debug**
+  - *(Added)* Each lab stacks the ones below it with the same scripts: ChunkLab's selected voxel gets every VoxelLab tool, WorldLab's focused chunk every ChunkLab tool (3A+).
 - [ ] **A10** Release build check: `Game` scene has no `Clube.Debug` components, and the debug assembly is excluded from release builds.
 - [ ] **A11** Step recording: the mesher accepts an optional recorder that logs each algorithm step as data. Compiled out of release builds (A5) and zero cost when no recorder is passed. Playback lives in `Clube.Debug` and never re-runs the algorithm itself.
 - [ ] **A12** Voxel storage behind an interface (`IVoxelStorage`: get/set density and material, iterate, serialize). Meshing, editing and saving talk only to the interface, so flat array, RLE and octree implementations can be swapped and compared.
@@ -170,7 +171,7 @@ Build order *(changed)*: 2A–2C, 2E (with the first demo exe, K33), 2F, then Ch
   - Note: the chunk is 3D, so "height" means the topmost iso-crossing in each column; overhangs and caves are lost.
 
 ### 2D — Performance *(rest after 3A)*
-K11 and K32 are done; K12 is next.
+K11 and K32 are done; K12 comes after the stacked labs (3A+).
 
 - [x] **K11** `Lab` Benchmark: `List<T>` vs preallocated arrays for mesh building.
   - Method: Stopwatch over N runs after warmup; record ms and GC allocations (Profiler / `GC.GetAllocatedBytesForCurrentThread`); test at 3+ chunk sizes.
@@ -179,6 +180,8 @@ K11 and K32 are done; K12 is next.
 - [ ] **K12** `Lab` *(added, optional)* Third variant: `NativeArray` + Jobs/Burst — sets up Chapter 4 threading. *(Also a backlog item: "code test of Burst-compiled jobs".)*
 - [x] **K32** `Core + Lab` *(added, from K11)* Speed up the mesher's per-voxel loop, benchmarked against the K11 baseline (77 ms at 64³). Candidates: read densities straight from the flat storage, not through `IVoxelStorage` per corner; reuse the 4 corners shared with the previous voxel; store the crossed-edge mask as a 256-entry table; and skip all-solid or all-empty runs early.
   - Result: 64³ meshing from 81 to 5.5 ms flat (15×) and 83 to 7.1 ms smooth (`MesherSpeedBenchmark`, *Clube → Benchmarks → Mesher speed*). Densities are read a Z layer at a time through a new `IVoxelStorage.ReadLayer` rather than straight from the flat array, so the mesher stays behind A12 and RLE and octree storage (K24, K25) must implement it too. The layer reads with corner reuse gave 11× on their own; the edge table and early skip about 15% and 8%. Smooth shading's `SharedVertexWriter` dictionary is now its main extra cost. Details in `Docs/benchmarks.md`.
+  - At world scale (WorldLab's 16³ chunks, `WorldMeshBenchmark`): meshing 1.30 → 0.13 ms per chunk, 127 → 13 ms for the 98 chunks at render distance 4. Generation (~3.8 ms per chunk) is now 97% of loading a world: K35.
+- [ ] **K35** `Core + Lab` *(added, from K32)* Speed up terrain generation, now 97% of loading a world (3.8 ms per 16³ chunk vs 0.13 ms to mesh it). Heightfield generators sample the noise for every sample, but need one height per column; measure with `WorldMeshBenchmark`.
 
 ### 2E — Terrain editing
 - [x] **K13** `Core + Lab` Click to add terrain (A7 path). (`TerrainBrush` in Core; `TerrainBrushTool` in ChunkLab: 1/2/3 pick Select, Dig or Add, and holding the button repeats.)
@@ -227,7 +230,7 @@ Compare storage schemes on a single chunk, behind the A12 interface, then measur
 This is where the shift happens: lab controls stay in `WorldLab`, and `Game` gets its first playable form.
 
 ### 3A — Chunk management
-After 3A: return to 2D (K32 done, then K12) and 2G, then M12.
+After 3A: 2D's K32, then the stacked labs (3A+), then K12, 2G and M12.
 
 - [x] **M1** `Core` *(added — prerequisite)* Chunk coordinate system and chunk manager (world pos ↔ chunk ↔ voxel). (`WorldGrid`: world position, global sample, chunk and local sample, floored so negative coordinates work. `World` holds the loaded chunks; `WorldView` is the chunk manager: streams chunks around a focus point, nearest first and a few per frame, and pools their `ChunkRenderer`s. Chunks are cubes on a 3D grid, stacked `WorldHeightInChunks` layers high from y = 0; see M17.)
 - [x] **M2** `Core` *(added — prerequisite)* Seamless borders: chunks share edge density samples so no cracks/gaps. (Each chunk keeps its own copy of the shared border samples and `World` keeps every copy equal: generation samples world positions, `World.SetDensity` writes all copies, and a newly loaded chunk takes its border from edited neighbours. Tests check shared samples and that border vertices match. Smooth-shading normals are still computed per chunk, so lighting can show a faint line at a border.)
@@ -238,6 +241,16 @@ After 3A: return to 2D (K32 done, then K12) and 2G, then M12.
 - [ ] **M17** `Lab` *(backlog)* Chunk shape comparison: tall column chunks (Minecraft-style, full world height) vs cubic chunks stacked vertically to fill the elevation. Compare memory, mesh count and load time over the same terrain, and record the choice. Decide before M1 fixes the coordinate system.
   - Note: stacked cubic chunks allow tall peaks without paying for empty sky everywhere, which matters for mountain terrain and the mountaineering skill (SK5).
   - *(Decision for M1, 3A)* The coordinate system is 3D (`Vector3Int` chunk coordinates) with cubic chunks stacked in a fixed number of layers (`WorldHeightInChunks`), streamed horizontally by render distance. A column chunk is just a tall chunk size, so the comparison can still be run on this grid.
+
+### 3A+ — Stacked labs *(added, after K32)*
+Each lab contains the tools of the labs below it, built from the same scripts: `ChunkLab` has everything `VoxelLab` has for its selected voxel, and `WorldLab` has everything `ChunkLab` has for its focused chunk. Today most lab tools require a `ChunkView`, which world chunks aren't, so `WorldLab` has almost none of them, and the voxel tools exist twice (VoxelLab's and ChunkLab's own versions).
+
+- [ ] **M18** `Core + Lab` One lab chunk target. A Core interface for a displayed chunk (the chunk, its transform, mesh settings, mesh and renderer, rebuilt and replaced events, and an edit path), implemented by `ChunkView` and `ChunkRenderer`. A world chunk's edits go through `World.SetDensity`, so border copies stay equal (M2). A Debug `LabChunkTarget` gives lab tools their chunk: fixed in VoxelLab and ChunkLab, following `ChunkFocus` in WorldLab. The chunk tools (`ChunkDebugView`, `NormalLines`, `FlipFaces`, `StepThroughLab` and its follow and voxel link, `VoxelSelector`, `ChunkVolumeStats`, `ChunkStatsHud`) use it instead of requiring a `ChunkView`.
+- [ ] **M19** `Lab` One lab voxel target: the selected voxel, fixed at (0,0,0) in VoxelLab. Merge `VoxelCornerEditor` with `SelectedVoxelEditor`, and `VoxelLabels` with `SelectedVoxelOverlay`, so corners, case stepping, presets, labels and the tetrahedra volume view (`VoxelVolumeLab`) work on the selected voxel in every lab.
+- [ ] **M20** `Lab` One `LabPanel` replacing `VoxelLabPanel`, `ChunkLabPanel` and `WorldLabPanel`: a section appears when its component is in the scene (world, terrain, brush, meshing, chunk, voxel, step-through, camera, display), each drawn by a shared `*Controls` class. Finishes K31's open items (the selected voxel's controls in ChunkLab, voxel size, test fill).
+- [ ] **M21** `Lab` Stack the scenes: "Voxel tools" and "Chunk tools" prefabs used by every lab that needs them. In WorldLab: focus a chunk, then select a voxel in it and edit its corners; step-through plays the focused chunk's build, hiding only that chunk's mesh. `ChunkFocus` reuses `ChunkVolume` rather than its own volume code.
+
+**Done when:** every VoxelLab tool works on a selected voxel in ChunkLab and WorldLab, every ChunkLab tool works on the focused chunk in WorldLab, corner edits across a chunk border leave no crack, and all three labs use the same panel code.
 
 ### 3B — Player
 - [ ] **M6** `Game` Basic character: walk, jump, collide with terrain (MeshCollider regenerated on edit).

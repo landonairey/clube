@@ -144,3 +144,33 @@ A second run of the final loop matched step 3 within 1%.
 `ReadLayer`, which the K24/K25 storage schemes (RLE, octree) must also
 implement; both can fill a layer efficiently. K12 (Jobs/Burst) is now
 measured against this loop, not K11's.
+
+### K32 at world scale
+
+2D was meant to be measured on a multi-chunk world once 3A existed.
+`WorldMeshBenchmark` (*Clube → Benchmarks → World meshing (K32)*) loads
+and meshes every chunk a `WorldView` streams in around the origin
+(`StreamingArea`), using WorldLab's config: 16³ chunks, 2 layers, fractal
+2D Perlin, flat shading. It times generation (`World.Load`) and meshing
+separately; no renderers or mesh upload. Median of 5 runs after 1 warmup.
+
+Both runs were in batch mode on a copy of the repo, with the same
+benchmark: once on `main` plus the benchmark ("before"), once on the K32
+branch ("after"). Same machine and Unity version as above, Release code
+optimization.
+
+| Render distance | Chunks | Triangles | Generate ms | Mesh ms before | Mesh ms after | Per chunk before → after |
+|--:|--:|--:|--:|--:|--:|--:|
+| 4 (WorldLab) | 98 | 32,376 | 375 | 127.4 | 12.7 | 1.30 → 0.13 ms |
+| 6 (game setting) | 226 | 75,268 | 867 | 294.7 | 29.0 | 1.30 → 0.13 ms |
+| 8 | 394 | 131,246 | 1,505 | 514.0 | 50.7 | 1.30 → 0.13 ms |
+
+**Findings.**
+- **World meshing is 10× faster** (less than the 15× at 64³, because a
+  16³ chunk has more surface per voxel). Every lab and the game get it:
+  `ChunkView` and the world's `ChunkRenderer`s both build through
+  `ChunkMeshBuilder` → `ChunkMesher`.
+- **Generation is now the cost:** ~3.8 ms per chunk against 0.13 ms to
+  mesh it, so 97% of loading a world. Before K32 it was 75%. Fractal 2D
+  Perlin samples 4 octaves for every sample, although a heightfield only
+  needs one height per column. That's K35.
