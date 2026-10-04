@@ -36,6 +36,27 @@ namespace Clube.Debug
 
         private ChunkView chunkView;
 
+        public Shape FillShape
+        {
+            get => shape;
+            set
+            {
+                shape = value;
+                Refill();
+            }
+        }
+
+        /// <summary>Ball or shaft radius, as a fraction of the chunk's side (0-1).</summary>
+        public float Radius
+        {
+            get => radius;
+            set
+            {
+                radius = Mathf.Clamp01(value);
+                Refill();
+            }
+        }
+
         private void Awake()
         {
             chunkView = GetComponent<ChunkView>();
@@ -55,6 +76,11 @@ namespace Clube.Debug
 
         // Called by Unity whenever an Inspector value changes, including in Play mode.
         private void OnValidate()
+        {
+            Refill();
+        }
+
+        private void Refill()
         {
             if (isActiveAndEnabled && chunkView != null && chunkView.Chunk != null)
             {

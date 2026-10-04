@@ -600,9 +600,9 @@ GameObject:
   - component: {fileID: 1350119459}
   - component: {fileID: 1350119458}
   - component: {fileID: 1350119457}
-  - component: {fileID: 1350119456}
   - component: {fileID: 1350119455}
   - component: {fileID: 1350119462}
+  - component: {fileID: 1350119463}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -623,28 +623,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.RenderDistanceSetting
   settings: {fileID: 11400000, guid: 196f0cd9f3598f8498fa39857dc03715, type: 2}
---- !u!114 &1350119456
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1350119454}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f629ccd45c379754b83b8f2be5b64a23, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.WorldLabPanel
-  startOpen: 1
-  width: 320
-  background: {r: 0, g: 0, b: 0, a: 0.7}
-  worldOpen: 1
-  terrainOpen: 0
-  brushOpen: 1
-  meshingOpen: 0
-  focusOpen: 1
-  displayOpen: 0
-  cameraOpen: 0
 --- !u!114 &1350119457
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -746,6 +724,33 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b754b8d75c3a3043b1828a7de9b184e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.WorldLabHud
+--- !u!114 &1350119463
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 897400aa44381574eaec9456a6a07317, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.LabPanel
+  startOpen: 1
+  width: 320
+  background: {r: 0, g: 0, b: 0, a: 0.7}
+  worldOpen: 1
+  terrainOpen: 0
+  brushOpen: 1
+  meshingOpen: 0
+  chunkOpen: 1
+  cornersOpen: 1
+  caseOpen: 0
+  presetsOpen: 0
+  volumeOpen: 0
+  stepThroughOpen: 0
+  cameraOpen: 0
+  displayOpen: 0
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0

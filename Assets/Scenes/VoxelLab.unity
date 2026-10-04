@@ -211,8 +211,8 @@ GameObject:
   - component: {fileID: 190024696}
   - component: {fileID: 190024697}
   - component: {fileID: 190024698}
-  - component: {fileID: 190024699}
   - component: {fileID: 190024700}
+  - component: {fileID: 190024701}
   m_Layer: 0
   m_Name: Voxel
   m_TagString: Untagged
@@ -395,8 +395,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelLabels
   showCornerLabels: 1
+  showCornerValues: 0
   showCrossedEdges: 1
   showEdgeLabels: 1
+  showTriangleEdges: 0
+  triangleEdgeColor: {r: 1, g: 0.6, b: 0.15, a: 1}
+  triangleEdgeMaterial: {fileID: 0}
   targetCamera: {fileID: 0}
 --- !u!114 &190024698
 MonoBehaviour:
@@ -410,29 +414,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 701e34ebff3a0fe4690bea5f0943647a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.CaseStepInput
---- !u!114 &190024699
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 190024688}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8900e807f8aba2d438ebf0bf86ff9a96, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelLabPanel
-  startOpen: 1
-  width: 340
-  background: {r: 0, g: 0, b: 0, a: 0.7}
-  cornersOpen: 1
-  caseOpen: 1
-  presetsOpen: 0
-  meshingOpen: 0
-  stepThroughOpen: 0
-  volumeOpen: 0
-  displayOpen: 0
-  cameraOpen: 0
 --- !u!114 &190024700
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -446,6 +427,33 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.LabChunkTarget
   focus: {fileID: 0}
+--- !u!114 &190024701
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 190024688}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 897400aa44381574eaec9456a6a07317, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.LabPanel
+  startOpen: 1
+  width: 340
+  background: {r: 0, g: 0, b: 0, a: 0.7}
+  worldOpen: 0
+  terrainOpen: 0
+  brushOpen: 0
+  meshingOpen: 0
+  chunkOpen: 0
+  cornersOpen: 1
+  caseOpen: 1
+  presetsOpen: 0
+  volumeOpen: 0
+  stepThroughOpen: 0
+  cameraOpen: 0
+  displayOpen: 0
 --- !u!1 &1408007341
 GameObject:
   m_ObjectHideFlags: 0
