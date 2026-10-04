@@ -1,8 +1,5 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 namespace Clube.Core
 {
@@ -10,21 +7,18 @@ namespace Clube.Core
     /// Owns one <see cref="Chunk"/> and keeps its mesh in sync: whenever the chunk
     /// is dirty (an edit, or a config change), the mesh is rebuilt once at the end
     /// of the frame (G1). The chunk's sample (0,0,0) sits at this transform's origin.
+    /// The single-chunk labs use it; a world of chunks uses <see cref="WorldView"/>.
     /// </summary>
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
-    public class ChunkView : MonoBehaviour
+    public class ChunkView : MonoBehaviour, IEditableTerrain
     {
         [SerializeField]
         private WorldConfig config;
 
-        private readonly List<Vector3> vertices = new List<Vector3>();
-        private readonly List<int> triangles = new List<int>();
-
-        private Mesh mesh;
+        private ChunkMeshBuilder meshBuilder;
 
         // Play mode works on a copy, so Inspector tweaks during Play revert on
         // exit like scene values do, instead of being saved into the asset.
-        // (A chunk manager will own one shared copy once there are many chunks.)
         private WorldConfig runtimeConfig;
 
         /// <summary>
@@ -43,13 +37,45 @@ namespace Clube.Core
         public Chunk Chunk { get; private set; }
 
         /// <summary>Counts and timings from the last mesh build (K4).</summary>
-        public ChunkMeshStats LastBuildStats { get; private set; }
+        public ChunkMeshStats LastBuildStats => meshBuilder != null ? meshBuilder.LastStats : default;
 
         /// <summary>The config in use: the Play mode copy while playing, otherwise the assigned asset.</summary>
         public WorldConfig Config => runtimeConfig != null ? runtimeConfig : config;
 
         /// <summary>True while <see cref="Config"/> is a Play mode copy whose edits are discarded on exit.</summary>
         public bool IsUsingRuntimeConfig => runtimeConfig != null;
+
+        public bool IsReady => Chunk != null;
+
+        /// <summary>Where a world-space ray first meets the chunk's surface (<see cref="SurfaceRaycast"/>).</summary>
+        public bool Raycast(Ray worldRay, out Vector3 worldPoint)
+        {
+            worldPoint = default;
+            if (Chunk == null)
+            {
+                return false;
+            }
+
+            var localRay = new Ray(
+                transform.InverseTransformPoint(worldRay.origin),
+                transform.InverseTransformDirection(worldRay.direction));
+            if (!SurfaceRaycast.Cast(localRay, Chunk, Config.MeshSettings, out _, out Vector3 localPoint))
+            {
+                return false;
+            }
+            worldPoint = transform.TransformPoint(localPoint);
+            return true;
+        }
+
+        public float VoxelSize => Config.VoxelSize;
+
+        /// <summary>Applies a brush around a world-space centre through <see cref="TerrainBrush"/> (A7).</summary>
+        public BrushResult ApplyBrush(Vector3 worldCentre, BrushSettings brush, BrushOperation operation)
+        {
+            return Chunk != null
+                ? TerrainBrush.Apply(Chunk, transform.InverseTransformPoint(worldCentre), Config.VoxelSize, brush, operation)
+                : default;
+        }
 
         private void Awake()
         {
@@ -64,10 +90,8 @@ namespace Clube.Core
             runtimeConfig.name = $"{config.name} (Play mode copy)";
 
             Chunk = new Chunk(Config.ChunkSize);
-
-            mesh = new Mesh { name = "Chunk" };
-            mesh.MarkDynamic();
-            GetComponent<MeshFilter>().sharedMesh = mesh;
+            meshBuilder = new ChunkMeshBuilder("Chunk");
+            GetComponent<MeshFilter>().sharedMesh = meshBuilder.Mesh;
         }
 
         private void OnEnable()
@@ -90,17 +114,14 @@ namespace Clube.Core
         {
             if (Chunk.IsDirty)
             {
-                RebuildMesh();
+                meshBuilder.Build(Chunk, Config.MeshSettings);
+                MeshRebuilt?.Invoke(meshBuilder.Mesh);
             }
         }
 
         private void OnDestroy()
         {
-            if (mesh != null)
-            {
-                Destroy(mesh);
-            }
-
+            meshBuilder?.Dispose();
             if (runtimeConfig != null)
             {
                 Destroy(runtimeConfig);
@@ -122,33 +143,6 @@ namespace Clube.Core
             }
 
             Chunk.MarkDirty();
-        }
-
-        private void RebuildMesh()
-        {
-            var stopwatch = Stopwatch.StartNew();
-            ChunkMesher.Build(Chunk, Config.MeshSettings, vertices, triangles);
-            double meshingMilliseconds = stopwatch.Elapsed.TotalMilliseconds;
-
-            stopwatch.Restart();
-            mesh.Clear();
-
-            // 16-bit indices top out at 65,535 vertices, which a 32³ chunk can pass.
-            mesh.indexFormat = vertices.Count > ushort.MaxValue ? IndexFormat.UInt32 : IndexFormat.UInt16;
-            mesh.SetVertices(vertices);
-            mesh.SetTriangles(triangles, 0);
-            mesh.RecalculateNormals();
-            LastBuildStats = new ChunkMeshStats(
-                vertices.Count, triangles.Count / 3, meshingMilliseconds, stopwatch.Elapsed.TotalMilliseconds);
-
-            // Bounds cover the whole chunk rather than just the current surface, so
-            // the renderer (and gizmos Unity culls with it) stays visible whenever
-            // any part of the chunk is in view.
-            Vector3 chunkSize = (Vector3)Chunk.VoxelCount * Config.VoxelSize;
-            mesh.bounds = new Bounds(chunkSize * 0.5f, chunkSize);
-
-            Chunk.MarkClean();
-            MeshRebuilt?.Invoke(mesh);
         }
     }
 }

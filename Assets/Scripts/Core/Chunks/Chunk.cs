@@ -12,7 +12,7 @@ namespace Clube.Core
     /// dirty so whoever owns its mesh knows to rebuild (A7). Lab sliders and the
     /// in-game brush are both just callers of it.
     /// </remarks>
-    public sealed class Chunk
+    public sealed class Chunk : IDensityField
     {
         private readonly IVoxelStorage storage;
 
@@ -37,6 +37,19 @@ namespace Clube.Core
         public float GetDensity(Vector3Int sample)
         {
             return storage.GetDensity(sample.x, sample.y, sample.z);
+        }
+
+        /// <summary>The density at a sample, or false outside the chunk.</summary>
+        public bool TryGetDensity(Vector3Int sample, out float density)
+        {
+            Vector3Int count = storage.SampleCount;
+            if ((uint)sample.x >= (uint)count.x || (uint)sample.y >= (uint)count.y || (uint)sample.z >= (uint)count.z)
+            {
+                density = 0f;
+                return false;
+            }
+            density = storage.GetDensity(sample.x, sample.y, sample.z);
+            return true;
         }
 
         /// <summary>The single density-edit path (A7): writes the sample and marks the chunk dirty.</summary>

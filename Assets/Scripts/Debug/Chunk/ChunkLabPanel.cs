@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -21,8 +19,6 @@ namespace Clube.Debug
     [RequireComponent(typeof(ChunkView))]
     public class ChunkLabPanel : MonoBehaviour
     {
-        private static readonly string[] ToolNames = { "Select", "Dig", "Add" };
-        private static readonly string[] FalloffNames = { "Hard", "Smooth" };
         private static readonly string[] WireframeNames = { "None", "Outline", "Grid" };
 
         [Tooltip("Show the panel when Play mode starts. Tab toggles it.")]
@@ -52,8 +48,8 @@ namespace Clube.Debug
         [SerializeField]
         private bool displayOpen = true;
 
-        private readonly List<TerrainGeneratorType> generatorChoices = new List<TerrainGeneratorType>();
-        private readonly List<string> generatorNames = new List<string>();
+        [SerializeField]
+        private bool cameraOpen;
 
         private ChunkView chunkView;
         private ChunkTerrainFill terrainFill;
@@ -61,6 +57,7 @@ namespace Clube.Debug
         private ChunkDebugView debugView;
         private StepThroughLab stepThrough;
         private LabPanelFrame frame;
+        private FreeFlyCamera flyCamera;
         private bool open;
 
         private void Awake()
@@ -71,6 +68,7 @@ namespace Clube.Debug
             debugView = GetComponent<ChunkDebugView>();
             stepThrough = GetComponentInChildren<StepThroughLab>(true);
             frame = new LabPanelFrame(this, width, background);
+            flyCamera = Camera.main != null ? Camera.main.GetComponent<FreeFlyCamera>() : null;
             open = startOpen;
         }
 
@@ -107,7 +105,7 @@ namespace Clube.Debug
             }
             if (brush != null && frame.Section("Brush", ref brushOpen))
             {
-                DrawBrush();
+                BrushControls.Draw(frame, brush);
             }
             if (frame.Section("Meshing", ref meshingOpen))
             {
@@ -116,6 +114,10 @@ namespace Clube.Debug
             if (stepThrough != null && frame.Section("Step-through", ref stepThroughOpen))
             {
                 StepThroughControls.Draw(frame, stepThrough);
+            }
+            if (flyCamera != null && frame.Section("Camera", ref cameraOpen))
+            {
+                CameraControls.Draw(frame, flyCamera);
             }
             if (debugView != null && frame.Section("Display", ref displayOpen))
             {
@@ -127,72 +129,11 @@ namespace Clube.Debug
 
         private void DrawTerrain(WorldConfig config)
         {
-            TerrainSettings terrain = config.Terrain;
-
-            // Heightmap needs an image asset, so it's only offered when one is assigned.
-            generatorChoices.Clear();
-            generatorNames.Clear();
-            foreach (TerrainGeneratorType type in Enum.GetValues(typeof(TerrainGeneratorType)))
-            {
-                if (type != TerrainGeneratorType.Heightmap || terrain.HeightmapSource != null)
-                {
-                    generatorChoices.Add(type);
-                    generatorNames.Add(type.ToString());
-                }
-            }
-
-            int current = generatorChoices.IndexOf(terrain.Generator);
-            int picked = GUILayout.SelectionGrid(current, generatorNames.ToArray(), 2, frame.Button);
-            if (picked != current && picked >= 0)
-            {
-                terrain.Generator = generatorChoices[picked];
-                config.NotifyChanged();
-            }
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"Seed {terrain.Seed}", frame.Label);
-            int seed = terrain.Seed;
-            if (GUILayout.Button("−", frame.Button))
-            {
-                seed--;
-            }
-            if (GUILayout.Button("+", frame.Button))
-            {
-                seed++;
-            }
-            if (GUILayout.Button("Random", frame.Button))
-            {
-                seed = UnityEngine.Random.Range(0, 100000);
-            }
-            GUILayout.EndHorizontal();
-            if (seed != terrain.Seed)
-            {
-                terrain.Seed = seed;
-                config.NotifyChanged();
-            }
-
-            // Regenerating from the config also throws away every brush edit.
-            if (GUILayout.Button("Reset terrain (undo all edits)", frame.Button))
-            {
-                config.NotifyChanged();
-            }
+            TerrainControls.Draw(frame, config);
             if (terrainFill != null && terrainFill.IsOverridden)
             {
                 GUILayout.Label("The test fill is on and overrides the generator.", frame.Hint);
             }
-        }
-
-        private void DrawBrush()
-        {
-            var tool = (ChunkClickTool)GUILayout.Toolbar((int)brush.Tool, ToolNames, frame.Button);
-            if (tool != brush.Tool)
-            {
-                brush.Tool = tool;
-            }
-
-            brush.Radius = frame.Slider("Radius", brush.Radius, TerrainBrushTool.MinRadius, TerrainBrushTool.MaxRadius, "0.##");
-            brush.Strength = frame.Slider("Strength", brush.Strength, 0.01f, 1f, "0.##");
-            brush.Falloff = (BrushFalloff)GUILayout.Toolbar((int)brush.Falloff, FalloffNames, frame.Button);
         }
 
         private void DrawDisplay()

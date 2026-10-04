@@ -1,43 +1,52 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Clube.Core
 {
     /// <summary>
-    /// Adds or removes a sphere of terrain (K13–K16) through the chunk's single edit
-    /// path (A7). Each sample in reach moves towards solid (add) or air (remove) by
-    /// the brush strength times its weight:
+    /// Adds or removes terrain in a sphere (K13–K16) through the field's single edit path
+    /// (A7). Samples within the radius move towards solid (add) or air (remove) by the
+    /// brush strength:
     /// <list type="bullet">
-    /// <item><b>Hard</b>: the weight is the sphere's own density, ramped across the
-    /// radius like terrain (<see cref="TerrainDensity"/>), so at full strength the
-    /// new surface sits exactly on the radius.</item>
-    /// <item><b>Smooth</b>: the weight fades as (1 - (d/r)²)², reaching zero at the
-    /// radius. At full strength on open air it makes a blob about half the radius;
-    /// repeated applications grow it.</item>
+    /// <item><b>Hard</b>: every sample within the radius changes.</item>
+    /// <item><b>Soft</b>: only the surface layer changes. Adding fills samples that touch
+    /// a fully solid sample (density 1); removing empties samples that touch a fully empty
+    /// one (density 0). Held down, it piles up or digs down a layer at a time, like
+    /// shovelling.</item>
     /// </list>
     /// Pure Core logic: callers decide where the brush goes and how often it applies.
+    /// Works on any <see cref="IDensityField"/>, so on a <see cref="World"/> it sees across
+    /// chunk borders and writes every copy of a border sample (M5).
     /// </summary>
     public static class TerrainBrush
     {
-        /// <param name="centre">Brush centre in chunk-local world units (sample 0 at the origin).</param>
-        /// <returns>How many samples changed.</returns>
-        public static int Apply(
-            Chunk chunk, Vector3 centre, float voxelSize, BrushSettings brush, BrushOperation operation)
+        // The six face neighbours: what "touching" means for the soft brush.
+        private static readonly Vector3Int[] Neighbours =
+        {
+            Vector3Int.right, Vector3Int.left, Vector3Int.up, Vector3Int.down,
+            new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
+        };
+
+        // Reused between applications; the brush only runs on the main thread.
+        private static readonly List<(Vector3Int Sample, float Before)> Targets = new List<(Vector3Int, float)>();
+
+        /// <param name="field">The densities to edit, addressed by sample coordinate.</param>
+        /// <param name="centre">Brush centre in the field's world units (its sample 0 at the origin).</param>
+        public static BrushResult Apply(
+            IDensityField field, Vector3 centre, float voxelSize, BrushSettings brush, BrushOperation operation)
         {
             if (brush.Radius <= 0f || brush.Strength <= 0f)
             {
-                return 0;
+                return default;
             }
 
-            // A hard brush's ramp reaches past the radius.
-            float reach = brush.Falloff == BrushFalloff.Hard
-                ? brush.Radius + TerrainDensity.RampHalfWidth
-                : brush.Radius;
-            Vector3Int max = chunk.SampleCount - Vector3Int.one;
-            Vector3Int from = Vector3Int.Max(Vector3Int.zero, Vector3Int.FloorToInt((centre - Vector3.one * reach) / voxelSize));
-            Vector3Int to = Vector3Int.Min(max, Vector3Int.CeilToInt((centre + Vector3.one * reach) / voxelSize));
+            bool adding = operation == BrushOperation.Add;
+            Vector3Int from = Vector3Int.FloorToInt((centre - Vector3.one * brush.Radius) / voxelSize);
+            Vector3Int to = Vector3Int.CeilToInt((centre + Vector3.one * brush.Radius) / voxelSize);
 
-            float sign = operation == BrushOperation.Add ? 1f : -1f;
-            int changed = 0;
+            // Pick every target before writing any, so a soft application only grows the
+            // layer that was the surface when it started, not a chain of layers at once.
+            Targets.Clear();
             for (int z = from.z; z <= to.z; z++)
             {
                 for (int y = from.y; y <= to.y; y++)
@@ -45,41 +54,58 @@ namespace Clube.Core
                     for (int x = from.x; x <= to.x; x++)
                     {
                         var sample = new Vector3Int(x, y, z);
-                        float distance = Vector3.Distance((Vector3)sample * voxelSize, centre);
-                        float weight = Weight(distance, brush);
-                        if (weight <= 0f)
+                        if (Vector3.Distance((Vector3)sample * voxelSize, centre) > brush.Radius
+                            || !field.TryGetDensity(sample, out float before))
                         {
                             continue;
                         }
 
-                        float before = chunk.GetDensity(sample);
-                        float after = Mathf.Clamp01(before + sign * brush.Strength * weight);
-                        if (after != before)
+                        // Nothing to add to a full sample, or to remove from an empty one.
+                        if (adding ? before >= 1f : before <= 0f)
                         {
-                            chunk.SetDensity(sample, after);
-                            changed++;
+                            continue;
                         }
+
+                        if (brush.Falloff == BrushFalloff.Soft && !TouchesSaturated(field, sample, adding))
+                        {
+                            continue;
+                        }
+
+                        Targets.Add((sample, before));
                     }
                 }
             }
-            return changed;
+
+            float sign = adding ? 1f : -1f;
+            float added = 0f;
+            float removed = 0f;
+            foreach ((Vector3Int sample, float before) in Targets)
+            {
+                float after = Mathf.Clamp01(before + sign * brush.Strength);
+                field.SetDensity(sample, after);
+                if (after > before)
+                {
+                    added += after - before;
+                }
+                else
+                {
+                    removed += before - after;
+                }
+            }
+            return new BrushResult(Targets.Count, added, removed);
         }
 
-        /// <summary>The brush's effect at a distance from its centre, 0-1.</summary>
-        public static float Weight(float distance, BrushSettings brush)
+        // Adding grows from fully solid samples; removing eats in from fully empty ones.
+        private static bool TouchesSaturated(IDensityField field, Vector3Int sample, bool adding)
         {
-            if (brush.Falloff == BrushFalloff.Hard)
+            foreach (Vector3Int offset in Neighbours)
             {
-                return TerrainDensity.FromDepth(brush.Radius - distance);
+                if (field.TryGetDensity(sample + offset, out float neighbour) && (adding ? neighbour >= 1f : neighbour <= 0f))
+                {
+                    return true;
+                }
             }
-
-            if (distance >= brush.Radius)
-            {
-                return 0f;
-            }
-            float t = distance / brush.Radius;
-            float fade = 1f - t * t;
-            return fade * fade;
+            return false;
         }
     }
 }

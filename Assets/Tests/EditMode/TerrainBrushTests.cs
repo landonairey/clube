@@ -8,7 +8,7 @@ namespace Clube.Core.Tests
         private const float Tolerance = 1e-3f;
 
         [Test]
-        public void HardAdd_InAir_BuildsASphereWithItsSurfaceOnTheRadius()
+        public void HardAdd_FillsEverySampleWithinTheRadius()
         {
             var chunk = new Chunk(new Vector3Int(10, 10, 10));
             var centre = new Vector3(5f, 5f, 5f);
@@ -16,23 +16,22 @@ namespace Clube.Core.Tests
             TerrainBrush.Apply(chunk, centre, 1f, new BrushSettings(3f), BrushOperation.Add);
 
             Assert.That(chunk.GetDensity(new Vector3Int(5, 5, 5)), Is.EqualTo(1f));
-            Assert.That(chunk.GetDensity(new Vector3Int(5, 5, 9)), Is.EqualTo(0f));
-            // The sample on the radius sits exactly at the iso level, so the surface passes through it.
-            Assert.That(chunk.GetDensity(new Vector3Int(5, 8, 5)), Is.EqualTo(0.5f).Within(Tolerance));
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 8, 5)), Is.EqualTo(1f), "On the radius");
+            Assert.That(chunk.GetDensity(new Vector3Int(7, 7, 5)), Is.EqualTo(1f), "Inside, off-axis");
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 9, 5)), Is.EqualTo(0f), "Outside");
+            Assert.That(chunk.GetDensity(new Vector3Int(7, 7, 7)), Is.EqualTo(0f), "Outside, off-axis");
         }
 
         [Test]
-        public void HardRemove_InSolid_CarvesAHoleWithItsSurfaceOnTheRadius()
+        public void HardRemove_EmptiesEverySampleWithinTheRadius()
         {
-            var chunk = SolidChunk(10);
-            var centre = new Vector3(5f, 5f, 5f);
+            var chunk = SolidBelow(10, 10);
 
-            TerrainBrush.Apply(chunk, centre, 1f, new BrushSettings(3f), BrushOperation.Remove);
+            TerrainBrush.Apply(chunk, new Vector3(5f, 5f, 5f), 1f, new BrushSettings(3f), BrushOperation.Remove);
 
             Assert.That(chunk.GetDensity(new Vector3Int(5, 5, 5)), Is.EqualTo(0f));
-            Assert.That(chunk.GetDensity(new Vector3Int(5, 5, 9)), Is.EqualTo(1f));
-
-            Assert.That(chunk.GetDensity(new Vector3Int(5, 2, 5)), Is.EqualTo(0.5f).Within(Tolerance));
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 2, 5)), Is.EqualTo(0f), "On the radius");
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 1, 5)), Is.EqualTo(1f), "Outside");
         }
 
         [Test]
@@ -51,14 +50,81 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void SmoothFalloff_IsFullAtTheCentre_AndZeroAtTheRadius()
+        public void SoftAdd_PilesUpOneLayerPerApplication()
         {
-            var brush = new BrushSettings(4f, falloff: BrushFalloff.Smooth);
+            // Solid ground up to y = 2, air above.
+            var chunk = SolidBelow(10, 2);
+            var brush = new BrushSettings(3f, falloff: BrushFalloff.Soft);
+            var centre = new Vector3(5f, 3f, 5f);
 
-            Assert.That(TerrainBrush.Weight(0f, brush), Is.EqualTo(1f));
-            Assert.That(TerrainBrush.Weight(2f, brush), Is.EqualTo(0.5625f).Within(Tolerance));
-            Assert.That(TerrainBrush.Weight(4f, brush), Is.EqualTo(0f));
-            Assert.That(TerrainBrush.Weight(2f, brush), Is.LessThan(TerrainBrush.Weight(2f, new BrushSettings(4f))));
+            TerrainBrush.Apply(chunk, centre, 1f, brush, BrushOperation.Add);
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 3, 5)), Is.EqualTo(1f), "The layer on the ground fills");
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 4, 5)), Is.EqualTo(0f), "The next layer waits");
+
+            TerrainBrush.Apply(chunk, centre, 1f, brush, BrushOperation.Add);
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 4, 5)), Is.EqualTo(1f), "Then the next one up");
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 5, 5)), Is.EqualTo(0f));
+        }
+
+        [Test]
+        public void SoftAdd_InOpenAir_DoesNothing()
+        {
+            var chunk = new Chunk(new Vector3Int(8, 8, 8));
+
+            BrushResult result = TerrainBrush.Apply(
+                chunk, new Vector3(4f, 4f, 4f), 1f, new BrushSettings(3f, falloff: BrushFalloff.Soft), BrushOperation.Add);
+
+            Assert.That(result.ChangedSamples, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void SoftRemove_DigsTheSurfaceLayerFirst()
+        {
+            // Solid up to y = 4, air above.
+            var chunk = SolidBelow(10, 4);
+            var brush = new BrushSettings(3f, falloff: BrushFalloff.Soft);
+            var centre = new Vector3(5f, 4f, 5f);
+
+            TerrainBrush.Apply(chunk, centre, 1f, brush, BrushOperation.Remove);
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 4, 5)), Is.EqualTo(0f), "The surface layer goes first");
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 3, 5)), Is.EqualTo(1f), "The layer below waits");
+
+            TerrainBrush.Apply(chunk, centre, 1f, brush, BrushOperation.Remove);
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 3, 5)), Is.EqualTo(0f), "Then the layer below");
+        }
+
+        [Test]
+        public void SoftRemove_FinishesALayerBeforeStartingTheNext()
+        {
+            var chunk = SolidBelow(10, 4);
+            var brush = new BrushSettings(3f, strength: 0.5f, falloff: BrushFalloff.Soft);
+            var centre = new Vector3(5f, 4f, 5f);
+
+            TerrainBrush.Apply(chunk, centre, 1f, brush, BrushOperation.Remove);
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 4, 5)), Is.EqualTo(0.5f).Within(Tolerance));
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 3, 5)), Is.EqualTo(1f), "Half-dug neighbours don't expose it yet");
+
+            TerrainBrush.Apply(chunk, centre, 1f, brush, BrushOperation.Remove);
+            TerrainBrush.Apply(chunk, centre, 1f, brush, BrushOperation.Remove);
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 4, 5)), Is.EqualTo(0f));
+            Assert.That(chunk.GetDensity(new Vector3Int(5, 3, 5)), Is.EqualTo(0.5f).Within(Tolerance));
+        }
+
+        [Test]
+        public void Result_ReportsTheDensityAddedAndRemoved()
+        {
+            var chunk = new Chunk(new Vector3Int(6, 6, 6));
+            var centre = new Vector3(3f, 3f, 3f);
+
+            // Radius 1 reaches the centre sample and its six neighbours.
+            BrushResult added = TerrainBrush.Apply(chunk, centre, 1f, new BrushSettings(1f), BrushOperation.Add);
+            Assert.That(added.ChangedSamples, Is.EqualTo(7));
+            Assert.That(added.DensityAdded, Is.EqualTo(7f).Within(Tolerance));
+            Assert.That(added.DensityRemoved, Is.EqualTo(0f));
+            Assert.That(added.VolumeAdded(0.5f), Is.EqualTo(7f * 0.125f).Within(Tolerance));
+
+            BrushResult removed = TerrainBrush.Apply(chunk, centre, 1f, new BrushSettings(1f, 0.25f), BrushOperation.Remove);
+            Assert.That(removed.DensityRemoved, Is.EqualTo(7f * 0.25f).Within(Tolerance));
         }
 
         [Test]
@@ -66,9 +132,9 @@ namespace Clube.Core.Tests
         {
             var chunk = new Chunk(new Vector3Int(4, 4, 4));
 
-            int changed = TerrainBrush.Apply(chunk, new Vector3(-1f, 0f, 0f), 1f, new BrushSettings(2f), BrushOperation.Add);
+            BrushResult result = TerrainBrush.Apply(chunk, new Vector3(-1f, 0f, 0f), 1f, new BrushSettings(2f), BrushOperation.Add);
 
-            Assert.That(changed, Is.GreaterThan(0));
+            Assert.That(result.ChangedSamples, Is.GreaterThan(0));
             Assert.That(chunk.GetDensity(Vector3Int.zero), Is.EqualTo(1f));
         }
 
@@ -89,9 +155,9 @@ namespace Clube.Core.Tests
             var chunk = new Chunk(new Vector3Int(4, 4, 4));
             chunk.MarkClean();
 
-            int changed = TerrainBrush.Apply(chunk, new Vector3(2f, 2f, 2f), 1f, new BrushSettings(2f), BrushOperation.Remove);
+            BrushResult result = TerrainBrush.Apply(chunk, new Vector3(2f, 2f, 2f), 1f, new BrushSettings(2f), BrushOperation.Remove);
 
-            Assert.That(changed, Is.EqualTo(0));
+            Assert.That(result.ChangedSamples, Is.EqualTo(0));
             Assert.That(chunk.IsDirty, Is.False);
         }
 
@@ -99,21 +165,21 @@ namespace Clube.Core.Tests
         public void SmallerVoxels_KeepTheSphereTheSameWorldSize()
         {
             var chunk = new Chunk(new Vector3Int(20, 20, 20));
-            var centre = new Vector3(5f, 5f, 5f);
 
-            TerrainBrush.Apply(chunk, centre, 0.5f, new BrushSettings(3f), BrushOperation.Add);
+            TerrainBrush.Apply(chunk, new Vector3(5f, 5f, 5f), 0.5f, new BrushSettings(3f), BrushOperation.Add);
 
-            // Sample (10, 16, 10) is world (5, 8, 5): on the radius.
-            Assert.That(chunk.GetDensity(new Vector3Int(10, 16, 10)), Is.EqualTo(0.5f).Within(Tolerance));
+            // Sample (10, 16, 10) is world (5, 8, 5): on the radius. (10, 18, 10) is outside.
+            Assert.That(chunk.GetDensity(new Vector3Int(10, 16, 10)), Is.EqualTo(1f));
             Assert.That(chunk.GetDensity(new Vector3Int(10, 18, 10)), Is.EqualTo(0f));
         }
 
-        private static Chunk SolidChunk(int size)
+        /// <summary>A chunk whose samples are solid (1) up to and including <paramref name="topY"/>, air above.</summary>
+        private static Chunk SolidBelow(int size, int topY)
         {
             var chunk = new Chunk(new Vector3Int(size, size, size));
             for (int z = 0; z <= size; z++)
             {
-                for (int y = 0; y <= size; y++)
+                for (int y = 0; y <= Mathf.Min(topY, size); y++)
                 {
                     for (int x = 0; x <= size; x++)
                     {

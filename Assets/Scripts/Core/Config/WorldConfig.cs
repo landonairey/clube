@@ -15,6 +15,11 @@ namespace Clube.Core
         [SerializeField]
         private Vector3Int chunkSize = Vector3Int.one;
 
+        [Tooltip("How many layers of chunks the world stacks from chunk y = 0 upwards (M1). " +
+                 "Chunks are cubes stacked vertically; render distance only limits them horizontally. Single-chunk labs ignore it.")]
+        [SerializeField, Min(1)]
+        private int worldHeightInChunks = 2;
+
         [Tooltip("Edge length of one voxel in world units.")]
         [SerializeField, Min(0.01f)]
         private float voxelSize = 1f;
@@ -38,12 +43,27 @@ namespace Clube.Core
         /// <summary>Raised when a value is edited in the Inspector.</summary>
         public event Action Changed;
 
-        public Vector3Int ChunkSize => chunkSize;
-
-        public float VoxelSize => voxelSize;
-
         // The setters are for lab controls (A2: labs may change the config). Call
         // NotifyChanged afterwards so views rebuild; the game only reads these.
+
+        public Vector3Int ChunkSize
+        {
+            get => chunkSize;
+            set => chunkSize = Vector3Int.Max(Vector3Int.one, value);
+        }
+
+        /// <summary>Layers of chunks stacked from chunk y = 0 (M1).</summary>
+        public int WorldHeightInChunks
+        {
+            get => worldHeightInChunks;
+            set => worldHeightInChunks = Mathf.Max(1, value);
+        }
+
+        public float VoxelSize
+        {
+            get => voxelSize;
+            set => voxelSize = Mathf.Max(0.01f, value);
+        }
 
         public float IsoLevel
         {

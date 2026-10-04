@@ -7,6 +7,11 @@ namespace Clube.Core
     {
         private const float ParallelEpsilon = 1e-8f;
 
+        // Hits within this much (in barycentric terms) of an edge still count. A ray running
+        // exactly along a face between two voxels meets the surface only on the edge the two
+        // voxels' triangles share, and rounding could otherwise reject it on both sides.
+        private const float EdgeTolerance = 1e-5f;
+
         /// <summary>
         /// True when <paramref name="ray"/> hits triangle a, b, c in front of its origin;
         /// <paramref name="distance"/> is then measured along the normalised ray direction.
@@ -28,14 +33,14 @@ namespace Clube.Core
             float inverse = 1f / determinant;
             Vector3 fromA = ray.origin - a;
             float u = Vector3.Dot(fromA, p) * inverse;
-            if (u < 0f || u > 1f)
+            if (u < -EdgeTolerance || u > 1f + EdgeTolerance)
             {
                 return false;
             }
 
             Vector3 q = Vector3.Cross(fromA, edgeAB);
             float v = Vector3.Dot(direction, q) * inverse;
-            if (v < 0f || u + v > 1f)
+            if (v < -EdgeTolerance || u + v > 1f + EdgeTolerance)
             {
                 return false;
             }

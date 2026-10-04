@@ -1,12 +1,16 @@
 namespace Clube.Core
 {
-    /// <summary>How a <see cref="TerrainBrush"/>'s effect fades from its centre (K16).</summary>
+    /// <summary>Which samples a <see cref="TerrainBrush"/> application changes (K16).</summary>
     public enum BrushFalloff
     {
-        /// <summary>Full effect out to the radius: at full strength it carves or builds an exact sphere.</summary>
+        /// <summary>Every sample within the radius gains or loses the brush strength.</summary>
         Hard,
 
-        /// <summary>Fades smoothly to nothing at the radius, for gradual sculpting.</summary>
-        Smooth,
+        /// <summary>
+        /// Only the surface layer within the radius changes, so holding the brush digs
+        /// down or piles up layer by layer: adding fills samples next to fully solid ones,
+        /// removing empties samples next to fully empty ones.
+        /// </summary>
+        Soft,
     }
 }
