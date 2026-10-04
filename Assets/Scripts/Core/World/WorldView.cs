@@ -279,26 +279,9 @@ namespace Clube.Core
             wantedCentre = centre;
             wantedDistance = renderDistance;
 
-            wanted.Clear();
+            StreamingArea.Collect(centre, renderDistance, Config.WorldHeightInChunks, wanted);
             wantedSet.Clear();
-            int height = Config.WorldHeightInChunks;
-            for (int dz = -renderDistance; dz <= renderDistance; dz++)
-            {
-                for (int dx = -renderDistance; dx <= renderDistance; dx++)
-                {
-                    if (dx * dx + dz * dz > renderDistance * renderDistance)
-                    {
-                        continue;
-                    }
-                    for (int y = 0; y < height; y++)
-                    {
-                        var coord = new Vector3Int(centre.x + dx, y, centre.z + dz);
-                        wanted.Add(coord);
-                        wantedSet.Add(coord);
-                    }
-                }
-            }
-            wanted.Sort((a, b) => HorizontalDistanceSquared(a, centre).CompareTo(HorizontalDistanceSquared(b, centre)));
+            wantedSet.UnionWith(wanted);
         }
 
         // Chunks just outside the wanted area are kept (one chunk of slack), so walking
@@ -310,7 +293,7 @@ namespace Clube.Core
             scratch.Clear();
             foreach (Vector3Int coord in renderers.Keys)
             {
-                if (!wantedSet.Contains(coord) && HorizontalDistanceSquared(coord, centre) > keep)
+                if (!wantedSet.Contains(coord) && StreamingArea.HorizontalDistanceSquared(coord, centre) > keep)
                 {
                     scratch.Add(coord);
                 }
@@ -356,13 +339,6 @@ namespace Clube.Core
             chunkObject.transform.SetParent(transform, false);
             chunkObject.GetComponent<MeshRenderer>().sharedMaterials = chunkMaterials;
             return chunkObject.GetComponent<ChunkRenderer>();
-        }
-
-        private static int HorizontalDistanceSquared(Vector3Int coord, Vector3Int centre)
-        {
-            int dx = coord.x - centre.x;
-            int dz = coord.z - centre.z;
-            return dx * dx + dz * dz;
         }
     }
 }
