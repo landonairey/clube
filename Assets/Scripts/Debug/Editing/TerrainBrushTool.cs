@@ -19,17 +19,19 @@ namespace Clube.Debug
     }
 
     /// <summary>
-    /// Edits the chunk with a sphere brush in the Game view (K13–K16): 1, 2 and 3
+    /// Edits terrain with a sphere brush in the Game view (K13–K16): 1, 2 and 3
     /// pick Select, Dig or Add; in Dig and Add, the left mouse button applies the
     /// brush where the cursor meets the surface, repeating while held; [ and ] change
-    /// the radius. A translucent sphere previews the brush. Edits go through
-    /// <see cref="TerrainBrush"/> and so through the chunk's single edit path (A7).
+    /// the radius. A translucent sphere previews the brush. The terrain is whatever
+    /// <see cref="IEditableTerrain"/> sits on the same object: one chunk
+    /// (<see cref="ChunkView"/>) or a world of them (<see cref="WorldView"/>, where a
+    /// brush across a border edits every chunk it reaches, M5). Edits go through
+    /// <see cref="TerrainBrush"/> and so through each chunk's single edit path (A7).
     /// </summary>
     /// <remarks>
-    /// In Dig and Add it switches the <see cref="VoxelSelector"/> off, so clicks edit
-    /// instead of selecting. Play mode only, like the chunk itself.
+    /// In Dig and Add it switches the <see cref="VoxelSelector"/> off, if there is one,
+    /// so clicks edit instead of selecting. Play mode only, like the terrain itself.
     /// </remarks>
-    [RequireComponent(typeof(ChunkView))]
     public class TerrainBrushTool : MonoBehaviour
     {
         public const float MinRadius = 0.25f;
@@ -75,7 +77,7 @@ namespace Clube.Debug
         private readonly List<int> sphereTriangles = new List<int>();
         private readonly List<Color32> sphereColors = new List<Color32>();
 
-        private ChunkView chunkView;
+        private IEditableTerrain terrain;
         private VoxelSelector selector;
         private LabMeshObject preview;
         private Color32 previewColor;
@@ -124,7 +126,7 @@ namespace Clube.Debug
 
         private void Awake()
         {
-            chunkView = GetComponent<ChunkView>();
+            terrain = GetComponent<IEditableTerrain>();
             selector = GetComponent<VoxelSelector>();
         }
 
@@ -153,7 +155,7 @@ namespace Clube.Debug
         // Inspector changes to the tool apply at once in Play mode.
         private void OnValidate()
         {
-            if (chunkView != null && enabled && gameObject.activeInHierarchy)
+            if (terrain != null && enabled && gameObject.activeInHierarchy)
             {
                 ApplyTool();
             }
@@ -168,7 +170,7 @@ namespace Clube.Debug
                 ReadKeys(keyboard);
             }
 
-            if (!IsEditing || mouse == null || chunkView.Chunk == null)
+            if (!IsEditing || mouse == null || terrain == null || !terrain.IsReady)
             {
                 return;
             }
@@ -186,14 +188,14 @@ namespace Clube.Debug
             if (mouse.leftButton.wasPressedThisFrame || (mouse.leftButton.isPressed && Time.unscaledTime >= nextApplyTime))
             {
                 var operation = tool == ChunkClickTool.Add ? BrushOperation.Add : BrushOperation.Remove;
-                LastChangedSamples = TerrainBrush.Apply(chunkView.Chunk, centre, chunkView.Config.VoxelSize, Brush, operation);
+                LastChangedSamples = terrain.ApplyBrush(centre, Brush, operation);
                 nextApplyTime = Time.unscaledTime + 1f / repeatRate;
             }
         }
 
         private void OnGUI()
         {
-            if (Event.current.type != EventType.Repaint || chunkView.Chunk == null)
+            if (Event.current.type != EventType.Repaint || terrain == null || !terrain.IsReady)
             {
                 return;
             }
@@ -262,21 +264,12 @@ namespace Clube.Debug
             previewColor = tool == ChunkClickTool.Add ? addPreviewColor : digPreviewColor;
         }
 
-        /// <summary>Where the cursor's ray meets the surface, chunk-local.</summary>
+        /// <summary>Where the cursor's ray meets the surface, in world space.</summary>
         private bool Aim(Vector2 screenPoint, out Vector3 centre)
         {
             centre = default;
             Camera viewCamera = ViewCamera;
-            if (viewCamera == null)
-            {
-                return false;
-            }
-
-            Ray worldRay = viewCamera.ScreenPointToRay(screenPoint);
-            var localRay = new Ray(
-                transform.InverseTransformPoint(worldRay.origin),
-                transform.InverseTransformDirection(worldRay.direction));
-            return SurfaceRaycast.Cast(localRay, chunkView.Chunk, chunkView.Config.MeshSettings, out _, out centre);
+            return viewCamera != null && terrain.Raycast(viewCamera.ScreenPointToRay(screenPoint), out centre);
         }
 
         private void UpdatePreview(bool visible, Vector3 centre)
@@ -310,7 +303,7 @@ namespace Clube.Debug
             }
 
             preview.Visible = true;
-            preview.Transform.localPosition = centre;
+            preview.Transform.position = centre;
             preview.Transform.localScale = Vector3.one * radius;
         }
     }
