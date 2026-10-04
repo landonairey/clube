@@ -65,6 +65,9 @@ window, and the lab panels fit small windows.
 child (off by default; its Inspector has the controls). The recorder
 logs a closing `Normals` step. K19's "layer" granularity steps Z slices,
 the mesher's outer loop, so playback stays in true build order.
+`StepUnits` groups the recorded steps into what playback moves through
+(sub-step, voxel, slice; K20 skips empty voxels); `StepThroughLab.Current`
+maps that back to the recorded step. Next: K21 + K22.
 K31 (lab control panel) is queued.
 
 ## Conventions
