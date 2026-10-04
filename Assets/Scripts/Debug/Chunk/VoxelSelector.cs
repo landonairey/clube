@@ -167,10 +167,13 @@ namespace Clube.Debug
                 normal = { textColor = Color.white },
             };
 
+            // Step-through reveals the case itself, so the label leaves it out while that's on.
             Vector3Int voxel = SelectedVoxel.Value;
-            int caseIndex = MarchingCubes.GetCaseIndex(ReadCorners(voxel), chunkView.Config.IsoLevel);
+            string caseText = StepThroughMode.IsOn(this)
+                ? ""
+                : $"case {MarchingCubes.GetCaseIndex(ReadCorners(voxel), chunkView.Config.IsoLevel)}   ";
             var content = new GUIContent(
-                $"<b>Voxel ({voxel.x}, {voxel.y}, {voxel.z})</b>  case {caseIndex}   " +
+                $"<b>Voxel ({voxel.x}, {voxel.y}, {voxel.z})</b>  {caseText}" +
                 "<color=#aaaaaa>F focus · click empty space to clear</color>");
 
             Vector2 size = labelStyle.CalcSize(content);

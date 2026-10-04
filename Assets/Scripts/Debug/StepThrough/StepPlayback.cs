@@ -106,6 +106,17 @@ namespace Clube.Debug
             Progress = 1f;
         }
 
+        /// <summary>
+        /// Pauses at <paramref name="progress"/> (0-1) of the way through step
+        /// <paramref name="index"/>, e.g. at the start of a voxel jumped to (K21), so
+        /// playing from there shows it being built.
+        /// </summary>
+        public void Seek(int index, float progress)
+        {
+            Seek(index);
+            Progress = Mathf.Clamp01(progress);
+        }
+
         /// <summary>Moves time forward while playing; a step of duration 0 completes at once.</summary>
         /// <param name="durationOf">Seconds the step at a given index takes at speed 1.</param>
         public void Advance(float deltaTime, Func<int, float> durationOf)

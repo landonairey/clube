@@ -78,7 +78,31 @@ namespace Clube.Debug
             }
 
             lab.Speed = frame.Slider("Speed", lab.Speed, 0.1f, 5f, "0.0×");
-            GUILayout.Label("Space play/pause · ← → step · G step by · H skip empty · R restart", frame.Hint);
+
+            // Jump to the selected voxel (K21) and camera follow (K22), where the scene has them.
+            var link = lab.GetComponent<StepThroughVoxelLink>();
+            if (link != null)
+            {
+                bool hasSelection = link.SelectedVoxel.HasValue;
+                GUI.enabled = hasSelection;
+                if (GUILayout.Button(hasSelection ? "Jump to selected voxel" : "Jump to selected voxel (click a voxel first)", frame.Button))
+                {
+                    link.JumpToSelection();
+                }
+                GUI.enabled = true;
+            }
+            var follow = lab.GetComponent<StepThroughCameraFollow>();
+            if (follow != null)
+            {
+                bool following = frame.ToggleField("Camera follows the current voxel", follow.Follow);
+                if (following != follow.Follow)
+                {
+                    follow.Follow = following;
+                }
+            }
+
+            string extraKeys = (link != null ? " · J jump to selection" : "") + (follow != null ? " · C camera follow" : "");
+            GUILayout.Label($"Space play/pause · ← → step · G step by · H skip empty · R restart{extraKeys}", frame.Hint);
         }
     }
 }

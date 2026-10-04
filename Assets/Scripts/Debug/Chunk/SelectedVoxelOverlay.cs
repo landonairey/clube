@@ -12,7 +12,8 @@ namespace Clube.Debug
     /// </summary>
     /// <remarks>
     /// The lines come from the voxel re-polygonised on its own, nudged a hair along
-    /// each face normal so they sit just in front of the chunk's own triangles.
+    /// each face normal so they sit just in front of the chunk's own triangles. Both
+    /// hide while step-through mode is on, which draws its own labels for the voxel.
     /// </remarks>
     [RequireComponent(typeof(ChunkView), typeof(VoxelSelector))]
     public class SelectedVoxelOverlay : MonoBehaviour
@@ -55,6 +56,9 @@ namespace Clube.Debug
         private Material ownedMaterial;
         private GUIStyle labelStyle;
         private bool rebuildRequested;
+
+        // Whether the last rebuild left edges to show, so step-through can hide and restore them.
+        private bool hasEdges;
 
         private void Awake()
         {
@@ -108,12 +112,21 @@ namespace Clube.Debug
                 rebuildRequested = false;
                 RebuildEdges();
             }
+
+            // Step-through stands in for these while it's on: the edges and labels would
+            // give away the answer it reveals one step at a time. Checked per frame
+            // because the mode can be switched at any time.
+            if (edges != null)
+            {
+                edges.Visible = hasEdges && !StepThroughMode.IsOn(this);
+            }
         }
 
         private void OnGUI()
         {
             Vector3Int? selected = selector.SelectedVoxel;
-            if (Event.current.type != EventType.Repaint || !showCornerLabels || selected == null || chunkView.Chunk == null)
+            if (Event.current.type != EventType.Repaint || !showCornerLabels || selected == null || chunkView.Chunk == null
+                || StepThroughMode.IsOn(this))
             {
                 return;
             }
@@ -152,6 +165,7 @@ namespace Clube.Debug
             Chunk chunk = chunkView.Chunk;
             if (!highlightTriangles || selected == null || chunk == null)
             {
+                hasEdges = false;
                 if (edges != null)
                 {
                     edges.Visible = false;
@@ -201,7 +215,8 @@ namespace Clube.Debug
             edges.Mesh.SetVertices(vertices);
             edges.Mesh.SetIndices(lineIndices, MeshTopology.Lines, 0);
             edges.SetColor(highlightColor);
-            edges.Visible = true;
+            hasEdges = true;
+            edges.Visible = !StepThroughMode.IsOn(this);
         }
 
         private Material Material()
