@@ -177,8 +177,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughLab
   speed: 1
+  granularity: 0
+  skipEmptyVoxels: 0
   autoPlay: 1
   timings:
+    voxel: 0.8
+    slice: 3
     densityField: 1.5
     sampleCorners: 2
     caseIndex: 2.5
@@ -490,7 +494,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkLabPanel
   startOpen: 1
-  width: 300
+  width: 320
   background: {r: 0, g: 0, b: 0, a: 0.7}
 --- !u!1 &1507819481
 GameObject:

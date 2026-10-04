@@ -10,8 +10,9 @@ namespace Clube.Core
     /// log and never re-runs the algorithm itself.
     /// </summary>
     /// <remarks>
-    /// Recording only exists in the Editor and development builds (A5): in a
-    /// release build the record calls compile out and the log stays empty.
+    /// Recording only exists in the Editor, development builds and the lab demo
+    /// build (<c>CLUBE_LAB_BUILD</c>; A5): in a release build the record calls
+    /// compile out and the log stays empty.
     /// When no recorder is passed, the mesher does no extra work.
     /// </remarks>
     public sealed class MeshingRecorder
@@ -19,10 +20,24 @@ namespace Clube.Core
         private const string EditorSymbol = "UNITY_EDITOR";
         private const string DevelopmentSymbol = "DEVELOPMENT_BUILD";
 
+        // Set only by the lab demo build (DemoBuild), so its step-through works; the game never sets it.
+        private const string LabBuildSymbol = "CLUBE_LAB_BUILD";
+
         private readonly List<RecordedVoxel> voxels = new List<RecordedVoxel>();
         private readonly List<MeshingStep> steps = new List<MeshingStep>();
 
         private float[] densities = new float[0];
+
+        /// <summary>
+        /// True when recording is compiled into this build (the Editor, a development build,
+        /// or the lab demo build). Elsewhere the log always stays empty.
+        /// </summary>
+        public static bool IsAvailable =>
+#if UNITY_EDITOR || DEVELOPMENT_BUILD || CLUBE_LAB_BUILD
+            true;
+#else
+            false;
+#endif
 
         /// <summary>The settings the recorded build used (iso level, voxel size, variants).</summary>
         public ChunkMeshSettings Settings { get; private set; }
@@ -45,7 +60,7 @@ namespace Clube.Core
         }
 
         /// <summary>Starts a new log with the chunk's density field as its first step.</summary>
-        [Conditional(EditorSymbol), Conditional(DevelopmentSymbol)]
+        [Conditional(EditorSymbol), Conditional(DevelopmentSymbol), Conditional(LabBuildSymbol)]
         internal void Begin(ChunkMeshSettings settings, Chunk chunk)
         {
             Settings = settings;
@@ -73,13 +88,13 @@ namespace Clube.Core
             steps.Add(new MeshingStep(MeshingStepType.DensityField, voxelIndex: -1));
         }
 
-        [Conditional(EditorSymbol), Conditional(DevelopmentSymbol)]
+        [Conditional(EditorSymbol), Conditional(DevelopmentSymbol), Conditional(LabBuildSymbol)]
         internal void BeginVoxel(Vector3Int voxel, Vector3 origin, IReadOnlyList<float> cornerValues)
         {
             voxels.Add(new RecordedVoxel(voxel, origin, cornerValues));
         }
 
-        [Conditional(EditorSymbol), Conditional(DevelopmentSymbol)]
+        [Conditional(EditorSymbol), Conditional(DevelopmentSymbol), Conditional(LabBuildSymbol)]
         internal void RecordCase(int caseIndex, int crossedEdgeMask)
         {
             RecordedVoxel voxel = voxels[CurrentVoxel];
@@ -91,14 +106,14 @@ namespace Clube.Core
             steps.Add(new MeshingStep(MeshingStepType.EdgeTable, CurrentVoxel));
         }
 
-        [Conditional(EditorSymbol), Conditional(DevelopmentSymbol)]
+        [Conditional(EditorSymbol), Conditional(DevelopmentSymbol), Conditional(LabBuildSymbol)]
         internal void RecordVertex(int edge, Vector3 position)
         {
             voxels[CurrentVoxel].SetEdgeVertex(edge, position);
             steps.Add(new MeshingStep(MeshingStepType.Interpolate, CurrentVoxel, edge));
         }
 
-        [Conditional(EditorSymbol), Conditional(DevelopmentSymbol)]
+        [Conditional(EditorSymbol), Conditional(DevelopmentSymbol), Conditional(LabBuildSymbol)]
         internal void RecordTriangle(int edgeA, int edgeB, int edgeC)
         {
             steps.Add(new MeshingStep(
@@ -106,7 +121,7 @@ namespace Clube.Core
         }
 
         /// <summary>Closes the log with the normals step, after the last voxel (K18).</summary>
-        [Conditional(EditorSymbol), Conditional(DevelopmentSymbol)]
+        [Conditional(EditorSymbol), Conditional(DevelopmentSymbol), Conditional(LabBuildSymbol)]
         internal void End()
         {
             steps.Add(new MeshingStep(MeshingStepType.Normals, voxelIndex: -1));

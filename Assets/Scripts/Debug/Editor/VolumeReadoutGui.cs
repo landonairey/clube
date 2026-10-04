@@ -59,7 +59,7 @@ namespace Clube.Debug.Editor
             {
                 EditorGUILayout.LabelField(
                     new GUIContent("Approximate (V11)", "Mean of the 8 corner densities. Ignores the iso level and the surface shape."),
-                    new GUIContent(FormatVolume(report.Approximate, cubeVolume)));
+                    new GUIContent(VolumeText.Volume(report.Approximate, cubeVolume)));
 
                 if (report.HasExact)
                 {
@@ -72,19 +72,19 @@ namespace Clube.Debug.Editor
                         new GUIContent("Smooth field (V14)",
                             $"Monte Carlo estimate ({report.MonteCarloSamples:N0} samples) of how much of the cube the trilinear " +
                             "density field fills. Marching Cubes' flat triangles approximate this field."),
-                        new GUIContent(FormatVolume(report.TrilinearEstimate, cubeVolume)));
+                        new GUIContent(VolumeText.Volume(report.TrilinearEstimate, cubeVolume)));
 
                     if (report.HasExact)
                     {
                         EditorGUILayout.LabelField(
                             new GUIContent("Exact − smooth field", "How far Marching Cubes' solid is from the smooth field."),
-                            new GUIContent(FormatError(report.Exact, report.TrilinearEstimate)));
+                            new GUIContent(VolumeText.Error(report.Exact, report.TrilinearEstimate)));
                     }
                     else
                     {
                         EditorGUILayout.LabelField(
                             new GUIContent("Approximate − smooth field", "How far the corner average is from the smooth field."),
-                            new GUIContent(FormatError(report.Approximate, report.TrilinearEstimate)));
+                            new GUIContent(VolumeText.Error(report.Approximate, report.TrilinearEstimate)));
                     }
                 }
             }
@@ -94,7 +94,7 @@ namespace Clube.Debug.Editor
         {
             EditorGUILayout.LabelField(
                 new GUIContent("Exact (V12)", "The solid Marching Cubes builds, closed with the cube faces and summed as tetrahedra."),
-                new GUIContent(FormatVolume(report.Exact, cubeVolume)));
+                new GUIContent(VolumeText.Volume(report.Exact, cubeVolume)));
 
             EditorGUILayout.LabelField(" ", $"{report.PositiveTetrahedra} tetrahedra", EditorStyles.miniLabel);
             if (report.NegativeTetrahedra > 0)
@@ -107,22 +107,7 @@ namespace Clube.Debug.Editor
 
             EditorGUILayout.LabelField(
                 new GUIContent("Approximate − exact", "Absolute difference in percentage points, and relative to the exact volume."),
-                new GUIContent(FormatError(report.Approximate, report.Exact)));
-        }
-
-        private static string FormatVolume(float fraction, float cubeVolume)
-        {
-            return $"{fraction * 100f:0.00}%   ({fraction * cubeVolume:0.0000} u³)";
-        }
-
-        // e.g. "+10.42 pts (+500.0%)": the gap in percentage points, then relative to the reference.
-        private static string FormatError(float value, float reference)
-        {
-            float points = (value - reference) * 100f;
-            string relative = Mathf.Abs(reference) > 1e-6f
-                ? $"{(value - reference) / reference * 100f:+0.0;-0.0;0.0}%"
-                : "n/a";
-            return $"{points:+0.00;-0.00;0.00} pts   ({relative})";
+                new GUIContent(VolumeText.Error(report.Approximate, report.Exact)));
         }
     }
 }
