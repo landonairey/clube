@@ -61,14 +61,16 @@ K34 is done: the exe opens on the `DemoMenu` welcome scene (Single voxel =
 VoxelLab, Single chunk = ChunkLab, Exit; `DemoExitButton` and Esc in either
 lab return to it; VoxelLab lists its keys with `ControlsHint`), in a resizable 1280×720
 window, and the lab panels fit small windows.
-2F in progress, in three PRs: (1) step-through in ChunkLab + K17 + K18,
-(2) K19 + K20, (3) K21 + K22. ChunkLab's chunk has a `Step Through`
-child (off by default; its Inspector has the controls). The recorder
+2F is done (K17–K22). ChunkLab's chunk has a `Step Through`
+child (off by default; its Inspector and the in-game panel have the
+controls), with `StepThroughVoxelLink` (selecting a voxel jumps there, K21)
+and `StepThroughCameraFollow` (K22). The recorder
 logs a closing `Normals` step. K19's "layer" granularity steps Z slices,
 the mesher's outer loop, so playback stays in true build order.
 `StepUnits` groups the recorded steps into what playback moves through
 (sub-step, voxel, slice; K20 skips empty voxels); `StepThroughLab.Current`
-maps that back to the recorded step. Next: K21 + K22.
+maps that back to the recorded step. **Next: 3A** (then the rest of 2D
+and 2G, per the build order above).
 K31 (lab control panel) is under way: `VoxelLabPanel` and `ChunkLabPanel`
 are in-game panels on a shared `LabPanelFrame`, with shared
 `StepThroughControls` and `MeshingControls`. The demo build sets
