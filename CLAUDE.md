@@ -52,6 +52,13 @@ PNG" button write to `Assets/Heightmaps/`.
 difference between reused lists and arrays, so Core keeps lists; results
 are in `Docs/benchmarks.md`. Order changed: 2E, then 2F, then 3A; the rest
 of 2D (K12, K32) and 2G come after 3A.
+K32 is done: `ChunkMesher` reads densities a Z layer at a time through
+`IVoxelStorage.ReadLayer` (every storage scheme must implement it), reuses
+the 4 corners shared with the previous voxel, looks up crossed-edge masks
+in a table and skips uncrossed voxels unless recording; 64³ went from 81
+to 5.5 ms. `MesherSpeedBenchmark` (*Clube → Benchmarks → Mesher speed*)
+measures it, and `ChunkMesherTests.RandomChunk_MatchesPolygonisePerVoxel`
+guards the output.
 2E is done (K13–K16, K33). `TerrainBrush` (Core) adds or removes a sphere
 through A7; `TerrainBrushTool` (ChunkLab) picks Select, Dig or Add with
 1/2/3 and switches `VoxelSelector` off while editing. `ChunkLabPanel` is the
@@ -100,7 +107,7 @@ colour), `WorldLabHud` (position, voxel, chunk; brush volume totals) and
 radius, Soft only the surface layer (fills next to solid, empties next to
 air), and it returns a `BrushResult` for volume tracking. World chunks use
 the opaque `Terrain` material.
-**Next:** back to 2D (K12, K32) and 2G, then M12, per the build order.
+**Next:** 2D's K12 (Jobs/Burst), then 2G, then M12, per the build order.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
@@ -189,6 +196,20 @@ the opaque `Terrain` material.
   hangs at startup on mismatched URP assets.
 - Running tests: several Unity versions are installed; use
   `C:/Program Files/Unity/Hub/Editor/6000.3.25f1/Editor/Unity.exe`.
+- MCP gotcha: `RunCommand` refuses `System.Reflection`, so it can't
+  discover tests. For a quick in-Editor check, call test methods directly
+  (`new ChunkMesherTests().SomeTest()`, calling `[SetUp]` methods first);
+  NUnit's `Assert` works without the runner. Still run the full suite in
+  batch mode before a PR.
+- MCP gotcha: after writing scripts from the shell, Unity only refreshes
+  when its window is focused. Call `AssetDatabase.Refresh()` through
+  `RunCommand`; the bridge then drops for the recompile, and is back once
+  `~/.unity/mcp/connections/bridge-*.json` exists again (the folder is
+  emptied during the reload).
+- MCP gotcha: modal Editor dialogs (e.g. "scene modified outside Unity —
+  reload?") block the main thread and so the bridge. Save and switch to an
+  empty scene before git operations that change open scene files, and
+  never edit an open scene's YAML from the shell.
 - MCP gotcha: GameObject instance IDs change on every domain reload
   (entering Play mode, recompiling). Look objects up again with `find`
   before passing an ID to tools like `Camera_Capture`.

@@ -170,14 +170,15 @@ Build order *(changed)*: 2A–2C, 2E (with the first demo exe, K33), 2F, then Ch
   - Note: the chunk is 3D, so "height" means the topmost iso-crossing in each column; overhangs and caves are lost.
 
 ### 2D — Performance *(rest after 3A)*
-K11 is done. K12 and K32 wait until 3A gives a multi-chunk world to measure on.
+K11 and K32 are done; K12 is next.
 
 - [x] **K11** `Lab` Benchmark: `List<T>` vs preallocated arrays for mesh building.
   - Method: Stopwatch over N runs after warmup; record ms and GC allocations (Profiler / `GC.GetAllocatedBytesForCurrentThread`); test at 3+ chunk sizes.
   - Output: results table in the repo (`Docs/benchmarks.md`). Winner becomes the `Core` implementation.
   - Result: no measurable difference (within 1%), and worst-case arrays hold 60 MB at 64³, so reused `List<T>` stays in Core. The time goes into visiting voxels, not storing the mesh. (`MeshStorageBenchmark`, *Clube → Benchmarks*. Allocations come from heap growth, because `GC.GetAllocatedBytesForCurrentThread` reads 0 on Mono.)
 - [ ] **K12** `Lab` *(added, optional)* Third variant: `NativeArray` + Jobs/Burst — sets up Chapter 4 threading. *(Also a backlog item: "code test of Burst-compiled jobs".)*
-- [ ] **K32** `Core + Lab` *(added, from K11)* Speed up the mesher's per-voxel loop, benchmarked against the K11 baseline (77 ms at 64³). Candidates: read densities straight from the flat storage, not through `IVoxelStorage` per corner; reuse the 4 corners shared with the previous voxel; store the crossed-edge mask as a 256-entry table; and skip all-solid or all-empty runs early.
+- [x] **K32** `Core + Lab` *(added, from K11)* Speed up the mesher's per-voxel loop, benchmarked against the K11 baseline (77 ms at 64³). Candidates: read densities straight from the flat storage, not through `IVoxelStorage` per corner; reuse the 4 corners shared with the previous voxel; store the crossed-edge mask as a 256-entry table; and skip all-solid or all-empty runs early.
+  - Result: 64³ meshing from 81 to 5.5 ms flat (15×) and 83 to 7.1 ms smooth (`MesherSpeedBenchmark`, *Clube → Benchmarks → Mesher speed*). Densities are read a Z layer at a time through a new `IVoxelStorage.ReadLayer` rather than straight from the flat array, so the mesher stays behind A12 and RLE and octree storage (K24, K25) must implement it too. The layer reads with corner reuse gave 11× on their own; the edge table and early skip about 15% and 8%. Smooth shading's `SharedVertexWriter` dictionary is now its main extra cost. Details in `Docs/benchmarks.md`.
 
 ### 2E — Terrain editing
 - [x] **K13** `Core + Lab` Click to add terrain (A7 path). (`TerrainBrush` in Core; `TerrainBrushTool` in ChunkLab: 1/2/3 pick Select, Dig or Add, and holding the button repeats.)
@@ -226,7 +227,7 @@ Compare storage schemes on a single chunk, behind the A12 interface, then measur
 This is where the shift happens: lab controls stay in `WorldLab`, and `Game` gets its first playable form.
 
 ### 3A — Chunk management
-After 3A: return to 2D (K12, K32) and 2G, then M12.
+After 3A: return to 2D (K32 done, then K12) and 2G, then M12.
 
 - [x] **M1** `Core` *(added — prerequisite)* Chunk coordinate system and chunk manager (world pos ↔ chunk ↔ voxel). (`WorldGrid`: world position, global sample, chunk and local sample, floored so negative coordinates work. `World` holds the loaded chunks; `WorldView` is the chunk manager: streams chunks around a focus point, nearest first and a few per frame, and pools their `ChunkRenderer`s. Chunks are cubes on a 3D grid, stacked `WorldHeightInChunks` layers high from y = 0; see M17.)
 - [x] **M2** `Core` *(added — prerequisite)* Seamless borders: chunks share edge density samples so no cracks/gaps. (Each chunk keeps its own copy of the shared border samples and `World` keeps every copy equal: generation samples world positions, `World.SetDensity` writes all copies, and a newly loaded chunk takes its border from edited neighbours. Tests check shared samples and that border vertices match. Smooth-shading normals are still computed per chunk, so lighting can show a faint line at a border.)
