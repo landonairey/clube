@@ -34,6 +34,21 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void RayStraightDownAVoxelFace_StillHitsTheSurface()
+        {
+            // A camera looking straight down gives a ray with a vanishing sideways part. On a
+            // voxel boundary (x = 1) the walk commits to one column, where the surface only
+            // meets the ray on a triangle edge.
+            Chunk chunk = Floor(new Vector3Int(3, 3, 3));
+            var ray = new Ray(new Vector3(1f, 10f, 1f), new Vector3(-4e-8f, -1f, -4e-8f));
+
+            bool hit = SurfaceRaycast.Cast(ray, chunk, Settings, out _, out Vector3 point);
+
+            Assert.That(hit, Is.True);
+            Assert.That(point.y, Is.EqualTo(0.5f).Within(Tolerance));
+        }
+
+        [Test]
         public void EmptyChunk_HasNothingToHit()
         {
             var chunk = new Chunk(new Vector3Int(3, 3, 3));
