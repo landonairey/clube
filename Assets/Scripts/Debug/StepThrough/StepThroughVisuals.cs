@@ -12,14 +12,16 @@ namespace Clube.Debug
     /// in the Game view as well as the Scene view (V19): spheres on the density
     /// samples, on the current voxel's corners and edge vertices, a line per cube
     /// edge, an outline for the triangle being added, and a mesh of every triangle
-    /// finished so far.
+    /// finished so far. The closing normals step (K18) grows a line from each
+    /// triangle's centre along its face normal, then swaps in the finished mesh,
+    /// shaded as the chunk is.
     /// </summary>
     /// <remarks>
     /// Only the current voxel gets corner and edge markers, so that set is reused
-    /// for every voxel and chunk size. The density field gets one sphere per sample,
-    /// which suits the voxel lab; Chapter 2's chunk-scale field (K17) will need a
-    /// cheaper way to draw thousands of points. Everything lives under one root,
-    /// parented to the chunk so it shares its transform.
+    /// for every voxel and chunk size. The density field is one combined mesh
+    /// (<see cref="SampleSpheres"/>), so a whole chunk's samples cost one draw call
+    /// (K17); above <see cref="SampleSpheres.MaxSamples"/> it isn't drawn.
+    /// Everything lives under one root, parented to the chunk so it shares its transform.
     /// </remarks>
     public sealed class StepThroughVisuals : IDisposable
     {
@@ -30,7 +32,14 @@ namespace Clube.Debug
         public const float HighlightedCornerRadius = 0.14f;
 
         private const float VertexRadius = 0.06f;
+
+        // Normal line length, as a fraction of the voxel size.
+        private const float NormalLength = 0.3f;
+
         private const string ColorProperty = "_BaseColor";
+
+        // surfaceTriangleCount when the surface holds the finished mesh.
+        private const int FinishedSurface = -2;
 
         public static readonly Color SolidColor = new Color(1f, 0.55f, 0.15f);
         public static readonly Color EmptyColor = new Color(0.35f, 0.65f, 1f);
@@ -39,10 +48,12 @@ namespace Clube.Debug
         private static readonly Color CubeEdgeColor = new Color(0.55f, 0.55f, 0.55f);
         private static readonly Color VertexColor = new Color(1f, 0.95f, 0.3f);
         private static readonly Color TriangleOutlineColor = new Color(0.3f, 1f, 0.85f);
+        private static readonly Color NormalColor = new Color(0.3f, 0.8f, 1f);
 
         private readonly GameObject root;
         private readonly Material markerMaterial;
-        private readonly List<MeshRenderer> sampleSpheres = new List<MeshRenderer>();
+        private readonly SampleSpheres sampleSpheres;
+        private readonly LabMeshObject normalLines;
         private readonly MeshRenderer[] cornerSpheres = new MeshRenderer[MarchingCubes.CornerCount];
         private readonly MeshRenderer[] vertexSpheres = new MeshRenderer[MarchingCubes.EdgeCount];
         private readonly LineRenderer[] edgeLines = new LineRenderer[MarchingCubes.EdgeCount];
@@ -53,20 +64,36 @@ namespace Clube.Debug
         private readonly List<Vector3> surfaceVertices = new List<Vector3>();
         private readonly List<int> surfaceTriangles = new List<int>();
 
-        // Recording index of each triangle step, and how many are in the surface mesh.
+        // The mesher's real output, shown once the normals step completes.
+        private readonly List<Vector3> finishedVertices = new List<Vector3>();
+        private readonly List<int> finishedTriangles = new List<int>();
+        private readonly List<Vector3> finishedNormals = new List<Vector3>();
+        private readonly List<Vector3> faceCentres = new List<Vector3>();
+        private readonly List<Vector3> faceNormals = new List<Vector3>();
+        private readonly List<Vector3> lineVertices = new List<Vector3>();
+        private readonly List<int> lineIndices = new List<int>();
+
+        // Recording index of each triangle step, and how many are in the surface mesh;
+        // FinishedSurface when it holds the finished mesh instead.
         private readonly List<int> triangleSteps = new List<int>();
         private int surfaceTriangleCount = -1;
+        private float shownNormalLength = -1f;
 
         private MeshingRecorder recording;
 
         /// <param name="chunk">Transform the recorded chunk-local positions are relative to.</param>
         /// <param name="markerMaterial">Unlit material for spheres and lines, tinted per object.</param>
+        /// <param name="sampleMaterial">Vertex-colour material for the density field's spheres.</param>
         /// <param name="surfaceMaterial">Material for the partial surface, normally the chunk's own.</param>
-        public StepThroughVisuals(Transform chunk, Material markerMaterial, Material surfaceMaterial)
+        public StepThroughVisuals(Transform chunk, Material markerMaterial, Material sampleMaterial, Material surfaceMaterial)
         {
             this.markerMaterial = markerMaterial;
             root = new GameObject("Step Through Visuals");
             root.transform.SetParent(chunk, false);
+
+            sampleSpheres = new SampleSpheres(root.transform, "Density Field", sampleMaterial);
+            normalLines = new LabMeshObject(root.transform, "Normals", markerMaterial);
+            normalLines.SetColor(NormalColor);
 
             for (int corner = 0; corner < cornerSpheres.Length; corner++)
             {
@@ -95,7 +122,9 @@ namespace Clube.Debug
         }
 
         /// <summary>Uses a new recording; call after every re-record.</summary>
-        public void Load(MeshingRecorder newRecording)
+        /// <param name="vertices">The recorded build's output vertices, as the chunk's mesh gets them.</param>
+        /// <param name="triangles">The recorded build's output triangles.</param>
+        public void Load(MeshingRecorder newRecording, IReadOnlyList<Vector3> vertices, IReadOnlyList<int> triangles)
         {
             recording = newRecording;
             triangleSteps.Clear();
@@ -107,13 +136,16 @@ namespace Clube.Debug
                 }
             }
             surfaceTriangleCount = -1;
+            shownNormalLength = -1f;
 
             Vector3Int count = recording.SampleCount;
-            int samples = count.x * count.y * count.z;
-            while (sampleSpheres.Count < samples)
+            if (SampleSpheres.Total(count) <= SampleSpheres.MaxSamples)
             {
-                sampleSpheres.Add(CreateSphere($"Sample {sampleSpheres.Count}"));
+                sampleSpheres.SetGeometry(count, recording.Settings.VoxelSize, CornerRadius);
+                sampleSpheres.SetDensities(recording.GetDensity, 1f);
             }
+
+            LoadFinishedMesh(vertices, triangles);
         }
 
         /// <summary>Shows the build as it stands <paramref name="progress"/> (0-1) of the way through step <paramref name="stepIndex"/>.</summary>
@@ -126,11 +158,20 @@ namespace Clube.Debug
             }
 
             MeshingStep step = recording.Steps[stepIndex];
-            ShowSurface(stepIndex, progress);
+            bool isNormals = step.Type == MeshingStepType.Normals;
+            if (isNormals && progress >= 1f)
+            {
+                ShowFinishedSurface();
+            }
+            else
+            {
+                ShowSurface(stepIndex, progress);
+            }
+            ShowNormals(isNormals && progress < 1f ? progress : -1f);
 
             bool isField = step.Type == MeshingStepType.DensityField;
             ShowSamples(isField ? progress : -1f);
-            if (isField)
+            if (step.VoxelIndex < 0)
             {
                 HideVoxelMarkers();
                 return;
@@ -146,30 +187,107 @@ namespace Clube.Debug
 
         public void Dispose()
         {
+            sampleSpheres.Dispose();
+            normalLines.Dispose();
             Object.Destroy(surface);
             Object.Destroy(root);
         }
 
-        // The density field, samples appearing in storage order; hidden when progress < 0.
+        // The density field, samples appearing in storage order; hidden when progress < 0
+        // or when there are too many samples to draw.
         private void ShowSamples(float progress)
         {
-            Vector3Int count = recording.SampleCount;
-            int total = count.x * count.y * count.z;
-            int shown = progress < 0f ? 0 : StepReveal.Revealed(progress, total);
-            float size = recording.Settings.VoxelSize;
-
-            for (int i = 0; i < sampleSpheres.Count; i++)
+            int total = SampleSpheres.Total(recording.SampleCount);
+            if (progress < 0f || total > SampleSpheres.MaxSamples)
             {
-                if (i >= shown)
-                {
-                    sampleSpheres[i].gameObject.SetActive(false);
-                    continue;
-                }
-
-                var sample = new Vector3Int(i % count.x, i / count.x % count.y, i / (count.x * count.y));
-                float density = recording.GetDensity(sample);
-                Place(sampleSpheres[i], (Vector3)sample * size, CornerRadius * size, Grey(density));
+                sampleSpheres.Visible = false;
+                return;
             }
+
+            sampleSpheres.Visible = true;
+            sampleSpheres.Reveal(StepReveal.Revealed(progress, total));
+        }
+
+        // Keeps the mesher's output and the normals Unity gives it, the same call
+        // ChunkView makes, so the closing step shows exactly what the chunk renders.
+        private void LoadFinishedMesh(IReadOnlyList<Vector3> vertices, IReadOnlyList<int> triangles)
+        {
+            finishedVertices.Clear();
+            finishedVertices.AddRange(vertices);
+            finishedTriangles.Clear();
+            finishedTriangles.AddRange(triangles);
+
+            var scratch = new Mesh { indexFormat = IndexFormat.UInt32 };
+            scratch.SetVertices(finishedVertices);
+            scratch.SetTriangles(finishedTriangles, 0);
+            scratch.RecalculateNormals();
+            scratch.GetNormals(finishedNormals);
+            Object.Destroy(scratch);
+
+            // Each triangle's normal from its winding, the same convention Unity uses
+            // (clockwise faces the viewer). Vertex normals are built from these.
+            faceCentres.Clear();
+            faceNormals.Clear();
+            for (int i = 0; i + 2 < finishedTriangles.Count; i += 3)
+            {
+                Vector3 a = finishedVertices[finishedTriangles[i]];
+                Vector3 b = finishedVertices[finishedTriangles[i + 1]];
+                Vector3 c = finishedVertices[finishedTriangles[i + 2]];
+                faceCentres.Add((a + b + c) / 3f);
+                faceNormals.Add(Vector3.Cross(b - a, c - a).normalized);
+            }
+        }
+
+        // Every triangle, with the shared vertices and normals the chunk's mesh has.
+        private void ShowFinishedSurface()
+        {
+            if (surfaceTriangleCount == FinishedSurface)
+            {
+                return;
+            }
+
+            surfaceTriangleCount = FinishedSurface;
+            surface.Clear();
+            surface.indexFormat = finishedVertices.Count > ushort.MaxValue ? IndexFormat.UInt32 : IndexFormat.UInt16;
+            surface.SetVertices(finishedVertices);
+            surface.SetTriangles(finishedTriangles, 0);
+            surface.SetNormals(finishedNormals);
+            surface.RecalculateBounds();
+        }
+
+        // A line from each triangle's centre along its face normal, growing from 0 to
+        // full length as the step plays; hidden when progress < 0.
+        private void ShowNormals(float progress)
+        {
+            if (progress < 0f || faceCentres.Count == 0)
+            {
+                normalLines.Visible = false;
+                return;
+            }
+
+            normalLines.Visible = true;
+            float length = Mathf.SmoothStep(0f, 1f, progress) * NormalLength * recording.Settings.VoxelSize;
+            if (Mathf.Approximately(length, shownNormalLength))
+            {
+                return;
+            }
+
+            shownNormalLength = length;
+            lineVertices.Clear();
+            lineIndices.Clear();
+            for (int i = 0; i < faceCentres.Count; i++)
+            {
+                lineIndices.Add(lineVertices.Count);
+                lineVertices.Add(faceCentres[i]);
+                lineIndices.Add(lineVertices.Count);
+                lineVertices.Add(faceCentres[i] + faceNormals[i] * length);
+            }
+
+            Mesh mesh = normalLines.Mesh;
+            mesh.Clear();
+            mesh.indexFormat = lineVertices.Count > ushort.MaxValue ? IndexFormat.UInt32 : IndexFormat.UInt16;
+            mesh.SetVertices(lineVertices);
+            mesh.SetIndices(lineIndices, MeshTopology.Lines, 0);
         }
 
         private void HideVoxelMarkers()
@@ -219,6 +337,7 @@ namespace Clube.Debug
             }
 
             surface.Clear();
+            surface.indexFormat = surfaceVertices.Count > ushort.MaxValue ? IndexFormat.UInt32 : IndexFormat.UInt16;
             surface.SetVertices(surfaceVertices);
             surface.SetTriangles(surfaceTriangles, 0);
             surface.RecalculateNormals();

@@ -32,6 +32,10 @@ namespace Clube.Debug
         [SerializeField, Min(0f)]
         private float triangle = 1f;
 
+        [Tooltip("Once, at the end: a normal grows from every triangle, then the finished mesh is shaded.")]
+        [SerializeField, Min(0f)]
+        private float normals = 2f;
+
         public float For(MeshingStepType type)
         {
             switch (type)
@@ -42,6 +46,7 @@ namespace Clube.Debug
                 case MeshingStepType.EdgeTable: return edgeTable;
                 case MeshingStepType.Interpolate: return interpolate;
                 case MeshingStepType.Triangle: return triangle;
+                case MeshingStepType.Normals: return normals;
                 default: throw new ArgumentOutOfRangeException(nameof(type), type, null);
             }
         }

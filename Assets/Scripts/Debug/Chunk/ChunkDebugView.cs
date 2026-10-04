@@ -15,8 +15,8 @@ namespace Clube.Debug
     /// parts it thinks are hidden more faintly, and in this project (URP on
     /// Direct3D 12) it reads that from a vertically flipped depth buffer, so mirror
     /// images of opaque objects showed up inside gizmos. All spheres are one
-    /// combined mesh with vertex colours (one draw call); a density edit only
-    /// rewrites the colours. Outside Play mode, where there is no chunk yet, the
+    /// combined mesh (<see cref="SampleSpheres"/>); a density edit only rewrites
+    /// the colours. Outside Play mode, where there is no chunk yet, the
     /// outline is drawn as a gizmo from the config.
     /// </remarks>
     [RequireComponent(typeof(ChunkView))]
@@ -33,9 +33,6 @@ namespace Clube.Debug
             /// <summary>The bounding box plus the grid lines between every voxel.</summary>
             VoxelGrid,
         }
-
-        /// <summary>Above this many samples the spheres are suppressed, to keep the mesh and its rebuilds light.</summary>
-        public const int MaxSampleSpheres = 40000;
 
         private const string VertexColorShader = "Universal Render Pipeline/Particles/Unlit";
         private const string LineShader = "Universal Render Pipeline/Unlit";
@@ -75,23 +72,17 @@ namespace Clube.Debug
         [SerializeField]
         private Material lineMaterial;
 
-        private readonly List<Vector3> sphereVertices = new List<Vector3>();
-        private readonly List<int> sphereTriangles = new List<int>();
-        private readonly List<Color32> sampleColors = new List<Color32>();
         private readonly List<Vector3> scratchVertices = new List<Vector3>();
         private readonly List<int> scratchIndices = new List<int>();
 
         private ChunkView chunkView;
-        private LabMeshObject samples;
+        private SampleSpheres samples;
         private LabMeshObject outline;
         private LabMeshObject grid;
         private Material ownedSampleMaterial;
         private Material ownedLineMaterial;
 
-        // What the current meshes were built for, so they are only rebuilt when it changes.
-        private Vector3Int builtSampleCount;
-        private float builtVoxelSize;
-        private float builtRadius;
+        // What the grid was built for, so it is only rebuilt when that changes.
         private Vector3Int builtGridCount;
         private float builtGridSize;
 
@@ -125,7 +116,7 @@ namespace Clube.Debug
             get
             {
                 Chunk chunk = GetComponent<ChunkView>().Chunk;
-                return showSamples && chunk != null && SampleTotal(chunk) > MaxSampleSpheres;
+                return showSamples && chunk != null && SampleTotal(chunk) > SampleSpheres.MaxSamples;
             }
         }
 
@@ -143,7 +134,10 @@ namespace Clube.Debug
         private void OnDisable()
         {
             chunkView.MeshRebuilt -= OnMeshRebuilt;
-            SetVisible(samples, false);
+            if (samples != null)
+            {
+                samples.Visible = false;
+            }
             SetVisible(outline, false);
             SetVisible(grid, false);
         }
@@ -217,88 +211,25 @@ namespace Clube.Debug
         private bool WantsSamples()
         {
             Chunk chunk = chunkView.Chunk;
-            return enabled && showSamples && chunk != null && SampleTotal(chunk) <= MaxSampleSpheres
+            return enabled && showSamples && chunk != null && SampleTotal(chunk) <= SampleSpheres.MaxSamples
                    && !StepThroughMode.IsOn(this);
         }
 
         private void RefreshSamples(Chunk chunk, float voxelSize)
         {
-            if (!showSamples || SampleTotal(chunk) > MaxSampleSpheres)
+            if (!showSamples || SampleTotal(chunk) > SampleSpheres.MaxSamples)
             {
-                SetVisible(samples, false);
+                if (samples != null)
+                {
+                    samples.Visible = false;
+                }
                 return;
             }
 
-            samples ??= new LabMeshObject(transform, "Density Samples", SampleMaterial());
-            Vector3Int count = chunk.SampleCount;
-            if (count != builtSampleCount || voxelSize != builtVoxelSize || cornerRadius != builtRadius)
-            {
-                BuildSampleGeometry(count, voxelSize);
-            }
-
-            // Densities are the only thing an ordinary edit changes: rewrite just the colours.
-            int perSphere = sphereVertices.Count;
-            byte alpha = (byte)(sampleOpacity * 255f);
-            sampleColors.Clear();
-            for (int z = 0; z < count.z; z++)
-            {
-                for (int y = 0; y < count.y; y++)
-                {
-                    for (int x = 0; x < count.x; x++)
-                    {
-                        byte grey = (byte)(Mathf.Clamp01(chunk.GetDensity(new Vector3Int(x, y, z))) * 255f);
-                        var color = new Color32(grey, grey, grey, alpha);
-                        for (int i = 0; i < perSphere; i++)
-                        {
-                            sampleColors.Add(color);
-                        }
-                    }
-                }
-            }
-            samples.Mesh.SetColors(sampleColors);
+            samples ??= new SampleSpheres(transform, "Density Samples", SampleMaterial());
+            samples.SetGeometry(chunk.SampleCount, voxelSize, cornerRadius);
+            samples.SetDensities(chunk.GetDensity, sampleOpacity);
             samples.Visible = WantsSamples();
-        }
-
-        private void BuildSampleGeometry(Vector3Int count, float voxelSize)
-        {
-            if (sphereVertices.Count == 0)
-            {
-                LabMeshes.Icosphere(sphereVertices, sphereTriangles);
-            }
-
-            float radius = cornerRadius * voxelSize;
-            scratchVertices.Clear();
-            scratchIndices.Clear();
-            for (int z = 0; z < count.z; z++)
-            {
-                for (int y = 0; y < count.y; y++)
-                {
-                    for (int x = 0; x < count.x; x++)
-                    {
-                        Vector3 centre = new Vector3(x, y, z) * voxelSize;
-                        int first = scratchVertices.Count;
-                        foreach (Vector3 vertex in sphereVertices)
-                        {
-                            scratchVertices.Add(centre + vertex * radius);
-                        }
-                        foreach (int index in sphereTriangles)
-                        {
-                            scratchIndices.Add(first + index);
-                        }
-                    }
-                }
-            }
-
-            Mesh mesh = samples.Mesh;
-            mesh.Clear();
-            mesh.indexFormat = scratchVertices.Count > ushort.MaxValue ? IndexFormat.UInt32 : IndexFormat.UInt16;
-            mesh.SetVertices(scratchVertices);
-            mesh.SetTriangles(scratchIndices, 0);
-            mesh.RecalculateBounds();
-
-            builtSampleCount = count;
-            builtVoxelSize = voxelSize;
-            builtRadius = cornerRadius;
         }
 
         private void RefreshOutline(Vector3Int voxelCount, float voxelSize)
@@ -412,8 +343,7 @@ namespace Clube.Debug
 
         private static int SampleTotal(Chunk chunk)
         {
-            Vector3Int count = chunk.SampleCount;
-            return count.x * count.y * count.z;
+            return SampleSpheres.Total(chunk.SampleCount);
         }
     }
 }

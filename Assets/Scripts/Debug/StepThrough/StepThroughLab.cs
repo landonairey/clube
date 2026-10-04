@@ -10,15 +10,21 @@ namespace Clube.Debug
     /// then replays the log (V16) with play/pause, stepping and speed (V17), an
     /// info line (V18) and Game-view visuals (V19). Turning this component on is
     /// the step-through mode: it hides the real mesh and takes the arrow keys.
+    /// Runs in VoxelLab (one voxel) and ChunkLab (a whole chunk, 2F), where the
+    /// build opens on the density field (K17) and closes on the normals (K18).
     /// </summary>
     /// <remarks>
     /// Play mode only: the chunk doesn't exist before then. A rebuild (corner,
-    /// case or iso change) starts the new recording from the first step, playing
-    /// or paused as before.
+    /// case or iso change, a brush edit) starts the new recording from the first
+    /// step, playing or paused as before.
     /// </remarks>
     public class StepThroughLab : MonoBehaviour
     {
         private const string MarkerShader = "Universal Render Pipeline/Unlit";
+        private const string VertexColorShader = "Universal Render Pipeline/Particles/Unlit";
+
+        // Lifts the info box clear of bottom-corner buttons (ChunkLab's Exit) and the tool label.
+        private const float InfoBottomReserve = 45f;
 
         // Above this many samples the density field is drawn without value labels.
         private const int MaxLabelledSamples = 64;
@@ -38,6 +44,10 @@ namespace Clube.Debug
         [SerializeField]
         private Material markerMaterial;
 
+        [Tooltip("Vertex-colour material for the density field's spheres (LabVertexColor). Falls back to URP Particles/Unlit if empty.")]
+        [SerializeField]
+        private Material sampleMaterial;
+
         [Tooltip("Camera the Game-view labels are projected with. Defaults to the main camera.")]
         [SerializeField]
         private Camera targetCamera;
@@ -51,6 +61,7 @@ namespace Clube.Debug
         private MeshRenderer chunkRenderer;
         private StepThroughVisuals visuals;
         private Material ownedMarkerMaterial;
+        private Material ownedSampleMaterial;
 
         // Set when turned on before the chunk exists; the first rebuild then autoplays.
         private bool awaitingFirstRecording;
@@ -132,6 +143,10 @@ namespace Clube.Debug
             {
                 Destroy(ownedMarkerMaterial);
             }
+            if (ownedSampleMaterial != null)
+            {
+                Destroy(ownedSampleMaterial);
+            }
         }
 
         private void Update()
@@ -173,7 +188,7 @@ namespace Clube.Debug
         {
             ChunkMesher.Build(chunkView.Chunk, chunkView.Config.MeshSettings, scratchVertices, scratchTriangles, recording);
             playback.Load(recording.Steps.Count);
-            visuals.Load(recording);
+            visuals.Load(recording, scratchVertices, scratchTriangles);
             if (play)
             {
                 playback.Play();
@@ -196,7 +211,14 @@ namespace Clube.Debug
                 ownedMarkerMaterial = new Material(Shader.Find(MarkerShader)) { name = "Step Through Markers" };
                 marker = ownedMarkerMaterial;
             }
-            visuals = new StepThroughVisuals(chunkView.transform, marker, chunkRenderer.sharedMaterial);
+
+            Material samples = sampleMaterial;
+            if (samples == null)
+            {
+                ownedSampleMaterial = new Material(Shader.Find(VertexColorShader)) { name = "Step Through Samples" };
+                samples = ownedSampleMaterial;
+            }
+            visuals = new StepThroughVisuals(chunkView.transform, marker, samples, chunkRenderer.sharedMaterial);
         }
 
         private void DrawSceneLabels(Camera viewCamera)
@@ -208,6 +230,10 @@ namespace Clube.Debug
             if (step.Type == MeshingStepType.DensityField)
             {
                 DrawSampleLabels(viewCamera, progress, size);
+                return;
+            }
+            if (step.VoxelIndex < 0)
+            {
                 return;
             }
 
@@ -287,7 +313,7 @@ namespace Clube.Debug
             const float margin = 10f;
             float width = Mathf.Min(Screen.width - 2f * margin, 760f);
             float height = infoStyle.CalcHeight(new GUIContent(text), width);
-            var rect = new Rect(Screen.width - width - margin, Screen.height - height - margin, width, height);
+            var rect = new Rect(Screen.width - width - margin, Screen.height - height - margin - InfoBottomReserve, width, height);
 
             GuiDrawing.Rect(rect, new Color(0f, 0f, 0f, 0.65f));
             GUI.Label(rect, text, infoStyle);
@@ -303,6 +329,7 @@ namespace Clube.Debug
                 case MeshingStepType.EdgeTable: return "Edge table";
                 case MeshingStepType.Interpolate: return "Interpolate";
                 case MeshingStepType.Triangle: return "Triangle table";
+                case MeshingStepType.Normals: return "Normals";
                 default: return type.ToString();
             }
         }

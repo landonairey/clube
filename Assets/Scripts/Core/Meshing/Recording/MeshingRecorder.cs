@@ -104,5 +104,12 @@ namespace Clube.Core
             steps.Add(new MeshingStep(
                 MeshingStepType.Triangle, CurrentVoxel, triangle: new EdgeTriangle(edgeA, edgeB, edgeC)));
         }
+
+        /// <summary>Closes the log with the normals step, after the last voxel (K18).</summary>
+        [Conditional(EditorSymbol), Conditional(DevelopmentSymbol)]
+        internal void End()
+        {
+            steps.Add(new MeshingStep(MeshingStepType.Normals, voxelIndex: -1));
+        }
     }
 }
