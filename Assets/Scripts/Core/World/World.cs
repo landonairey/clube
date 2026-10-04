@@ -15,16 +15,16 @@ namespace Clube.Core
     /// <list type="bullet">
     /// <item>Generation samples world positions, so fresh chunks agree on borders.</item>
     /// <item><see cref="SetDensity"/> writes every loaded copy of a sample (A7).</item>
-    /// <item><see cref="ApplyBrush"/> applies the brush to every chunk it reaches; the
-    /// brush's result depends only on a sample's value and position, so copies stay
-    /// equal (M5).</item>
+    /// <item><see cref="ApplyBrush"/> runs the brush on the world as one density field
+    /// (it implements <see cref="IDensityField"/>), so every write goes through
+    /// <see cref="SetDensity"/> to every copy (M5).</item>
     /// <item>A newly loaded chunk takes its shared border samples from any loaded
     /// neighbour that was edited, so edits made next to it aren't contradicted.</item>
     /// </list>
     /// Edited chunks are kept in memory when unloaded and come back as they were, until
     /// saving exists (Chapter 4).
     /// </remarks>
-    public sealed class World
+    public sealed class World : IDensityField
     {
         private readonly Dictionary<Vector3Int, Chunk> loaded = new Dictionary<Vector3Int, Chunk>();
         private readonly Dictionary<Vector3Int, Chunk> editedUnloaded = new Dictionary<Vector3Int, Chunk>();
@@ -159,33 +159,26 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Adds or removes a sphere of terrain across every loaded chunk it reaches (M5),
-        /// through <see cref="TerrainBrush"/> and so each chunk's edit path (A7).
+        /// Adds or removes a sphere of terrain across every loaded chunk it reaches (M5).
+        /// The brush works on the world as one density field, so it sees across borders
+        /// and each write goes through <see cref="SetDensity"/> to every copy (A7).
         /// </summary>
         /// <param name="centre">Brush centre in world units, relative to the world origin.</param>
-        /// <returns>How many samples changed, counting each chunk's copy.</returns>
-        public int ApplyBrush(Vector3 centre, BrushSettings brush, BrushOperation operation)
+        public BrushResult ApplyBrush(Vector3 centre, BrushSettings brush, BrushOperation operation)
         {
-            float reach = brush.Falloff == BrushFalloff.Hard ? brush.Radius + TerrainDensity.RampHalfWidth : brush.Radius;
-            Vector3Int min = Vector3Int.FloorToInt((centre - Vector3.one * reach) / Grid.VoxelSize);
-            Vector3Int max = Vector3Int.CeilToInt((centre + Vector3.one * reach) / Grid.VoxelSize);
-            Grid.ChunksOverlapping(min, max, scratchChunks);
+            return TerrainBrush.Apply(this, centre, Grid.VoxelSize, brush, operation);
+        }
 
-            int changed = 0;
-            foreach (Vector3Int coord in scratchChunks)
-            {
-                if (!loaded.TryGetValue(coord, out Chunk chunk))
-                {
-                    continue;
-                }
-                int chunkChanged = TerrainBrush.Apply(chunk, centre - Grid.ChunkOrigin(coord), Grid.VoxelSize, brush, operation);
-                if (chunkChanged > 0)
-                {
-                    edited.Add(coord);
-                    changed += chunkChanged;
-                }
-            }
-            return changed;
+        bool IDensityField.TryGetDensity(Vector3Int sample, out float density)
+        {
+            float? value = GetDensity(sample);
+            density = value ?? 0f;
+            return value.HasValue;
+        }
+
+        void IDensityField.SetDensity(Vector3Int sample, float density)
+        {
+            SetDensity(sample, density);
         }
 
         /// <summary>

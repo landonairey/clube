@@ -67,12 +67,14 @@ namespace Clube.Core
             return true;
         }
 
+        public float VoxelSize => Config.VoxelSize;
+
         /// <summary>Applies a brush around a world-space centre through <see cref="TerrainBrush"/> (A7).</summary>
-        public int ApplyBrush(Vector3 worldCentre, BrushSettings brush, BrushOperation operation)
+        public BrushResult ApplyBrush(Vector3 worldCentre, BrushSettings brush, BrushOperation operation)
         {
             return Chunk != null
                 ? TerrainBrush.Apply(Chunk, transform.InverseTransformPoint(worldCentre), Config.VoxelSize, brush, operation)
-                : 0;
+                : default;
         }
 
         private void Awake()

@@ -51,7 +51,7 @@ namespace Clube.Debug
         [SerializeField, Range(0.01f, 1f)]
         private float strength = 1f;
 
-        [Tooltip("Hard: an exact sphere at full strength. Smooth: fades to nothing at the radius, for gradual sculpting (K16).")]
+        [Tooltip("Hard: every sample within the radius changes. Soft: only the surface layer changes, so holding it digs down or piles up layer by layer (K16).")]
         [SerializeField]
         private BrushFalloff falloff = BrushFalloff.Hard;
 
@@ -119,6 +119,19 @@ namespace Clube.Debug
 
         /// <summary>Samples changed by the last application, for the readout.</summary>
         public int LastChangedSamples { get; private set; }
+
+        /// <summary>Approximate solid volume placed since the last reset, in world units³.</summary>
+        public float TotalVolumeAdded { get; private set; }
+
+        /// <summary>Approximate solid volume dug out since the last reset, in world units³.</summary>
+        public float TotalVolumeRemoved { get; private set; }
+
+        /// <summary>Starts the placed and dug totals again from zero.</summary>
+        public void ResetVolumeTotals()
+        {
+            TotalVolumeAdded = 0f;
+            TotalVolumeRemoved = 0f;
+        }
 
         private Camera ViewCamera => targetCamera != null ? targetCamera : Camera.main;
 
@@ -188,7 +201,10 @@ namespace Clube.Debug
             if (mouse.leftButton.wasPressedThisFrame || (mouse.leftButton.isPressed && Time.unscaledTime >= nextApplyTime))
             {
                 var operation = tool == ChunkClickTool.Add ? BrushOperation.Add : BrushOperation.Remove;
-                LastChangedSamples = terrain.ApplyBrush(centre, Brush, operation);
+                BrushResult result = terrain.ApplyBrush(centre, Brush, operation);
+                LastChangedSamples = result.ChangedSamples;
+                TotalVolumeAdded += result.VolumeAdded(terrain.VoxelSize);
+                TotalVolumeRemoved += result.VolumeRemoved(terrain.VoxelSize);
                 nextApplyTime = Time.unscaledTime + 1f / repeatRate;
             }
         }

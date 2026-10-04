@@ -131,9 +131,11 @@ namespace Clube.Core
             return World.Raycast(localRay, Config.MeshSettings, maxDistance, out hit);
         }
 
-        public int ApplyBrush(Vector3 worldCentre, BrushSettings brush, BrushOperation operation)
+        public float VoxelSize => Config.VoxelSize;
+
+        public BrushResult ApplyBrush(Vector3 worldCentre, BrushSettings brush, BrushOperation operation)
         {
-            return World != null ? World.ApplyBrush(transform.InverseTransformPoint(worldCentre), brush, operation) : 0;
+            return World != null ? World.ApplyBrush(transform.InverseTransformPoint(worldCentre), brush, operation) : default;
         }
 
         /// <summary>World position of a chunk's origin.</summary>

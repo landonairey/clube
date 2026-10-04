@@ -86,6 +86,45 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void BrushOnABorder_CountsEachSharedSampleOnce()
+        {
+            World world = NewWorld();
+            world.Load(Vector3Int.zero, null);
+            world.Load(Vector3Int.right, null);
+
+            // Radius 1 around a sample on the shared face: it and its six neighbours.
+            BrushResult result = world.ApplyBrush(new Vector3(Size, 4f, 4f), new BrushSettings(1f), BrushOperation.Add);
+
+            Assert.That(result.ChangedSamples, Is.EqualTo(7));
+            Assert.That(result.DensityAdded, Is.EqualTo(7f).Within(1e-4f));
+            Assert.That(world.GetDensity(new Vector3Int(Size, 4, 4)), Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void SoftBrush_SeesAcrossTheBorder()
+        {
+            World world = NewWorld();
+            Chunk left = world.Load(Vector3Int.zero, null);
+            Chunk right = world.Load(Vector3Int.right, null);
+
+            // Solid only in the right chunk, just past the shared face.
+            for (int y = 0; y <= Size; y++)
+            {
+                for (int z = 0; z <= Size; z++)
+                {
+                    world.SetDensity(new Vector3Int(Size + 1, y, z), 1f);
+                }
+            }
+
+            // The shared face touches that solid from the left chunk's side, so it grows.
+            world.ApplyBrush(new Vector3(Size, 4f, 4f), new BrushSettings(1.5f, falloff: BrushFalloff.Soft), BrushOperation.Add);
+
+            Assert.That(left.GetDensity(new Vector3Int(Size, 4, 4)), Is.EqualTo(1f));
+            Assert.That(right.GetDensity(new Vector3Int(0, 4, 4)), Is.EqualTo(1f));
+            Assert.That(left.GetDensity(new Vector3Int(Size - 1, 4, 4)), Is.EqualTo(0f), "One layer per application");
+        }
+
+        [Test]
         public void LoadingNextToAnEditedChunk_TakesItsBorder()
         {
             World world = NewWorld();
