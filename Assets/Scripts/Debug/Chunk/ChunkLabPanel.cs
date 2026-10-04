@@ -48,12 +48,16 @@ namespace Clube.Debug
         [SerializeField]
         private bool displayOpen = true;
 
+        [SerializeField]
+        private bool cameraOpen;
+
         private ChunkView chunkView;
         private ChunkTerrainFill terrainFill;
         private TerrainBrushTool brush;
         private ChunkDebugView debugView;
         private StepThroughLab stepThrough;
         private LabPanelFrame frame;
+        private FreeFlyCamera flyCamera;
         private bool open;
 
         private void Awake()
@@ -64,6 +68,7 @@ namespace Clube.Debug
             debugView = GetComponent<ChunkDebugView>();
             stepThrough = GetComponentInChildren<StepThroughLab>(true);
             frame = new LabPanelFrame(this, width, background);
+            flyCamera = Camera.main != null ? Camera.main.GetComponent<FreeFlyCamera>() : null;
             open = startOpen;
         }
 
@@ -109,6 +114,10 @@ namespace Clube.Debug
             if (stepThrough != null && frame.Section("Step-through", ref stepThroughOpen))
             {
                 StepThroughControls.Draw(frame, stepThrough);
+            }
+            if (flyCamera != null && frame.Section("Camera", ref cameraOpen))
+            {
+                CameraControls.Draw(frame, flyCamera);
             }
             if (debugView != null && frame.Section("Display", ref displayOpen))
             {

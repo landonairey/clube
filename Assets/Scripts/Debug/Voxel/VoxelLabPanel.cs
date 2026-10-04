@@ -57,6 +57,9 @@ namespace Clube.Debug
         [SerializeField]
         private bool displayOpen;
 
+        [SerializeField]
+        private bool cameraOpen;
+
         private VoxelCornerEditor corners;
         private ChunkView chunkView;
         private VoxelLabels labels;
@@ -67,6 +70,7 @@ namespace Clube.Debug
         private VoxelVolumeLab volumeLab;
         private AxesHud axesHud;
         private LabPanelFrame frame;
+        private FreeFlyCamera flyCamera;
         private bool open;
 
         private void Awake()
@@ -81,6 +85,7 @@ namespace Clube.Debug
             volumeLab = GetComponentInChildren<VoxelVolumeLab>(true);
             axesHud = FindFirstObjectByType<AxesHud>();
             frame = new LabPanelFrame(this, width, background);
+            flyCamera = Camera.main != null ? Camera.main.GetComponent<FreeFlyCamera>() : null;
             open = startOpen;
         }
 
@@ -134,6 +139,10 @@ namespace Clube.Debug
             if (volumeLab != null && frame.Section("Volume", ref volumeOpen))
             {
                 DrawVolume();
+            }
+            if (flyCamera != null && frame.Section("Camera", ref cameraOpen))
+            {
+                CameraControls.Draw(frame, flyCamera);
             }
             if (frame.Section("Display", ref displayOpen))
             {

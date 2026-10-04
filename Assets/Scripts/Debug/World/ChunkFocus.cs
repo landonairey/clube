@@ -21,6 +21,9 @@ namespace Clube.Debug
     {
         private const string LineShader = "Universal Render Pipeline/Unlit";
 
+        // Seconds between volume measurements while the focused chunk keeps changing.
+        private const float VolumeInterval = 0.25f;
+
         [SerializeField]
         private Color outlineColor = new Color(1f, 0.85f, 0.2f);
 
@@ -41,9 +44,18 @@ namespace Clube.Debug
 
         private WorldView worldView;
         private TerrainBrushTool brush;
+        private WorldDebugView debugView;
         private LabMeshObject outline;
         private Material ownedMaterial;
         private GUIStyle labelStyle;
+
+        // The focused chunk's solid volume, measured again after its mesh rebuilds.
+        private ChunkRenderer watchedRenderer;
+        private bool volumeDirty;
+        private float nextVolumeTime;
+        private float exactVolume;
+        private float approximateVolume;
+        private double volumeMilliseconds;
 
         /// <summary>Raised with the newly focused chunk, or null when the focus clears.</summary>
         public event Action<Vector3Int?> FocusChanged;
@@ -66,6 +78,7 @@ namespace Clube.Debug
             }
 
             Focused = coord;
+            WatchRenderer(coord);
             UpdateOutline();
             FocusChanged?.Invoke(coord);
         }
@@ -106,6 +119,11 @@ namespace Clube.Debug
                 text += $"\n{stats.VertexCount:N0} vertices, {stats.TriangleCount:N0} triangles\n" +
                         $"Build {stats.TotalMilliseconds:0.00} ms (meshing {stats.MeshingMilliseconds:0.00}, upload {stats.UploadMilliseconds:0.00})";
             }
+
+            // Solid volume inside the chunk (V11, V12 summed over its voxels).
+            float capacity = Mathf.Max(voxels.x * voxels.y * voxels.z * Mathf.Pow(worldView.Config.VoxelSize, 3f), 1e-6f);
+            text += $"\nVolume exact {exactVolume:0.0} u³ ({exactVolume / capacity * 100f:0.0}% of chunk)\n" +
+                    $"Volume approx {approximateVolume:0.0} u³ (corner mean) · {volumeMilliseconds:0.0} ms";
             return text;
         }
 
@@ -113,6 +131,23 @@ namespace Clube.Debug
         {
             worldView = GetComponent<WorldView>();
             brush = GetComponent<TerrainBrushTool>();
+            debugView = GetComponent<WorldDebugView>();
+        }
+
+        private void LateUpdate()
+        {
+            // The exact volume polygonises every surface voxel, so it's measured at most a
+            // few times a second while the brush keeps rebuilding the chunk.
+            if (volumeDirty && Time.unscaledTime >= nextVolumeTime)
+            {
+                MeasureVolume();
+            }
+
+            // While the chunk grid is drawn, it highlights the focused chunk's edges itself.
+            if (outline != null)
+            {
+                outline.Visible = Focused.HasValue && (debugView == null || !debugView.IsDrawingBorders);
+            }
         }
 
         private void OnEnable()
@@ -196,6 +231,44 @@ namespace Clube.Debug
             {
                 Focus(null);
             }
+        }
+
+        // Follows the focused chunk's renderer, so the volume is measured again after edits.
+        private void WatchRenderer(Vector3Int? coord)
+        {
+            if (watchedRenderer != null)
+            {
+                watchedRenderer.MeshRebuilt -= OnFocusedRebuilt;
+                watchedRenderer = null;
+            }
+            if (coord.HasValue && worldView.TryGetRenderer(coord.Value, out ChunkRenderer chunkRenderer))
+            {
+                watchedRenderer = chunkRenderer;
+                watchedRenderer.MeshRebuilt += OnFocusedRebuilt;
+            }
+            volumeDirty = coord.HasValue;
+            nextVolumeTime = 0f;
+        }
+
+        private void OnFocusedRebuilt(Vector3Int coord, Mesh mesh)
+        {
+            volumeDirty = true;
+        }
+
+        private void MeasureVolume()
+        {
+            volumeDirty = false;
+            nextVolumeTime = Time.unscaledTime + VolumeInterval;
+            if (Focused == null || !worldView.World.TryGetChunk(Focused.Value, out Chunk chunk))
+            {
+                return;
+            }
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            ChunkMeshSettings settings = worldView.Config.MeshSettings;
+            exactVolume = ChunkVolume.Exact(chunk, settings.IsoLevel, EdgeVertexPlacers.For(settings.EdgePlacement), settings.VoxelSize);
+            approximateVolume = ChunkVolume.Approximate(chunk, settings.VoxelSize);
+            volumeMilliseconds = stopwatch.Elapsed.TotalMilliseconds;
         }
 
         // A box around the chunk's bounds, in the world view's space.

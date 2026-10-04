@@ -307,6 +307,7 @@ GameObject:
   - component: {fileID: 1350119457}
   - component: {fileID: 1350119456}
   - component: {fileID: 1350119455}
+  - component: {fileID: 1350119462}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -348,6 +349,7 @@ MonoBehaviour:
   meshingOpen: 0
   focusOpen: 1
   displayOpen: 0
+  cameraOpen: 0
 --- !u!114 &1350119457
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -362,7 +364,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.WorldDebugView
   showChunkBorders: 1
   borderColor: {r: 0.45, g: 0.47, b: 0.52, a: 1}
-  lineMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
+  focusColor: {r: 1, g: 0.85, b: 0.2, a: 1}
+  lineMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
 --- !u!114 &1350119458
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -433,6 +436,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1350119462
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b754b8d75c3a3043b1828a7de9b184e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.WorldLabHud
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0

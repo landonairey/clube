@@ -13,6 +13,10 @@ namespace Clube.Debug
     /// </summary>
     public class FreeFlyCamera : MonoBehaviour
     {
+        public const float MinMoveSpeed = 0.5f;
+        public const float MaxMoveSpeed = 100f;
+        public const float MaxFastMultiplier = 20f;
+
         private const float MaxPitch = 89f;
 
         [Tooltip("Base movement speed in world units per second.")]
@@ -41,6 +45,20 @@ namespace Clube.Debug
         // Where an in-progress Focus is gliding to, if any.
         private Vector3? focusTarget;
         private Vector3 focusVelocity;
+
+        /// <summary>Base movement speed in world units per second.</summary>
+        public float MoveSpeed
+        {
+            get => moveSpeed;
+            set => moveSpeed = Mathf.Clamp(value, MinMoveSpeed, MaxMoveSpeed);
+        }
+
+        /// <summary>Speed multiplier while Shift is held.</summary>
+        public float FastMultiplier
+        {
+            get => fastMultiplier;
+            set => fastMultiplier = Mathf.Clamp(value, 1f, MaxFastMultiplier);
+        }
 
         /// <summary>
         /// Glides the camera, keeping its rotation, until <paramref name="point"/> sits

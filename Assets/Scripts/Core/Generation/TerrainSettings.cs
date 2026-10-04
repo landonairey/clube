@@ -76,17 +76,43 @@ namespace Clube.Core
             set => generator = value;
         }
 
-        public float SurfaceLevel => surfaceLevel;
+        // The shape values are settable for lab controls too; call WorldConfig.NotifyChanged after.
 
-        public float Amplitude => amplitude;
+        public float SurfaceLevel
+        {
+            get => surfaceLevel;
+            set => surfaceLevel = value;
+        }
 
-        public float Frequency => frequency;
+        public float Amplitude
+        {
+            get => amplitude;
+            set => amplitude = Mathf.Max(0f, value);
+        }
 
-        public int Octaves => octaves;
+        public float Frequency
+        {
+            get => frequency;
+            set => frequency = Mathf.Max(0.001f, value);
+        }
 
-        public float Lacunarity => lacunarity;
+        public int Octaves
+        {
+            get => octaves;
+            set => octaves = Mathf.Clamp(value, 1, 8);
+        }
 
-        public float Persistence => persistence;
+        public float Lacunarity
+        {
+            get => lacunarity;
+            set => lacunarity = Mathf.Max(1f, value);
+        }
+
+        public float Persistence
+        {
+            get => persistence;
+            set => persistence = Mathf.Clamp01(value);
+        }
 
         /// <summary>Settable so lab controls can reseed at runtime; call <see cref="WorldConfig.NotifyChanged"/> after.</summary>
         public int Seed

@@ -6,10 +6,11 @@ namespace Clube.Debug
 {
     /// <summary>
     /// In-game control panel for WorldLab (3A, K31): foldout sections for the world (render
-    /// distance and live counts: loaded, waiting, edited, triangles, frame rate), the
-    /// terrain, the brush, meshing, the focused chunk (M4) and display (chunk borders).
-    /// Tab hides it. The frame (scrolling, click blocking, styles) is
-    /// <see cref="LabPanelFrame"/>.
+    /// distance, live counts, and how chunks are built: voxels per side, voxel size,
+    /// layers), the terrain and its shape, the brush with its volume totals, meshing, the
+    /// focused chunk (M4), the camera's speeds and display (chunk borders). Tab hides it.
+    /// The frame (scrolling, click blocking, styles) is <see cref="LabPanelFrame"/>.
+    /// Position and frame rate are on the <see cref="WorldLabHud"/>.
     /// </summary>
     /// <remarks>
     /// The render distance here drives the world view directly, as a lab override; in the
@@ -18,8 +19,9 @@ namespace Clube.Debug
     [RequireComponent(typeof(WorldView))]
     public class WorldLabPanel : MonoBehaviour
     {
-        // The frame rate is frames counted over this many seconds.
-        private const float FpsWindowSeconds = 0.5f;
+        private const float MinChunkSide = 4f;
+        private const float MaxChunkSide = 48f;
+        private const float MaxLayers = 8f;
 
         [Tooltip("Show the panel when Play mode starts. Tab toggles it.")]
         [SerializeField]
@@ -51,16 +53,16 @@ namespace Clube.Debug
         [SerializeField]
         private bool displayOpen;
 
+        [SerializeField]
+        private bool cameraOpen;
+
         private WorldView worldView;
         private TerrainBrushTool brush;
         private ChunkFocus chunkFocus;
         private WorldDebugView debugView;
         private LabPanelFrame frame;
+        private FreeFlyCamera flyCamera;
         private bool open;
-
-        private int windowFrames;
-        private float windowSeconds;
-        private float framesPerSecond;
 
         private void Awake()
         {
@@ -69,6 +71,7 @@ namespace Clube.Debug
             chunkFocus = GetComponent<ChunkFocus>();
             debugView = GetComponent<WorldDebugView>();
             frame = new LabPanelFrame(this, width, background);
+            flyCamera = Camera.main != null ? Camera.main.GetComponent<FreeFlyCamera>() : null;
             open = startOpen;
         }
 
@@ -79,15 +82,6 @@ namespace Clube.Debug
 
         private void Update()
         {
-            windowFrames++;
-            windowSeconds += Time.unscaledDeltaTime;
-            if (windowSeconds >= FpsWindowSeconds)
-            {
-                framesPerSecond = windowFrames / windowSeconds;
-                windowFrames = 0;
-                windowSeconds = 0f;
-            }
-
             Keyboard keyboard = Keyboard.current;
             if (keyboard != null && keyboard.tabKey.wasPressedThisFrame)
             {
@@ -132,6 +126,10 @@ namespace Clube.Debug
             {
                 DrawFocus();
             }
+            if (flyCamera != null && frame.Section("Camera", ref cameraOpen))
+            {
+                CameraControls.Draw(frame, flyCamera);
+            }
             if (debugView != null && frame.Section("Display", ref displayOpen))
             {
                 debugView.ShowChunkBorders = frame.ToggleField("Chunk borders", debugView.ShowChunkBorders);
@@ -160,12 +158,30 @@ namespace Clube.Debug
             }
 
             World world = worldView.World;
-            Vector3Int focusChunk = worldView.FocusChunk;
-            frame.Line($"{framesPerSecond:0} FPS · camera in chunk ({focusChunk.x}, {focusChunk.y}, {focusChunk.z})");
             frame.Line($"Loaded {world.LoadedCount} · waiting {worldView.PendingCount} · edited {world.EditedCount}");
             frame.Line($"{vertices:N0} vertices · {triangles:N0} triangles");
-            Vector3Int size = worldView.Config.ChunkSize;
-            frame.Line($"Chunks {size.x}×{size.y}×{size.z} voxels, {worldView.Config.WorldHeightInChunks} layers high");
+
+            DrawChunkShape(worldView.Config);
+        }
+
+        // How chunks are built: voxels per side, voxel size, layers. Any change regenerates
+        // the world, so edits are lost.
+        private void DrawChunkShape(WorldConfig config)
+        {
+            int side = Mathf.RoundToInt(frame.Slider("Voxels per chunk side", config.ChunkSize.x, MinChunkSide, MaxChunkSide, "0"));
+            // Quarter-unit steps, so the slider lands on tidy sizes.
+            float voxelSize = Mathf.Round(frame.Slider("Voxel size (u)", config.VoxelSize, 0.25f, 2f, "0.00") * 4f) / 4f;
+            int layers = Mathf.RoundToInt(frame.Slider("World height (chunk layers)", config.WorldHeightInChunks, 1f, MaxLayers, "0"));
+
+            var size = new Vector3Int(side, side, side);
+            if (size != config.ChunkSize || !Mathf.Approximately(voxelSize, config.VoxelSize) || layers != config.WorldHeightInChunks)
+            {
+                config.ChunkSize = size;
+                config.VoxelSize = voxelSize;
+                config.WorldHeightInChunks = layers;
+                config.NotifyChanged();
+            }
+            frame.Line($"Chunk {side * voxelSize:0.##} u wide · world {side * voxelSize * layers:0.##} u high");
         }
 
         private void DrawFocus()
