@@ -27,6 +27,17 @@ namespace Clube.Debug
         private bool measureRequested;
         private float nextMeasureTime;
 
+        /// <summary>Whether the volume is measured at all (the exact sum costs a few ms on bigger chunks).</summary>
+        public bool Calculate
+        {
+            get => calculate;
+            set
+            {
+                calculate = value;
+                RequestMeasure(immediately: true);
+            }
+        }
+
         public bool HasMeasurement { get; private set; }
 
         /// <summary>Approximate solid volume (V11), world units³.</summary>

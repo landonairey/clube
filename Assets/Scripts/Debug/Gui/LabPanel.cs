@@ -74,6 +74,7 @@ namespace Clube.Debug
         private ChunkTestFill testFill;
         private TerrainBrushTool brush;
         private ChunkFocus chunkFocus;
+        private ChunkVolumeStats chunkVolume;
         private VoxelSelector selector;
         private VoxelCornerEditor corners;
         private VoxelVolumeLab volumeLab;
@@ -101,6 +102,7 @@ namespace Clube.Debug
             testFill = FindFirstObjectByType<ChunkTestFill>();
             brush = FindFirstObjectByType<TerrainBrushTool>();
             chunkFocus = FindFirstObjectByType<ChunkFocus>();
+            chunkVolume = FindFirstObjectByType<ChunkVolumeStats>();
             selector = FindFirstObjectByType<VoxelSelector>();
             corners = FindFirstObjectByType<VoxelCornerEditor>();
             volumeLab = FindFirstObjectByType<VoxelVolumeLab>();
@@ -166,6 +168,7 @@ namespace Clube.Debug
             if (chunkFocus != null && frame.Section("Focused chunk", ref chunkOpen))
             {
                 ChunkFocusControls.Draw(frame, chunkFocus);
+                DrawChunkVolumeToggle();
             }
             // A lone generated chunk (ChunkLab); VoxelLab's one voxel keeps its size.
             else if (worldView == null && terrainFill != null && frame.Section("Chunk", ref chunkOpen))
@@ -175,6 +178,7 @@ namespace Clube.Debug
                 {
                     TestFillControls.Draw(frame, testFill);
                 }
+                DrawChunkVolumeToggle();
             }
             if (corners != null)
             {
@@ -223,6 +227,20 @@ namespace Clube.Debug
             if (terrainFill != null && terrainFill.IsOverridden)
             {
                 GUILayout.Label("The test fill is on and overrides the generator.", frame.Hint);
+            }
+        }
+
+        // The chunk's solid volume (V11, V12 over every voxel) is measured after each rebuild unless this is off.
+        private void DrawChunkVolumeToggle()
+        {
+            if (chunkVolume == null)
+            {
+                return;
+            }
+            bool measure = frame.ToggleField("Measure the chunk's volume", chunkVolume.Calculate);
+            if (measure != chunkVolume.Calculate)
+            {
+                chunkVolume.Calculate = measure;
             }
         }
 

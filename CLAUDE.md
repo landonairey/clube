@@ -39,7 +39,7 @@ other lab tools defer to it via `StepThroughMode`).
 `ChunkMeshStats` + FPS shown by `ChunkStatsHud`, and `ChunkTestFill`
 (ball, or solid with a shaft) as test shapes that stay alongside K9.
 2B is done (K5–K7): `VoxelSelector` picks voxels by click, F frames the
-selection, and `SelectedVoxelEditor` edits its corners.
+selection, and its corners are edited (now `VoxelCornerEditor`, M19).
 2C is done (K8–K10, K29): `TerrainSettings` (in `WorldConfig`) picks an
 `ITerrainGenerator` (Flat, Sine, 2D/3D Perlin, fractal 2D Perlin, Spline,
 Heightmap; noise seeded via `PerlinNoise`); `ChunkGenerator.Fill` samples
@@ -61,9 +61,8 @@ measures it, and `ChunkMesherTests.RandomChunk_MatchesPolygonisePerVoxel`
 guards the output.
 2E is done (K13–K16, K33). `TerrainBrush` (Core) adds or removes a sphere
 through A7; `TerrainBrushTool` (ChunkLab) picks Select, Dig or Add with
-1/2/3 and switches `VoxelSelector` off while editing. `ChunkLabPanel` is the
-in-game control panel (the start of K31), and *Clube → Build → Lab demo*
-(`DemoBuild`) builds the playable exe to `Builds/Demo/`.
+1/2/3 and switches `VoxelSelector` off while editing. *Clube → Build → Lab
+demo* (`DemoBuild`) builds the playable exe to `Builds/Demo/`.
 K34 is done: the exe opens on the `DemoMenu` welcome scene (Single voxel =
 VoxelLab, Single chunk = ChunkLab, Exit; `DemoExitButton` and Esc in either
 lab return to it), in a resizable 1280×720 window, and the lab panels fit
@@ -77,11 +76,8 @@ the mesher's outer loop, so playback stays in true build order.
 `StepUnits` groups the recorded steps into what playback moves through
 (sub-step, voxel, slice; K20 skips empty voxels); `StepThroughLab.Current`
 maps that back to the recorded step.
-K31 (lab control panel) is under way: `VoxelLabPanel`, `ChunkLabPanel` and
-`WorldLabPanel` are in-game panels on a shared `LabPanelFrame`, with shared
-`TerrainControls`, `BrushControls`, `StepThroughControls` and
-`MeshingControls`. The demo build sets `CLUBE_LAB_BUILD` so step-through
-recording works in the exe.
+K31 is done: every lab has the one in-game `LabPanel` (see 3A+). The demo
+build sets `CLUBE_LAB_BUILD` so step-through recording works in the exe.
 
 ## Chapter 3 — Collection of chunks (`WorldLab`)
 3A is done (M1–M5). `WorldGrid` converts world positions, global samples,
@@ -96,10 +92,10 @@ around its focus (the camera), nearest first, a few per frame, with pooled
 Chunks are cubic, stacked `WorldHeightInChunks` layers from y = 0 (the M17
 decision). Render distance is a player setting: `PlayerSettings` in
 `Clube.Game` (A3), applied by `RenderDistanceSetting` (M3). WorldLab adds
-`ChunkFocus` (M4, with the chunk's volume), `WorldDebugView` (chunk
+`ChunkFocus` (M4; volume from the chunk tools' `ChunkVolumeStats`), `WorldDebugView` (chunk
 borders, each grid edge drawn once with the focused chunk's in the highlight
-colour), `WorldLabHud` (position, voxel, chunk; brush volume totals) and
-`WorldLabPanel` (incl. chunk size, voxel size, layers and terrain shape);
+colour), `WorldLabHud` (position, voxel, chunk; brush volume totals) and the
+shared `LabPanel` (incl. chunk size, voxel size, layers and terrain shape);
 `WorldViewEditor` shows the live config in the Inspector.
 `TerrainBrushTool` edits any `IEditableTerrain` (a `ChunkView` or a
 `WorldView`). `TerrainBrush` runs on an `IDensityField` (a `Chunk`, or the
@@ -107,6 +103,21 @@ colour), `WorldLabHud` (position, voxel, chunk; brush volume totals) and
 radius, Soft only the surface layer (fills next to solid, empties next to
 air), and it returns a `BrushResult` for volume tracking. World chunks use
 the opaque `Terrain` material.
+3A+ (stacked labs) is done (M18–M21): each lab carries the tools of the
+labs below it, from the same scripts. `IRenderedChunk` (Core) is a chunk on
+screen (`ChunkView`, or a world `ChunkRenderer` whose edits go through
+`World.SetDensity`); `LabChunkTarget` (Debug) gives the lab tools their
+chunk: the `ChunkView` above it, or WorldLab's focused chunk (it moves onto
+it). The tools live in two prefabs in `Assets/Prefabs/Lab/`: **Chunk Tools**
+(`LabChunkTarget`, `ChunkDebugView`, `NormalLines`, `FlipFaces`,
+`VoxelSelector`, `ChunkVolumeStats`, the Step Through child) with **Voxel
+Tools** nested in it (`VoxelCornerEditor`, `VoxelLabels`, `CaseStepInput`,
+the Volume Lab child). VoxelLab removes the selector (the corner editor then
+keeps its one stored voxel); WorldLab points the target at `ChunkFocus`,
+whose click focuses a chunk and selects the voxel hit. `LabPanel` finds the
+lab's parts and draws a section per part, each from a shared `*Controls`
+class. K32 at world scale: meshing 1.30 → 0.13 ms per 16³ chunk;
+generation is now 97% of loading (K35).
 **Next:** 2D's K12 (Jobs/Burst), then 2G, then M12, per the build order.
 
 ## Conventions
@@ -213,6 +224,12 @@ the opaque `Terrain` material.
 - MCP gotcha: GameObject instance IDs change on every domain reload
   (entering Play mode, recompiling). Look objects up again with `find`
   before passing an ID to tools like `Camera_Capture`.
+- Lab tools: a chunk-level tool goes in the Chunk Tools prefab and gets its
+  chunk from `LabChunkTarget` (never `GetComponent<ChunkView>()`), so it also
+  runs on WorldLab's focused chunk; a voxel-level tool goes in Voxel Tools and
+  works through `VoxelCornerEditor`. Its panel controls go in a `*Controls`
+  class that `LabPanel` draws when the tool is in the scene. Edits go through
+  the target's edit path, never straight to a world chunk (M2).
 - Naming/formatting: follow the existing code (private fields camelCase,
   `[SerializeField] private`, XML doc comments on public types). Formalize
   later if needed.
