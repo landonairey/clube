@@ -45,6 +45,10 @@ namespace Clube.Core
         [SerializeField, Min(1)]
         private int chunksPerFrame = 4;
 
+        [Tooltip("Give every chunk a MeshCollider, rebuilt with its mesh, so a player can walk on the terrain (M6).")]
+        [SerializeField]
+        private bool chunkColliders = true;
+
         private readonly Dictionary<Vector3Int, ChunkRenderer> renderers = new Dictionary<Vector3Int, ChunkRenderer>();
         private readonly Stack<ChunkRenderer> pool = new Stack<ChunkRenderer>();
         private readonly List<Vector3Int> wanted = new List<Vector3Int>();
@@ -339,6 +343,10 @@ namespace Clube.Core
             var chunkObject = new GameObject("Chunk", typeof(MeshFilter), typeof(MeshRenderer), typeof(ChunkRenderer));
             chunkObject.transform.SetParent(transform, false);
             chunkObject.GetComponent<MeshRenderer>().sharedMaterials = chunkMaterials;
+            if (chunkColliders)
+            {
+                chunkObject.AddComponent<ChunkCollider>();
+            }
             return chunkObject.GetComponent<ChunkRenderer>();
         }
     }
