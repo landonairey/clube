@@ -40,7 +40,7 @@ namespace Clube.Debug
 
         private void OnEnable()
         {
-            chunkView.ChunkCreated += OnChunkCreated;
+            chunkView.ChunkChanged += OnChunkChanged;
 
             // When the scene starts, this can run before ChunkView's Awake makes the Play
             // mode config copy and the chunk; Start handles that case. When re-enabled later,
@@ -57,7 +57,7 @@ namespace Clube.Debug
 
         private void OnDisable()
         {
-            chunkView.ChunkCreated -= OnChunkCreated;
+            chunkView.ChunkChanged -= OnChunkChanged;
             if (subscribedConfig != null)
             {
                 subscribedConfig.Changed -= Fill;
@@ -97,7 +97,7 @@ namespace Clube.Debug
             }
         }
 
-        private void OnChunkCreated(Chunk chunk)
+        private void OnChunkChanged(Chunk chunk)
         {
             Fill();
         }

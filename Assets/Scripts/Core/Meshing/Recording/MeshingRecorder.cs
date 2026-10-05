@@ -59,6 +59,13 @@ namespace Clube.Core
             return densities[sample.x + SampleCount.x * (sample.y + SampleCount.y * sample.z)];
         }
 
+        /// <summary>Drops the log, e.g. when the chunk it recorded is no longer shown.</summary>
+        public void Clear()
+        {
+            voxels.Clear();
+            steps.Clear();
+        }
+
         /// <summary>Starts a new log with the chunk's density field as its first step.</summary>
         [Conditional(EditorSymbol), Conditional(DevelopmentSymbol), Conditional(LabBuildSymbol)]
         internal void Begin(ChunkMeshSettings settings, Chunk chunk)

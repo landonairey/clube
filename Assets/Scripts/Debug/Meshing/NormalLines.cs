@@ -16,7 +16,7 @@ namespace Clube.Debug
     /// One line mesh with vertex colours rather than gizmos, which dim wrongly in
     /// this project (see <see cref="ChunkDebugView"/>).
     /// </remarks>
-    [RequireComponent(typeof(ChunkView))]
+    [RequireComponent(typeof(LabChunkTarget))]
     public class NormalLines : MonoBehaviour
     {
         private const string VertexColorShader = "Universal Render Pipeline/Particles/Unlit";
@@ -52,7 +52,7 @@ namespace Clube.Debug
         private readonly List<Color32> lineColors = new List<Color32>();
         private readonly List<int> lineIndices = new List<int>();
 
-        private ChunkView chunkView;
+        private LabChunkTarget target;
         private LabMeshObject lines;
         private Material ownedMaterial;
         private bool rebuildRequested;
@@ -89,20 +89,22 @@ namespace Clube.Debug
 
         private void Awake()
         {
-            chunkView = GetComponent<ChunkView>();
+            target = GetComponent<LabChunkTarget>();
         }
 
         private void OnEnable()
         {
-            chunkView.MeshRebuilt += OnMeshRebuilt;
+            target.MeshRebuilt += OnMeshRebuilt;
+            target.Changed += OnTargetChanged;
 
             // Turned on after the chunk was built: no rebuild is coming, so draw now.
-            rebuildRequested = chunkView.Chunk != null;
+            rebuildRequested = target.Chunk != null;
         }
 
         private void OnDisable()
         {
-            chunkView.MeshRebuilt -= OnMeshRebuilt;
+            target.MeshRebuilt -= OnMeshRebuilt;
+            target.Changed -= OnTargetChanged;
             if (lines != null)
             {
                 lines.Visible = false;
@@ -128,18 +130,27 @@ namespace Clube.Debug
             rebuildRequested = true;
         }
 
+        // Another chunk (WorldLab's focus moved), or none: draw its normals, or hide.
+        private void OnTargetChanged()
+        {
+            rebuildRequested = true;
+        }
+
         private void LateUpdate()
         {
-            if (rebuildRequested && chunkView.Chunk != null)
+            if (rebuildRequested)
             {
                 rebuildRequested = false;
-                Rebuild(GetComponent<MeshFilter>().sharedMesh);
+                if (target.Chunk != null)
+                {
+                    Rebuild(target.Mesh);
+                }
             }
 
             // Step-through hides the finished mesh, so its normals would give the answer away.
             if (lines != null)
             {
-                lines.Visible = !StepThroughMode.IsOn(this);
+                lines.Visible = target.Chunk != null && !StepThroughMode.IsOn(this);
             }
         }
 
@@ -159,7 +170,7 @@ namespace Clube.Debug
             Vector3[] vertices = source.vertices;
             Vector3[] normals = source.normals;
             int[] triangles = source.triangles;
-            float scaledLength = length * chunkView.Config.VoxelSize;
+            float scaledLength = length * target.VoxelSize;
 
             lineVertices.Clear();
             lineColors.Clear();

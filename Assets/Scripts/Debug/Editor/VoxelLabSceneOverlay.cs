@@ -39,7 +39,8 @@ namespace Clube.Debug.Editor
                 }
 
                 Handles.BeginGUI();
-                VoxelLabelPainter.Draw(labels.Corners, labels.ShowCornerLabels, labels.ShowCrossedEdges, labels.ShowEdgeLabels, WorldToGui);
+                VoxelLabelPainter.Draw(
+                    labels.Corners, labels.ShowCornerLabels, labels.ShowCornerValues, labels.ShowCrossedEdges, labels.ShowEdgeLabels, WorldToGui);
                 Handles.EndGUI();
             }
         }

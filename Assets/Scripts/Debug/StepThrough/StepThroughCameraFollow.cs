@@ -25,7 +25,7 @@ namespace Clube.Debug
         private Camera targetCamera;
 
         private StepThroughLab lab;
-        private ChunkView chunkView;
+        private LabChunkTarget target;
         private Vector3Int? followed;
 
         public bool Follow
@@ -42,13 +42,13 @@ namespace Clube.Debug
         private void Awake()
         {
             lab = GetComponent<StepThroughLab>();
-            chunkView = GetComponentInParent<ChunkView>();
+            target = GetComponentInParent<LabChunkTarget>();
         }
 
         // After the lab's Update has moved playback on, so the camera never lags a voxel.
         private void LateUpdate()
         {
-            if (!follow || !lab.enabled || chunkView == null)
+            if (!follow || !lab.enabled || target == null)
             {
                 return;
             }
@@ -67,8 +67,8 @@ namespace Clube.Debug
             }
 
             followed = voxel;
-            float size = chunkView.Config.VoxelSize;
-            Transform chunk = chunkView.transform;
+            float size = target.VoxelSize;
+            Transform chunk = target.transform;
             Vector3 centre = chunk.TransformPoint(((Vector3)voxel.Value + Vector3.one * 0.5f) * size);
             flyCamera.Focus(centre, distance * size * chunk.lossyScale.x);
         }

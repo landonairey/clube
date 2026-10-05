@@ -5,7 +5,8 @@ using UnityEngine;
 namespace Clube.Debug.Editor
 {
     /// <summary>
-    /// Lab panel under the corner sliders: the shared case and preset panel
+    /// The voxel's corner sliders: VoxelLab's stored corners (also outside Play mode), or the
+    /// selected voxel's live ones in ChunkLab and WorldLab (K7, M19). Under them: the shared case and preset panel
     /// (<see cref="VoxelCaseGui"/>: V7, V9, V10, V20), the step-through controls (1D) when the
     /// voxel has a Step Through child, and the volume readout (V11, V12, V14) when
     /// it has a Volume Lab child. Label toggles live on VoxelLabels.
@@ -25,17 +26,26 @@ namespace Clube.Debug.Editor
 
         public override void OnInspectorGUI()
         {
-            serializedObject.Update();
-            DrawCornerSliders();
-            serializedObject.ApplyModifiedProperties();
-
             var corners = (VoxelCornerEditor)target;
+            if (corners.UsesStoredCorners)
+            {
+                serializedObject.Update();
+                DrawCornerSliders();
+                serializedObject.ApplyModifiedProperties();
+            }
+            else if (!DrawSelectedCorners(corners))
+            {
+                return;
+            }
+
+            // Stored corners are serialized, so they can be undone; a chunk's densities can't.
+            Object undoTarget = corners.UsesStoredCorners ? corners : null;
 
             EditorGUILayout.Space();
-            VoxelCaseGui.DrawCaseSection(corners, corners);
+            VoxelCaseGui.DrawCaseSection(corners, undoTarget);
 
             EditorGUILayout.Space();
-            VoxelCaseGui.DrawPresets(corners, corners);
+            VoxelCaseGui.DrawPresets(corners, undoTarget);
 
             StepThroughLab stepThrough = StepThroughOf(corners);
             if (stepThrough != null)
@@ -63,13 +73,16 @@ namespace Clube.Debug.Editor
 
         public override bool RequiresConstantRepaint()
         {
-            return StepThroughPanelGui.NeedsConstantRepaint(StepThroughOf((VoxelCornerEditor)target));
+            var corners = (VoxelCornerEditor)target;
+            return (!corners.UsesStoredCorners && Application.isPlaying)
+                   || StepThroughPanelGui.NeedsConstantRepaint(StepThroughOf(corners));
         }
 
         // Includes a disabled lab: disabled is just step-through mode being off.
         private static StepThroughLab StepThroughOf(VoxelCornerEditor corners)
         {
-            return corners.GetComponentInChildren<StepThroughLab>(true);
+            var chunkTools = corners.GetComponentInParent<LabChunkTarget>(true);
+            return (chunkTools != null ? (Component)chunkTools : corners).GetComponentInChildren<StepThroughLab>(true);
         }
 
         private static void DrawAxesToggle(AxesHud axesHud)
@@ -89,6 +102,46 @@ namespace Clube.Debug.Editor
                 // The Game view only repaints on its own when something in it changes.
                 UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
             }
+        }
+
+        // The selected voxel's corners, read from and written to the chunk. False when there's
+        // nothing to edit yet, after saying how to pick a voxel.
+        private static bool DrawSelectedCorners(VoxelCornerEditor corners)
+        {
+            if (!Application.isPlaying)
+            {
+                EditorGUILayout.HelpBox("Enter Play mode and click a voxel in the Game view to edit its corners.", MessageType.Info);
+                return false;
+            }
+
+            if (!corners.HasVoxel)
+            {
+                EditorGUILayout.HelpBox("Click a voxel on the surface in the Game view to select it.", MessageType.Info);
+                return false;
+            }
+
+            Vector3Int voxel = corners.Voxel.Value;
+            EditorGUILayout.LabelField($"Voxel ({voxel.x}, {voxel.y}, {voxel.z})", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Corners are shared samples: editing one reshapes every voxel listed beside it.",
+                EditorStyles.wordWrappedMiniLabel);
+
+            for (int corner = 0; corner < MarchingCubes.CornerCount; corner++)
+            {
+                int sharing = corners.VoxelsSharing(corner);
+                var label = new GUIContent(
+                    $"c{corner}  ({sharing} voxel{(sharing == 1 ? "" : "s")})",
+                    $"Corner {corner}: sample {voxel + MarchingCubes.CornerOffset(corner)}, shared by {sharing} voxel(s) in this chunk. " +
+                    $"When solid it sets bit {corner} (= {1 << corner}) of the case index.");
+
+                float current = corners.GetCorner(corner);
+                float chosen = EditorGUILayout.Slider(label, current, 0f, 1f);
+                if (!Mathf.Approximately(chosen, current))
+                {
+                    corners.SetCorner(corner, chosen);
+                }
+            }
+            return true;
         }
 
         // Labelled c0-c7 to match the corner labels in the views, instead of Element 0-7.

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
 
@@ -7,8 +8,9 @@ namespace Clube.Debug
     /// Draws the voxel lab's teaching labels with IMGUI, given a way to turn world
     /// points into GUI points:
     /// <list type="bullet">
-    /// <item>V21: corners labelled c0-c7 (green when solid), and a table above the
-    /// cube lining each corner up with the bit it sets in the case index.</item>
+    /// <item>V21: corners labelled c0-c7 (green when solid), optionally with their
+    /// density (K7), and a table above the cube lining each corner up with the bit it
+    /// sets in the case index.</item>
     /// <item>V9: the edges the surface crosses, highlighted.</item>
     /// <item>Edge labels: all 12 edges numbered, crossed ones in the highlight colour.</item>
     /// </list>
@@ -52,15 +54,21 @@ namespace Clube.Debug
         /// <param name="showCrossedEdges">Highlight the edges the surface crosses (V9).</param>
         /// <param name="showEdgeLabels">Number all 12 edges, crossed ones in the highlight colour.</param>
         public static void Draw(
-            VoxelCornerEditor corners, bool showCornerLabels, bool showCrossedEdges, bool showEdgeLabels, WorldToGui worldToGui)
+            VoxelCornerEditor corners, bool showCornerLabels, bool showCornerValues, bool showCrossedEdges, bool showEdgeLabels,
+            WorldToGui worldToGui)
         {
+            if (!corners.HasVoxel)
+            {
+                return;
+            }
             EnsureStyles();
 
             int caseIndex = corners.CaseIndex;
             Transform transform = corners.transform;
             float voxelSize = corners.VoxelSize;
+            Vector3 origin = corners.VoxelOrigin;
 
-            bool ToGui(Vector3 local, out Vector2 gui) => worldToGui(transform.TransformPoint(local * voxelSize), out gui);
+            bool ToGui(Vector3 local, out Vector2 gui) => worldToGui(transform.TransformPoint(origin + local * voxelSize), out gui);
 
             if (showCrossedEdges)
             {
@@ -74,7 +82,7 @@ namespace Clube.Debug
 
             if (showCornerLabels)
             {
-                DrawCornerLabels(caseIndex, ToGui);
+                DrawCornerLabels(caseIndex, showCornerValues ? corners.CornerValues : null, ToGui);
                 if (ToGui(new Vector3(0.5f, 1.35f, 0.5f), out Vector2 anchor))
                 {
                     DrawCaseTable(caseIndex, anchor);
@@ -121,7 +129,7 @@ namespace Clube.Debug
             }
         }
 
-        private static void DrawCornerLabels(int caseIndex, LocalToGui toGui)
+        private static void DrawCornerLabels(int caseIndex, IReadOnlyList<float> values, LocalToGui toGui)
         {
             var centre = new Vector3(0.5f, 0.5f, 0.5f);
 
@@ -133,7 +141,8 @@ namespace Clube.Debug
                 if (toGui(local + (local - centre) * 0.25f, out Vector2 gui))
                 {
                     bool solid = MarchingCubes.IsCornerSolid(caseIndex, corner);
-                    GuiDrawing.CentredLabel(gui, $"c{corner}", solid ? solidCornerStyle : emptyCornerStyle);
+                    string text = values != null ? $"c{corner} {values[corner]:0.00}" : $"c{corner}";
+                    GuiDrawing.CentredLabel(gui, text, solid ? solidCornerStyle : emptyCornerStyle);
                 }
             }
         }

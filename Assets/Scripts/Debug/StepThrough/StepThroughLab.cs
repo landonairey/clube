@@ -5,13 +5,15 @@ using UnityEngine;
 namespace Clube.Debug
 {
     /// <summary>
-    /// Step-through animation of the parent chunk's mesh build (1D). Whenever the
+    /// Step-through animation of the target chunk's mesh build (1D), from the
+    /// <see cref="LabChunkTarget"/> on or above this object. Whenever the
     /// chunk's mesh is rebuilt, the build is recorded once (V15, A11); playback
     /// then replays the log (V16) with play/pause, stepping and speed (V17), an
     /// info line (V18) and Game-view visuals (V19). Turning this component on is
     /// the step-through mode: it hides the real mesh and takes the arrow keys.
-    /// Runs in VoxelLab (one voxel) and ChunkLab (a whole chunk, 2F), where the
-    /// build opens on the density field (K17) and closes on the normals (K18).
+    /// Runs in VoxelLab (one voxel), ChunkLab (a whole chunk, 2F) and WorldLab (the
+    /// focused chunk, M21), where the build opens on the density field (K17) and
+    /// closes on the normals (K18).
     /// </summary>
     /// <remarks>
     /// Play mode only: the chunk doesn't exist before then. A rebuild (corner,
@@ -70,8 +72,10 @@ namespace Clube.Debug
         private readonly List<Vector3> scratchVertices = new List<Vector3>();
         private readonly List<int> scratchTriangles = new List<int>();
 
-        private ChunkView chunkView;
-        private MeshRenderer chunkRenderer;
+        private LabChunkTarget target;
+
+        // The target's renderer while it's hidden, so it can be shown again when the target changes.
+        private Renderer hiddenRenderer;
         private StepThroughVisuals visuals;
         private Material ownedMarkerMaterial;
         private Material ownedSampleMaterial;
@@ -168,50 +172,36 @@ namespace Clube.Debug
 
         private void Awake()
         {
-            chunkView = GetComponentInParent<ChunkView>();
-            if (chunkView == null)
+            target = GetComponentInParent<LabChunkTarget>();
+            if (target == null)
             {
-                UnityEngine.Debug.LogError($"{nameof(StepThroughLab)} on '{name}' needs a {nameof(ChunkView)} parent.", this);
+                UnityEngine.Debug.LogError($"{nameof(StepThroughLab)} on '{name}' needs a {nameof(LabChunkTarget)} on it or a parent.", this);
                 enabled = false;
-                return;
             }
-
-            chunkRenderer = chunkView.GetComponent<MeshRenderer>();
         }
 
         private void OnEnable()
         {
-            if (chunkView == null)
+            if (target == null)
             {
                 return;
             }
 
-            chunkView.MeshRebuilt += OnMeshRebuilt;
-            chunkRenderer.enabled = false;
-
-            EnsureVisuals();
-            visuals.Visible = true;
-
-            // The chunk may already be clean, with no rebuild coming to trigger a recording.
-            if (chunkView.Chunk != null)
-            {
-                Record(autoPlay);
-            }
-            else
-            {
-                awaitingFirstRecording = true;
-            }
+            target.MeshRebuilt += OnMeshRebuilt;
+            target.Changed += OnTargetChanged;
+            StartOnTarget(autoPlay);
         }
 
         private void OnDisable()
         {
-            if (chunkView == null)
+            if (target == null)
             {
                 return;
             }
 
-            chunkView.MeshRebuilt -= OnMeshRebuilt;
-            chunkRenderer.enabled = true;
+            target.MeshRebuilt -= OnMeshRebuilt;
+            target.Changed -= OnTargetChanged;
+            ShowRealMesh();
             if (visuals != null)
             {
                 visuals.Visible = false;
@@ -282,15 +272,61 @@ namespace Clube.Debug
 
         private void OnMeshRebuilt(Mesh mesh)
         {
-            Record(awaitingFirstRecording ? autoPlay : playback.IsPlaying);
+            if (awaitingFirstRecording)
+            {
+                StartOnTarget(autoPlay);
+                return;
+            }
+            Record(playback.IsPlaying);
+        }
+
+        // WorldLab's focus moved to another chunk, or cleared: give the old chunk its mesh
+        // back and play the new one's build, playing or paused as before.
+        private void OnTargetChanged()
+        {
+            ShowRealMesh();
+            StartOnTarget(awaitingFirstRecording ? autoPlay : playback.IsPlaying);
+        }
+
+        // Hides the target's real mesh and records its build. With no chunk yet (before the
+        // first build, or nothing focused) the first rebuild or focus starts it instead.
+        private void StartOnTarget(bool play)
+        {
+            IRenderedChunk chunk = target.Current;
+            if (chunk == null || chunk.Chunk == null)
+            {
+                recording.Clear();
+                playback.Load(0);
+                if (visuals != null)
+                {
+                    visuals.Visible = false;
+                }
+                awaitingFirstRecording = true;
+                return;
+            }
+
+            hiddenRenderer = chunk.Renderer;
+            hiddenRenderer.enabled = false;
+            EnsureVisuals(hiddenRenderer.sharedMaterial);
+            visuals.Visible = true;
+            Record(play);
             awaitingFirstRecording = false;
+        }
+
+        private void ShowRealMesh()
+        {
+            if (hiddenRenderer != null)
+            {
+                hiddenRenderer.enabled = true;
+                hiddenRenderer = null;
+            }
         }
 
         // Re-runs the real mesher once with a recorder; playback only ever reads the log.
         // Always starts again from the first step, since the old steps no longer apply.
         private void Record(bool play)
         {
-            ChunkMesher.Build(chunkView.Chunk, chunkView.Config.MeshSettings, scratchVertices, scratchTriangles, recording);
+            ChunkMesher.Build(target.Chunk, target.MeshSettings, scratchVertices, scratchTriangles, recording);
             units.Build(recording, granularity, skipEmptyVoxels);
             playback.Load(units.Count);
             visuals.Load(recording, scratchVertices, scratchTriangles);
@@ -309,7 +345,7 @@ namespace Clube.Debug
             visuals.Show(step, progress);
         }
 
-        private void EnsureVisuals()
+        private void EnsureVisuals(Material surfaceMaterial)
         {
             if (visuals != null)
             {
@@ -329,7 +365,7 @@ namespace Clube.Debug
                 ownedSampleMaterial = new Material(Shader.Find(VertexColorShader)) { name = "Step Through Samples" };
                 samples = ownedSampleMaterial;
             }
-            visuals = new StepThroughVisuals(chunkView.transform, marker, samples, chunkRenderer.sharedMaterial);
+            visuals = new StepThroughVisuals(target.transform, marker, samples, surfaceMaterial);
         }
 
         private void DrawSceneLabels(Camera viewCamera)
@@ -400,7 +436,7 @@ namespace Clube.Debug
         /// </summary>
         private void DrawLabelBeside(Camera viewCamera, Vector3 localPoint, Vector3 localCentre, float markerRadius, string text, Color color)
         {
-            GuiDrawing.LabelBeside(viewCamera, chunkView.transform, localPoint, localCentre, markerRadius, text, color, labelStyle);
+            GuiDrawing.LabelBeside(viewCamera, target.transform, localPoint, localCentre, markerRadius, text, color, labelStyle);
         }
 
         private void DrawInfoBox()

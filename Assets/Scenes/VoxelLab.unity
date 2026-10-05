@@ -119,80 +119,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &91522117
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 91522118}
-  - component: {fileID: 91522120}
-  - component: {fileID: 91522119}
-  m_Layer: 0
-  m_Name: Step Through
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &91522118
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 91522117}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 190024691}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &91522119
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 91522117}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d1a3656f546ec47448ec97ca694f37c4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughInput
---- !u!114 &91522120
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 91522117}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cb924dfe74fd7a148a2fb8a5706b180e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StepThroughLab
-  speed: 1
-  granularity: 0
-  skipEmptyVoxels: 0
-  autoPlay: 1
-  timings:
-    voxel: 0.8
-    slice: 3
-    densityField: 1.5
-    sampleCorners: 2
-    caseIndex: 2.5
-    edgeTable: 1.5
-    interpolate: 0.8
-    triangle: 1
-    normals: 2
-  markerMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
-  sampleMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
-  targetCamera: {fileID: 0}
 --- !u!1 &190024688
 GameObject:
   m_ObjectHideFlags: 0
@@ -204,14 +130,8 @@ GameObject:
   - component: {fileID: 190024691}
   - component: {fileID: 190024690}
   - component: {fileID: 190024689}
-  - component: {fileID: 190024693}
-  - component: {fileID: 190024692}
   - component: {fileID: 190024694}
-  - component: {fileID: 190024695}
-  - component: {fileID: 190024696}
-  - component: {fileID: 190024697}
-  - component: {fileID: 190024698}
-  - component: {fileID: 190024699}
+  - component: {fileID: 190024701}
   m_Layer: 0
   m_Name: Voxel
   m_TagString: Untagged
@@ -290,51 +210,9 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1408007342}
-  - {fileID: 91522118}
+  - {fileID: 1178847921}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &190024692
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 190024688}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 62f34283be239fe44aa505f93e6f6170, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Clube.Voxel.SingleVoxelGizmos
-  showSamples: 1
-  cornerRadius: 0.05
-  sampleOpacity: 0.35
-  wireframe: 1
-  outlineColor: {r: 0.6, g: 0.6, b: 0.6, a: 1}
-  voxelGridColor: {r: 0.32, g: 0.33, b: 0.36, a: 1}
-  sampleMaterial: {fileID: 2100000, guid: 7306c3d226f246045a04b0c391c5dfd0, type: 2}
-  lineMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
---- !u!114 &190024693
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 190024688}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0aa3511fe48d30244957d00f9a84e6b7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Clube.Voxel.SingleVoxel
-  cornerValues:
-  - 1
-  - 1
-  - 1
-  - 1
-  - 0
-  - 0
-  - 0
-  - 0
 --- !u!114 &190024694
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -348,7 +226,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ChunkView
   config: {fileID: 11400000, guid: f9e6eb73875978e4495a42f451dbb0e3, type: 2}
---- !u!114 &190024695
+--- !u!114 &190024701
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -357,137 +235,115 @@ MonoBehaviour:
   m_GameObject: {fileID: 190024688}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0b836eae06bbc484dbeceedbe82ab90c, type: 3}
+  m_Script: {fileID: 11500000, guid: 897400aa44381574eaec9456a6a07317, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.FlipFaces
-  flipFaces: 0
---- !u!114 &190024696
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 190024688}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6abcbc4b0e3e4a444a9da39fedd28045, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.NormalGizmos
-  showVertexNormals: 1
-  showFaceNormals: 1
-  showTriangleEdges: 1
-  length: 0.2
-  vertexNormalColor: {r: 0.3, g: 0.8, b: 1, a: 1}
-  faceNormalColor: {r: 1, g: 0.9, b: 0.2, a: 1}
-  triangleEdgeColor: {r: 0.75, g: 0.75, b: 0.75, a: 1}
-  lineMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
---- !u!114 &190024697
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 190024688}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ce24c1991f76ec040b52f74dfa845382, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelLabels
-  showCornerLabels: 1
-  showCrossedEdges: 1
-  showEdgeLabels: 1
-  targetCamera: {fileID: 0}
---- !u!114 &190024698
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 190024688}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 701e34ebff3a0fe4690bea5f0943647a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.CaseStepInput
---- !u!114 &190024699
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 190024688}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8900e807f8aba2d438ebf0bf86ff9a96, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelLabPanel
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.LabPanel
   startOpen: 1
   width: 340
   background: {r: 0, g: 0, b: 0, a: 0.7}
---- !u!1 &1408007341
-GameObject:
+  worldOpen: 0
+  terrainOpen: 0
+  brushOpen: 0
+  meshingOpen: 0
+  chunkOpen: 0
+  cornersOpen: 1
+  caseOpen: 1
+  presetsOpen: 0
+  volumeOpen: 0
+  stepThroughOpen: 0
+  cameraOpen: 0
+  displayOpen: 0
+--- !u!1001 &1178847920
+PrefabInstance:
   m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1408007342}
-  - component: {fileID: 1408007343}
-  - component: {fileID: 1408007344}
-  m_Layer: 0
-  m_Name: Volume Lab
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1408007342
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1408007341}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 190024691}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1408007343
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 190024691}
+    m_Modifications:
+    - target: {fileID: 1502145125330933740, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_Name
+      value: Chunk Tools
+      objectReference: {fileID: 0}
+    - target: {fileID: 1884524563657092886, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: showSamples
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1884524563657092886, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_EditorClassIdentifier
+      value: Assembly-CSharp::Clube.Voxel.SingleVoxelGizmos
+      objectReference: {fileID: 0}
+    - target: {fileID: 4999905116848596708, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: showEdgeLabels
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4999905116848596708, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: showCornerValues
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4999905116848596708, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: showTriangleEdges
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4999905116848596708, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: triangleEdgeMaterial
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8778611864042155362, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+      propertyPath: m_EditorClassIdentifier
+      value: Assembly-CSharp::Clube.Voxel.SingleVoxel
+      objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 3752303365008404134, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+--- !u!4 &1178847921 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8140273291154395217, guid: bd45322d367d6ea49b316d5bed00998b, type: 3}
+  m_PrefabInstance: {fileID: 1178847920}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1408007341}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2297273b2f8273a4cae31b6620c39490, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelVolumeLab
-  exactVolume: 1
-  explodeDistance: 0.25
-  faceOpacity: 0.35
-  faceMaterial: {fileID: 2100000, guid: 7306c3d226f246045a04b0c391c5dfd0, type: 2}
-  edgeMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
-  monteCarloSamples: 10000
---- !u!114 &1408007344
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1408007341}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c75d1c1fec6c73c4985661ad8b8e1f1d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ExplodeScrollInput
-  stepPerNotch: 0.05
 --- !u!1 &1576569280
 GameObject:
   m_ObjectHideFlags: 0
