@@ -124,7 +124,13 @@ and meshing sections); WorldLab selects a chunk, then a voxel inside it,
 with separate highlight toggles; voxel size goes down to 1/16 m (1-16 per
 metre) and `BuildGridOverlay` shows a 1 m build grid on the terrain
 (`Clube/Build Grid Overlay` shader, an extra chunk material).
-**Next:** 2D's K12 (Jobs/Burst), then 2G, then M12, per the build order.
+K12 is done: `BurstChunkMesher` (Core) is the K32 loop as a Burst job,
+picked per config with `WorldConfig.Mesher` (managed stays the default and
+is what step-through records); 4-5× the managed mesher, 13× with one job
+per chunk in parallel. Benchmark Burst with *Jobs → Burst → Safety Checks*
+off; the Editor's checks hide most of the gain.
+**Next:** 2G (voxel storage), then M12, per the build order; K35
+(generation speed) is open.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and

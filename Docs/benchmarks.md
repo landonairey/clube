@@ -174,3 +174,68 @@ optimization.
   mesh it, so 97% of loading a world. Before K32 it was 75%. Fractal 2D
   Perlin samples 4 octaves for every sample, although a heightfield only
   needs one height per column. That's K35.
+
+## K12 — Burst-compiled mesher (Jobs + native arrays)
+
+**Question.** How much faster is the K32 mesher as a Burst-compiled job,
+and how much more do we get by meshing many chunks at once on the worker
+threads (the start of Chapter 4's threading)?
+
+**Method.**
+- `BurstChunkMesher` (Core) runs the K32 loop as an `IJob` over native
+  arrays: densities copied in a Z layer at a time through
+  `IVoxelStorage.ReadLayer` (A12), the Marching Cubes tables flattened, and
+  output into `NativeList`s. It gives the same mesh as `ChunkMesher`
+  (`BurstChunkMesherTests`: same counts and indices, positions within 1e-5).
+- `MesherSpeedBenchmark` now times both meshers per size and shading; the
+  Burst time includes copying the densities in. `WorldMeshBenchmark` adds
+  the Burst job one chunk at a time, and one job per chunk all scheduled
+  before any is waited on.
+- In the Editor, Burst jobs run with safety checks (bounds checks on every
+  native access) unless *Jobs → Burst → Safety Checks* is off; player
+  builds have them off. Both are shown.
+
+**Conditions.** As K32: Unity 6000.3.25f1, Editor, Release code
+optimization, Intel Core i9-10900K (20 threads). Burst 1.8.30.
+
+Single chunk, median ms (managed / Burst):
+
+| Chunk | Shading | Managed | Burst, safety checks on | Burst, safety checks off |
+|---|---|--:|--:|--:|
+| 16³ | Flat | 0.21 | 0.14 | 0.04 |
+| 16³ | Smooth | 0.32–0.43 | 0.16 | 0.05 |
+| 32³ | Flat | 1.03 | 0.82 | 0.19 |
+| 32³ | Smooth | 1.46–1.97 | 0.93 | 0.25 |
+| 64³ | Flat | 5.59–7.29 | 5.61 | 1.35 |
+| 64³ | Smooth | 7.27–7.55 | 6.06 | 1.59 |
+
+(Managed ranges are the two runs; the second ran alongside Burst
+recompiling with checks off.)
+
+World scale (WorldLab's 16³ chunks, 2 layers, flat), safety checks off:
+
+| Render distance | Chunks | Generate ms | Managed ms | Burst ms | Burst, parallel ms |
+|--:|--:|--:|--:|--:|--:|
+| 4 | 98 | 380 | 12.9 | 3.4 | 1.0 |
+| 6 | 226 | 868 | 29.4 | 7.3 | 2.2 |
+| 8 | 394 | 1,514 | 51.2 | 12.6 | 4.0 |
+
+With safety checks on, Burst is 11.6 / 27.3 / 47.6 ms one at a time and
+1.7 / 3.8 / 6.7 ms in parallel.
+
+**Findings.**
+- **Burst is 4–5× the K32 loop** on one chunk once safety checks are off
+  (64³: 1.35 against ~5.6 ms), and **13× in parallel** across a world
+  (98 chunks: 1.0 against 12.9 ms). The Editor's safety checks cost most of
+  the single-chunk gain, so judge Burst with them off.
+- **Smooth shading costs Burst almost nothing extra** (a native hash map
+  instead of the managed `Dictionary`), where it costs the managed mesher
+  30–90%.
+- **Meshing is no longer a cost worth chasing:** a whole render distance 4
+  world meshes in 1 ms on the workers, while generating it takes 380 ms.
+  Generation (K35) is next, and it would parallelise the same way.
+
+**Decision.** Keep both meshers behind `WorldConfig.Mesher` (A6): managed
+stays the default and is what step-through records (A11); labs and the
+game can pick Burst. Streaming chunks through parallel jobs belongs to
+Chapter 4 and isn't wired into `WorldView` yet.

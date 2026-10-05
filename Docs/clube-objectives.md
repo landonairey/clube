@@ -172,13 +172,14 @@ Build order *(changed)*: 2A–2C, 2E (with the first demo exe, K33), 2F, then Ch
   - Note: the chunk is 3D, so "height" means the topmost iso-crossing in each column; overhangs and caves are lost.
 
 ### 2D — Performance *(rest after 3A)*
-K11 and K32 are done; K12 is next (the stacked labs, 3A+, are done).
+K11, K32 and K12 are done; K35 (generation speed) is open.
 
 - [x] **K11** `Lab` Benchmark: `List<T>` vs preallocated arrays for mesh building.
   - Method: Stopwatch over N runs after warmup; record ms and GC allocations (Profiler / `GC.GetAllocatedBytesForCurrentThread`); test at 3+ chunk sizes.
   - Output: results table in the repo (`Docs/benchmarks.md`). Winner becomes the `Core` implementation.
   - Result: no measurable difference (within 1%), and worst-case arrays hold 60 MB at 64³, so reused `List<T>` stays in Core. The time goes into visiting voxels, not storing the mesh. (`MeshStorageBenchmark`, *Clube → Benchmarks*. Allocations come from heap growth, because `GC.GetAllocatedBytesForCurrentThread` reads 0 on Mono.)
-- [ ] **K12** `Lab` *(added, optional)* Third variant: `NativeArray` + Jobs/Burst — sets up Chapter 4 threading. *(Also a backlog item: "code test of Burst-compiled jobs".)*
+- [x] **K12** `Lab` *(added, optional)* Third variant: `NativeArray` + Jobs/Burst — sets up Chapter 4 threading. *(Also a backlog item: "code test of Burst-compiled jobs".)*
+  - Result: `BurstChunkMesher` (Core) runs the K32 loop as a Burst job over native arrays and gives the same mesh (`BurstChunkMesherTests`). `WorldConfig.Mesher` picks managed or Burst for every chunk build (A6; step-through always records the managed one), in the panel's and Inspector's Meshing section. With Burst safety checks off: 64³ in 1.35 ms (4–5× K32); a render distance 4 world meshes in 3.4 ms one chunk at a time, 1.0 ms with one job per chunk in parallel (13×). Generation (K35) is now the whole cost. Details in `Docs/benchmarks.md`. Burst, Collections and Mathematics are now listed in the manifest (they were already installed as dependencies).
 - [x] **K32** `Core + Lab` *(added, from K11)* Speed up the mesher's per-voxel loop, benchmarked against the K11 baseline (77 ms at 64³). Candidates: read densities straight from the flat storage, not through `IVoxelStorage` per corner; reuse the 4 corners shared with the previous voxel; store the crossed-edge mask as a 256-entry table; and skip all-solid or all-empty runs early.
   - Result: 64³ meshing from 81 to 5.5 ms flat (15×) and 83 to 7.1 ms smooth (`MesherSpeedBenchmark`, *Clube → Benchmarks → Mesher speed*). Densities are read a Z layer at a time through a new `IVoxelStorage.ReadLayer` rather than straight from the flat array, so the mesher stays behind A12 and RLE and octree storage (K24, K25) must implement it too. The layer reads with corner reuse gave 11× on their own; the edge table and early skip about 15% and 8%. Smooth shading's `SharedVertexWriter` dictionary is now its main extra cost. Details in `Docs/benchmarks.md`.
   - At world scale (WorldLab's 16³ chunks, `WorldMeshBenchmark`): meshing 1.30 → 0.13 ms per chunk, 127 → 13 ms for the 98 chunks at render distance 4. Generation (~3.8 ms per chunk) is now 97% of loading a world: K35.
@@ -231,7 +232,7 @@ Compare storage schemes on a single chunk, behind the A12 interface, then measur
 This is where the shift happens: lab controls stay in `WorldLab`, and `Game` gets its first playable form.
 
 ### 3A — Chunk management
-After 3A: 2D's K32 and the stacked labs (3A+) are done; next K12, then 2G and M12.
+After 3A: 2D's K32 and K12 and the stacked labs (3A+) are done; next 2G, then M12.
 
 - [x] **M1** `Core` *(added — prerequisite)* Chunk coordinate system and chunk manager (world pos ↔ chunk ↔ voxel). (`WorldGrid`: world position, global sample, chunk and local sample, floored so negative coordinates work. `World` holds the loaded chunks; `WorldView` is the chunk manager: streams chunks around a focus point, nearest first and a few per frame, and pools their `ChunkRenderer`s. Chunks are cubes on a 3D grid, stacked `WorldHeightInChunks` layers high from y = 0; see M17.)
 - [x] **M2** `Core` *(added — prerequisite)* Seamless borders: chunks share edge density samples so no cracks/gaps. (Each chunk keeps its own copy of the shared border samples and `World` keeps every copy equal: generation samples world positions, `World.SetDensity` writes all copies, and a newly loaded chunk takes its border from edited neighbours. Tests check shared samples and that border vertices match. Smooth-shading normals are still computed per chunk, so lighting can show a faint line at a border.)
