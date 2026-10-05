@@ -1,17 +1,22 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using Clube.Core;
+using Unity.Collections;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace Clube.Debug
 {
-    /// <summary>One row of the K32 benchmark: the core mesher at one chunk size and shading.</summary>
+    /// <summary>One row of the mesher benchmark: one mesher at one chunk size and shading.</summary>
     public readonly struct MesherSpeedResult
     {
-        public MesherSpeedResult(int chunkSize, Shading shading, int vertices, int triangles, double medianMs, double meanMs)
+        public MesherSpeedResult(
+            int chunkSize, MesherBackend backend, Shading shading, int vertices, int triangles, double medianMs, double meanMs)
         {
             ChunkSize = chunkSize;
+            Backend = backend;
             Shading = shading;
             Vertices = vertices;
             Triangles = triangles;
@@ -21,6 +26,8 @@ namespace Clube.Debug
 
         /// <summary>Voxels along each axis of the cubic chunk.</summary>
         public int ChunkSize { get; }
+
+        public MesherBackend Backend { get; }
 
         public Shading Shading { get; }
 
@@ -38,9 +45,11 @@ namespace Clube.Debug
     }
 
     /// <summary>
-    /// K32: times <see cref="ChunkMesher.Build"/> on the K11 terrain, flat and smooth,
-    /// so each speed-up to the per-voxel loop can be measured against the last.
-    /// Warmup builds first, then timed builds (Stopwatch); the median is the headline.
+    /// K32 and K12: times the managed <see cref="ChunkMesher"/> and the Burst job
+    /// (<see cref="BurstChunkMesher"/>, built and completed on this thread) on the K11 terrain,
+    /// flat and smooth, so each mesher change can be measured against the last.
+    /// Warmup builds first (which also compiles the Burst job), then timed builds (Stopwatch);
+    /// the median is the headline.
     /// </summary>
     public static class MesherSpeedBenchmark
     {
@@ -49,47 +58,66 @@ namespace Clube.Debug
             var results = new List<MesherSpeedResult>();
             var vertices = new List<Vector3>();
             var triangles = new List<int>();
-            foreach (int size in sizes)
+            var nativeVertices = new NativeList<float3>(Allocator.Persistent);
+            var nativeTriangles = new NativeList<int>(Allocator.Persistent);
+            try
             {
-                Chunk chunk = BenchmarkTerrain.Hills(size);
-                foreach (Shading shading in new[] { Shading.Flat, Shading.Smooth })
+                foreach (int size in sizes)
                 {
-                    var settings = new ChunkMeshSettings(0.5f, 1f, EdgePlacement.Interpolated, shading);
-                    for (int i = 0; i < warmup; i++)
+                    Chunk chunk = BenchmarkTerrain.Hills(size);
+                    foreach (Shading shading in new[] { Shading.Flat, Shading.Smooth })
                     {
-                        ChunkMesher.Build(chunk, settings, vertices, triangles);
-                    }
+                        var settings = new ChunkMeshSettings(0.5f, 1f, EdgePlacement.Interpolated, shading);
 
-                    var timesMs = new double[runs];
-                    var stopwatch = new Stopwatch();
-                    for (int i = 0; i < runs; i++)
-                    {
-                        stopwatch.Restart();
-                        ChunkMesher.Build(chunk, settings, vertices, triangles);
-                        timesMs[i] = stopwatch.Elapsed.TotalMilliseconds;
-                    }
+                        (double median, double mean) = Time(() => ChunkMesher.Build(chunk, settings, vertices, triangles), warmup, runs);
+                        results.Add(new MesherSpeedResult(
+                            size, MesherBackend.Managed, shading, vertices.Count, triangles.Count / 3, median, mean));
 
-                    results.Add(new MesherSpeedResult(
-                        size, shading, vertices.Count, triangles.Count / 3,
-                        BenchmarkStats.Median(timesMs), BenchmarkStats.Mean(timesMs)));
+                        (median, mean) = Time(() => BurstChunkMesher.Build(chunk, settings, nativeVertices, nativeTriangles), warmup, runs);
+                        results.Add(new MesherSpeedResult(
+                            size, MesherBackend.Burst, shading, nativeVertices.Length, nativeTriangles.Length / 3, median, mean));
+                    }
                 }
+            }
+            finally
+            {
+                nativeVertices.Dispose();
+                nativeTriangles.Dispose();
             }
             return results;
         }
 
-        /// <summary>The results as a Markdown table, one row per chunk size and shading.</summary>
+        /// <summary>The results as a Markdown table, one row per chunk size, shading and mesher.</summary>
         public static string ToMarkdown(IReadOnlyList<MesherSpeedResult> results)
         {
             var text = new StringBuilder();
-            text.AppendLine("| Chunk | Shading | Vertices | Triangles | Mesh ms (median) | Mesh ms (mean) | ns per voxel |");
-            text.AppendLine("|---|---|--:|--:|--:|--:|--:|");
+            text.AppendLine("| Chunk | Shading | Mesher | Vertices | Triangles | Mesh ms (median) | Mesh ms (mean) | ns per voxel |");
+            text.AppendLine("|---|---|---|--:|--:|--:|--:|--:|");
             foreach (MesherSpeedResult r in results)
             {
                 text.AppendLine(
-                    $"| {r.ChunkSize}³ | {r.Shading} | {r.Vertices:N0} | {r.Triangles:N0} | " +
+                    $"| {r.ChunkSize}³ | {r.Shading} | {r.Backend} | {r.Vertices:N0} | {r.Triangles:N0} | " +
                     $"{r.MedianMs:0.00} | {r.MeanMs:0.00} | {r.NanosecondsPerVoxel:0} |");
             }
             return text.ToString();
+        }
+
+        private static (double Median, double Mean) Time(Action build, int warmup, int runs)
+        {
+            for (int i = 0; i < warmup; i++)
+            {
+                build();
+            }
+
+            var timesMs = new double[runs];
+            var stopwatch = new Stopwatch();
+            for (int i = 0; i < runs; i++)
+            {
+                stopwatch.Restart();
+                build();
+                timesMs[i] = stopwatch.Elapsed.TotalMilliseconds;
+            }
+            return (BenchmarkStats.Median(timesMs), BenchmarkStats.Mean(timesMs));
         }
     }
 }
