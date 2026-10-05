@@ -129,8 +129,13 @@ picked per config with `WorldConfig.Mesher` (managed stays the default and
 is what step-through records); 4-5× the managed mesher, 13× with one job
 per chunk in parallel. Benchmark Burst with *Jobs → Burst → Safety Checks*
 off; the Editor's checks hide most of the gain.
-**Next:** 2G (voxel storage), then M12, per the build order; K35
-(generation speed) is open.
+2G is done (K24-K28): `IVoxelStorage` schemes behind `VoxelStorages` (flat
+float, flat byte, run-length X/Y/Z, sparse octree), picked by
+`WorldConfig.Storage`; every scheme passes `VoxelStorageTests`, and
+`StorageView` (K27) draws runs or octree leaves. Flat float stays the
+default; `Docs/benchmarks.md` has the K26 comparison.
+**Next:** M12 (storage at scale), per the build order; K35 (generation
+speed) is open.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and

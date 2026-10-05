@@ -40,6 +40,14 @@ namespace Clube.Core
         [SerializeField]
         private MesherBackend mesher = MesherBackend.Managed;
 
+        [Tooltip("How each chunk stores its densities (A12, 2G): flat floats, single bytes, runs along an axis, or a sparse octree. Changing it regenerates.")]
+        [SerializeField]
+        private VoxelStorageType storage = VoxelStorageType.Flat;
+
+        [Tooltip("Octree storage only: how many times the octree may divide (K25). Deeper collapses finer but costs more nodes.")]
+        [SerializeField, Range(1, 8)]
+        private int octreeMaxDepth = VoxelStorages.DefaultOctreeMaxDepth;
+
         [Tooltip("How the terrain is generated: generator, surface level and amplitude, noise shape, seed (K8-K10).")]
         [SerializeField]
         private TerrainSettings terrain = new TerrainSettings();
@@ -91,6 +99,33 @@ namespace Clube.Core
         {
             get => mesher;
             set => mesher = value;
+        }
+
+        /// <summary>How each chunk stores its densities (2G). Changing it makes new chunks.</summary>
+        public VoxelStorageType Storage
+        {
+            get => storage;
+            set => storage = value;
+        }
+
+        public int OctreeMaxDepth
+        {
+            get => octreeMaxDepth;
+            set => octreeMaxDepth = Mathf.Clamp(value, 1, 8);
+        }
+
+        /// <summary>True when <paramref name="existing"/> is of the configured scheme, so a chunk can keep it.</summary>
+        public bool StorageMatches(IVoxelStorage existing)
+        {
+            // An octree clamps its depth to what its size allows, so compare against the same clamp.
+            return existing.Type == storage
+                   && (!(existing is OctreeVoxelStorage octree) || octree.MaxDepth == Mathf.Clamp(octreeMaxDepth, 1, octree.DeepestDepth));
+        }
+
+        /// <summary>A new, empty storage of the configured scheme for a chunk of <paramref name="sampleCount"/> samples.</summary>
+        public IVoxelStorage CreateStorage(Vector3Int sampleCount)
+        {
+            return VoxelStorages.Create(storage, sampleCount, octreeMaxDepth);
         }
 
         public ChunkMeshSettings MeshSettings => new ChunkMeshSettings(isoLevel, voxelSize, edgePlacement, shading, mesher);

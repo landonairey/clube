@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -33,9 +34,13 @@ namespace Clube.Core
         private readonly List<(Chunk Chunk, Vector3Int Coord, float Entry)> raycastCandidates =
             new List<(Chunk, Vector3Int, float)>();
 
-        public World(Vector3Int chunkSize, float voxelSize)
+        private readonly Func<Vector3Int, IVoxelStorage> createStorage;
+
+        /// <param name="createStorage">Makes each new chunk's storage from its sample count (2G); flat floats if null.</param>
+        public World(Vector3Int chunkSize, float voxelSize, Func<Vector3Int, IVoxelStorage> createStorage = null)
         {
             Grid = new WorldGrid(chunkSize, voxelSize);
+            this.createStorage = createStorage ?? (samples => new FlatVoxelStorage(samples));
         }
 
         public WorldGrid Grid { get; }
@@ -86,7 +91,7 @@ namespace Clube.Core
                 return kept;
             }
 
-            var chunk = new Chunk(Grid.ChunkSize);
+            var chunk = new Chunk(createStorage(Grid.ChunkSize + Vector3Int.one));
             if (generator != null)
             {
                 ChunkGenerator.Fill(chunk, generator, Grid.ChunkOrigin(coord), Grid.VoxelSize);

@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 7567848092458911831}
   - component: {fileID: 3752303365008404134}
   - component: {fileID: 8261155977479047332}
+  - component: {fileID: 8296558227190194303}
   m_Layer: 0
   m_Name: Chunk Tools
   m_TagString: Untagged
@@ -117,6 +118,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a81c998881ca46f48a6fbb1b2f3e9a47, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.VoxelSelector
+  showHighlight: 1
   highlightColor: {r: 1, g: 0.85, b: 0.2, a: 1}
   highlightMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
   focusDistance: 4
@@ -136,6 +138,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkVolumeStats
   calculate: 1
   minInterval: 0.25
+--- !u!114 &8296558227190194303
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1502145125330933740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 847fa7df826b34d4aaf211991c244cd2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.StorageView
+  show: 0
+  hideAirRuns: 1
+  hideAirLeaves: 1
+  lineMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
 --- !u!1 &6306708137915254983
 GameObject:
   m_ObjectHideFlags: 0

@@ -214,14 +214,19 @@ Extends Chapter 1 playback (V15–V19) so the mesh can be watched growing voxel 
 Compare storage schemes on a single chunk, behind the A12 interface, then measured again at scale (M12). Moved after 3A so both run against the same multi-chunk world.
 
 - [x] **K23** `Core` Flat array baseline (current storage).
-- [ ] **K24** `Core` Run-length encoding: runs along one axis; test at least two run orders (e.g. X-first vs Y-first) since terrain is mostly vertical layers.
-- [ ] **K25** `Core` Sparse octree: uniform regions collapse into single nodes; configurable max depth.
-- [ ] **K26** `Lab` Benchmark each scheme for memory size, read speed during meshing, write speed during brush edits, and serialized size.
+- [x] **K24** `Core` Run-length encoding: runs along one axis; test at least two run orders (e.g. X-first vs Y-first) since terrain is mostly vertical layers.
+  - Result: `RunLengthVoxelStorage` along X, Y or Z. X and Z beat Y: every column crosses the surface (at least three runs), while most horizontal lines lie wholly in solid or air. X serializes 12× smaller than flat at 64³; in memory it's 0.40× (per-line overhead). See K26.
+- [x] **K25** `Core` Sparse octree: uniform regions collapse into single nodes; configurable max depth.
+  - Result: `OctreeVoxelStorage`: power-of-two cube, uniform leaves, eight children or bricks at the maximum depth; equal children collapse back, uniform bricks turn into leaves. With 4³ bricks it's the smallest in memory (0.28× at 64³), ~35% slower per brush stroke.
+- [x] **K26** `Lab` Benchmark each scheme for memory size, read speed during meshing, write speed during brush edits, and serialized size.
   - Note: smooth marching cubes needs varied densities near the surface, so compression mostly comes from solid and air regions. Also test with quantized densities (e.g. byte instead of float) to see how that changes the results.
   - Output: results added to `Docs/benchmarks.md`.
-- [ ] **K27** `Lab` *(added)* Visualize the storage: RLE runs as coloured bars, octree nodes as wireframe boxes at each depth.
-- [ ] **K28** `Core` *(backlog)* Single-byte densities: store each density as one byte to keep data tight and simple, and benchmark it against float in K26.
+  - Result: `StorageBenchmark` (*Clube → Benchmarks → Voxel storage*), Hills and Caves at 16³-64³, in `Docs/benchmarks.md`. Flat float stays the default; flat byte and the 4³-brick octree are the M12 candidates; run-length X is the saved form. Quantizing to bytes changes RLE and octree compression by under 1%.
+- [x] **K27** `Lab` *(added)* Visualize the storage: RLE runs as coloured bars, octree nodes as wireframe boxes at each depth.
+  - Result: `StorageView` in the Chunk Tools prefab (so every lab, and WorldLab's focused chunk): runs as bars coloured air, surface or solid, with gaps between runs; octree leaves as boxes coloured by depth, bricks brighter. The panel's and Inspector's Storage section picks the scheme and octree depth and shows the chunk's memory and saved size.
+- [x] **K28** `Core` *(backlog)* Single-byte densities: store each density as one byte to keep data tight and simple, and benchmark it against float in K26.
   - Note: density is signed around the iso surface (negative = air, positive = solid), so use `sbyte`, or `byte` with 128 as the zero point. 256 levels is plenty for smooth surfaces but coarse for gentle brush falloff (K16); check for visible stepping. Answers the "density type" open question.
+  - Result: `ByteVoxelStorage`. Our densities run 0-1 with the surface at the iso level, so an unsigned byte maps them directly (0 empty, 255 solid). 0.25× memory; vertices move 0.004-0.005 voxels on average, and a sample right at the iso level can round across it (rare slivers, up to ~0.5 voxels): no visible stepping, including after soft brushing.
 
 **Done when:** a 32³ chunk can be generated with any K9 generator and edited in play mode and in the demo exe (K33); a 4×4×4 chunk can be played through at voxel granularity in about a minute. (2D's and 2G's benchmark results are committed after 3A.)
 
