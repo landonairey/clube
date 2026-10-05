@@ -275,7 +275,7 @@ Each lab contains the tools of the labs below it, built from the same scripts: `
 - [ ] **M16** `Lab` *(backlog)* Gravity multiplier: debug slider scaling the player's gravity, for tuning jump and fall feel.
 - [ ] **M25** `Lab` *(added 2026-10-05, after M6)* Fine marching voxels inside a coarse build grid: with a player about two cells tall, try 1, 2, 4, 8 and 16 marching voxels per 1 m build cell and judge how digging and moving feel. Builds on M23 (voxel size down to 1/16 m, the build grid overlay); M12 measured the cost (4 per metre: 6× the memory and 7× the generation of 1 m voxels). The result sets the game's voxel size.
 
-**Checkpoint 3.1 — playable terrain (after 3A + 3B):** in the `Game` scene, the player can walk across a multi-chunk area and dig through a chunk border without seams, using a single placeholder material. No debug components present (A10).
+**Checkpoint 3.1 — playable terrain (after 3A + 3B):** in WorldLab, the player can walk across a multi-chunk area and dig through a chunk border without seams, using a single placeholder material. *(Changed 2026-10-05: the player walks in WorldLab first; the lean `Game` scene, with no debug components (A10) and baked-in choices, is the last section of Chapter 4.)*
 
 ### 3C — Materials
 - [ ] **M9** `Core` Material registry: one definition per material (id, category aggregate/ore, texture, colour, hardness, drop item). Starts with aggregates **grass, dirt, stone** and ores **gold, silver, copper**; built so more of each can be added later without code changes, and so a material can later carry hidden mineral species (PR2).
@@ -331,6 +331,16 @@ Ore nodes are generated as a procedural centroid with a 3D Gaussian falloff. Eac
 - [ ] **P13** `Core + Lab` *(added 2026-10-05)* Midpoint edges and binary density, built for speed: midpoint-only edge placement (V3) over a solid/empty field (one bit per sample, or bytes holding only 0 and 1), with a mesher and storage made for it. Blockier and faceted, but a bit-packed field is 1/32 of flat floats, uniform regions are trivial and the mesher needs no interpolation. Loses the smooth surface and K16's soft brush, and edits snap to whole samples. Compare look and cost against the smooth path (K12, M12) as another storage scheme (2G) and mesher variant (A6).
 - [ ] **P14** `Core` *(added 2026-10-05)* Cellular (Worley/Voronoi) noise generator imitating the cracked, bubbly cooling surface of slag: another K9 generator, or a detail layer on top of others, seeded like the rest (K10). Could also shape slag heaps around smelting sites (PR6, 6D).
 - [ ] **P15** `Lab` *(added 2026-10-05)* Infinite vs bounded world: compare the current endless streamed world (M1) with a size-limited map holding a limited set of biomes, and so a limited set of tribes and races (Chapter 8). Compare generation cost, how exploration feels, save size (S2), and how deliberately biomes (P8, PK5), tribe territories and settlements (7B) can be placed. Decision recorded in `Docs/` (see Open questions).
+
+### Lean game world *(added 2026-10-05; final section of Chapter 4)*
+Once the player walks around a world (3B), build a new world scene that is not a lab: the architectural choices the labs compared are baked in and can no longer be changed at run time. Fixing them lets the code drop the variant switches, lab hooks and copies the labs need, so it's simpler and faster. This is A13 made concrete, and the `Game` scene the later chapters build on.
+
+- [ ] **GW1** Decision record in `Docs/`: the choices to bake in, each from its lab result. Starting point: single-byte storage (M12), the Burst mesher (K12), the edge placement and shading the game locks in (A6), the voxel size (M25) and chunk size and shape (M17), streaming on jobs (P3).
+- [ ] **GW2** `Core` Game-only paths: a mesher, storage and streaming path with no variant switches, recorder or lab events (A6 picks once; here there's nothing to pick). The lab code stays for the labs; the game path doesn't reference it.
+- [ ] **GW3** `Game` The new world scene (`Game`): player (3B), streaming, digging and placing, with no `Clube.Debug` components (A10) and no run-time knobs beyond player settings (A3).
+- [ ] **GW4** `Lab` Benchmark the lean path against the lab path on the same world (memory, load, meshing, frame time), so the simplification's gain is measured, not assumed.
+
+**Done when:** the `Game` scene runs the baked-in path with no lab components or variant switches, and GW4 records what it saved.
 
 ---
 
