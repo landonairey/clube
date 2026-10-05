@@ -86,6 +86,7 @@ namespace Clube.Debug
         private VoxelVolumeLab volumeLab;
         private StepThroughLab stepThrough;
         private FreeFlyCamera flyCamera;
+        private PlayerCameraToggle playerToggle;
         private VoxelLabels labels;
         private NormalLines normals;
         private FlipFaces flipFaces;
@@ -135,7 +136,9 @@ namespace Clube.Debug
             corners = FindFirstObjectByType<VoxelCornerEditor>();
             volumeLab = FindFirstObjectByType<VoxelVolumeLab>();
             stepThrough = FindFirstObjectByType<StepThroughLab>();
-            flyCamera = Camera.main != null ? Camera.main.GetComponent<FreeFlyCamera>() : null;
+            // Include inactive: while walking as the player (M7) the fly camera is switched off.
+            flyCamera = FindFirstObjectByType<FreeFlyCamera>(FindObjectsInactive.Include);
+            playerToggle = FindFirstObjectByType<PlayerCameraToggle>();
             labels = FindFirstObjectByType<VoxelLabels>();
             normals = FindFirstObjectByType<NormalLines>();
             flipFaces = FindFirstObjectByType<FlipFaces>();
@@ -189,7 +192,7 @@ namespace Clube.Debug
             foreach (Object part in new Object[]
                      {
                          Config, worldView, testFill, brush, chunkFocus, chunkVolume, selector, corners, volumeLab,
-                         stepThrough, flyCamera, labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView,
+                         stepThrough, flyCamera, playerToggle, labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView,
                      })
             {
                 if (part != null)
@@ -288,7 +291,7 @@ namespace Clube.Debug
             }
             if (flyCamera != null && frame.Section("Camera", ref cameraOpen))
             {
-                CameraControls.Draw(frame, flyCamera);
+                CameraControls.Draw(frame, flyCamera, playerToggle);
             }
             if (frame.Section("Display", ref displayOpen))
             {
@@ -331,6 +334,10 @@ namespace Clube.Debug
         private string DescribeKeys()
         {
             var keys = new List<string> { "Right mouse look · WASD move · Q/E down/up · Shift fast" };
+            if (playerToggle != null)
+            {
+                keys.Add("P walk as the player: mouse look · WASD · Space jump · left dig · right place · 1/2 brush size");
+            }
             if (brush != null)
             {
                 keys.Add("1/2/3 select, dig, add · [ ] radius");
