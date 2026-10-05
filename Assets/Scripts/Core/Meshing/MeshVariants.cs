@@ -19,4 +19,14 @@ namespace Clube.Core
         /// <summary>Triangles on the same grid edge share a vertex, so normals are averaged.</summary>
         Smooth,
     }
+
+    /// <summary>Which implementation builds the chunk mesh (K12). Both give the same mesh.</summary>
+    public enum MesherBackend
+    {
+        /// <summary>The C# loop (<see cref="ChunkMesher"/>), with strategy objects (A6) and step recording (A11).</summary>
+        Managed,
+
+        /// <summary>A Burst-compiled job over native arrays (<see cref="BurstChunkMesher"/>); no step recording.</summary>
+        Burst,
+    }
 }

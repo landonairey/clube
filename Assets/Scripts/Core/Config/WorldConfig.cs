@@ -36,6 +36,10 @@ namespace Clube.Core
         [SerializeField]
         private Shading shading = Shading.Flat;
 
+        [Tooltip("Managed C# mesher, or the Burst-compiled job (K12). Both give the same mesh; step-through always records the managed one.")]
+        [SerializeField]
+        private MesherBackend mesher = MesherBackend.Managed;
+
         [Tooltip("How the terrain is generated: generator, surface level and amplitude, noise shape, seed (K8-K10).")]
         [SerializeField]
         private TerrainSettings terrain = new TerrainSettings();
@@ -83,7 +87,13 @@ namespace Clube.Core
             set => shading = value;
         }
 
-        public ChunkMeshSettings MeshSettings => new ChunkMeshSettings(isoLevel, voxelSize, edgePlacement, shading);
+        public MesherBackend Mesher
+        {
+            get => mesher;
+            set => mesher = value;
+        }
+
+        public ChunkMeshSettings MeshSettings => new ChunkMeshSettings(isoLevel, voxelSize, edgePlacement, shading, mesher);
 
         public TerrainSettings Terrain => terrain;
 
