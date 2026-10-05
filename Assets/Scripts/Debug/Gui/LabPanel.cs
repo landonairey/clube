@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Clube.Core;
+using Clube.Game;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -66,6 +67,9 @@ namespace Clube.Debug
         private bool cameraOpen;
 
         [SerializeField]
+        private bool playerOpen;
+
+        [SerializeField]
         private bool displayOpen;
 
         [SerializeField]
@@ -87,6 +91,7 @@ namespace Clube.Debug
         private StepThroughLab stepThrough;
         private FreeFlyCamera flyCamera;
         private PlayerCameraToggle playerToggle;
+        private PlayerController player;
         private VoxelLabels labels;
         private NormalLines normals;
         private FlipFaces flipFaces;
@@ -139,6 +144,7 @@ namespace Clube.Debug
             // Include inactive: while walking as the player (M7) the fly camera is switched off.
             flyCamera = FindFirstObjectByType<FreeFlyCamera>(FindObjectsInactive.Include);
             playerToggle = FindFirstObjectByType<PlayerCameraToggle>();
+            player = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
             labels = FindFirstObjectByType<VoxelLabels>();
             normals = FindFirstObjectByType<NormalLines>();
             flipFaces = FindFirstObjectByType<FlipFaces>();
@@ -192,7 +198,7 @@ namespace Clube.Debug
             foreach (Object part in new Object[]
                      {
                          Config, worldView, testFill, brush, chunkFocus, chunkVolume, selector, corners, volumeLab,
-                         stepThrough, flyCamera, playerToggle, labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView,
+                         stepThrough, flyCamera, playerToggle, player, labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView,
                      })
             {
                 if (part != null)
@@ -292,6 +298,10 @@ namespace Clube.Debug
             if (flyCamera != null && frame.Section("Camera", ref cameraOpen))
             {
                 CameraControls.Draw(frame, flyCamera, playerToggle);
+            }
+            if (player != null && frame.Section("Player", ref playerOpen))
+            {
+                PlayerControls.Draw(frame, player);
             }
             if (frame.Section("Display", ref displayOpen))
             {

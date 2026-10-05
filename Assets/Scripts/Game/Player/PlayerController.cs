@@ -17,6 +17,11 @@ namespace Clube.Game
     [RequireComponent(typeof(CharacterController))]
     public class PlayerController : MonoBehaviour
     {
+        public const float MinGravityMultiplier = 0.1f;
+        public const float MaxGravityMultiplier = 4f;
+        public const float MinJumpHeight = 0.2f;
+        public const float MaxJumpHeight = 4f;
+
         private const float MaxPitch = 89f;
 
         // Keeps the controller pressed onto the ground, so it stays grounded walking downhill.
@@ -54,11 +59,11 @@ namespace Clube.Game
         private float sprintMultiplier = 1.75f;
 
         [Tooltip("Height of a jump in metres.")]
-        [SerializeField, Min(0f)]
+        [SerializeField, Range(MinJumpHeight, MaxJumpHeight)]
         private float jumpHeight = 1.2f;
 
         [Tooltip("Downward acceleration in metres per second squared.")]
-        [SerializeField, Min(0f)]
+        [SerializeField, Min(0.1f)]
         private float gravity = 20f;
 
         private CharacterController body;
@@ -67,6 +72,9 @@ namespace Clube.Game
         private float fallSpeed;
         private bool isCursorFree;
 
+        // Lab tuning (M16); not saved, so the game always runs on the gravity set above.
+        private float gravityMultiplier = 1f;
+
         /// <summary>The capsule the player collides with.</summary>
         public CharacterController Body => body != null ? body : body = GetComponent<CharacterController>();
 
@@ -74,6 +82,29 @@ namespace Clube.Game
         public Transform Head => head;
 
         public bool IsGrounded => Body.isGrounded;
+
+        /// <summary>Height of a jump in metres; the same at any gravity.</summary>
+        public float JumpHeight
+        {
+            get => jumpHeight;
+            set => jumpHeight = Mathf.Clamp(value, MinJumpHeight, MaxJumpHeight);
+        }
+
+        /// <summary>
+        /// Scales gravity for tuning how jumps and falls feel (M16), from the lab panel. Jumps keep
+        /// their height, so a stronger pull makes them quicker and snappier. Resets each Play session.
+        /// </summary>
+        public float GravityMultiplier
+        {
+            get => gravityMultiplier;
+            set => gravityMultiplier = Mathf.Clamp(value, MinGravityMultiplier, MaxGravityMultiplier);
+        }
+
+        /// <summary>The downward acceleration in use, in metres per second squared.</summary>
+        public float Gravity => gravity * gravityMultiplier;
+
+        /// <summary>Seconds a jump spends in the air, landing at the height it left from.</summary>
+        public float JumpAirtime => 2f * Mathf.Sqrt(2f * jumpHeight / Gravity);
 
         /// <summary>
         /// True while the cursor is free for menus or the lab panel: looking pauses, and tools
@@ -160,12 +191,12 @@ namespace Clube.Game
                 fallSpeed = GroundedFallSpeed;
                 if (jumpAction != null && jumpAction.action.WasPressedThisFrame())
                 {
-                    fallSpeed = -Mathf.Sqrt(2f * gravity * jumpHeight);
+                    fallSpeed = -Mathf.Sqrt(2f * Gravity * jumpHeight);
                 }
             }
             else
             {
-                fallSpeed += gravity * Time.deltaTime;
+                fallSpeed += Gravity * Time.deltaTime;
             }
 
             CollisionFlags hits = Body.Move((walk + Vector3.down * fallSpeed) * Time.deltaTime);

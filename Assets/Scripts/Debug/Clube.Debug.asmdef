@@ -3,6 +3,7 @@
     "rootNamespace": "Clube.Debug",
     "references": [
         "Clube.Core",
+        "Clube.Game",
         "Unity.Collections",
         "Unity.InputSystem",
         "Unity.Mathematics"
