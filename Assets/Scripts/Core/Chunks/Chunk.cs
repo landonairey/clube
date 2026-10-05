@@ -31,6 +31,12 @@ namespace Clube.Core
 
         public Vector3Int SampleCount => storage.SampleCount;
 
+        /// <summary>
+        /// The densities' storage, for inspection (benchmarks, the storage view). Edit through
+        /// <see cref="SetDensity"/> (A7), never the storage directly, or the chunk won't rebuild.
+        /// </summary>
+        public IVoxelStorage Storage => storage;
+
         /// <summary>True when the densities or meshing inputs changed since the last rebuild.</summary>
         public bool IsDirty { get; private set; } = true;
 

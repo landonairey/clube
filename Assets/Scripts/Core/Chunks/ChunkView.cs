@@ -104,7 +104,7 @@ namespace Clube.Core
             runtimeConfig = Instantiate(config);
             runtimeConfig.name = $"{config.name} (Play mode copy)";
 
-            Chunk = new Chunk(Config.ChunkSize);
+            Chunk = CreateChunk();
             meshBuilder = new ChunkMeshBuilder("Chunk");
             GetComponent<MeshFilter>().sharedMesh = meshBuilder.Mesh;
         }
@@ -143,6 +143,11 @@ namespace Clube.Core
             }
         }
 
+        private Chunk CreateChunk()
+        {
+            return new Chunk(Config.CreateStorage(Config.ChunkSize + Vector3Int.one));
+        }
+
         private void OnConfigChanged()
         {
             if (Chunk == null)
@@ -150,10 +155,10 @@ namespace Clube.Core
                 return;
             }
 
-            // A new size means new storage: the old densities can't be kept (K1).
-            if (Chunk.VoxelCount != Config.ChunkSize)
+            // A new size or storage scheme means new storage: the old densities can't be kept (K1, 2G).
+            if (Chunk.VoxelCount != Config.ChunkSize || !Config.StorageMatches(Chunk.Storage))
             {
-                Chunk = new Chunk(Config.ChunkSize);
+                Chunk = CreateChunk();
                 ChunkChanged?.Invoke(Chunk);
             }
 

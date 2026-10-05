@@ -216,7 +216,7 @@ namespace Clube.Core
 
         private void StartWorld()
         {
-            World = new World(Config.ChunkSize, Config.VoxelSize);
+            World = new World(Config.ChunkSize, Config.VoxelSize, Config.CreateStorage);
             terrainFingerprint = TerrainFingerprint();
             CreateGenerator();
             wantedCentre = null;
@@ -252,7 +252,8 @@ namespace Clube.Core
         // Only the terrain-shaping values force a regenerate; the rest just remesh.
         private string TerrainFingerprint()
         {
-            return $"{Config.ChunkSize}|{Config.VoxelSize}|{Config.WorldHeightInChunks}|{JsonUtility.ToJson(Config.Terrain)}";
+            return $"{Config.ChunkSize}|{Config.VoxelSize}|{Config.WorldHeightInChunks}|{Config.Storage}|{Config.OctreeMaxDepth}|" +
+                   JsonUtility.ToJson(Config.Terrain);
         }
 
         private void OnConfigChanged()
