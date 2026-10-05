@@ -156,8 +156,23 @@ M25 is under way: picking voxels per metre keeps chunk and world size in metres
 `PlayerBrushPreview` shows the player's brush; `AxesHud` follows `Camera.main`
 (WorldLab keeps it on `World`, active in both camera modes); the build grid
 draws x and z lines only.
-**Next:** M25 (fine voxels in the build grid, the last of 3B), then 3C; K35
-(generation speed) is open.
+3C is done (M9-M11, M13-M15). `VoxelMaterial` assets (ids: stone 0, dirt 1,
+grass 2, copper 3, silver 4, gold 5) are listed by `MaterialRegistry`
+(`Assets/Config/Materials/`), which holds the texture array and the render
+materials. Material ids live per sample in `VoxelMaterials`, beside the density
+storage (`Chunk.SetMaterial`, `World.SetMaterial` for border copies, the brush's
+`BrushSettings.Material` for new ground). Generators report depth
+(`ITerrainGenerator.Depth`; density is `TerrainDensity.FromDepth`), and
+`TerrainLayers` picks grass, dirt, stone by depth. After meshing,
+`ChunkMeshBuilder` runs a material pass when `WorldConfig.MaterialDisplay` isn't
+None: `VertexMaterialSampler` (solid end of each vertex's edge), `MeshNormals`,
+then a `HardSeamSplitter` or `BlendedSplitter` (A6) into a `MaterialMesh` (ids in
+UV2, weights in UV3), drawn by `Clube/Terrain Materials` (texture array,
+triplanar, debug colours). Views swap their first material through
+`TerrainRenderMaterials`. *Clube → Materials* generates placeholder textures and
+rebuilds the texture array. WorldLab shows Blended; ChunkLab keeps None.
+**Next:** M25's voxel size decision (8 per metre leads), then 3D (ore
+generation); K35 (generation speed) is open.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
