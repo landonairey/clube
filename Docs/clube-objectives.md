@@ -625,6 +625,29 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
 - **PK18 Seasons and calendar.** *(added 2026-10-03)* A calendar of days, months and years, with seasons that change the world over the year.
   - Builds on PK4 (day/night) for the passing of days; pairs with PK6 (bells keeping village time), market days and seasonal prices (7C), NPC schedules (NP2), and growth cycles for trees and plants (PK7, PK13).
   - Open design points: year length in real time, which systems seasons touch (snow on terrain, frozen water with PK8, crop and tree growth, travel, prices), and whether the calendar drives events (festivals, fairs, harvest; 7E world events).
+- **PK19 Mining particle effects.** *(added 2026-10-05)* Dust, chips and debris when terrain is dug, coloured by the material removed.
+  - Belongs with mining feel (5F, MF2). The brush already reports how much it removed (`BrushResult`), and with materials (M10) it could say what, so the effect can scale with the amount and take its colour from the material.
+- **PK20 Lab scenes vs the real game.** *(added 2026-10-05)* Keep the lab scenes (VoxelLab, ChunkLab, WorldLab) as teaching and measuring tools, and build the `Game` scene lean and efficient, without lab overhead.
+  - A10 already keeps `Clube.Debug` out of `Game`. This goes further: the game picks its fastest options (the Burst mesher K12, single-byte storage M12, no step recording) and leaves out lab-only work such as volume measurement and the build grid.
+  - Open design points: a separate game `WorldConfig` vs code defaults, and whether `Game` shares the lab prefabs at all.
+- **PK21 Midpoint edges and binary density, built for speed.** *(added 2026-10-05)* Try midpoint-only edge placement (V3) with a solid/empty density field (one bit, or one byte with only 0 and 1), and make that path as fast as possible.
+  - Gives a blockier, faceted look, but much less data and work: a bit-packed field is 1/32 of flat floats, uniform regions are trivial, and the mesher needs no interpolation.
+  - Trade-offs: smooth brush falloff (K16) and the smooth surface go away, and edits snap to whole samples. Compare look and cost against the smooth path, e.g. as another storage scheme (2G) plus a dedicated mesher variant (A6).
+- **PK22 Recycling and slag reprocessing.** *(added 2026-10-05)* Recyclable skills, or saving iron forge scale (and slag) to reprocess later as a kind of ore.
+  - Historically accurate: forge scale is mostly iron oxide and can go back into the bloomery (HF4), and slag can still hold metal. Fits ore processing (6C) and the skill progression test (6A).
+  - Open design points: what "recyclable skills" means (reusing a learned skill in a new line, or regaining spent progress), and whether scale is its own item or joins mixed ore (PK1).
+- **PK23 Cell-based noise for slag surfaces.** *(added 2026-10-05)* A cellular (Worley/Voronoi) noise generator imitating the cracked, bubbly cooling surface of slag.
+  - Another K9 generator, or a detail layer on top of others; could also texture slag heaps around smelting sites (PK22, 6D). Seeded like the rest (K10).
+- **PK24 Weather cycle.** *(added 2026-10-05)* Rain, snow, fog and wind changing over time.
+  - Pairs with day/night (PK4) and seasons (PK18). Could affect travel, outdoor work, fire and fuel (6D), and water levels (PK8).
+- **PK25 Infinite vs bounded world.** *(added 2026-10-05)* Test infinite procedural terrain against a size-limited map with a limited set of biomes, and therefore a limited set of tribes and races.
+  - The current world streams without limit (M1). A bounded map makes biome placement (P8, PK5) and tribe territories (Chapter 8) deliberate rather than random, and keeps saves (S2) and settlement generation (7B) small.
+  - Compare generation cost, how exploration feels, and how easily tribes and settlements can be placed.
+- **PK26 Fine marching voxels inside a coarse build grid.** *(added 2026-10-05)* Test several small marching-cubes voxels inside each larger build-grid cell, e.g. 1, 2, 4, 8 or 16 voxels per 1 m cell.
+  - Started by M23: the voxel size goes down to 1/16 m and the 1 m build grid can be shown on the terrain. M12 measured the cost: at 4 voxels per metre, 6× the memory and 7× the generation of 1 m voxels for the same ground.
+  - Still to test: how digging and building feel at each size, once there's a player (3B) and a building system (PK17, PK27).
+- **PK27 Grid or free building.** *(added 2026-10-05)* Decide whether building snaps to a grid, like Valheim, or is placed freely, off-grid, like Rust (as a start).
+  - Depends on PK17 (building system) and PK26 (build-grid size); the build grid overlay (M23) can preview a snapped placement.
 
 ---
 
