@@ -47,7 +47,7 @@ world positions; `ChunkTerrainFill` regenerates ChunkLab on config changes
 and reports a missing heightmap as "Generate skipped" in the HUD.
 `TerrainDensity` ramps over ±1 unit so extracted surfaces are exact for
 voxel sizes up to 1. `HeightmapExport` and the ChunkView "Export heightmap
-PNG" button write to `Assets/Heightmaps/`.
+PNG" button write to `Assets/Heightmaps/` (git-ignored: local test output).
 2D: K11 is done. `MeshStorageBenchmark` (*Clube → Benchmarks*) found no
 difference between reused lists and arrays, so Core keeps lists; results
 are in `Docs/benchmarks.md`. Order changed: 2E, then 2F, then 3A; the rest

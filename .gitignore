@@ -48,3 +48,7 @@ crashlytics-build.properties
 # OS generated
 .DS_Store
 Thumbs.db
+
+# Heightmap PNGs exported from the labs (K29): local test output, not project assets
+/[Aa]ssets/Heightmaps/
+/[Aa]ssets/Heightmaps.meta
