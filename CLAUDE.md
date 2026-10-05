@@ -151,6 +151,11 @@ object and turns the lab click tools off. The lean `Game` scene is the last
 section of Chapter 4 (GW1-GW4).
 M16 is done: the panel's Player section (`PlayerControls`) scales the
 player's gravity in Play mode and sets its jump height.
+M25 is under way: picking voxels per metre keeps chunk and world size in metres
+(`ChunkSizing`), so terrain stays the same at any voxel size; 8 per metre leads.
+`PlayerBrushPreview` shows the player's brush; `AxesHud` follows `Camera.main`
+(WorldLab keeps it on `World`, active in both camera modes); the build grid
+draws x and z lines only.
 **Next:** M25 (fine voxels in the build grid, the last of 3B), then 3C; K35
 (generation speed) is open.
 
