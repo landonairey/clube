@@ -139,8 +139,16 @@ M12 is done: the game stores densities as single bytes (`FlatByte`, the
 speed across a streamed world). VoxelLab and ChunkLab keep exact floats.
 `WorldStorageBenchmark` (*Clube → Benchmarks → Storage at scale*) has the
 numbers. Generation dominates streaming (K35).
-**Next:** 3B (player: M6, M7, M8), towards Checkpoint 3.1; K35 (generation
-speed) is open.
+3B core is done (M6-M8): `WorldView` gives chunks a `ChunkCollider` (MeshCollider
+re-baked after each rebuild). The player lives in `Clube.Game` (`Game/Player/`):
+`PlayerController` (CharacterController, Input System `Player` map),
+`PlayerSpawn` (waits for the chunk column, sets `WorldView.Focus`, respawns
+after a fall) and `PlayerDigTool` (Attack digs, Place adds; brush radius and
+look sensitivity are `PlayerSettings`). In WorldLab, `PlayerCameraToggle` (P,
+or the Camera panel section) swaps the fly camera for the inactive `Player`
+object and turns the lab click tools off. The lean `Game` scene is the last
+section of Chapter 4 (GW1-GW4).
+**Next:** M16 and M25 (3B extras), then 3C; K35 (generation speed) is open.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
