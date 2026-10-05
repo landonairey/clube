@@ -149,11 +149,15 @@ look sensitivity are `PlayerSettings`). In WorldLab, `PlayerCameraToggle` (P,
 or the Camera panel section) swaps the fly camera for the inactive `Player`
 object and turns the lab click tools off. The lean `Game` scene is the last
 section of Chapter 4 (GW1-GW4).
-**Next:** M16 and M25 (3B extras), then 3C; K35 (generation speed) is open.
+M16 is done: the panel's Player section (`PlayerControls`) scales the
+player's gravity in Play mode and sets its jump height.
+**Next:** M25 (fine voxels in the build grid, the last of 3B), then 3C; K35
+(generation speed) is open.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
-  Game reference Core; **Core never references Debug or Game.**
+  Game reference Core; **Core never references Debug or Game.** Debug also
+  references Game (lab tools tune the player, M16); Game never references Debug.
 - Namespaces match assembly names (`Clube.Core`, `Clube.Debug`, `Clube.Game`).
 - Scenes (A9): `VoxelLab`, `ChunkLab`, `WorldLab`, `Game`. The `Game` scene
   contains no `Clube.Debug` components (A10).
