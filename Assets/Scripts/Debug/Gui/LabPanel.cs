@@ -240,7 +240,7 @@ namespace Clube.Debug
             }
             if (brush != null && frame.Section("Brush", ref brushOpen))
             {
-                BrushControls.Draw(frame, brush);
+                BrushControls.Draw(frame, brush, config.Materials);
             }
             if (frame.Section("Meshing", ref meshingOpen))
             {
