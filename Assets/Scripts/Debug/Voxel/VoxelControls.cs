@@ -95,9 +95,11 @@ namespace Clube.Debug
             }
 
             BaseConfiguration current = MarchingCubesCases.GetBaseConfiguration(corners.CaseIndex);
+            // Fixed widths, so the longer names wrap instead of widening the panel.
+            float buttonWidth = (frame.InnerWidth - 4f * (PresetColumns - 1)) / PresetColumns;
             for (int row = 0; row * PresetColumns < MarchingCubesCases.BaseConfigurationCount; row++)
             {
-                GUILayout.BeginHorizontal();
+                GUILayout.BeginHorizontal(GUILayout.Width(frame.InnerWidth));
                 for (int column = 0; column < PresetColumns; column++)
                 {
                     int index = row * PresetColumns + column;
@@ -114,7 +116,7 @@ namespace Clube.Debug
                     {
                         GUI.backgroundColor = CurrentPresetTint;
                     }
-                    if (GUILayout.Button($"{index} {BaseConfigurationText.Name(configuration)}{(ambiguous ? " (!)" : "")}", frame.Button))
+                    if (GUILayout.Button($"{index} {BaseConfigurationText.Name(configuration)}{(ambiguous ? " (!)" : "")}", frame.Button, GUILayout.Width(buttonWidth)))
                     {
                         corners.ApplyCase(representative);
                     }

@@ -13,6 +13,11 @@ namespace Clube.Debug
     /// <remarks>
     /// Call <see cref="Begin"/> and <see cref="End"/> from the panel's OnGUI with the
     /// panel's controls in between, and <see cref="Hide"/> when it stops drawing.
+    /// The column has a fixed width: text wraps inside it and buttons wrap or clip, so
+    /// changing text can never resize the panel and make it jitter.
+    /// <para>An Inspector frame (<see cref="ForInspector"/>) draws the same controls in a
+    /// custom inspector, in the editor's colours, so every panel knob is also an Inspector
+    /// knob (the Inspector is the superset).</para>
     /// </remarks>
     public sealed class LabPanelFrame
     {
@@ -26,6 +31,7 @@ namespace Clube.Debug
 
         private readonly Object owner;
         private readonly Color background;
+        private readonly bool inInspector;
 
         private Rect panelRect;
         private Vector2 scroll;
@@ -42,13 +48,28 @@ namespace Clube.Debug
             this.background = background;
         }
 
+        private LabPanelFrame(float width)
+        {
+            Width = width;
+            inInspector = true;
+        }
+
+        /// <summary>A frame for drawing panel controls inside a custom inspector; set <see cref="Width"/> to the view's width each time.</summary>
+        public static LabPanelFrame ForInspector(float width)
+        {
+            return new LabPanelFrame(width);
+        }
+
+        /// <summary>True when drawing in an Inspector, where edits outside Play mode must be recorded for saving.</summary>
+        public bool InInspector => inInspector;
+
         public float Width { get; set; }
 
         /// <summary>
         /// Width left for controls inside the padding, also allowing for the scrollbar,
         /// so a row sized to it fits whether or not the panel is scrolling.
         /// </summary>
-        public float InnerWidth => Width - 2f * PaddingX - ScrollbarAllowance;
+        public float InnerWidth => inInspector ? Width : Width - 2f * PaddingX - ScrollbarAllowance;
 
         public GUIStyle Header { get; private set; }
 
@@ -69,6 +90,12 @@ namespace Clube.Debug
         public void Begin()
         {
             CreateStyles();
+            if (inInspector)
+            {
+                GUILayout.BeginVertical(GUILayout.Width(Width));
+                return;
+            }
+
             x = Screen.width - Width - Margin;
             if (Event.current.type == EventType.Repaint && panelRect.width > 0f)
             {
@@ -81,12 +108,16 @@ namespace Clube.Debug
             GUILayout.BeginArea(new Rect(x, Margin, Width, available));
             scroll = GUILayout.BeginScrollView(scroll, GUIStyle.none, GUI.skin.verticalScrollbar,
                 GUILayout.Height(Mathf.Min(contentHeight, available)));
-            GUILayout.BeginVertical(padding);
+            GUILayout.BeginVertical(padding, GUILayout.Width(Width - ScrollbarAllowance));
         }
 
         public void End()
         {
             GUILayout.EndVertical();
+            if (inInspector)
+            {
+                return;
+            }
             if (Event.current.type == EventType.Repaint)
             {
                 contentHeight = GUILayoutUtility.GetLastRect().height;
@@ -97,7 +128,7 @@ namespace Clube.Debug
             if (Event.current.type == EventType.Repaint)
             {
                 Rect laidOut = GUILayoutUtility.GetLastRect();
-                panelRect = new Rect(x + laidOut.x, Margin + laidOut.y, laidOut.width, laidOut.height);
+                panelRect = new Rect(x + laidOut.x, Margin + laidOut.y, Width, laidOut.height);
                 LabGuiBlocker.SetArea(owner, panelRect);
             }
             GUILayout.EndArea();
@@ -106,7 +137,10 @@ namespace Clube.Debug
         /// <summary>Stops blocking clicks, for when the panel is hidden or disabled.</summary>
         public void Hide()
         {
-            LabGuiBlocker.SetArea(owner, null);
+            if (owner != null)
+            {
+                LabGuiBlocker.SetArea(owner, null);
+            }
         }
 
         /// <summary>A section header that opens and closes its section; returns whether it's open.</summary>
@@ -167,9 +201,19 @@ namespace Clube.Debug
         {
             GUILayout.BeginHorizontal();
             GUILayout.Label(label, Label, GUILayout.ExpandWidth(false));
-            int chosen = GUILayout.Toolbar(selected, names, Button);
+            int chosen = GUILayout.Toolbar(selected, names, Button, GUILayout.ExpandWidth(true));
             GUILayout.EndHorizontal();
             return chosen;
+        }
+
+        private GUIStyle Text(GUIStyle baseStyle, int fontSize, FontStyle fontStyle = FontStyle.Normal)
+        {
+            var style = new GUIStyle(baseStyle) { fontSize = fontSize, fontStyle = fontStyle };
+            if (!inInspector)
+            {
+                style.normal.textColor = Color.white;
+            }
+            return style;
         }
 
         private void CreateStyles()
@@ -180,19 +224,25 @@ namespace Clube.Debug
             }
 
             padding = new GUIStyle { padding = new RectOffset(PaddingX, PaddingX, 10, 10) };
-            Header = new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
-            Label = new GUIStyle(GUI.skin.label) { fontSize = 13, wordWrap = true, normal = { textColor = Color.white } };
+
+            // The game panel has white text on its dark background; the Inspector keeps the
+            // editor's own colours, so it reads in the light theme too.
+            Header = Text(GUI.skin.label, 14, FontStyle.Bold);
+            Label = Text(GUI.skin.label, 13);
+            Label.wordWrap = true;
             FixedLine = new GUIStyle(Label) { wordWrap = false, clipping = TextClipping.Clip };
-            Hint = new GUIStyle(Label) { fontSize = 12, normal = { textColor = new Color(0.7f, 0.7f, 0.7f) } };
-            Button = new GUIStyle(GUI.skin.button) { fontSize = 13 };
-            Toggle = new GUIStyle(GUI.skin.toggle) { fontSize = 13, normal = { textColor = Color.white }, onNormal = { textColor = Color.white } };
-            SectionButton = new GUIStyle(GUI.skin.label)
+            Hint = new GUIStyle(Label) { fontSize = 12, normal = { textColor = new Color(0.6f, 0.6f, 0.6f) } };
+
+            // Long button and toggle labels wrap rather than widen the fixed-width column.
+            Button = new GUIStyle(GUI.skin.button) { fontSize = 13, wordWrap = true };
+            Toggle = Text(GUI.skin.toggle, 13);
+            Toggle.wordWrap = true;
+            if (!inInspector)
             {
-                fontSize = 14,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.white },
-                hover = { textColor = new Color(1f, 0.85f, 0.5f) },
-            };
+                Toggle.onNormal.textColor = Color.white;
+            }
+            SectionButton = Text(GUI.skin.label, 14, FontStyle.Bold);
+            SectionButton.hover.textColor = new Color(1f, 0.85f, 0.5f);
         }
     }
 }
