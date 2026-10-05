@@ -233,9 +233,9 @@ namespace Clube.Debug
                 this.inner = inner;
             }
 
-            public float Density(Vector3 position)
+            public float Depth(Vector3 position)
             {
-                return ByteVoxelStorage.Quantize(inner.Density(position)) / 255f;
+                return TerrainDensity.ToDepth(ByteVoxelStorage.Quantize(inner.Density(position)) / 255f);
             }
         }
     }

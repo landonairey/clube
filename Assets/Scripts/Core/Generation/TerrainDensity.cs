@@ -19,5 +19,11 @@ namespace Clube.Core
         {
             return Mathf.Clamp01(0.5f + depth / (2f * RampHalfWidth));
         }
+
+        /// <summary>The depth a density stands for: the inverse of <see cref="FromDepth"/> within the ramp.</summary>
+        public static float ToDepth(float density)
+        {
+            return (Mathf.Clamp01(density) - 0.5f) * 2f * RampHalfWidth;
+        }
     }
 }

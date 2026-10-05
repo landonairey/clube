@@ -43,6 +43,10 @@ namespace Clube.Core
         [SerializeField]
         private int seed = 1;
 
+        [Tooltip("Which material the ground is made of by depth below the surface (M10): grass, then dirt, then stone.")]
+        [SerializeField]
+        private TerrainLayers layers = new TerrainLayers();
+
         [Header("Spline")]
         [Tooltip("Remaps the fractal noise (0-1 along the bottom) to a height (0 = level - amplitude, " +
                  "1 = level + amplitude). Flat stretches make plateaus, steep ones cliffs.")]
@@ -70,6 +74,9 @@ namespace Clube.Core
         private float heightmapUnitsPerPixel = 1f;
 
         /// <summary>Settable so lab controls can switch it at runtime; call <see cref="WorldConfig.NotifyChanged"/> after.</summary>
+        /// <summary>Material by depth below the surface (M10).</summary>
+        public TerrainLayers Layers => layers;
+
         public TerrainGeneratorType Generator
         {
             get => generator;
