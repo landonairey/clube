@@ -29,6 +29,9 @@ namespace Clube.Debug
         private const int PaddingX = 12;
         private const float ScrollbarAllowance = 16f;
 
+        // One Inspector line (EditorGUIUtility.singleLineHeight), the row an editor slider is drawn into.
+        private const float InspectorSliderHeight = 18f;
+
         private readonly Object owner;
         private readonly Color background;
         private readonly bool inInspector;
@@ -158,7 +161,22 @@ namespace Clube.Debug
         public float Slider(string label, float value, float min, float max, string format = "0.00")
         {
             GUILayout.Label($"{label} {value.ToString(format)}", Label);
-            return GUILayout.HorizontalSlider(value, min, max);
+            return SliderBar(value, min, max);
+        }
+
+        /// <summary>A slider on its own, sized for the game panel or the Inspector; returns the new value.</summary>
+        public float SliderBar(float value, float min, float max)
+        {
+            if (!inInspector)
+            {
+                return GUILayout.HorizontalSlider(value, min, max);
+            }
+
+            // The editor skin's track is 2 px high for layout, but it's drawn into a full line
+            // (its overflow trims it) with a 10 px thumb below, so laid out on its own it spills
+            // over the next row. Reserve the whole line, as EditorGUI.Slider does.
+            Rect row = GUILayoutUtility.GetRect(1f, InspectorSliderHeight, GUILayout.ExpandWidth(true));
+            return GUI.HorizontalSlider(row, value, min, max);
         }
 
         /// <summary>

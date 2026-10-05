@@ -29,7 +29,7 @@ namespace Clube.Debug
                 float value = corners.GetCorner(corner);
                 GUILayout.BeginHorizontal();
                 GUILayout.Label($"c{corner} {value:0.00}", frame.Label, GUILayout.Width(CornerLabelWidth));
-                float chosen = GUILayout.HorizontalSlider(value, 0f, 1f);
+                float chosen = frame.SliderBar(value, 0f, 1f);
                 GUILayout.EndHorizontal();
                 if (!Mathf.Approximately(chosen, value))
                 {
@@ -66,7 +66,7 @@ namespace Clube.Debug
             }
             GUILayout.EndHorizontal();
 
-            int chosen = Mathf.RoundToInt(GUILayout.HorizontalSlider(caseIndex, 0f, MarchingCubes.CaseCount - 1));
+            int chosen = Mathf.RoundToInt(frame.SliderBar(caseIndex, 0f, MarchingCubes.CaseCount - 1));
             if (chosen != caseIndex)
             {
                 corners.ApplyCase(chosen);

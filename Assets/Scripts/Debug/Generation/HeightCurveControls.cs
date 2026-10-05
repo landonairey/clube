@@ -40,13 +40,13 @@ namespace Clube.Debug
                 GUILayout.Label("in", frame.Hint, GUILayout.Width(KeyLabelWidth * 0.5f));
                 float time = isEnd
                     ? keys[i].time
-                    : GUILayout.HorizontalSlider(keys[i].time, keys[i - 1].time + MinKeyGap, keys[i + 1].time - MinKeyGap);
+                    : frame.SliderBar(keys[i].time, keys[i - 1].time + MinKeyGap, keys[i + 1].time - MinKeyGap);
                 if (isEnd)
                 {
                     GUILayout.Label(i == 0 ? "start" : "end", frame.Hint);
                 }
                 GUILayout.Label("out", frame.Hint, GUILayout.Width(KeyLabelWidth * 0.75f));
-                float value = GUILayout.HorizontalSlider(keys[i].value, 0f, 1f);
+                float value = frame.SliderBar(keys[i].value, 0f, 1f);
                 GUILayout.EndHorizontal();
 
                 if (!Mathf.Approximately(time, keys[i].time) || !Mathf.Approximately(value, keys[i].value))
