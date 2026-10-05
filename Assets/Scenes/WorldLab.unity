@@ -400,6 +400,7 @@ GameObject:
   - component: {fileID: 1350119455}
   - component: {fileID: 1350119462}
   - component: {fileID: 1350119463}
+  - component: {fileID: 1350119464}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -448,6 +449,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d6f8876332ac1f94e8e0ff95eb7a0bf7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.ChunkFocus
+  highlightChunk: 1
   outlineColor: {r: 1, g: 0.85, b: 0.2, a: 1}
   lineMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
   focusDistance: 1.5
@@ -490,6 +492,7 @@ MonoBehaviour:
   config: {fileID: 11400000, guid: bc6c17f975d3d7b4db908a9ef5e31e70, type: 2}
   chunkMaterials:
   - {fileID: 2100000, guid: ae35e53838faf9a41b52f47d227d1236, type: 2}
+  - {fileID: 2100000, guid: 26a88a27891ca024d969d561d22be9c8, type: 2}
   focus: {fileID: 0}
   renderDistance: 4
   chunksPerFrame: 4
@@ -548,6 +551,25 @@ MonoBehaviour:
   stepThroughOpen: 0
   cameraOpen: 0
   displayOpen: 0
+  buildGridOpen: 0
+--- !u!114 &1350119464
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 634fa52649647004c888075710a102a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.BuildGridOverlay
+  show: 0
+  cellSize: 1
+  heightLines: 1
+  lineWidth: 1.5
+  opacity: 0.8
+  color: {r: 0.2, g: 0.9, b: 1, a: 1}
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0

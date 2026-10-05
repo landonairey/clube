@@ -136,6 +136,7 @@ GameObject:
   - component: {fileID: 1265142451}
   - component: {fileID: 1265142452}
   - component: {fileID: 1265142458}
+  - component: {fileID: 1265142459}
   m_Layer: 0
   m_Name: Chunk
   m_TagString: Untagged
@@ -209,6 +210,7 @@ MeshRenderer:
   m_Materials:
   - {fileID: 2100000, guid: db20d97dcef134e47a2f62f0de8e8892, type: 2}
   - {fileID: 2100000, guid: e5b5bd7efafffaf47bb512594cde1c28, type: 2}
+  - {fileID: 2100000, guid: 26a88a27891ca024d969d561d22be9c8, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -316,6 +318,25 @@ MonoBehaviour:
   stepThroughOpen: 0
   cameraOpen: 0
   displayOpen: 1
+  buildGridOpen: 0
+--- !u!114 &1265142459
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265142437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 634fa52649647004c888075710a102a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.BuildGridOverlay
+  show: 0
+  cellSize: 1
+  heightLines: 1
+  lineWidth: 1.5
+  opacity: 0.8
+  color: {r: 0.2, g: 0.9, b: 1, a: 1}
 --- !u!1 &1507819481
 GameObject:
   m_ObjectHideFlags: 0
