@@ -51,6 +51,8 @@ namespace Clube.Core
                     return new RunLengthVoxelStorage(sampleCount, 1);
                 case VoxelStorageType.RunLengthZ:
                     return new RunLengthVoxelStorage(sampleCount, 2);
+                case VoxelStorageType.Octree:
+                    return new OctreeVoxelStorage(sampleCount, octreeMaxDepth);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(type), type, null);
             }
@@ -63,6 +65,10 @@ namespace Clube.Core
             writer.Write(storage.SampleCount.x);
             writer.Write(storage.SampleCount.y);
             writer.Write(storage.SampleCount.z);
+            if (storage is OctreeVoxelStorage octree)
+            {
+                writer.Write((byte)octree.MaxDepth);
+            }
             storage.WriteData(writer);
         }
 

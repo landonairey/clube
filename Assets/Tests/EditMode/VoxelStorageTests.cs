@@ -16,6 +16,7 @@ namespace Clube.Core.Tests
     [TestFixture(VoxelStorageType.RunLengthX)]
     [TestFixture(VoxelStorageType.RunLengthY)]
     [TestFixture(VoxelStorageType.RunLengthZ)]
+    [TestFixture(VoxelStorageType.Octree)]
     public class VoxelStorageTests
     {
         private readonly VoxelStorageType type;

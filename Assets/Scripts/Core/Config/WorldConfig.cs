@@ -117,7 +117,9 @@ namespace Clube.Core
         /// <summary>True when <paramref name="existing"/> is of the configured scheme, so a chunk can keep it.</summary>
         public bool StorageMatches(IVoxelStorage existing)
         {
-            return existing.Type == storage;
+            // An octree clamps its depth to what its size allows, so compare against the same clamp.
+            return existing.Type == storage
+                   && (!(existing is OctreeVoxelStorage octree) || octree.MaxDepth == Mathf.Clamp(octreeMaxDepth, 1, octree.DeepestDepth));
         }
 
         /// <summary>A new, empty storage of the configured scheme for a chunk of <paramref name="sampleCount"/> samples.</summary>
