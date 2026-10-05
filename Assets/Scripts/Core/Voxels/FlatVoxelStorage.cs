@@ -36,6 +36,18 @@ namespace Clube.Core
             densities[IndexOf(x, y, z)] = density;
         }
 
+        public void ReadLayer(int z, Span<float> layer)
+        {
+            if ((uint)z >= (uint)SampleCount.z)
+            {
+                throw new ArgumentOutOfRangeException(nameof(z), z, $"Outside the {SampleCount} storage.");
+            }
+
+            // Z varies slowest, so a layer is one contiguous block.
+            int layerSize = SampleCount.x * SampleCount.y;
+            densities.AsSpan(z * layerSize, layerSize).CopyTo(layer);
+        }
+
         // Checked per axis: an out-of-range x or y would otherwise silently
         // land on a neighbouring row instead of throwing.
         private int IndexOf(int x, int y, int z)

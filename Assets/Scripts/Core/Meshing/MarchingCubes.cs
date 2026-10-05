@@ -59,7 +59,31 @@ namespace Clube.Core
             List<int> triangles,
             MeshingRecorder recorder = null)
         {
-            int caseIndex = GetCaseIndex(cornerValues, isoLevel);
+            Span<float> corners = stackalloc float[CornerCount];
+            for (int corner = 0; corner < CornerCount; corner++)
+            {
+                corners[corner] = cornerValues[corner];
+            }
+
+            Polygonise(
+                corners, GetCaseIndex(cornerValues, isoLevel), isoLevel, origin, size,
+                placer, writer, triangles, recorder);
+        }
+
+        /// <summary>
+        /// As above, for a caller that already knows the case index (the chunk loop, K32).
+        /// </summary>
+        internal static void Polygonise(
+            ReadOnlySpan<float> cornerValues,
+            int caseIndex,
+            float isoLevel,
+            Vector3 origin,
+            float size,
+            IEdgeVertexPlacer placer,
+            IVertexWriter writer,
+            List<int> triangles,
+            MeshingRecorder recorder)
+        {
             int edgeMask = GetCrossedEdgeMask(caseIndex);
             if (recorder != null)
             {
@@ -139,22 +163,32 @@ namespace Clube.Core
         /// <summary>
         /// 12-bit mask of the edges the surface crosses for a case (the classic
         /// "edge table"): bit <c>e</c> is set when edge <c>e</c> joins a solid and an
-        /// empty corner. Computed rather than stored, since it follows directly
-        /// from the case index.
+        /// empty corner. A lookup into <see cref="CrossedEdgeMasks"/> (K32).
         /// </summary>
         public static int GetCrossedEdgeMask(int caseIndex)
         {
-            int mask = 0;
-            for (int edge = 0; edge < EdgeCount; edge++)
+            return CrossedEdgeMasks[caseIndex];
+        }
+
+        // Built once from the case index rather than typed in, so it can't disagree with EdgeCorners.
+        private static readonly int[] CrossedEdgeMasks = BuildCrossedEdgeMasks();
+
+        private static int[] BuildCrossedEdgeMasks()
+        {
+            var masks = new int[CaseCount];
+            for (int caseIndex = 0; caseIndex < CaseCount; caseIndex++)
             {
-                bool solidA = IsCornerSolid(caseIndex, MarchingCubesTables.EdgeCorners[edge, 0]);
-                bool solidB = IsCornerSolid(caseIndex, MarchingCubesTables.EdgeCorners[edge, 1]);
-                if (solidA != solidB)
+                for (int edge = 0; edge < EdgeCount; edge++)
                 {
-                    mask |= 1 << edge;
+                    bool solidA = IsCornerSolid(caseIndex, MarchingCubesTables.EdgeCorners[edge, 0]);
+                    bool solidB = IsCornerSolid(caseIndex, MarchingCubesTables.EdgeCorners[edge, 1]);
+                    if (solidA != solidB)
+                    {
+                        masks[caseIndex] |= 1 << edge;
+                    }
                 }
             }
-            return mask;
+            return masks;
         }
 
         /// <summary>Offset of a corner from corner 0, in whole voxels.</summary>

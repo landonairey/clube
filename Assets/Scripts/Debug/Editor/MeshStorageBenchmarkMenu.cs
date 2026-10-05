@@ -13,7 +13,7 @@ namespace Clube.Debug.Editor
         [MenuItem("Clube/Benchmarks/Mesh storage: List vs array (K11)")]
         private static void Run()
         {
-            var results = MeshStorageBenchmark.Run(MeshStorageBenchmark.DefaultSizes);
+            var results = MeshStorageBenchmark.Run(BenchmarkTerrain.DefaultSizes);
             string report = DescribeConditions() + "\n\n" + MeshStorageBenchmark.ToMarkdown(results);
             EditorGUIUtility.systemCopyBuffer = report;
             UnityEngine.Debug.Log("Mesh storage benchmark (copied to the clipboard):\n" + report);

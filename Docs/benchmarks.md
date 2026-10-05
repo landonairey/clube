@@ -83,3 +83,94 @@ A second run at 32³ and 64³ gave the same order and was within 2% of these.
 implementation). Arrays aren't faster, and worst-case preallocation costs a
 lot of memory. Speed-ups belong in the per-voxel loop: K32 for
 single-threaded changes, K12 for Jobs/Burst.
+
+## K32 — Speeding up the mesher's per-voxel loop
+
+**Question.** K11 showed the mesher's time goes into visiting voxels
+(~300 ns each at 64³, most of them empty). How much of that can a
+single-threaded loop win back, without leaving the A12 storage interface
+or the A6 strategy objects?
+
+**Method.**
+- `MesherSpeedBenchmark` (`Clube.Debug`), run from
+  *Clube → Benchmarks → Mesher speed (K32)*. It times the core
+  `ChunkMesher.Build` itself, flat and smooth, on K11's terrain
+  (`BenchmarkTerrain.Hills`: fractal 2D Perlin, seed 1, voxel size 1, iso 0.5).
+- Timing as in K11: 5 warmup builds, then the median of 30 timed builds.
+  "ns per voxel" spreads the median over every voxel in the chunk.
+- Each change was measured on its own, in the order below, and committed
+  separately. `ChunkMesherTests.RandomChunk_MatchesPolygonisePerVoxel`
+  checks after every step that the chunk loop still gives exactly what
+  running `MarchingCubes.Polygonise` voxel by voxel gives (random densities,
+  every edge placement and shading).
+
+**Conditions.** As K11: Unity 6000.3.25f1, in the Editor with Release code
+optimization (Mono), Intel Core i9-10900K (20 threads).
+
+Median build time in ms, flat / smooth shading:
+
+| Step | 8³ | 16³ | 32³ | 64³ | 64³ ns per voxel (flat) |
+|---|--:|--:|--:|--:|--:|
+| Before (K11's loop) | 0.20 / 0.23 | 1.39 / 1.49 | 10.48 / 10.91 | 80.99 / 82.83 | 309 |
+| 1. Crossed-edge mask as a 256-entry table | 0.18 / 0.21 | 1.20 / 1.30 | 8.93 / 9.35 | 68.59 / 70.41 | 262 |
+| 2. Skip voxels with no crossed edge early | 0.16 / 0.20 | 1.10 / 1.21 | 8.23 / 8.63 | 63.22 / 64.85 | 241 |
+| 3. Read a Z layer at a time; reuse the 4 shared corners | 0.05 / 0.08 | 0.20 / 0.30 | 1.01 / 1.41 | 5.52 / 7.05 | 21 |
+
+Triangle counts are unchanged at every step (192, 674, 2,766 and 10,832).
+A second run of the final loop matched step 3 within 1%.
+
+**Findings.**
+- **Reading densities was the cost.** Step 3 alone is an 11× speed-up.
+  Before it, every voxel made 8 reads, each one building a `Vector3Int`
+  from the corner table, calling `Chunk.GetDensity`, then the
+  `IVoxelStorage` interface, then a bounds check. Now each Z layer is
+  copied once through `IVoxelStorage.ReadLayer` (one block copy for flat
+  storage), and each voxel reads 4 new samples from a plain array, taking
+  the other 4 and their solid bits from the voxel before it.
+- **The table and the early skip** are worth about 15% and 8% on their own.
+  The skip was small because, until step 3, a skipped voxel had already
+  paid for its 8 reads.
+- **Overall:** 64³ goes from 81 to 5.5 ms flat (15×) and 83 to 7.1 ms
+  smooth (12×). That's ~21 ns per voxel, now close to the cost of the
+  surface voxels themselves.
+- **Smooth shading now costs about 28% more than flat** (it was 2%). Its
+  `SharedVertexWriter` looks up every vertex in a `Dictionary`, which K32
+  didn't touch; it's the next thing to try if smooth meshing matters.
+- **Layer buffers are kept between builds,** one pair per thread, so a
+  build allocates nothing new for them. That's ready for meshing off the
+  main thread in Chapter 4.
+
+**Decision.** All three changes are in Core. `IVoxelStorage` gains
+`ReadLayer`, which the K24/K25 storage schemes (RLE, octree) must also
+implement; both can fill a layer efficiently. K12 (Jobs/Burst) is now
+measured against this loop, not K11's.
+
+### K32 at world scale
+
+2D was meant to be measured on a multi-chunk world once 3A existed.
+`WorldMeshBenchmark` (*Clube → Benchmarks → World meshing (K32)*) loads
+and meshes every chunk a `WorldView` streams in around the origin
+(`StreamingArea`), using WorldLab's config: 16³ chunks, 2 layers, fractal
+2D Perlin, flat shading. It times generation (`World.Load`) and meshing
+separately; no renderers or mesh upload. Median of 5 runs after 1 warmup.
+
+Both runs were in batch mode on a copy of the repo, with the same
+benchmark: once on `main` plus the benchmark ("before"), once on the K32
+branch ("after"). Same machine and Unity version as above, Release code
+optimization.
+
+| Render distance | Chunks | Triangles | Generate ms | Mesh ms before | Mesh ms after | Per chunk before → after |
+|--:|--:|--:|--:|--:|--:|--:|
+| 4 (WorldLab) | 98 | 32,376 | 375 | 127.4 | 12.7 | 1.30 → 0.13 ms |
+| 6 (game setting) | 226 | 75,268 | 867 | 294.7 | 29.0 | 1.30 → 0.13 ms |
+| 8 | 394 | 131,246 | 1,505 | 514.0 | 50.7 | 1.30 → 0.13 ms |
+
+**Findings.**
+- **World meshing is 10× faster** (less than the 15× at 64³, because a
+  16³ chunk has more surface per voxel). Every lab and the game get it:
+  `ChunkView` and the world's `ChunkRenderer`s both build through
+  `ChunkMeshBuilder` → `ChunkMesher`.
+- **Generation is now the cost:** ~3.8 ms per chunk against 0.13 ms to
+  mesh it, so 97% of loading a world. Before K32 it was 75%. Fractal 2D
+  Perlin samples 4 octaves for every sample, although a heightfield only
+  needs one height per column. That's K35.

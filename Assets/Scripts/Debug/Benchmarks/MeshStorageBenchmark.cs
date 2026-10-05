@@ -61,8 +61,6 @@ namespace Clube.Debug
     /// </summary>
     public static class MeshStorageBenchmark
     {
-        public static readonly int[] DefaultSizes = { 8, 16, 32, 64 };
-
         public static IReadOnlyList<MeshStorageResult> Run(IReadOnlyList<int> sizes, int warmup = 5, int runs = 30)
         {
             var results = new List<MeshStorageResult>();
@@ -71,7 +69,7 @@ namespace Clube.Debug
             {
                 foreach (int size in sizes)
                 {
-                    Chunk chunk = TerrainChunk(size);
+                    Chunk chunk = BenchmarkTerrain.Hills(size);
                     var settings = new ChunkMeshSettings(0.5f, 1f, EdgePlacement.Interpolated, Shading.Flat);
 
                     var expectedVertices = new List<Vector3>();
@@ -101,18 +99,9 @@ namespace Clube.Debug
             {
                 text.AppendLine(
                     $"| {r.ChunkSize}³ | {r.Variant} | {r.Triangles:N0} | {r.MeshMedianMs:0.00} | {r.MeshMeanMs:0.00} | " +
-                    $"{r.UploadMedianMs:0.00} | {Bytes(r.AllocatedBytesPerBuild)} | {Bytes(r.RetainedBytes)} | {(r.MatchesCore ? "yes" : "**no**")} |");
+                    $"{r.UploadMedianMs:0.00} | {BenchmarkStats.Bytes(r.AllocatedBytesPerBuild)} | {BenchmarkStats.Bytes(r.RetainedBytes)} | {(r.MatchesCore ? "yes" : "**no**")} |");
             }
             return text.ToString();
-        }
-
-        // Rolling hills filling the middle of the chunk, the same shape at every size.
-        private static Chunk TerrainChunk(int size)
-        {
-            var chunk = new Chunk(new Vector3Int(size, size, size));
-            var generator = new FractalPerlin2DGenerator(1, size * 0.5f, size * 0.25f, 1.2f / size, octaves: 4);
-            ChunkGenerator.Fill(chunk, generator, Vector3.zero, 1f);
-            return chunk;
         }
 
         private static MeshStorageResult MeasureCore(
@@ -204,37 +193,6 @@ namespace Clube.Debug
             return true;
         }
 
-        private static string Bytes(double bytes)
-        {
-            if (double.IsNaN(bytes))
-            {
-                return "n/a";
-            }
-            if (bytes < 1024)
-            {
-                return $"{bytes:0} B";
-            }
-            return bytes < 1024 * 1024 ? $"{bytes / 1024:0.0} KB" : $"{bytes / (1024 * 1024):0.0} MB";
-        }
-
-        private static double Median(double[] values)
-        {
-            var sorted = (double[])values.Clone();
-            Array.Sort(sorted);
-            int middle = sorted.Length / 2;
-            return sorted.Length % 2 == 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
-        }
-
-        private static double Mean(double[] values)
-        {
-            double sum = 0;
-            foreach (double value in values)
-            {
-                sum += value;
-            }
-            return sum / values.Length;
-        }
-
         /// <summary>What every variant at one chunk size is measured against.</summary>
         private sealed class Context
         {
@@ -276,7 +234,7 @@ namespace Clube.Debug
             public MeshStorageResult ToResult(string variant, Chunk chunk, int triangles, long retainedBytes, bool matchesCore)
             {
                 return new MeshStorageResult(
-                    variant, chunk.VoxelCount.x, triangles, Median(MeshMs), Mean(MeshMs), Median(UploadMs),
+                    variant, chunk.VoxelCount.x, triangles, BenchmarkStats.Median(MeshMs), BenchmarkStats.Mean(MeshMs), BenchmarkStats.Median(UploadMs),
                     AllocationSamples > 0 ? (double)AllocatedBytes / AllocationSamples : double.NaN, retainedBytes, matchesCore);
             }
         }

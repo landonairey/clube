@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Clube.Core
@@ -16,5 +17,12 @@ namespace Clube.Core
         float GetDensity(int x, int y, int z);
 
         void SetDensity(int x, int y, int z, float density);
+
+        /// <summary>
+        /// Copies every sample with the given <paramref name="z"/> into <paramref name="layer"/>,
+        /// X varying fastest, then Y: <c>SampleCount.x * SampleCount.y</c> values. The mesher's
+        /// bulk read (K32): one call per layer instead of one per sample.
+        /// </summary>
+        void ReadLayer(int z, Span<float> layer);
     }
 }

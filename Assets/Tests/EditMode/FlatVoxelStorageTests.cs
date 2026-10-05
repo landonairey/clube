@@ -44,6 +44,33 @@ namespace Clube.Core.Tests
             Assert.Throws<ArgumentOutOfRangeException>(() => storage.SetDensity(x, y, z, 1f));
         }
 
+        [Test]
+        public void ReadLayer_CopiesOneZLayer_XFastestThenY()
+        {
+            var storage = new FlatVoxelStorage(new Vector3Int(3, 4, 5));
+            ForEachSample(storage, (x, y, z) => storage.SetDensity(x, y, z, Encode(x, y, z)));
+            var layer = new float[3 * 4];
+
+            storage.ReadLayer(2, layer);
+
+            for (int y = 0; y < 4; y++)
+            {
+                for (int x = 0; x < 3; x++)
+                {
+                    Assert.That(layer[x + 3 * y], Is.EqualTo(Encode(x, y, 2)));
+                }
+            }
+        }
+
+        [TestCase(-1)]
+        [TestCase(5)]
+        public void ReadLayer_OutOfRange_Throws(int z)
+        {
+            var storage = new FlatVoxelStorage(new Vector3Int(3, 4, 5));
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => storage.ReadLayer(z, new float[3 * 4]));
+        }
+
         private static float Encode(int x, int y, int z)
         {
             return x + 10 * y + 100 * z;
