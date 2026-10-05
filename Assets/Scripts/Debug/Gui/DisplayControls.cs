@@ -13,9 +13,18 @@ namespace Clube.Debug
         private static readonly string[] TriangleOutlineNames = { "None", "Voxel", "All" };
 
         public static void Draw(
-            LabPanelFrame frame, VoxelLabels labels, NormalLines normals, FlipFaces flipFaces,
-            ChunkDebugView debugView, WorldDebugView worldDebug, AxesHud axesHud)
+            LabPanelFrame frame, ChunkFocus chunkFocus, VoxelSelector selector, VoxelLabels labels, NormalLines normals,
+            FlipFaces flipFaces, ChunkDebugView debugView, WorldDebugView worldDebug, AxesHud axesHud)
         {
+            // The two selections, highlighted separately (WorldLab focuses a chunk, then a voxel in it).
+            if (chunkFocus != null)
+            {
+                chunkFocus.HighlightChunk = frame.ToggleField("Highlight the focused chunk", chunkFocus.HighlightChunk);
+            }
+            if (selector != null)
+            {
+                SetIfChanged(frame.ToggleField("Highlight the selected voxel", selector.ShowHighlight), selector.ShowHighlight, v => selector.ShowHighlight = v);
+            }
             if (labels != null)
             {
                 labels.CornerLabelsOn = frame.ToggleField("Corner labels and bit table", labels.CornerLabelsOn);

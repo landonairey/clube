@@ -23,6 +23,10 @@ namespace Clube.Debug
         private const string HighlightShader = "Universal Render Pipeline/Unlit";
         private const string ColorProperty = "_BaseColor";
 
+        [Tooltip("Outline the selected voxel.")]
+        [SerializeField]
+        private bool showHighlight = true;
+
         [SerializeField]
         private Color highlightColor = new Color(1f, 0.85f, 0.2f);
 
@@ -55,6 +59,17 @@ namespace Clube.Debug
 
         /// <summary>The selected voxel, or null when nothing is selected.</summary>
         public Vector3Int? SelectedVoxel { get; private set; }
+
+        /// <summary>Whether the selected voxel is outlined.</summary>
+        public bool ShowHighlight
+        {
+            get => showHighlight;
+            set
+            {
+                showHighlight = value;
+                UpdateHighlight();
+            }
+        }
 
         private Camera ViewCamera => targetCamera != null ? targetCamera : Camera.main;
 
@@ -148,6 +163,13 @@ namespace Clube.Debug
                 FocusSelected();
             }
 
+            // An Inspector edit to the highlight toggle skips the property.
+            bool wanted = SelectedVoxel != null && showHighlight;
+            if (wanted != (highlight != null && highlight.activeSelf))
+            {
+                UpdateHighlight();
+            }
+
             // Follows voxel size changes, which move the voxel without a new selection.
             if (highlight != null && highlight.activeSelf)
             {
@@ -205,7 +227,7 @@ namespace Clube.Debug
 
         private void UpdateHighlight()
         {
-            if (SelectedVoxel == null)
+            if (SelectedVoxel == null || !showHighlight)
             {
                 if (highlight != null)
                 {

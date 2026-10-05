@@ -118,6 +118,12 @@ whose click focuses a chunk and selects the voxel hit. `LabPanel` finds the
 lab's parts and draws a section per part, each from a shared `*Controls`
 class. K32 at world scale: meshing 1.30 → 0.13 ms per 16³ chunk;
 generation is now 97% of loading (K35).
+M22–M24: the Inspector is a superset of the panel (`LabPanelEditor`,
+and the ChunkView / WorldView Inspectors draw the panel's terrain, chunk
+and meshing sections); WorldLab selects a chunk, then a voxel inside it,
+with separate highlight toggles; voxel size goes down to 1/16 m (1-16 per
+metre) and `BuildGridOverlay` shows a 1 m build grid on the terrain
+(`Clube/Build Grid Overlay` shader, an extra chunk material).
 **Next:** 2D's K12 (Jobs/Burst), then 2G, then M12, per the build order.
 
 ## Conventions
@@ -230,6 +236,10 @@ generation is now 97% of loading (K35).
   works through `VoxelCornerEditor`. Its panel controls go in a `*Controls`
   class that `LabPanel` draws when the tool is in the scene. Edits go through
   the target's edit path, never straight to a world chunk (M2).
+- The Inspector is a superset of the lab panel (M22): never add a panel-only
+  knob. Draw panel sections in Inspectors with `LabPanelFrame.ForInspector`
+  through `InspectorLabControls` (records edits for Undo and saving), as
+  `LabPanelEditor`, `ChunkViewEditor` and `WorldViewEditor` do.
 - Naming/formatting: follow the existing code (private fields camelCase,
   `[SerializeField] private`, XML doc comments on public types). Formalize
   later if needed.

@@ -8,7 +8,8 @@ namespace Clube.Debug
     /// <summary>
     /// The terrain section of the in-game lab panels (K33, K31): pick the generator
     /// (K9), change the seed, tune the shape (surface level, amplitude, frequency and the
-    /// fractal octaves, lacunarity and persistence), or regenerate to undo every edit.
+    /// fractal octaves, lacunarity and persistence, and the Spline generator's height curve),
+    /// or regenerate to undo every edit.
     /// Edits the runtime config
     /// copy and calls <see cref="WorldConfig.NotifyChanged"/>, the same as an Inspector
     /// edit, so whatever owns the terrain regenerates it.
@@ -35,7 +36,7 @@ namespace Clube.Debug
             }
 
             int current = GeneratorChoices.IndexOf(terrain.Generator);
-            int picked = GUILayout.SelectionGrid(current, GeneratorNames.ToArray(), 2, frame.Button);
+            int picked = GUILayout.SelectionGrid(current, GeneratorNames.ToArray(), 2, frame.Button, GUILayout.Width(frame.InnerWidth));
             if (picked != current && picked >= 0)
             {
                 terrain.Generator = GeneratorChoices[picked];
@@ -96,7 +97,16 @@ namespace Clube.Debug
                 terrain.Persistence = persistence;
                 config.NotifyChanged();
             }
-            GUILayout.Label("Octaves, lacunarity and persistence shape the fractal generators; the height curve is in the Inspector.", frame.Hint);
+            GUILayout.Label("Octaves, lacunarity and persistence shape the fractal generators.", frame.Hint);
+
+            if (terrain.Generator == TerrainGeneratorType.Spline)
+            {
+                GUILayout.Label("Height curve (Spline)", frame.Header);
+                if (HeightCurveControls.Draw(frame, terrain.HeightCurve))
+                {
+                    config.NotifyChanged();
+                }
+            }
         }
     }
 }

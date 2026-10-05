@@ -15,7 +15,9 @@ namespace Clube.Debug.Editor
     public class ChunkViewEditor : UnityEditor.Editor
     {
         private const string FoldoutStateKey = "Clube.ChunkViewEditor.ShowConfig";
+        private const string ControlsStateKey = "Clube.ChunkViewEditor.ShowControls";
 
+        private readonly InspectorLabControls controls = new InspectorLabControls();
         private UnityEditor.Editor configEditor;
 
         private GUIStyle statsStyle;
@@ -53,6 +55,8 @@ namespace Clube.Debug.Editor
                 return;
             }
 
+            DrawLabControls(view, config);
+
             // In Play mode this is the view's private copy, so edits here reset on exit.
             string title = view.IsUsingRuntimeConfig
                 ? $"{config.name}: edits reset when Play mode ends"
@@ -72,6 +76,34 @@ namespace Clube.Debug.Editor
             {
                 configEditor.OnInspectorGUI();
             }
+        }
+
+        // The lab panel's terrain, chunk and meshing sections, drawn by the same code (M22):
+        // terrain and chunk shape only where the chunk is generated (ChunkLab, not VoxelLab).
+        private void DrawLabControls(ChunkView view, WorldConfig config)
+        {
+            bool show = EditorGUILayout.Foldout(
+                SessionState.GetBool(ControlsStateKey, true), "Terrain, chunk and meshing (same as the lab panel)", toggleOnLabelClick: true);
+            SessionState.SetBool(ControlsStateKey, show);
+            if (!show)
+            {
+                return;
+            }
+
+            bool generated = view.GetComponent<ChunkTerrainFill>() != null;
+            controls.Draw(new Object[] { config }, frame =>
+            {
+                if (generated)
+                {
+                    GUILayout.Label("Terrain", frame.Header);
+                    TerrainControls.Draw(frame, config);
+                    GUILayout.Label("Chunk", frame.Header);
+                    ChunkShapeControls.Draw(frame, config, withLayers: false);
+                }
+                GUILayout.Label("Meshing", frame.Header);
+                MeshingControls.Draw(frame, config);
+            });
+            EditorGUILayout.Space();
         }
 
         private void OnDisable()

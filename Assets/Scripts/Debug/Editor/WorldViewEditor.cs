@@ -17,7 +17,9 @@ namespace Clube.Debug.Editor
     public class WorldViewEditor : UnityEditor.Editor
     {
         private const string FoldoutStateKey = "Clube.WorldViewEditor.ShowConfig";
+        private const string ControlsStateKey = "Clube.WorldViewEditor.ShowControls";
 
+        private readonly InspectorLabControls controls = new InspectorLabControls();
         private UnityEditor.Editor configEditor;
 
         // Keeps the counts current in Play mode, where chunks load and unload every frame.
@@ -45,6 +47,8 @@ namespace Clube.Debug.Editor
                 return;
             }
 
+            DrawLabControls(config);
+
             // In Play mode this is the view's private copy, so edits here reset on exit.
             string title = Application.isPlaying
                 ? $"{config.name}: edits apply live, reset when Play mode ends"
@@ -64,6 +68,29 @@ namespace Clube.Debug.Editor
             {
                 configEditor.OnInspectorGUI();
             }
+        }
+
+        // The lab panel's chunk shape, terrain and meshing sections, drawn by the same code (M22).
+        private void DrawLabControls(WorldConfig config)
+        {
+            bool show = EditorGUILayout.Foldout(
+                SessionState.GetBool(ControlsStateKey, true), "World, terrain and meshing (same as the lab panel)", toggleOnLabelClick: true);
+            SessionState.SetBool(ControlsStateKey, show);
+            if (!show)
+            {
+                return;
+            }
+
+            controls.Draw(new Object[] { config }, frame =>
+            {
+                GUILayout.Label("Chunks", frame.Header);
+                ChunkShapeControls.Draw(frame, config, withLayers: true);
+                GUILayout.Label("Terrain", frame.Header);
+                TerrainControls.Draw(frame, config);
+                GUILayout.Label("Meshing", frame.Header);
+                MeshingControls.Draw(frame, config);
+            });
+            EditorGUILayout.Space();
         }
 
         private void OnDisable()

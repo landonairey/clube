@@ -79,6 +79,7 @@ namespace Clube.Debug
             if (chunkFocus != null)
             {
                 chunkFocus.FocusChanged += OnFocusChanged;
+                chunkFocus.HighlightChanged += OnHighlightChanged;
             }
             rebuildRequested = true;
         }
@@ -90,6 +91,7 @@ namespace Clube.Debug
             if (chunkFocus != null)
             {
                 chunkFocus.FocusChanged -= OnFocusChanged;
+                chunkFocus.HighlightChanged -= OnHighlightChanged;
             }
             if (borders != null)
             {
@@ -101,6 +103,11 @@ namespace Clube.Debug
         {
             borders?.Dispose();
             LabMeshObject.DestroyNow(ownedMaterial);
+        }
+
+        private void OnHighlightChanged()
+        {
+            rebuildRequested = true;
         }
 
         // Called by Unity whenever an Inspector value changes, including in Play mode.
@@ -163,7 +170,7 @@ namespace Clube.Debug
                 AddChunkEdges(coord, edges);
             }
             var focused = new HashSet<(Vector3Int, int)>();
-            if (chunkFocus != null && chunkFocus.Focused.HasValue)
+            if (chunkFocus != null && chunkFocus.Focused.HasValue && chunkFocus.HighlightChunk)
             {
                 AddChunkEdges(chunkFocus.Focused.Value, focused);
             }

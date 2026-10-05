@@ -58,7 +58,7 @@ namespace Clube.Debug
             int step = lab.Current.Step;
             frame.Line($"Position {playback.StepIndex + 1} / {playback.StepCount}");
             frame.Line($"Step {step + 1} / {lab.Recording.Steps.Count} · {lab.Recording.Steps[step].Type}");
-            float position = GUILayout.HorizontalSlider(playback.StepIndex, 0f, Mathf.Max(0, playback.StepCount - 1));
+            float position = frame.SliderBar(playback.StepIndex, 0f, Mathf.Max(0, playback.StepCount - 1));
             int target = Mathf.RoundToInt(position);
             if (target != playback.StepIndex)
             {
