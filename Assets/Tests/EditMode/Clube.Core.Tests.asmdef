@@ -3,6 +3,8 @@
     "rootNamespace": "Clube.Core.Tests",
     "references": [
         "Clube.Core",
+        "Unity.Collections",
+        "Unity.Mathematics",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],
