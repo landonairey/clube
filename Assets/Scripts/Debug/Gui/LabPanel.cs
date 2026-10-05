@@ -71,6 +71,9 @@ namespace Clube.Debug
         [SerializeField]
         private bool buildGridOpen;
 
+        [SerializeField]
+        private bool storageOpen;
+
         private WorldView worldView;
         private ChunkView chunkView;
         private ChunkTerrainFill terrainFill;
@@ -90,6 +93,8 @@ namespace Clube.Debug
         private WorldDebugView worldDebug;
         private AxesHud axesHud;
         private BuildGridOverlay buildGrid;
+        private LabChunkTarget chunkTarget;
+        private StorageView storageView;
 
         private bool partsFound;
         private LabPanelFrame frame;
@@ -138,6 +143,8 @@ namespace Clube.Debug
             worldDebug = FindFirstObjectByType<WorldDebugView>();
             axesHud = FindFirstObjectByType<AxesHud>();
             buildGrid = FindFirstObjectByType<BuildGridOverlay>();
+            chunkTarget = FindFirstObjectByType<LabChunkTarget>();
+            storageView = FindFirstObjectByType<StorageView>();
         }
 
         private void OnDisable()
@@ -182,7 +189,7 @@ namespace Clube.Debug
             foreach (Object part in new Object[]
                      {
                          Config, worldView, testFill, brush, chunkFocus, chunkVolume, selector, corners, volumeLab,
-                         stepThrough, flyCamera, labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid,
+                         stepThrough, flyCamera, labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView,
                      })
             {
                 if (part != null)
@@ -229,6 +236,10 @@ namespace Clube.Debug
             if (frame.Section("Meshing", ref meshingOpen))
             {
                 MeshingControls.Draw(frame, config);
+            }
+            if (frame.Section("Storage", ref storageOpen))
+            {
+                StorageControls.Draw(frame, config, chunkTarget, storageView);
             }
             if (chunkFocus != null && frame.Section("Focused chunk", ref chunkOpen))
             {

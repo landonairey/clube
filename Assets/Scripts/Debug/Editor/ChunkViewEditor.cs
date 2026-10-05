@@ -102,6 +102,8 @@ namespace Clube.Debug.Editor
                 }
                 GUILayout.Label("Meshing", frame.Header);
                 MeshingControls.Draw(frame, config);
+                GUILayout.Label("Storage", frame.Header);
+                StorageControls.Draw(frame, config, null, null);
             });
             EditorGUILayout.Space();
         }
