@@ -68,6 +68,9 @@ namespace Clube.Debug
         [SerializeField]
         private bool displayOpen;
 
+        [SerializeField]
+        private bool buildGridOpen;
+
         private WorldView worldView;
         private ChunkView chunkView;
         private ChunkTerrainFill terrainFill;
@@ -86,7 +89,9 @@ namespace Clube.Debug
         private ChunkDebugView debugView;
         private WorldDebugView worldDebug;
         private AxesHud axesHud;
+        private BuildGridOverlay buildGrid;
 
+        private bool partsFound;
         private LabPanelFrame frame;
         private string help;
         private bool open;
@@ -96,6 +101,24 @@ namespace Clube.Debug
 
         private void Awake()
         {
+            FindParts();
+            frame = new LabPanelFrame(this, width, background);
+            help = DescribeKeys();
+            open = startOpen;
+        }
+
+        /// <summary>
+        /// Finds the lab's parts in the scene, once unless <paramref name="again"/>. The Inspector
+        /// (LabPanelEditor) calls it too, outside Play mode, to draw the same sections.
+        /// </summary>
+        public void FindParts(bool again = false)
+        {
+            if (partsFound && !again)
+            {
+                return;
+            }
+            partsFound = true;
+
             worldView = FindFirstObjectByType<WorldView>();
             chunkView = FindFirstObjectByType<ChunkView>();
             terrainFill = FindFirstObjectByType<ChunkTerrainFill>();
@@ -114,10 +137,7 @@ namespace Clube.Debug
             debugView = FindFirstObjectByType<ChunkDebugView>();
             worldDebug = FindFirstObjectByType<WorldDebugView>();
             axesHud = FindFirstObjectByType<AxesHud>();
-
-            frame = new LabPanelFrame(this, width, background);
-            help = DescribeKeys();
-            open = startOpen;
+            buildGrid = FindFirstObjectByType<BuildGridOverlay>();
         }
 
         private void OnDisable()
@@ -148,14 +168,59 @@ namespace Clube.Debug
 
             frame.Width = width;
             frame.Begin();
+            DrawSections(frame);
+            GUILayout.Space(8f);
+            GUILayout.Label(help, frame.Hint);
+            frame.End();
+        }
+
+        /// <summary>Everything the sections can change, for the Inspector to record for Undo and saving.</summary>
+        public Object[] EditableParts()
+        {
+            FindParts();
+            var parts = new List<Object>();
+            foreach (Object part in new Object[]
+                     {
+                         Config, worldView, testFill, brush, chunkFocus, chunkVolume, selector, corners, volumeLab,
+                         stepThrough, flyCamera, labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid,
+                     })
+            {
+                if (part != null)
+                {
+                    parts.Add(part);
+                }
+            }
+            parts.Add(this);
+            return parts.ToArray();
+        }
+
+        /// <summary>
+        /// Draws every section this lab has into <paramref name="frame"/>: the game panel's frame,
+        /// or an Inspector frame, so the Inspector always has every panel knob (M22).
+        /// </summary>
+        public void DrawSections(LabPanelFrame frame)
+        {
+            FindParts();
+            WorldConfig config = Config;
+            if (config == null)
+            {
+                return;
+            }
 
             if (worldView != null && frame.Section("World", ref worldOpen))
             {
-                WorldControls.Draw(frame, worldView);
+                if (worldView.World != null)
+                {
+                    WorldControls.Draw(frame, worldView);
+                }
+                else
+                {
+                    ChunkShapeControls.Draw(frame, config, withLayers: true);
+                }
             }
             if ((worldView != null || terrainFill != null) && frame.Section("Terrain", ref terrainOpen))
             {
-                DrawTerrain(config);
+                DrawTerrain(frame, config);
             }
             if (brush != null && frame.Section("Brush", ref brushOpen))
             {
@@ -167,8 +232,15 @@ namespace Clube.Debug
             }
             if (chunkFocus != null && frame.Section("Focused chunk", ref chunkOpen))
             {
-                ChunkFocusControls.Draw(frame, chunkFocus);
-                DrawChunkVolumeToggle();
+                if (worldView.World != null)
+                {
+                    ChunkFocusControls.Draw(frame, chunkFocus);
+                }
+                else
+                {
+                    GUILayout.Label("Enter Play mode, then click the terrain to focus a chunk.", frame.Hint);
+                }
+                DrawChunkVolumeToggle(frame);
             }
             // A lone generated chunk (ChunkLab); VoxelLab's one voxel keeps its size.
             else if (worldView == null && terrainFill != null && frame.Section("Chunk", ref chunkOpen))
@@ -178,7 +250,7 @@ namespace Clube.Debug
                 {
                     TestFillControls.Draw(frame, testFill);
                 }
-                DrawChunkVolumeToggle();
+                DrawChunkVolumeToggle(frame);
             }
             if (corners != null)
             {
@@ -209,15 +281,15 @@ namespace Clube.Debug
             }
             if (frame.Section("Display", ref displayOpen))
             {
-                DisplayControls.Draw(frame, labels, normals, flipFaces, debugView, worldDebug, axesHud);
+                DisplayControls.Draw(frame, chunkFocus, selector, labels, normals, flipFaces, debugView, worldDebug, axesHud);
             }
-
-            GUILayout.Space(8f);
-            GUILayout.Label(help, frame.Hint);
-            frame.End();
+            if (buildGrid != null && frame.Section("Build grid", ref buildGridOpen))
+            {
+                BuildGridControls.Draw(frame, buildGrid, config.VoxelSize);
+            }
         }
 
-        private void DrawTerrain(WorldConfig config)
+        private void DrawTerrain(LabPanelFrame frame, WorldConfig config)
         {
             TerrainControls.Draw(frame, config);
             if (worldView != null && worldView.Problem != null)
@@ -231,7 +303,7 @@ namespace Clube.Debug
         }
 
         // The chunk's solid volume (V11, V12 over every voxel) is measured after each rebuild unless this is off.
-        private void DrawChunkVolumeToggle()
+        private void DrawChunkVolumeToggle(LabPanelFrame frame)
         {
             if (chunkVolume == null)
             {
@@ -254,7 +326,7 @@ namespace Clube.Debug
             }
             if (chunkFocus != null)
             {
-                keys.Add("Click focuses a chunk and selects a voxel · F frames it");
+                keys.Add("Click focuses a chunk, click inside it selects a voxel · F frames it");
             }
             else if (selector != null)
             {
