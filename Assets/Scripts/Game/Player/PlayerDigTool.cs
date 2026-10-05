@@ -51,7 +51,20 @@ namespace Clube.Game
         private PlayerController player;
         private float nextApplyTime;
 
-        private float Radius => settings != null ? settings.BrushRadius : 1.5f;
+        /// <summary>Brush radius in metres (the player setting).</summary>
+        public float Radius => settings != null ? settings.BrushRadius : 1.5f;
+
+        /// <summary>True when the view's centre meets the surface within reach this frame.</summary>
+        public bool HasTarget { get; private set; }
+
+        /// <summary>Where the brush would be applied, in world space; valid while <see cref="HasTarget"/>.</summary>
+        public Vector3 Target { get; private set; }
+
+        /// <summary>True when a place at <see cref="Target"/> would reach into the player, so it is refused.</summary>
+        public bool PlaceBlocked => HasTarget && Overlaps(player.Body, Target, Radius);
+
+        /// <summary>The operation held down this frame, if any: what a preview should show.</summary>
+        public BrushOperation? HeldOperation { get; private set; }
 
         private void Awake()
         {
@@ -68,6 +81,8 @@ namespace Clube.Game
 
         private void Update()
         {
+            HasTarget = false;
+            HeldOperation = null;
             if (!player.enabled || player.IsCursorFree || worldView == null || !worldView.IsReady)
             {
                 return;
@@ -84,6 +99,9 @@ namespace Clube.Game
                     settings.BrushRadius += RadiusStep;
                 }
             }
+
+            FindTarget();
+            HeldOperation = IsHeld(digAction) ? BrushOperation.Remove : IsHeld(placeAction) ? BrushOperation.Add : (BrushOperation?)null;
 
             if (ShouldApply(digAction))
             {
@@ -111,19 +129,26 @@ namespace Clube.Game
             return false;
         }
 
-        private void Apply(BrushOperation operation)
+        private void FindTarget()
         {
             Transform head = player.Head != null ? player.Head : transform;
-            if (!worldView.Raycast(new Ray(head.position, head.forward), out Vector3 point)
-                || (point - head.position).sqrMagnitude > reach * reach)
+            HasTarget = worldView.Raycast(new Ray(head.position, head.forward), out Vector3 point)
+                && (point - head.position).sqrMagnitude <= reach * reach;
+            Target = point;
+        }
+
+        private void Apply(BrushOperation operation)
+        {
+            if (!HasTarget || (operation == BrushOperation.Add && PlaceBlocked))
             {
                 return;
             }
-            if (operation == BrushOperation.Add && Overlaps(player.Body, point, Radius))
-            {
-                return;
-            }
-            worldView.ApplyBrush(point, new BrushSettings(Radius), operation);
+            worldView.ApplyBrush(Target, new BrushSettings(Radius), operation);
+        }
+
+        private static bool IsHeld(InputActionReference reference)
+        {
+            return reference != null && reference.action.IsPressed();
         }
 
         /// <summary>Whether a sphere reaches into the capsule.</summary>

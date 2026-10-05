@@ -4,14 +4,14 @@ using UnityEngine;
 namespace Clube.Debug
 {
     /// <summary>
-    /// Game-view HUD showing the world X, Y and Z axes as seen from this camera,
+    /// Game-view HUD showing the world X, Y and Z axes as seen from the main camera,
     /// like the orientation gizmo in the Scene view. The triad sits in a screen
     /// corner and turns as the camera turns. Axes pointing away from the viewer
     /// are dimmed and drawn behind the others. Runs in edit mode too, so the Game
-    /// view shows it before pressing Play.
+    /// view shows it before pressing Play. Follows whichever camera is main, so it can sit
+    /// on an object that stays active when cameras switch (WorldLab's player, M7).
     /// </summary>
     [ExecuteAlways]
-    [RequireComponent(typeof(Camera))]
     public class AxesHud : MonoBehaviour
     {
         private static readonly Vector3[] AxisDirections = { Vector3.right, Vector3.up, Vector3.forward };
@@ -66,6 +66,7 @@ namespace Clube.Debug
                 };
             }
 
+            Transform view = Camera.main != null ? Camera.main.transform : transform;
             var origin = new Vector2(margin.x, Screen.height - margin.y);
 
             // Each axis in camera space: x right, y up, z away from the viewer.
@@ -73,7 +74,7 @@ namespace Clube.Debug
             var order = new int[AxisDirections.Length];
             for (int i = 0; i < AxisDirections.Length; i++)
             {
-                cameraDirections[i] = transform.InverseTransformDirection(AxisDirections[i]);
+                cameraDirections[i] = view.InverseTransformDirection(AxisDirections[i]);
                 order[i] = i;
             }
 

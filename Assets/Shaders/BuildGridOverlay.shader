@@ -1,8 +1,8 @@
 // Draws a world-space build grid on a mesh: lines where the surface crosses each grid
-// cell's boundaries (x and z, and optionally y as height contours), a constant number of
-// pixels wide. Added as an extra material on terrain chunks; the lab's BuildGridOverlay
-// turns it on and sets the cell size and colour through global shader values, so with
-// the grid off (opacity 0, the default) it draws nothing.
+// cell's x and z boundaries, so the grid drapes over the terrain like a map grid (no
+// height contours), a constant number of pixels wide. Added as an extra material on
+// terrain chunks; the lab's BuildGridOverlay turns it on and sets the cell size and colour
+// through global shader values, so with the grid off (opacity 0, the default) it draws nothing.
 Shader "Clube/Build Grid Overlay"
 {
     SubShader
@@ -32,7 +32,6 @@ Shader "Clube/Build Grid Overlay"
             float _ClubeBuildGridOpacity;
             float _ClubeBuildGridCellSize;
             float _ClubeBuildGridLineWidth;
-            float _ClubeBuildGridHeightLines;
             float4 _ClubeBuildGridColor;
 
             struct Attributes
@@ -62,13 +61,9 @@ Shader "Clube/Build Grid Overlay"
                 }
 
                 // Distance to the nearest cell boundary on each axis, in pixels.
-                float3 cell = input.positionWS / max(_ClubeBuildGridCellSize, 0.001);
-                float3 toLine = abs(frac(cell - 0.5) - 0.5) / max(fwidth(cell), 1e-5);
-                float nearest = min(toLine.x, toLine.z);
-                if (_ClubeBuildGridHeightLines > 0.5)
-                {
-                    nearest = min(nearest, toLine.y);
-                }
+                float2 cell = input.positionWS.xz / max(_ClubeBuildGridCellSize, 0.001);
+                float2 toLine = abs(frac(cell - 0.5) - 0.5) / max(fwidth(cell), 1e-5);
+                float nearest = min(toLine.x, toLine.y);
 
                 // Anti-aliased line of the requested width.
                 float coverage = 1.0 - saturate(nearest - (_ClubeBuildGridLineWidth * 0.5 - 0.5));
