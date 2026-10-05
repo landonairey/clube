@@ -51,6 +51,7 @@ A combined tag like `Core + Lab` means the logic lives in the core and a lab com
 - [ ] **A10** Release build check: `Game` scene has no `Clube.Debug` components, and the debug assembly is excluded from release builds.
 - [ ] **A11** Step recording: the mesher accepts an optional recorder that logs each algorithm step as data. Compiled out of release builds (A5) and zero cost when no recorder is passed. Playback lives in `Clube.Debug` and never re-runs the algorithm itself.
 - [ ] **A12** Voxel storage behind an interface (`IVoxelStorage`: get/set density and material, iterate, serialize). Meshing, editing and saving talk only to the interface, so flat array, RLE and octree implementations can be swapped and compared.
+- [ ] **A13** *(added 2026-10-05)* Lab scenes and the game are built for different jobs. The labs teach and measure, and may carry overhead; the `Game` scene is lean: it picks the fastest options (e.g. the Burst mesher K12, single-byte storage M12, no step recording) and leaves out lab-only work (volume measurement, the build grid, storage views). Goes further than A10, which only keeps `Clube.Debug` out. Open: a separate game `WorldConfig` vs code defaults, and whether `Game` uses the lab prefabs at all.
 
 ---
 
@@ -271,6 +272,7 @@ Each lab contains the tools of the labs below it, built from the same scripts: `
 - [ ] **M7** `Lab` *(added)* Toggle between player camera and debug free-fly camera.
 - [ ] **M8** `Game` *(added)* In-game dig/place controls calling the A7 edit path; brush size as a player setting.
 - [ ] **M16** `Lab` *(backlog)* Gravity multiplier: debug slider scaling the player's gravity, for tuning jump and fall feel.
+- [ ] **M25** `Lab` *(added 2026-10-05, after M6)* Fine marching voxels inside a coarse build grid: with a player about two cells tall, try 1, 2, 4, 8 and 16 marching voxels per 1 m build cell and judge how digging and moving feel. Builds on M23 (voxel size down to 1/16 m, the build grid overlay); M12 measured the cost (4 per metre: 6× the memory and 7× the generation of 1 m voxels). The result sets the game's voxel size.
 
 **Checkpoint 3.1 — playable terrain (after 3A + 3B):** in the `Game` scene, the player can walk across a multi-chunk area and dig through a chunk border without seams, using a single placeholder material. No debug components present (A10).
 
@@ -325,6 +327,9 @@ Ore nodes are generated as a procedural centroid with a 3D Gaussian falloff. Eac
   - Peaks & valleys (folded "weirdness" noise): adds ridges and river valleys on top.
   - Splines that depend on more than one input (e.g. the peaks curve chosen by erosion), editable in `WorldConfig` and previewable in a lab (a 2D map of each field, like K29's export).
   - The same fields can drive biomes (P8, PK5) and caves (P5). Builds on P4 (seeded fields); needs a world larger than one chunk to show anything, which is why it sits here and not in 2C.
+- [ ] **P13** `Core + Lab` *(added 2026-10-05)* Midpoint edges and binary density, built for speed: midpoint-only edge placement (V3) over a solid/empty field (one bit per sample, or bytes holding only 0 and 1), with a mesher and storage made for it. Blockier and faceted, but a bit-packed field is 1/32 of flat floats, uniform regions are trivial and the mesher needs no interpolation. Loses the smooth surface and K16's soft brush, and edits snap to whole samples. Compare look and cost against the smooth path (K12, M12) as another storage scheme (2G) and mesher variant (A6).
+- [ ] **P14** `Core` *(added 2026-10-05)* Cellular (Worley/Voronoi) noise generator imitating the cracked, bubbly cooling surface of slag: another K9 generator, or a detail layer on top of others, seeded like the rest (K10). Could also shape slag heaps around smelting sites (PR6, 6D).
+- [ ] **P15** `Lab` *(added 2026-10-05)* Infinite vs bounded world: compare the current endless streamed world (M1) with a size-limited map holding a limited set of biomes, and so a limited set of tribes and races (Chapter 8). Compare generation cost, how exploration feels, save size (S2), and how deliberately biomes (P8, PK5), tribe territories and settlements (7B) can be placed. Decision recorded in `Docs/` (see Open questions).
 
 ---
 
@@ -372,6 +377,7 @@ Other screens are already planned elsewhere: inventory (N2), settings and key bi
 - [ ] **MF1** `Core + Game` Hardness and tool upgrades: material hardness (M9) sets how fast a voxel can be extracted, and an upgrade path for extraction tools raises extraction efficiency. Ties to CR3 (better metals give better tools).
 - [ ] **MF2** `Game` Test different ore-cracking and pickaxe-swinging animations.
 - [ ] **MF3** `Game` Dropped material behaviour: compare the feel of loose dirt and ore clumping back into the terrain mesh (an A7 edit, like PK9) vs dropping as items to pick back up (I2). Decision recorded in `Docs/`.
+- [ ] **MF4** `Game` *(added 2026-10-05)* Mining particle effects: dust, chips and debris when terrain is dug, scaled by the amount removed (`BrushResult`) and coloured by the material (M10).
 
 ---
 
@@ -389,6 +395,7 @@ Other screens are already planned elsewhere: inventory (N2), settings and key bi
 - [ ] **SK5** `Core + Game` *(backlog)* Mountaineering skill: higher skill lets the player walk up steeper gradients and climb more mountains. A good candidate for the SK1 feel test, since the effect is immediately visible.
   - Note: compare the surface normal angle against a max slope that rises with skill; it can drive `CharacterController.slopeLimit` directly. Benefits from tall terrain (M17).
 - [ ] **SK6** `Game` *(backlog)* Skill books hidden in merchant shops (7C) and blacksmith camps (ST2) that raise a skill once read.
+- [ ] **SK7** *(added 2026-10-05)* Recyclable skills: decide what this means before prototyping it (reusing a learned skill in a new line, e.g. forging know-how speeding up recycling in PR6, or regaining spent progress). Part of the SK3 decision.
 
 ### 6B — Prospecting skill
 Prospecting reads the same probability field that ore generation uses (O1–O4). Skill controls how clearly the player sees it.
@@ -407,6 +414,7 @@ Replace the usual "1 ore in, 1 bar out" with a short chain loosely based on the 
 - [ ] **PR3** `Core` Species-specific routes: e.g. malachite smelts fairly directly with charcoal, while chalcopyrite needs roasting first to drive off sulphur. Knowing the species lets the player pick the better route and get higher yield.
 - [ ] **PR4** `Core` Quality and yield as outputs of process choices (temperature, fuel, flux, number of refining passes), feeding into crafted item quality.
 - [ ] **PR5** Precious metal refining: panning for gold, and cupellation to separate silver from lead ores (needs lead from 5D).
+- [ ] **PR6** `Core` *(added 2026-10-05)* Recycling: save iron forge scale (and slag) to reprocess later as a kind of ore. Historically accurate: forge scale is mostly iron oxide and can go back into the bloomery (HF4), and slag still holds some metal. Open: whether scale is its own item or joins mixed ore (PK1).
 
 ### 6D — Heat and fuel progression
 Furnace temperature is the key that unlocks metals.
@@ -622,32 +630,12 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
 - **PK16 Timepiece Easter egg.** *(backlog)* A side quest to gift a timepiece to the local ore miner; afterwards he mines on beat with the title music (PK15). Timepieces tie into PK6 timekeeping.
 
 - **PK17 Building system.** *(backlog)* Parked; it was in an earlier "Milestone 3 / Alpha" plan with undecided status. Would overlap with EC2 (owning property and workshops).
+  - *(Added 2026-10-05)* First decision when it's picked up: building snapped to a grid, like Valheim, or placed freely, off-grid, like Rust (as a start). The build grid overlay (M23) can preview snapped placement, and M25 sets the grid's size against the marching voxels (see Open questions).
 - **PK18 Seasons and calendar.** *(added 2026-10-03)* A calendar of days, months and years, with seasons that change the world over the year.
   - Builds on PK4 (day/night) for the passing of days; pairs with PK6 (bells keeping village time), market days and seasonal prices (7C), NPC schedules (NP2), and growth cycles for trees and plants (PK7, PK13).
   - Open design points: year length in real time, which systems seasons touch (snow on terrain, frozen water with PK8, crop and tree growth, travel, prices), and whether the calendar drives events (festivals, fairs, harvest; 7E world events).
-- **PK19 Mining particle effects.** *(added 2026-10-05)* Dust, chips and debris when terrain is dug, coloured by the material removed.
-  - Belongs with mining feel (5F, MF2). The brush already reports how much it removed (`BrushResult`), and with materials (M10) it could say what, so the effect can scale with the amount and take its colour from the material.
-- **PK20 Lab scenes vs the real game.** *(added 2026-10-05)* Keep the lab scenes (VoxelLab, ChunkLab, WorldLab) as teaching and measuring tools, and build the `Game` scene lean and efficient, without lab overhead.
-  - A10 already keeps `Clube.Debug` out of `Game`. This goes further: the game picks its fastest options (the Burst mesher K12, single-byte storage M12, no step recording) and leaves out lab-only work such as volume measurement and the build grid.
-  - Open design points: a separate game `WorldConfig` vs code defaults, and whether `Game` shares the lab prefabs at all.
-- **PK21 Midpoint edges and binary density, built for speed.** *(added 2026-10-05)* Try midpoint-only edge placement (V3) with a solid/empty density field (one bit, or one byte with only 0 and 1), and make that path as fast as possible.
-  - Gives a blockier, faceted look, but much less data and work: a bit-packed field is 1/32 of flat floats, uniform regions are trivial, and the mesher needs no interpolation.
-  - Trade-offs: smooth brush falloff (K16) and the smooth surface go away, and edits snap to whole samples. Compare look and cost against the smooth path, e.g. as another storage scheme (2G) plus a dedicated mesher variant (A6).
-- **PK22 Recycling and slag reprocessing.** *(added 2026-10-05)* Recyclable skills, or saving iron forge scale (and slag) to reprocess later as a kind of ore.
-  - Historically accurate: forge scale is mostly iron oxide and can go back into the bloomery (HF4), and slag can still hold metal. Fits ore processing (6C) and the skill progression test (6A).
-  - Open design points: what "recyclable skills" means (reusing a learned skill in a new line, or regaining spent progress), and whether scale is its own item or joins mixed ore (PK1).
-- **PK23 Cell-based noise for slag surfaces.** *(added 2026-10-05)* A cellular (Worley/Voronoi) noise generator imitating the cracked, bubbly cooling surface of slag.
-  - Another K9 generator, or a detail layer on top of others; could also texture slag heaps around smelting sites (PK22, 6D). Seeded like the rest (K10).
-- **PK24 Weather cycle.** *(added 2026-10-05)* Rain, snow, fog and wind changing over time.
+- **PK19 Weather cycle.** *(added 2026-10-05)* Rain, snow, fog and wind changing over time.
   - Pairs with day/night (PK4) and seasons (PK18). Could affect travel, outdoor work, fire and fuel (6D), and water levels (PK8).
-- **PK25 Infinite vs bounded world.** *(added 2026-10-05)* Test infinite procedural terrain against a size-limited map with a limited set of biomes, and therefore a limited set of tribes and races.
-  - The current world streams without limit (M1). A bounded map makes biome placement (P8, PK5) and tribe territories (Chapter 8) deliberate rather than random, and keeps saves (S2) and settlement generation (7B) small.
-  - Compare generation cost, how exploration feels, and how easily tribes and settlements can be placed.
-- **PK26 Fine marching voxels inside a coarse build grid.** *(added 2026-10-05)* Test several small marching-cubes voxels inside each larger build-grid cell, e.g. 1, 2, 4, 8 or 16 voxels per 1 m cell.
-  - Started by M23: the voxel size goes down to 1/16 m and the 1 m build grid can be shown on the terrain. M12 measured the cost: at 4 voxels per metre, 6× the memory and 7× the generation of 1 m voxels for the same ground.
-  - Still to test: how digging and building feel at each size, once there's a player (3B) and a building system (PK17, PK27).
-- **PK27 Grid or free building.** *(added 2026-10-05)* Decide whether building snaps to a grid, like Valheim, or is placed freely, off-grid, like Rust (as a start).
-  - Depends on PK17 (building system) and PK26 (build-grid size); the build grid overlay (M23) can preview a snapped placement.
 
 ---
 
@@ -666,3 +654,5 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
 - Setting fit: a Computational tribe and the Combined sequence's computational era clash with the medieval + Da Vinci setting. Reframe (e.g. clockwork, counting machines, runes/sigils as 'bits'), push to a later era, or relax the setting? The backlog adds two more cases: coffee (I7) only reached Europe in the 1600s (an exotic import, or a period stimulant instead?), and asteroid mining as an end goal (EC1) leaves the medieval world entirely.
 - Dropped material (MF3): clump back into terrain, or drop as items? Interacts with mixed ore (PK1) and gravity voxels (PK9).
 - Do settlements (7B) belong to tribes, so a town's culture shapes what it makes and trades?
+- *(Added 2026-10-05)* Infinite procedural world, or a bounded map with a limited set of biomes and so of tribes and races? Tested in P15.
+- *(Added 2026-10-05)* Building on a grid (Valheim) or off-grid (Rust)? Part of PK17, sized by M25.
