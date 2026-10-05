@@ -23,6 +23,10 @@ namespace Clube.Debug
     {
         private const string LineShader = "Universal Render Pipeline/Unlit";
 
+        [Tooltip("Outline the focused chunk (its border).")]
+        [SerializeField]
+        private bool highlightChunk = true;
+
         [SerializeField]
         private Color outlineColor = new Color(1f, 0.85f, 0.2f);
 
@@ -58,6 +62,24 @@ namespace Clube.Debug
 
         /// <summary>Raised with the newly focused chunk, or null when the focus clears.</summary>
         public event Action<Vector3Int?> FocusChanged;
+
+        /// <summary>Raised when <see cref="HighlightChunk"/> changes.</summary>
+        public event Action HighlightChanged;
+
+        /// <summary>Whether the focused chunk's border is highlighted.</summary>
+        public bool HighlightChunk
+        {
+            get => highlightChunk;
+            set
+            {
+                if (value == highlightChunk)
+                {
+                    return;
+                }
+                highlightChunk = value;
+                HighlightChanged?.Invoke();
+            }
+        }
 
         /// <summary>The focused chunk's coordinate, or null.</summary>
         public Vector3Int? Focused { get; private set; }
@@ -146,7 +168,7 @@ namespace Clube.Debug
             // While the chunk grid is drawn, it highlights the focused chunk's edges itself.
             if (outline != null)
             {
-                outline.Visible = Focused.HasValue && (debugView == null || !debugView.IsDrawingBorders);
+                outline.Visible = Focused.HasValue && highlightChunk && (debugView == null || !debugView.IsDrawingBorders);
             }
         }
 
@@ -180,12 +202,10 @@ namespace Clube.Debug
             bool selecting = brush == null || brush.Tool == ChunkClickTool.Select;
             if (selecting && mouse != null && mouse.leftButton.wasPressedThisFrame && !LabGuiBlocker.IsOverGui(mouse.position.ReadValue()))
             {
-                WorldHit? hit = Pick(mouse.position.ReadValue());
-                Focus(hit?.Chunk);
-                if (voxelSelector != null)
+                Camera viewCamera = ViewCamera;
+                if (viewCamera != null)
                 {
-                    // After focusing: the chunk tools moved onto the chunk and cleared their old selection.
-                    voxelSelector.Select(hit?.Voxel);
+                    ClickAt(viewCamera.ScreenPointToRay(mouse.position.ReadValue()));
                 }
             }
             if (keyboard != null && keyboard.fKey.wasPressedThisFrame)
@@ -221,21 +241,41 @@ namespace Clube.Debug
             int triangles = worldView.TryGetRenderer(coord, out ChunkRenderer chunkRenderer) ? chunkRenderer.LastBuildStats.TriangleCount : 0;
             var content = new GUIContent(
                 $"<b>Chunk ({coord.x}, {coord.y}, {coord.z})</b>  {triangles:N0} triangles   " +
-                "<color=#aaaaaa>F focus · click empty space to clear</color>");
+                "<color=#aaaaaa>click inside to select a voxel · F frame · click empty space to clear</color>");
             Vector2 size = labelStyle.CalcSize(content);
             var rect = new Rect((Screen.width - size.x) * 0.5f, 10f, size.x, size.y);
             GuiDrawing.Rect(rect, new Color(0f, 0f, 0f, 0.65f));
             GUI.Label(rect, content, labelStyle);
         }
 
-        private WorldHit? Pick(Vector2 screenPoint)
+        /// <summary>
+        /// A Select-tool click along a world-space ray, in two steps: a click on another chunk
+        /// focuses it; a click inside the focused chunk selects the voxel hit. Empty space
+        /// clears the voxel first, then the chunk.
+        /// </summary>
+        public void ClickAt(Ray worldRay)
         {
-            Camera viewCamera = ViewCamera;
-            if (viewCamera == null)
+            WorldHit? hit = worldView.Raycast(worldRay, out WorldHit worldHit) ? worldHit : (WorldHit?)null;
+            bool hasVoxel = voxelSelector != null && voxelSelector.SelectedVoxel.HasValue;
+            if (hit == null)
             {
-                return null;
+                if (hasVoxel)
+                {
+                    voxelSelector.Select(null);
+                }
+                else
+                {
+                    Focus(null);
+                }
+                return;
             }
-            return worldView.Raycast(viewCamera.ScreenPointToRay(screenPoint), out WorldHit hit) ? hit : (WorldHit?)null;
+
+            if (hit.Value.Chunk != Focused || voxelSelector == null)
+            {
+                Focus(hit.Value.Chunk);
+                return;
+            }
+            voxelSelector.Select(hit.Value.Voxel);
         }
 
         private void OnChunkUnloaded(Vector3Int coord)
