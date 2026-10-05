@@ -13,10 +13,14 @@ MonoBehaviour:
   m_Name: ChunkLabWorldConfig
   m_EditorClassIdentifier: Clube.Core::Clube.Core.WorldConfig
   chunkSize: {x: 8, y: 8, z: 8}
+  worldHeightInChunks: 2
   voxelSize: 1
   isoLevel: 0.5
   edgePlacement: 0
   shading: 0
+  mesher: 0
+  storage: 0
+  octreeMaxDepth: 4
   terrain:
     generator: 4
     surfaceLevel: 4
@@ -26,3 +30,49 @@ MonoBehaviour:
     lacunarity: 2
     persistence: 0.5
     seed: 1
+    heightCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.4
+        value: 0.15
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.55
+        value: 0.75
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    heightmap: {fileID: 0}
+    heightmapRaw: {fileID: 0}
+    rawIs16Bit: 1
+    heightmapUnitsPerPixel: 1

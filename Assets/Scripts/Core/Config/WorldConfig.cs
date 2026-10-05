@@ -40,9 +40,10 @@ namespace Clube.Core
         [SerializeField]
         private MesherBackend mesher = MesherBackend.Managed;
 
-        [Tooltip("How each chunk stores its densities (A12, 2G): flat floats, single bytes, runs along an axis, or a sparse octree. Changing it regenerates.")]
+        [Tooltip("How each chunk stores its densities (A12, 2G): flat floats, single bytes, runs along an axis, or a sparse octree. " +
+                 "Single bytes are the game's choice (M12): a quarter of the memory at the same speed. Changing it regenerates.")]
         [SerializeField]
-        private VoxelStorageType storage = VoxelStorageType.Flat;
+        private VoxelStorageType storage = VoxelStorageType.FlatByte;
 
         [Tooltip("Octree storage only: how many times the octree may divide (K25). Deeper collapses finer but costs more nodes.")]
         [SerializeField, Range(1, 8)]

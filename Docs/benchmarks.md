@@ -331,3 +331,71 @@ Hills 64³ run-length Y: 16,866 runs instead of 16,900).
 default: fastest and simplest. Candidates for M12 across a streamed world:
 flat byte (4× smaller, no structure) and the 4³-brick octree (smallest in
 memory). Run-length along X is the format to save edited chunks in.
+
+## M12 — Storage at scale
+
+**Question.** K26 compared the schemes on one chunk. Across a streamed
+world, with chunks loading, unloading, edited and kept, which should the
+game use?
+
+**Method.**
+- `WorldStorageBenchmark` (`Clube.Debug`), run from
+  *Clube → Benchmarks → Storage at scale (M12)*, on two worlds made from
+  WorldLab's config (fractal 2D Perlin, surface 12 m, amplitude 8 m):
+  - **16³ chunks at 1 m voxels**, 2 layers, render distance 6: 226 chunks;
+  - **32³ chunks at 0.25 m voxels** (4 per metre, the finer size M23 tests),
+    4 layers, render distance 4: 196 chunks.
+- For each scheme: load everything around the origin (`World.Load`:
+  generation plus the storage's writes); total `MemoryBytes`; mesh every
+  chunk (managed); 60 hard 3 m brush strokes across the area
+  (`World.ApplyBrush`, so across chunk borders); the serialized size of the
+  edited chunks (what a save holds, S2); then walk 8 chunks along X,
+  unloading what leaves the area and loading what enters, as `WorldView`
+  does. Memory after the walk includes edited chunks kept while unloaded.
+- One run per scheme; the load and walk times are dominated by terrain
+  generation, so their differences are the storage's.
+
+**Conditions.** Unity 6000.3.25f1, Editor, Release code optimization,
+Intel Core i9-10900K.
+
+| World | Storage | Memory | vs flat | Load ms | Mesh ms | Stroke ms | Save (edited) | Walk ms/step | Memory after walk |
+|---|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| 16³ at 1 m | Flat float | 4.2 MB | 1.00× | 893 | 32.6 | 0.07 | 1.2 MB | 101.7 | 5.3 MB |
+| 16³ at 1 m | **Flat byte** | **1.1 MB** | **0.25×** | 892 | 34.5 | 0.07 | 318 KB | 102.6 | **1.3 MB** |
+| 16³ at 1 m | Run-length X | 5.8 MB | 1.37× | 905 | 32.5 | 0.07 | 317 KB | 104.1 | 7.4 MB |
+| 16³ at 1 m | Run-length Y | 5.4 MB | 1.28× | 902 | 32.2 | 0.07 | 391 KB | 105.2 | 6.9 MB |
+| 16³ at 1 m | Octree, 4³ bricks | 2.4 MB | 0.58× | 926 | 33.3 | 0.07 | 795 KB | 104.9 | 3.6 MB |
+| 32³ at 0.25 m | Flat float | 26.9 MB | 1.00× | 5,599 | 111.8 | 3.39 | 10.4 MB | 1,026 | 37.3 MB |
+| 32³ at 0.25 m | **Flat byte** | **6.7 MB** | **0.25×** | 5,633 | 141.2 | 3.50 | 2.6 MB | 1,039 | **9.3 MB** |
+| 32³ at 0.25 m | Run-length X | 21.2 MB | 0.79× | 5,669 | 123.0 | 3.58 | 2.1 MB | 1,041 | 30.9 MB |
+| 32³ at 0.25 m | Run-length Y | 21.4 MB | 0.80× | 5,694 | 122.2 | 3.55 | 2.3 MB | 1,042 | 31.1 MB |
+| 32³ at 0.25 m | Octree, 4³ bricks | 10.2 MB | 0.38× | 5,800 | 120.3 | 4.13 | 4.2 MB | 1,069 | 17.5 MB |
+
+(66 chunks edited in the first world, 76 in the second.)
+
+**Findings.**
+- **Single bytes win at scale:** a quarter of the memory in both worlds,
+  loaded and after walking, at the same load, stroke and walk cost. The
+  structured schemes can't catch up: across a world most chunks hold some
+  surface, and each one pays its own overhead.
+- **Run-length loses in memory at scale** (1.28-1.37× flat at 16³, where
+  each line's two small arrays outweigh the data); it only wins on save
+  size, and there it only ties single bytes at 16³ (317 against 318 KB)
+  and beats them by 20% at 32³.
+- **The octree is second** (0.38-0.58×), but costs up to 22% more per
+  stroke and has the most code to get right.
+- **Byte reads cost meshing up to 26%** (converting to floats), small next
+  to generation; the Burst mesher (K12) copies layers in either way.
+- **Generation is the whole cost of streaming**: ~4 ms per 16³ chunk and
+  ~29 ms per 32³ chunk at 0.25 m, so a step of the walk takes 0.1-1 s.
+  That's K35, and the reason to move loading onto jobs in Chapter 4.
+- **The finer voxel size costs 6× the memory** for the same ground (26.9
+  against 4.2 MB in flat floats) and 7× the generation: worth knowing
+  before M23 settles the gameplay voxel size.
+
+**Decision.** The game stores densities as **single bytes**
+(`VoxelStorageType.FlatByte`, K28), now the `WorldConfig` default and
+WorldLab's setting. VoxelLab and ChunkLab stay on flat floats, so their
+corner values stay exact for teaching. Saves (S2) can write the bytes as
+they are; compressing them (run-length or a general-purpose compressor) is
+a choice for S2, worth up to 20% on top.
