@@ -12,6 +12,10 @@ namespace Clube.Core.Tests
     /// division and collapse (octree) going wrong.
     /// </summary>
     [TestFixture(VoxelStorageType.Flat)]
+    [TestFixture(VoxelStorageType.FlatByte)]
+    [TestFixture(VoxelStorageType.RunLengthX)]
+    [TestFixture(VoxelStorageType.RunLengthY)]
+    [TestFixture(VoxelStorageType.RunLengthZ)]
     public class VoxelStorageTests
     {
         private readonly VoxelStorageType type;

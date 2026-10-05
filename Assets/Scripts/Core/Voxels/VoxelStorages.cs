@@ -43,6 +43,14 @@ namespace Clube.Core
             {
                 case VoxelStorageType.Flat:
                     return new FlatVoxelStorage(sampleCount);
+                case VoxelStorageType.FlatByte:
+                    return new ByteVoxelStorage(sampleCount);
+                case VoxelStorageType.RunLengthX:
+                    return new RunLengthVoxelStorage(sampleCount, 0);
+                case VoxelStorageType.RunLengthY:
+                    return new RunLengthVoxelStorage(sampleCount, 1);
+                case VoxelStorageType.RunLengthZ:
+                    return new RunLengthVoxelStorage(sampleCount, 2);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(type), type, null);
             }
