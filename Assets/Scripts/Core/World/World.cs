@@ -10,7 +10,8 @@ namespace Clube.Core
     /// what to load and renders it.
     /// </summary>
     /// <remarks>
-    /// Neighbouring chunks each keep a copy of their shared border samples, so the
+    /// Neighbouring chunks each keep a copy of their shared border samples (density and
+    /// material, M10), so the
     /// world keeps every copy identical (M2), which is what makes meshes meet without
     /// cracks:
     /// <list type="bullet">
@@ -77,7 +78,8 @@ namespace Clube.Core
         /// then takes its shared borders from edited loaded neighbours. Returns the
         /// loaded chunk (the existing one if it was already loaded).
         /// </summary>
-        public Chunk Load(Vector3Int coord, ITerrainGenerator generator)
+        /// <param name="layers">Materials by depth for generated chunks (M10); null leaves them all id 0.</param>
+        public Chunk Load(Vector3Int coord, ITerrainGenerator generator, TerrainLayers layers = null)
         {
             if (loaded.TryGetValue(coord, out Chunk existing))
             {
@@ -97,7 +99,7 @@ namespace Clube.Core
             var chunk = new Chunk(createStorage(Grid.ChunkSize + Vector3Int.one));
             if (generator != null)
             {
-                ChunkGenerator.Fill(chunk, generator, Grid.ChunkOrigin(coord), Grid.VoxelSize);
+                ChunkGenerator.Fill(chunk, generator, Grid.ChunkOrigin(coord), Grid.VoxelSize, layers);
             }
             loaded.Add(coord, chunk);
             CopyBordersFromEditedNeighbours(coord, chunk);
@@ -164,6 +166,42 @@ namespace Clube.Core
                 }
             }
             return changed;
+        }
+
+        /// <summary>The material id at a global sample (M10), or null when no loaded chunk holds it.</summary>
+        public byte? GetMaterial(Vector3Int sample)
+        {
+            Grid.ChunksContainingSample(sample, scratchChunks);
+            foreach (Vector3Int coord in scratchChunks)
+            {
+                if (loaded.TryGetValue(coord, out Chunk chunk))
+                {
+                    return chunk.GetMaterial(Grid.GlobalToLocal(sample, coord));
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Writes a global sample's material id to every loaded copy (M10), like
+        /// <see cref="SetDensity"/>, so both sides of a border show the same material.
+        /// </summary>
+        public void SetMaterial(Vector3Int sample, byte material)
+        {
+            Grid.ChunksContainingSample(sample, scratchChunks);
+            foreach (Vector3Int coord in scratchChunks)
+            {
+                if (!loaded.TryGetValue(coord, out Chunk chunk))
+                {
+                    continue;
+                }
+                Vector3Int local = Grid.GlobalToLocal(sample, coord);
+                if (chunk.GetMaterial(local) != material)
+                {
+                    chunk.SetMaterial(local, material);
+                    edited.Add(coord);
+                }
+            }
         }
 
         /// <summary>
@@ -269,6 +307,7 @@ namespace Clube.Core
                                 {
                                     var local = new Vector3Int(x, y, z);
                                     chunk.SetDensity(local, neighbour.GetDensity(local - shift));
+                                    chunk.SetMaterial(local, neighbour.GetMaterial(local - shift));
                                 }
                             }
                         }

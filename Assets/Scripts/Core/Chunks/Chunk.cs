@@ -4,8 +4,9 @@ using UnityEngine;
 namespace Clube.Core
 {
     /// <summary>
-    /// A block of voxels backed by an <see cref="IVoxelStorage"/>. A single voxel
-    /// is simply a 1x1x1 chunk (A8).
+    /// A block of voxels backed by an <see cref="IVoxelStorage"/> for densities and
+    /// <see cref="VoxelMaterials"/> for material ids (M10). A single voxel is simply a
+    /// 1x1x1 chunk (A8).
     /// </summary>
     /// <remarks>
     /// All density edits go through <see cref="SetDensity"/>, which marks the chunk
@@ -15,6 +16,7 @@ namespace Clube.Core
     public sealed class Chunk : IDensityField
     {
         private readonly IVoxelStorage storage;
+        private readonly VoxelMaterials materials;
 
         /// <summary>Creates a chunk with flat-array storage and every density at 0 (empty).</summary>
         public Chunk(Vector3Int voxelCount)
@@ -25,6 +27,7 @@ namespace Clube.Core
         public Chunk(IVoxelStorage storage)
         {
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
+            materials = new VoxelMaterials(storage.SampleCount);
         }
 
         public Vector3Int VoxelCount => storage.SampleCount - Vector3Int.one;
@@ -36,6 +39,9 @@ namespace Clube.Core
         /// <see cref="SetDensity"/> (A7), never the storage directly, or the chunk won't rebuild.
         /// </summary>
         public IVoxelStorage Storage => storage;
+
+        /// <summary>Every sample's material id (M10), for inspection. Edit through <see cref="SetMaterial"/>.</summary>
+        public VoxelMaterials Materials => materials;
 
         /// <summary>True when the densities or meshing inputs changed since the last rebuild.</summary>
         public bool IsDirty { get; private set; } = true;
@@ -73,6 +79,23 @@ namespace Clube.Core
             }
 
             storage.SetDensity(sample.x, sample.y, sample.z, density);
+            IsDirty = true;
+        }
+
+        public byte GetMaterial(Vector3Int sample)
+        {
+            return materials.Get(sample.x, sample.y, sample.z);
+        }
+
+        /// <summary>The material-edit path (M10, A7): writes the sample's material id and marks the chunk dirty.</summary>
+        public void SetMaterial(Vector3Int sample, byte material)
+        {
+            if (materials.Get(sample.x, sample.y, sample.z) == material)
+            {
+                return;
+            }
+
+            materials.Set(sample.x, sample.y, sample.z, material);
             IsDirty = true;
         }
 

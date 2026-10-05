@@ -20,6 +20,22 @@ namespace Clube.Core
         Smooth,
     }
 
+    /// <summary>How terrain materials show on the mesh (M15), a mesh variant picked once per build (A6).</summary>
+    public enum MaterialDisplay
+    {
+        /// <summary>No materials: the mesh carries positions and normals only, drawn with the view's own material.</summary>
+        None,
+
+        /// <summary>Each triangle takes one material; vertices split where materials meet, so nothing bleeds.</summary>
+        HardSeams,
+
+        /// <summary>Each vertex keeps its own material and the shader blends them across triangles (M13).</summary>
+        Blended,
+
+        /// <summary>Hard seams in a flat colour per material, to check where materials are at a glance.</summary>
+        DebugColours,
+    }
+
     /// <summary>Which implementation builds the chunk mesh (K12). Both give the same mesh.</summary>
     public enum MesherBackend
     {

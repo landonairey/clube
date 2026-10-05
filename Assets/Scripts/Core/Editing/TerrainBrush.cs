@@ -27,6 +27,9 @@ namespace Clube.Core
             new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
         };
 
+        // A sample below this density is air (the default iso level), so adding to it makes new ground.
+        private const float AirBelow = 0.5f;
+
         // Reused between applications; the brush only runs on the main thread.
         private static readonly List<(Vector3Int Sample, float Before)> Targets = new List<(Vector3Int, float)>();
 
@@ -82,6 +85,11 @@ namespace Clube.Core
             foreach ((Vector3Int sample, float before) in Targets)
             {
                 float after = Mathf.Clamp01(before + sign * brush.Strength);
+                if (adding && before < AirBelow)
+                {
+                    // New ground takes the brush's material; ground that was already there keeps its own.
+                    field.SetMaterial(sample, brush.Material);
+                }
                 field.SetDensity(sample, after);
                 if (after > before)
                 {
