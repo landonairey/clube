@@ -53,6 +53,9 @@ namespace Clube.Core
         /// <summary>Chunks touched by any edit, loaded or kept in memory.</summary>
         public int EditedCount => edited.Count;
 
+        /// <summary>Edited chunks that are unloaded but kept in memory until saving exists, by coordinate.</summary>
+        public IReadOnlyDictionary<Vector3Int, Chunk> KeptChunks => editedUnloaded;
+
         public bool IsLoaded(Vector3Int coord)
         {
             return loaded.ContainsKey(coord);
