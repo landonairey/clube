@@ -3,9 +3,9 @@ using UnityEngine;
 namespace Clube.Debug
 {
     /// <summary>
-    /// The build grid's part of the lab panel (M22): on or off, the cell size and contour
-    /// lines, and how many marching-cubes voxels fit across one cell at the current voxel
-    /// size, which is what the 1-16 voxels-per-metre test compares.
+    /// The build grid's part of the lab panel (M22): on or off, the cell size, and how
+    /// many marching-cubes voxels fit across one cell at the current voxel size, which is
+    /// what the 1-16 voxels-per-metre test compares.
     /// </summary>
     public static class BuildGridControls
     {
@@ -26,12 +26,6 @@ namespace Clube.Debug
             if (!Mathf.Approximately(cell, grid.CellSize))
             {
                 grid.CellSize = cell;
-            }
-
-            bool heightLines = frame.ToggleField("Height contour lines", grid.HeightLines);
-            if (heightLines != grid.HeightLines)
-            {
-                grid.HeightLines = heightLines;
             }
 
             if (voxelSize > 0f)

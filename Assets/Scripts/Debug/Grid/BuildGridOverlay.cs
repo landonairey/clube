@@ -14,7 +14,6 @@ namespace Clube.Debug
         private static readonly int OpacityId = Shader.PropertyToID("_ClubeBuildGridOpacity");
         private static readonly int CellSizeId = Shader.PropertyToID("_ClubeBuildGridCellSize");
         private static readonly int LineWidthId = Shader.PropertyToID("_ClubeBuildGridLineWidth");
-        private static readonly int HeightLinesId = Shader.PropertyToID("_ClubeBuildGridHeightLines");
         private static readonly int ColorId = Shader.PropertyToID("_ClubeBuildGridColor");
 
         public const float MinCellSize = 0.25f;
@@ -27,10 +26,6 @@ namespace Clube.Debug
         [Tooltip("Size of one build cell in metres (1 m is typical: a player is about two cells tall).")]
         [SerializeField, Range(MinCellSize, MaxCellSize)]
         private float cellSize = 1f;
-
-        [Tooltip("Also draw where the surface crosses each cell's floor height (contour lines).")]
-        [SerializeField]
-        private bool heightLines = true;
 
         [Tooltip("Line width in pixels.")]
         [SerializeField, Range(0.5f, 4f)]
@@ -63,16 +58,6 @@ namespace Clube.Debug
             }
         }
 
-        public bool HeightLines
-        {
-            get => heightLines;
-            set
-            {
-                heightLines = value;
-                Apply();
-            }
-        }
-
         private void OnEnable()
         {
             Apply();
@@ -94,7 +79,6 @@ namespace Clube.Debug
             Shader.SetGlobalFloat(OpacityId, show && isActiveAndEnabled ? opacity : 0f);
             Shader.SetGlobalFloat(CellSizeId, cellSize);
             Shader.SetGlobalFloat(LineWidthId, lineWidth);
-            Shader.SetGlobalFloat(HeightLinesId, heightLines ? 1f : 0f);
             Shader.SetGlobalColor(ColorId, color);
         }
     }
