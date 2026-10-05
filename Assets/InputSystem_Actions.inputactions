@@ -94,9 +94,29 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "FreeCursor",
+                    "type": "Button",
+                    "id": "b5d2e7a9-1f3c-4e8b-a6d0-9c4f2b7e1a35",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
+                {
+                    "name": "",
+                    "id": "e7c41a2b-9d5f-4b30-8a6e-2f1d7c9b4e62",
+                    "path": "<Keyboard>/leftAlt",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "FreeCursor",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
                 {
                     "name": "",
                     "id": "8a1f3d52-2c4e-4b7a-9e61-0d5c3b9f7a21",

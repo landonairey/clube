@@ -13,7 +13,8 @@ namespace Clube.Game
     /// </summary>
     /// <remarks>
     /// Placing never fills the player's own capsule, so the player can't bury itself.
-    /// Only works while the <see cref="PlayerController"/> is enabled, so not before spawning.
+    /// Only works while the <see cref="PlayerController"/> is enabled (not before spawning)
+    /// and its cursor is locked, so clicks on a menu or the lab panel never dig.
     /// </remarks>
     [RequireComponent(typeof(PlayerController))]
     public class PlayerDigTool : MonoBehaviour
@@ -67,7 +68,7 @@ namespace Clube.Game
 
         private void Update()
         {
-            if (!player.enabled || worldView == null || !worldView.IsReady)
+            if (!player.enabled || player.IsCursorFree || worldView == null || !worldView.IsReady)
             {
                 return;
             }
@@ -147,7 +148,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
-            if (!player.enabled)
+            if (!player.enabled || player.IsCursorFree)
             {
                 return;
             }

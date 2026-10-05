@@ -141,7 +141,8 @@ speed across a streamed world). VoxelLab and ChunkLab keep exact floats.
 numbers. Generation dominates streaming (K35).
 3B core is done (M6-M8): `WorldView` gives chunks a `ChunkCollider` (MeshCollider
 re-baked after each rebuild). The player lives in `Clube.Game` (`Game/Player/`):
-`PlayerController` (CharacterController, Input System `Player` map),
+`PlayerController` (CharacterController, Input System `Player` map; Left Alt
+frees the cursor for the lab panel),
 `PlayerSpawn` (waits for the chunk column, sets `WorldView.Focus`, respawns
 after a fall) and `PlayerDigTool` (Attack digs, Place adds; brush radius and
 look sensitivity are `PlayerSettings`). In WorldLab, `PlayerCameraToggle` (P,

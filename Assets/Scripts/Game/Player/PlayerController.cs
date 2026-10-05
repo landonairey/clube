@@ -7,7 +7,8 @@ namespace Clube.Game
     /// First-person walking (M6): Move walks, Sprint runs, Jump jumps, Look turns the body
     /// left and right and tilts the head up and down. A <see cref="CharacterController"/>
     /// collides with the terrain's chunk colliders (<see cref="Clube.Core.ChunkCollider"/>);
-    /// gravity is applied here. Locks the cursor while enabled.
+    /// gravity is applied here. Locks the cursor while enabled; FreeCursor (Left Alt)
+    /// frees it to use menus or the lab panel, pausing look until it is pressed again.
     /// </summary>
     /// <remarks>
     /// The transform is at the player's feet. <see cref="PlayerSpawn"/> keeps it disabled
@@ -40,6 +41,10 @@ namespace Clube.Game
         [SerializeField]
         private InputActionReference sprintAction;
 
+        [Tooltip("Frees the cursor and pauses looking; pressing it again locks the cursor and resumes.")]
+        [SerializeField]
+        private InputActionReference freeCursorAction;
+
         [Tooltip("Walking speed in metres per second.")]
         [SerializeField, Min(0f)]
         private float walkSpeed = 4f;
@@ -60,6 +65,7 @@ namespace Clube.Game
         private float yaw;
         private float pitch;
         private float fallSpeed;
+        private bool isCursorFree;
 
         /// <summary>The capsule the player collides with.</summary>
         public CharacterController Body => body != null ? body : body = GetComponent<CharacterController>();
@@ -68,6 +74,23 @@ namespace Clube.Game
         public Transform Head => head;
 
         public bool IsGrounded => Body.isGrounded;
+
+        /// <summary>
+        /// True while the cursor is free for menus or the lab panel: looking pauses, and tools
+        /// like <see cref="PlayerDigTool"/> ignore clicks. Walking still works.
+        /// </summary>
+        public bool IsCursorFree
+        {
+            get => isCursorFree;
+            set
+            {
+                isCursorFree = value;
+                if (isActiveAndEnabled)
+                {
+                    SetCursorLocked(!value);
+                }
+            }
+        }
 
         /// <summary>Moves the player without colliding on the way, and stops any fall.</summary>
         public void Teleport(Vector3 position)
@@ -88,7 +111,8 @@ namespace Clube.Game
             Enable(lookAction);
             Enable(jumpAction);
             Enable(sprintAction);
-            SetCursorLocked(true);
+            Enable(freeCursorAction);
+            SetCursorLocked(!isCursorFree);
         }
 
         private void OnDisable()
@@ -98,7 +122,14 @@ namespace Clube.Game
 
         private void Update()
         {
-            Look(Read<Vector2>(lookAction));
+            if (freeCursorAction != null && freeCursorAction.action.WasPressedThisFrame())
+            {
+                IsCursorFree = !IsCursorFree;
+            }
+            if (!isCursorFree)
+            {
+                Look(Read<Vector2>(lookAction));
+            }
             Move(Read<Vector2>(moveAction));
         }
 
