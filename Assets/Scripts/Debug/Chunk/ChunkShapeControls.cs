@@ -6,8 +6,9 @@ namespace Clube.Debug
     /// <summary>
     /// How chunks are built, for the lab panel (K1, K31, M20): voxels per side, voxel size
     /// (down to 1/16 m, or picked as marching voxels per metre) and, for a world, its height
-    /// in chunk layers. Any change makes new chunks, so edits
-    /// are lost. Edits the runtime config copy and calls <see cref="WorldConfig.NotifyChanged"/>.
+    /// in chunk layers. Changing the voxel size keeps the chunk and world size in metres
+    /// (<see cref="ChunkSizing"/>, M25), so the terrain stays the same, only sampled finer or
+    /// coarser. Any change makes new chunks, so edits are lost. Edits the runtime config copy and calls <see cref="WorldConfig.NotifyChanged"/>.
     /// </summary>
     public static class ChunkShapeControls
     {
@@ -15,7 +16,13 @@ namespace Clube.Debug
         private const float MaxSide = 64f;
         private const float MinVoxelSize = 1f / 16f;
         private const float MaxVoxelSize = 2f;
-        private const float MaxLayers = 8f;
+        private const float MaxLayers = 32f;
+
+        // Chunk sides the voxel size picker chooses between: a world keeps chunks quick to
+        // build and stream; a lone chunk can be bigger.
+        private const int KeepMinSide = 16;
+        private const int KeepMaxWorldSide = 32;
+        private const int KeepMaxChunkSide = 64;
 
         // Marching voxels per metre (one build-grid cell): the sizes the gameplay test compares.
         private static readonly int[] VoxelsPerMetre = { 1, 2, 4, 8, 16 };
@@ -37,6 +44,15 @@ namespace Clube.Debug
             int layers = withLayers
                 ? Mathf.RoundToInt(frame.Slider("World height (chunk layers)", config.WorldHeightInChunks, 1f, MaxLayers, "0"))
                 : config.WorldHeightInChunks;
+
+            if (!Mathf.Approximately(voxelSize, config.VoxelSize))
+            {
+                ChunkSizing.Shape shape = ChunkSizing.KeepWorldSize(
+                    config.ChunkSize.x, config.VoxelSize, config.WorldHeightInChunks, voxelSize,
+                    KeepMinSide, withLayers ? KeepMaxWorldSide : KeepMaxChunkSide, (int)MaxLayers);
+                side = shape.Side;
+                layers = withLayers ? shape.Layers : layers;
+            }
 
             var size = new Vector3Int(side, side, side);
             if (size != config.ChunkSize || !Mathf.Approximately(voxelSize, config.VoxelSize) || layers != config.WorldHeightInChunks)
