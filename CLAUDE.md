@@ -134,7 +134,12 @@ float, flat byte, run-length X/Y/Z, sparse octree), picked by
 `WorldConfig.Storage`; every scheme passes `VoxelStorageTests`, and
 `StorageView` (K27) draws runs or octree leaves. Flat float stays the
 default; `Docs/benchmarks.md` has the K26 comparison.
-**Next:** M12 (storage at scale), per the build order; K35 (generation
+M12 is done: the game stores densities as single bytes (`FlatByte`, the
+`WorldConfig` default and WorldLab's setting; 0.25× memory at the same
+speed across a streamed world). VoxelLab and ChunkLab keep exact floats.
+`WorldStorageBenchmark` (*Clube → Benchmarks → Storage at scale*) has the
+numbers. Generation dominates streaming (K35).
+**Next:** 3B (player: M6, M7, M8), towards Checkpoint 3.1; K35 (generation
 speed) is open.
 
 ## Conventions
