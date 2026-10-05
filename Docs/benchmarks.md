@@ -239,3 +239,95 @@ With safety checks on, Burst is 11.6 / 27.3 / 47.6 ms one at a time and
 stays the default and is what step-through records (A11); labs and the
 game can pick Burst. Streaming chunks through parallel jobs belongs to
 Chapter 4 and isn't wired into `WorldView` yet.
+
+## K26 — Voxel storage schemes (K23-K28)
+
+**Question.** How do the storage schemes compare for memory, serialized
+size, meshing reads and brush writes, and does single-byte quantization
+change the picture?
+
+**Method.**
+- `StorageBenchmark` (`Clube.Debug`), run from
+  *Clube → Benchmarks → Voxel storage (K26)*. Every scheme sits behind
+  `IVoxelStorage` and passes the same contract tests (`VoxelStorageTests`).
+- Schemes: flat float (K23), flat byte (K28), run-length along X, Y and Z
+  (K24), and the octree (K25) with 8³ and 4³ bricks (max depth set so a
+  leaf at the bottom is a brick of that size).
+- Terrains, scaled to the chunk: **Hills** (fractal 2D Perlin, as K11) and
+  **Caves** (3D Perlin, overhangs and pockets).
+- **Memory** is the storage's own estimate (`MemoryBytes`: array lengths at
+  their current capacity plus array headers), not a GC measurement.
+  **Serialized** is `VoxelStorages.Write`'s output.
+- **Fill**: `ChunkGenerator.Fill` into empty storage, median of 5 (mostly
+  the generator's own cost, so differences are the storage's writes).
+  **Mesh**: managed `ChunkMesher.Build`, median of 15 (reads go through
+  `ReadLayer`). **Brush**: 40 hard strokes near the surface, digging and
+  adding in turn, median per stroke.
+- **Quantized** rows refill run-length Y and the octrees with densities
+  rounded to 1/255, as byte storage would hold them.
+
+**Conditions.** Unity 6000.3.25f1, Editor, Release code optimization,
+Intel Core i9-10900K.
+
+64³ chunks (4,225 lines of 65 samples per axis):
+
+| Terrain | Storage | Memory | vs flat | Serialized | Structure | Fill ms | Mesh ms | Brush ms/stroke |
+|---|---|--:|--:|--:|---|--:|--:|--:|
+| Hills | Flat float | 1.0 MB | 1.00× | 1.0 MB | – | 215.7 | 5.54 | 0.30 |
+| Hills | Flat byte | 268 KB | 0.25× | 268 KB | – | 219.3 | 6.92 | 0.31 |
+| Hills | Run-length X | 429 KB | 0.40× | 86 KB | 13,180 runs | 216.3 | 5.90 | 0.33 |
+| Hills | Run-length Y | 396 KB | 0.37× | 107 KB | 16,900 runs | 217.3 | 5.94 | 0.33 |
+| Hills | Run-length Z | 431 KB | 0.40× | 86 KB | 13,254 runs | 216.6 | 7.66 | 0.33 |
+| Hills | Octree, 8³ bricks | 524 KB | 0.49× | 366 KB | 601 nodes, 182 bricks | 250.6 | 6.21 | 0.42 |
+| Hills | Octree, 4³ bricks | 304 KB | 0.28× | 176 KB | 2,057 nodes, 678 bricks | 231.2 | 6.14 | 0.41 |
+| Caves | Flat float | 1.0 MB | 1.00× | 1.0 MB | – | 63.8 | 7.93 | 0.31 |
+| Caves | Flat byte | 268 KB | 0.25× | 268 KB | – | 65.2 | 9.11 | 0.32 |
+| Caves | Run-length X | 448 KB | 0.42× | 101 KB | 15,763 runs | 68.7 | 8.29 | 0.35 |
+| Caves | Run-length Y | 430 KB | 0.40× | 110 KB | 17,291 runs | 69.4 | 8.35 | 0.33 |
+| Caves | Run-length Z | 440 KB | 0.41× | 97 KB | 15,189 runs | 66.4 | 10.32 | 0.33 |
+| Caves | Octree, 8³ bricks | 524 KB | 0.49× | 470 KB | 713 nodes, 234 bricks | 99.0 | 8.40 | 0.40 |
+| Caves | Octree, 4³ bricks | 304 KB | 0.28× | 232 KB | 2,585 nodes, 897 bricks | 80.6 | 8.43 | 0.41 |
+
+Smaller chunks, memory against flat float (Hills / Caves):
+
+| Storage | 16³ | 32³ |
+|---|--:|--:|
+| Flat byte | 0.25× / 0.25× | 0.25× / 0.25× |
+| Run-length X | 1.54× / 1.57× | 0.79× / 0.82× |
+| Run-length Y | 1.41× / 1.53× | 0.73× / 0.79× |
+| Octree, 8³ bricks | 3.38× / 3.38× | 0.93× / 1.85× |
+| Octree, 4³ bricks | 0.99× / 0.99× | 0.54× / 0.54× |
+
+Quantized to 1/255, run-length Y and the octrees change by under 1% (e.g.
+Hills 64³ run-length Y: 16,866 runs instead of 16,900).
+
+**Findings.**
+- **Run along X or Z, not Y.** K24 expected vertical runs to win because
+  terrain is layered, but every column crosses the surface, so each Y line
+  is at least three runs (solid, the ramp, air). Most horizontal lines lie
+  wholly in solid or air and stay one run: X and Z need ~22% fewer runs and
+  serialize ~20% smaller. Z reads cost the most, though (7.7 against 5.9 ms
+  to mesh), because a Z layer crosses every line; X keeps reads cheap.
+- **Run-length is the best saved form:** 86 KB against 1 MB flat (12×) at
+  64³, the natural format for saving edited chunks (S2). In memory it's
+  held back by two small arrays per line (0.37-0.42×), and at 16³ that
+  overhead makes it bigger than flat.
+- **The octree with 4³ bricks is the smallest in memory** (0.28×) at 64³
+  and 32³, but larger bricks waste space (8³ bricks: 0.49×, and 1.85× on
+  32³ caves) and both cost ~35% more per brush stroke and up to 16% more
+  per fill. Its array doubling also shows: memory is capacity, not use.
+- **Single bytes (K28) are the simple 4× win:** 0.25× memory with no
+  structure, the same brush cost, reads ~20% slower (byte to float). The
+  mesh moves by 0.004-0.005 voxels on average; a few samples right at the
+  iso level round across it and change a voxel's case (up to ~0.5 voxels,
+  2 extra vertices in 5,587 at 64³ after soft-brush edits): no visible
+  stepping. 0 and 1 stay exact, so the brush's solid and empty tests hold.
+- **Quantization doesn't help compression:** the surface's in-between
+  values differ anyway, and solid and air were already exact.
+- **Reads are not the bottleneck either way:** every scheme meshes within
+  about 40% of flat, and generation dominates the fill.
+
+**Decision (for now, M12 decides at scale).** Flat float stays the
+default: fastest and simplest. Candidates for M12 across a streamed world:
+flat byte (4× smaller, no structure) and the 4³-brick octree (smallest in
+memory). Run-length along X is the format to save edited chunks in.
