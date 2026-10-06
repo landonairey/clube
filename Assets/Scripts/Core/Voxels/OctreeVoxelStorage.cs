@@ -173,6 +173,19 @@ namespace Clube.Core
             FillLayer(0, 0, 0, 0, rootSize, z, layer);
         }
 
+        /// <remarks>One sample at a time; the octree is a comparison scheme (2G), not the streamed one (M12).</remarks>
+        public void WriteLayer(int z, ReadOnlySpan<float> layer)
+        {
+            SampleGrid.CheckLayer(SampleCount, z);
+            for (int y = 0; y < SampleCount.y; y++)
+            {
+                for (int x = 0; x < SampleCount.x; x++)
+                {
+                    SetDensity(x, y, z, layer[x + SampleCount.x * y]);
+                }
+            }
+        }
+
         /// <summary>The kinds of node <see cref="VisitNodes"/> reports.</summary>
         public enum NodeKind
         {

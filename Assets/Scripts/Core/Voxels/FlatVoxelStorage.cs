@@ -47,6 +47,13 @@ namespace Clube.Core
             densities.AsSpan(z * layerSize, layerSize).CopyTo(layer);
         }
 
+        public void WriteLayer(int z, ReadOnlySpan<float> layer)
+        {
+            SampleGrid.CheckLayer(SampleCount, z);
+            int layerSize = SampleCount.x * SampleCount.y;
+            layer.Slice(0, layerSize).CopyTo(densities.AsSpan(z * layerSize, layerSize));
+        }
+
         public void WriteData(BinaryWriter writer)
         {
             foreach (float density in densities)

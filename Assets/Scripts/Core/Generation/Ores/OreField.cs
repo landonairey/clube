@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace Clube.Core
@@ -33,17 +35,13 @@ namespace Clube.Core
 
         public int Priority { get; }
 
-        /// <summary>How far the node reaches on each axis: 3σ, past which the chance is negligible (O3).</summary>
+        /// <summary>How far the node reaches on each axis: 3σ, past which the chance is taken as 0 (O3).</summary>
         public Vector3 Reach => Spread * OreField.ReachInSigmas;
 
-        /// <summary>Replacement chance at a position (O4): peak × exp(−d² / 2), d in σ along each axis.</summary>
+        /// <summary>Replacement chance at a position (O4): peak × exp(−d² / 2), d in σ along each axis; 0 beyond 3σ.</summary>
         public float Probability(Vector3 position)
         {
-            Vector3 offset = position - Centre;
-            float x = offset.x / Spread.x;
-            float y = offset.y / Spread.y;
-            float z = offset.z / Spread.z;
-            return Peak * Mathf.Exp(-0.5f * (x * x + y * y + z * z));
+            return OreRoll.Chance(Centre, 1f / (float3)(Vector3)Spread, Peak, position);
         }
     }
 
@@ -56,13 +54,17 @@ namespace Clube.Core
     /// higher priority wins, then the likelier ore (O5).
     /// </summary>
     /// <remarks>
-    /// Centroids sit at their spec's depth below the surface, using the terrain generator's
-    /// depth, which is also a pure function of position. Cells are cached as chunks need them.
+    /// <para>Centroids sit at their spec's depth below the surface, using the terrain generator's
+    /// depth, which is also a pure function of position. Cells are cached as chunks need them.</para>
+    /// <para>Placing nodes runs on the main thread (it's cheap and cached); the rolls run in the
+    /// generation jobs (<see cref="ChunkFillKernel"/>) on the nodes <see cref="ToJobNodes"/>
+    /// hands them, through the same <see cref="OreRoll"/> as <see cref="Pick"/>. Ore only forms
+    /// below the surface.</para>
     /// </remarks>
     public sealed class OreField
     {
         /// <summary>A node's reach in σ: beyond 3σ the chance is under 1.2% of the peak.</summary>
-        public const float ReachInSigmas = 3f;
+        public const float ReachInSigmas = OreRoll.ReachInSigmas;
 
         // Cells kept before the cache is cleared; enough for a large loaded area.
         private const int MaxCachedCells = 8192;
@@ -73,7 +75,9 @@ namespace Clube.Core
         private readonly OreGeneration settings;
         private readonly ITerrainGenerator generator;
         private readonly int seed;
-        private readonly bool[][] hosts;
+
+        // Per spec: bit id set when the ore may replace material id (every bit: any host).
+        private readonly ulong[] hosts;
         private readonly Dictionary<Vector3Int, OreNode[]> cells = new Dictionary<Vector3Int, OreNode[]>();
         private readonly List<OreNode> scratch = new List<OreNode>();
         private readonly Vector3 maxReach;
@@ -83,20 +87,21 @@ namespace Clube.Core
             this.settings = settings;
             this.seed = seed;
             this.generator = generator;
-            hosts = new bool[settings.Ores.Count][];
+            hosts = new ulong[settings.Ores.Count];
             for (int i = 0; i < settings.Ores.Count; i++)
             {
                 OreSpec spec = settings.Ores[i];
+                hosts[i] = ulong.MaxValue;
                 if (spec?.Ore == null || spec.Hosts.Count == 0)
                 {
                     continue;
                 }
-                hosts[i] = new bool[MaterialRegistry.MaxMaterials];
+                hosts[i] = 0;
                 foreach (VoxelMaterial host in spec.Hosts)
                 {
-                    if (host != null)
+                    if (host != null && host.Id < 64)
                     {
-                        hosts[i][host.Id] = true;
+                        hosts[i] |= 1UL << host.Id;
                     }
                 }
             }
@@ -116,6 +121,9 @@ namespace Clube.Core
         }
 
         public float CellSize => settings.CellSize;
+
+        /// <summary>The world seed the rolls hash with.</summary>
+        public int Seed => seed;
 
         /// <summary>The nodes whose centroids lie in a cell (O2), the same every time.</summary>
         public IReadOnlyList<OreNode> NodesInCell(Vector3Int cell)
@@ -161,9 +169,31 @@ namespace Clube.Core
             }
         }
 
+        /// <summary>The nodes as generation jobs read them, in the same order (the order breaks no ties, but keeps runs identical).</summary>
+        public NativeArray<OreNodeData> ToJobNodes(List<OreNode> nodes, Allocator allocator)
+        {
+            var data = new NativeArray<OreNodeData>(nodes.Count, allocator, NativeArrayOptions.UninitializedMemory);
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                OreNode node = nodes[i];
+                data[i] = new OreNodeData
+                {
+                    Centre = node.Centre,
+                    InverseSpread = 1f / (float3)(Vector3)node.Spread,
+                    Reach = node.Reach,
+                    Peak = node.Peak,
+                    Priority = node.Priority,
+                    Material = node.Material,
+                    Hosts = hosts[node.Spec],
+                };
+            }
+            return data;
+        }
+
         /// <summary>
         /// The material a sample ends up with (O4, O5): an ore if one of the nodes rolls it and
-        /// may replace <paramref name="host"/>, otherwise the host.
+        /// may replace <paramref name="host"/>, otherwise the host. Generation rolls the same way
+        /// in its jobs, and only for samples below the surface.
         /// </summary>
         /// <param name="globalSample">The sample's world-wide coordinate, which seeds its roll, so every chunk holding it agrees.</param>
         /// <param name="position">The sample's position relative to the world origin.</param>
@@ -171,26 +201,24 @@ namespace Clube.Core
         {
             byte picked = host;
             int bestPriority = int.MinValue;
-            float bestProbability = 0f;
+            float bestChance = 0f;
+            var sample = new int3(globalSample.x, globalSample.y, globalSample.z);
             foreach (OreNode node in nodes)
             {
-                bool[] allowed = hosts[node.Spec];
-                if (allowed != null && !allowed[host])
+                ulong allowed = hosts[node.Spec];
+                bool mayReplace = host < 64 ? (allowed & (1UL << host)) != 0 : allowed == ulong.MaxValue;
+                if (!mayReplace)
                 {
                     continue;
                 }
-                float probability = node.Probability(position);
-                if (probability <= 0f
-                    || VoxelHash.Uniform(seed, globalSample.x, globalSample.y, globalSample.z, node.Material) >= probability)
+                float chance = node.Probability(position);
+                if (!OreRoll.Rolls(seed, sample, node.Material, chance) || !OreRoll.Beats(node.Priority, chance, bestPriority, bestChance))
                 {
                     continue;
                 }
-                if (node.Priority > bestPriority || (node.Priority == bestPriority && probability > bestProbability))
-                {
-                    picked = node.Material;
-                    bestPriority = node.Priority;
-                    bestProbability = probability;
-                }
+                picked = node.Material;
+                bestPriority = node.Priority;
+                bestChance = chance;
             }
             return picked;
         }

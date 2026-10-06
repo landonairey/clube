@@ -65,10 +65,10 @@ namespace Clube.Core
         public bool IsEmpty => top == null && band == null && baseMaterial == null;
 
         /// <summary>The material id at a depth below the surface (above it, the top layer's).</summary>
+        /// <remarks>Generation reads the same rule as a <see cref="LayerTable"/>.</remarks>
         public byte MaterialAt(float depth)
         {
-            VoxelMaterial material = depth < topDepth ? top : depth < Mathf.Max(topDepth, bandDepth) ? band : baseMaterial;
-            return material != null ? material.Id : (byte)0;
+            return LayerTable.From(this).MaterialAt(depth);
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using Unity.Collections;
 using UnityEngine;
 
 namespace Clube.Core
@@ -78,7 +79,14 @@ namespace Clube.Core
             return new Heightmap(side, side, heights);
         }
 
+        /// <summary>Copies every pixel, row by row from the bottom, into a native array of <see cref="Width"/> × <see cref="Height"/>.</summary>
+        public void CopyTo(NativeArray<float> pixels)
+        {
+            pixels.CopyFrom(values);
+        }
+
         /// <summary>The height at a position measured in pixels, blended from the four nearest pixels.</summary>
+        /// <remarks><see cref="HeightmapHeight"/> blends the same way inside generation jobs; keep the two in step.</remarks>
         public float Sample(float x, float y)
         {
             int x0 = Mathf.FloorToInt(x);

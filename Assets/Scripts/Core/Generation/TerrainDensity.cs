@@ -1,8 +1,9 @@
-using UnityEngine;
+using Unity.Mathematics;
 
 namespace Clube.Core
 {
     /// <summary>Turns "how far below the surface" into a density, the same way for every generator.</summary>
+    /// <remarks>Burst-compatible: generation jobs call it too (K35).</remarks>
     public static class TerrainDensity
     {
         /// <summary>
@@ -17,13 +18,13 @@ namespace Clube.Core
         /// <summary>0.5 on the surface, 1 at <see cref="RampHalfWidth"/> below it and deeper, 0 as far above.</summary>
         public static float FromDepth(float depth)
         {
-            return Mathf.Clamp01(0.5f + depth / (2f * RampHalfWidth));
+            return math.saturate(0.5f + depth / (2f * RampHalfWidth));
         }
 
         /// <summary>The depth a density stands for: the inverse of <see cref="FromDepth"/> within the ramp.</summary>
         public static float ToDepth(float density)
         {
-            return (Mathf.Clamp01(density) - 0.5f) * 2f * RampHalfWidth;
+            return (math.saturate(density) - 0.5f) * 2f * RampHalfWidth;
         }
     }
 }

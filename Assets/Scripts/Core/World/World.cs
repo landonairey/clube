@@ -36,6 +36,7 @@ namespace Clube.Core
             new List<(Chunk, Vector3Int, float)>();
 
         private readonly Func<Vector3Int, IVoxelStorage> createStorage;
+        private DensityFormat? preferredFormat;
 
         /// <param name="createStorage">Makes each new chunk's storage from its sample count (2G); flat floats if null.</param>
         public World(Vector3Int chunkSize, float voxelSize, Func<Vector3Int, IVoxelStorage> createStorage = null)
@@ -73,11 +74,17 @@ namespace Clube.Core
             return edited.Contains(coord);
         }
 
+        /// <summary>Makes each new chunk's density storage from its sample count (2G).</summary>
+        public Func<Vector3Int, IVoxelStorage> StorageFactory => createStorage;
+
         /// <summary>
-        /// Loads a chunk: an edited one comes back as it was; otherwise it's generated,
-        /// then takes its shared borders from edited loaded neighbours. Returns the
-        /// loaded chunk (the existing one if it was already loaded).
+        /// Loads a chunk and waits for it (labs, tests, benchmarks): an edited one comes back as
+        /// it was; otherwise it's generated, then takes its shared borders from edited loaded
+        /// neighbours. Returns the loaded chunk (the existing one if it was already loaded).
+        /// The streamed world loads through <see cref="ChunkPipeline"/> instead, which generates
+        /// in jobs and calls <see cref="Add"/> when they finish.
         /// </summary>
+        /// <param name="generator">The terrain; null leaves the chunk empty (all air).</param>
         /// <param name="layers">Materials by depth for generated chunks (M10); null leaves them all id 0.</param>
         /// <param name="ores">Ore nodes for generated chunks (3D); null for none.</param>
         public Chunk Load(Vector3Int coord, ITerrainGenerator generator, TerrainLayers layers = null, OreField ores = null)
@@ -86,28 +93,67 @@ namespace Clube.Core
             {
                 return existing;
             }
-
-            if (editedUnloaded.TryGetValue(coord, out Chunk kept))
+            if (TryRestoreKept(coord, out Chunk kept))
             {
-                // A neighbour may have been edited along the shared border while this was away.
-                editedUnloaded.Remove(coord);
-                kept.MarkDirty();
-                loaded.Add(coord, kept);
-                CopyBordersFromEditedNeighbours(coord, kept);
                 return kept;
             }
 
-            var chunk = new Chunk(createStorage(Grid.ChunkSize + Vector3Int.one));
-            if (generator != null)
-            {
-                ChunkGenerator.Fill(chunk, generator, Grid.ChunkOrigin(coord), Grid.VoxelSize, layers, ores);
-            }
-            loaded.Add(coord, chunk);
-            CopyBordersFromEditedNeighbours(coord, chunk);
+            Chunk chunk = generator != null
+                ? ChunkGenerator.Generate(generator, ChunkSampleGrid.ForChunk(Grid, coord), createStorage, layers, ores, PreferredFormat)
+                : Chunk.Uniform(Grid.ChunkSize + Vector3Int.one, 0f, 0, createStorage);
+            Add(coord, chunk);
             return chunk;
         }
 
-        /// <summary>Unloads a chunk; an edited one is kept so it can come back.</summary>
+        /// <summary>
+        /// The density format generation should write for this world's storage: bytes when the
+        /// storage holds bytes (M12), so they copy straight in (K35); floats otherwise.
+        /// </summary>
+        public DensityFormat PreferredFormat
+        {
+            get
+            {
+                if (!preferredFormat.HasValue)
+                {
+                    preferredFormat = createStorage(new Vector3Int(2, 2, 2)) is ByteVoxelStorage ? DensityFormat.Byte : DensityFormat.Float;
+                }
+                return preferredFormat.Value;
+            }
+        }
+
+        /// <summary>
+        /// Adds a freshly generated chunk (from <see cref="ChunkPipeline"/>, once its job is done):
+        /// it takes its shared borders from any edited loaded neighbour, so edits made while it
+        /// was generating aren't contradicted (M2).
+        /// </summary>
+        public void Add(Vector3Int coord, Chunk chunk)
+        {
+            loaded.Add(coord, chunk);
+            CopyBordersFromEditedNeighbours(coord, chunk);
+        }
+
+        /// <summary>
+        /// Brings back an edited chunk kept in memory since it was unloaded, if there is one: it
+        /// needs no generating. Its borders are refreshed from edited neighbours.
+        /// </summary>
+        public bool TryRestoreKept(Vector3Int coord, out Chunk chunk)
+        {
+            if (!editedUnloaded.TryGetValue(coord, out chunk))
+            {
+                return false;
+            }
+
+            // A neighbour may have been edited along the shared border while this was away.
+            editedUnloaded.Remove(coord);
+            chunk.MarkDirty();
+            Add(coord, chunk);
+            return true;
+        }
+
+        /// <summary>
+        /// Unloads a chunk; an edited one is kept so it can come back. An unedited one can be
+        /// generated again, so its memory goes back to the pool (<see cref="Chunk.Release"/>).
+        /// </summary>
         public void Unload(Vector3Int coord)
         {
             if (!loaded.TryGetValue(coord, out Chunk chunk))
@@ -119,11 +165,23 @@ namespace Clube.Core
             {
                 editedUnloaded[coord] = chunk;
             }
+            else
+            {
+                chunk.Release();
+            }
         }
 
-        /// <summary>Forgets every chunk, edited ones too, e.g. before regenerating the terrain.</summary>
+        /// <summary>Forgets every chunk, edited ones too, e.g. before regenerating the terrain; their memory goes back to the pool.</summary>
         public void Clear()
         {
+            foreach (Chunk chunk in loaded.Values)
+            {
+                chunk.Release();
+            }
+            foreach (Chunk chunk in editedUnloaded.Values)
+            {
+                chunk.Release();
+            }
             loaded.Clear();
             editedUnloaded.Clear();
             edited.Clear();
@@ -241,6 +299,11 @@ namespace Clube.Core
             raycastCandidates.Clear();
             foreach (KeyValuePair<Vector3Int, Chunk> entry in loaded)
             {
+                // Every sample the same, border samples too: no surface crosses the chunk.
+                if (entry.Value.IsUniform)
+                {
+                    continue;
+                }
                 var bounds = new Bounds(Grid.ChunkOrigin(entry.Key) + size * 0.5f, size);
                 if (bounds.IntersectRay(ray, out float entryDistance) && entryDistance <= maxDistance)
                 {

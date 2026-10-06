@@ -18,6 +18,22 @@ namespace Clube.Core
             System.Array.Clear(counts, 0, counts.Length);
             found?.Clear();
             Vector3Int samples = chunk.SampleCount;
+
+            // A uniform chunk (most of a world) is all air, or all solid in one material: no need to look at each sample.
+            if (chunk.IsUniform && (chunk.UniformDensity < isoLevel || chunk.Materials.IsUniform))
+            {
+                if (chunk.UniformDensity >= isoLevel)
+                {
+                    byte id = chunk.Materials.UniformId;
+                    counts[id] = samples.x * samples.y * samples.z;
+                    if (found != null && wanted != null && wanted[id])
+                    {
+                        AddAll(samples, found);
+                    }
+                }
+                return;
+            }
+
             for (int z = 0; z < samples.z; z++)
             {
                 for (int y = 0; y < samples.y; y++)
@@ -35,6 +51,20 @@ namespace Clube.Core
                         {
                             found.Add(sample);
                         }
+                    }
+                }
+            }
+        }
+
+        private static void AddAll(Vector3Int samples, List<Vector3Int> found)
+        {
+            for (int z = 0; z < samples.z; z++)
+            {
+                for (int y = 0; y < samples.y; y++)
+                {
+                    for (int x = 0; x < samples.x; x++)
+                    {
+                        found.Add(new Vector3Int(x, y, z));
                     }
                 }
             }

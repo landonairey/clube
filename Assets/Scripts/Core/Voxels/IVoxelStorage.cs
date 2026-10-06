@@ -36,6 +36,12 @@ namespace Clube.Core
         void ReadLayer(int z, Span<float> layer);
 
         /// <summary>
+        /// Writes every sample with the given <paramref name="z"/> from <paramref name="layer"/>,
+        /// laid out as in <see cref="ReadLayer"/>: the bulk write that loads a generated chunk (K35).
+        /// </summary>
+        void WriteLayer(int z, ReadOnlySpan<float> layer);
+
+        /// <summary>
         /// Writes the densities in the scheme's own compact form (not the sample count or type;
         /// <see cref="VoxelStorages.Write"/> adds those). The matching reader is <see cref="VoxelStorages.Read"/>.
         /// </summary>

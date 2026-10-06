@@ -1,4 +1,5 @@
-using UnityEngine;
+using Unity.Collections;
+using Unity.Mathematics;
 
 namespace Clube.Core
 {
@@ -8,23 +9,26 @@ namespace Clube.Core
     /// <c>Mathf.PerlinNoise</c>, which is 2D only and has no seed.
     /// </summary>
     /// <remarks>
-    /// Values lie roughly in -1 to 1 and are exactly 0 on integer lattice points,
+    /// <para>Values lie roughly in -1 to 1 and are exactly 0 on integer lattice points,
     /// so sample at non-integer coordinates (a frequency that isn't a whole
-    /// number does that).
+    /// number does that).</para>
+    /// <para>A struct whose permutation table is stored inline (256 bytes), so it can be
+    /// copied into Burst jobs (K35) and needs no disposing. The classic implementation
+    /// doubles the table to avoid wrapping; masking indices with 255 reads the same values.</para>
     /// </remarks>
-    public sealed class PerlinNoise
+    public struct PerlinNoise
     {
         private const int Size = 256;
+        private const int Mask = Size - 1;
 
-        // The permutation repeated twice, so lookups like p[p[x] + y] never wrap.
-        private readonly int[] permutation = new int[Size * 2];
+        private FixedList512Bytes<byte> permutation;
 
         public PerlinNoise(int seed)
         {
-            var order = new int[Size];
+            var order = new byte[Size];
             for (int i = 0; i < Size; i++)
             {
-                order[i] = i;
+                order[i] = (byte)i;
             }
 
             // Fisher-Yates shuffle with a seeded generator.
@@ -35,9 +39,10 @@ namespace Clube.Core
                 (order[i], order[j]) = (order[j], order[i]);
             }
 
-            for (int i = 0; i < permutation.Length; i++)
+            permutation = new FixedList512Bytes<byte>();
+            for (int i = 0; i < Size; i++)
             {
-                permutation[i] = order[i % Size];
+                permutation.Add(order[i]);
             }
         }
 
@@ -49,32 +54,39 @@ namespace Clube.Core
 
         public float Sample(float x, float y, float z)
         {
-            int xi = Mathf.FloorToInt(x) & (Size - 1);
-            int yi = Mathf.FloorToInt(y) & (Size - 1);
-            int zi = Mathf.FloorToInt(z) & (Size - 1);
-            x -= Mathf.Floor(x);
-            y -= Mathf.Floor(y);
-            z -= Mathf.Floor(z);
+            float floorX = math.floor(x);
+            float floorY = math.floor(y);
+            float floorZ = math.floor(z);
+            int xi = (int)floorX & Mask;
+            int yi = (int)floorY & Mask;
+            int zi = (int)floorZ & Mask;
+            x -= floorX;
+            y -= floorY;
+            z -= floorZ;
 
             float u = Fade(x);
             float v = Fade(y);
             float w = Fade(z);
 
-            int[] p = permutation;
-            int a = p[xi] + yi;
-            int aa = p[a] + zi;
-            int ab = p[a + 1] + zi;
-            int b = p[xi + 1] + yi;
-            int ba = p[b] + zi;
-            int bb = p[b + 1] + zi;
+            int a = P(xi) + yi;
+            int aa = P(a) + zi;
+            int ab = P(a + 1) + zi;
+            int b = P(xi + 1) + yi;
+            int ba = P(b) + zi;
+            int bb = P(b + 1) + zi;
 
             return Lerp(w,
                 Lerp(v,
-                    Lerp(u, Gradient(p[aa], x, y, z), Gradient(p[ba], x - 1, y, z)),
-                    Lerp(u, Gradient(p[ab], x, y - 1, z), Gradient(p[bb], x - 1, y - 1, z))),
+                    Lerp(u, Gradient(P(aa), x, y, z), Gradient(P(ba), x - 1, y, z)),
+                    Lerp(u, Gradient(P(ab), x, y - 1, z), Gradient(P(bb), x - 1, y - 1, z))),
                 Lerp(v,
-                    Lerp(u, Gradient(p[aa + 1], x, y, z - 1), Gradient(p[ba + 1], x - 1, y, z - 1)),
-                    Lerp(u, Gradient(p[ab + 1], x, y - 1, z - 1), Gradient(p[bb + 1], x - 1, y - 1, z - 1))));
+                    Lerp(u, Gradient(P(aa + 1), x, y, z - 1), Gradient(P(ba + 1), x - 1, y, z - 1)),
+                    Lerp(u, Gradient(P(ab + 1), x, y - 1, z - 1), Gradient(P(bb + 1), x - 1, y - 1, z - 1))));
+        }
+
+        private int P(int index)
+        {
+            return permutation[index & Mask];
         }
 
         // 6t^5 - 15t^4 + 10t^3: smooth, with zero first and second derivatives at 0 and 1.
