@@ -5,21 +5,25 @@ using UnityEngine;
 namespace Clube.Core
 {
     /// <summary>
-    /// The chunk manager (M1, M3): keeps the chunks around a focus point (the camera or
-    /// player) loaded and rendered, and unloads the rest. Chunks within the render
-    /// distance horizontally, across every layer of the world's height, are wanted;
-    /// missing ones load nearest first, a few per frame, so moving doesn't hitch.
-    /// The world's sample (0,0,0) sits at this transform's origin.
+    /// A streamed world in the scene (M1, M3): keeps the chunks around a focus point (the
+    /// camera or player) loaded, rendered and, near the focus, collidable, and unloads the
+    /// rest. The world's sample (0,0,0) sits at this transform's origin.
     /// </summary>
     /// <remarks>
-    /// <para>The data lives in <see cref="World"/>, which keeps chunk borders seamless
-    /// (M2) and edits across borders consistent (M5); each loaded chunk gets a pooled
-    /// <see cref="ChunkRenderer"/>.</para>
+    /// <para>A façade over four parts, each with one job:</para>
+    /// <list type="bullet">
+    /// <item><see cref="World"/>: the chunk data, seamless borders (M2) and the edit paths (M5).</item>
+    /// <item><see cref="ChunkPipeline"/>: generation, meshing and collider jobs on the worker
+    /// threads (K35, P3).</item>
+    /// <item><see cref="WorldStreamer"/>: what to load, mesh and bake each frame, nearest first,
+    /// within a main-thread time budget; edits rebuild in the frame they happen.</item>
+    /// <item><see cref="ChunkRendererPool"/>: the pooled GameObjects drawing chunks with a surface.</item>
+    /// </list>
     /// <para>The render distance is a player setting (A3, M3), so it's set from outside:
     /// the game's settings in the Game scene, the lab panel in WorldLab.</para>
-    /// <para>A config change that keeps the terrain (iso level, edge placement, shading)
-    /// just rebuilds every mesh; one that changes it (generator, seed, sizes) regenerates
-    /// the world, dropping edits.</para>
+    /// <para>A config change that keeps the terrain (iso level, edge placement, shading,
+    /// material display) rebuilds every mesh over the next frames; one that changes it
+    /// (generator, seed, sizes) regenerates the world, dropping edits.</para>
     /// </remarks>
     public class WorldView : MonoBehaviour, IEditableTerrain
     {
@@ -41,37 +45,40 @@ namespace Clube.Core
         [SerializeField, Range(MinRenderDistance, MaxRenderDistance)]
         private int renderDistance = 4;
 
-        [Tooltip("Chunks generated per frame at most, so loading is spread out.")]
-        [SerializeField, Min(1)]
-        private int chunksPerFrame = 4;
+        [Tooltip("Main-thread time per frame for taking finished chunks and meshes, in milliseconds. " +
+                 "The jobs themselves run on worker threads; this caps how long the frame waits on their results.")]
+        [SerializeField, Range(0.5f, 16f)]
+        private float frameBudgetMilliseconds = 3f;
 
-        [Tooltip("Give every chunk a MeshCollider, rebuilt with its mesh, so a player can walk on the terrain (M6).")]
+        [Tooltip("Jobs of each kind (generation, meshing, colliders) running at once. 0: two per worker thread.")]
+        [SerializeField, Min(0)]
+        private int maxJobsInFlight;
+
+        [Tooltip("Give chunks near the focus a MeshCollider, so a player can walk on the terrain (M6).")]
         [SerializeField]
         private bool chunkColliders = true;
 
-        private readonly Dictionary<Vector3Int, ChunkRenderer> renderers = new Dictionary<Vector3Int, ChunkRenderer>();
-        private readonly Stack<ChunkRenderer> pool = new Stack<ChunkRenderer>();
-        private readonly List<Vector3Int> wanted = new List<Vector3Int>();
-        private readonly HashSet<Vector3Int> wantedSet = new HashSet<Vector3Int>();
-        private readonly List<Vector3Int> scratch = new List<Vector3Int>();
+        [Tooltip("How far from the focus, horizontally in metres, chunks keep a collider. Collision shapes are cooked in jobs.")]
+        [SerializeField, Min(1f)]
+        private float colliderRadius = 24f;
 
         private WorldConfig runtimeConfig;
         private ITerrainGenerator generator;
         private OreField ores;
+        private ChunkRendererPool renderers;
+        private WorldStreamer streamer;
         private string terrainFingerprint;
-        private Vector3Int? wantedCentre;
-        private int wantedDistance;
         private bool regenerateRequested;
         private bool remeshRequested;
 
-        // chunkMaterials with the surface swapped while materials show (M15).
-        private Material[] renderMaterials;
-
-        /// <summary>Raised when a chunk is loaded and given a renderer.</summary>
-        public event Action<Vector3Int, ChunkRenderer> ChunkLoaded;
+        /// <summary>Raised when a chunk's data is loaded into the world (it may not have a renderer: see <see cref="ChunkMeshed"/>).</summary>
+        public event Action<Vector3Int> ChunkLoaded;
 
         /// <summary>Raised when a chunk is unloaded.</summary>
         public event Action<Vector3Int> ChunkUnloaded;
+
+        /// <summary>Raised after a chunk's mesh is (re)built; the renderer is null for a chunk without a surface or renderer.</summary>
+        public event Action<Vector3Int, ChunkRenderer> ChunkMeshed;
 
         public World World { get; private set; }
 
@@ -87,7 +94,14 @@ namespace Clube.Core
         public int RenderDistance
         {
             get => renderDistance;
-            set => renderDistance = Mathf.Clamp(value, MinRenderDistance, MaxRenderDistance);
+            set
+            {
+                renderDistance = Mathf.Clamp(value, MinRenderDistance, MaxRenderDistance);
+                if (streamer != null)
+                {
+                    streamer.RenderDistance = renderDistance;
+                }
+            }
         }
 
         public Transform Focus
@@ -97,30 +111,23 @@ namespace Clube.Core
         }
 
         /// <summary>Wanted chunks still waiting to load.</summary>
-        public int PendingCount
-        {
-            get
-            {
-                int pending = 0;
-                foreach (Vector3Int coord in wanted)
-                {
-                    if (!renderers.ContainsKey(coord))
-                    {
-                        pending++;
-                    }
-                }
-                return pending;
-            }
-        }
+        public int PendingCount => streamer?.PendingCount ?? 0;
 
-        /// <summary>Every loaded chunk's renderer by coordinate.</summary>
-        public IReadOnlyDictionary<Vector3Int, ChunkRenderer> Renderers => renderers;
+        /// <summary>Live streaming counts: jobs in flight, renderers, vertices, main-thread time.</summary>
+        public StreamingStats Stats => streamer?.Stats ?? default;
+
+        /// <summary>Every renderer showing a chunk, by coordinate. Chunks without a surface have none.</summary>
+        public IReadOnlyDictionary<Vector3Int, ChunkRenderer> Renderers => renderers != null
+            ? renderers.Active
+            : (IReadOnlyDictionary<Vector3Int, ChunkRenderer>)new Dictionary<Vector3Int, ChunkRenderer>();
 
         /// <summary>Where ore is placed (3D), for lab views; null when the terrain has no ores.</summary>
         public OreField Ores => ores;
 
         /// <summary>The chunk under the focus point.</summary>
         public Vector3Int FocusChunk => World.Grid.WorldToChunk(transform.InverseTransformPoint(Focus.position));
+
+        public float VoxelSize => Config.VoxelSize;
 
         public bool Raycast(Ray worldRay, out Vector3 worldPoint)
         {
@@ -142,8 +149,6 @@ namespace Clube.Core
             return World.Raycast(localRay, Config.MeshSettings, maxDistance, out hit);
         }
 
-        public float VoxelSize => Config.VoxelSize;
-
         public BrushResult ApplyBrush(Vector3 worldCentre, BrushSettings brush, BrushOperation operation)
         {
             return World != null ? World.ApplyBrush(transform.InverseTransformPoint(worldCentre), brush, operation) : default;
@@ -157,7 +162,22 @@ namespace Clube.Core
 
         public bool TryGetRenderer(Vector3Int coord, out ChunkRenderer chunkRenderer)
         {
-            return renderers.TryGetValue(coord, out chunkRenderer);
+            chunkRenderer = null;
+            return renderers != null && renderers.TryGet(coord, out chunkRenderer);
+        }
+
+        /// <summary>
+        /// True once the chunk column under a world position is loaded, meshed and has its
+        /// colliders: the ground there can be stood on (M6).
+        /// </summary>
+        public bool HasGround(Vector3 worldPosition)
+        {
+            if (streamer == null)
+            {
+                return false;
+            }
+            Vector3Int coord = World.Grid.WorldToChunk(transform.InverseTransformPoint(worldPosition));
+            return streamer.IsColumnSettled(new Vector2Int(coord.x, coord.z));
         }
 
         private void Awake()
@@ -171,7 +191,7 @@ namespace Clube.Core
 
             runtimeConfig = Instantiate(config);
             runtimeConfig.name = $"{config.name} (Play mode copy)";
-            ApplyRenderMaterials();
+            renderers = new ChunkRendererPool(transform, chunkColliders, TerrainRenderMaterials.For(chunkMaterials, Config));
             StartWorld();
         }
 
@@ -193,6 +213,9 @@ namespace Clube.Core
 
         private void OnDestroy()
         {
+            // The scene is going: free the jobs' native memory, leave the renderers to Unity.
+            streamer?.Dispose();
+            streamer = null;
             if (runtimeConfig != null)
             {
                 Destroy(runtimeConfig);
@@ -210,42 +233,61 @@ namespace Clube.Core
             {
                 regenerateRequested = false;
                 remeshRequested = false;
-                ApplyRenderMaterials();
-                RestartWorld();
+                renderers.SetMaterials(TerrainRenderMaterials.For(chunkMaterials, Config));
+                StopWorld();
+                StartWorld();
             }
             else if (remeshRequested)
             {
                 remeshRequested = false;
-                ApplyRenderMaterials();
-                foreach (Chunk chunk in World.Chunks.Values)
-                {
-                    chunk.MarkDirty();
-                }
+                renderers.SetMaterials(TerrainRenderMaterials.For(chunkMaterials, Config));
+                streamer.RemeshAll();
             }
 
-            UpdateWanted();
-            UnloadUnwanted();
-            LoadMissing();
+            streamer.Update(FocusLocal);
         }
+
+        // After the frame's edits (tools and the player edit in Update).
+        private void LateUpdate()
+        {
+            if (streamer != null && Focus != null)
+            {
+                streamer.RebuildEdited(FocusLocal);
+            }
+        }
+
+        private Vector3 FocusLocal => transform.InverseTransformPoint(Focus.position);
 
         private void StartWorld()
         {
             World = new World(Config.ChunkSize, Config.VoxelSize, Config.CreateStorage);
             terrainFingerprint = TerrainFingerprint();
             CreateGenerator();
-            wantedCentre = null;
+            var pipeline = new ChunkPipeline(World.Grid, generator, Config.Terrain.Layers, ores, World.PreferredFormat, World.StorageFactory);
+            streamer = new WorldStreamer(World, pipeline, renderers, () => Config.MeshSettings, new StreamingSettings
+            {
+                RenderDistance = renderDistance,
+                HeightInChunks = Config.WorldHeightInChunks,
+                MaxJobsInFlight = maxJobsInFlight,
+                FrameBudgetMilliseconds = frameBudgetMilliseconds,
+                Colliders = chunkColliders,
+                ColliderRadius = colliderRadius,
+                MaxEditsPerFrame = 32,
+            });
+            streamer.ChunkLoaded += coord => ChunkLoaded?.Invoke(coord);
+            streamer.ChunkUnloaded += coord => ChunkUnloaded?.Invoke(coord);
+            streamer.ChunkMeshed += (coord, chunkRenderer) => ChunkMeshed?.Invoke(coord, chunkRenderer);
         }
 
-        private void RestartWorld()
+        // Waits for every job and pools every renderer; the world's data goes with it.
+        private void StopWorld()
         {
-            foreach (KeyValuePair<Vector3Int, ChunkRenderer> entry in renderers)
-            {
-                entry.Value.Hide();
-                pool.Push(entry.Value);
-                ChunkUnloaded?.Invoke(entry.Key);
-            }
-            renderers.Clear();
-            StartWorld();
+            streamer?.UnloadAll();
+            streamer?.Dispose();
+            streamer = null;
+
+            // Edits go with the old terrain; their memory goes back to the pool for the new one.
+            World?.Clear();
         }
 
         private void CreateGenerator()
@@ -282,98 +324,6 @@ namespace Clube.Core
             {
                 remeshRequested = true;
             }
-        }
-
-        // The wanted area only changes when the focus crosses into another chunk or the
-        // distance changes, so it's rebuilt then, nearest chunks first.
-        private void UpdateWanted()
-        {
-            Vector3Int centre = FocusChunk;
-            if (wantedCentre == centre && wantedDistance == renderDistance)
-            {
-                return;
-            }
-            wantedCentre = centre;
-            wantedDistance = renderDistance;
-
-            StreamingArea.Collect(centre, renderDistance, Config.WorldHeightInChunks, wanted);
-            wantedSet.Clear();
-            wantedSet.UnionWith(wanted);
-        }
-
-        // Chunks just outside the wanted area are kept (one chunk of slack), so walking
-        // back and forth across a chunk border doesn't load and unload the same chunks.
-        private void UnloadUnwanted()
-        {
-            Vector3Int centre = wantedCentre.Value;
-            int keep = (renderDistance + 1) * (renderDistance + 1);
-            scratch.Clear();
-            foreach (Vector3Int coord in renderers.Keys)
-            {
-                if (!wantedSet.Contains(coord) && StreamingArea.HorizontalDistanceSquared(coord, centre) > keep)
-                {
-                    scratch.Add(coord);
-                }
-            }
-            foreach (Vector3Int coord in scratch)
-            {
-                ChunkRenderer chunkRenderer = renderers[coord];
-                renderers.Remove(coord);
-                chunkRenderer.Hide();
-                pool.Push(chunkRenderer);
-                World.Unload(coord);
-                ChunkUnloaded?.Invoke(coord);
-            }
-        }
-
-        private void LoadMissing()
-        {
-            int loadedThisFrame = 0;
-            foreach (Vector3Int coord in wanted)
-            {
-                if (loadedThisFrame >= chunksPerFrame)
-                {
-                    break;
-                }
-                if (renderers.ContainsKey(coord))
-                {
-                    continue;
-                }
-
-                Chunk chunk = World.Load(coord, generator, Config.Terrain.Layers, ores);
-                ChunkRenderer chunkRenderer = pool.Count > 0 ? pool.Pop() : CreateRenderer();
-                chunkRenderer.transform.localPosition = World.Grid.ChunkOrigin(coord);
-                chunkRenderer.Show(World, coord, chunk, () => Config.MeshSettings);
-                renderers.Add(coord, chunkRenderer);
-                loadedThisFrame++;
-                ChunkLoaded?.Invoke(coord, chunkRenderer);
-            }
-        }
-
-        // Picks the surface material for the config's material display and gives it to every renderer.
-        private void ApplyRenderMaterials()
-        {
-            renderMaterials = TerrainRenderMaterials.For(chunkMaterials, Config);
-            foreach (ChunkRenderer chunkRenderer in renderers.Values)
-            {
-                chunkRenderer.Renderer.sharedMaterials = renderMaterials;
-            }
-            foreach (ChunkRenderer chunkRenderer in pool)
-            {
-                chunkRenderer.Renderer.sharedMaterials = renderMaterials;
-            }
-        }
-
-        private ChunkRenderer CreateRenderer()
-        {
-            var chunkObject = new GameObject("Chunk", typeof(MeshFilter), typeof(MeshRenderer), typeof(ChunkRenderer));
-            chunkObject.transform.SetParent(transform, false);
-            chunkObject.GetComponent<MeshRenderer>().sharedMaterials = renderMaterials ?? chunkMaterials;
-            if (chunkColliders)
-            {
-                chunkObject.AddComponent<ChunkCollider>();
-            }
-            return chunkObject.GetComponent<ChunkRenderer>();
         }
     }
 }
