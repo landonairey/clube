@@ -36,7 +36,7 @@ namespace Clube.Core
         [SerializeField]
         private Shading shading = Shading.Flat;
 
-        [Tooltip("Managed C# mesher, or the Burst-compiled job (K12). Both give the same mesh; step-through always records the managed one.")]
+        [Tooltip("Single-chunk labs: the managed C# mesher, or the Burst job (K12). Both give the same mesh; step-through always records the managed one. The streamed world always meshes with Burst jobs (K35).")]
         [SerializeField]
         private MesherBackend mesher = MesherBackend.Managed;
 

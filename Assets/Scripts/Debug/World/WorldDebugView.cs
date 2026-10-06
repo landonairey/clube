@@ -23,6 +23,9 @@ namespace Clube.Debug
     {
         private const string VertexColorShader = "Universal Render Pipeline/Particles/Unlit";
 
+        // Seconds between rebuilds of the grid while chunks keep loading.
+        private const float RebuildInterval = 0.25f;
+
         [Tooltip("Outline every loaded chunk.")]
         [SerializeField]
         private bool showChunkBorders = true;
@@ -48,6 +51,7 @@ namespace Clube.Debug
         private LabMeshObject borders;
         private Material ownedMaterial;
         private bool rebuildRequested;
+        private float nextRebuildTime;
 
         public bool ShowChunkBorders
         {
@@ -118,14 +122,16 @@ namespace Clube.Debug
 
         private void LateUpdate()
         {
-            if (rebuildRequested && worldView.World != null)
+            // At most a few times a second: while a large world streams in, chunks load every frame.
+            if (rebuildRequested && worldView.World != null && Time.unscaledTime >= nextRebuildTime)
             {
                 rebuildRequested = false;
+                nextRebuildTime = Time.unscaledTime + RebuildInterval;
                 RebuildBorders();
             }
         }
 
-        private void OnChunkLoaded(Vector3Int coord, ChunkRenderer chunkRenderer)
+        private void OnChunkLoaded(Vector3Int coord)
         {
             rebuildRequested = true;
         }
@@ -165,7 +171,7 @@ namespace Clube.Debug
             // Each edge of the chunk grid once, keyed by its start corner (in chunk
             // coordinates) and axis; the focused chunk's twelve are highlighted.
             edges.Clear();
-            foreach (Vector3Int coord in worldView.Renderers.Keys)
+            foreach (Vector3Int coord in worldView.World.Chunks.Keys)
             {
                 AddChunkEdges(coord, edges);
             }

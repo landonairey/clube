@@ -101,4 +101,11 @@ namespace Clube.Core
     {
         void ReadData(BinaryReader reader);
     }
+
+    /// <summary>A storage whose memory comes from <see cref="VoxelArrayPool"/> and goes back there when released.</summary>
+    public interface IPooledStorage
+    {
+        /// <summary>Returns the memory for reuse; the storage can't be used afterwards.</summary>
+        void Release();
+    }
 }

@@ -46,7 +46,7 @@ namespace Clube.Debug
 
     /// <summary>
     /// K32 and K12: times the managed <see cref="ChunkMesher"/> and the Burst job
-    /// (<see cref="BurstChunkMesher"/>, built and completed on this thread) on the K11 terrain,
+    /// (<see cref="ChunkMeshJob"/>, built and completed on this thread) on the K11 terrain,
     /// flat and smooth, so each mesher change can be measured against the last.
     /// Warmup builds first (which also compiles the Burst job), then timed builds (Stopwatch);
     /// the median is the headline.
@@ -58,8 +58,7 @@ namespace Clube.Debug
             var results = new List<MesherSpeedResult>();
             var vertices = new List<Vector3>();
             var triangles = new List<int>();
-            var nativeVertices = new NativeList<float3>(Allocator.Persistent);
-            var nativeTriangles = new NativeList<int>(Allocator.Persistent);
+            var mesh = new Mesh();
             try
             {
                 foreach (int size in sizes)
@@ -73,16 +72,17 @@ namespace Clube.Debug
                         results.Add(new MesherSpeedResult(
                             size, MesherBackend.Managed, shading, vertices.Count, triangles.Count / 3, median, mean));
 
-                        (median, mean) = Time(() => BurstChunkMesher.Build(chunk, settings, nativeVertices, nativeTriangles), warmup, runs);
+                        // The job alone (snapshot, meshing, normals, buffers): handing the result to a mesh is upload, not meshing.
+                        (median, mean) = Time(() => BuildWithJob(chunk, settings), warmup, runs);
+                        ChunkMeshJobs.BuildNow(chunk, settings, mesh);
                         results.Add(new MesherSpeedResult(
-                            size, MesherBackend.Burst, shading, nativeVertices.Length, nativeTriangles.Length / 3, median, mean));
+                            size, MesherBackend.Burst, shading, mesh.vertexCount, (int)mesh.GetIndexCount(0) / 3, median, mean));
                     }
                 }
             }
             finally
             {
-                nativeVertices.Dispose();
-                nativeTriangles.Dispose();
+                UnityEngine.Object.DestroyImmediate(mesh);
             }
             return results;
         }
@@ -100,6 +100,13 @@ namespace Clube.Debug
                     $"{r.MedianMs:0.00} | {r.MeanMs:0.00} | {r.NanosecondsPerVoxel:0} |");
             }
             return text.ToString();
+        }
+
+        private static void BuildWithJob(Chunk chunk, ChunkMeshSettings settings)
+        {
+            Mesh.MeshDataArray data = Mesh.AllocateWritableMeshData(1);
+            ChunkMeshJobs.Schedule(ChunkMeshInput.Snapshot(chunk, Allocator.TempJob), settings, data).Complete();
+            data.Dispose();
         }
 
         private static (double Median, double Mean) Time(Action build, int warmup, int runs)

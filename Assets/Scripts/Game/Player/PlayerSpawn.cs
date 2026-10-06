@@ -5,8 +5,9 @@ namespace Clube.Game
 {
     /// <summary>
     /// Puts the player on the ground (M6): the world streams around the player, and once
-    /// every chunk in the column under it has loaded, the player is set on the highest
-    /// surface there and starts walking. Falling below the world spawns it again.
+    /// every chunk in the column under it has loaded, been meshed and had its collider cooked
+    /// (<see cref="WorldView.HasGround"/>), the player is set on the highest surface there and
+    /// starts walking. Falling below the world spawns it again.
     /// </summary>
     /// <remarks>
     /// Spawns at the player's own x and z when enabled, so whatever enables the player
@@ -77,18 +78,15 @@ namespace Clube.Game
 
         private void TryPlace()
         {
-            WorldGrid grid = worldView.World.Grid;
-            Vector3 local = worldView.transform.InverseTransformPoint(transform.position);
-            Vector3Int coord = grid.WorldToChunk(local);
-            int layers = worldView.Config.WorldHeightInChunks;
-            for (int layer = 0; layer < layers; layer++)
+            // Every chunk in the column loaded, meshed, and its collider cooked: ground to stand on.
+            if (!worldView.HasGround(transform.position))
             {
-                if (!worldView.TryGetRenderer(new Vector3Int(coord.x, layer, coord.z), out _))
-                {
-                    return;
-                }
+                return;
             }
 
+            WorldGrid grid = worldView.World.Grid;
+            Vector3 local = worldView.transform.InverseTransformPoint(transform.position);
+            int layers = worldView.Config.WorldHeightInChunks;
             var top = new Vector3(local.x, layers * grid.ChunkWorldSize.y + 1f, local.z);
             Vector3 origin = worldView.transform.TransformPoint(top);
             if (!worldView.Raycast(new Ray(origin, -worldView.transform.up), out Vector3 ground))

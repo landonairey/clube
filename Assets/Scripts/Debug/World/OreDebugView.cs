@@ -22,6 +22,9 @@ namespace Clube.Debug
         private const int RingSegments = 32;
         private const float CrossSize = 0.5f;
 
+        // Frames the counts keep updating after the panel last read them.
+        private const int ScanWhileReadFrames = 30;
+
         [Tooltip("Mark each ore node: a cross at its centroid.")]
         [SerializeField]
         private bool showNodes;
@@ -44,8 +47,6 @@ namespace Clube.Debug
 
         private readonly Dictionary<Vector3Int, ChunkScan> scans = new Dictionary<Vector3Int, ChunkScan>();
         private readonly HashSet<Vector3Int> dirty = new HashSet<Vector3Int>();
-        private readonly Dictionary<Vector3Int, (ChunkRenderer Renderer, System.Action<Mesh> Handler)> rebuildHandlers =
-            new Dictionary<Vector3Int, (ChunkRenderer, System.Action<Mesh>)>();
         private readonly List<OreNode> nodes = new List<OreNode>();
         private readonly List<Vector3> vertices = new List<Vector3>();
         private readonly List<Color32> colors = new List<Color32>();
@@ -59,8 +60,18 @@ namespace Clube.Debug
         private bool cubesChanged = true;
         private bool terrainHidden;
 
+        // The last frame something read the counts; scanning stops a while after nobody does.
+        private int countsReadFrame = -ScanWhileReadFrames;
+
         /// <summary>Solid samples per material id over every loaded chunk (border samples count once per chunk).</summary>
-        public IReadOnlyList<int> LoadedCounts => loadedCounts;
+        public IReadOnlyList<int> LoadedCounts
+        {
+            get
+            {
+                countsReadFrame = Time.frameCount;
+                return loadedCounts;
+            }
+        }
 
         public bool ShowNodes
         {
@@ -86,6 +97,7 @@ namespace Clube.Debug
         /// <summary>Solid samples per material id in one loaded chunk, or null if it hasn't been scanned.</summary>
         public IReadOnlyList<int> CountsFor(Vector3Int coord)
         {
+            countsReadFrame = Time.frameCount;
             return scans.TryGetValue(coord, out ChunkScan scan) ? scan.Counts : null;
         }
 
@@ -98,11 +110,12 @@ namespace Clube.Debug
         {
             worldView.ChunkLoaded += OnChunkLoaded;
             worldView.ChunkUnloaded += OnChunkUnloaded;
+            worldView.ChunkMeshed += OnChunkMeshed;
             if (worldView.World != null)
             {
-                foreach (KeyValuePair<Vector3Int, ChunkRenderer> entry in worldView.Renderers)
+                foreach (Vector3Int coord in worldView.World.Chunks.Keys)
                 {
-                    OnChunkLoaded(entry.Key, entry.Value);
+                    OnChunkLoaded(coord);
                 }
             }
         }
@@ -111,10 +124,9 @@ namespace Clube.Debug
         {
             worldView.ChunkLoaded -= OnChunkLoaded;
             worldView.ChunkUnloaded -= OnChunkUnloaded;
-            foreach (Vector3Int coord in new List<Vector3Int>(rebuildHandlers.Keys))
-            {
-                OnChunkUnloaded(coord);
-            }
+            worldView.ChunkMeshed -= OnChunkMeshed;
+            scans.Clear();
+            dirty.Clear();
             SetTerrainHidden(false);
             if (nodeLines != null)
             {
@@ -146,12 +158,15 @@ namespace Clube.Debug
                 return;
             }
 
-            if (dirty.Count > 0)
+            // Scanning reads every sample of a chunk, so only while the counts or the X-ray are in use.
+            bool scanning = xRay || Time.frameCount - countsReadFrame < ScanWhileReadFrames;
+            if (dirty.Count > 0 && scanning)
             {
                 ScanDirtyChunks();
                 cubesChanged = true;
             }
-            if (nodesChanged)
+            // Collecting nodes walks the cells under the whole loaded area: only while they show or are counted.
+            if (nodesChanged && (showNodes || scanning))
             {
                 nodesChanged = false;
                 RebuildNodes();
@@ -173,25 +188,20 @@ namespace Clube.Debug
             }
         }
 
-        private void OnChunkLoaded(Vector3Int coord, ChunkRenderer chunkRenderer)
+        private void OnChunkLoaded(Vector3Int coord)
         {
-            if (!rebuildHandlers.ContainsKey(coord))
-            {
-                System.Action<Mesh> handler = mesh => dirty.Add(coord);
-                rebuildHandlers.Add(coord, (chunkRenderer, handler));
-                chunkRenderer.MeshRebuilt += handler;
-            }
             dirty.Add(coord);
             nodesChanged = true;
         }
 
+        // A rebuilt mesh means the chunk may have been edited: count it again.
+        private void OnChunkMeshed(Vector3Int coord, ChunkRenderer chunkRenderer)
+        {
+            dirty.Add(coord);
+        }
+
         private void OnChunkUnloaded(Vector3Int coord)
         {
-            if (rebuildHandlers.TryGetValue(coord, out (ChunkRenderer Renderer, System.Action<Mesh> Handler) entry))
-            {
-                entry.Renderer.MeshRebuilt -= entry.Handler;
-                rebuildHandlers.Remove(coord);
-            }
             scans.Remove(coord);
             dirty.Remove(coord);
             nodesChanged = true;
@@ -249,7 +259,7 @@ namespace Clube.Debug
         {
             OreField ores = worldView.Ores;
             nodes.Clear();
-            if (ores != null && worldView.Renderers.Count > 0)
+            if (ores != null && worldView.World.LoadedCount > 0)
             {
                 ores.CollectNodes(LoadedBounds(), nodes);
             }
@@ -342,7 +352,7 @@ namespace Clube.Debug
             var bounds = new Bounds();
             bool first = true;
             Vector3 size = worldView.World.Grid.ChunkWorldSize;
-            foreach (Vector3Int coord in worldView.Renderers.Keys)
+            foreach (Vector3Int coord in worldView.World.Chunks.Keys)
             {
                 var chunkBounds = new Bounds(worldView.World.Grid.ChunkOrigin(coord) + size * 0.5f, size);
                 if (first)

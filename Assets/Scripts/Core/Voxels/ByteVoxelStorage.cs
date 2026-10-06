@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using Unity.Collections;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace Clube.Core
@@ -11,18 +13,22 @@ namespace Clube.Core
     /// 0 is empty, 255 solid, and every value is rounded to the nearest 1/255. 0 and 1 stay
     /// exact, which the brush's solid and empty tests (K16) rely on.
     /// </summary>
-    public sealed class ByteVoxelStorage : IVoxelStorage, IReadableStorage
+    /// <remarks>
+    /// The world's storage (M12), so it also copies its bytes to and from native arrays in one
+    /// block: how generation results arrive and mesh jobs read them (K35).
+    /// </remarks>
+    public sealed class ByteVoxelStorage : IVoxelStorage, IReadableStorage, IPooledStorage
     {
         private const float Steps = 255f;
 
-        private readonly byte[] densities;
+        private byte[] densities;
 
         /// <param name="sampleCount">Samples per axis; at least 2 (one voxel) on each.</param>
         public ByteVoxelStorage(Vector3Int sampleCount)
         {
             SampleGrid.Validate(sampleCount);
             SampleCount = sampleCount;
-            densities = new byte[sampleCount.x * sampleCount.y * sampleCount.z];
+            densities = VoxelArrayPool.Rent(sampleCount.x * sampleCount.y * sampleCount.z);
         }
 
         public VoxelStorageType Type => VoxelStorageType.FlatByte;
@@ -34,7 +40,7 @@ namespace Clube.Core
         public float GetDensity(int x, int y, int z)
         {
             SampleGrid.CheckSample(SampleCount, x, y, z);
-            return densities[SampleGrid.FlatIndex(SampleCount, x, y, z)] / Steps;
+            return ToDensity(densities[SampleGrid.FlatIndex(SampleCount, x, y, z)]);
         }
 
         public void SetDensity(int x, int y, int z, float density)
@@ -50,8 +56,44 @@ namespace Clube.Core
             int start = z * layerSize;
             for (int i = 0; i < layerSize; i++)
             {
-                layer[i] = densities[start + i] / Steps;
+                layer[i] = ToDensity(densities[start + i]);
             }
+        }
+
+        public void WriteLayer(int z, ReadOnlySpan<float> layer)
+        {
+            SampleGrid.CheckLayer(SampleCount, z);
+            int layerSize = SampleCount.x * SampleCount.y;
+            int start = z * layerSize;
+            for (int i = 0; i < layerSize; i++)
+            {
+                densities[start + i] = Quantize(layer[i]);
+            }
+        }
+
+        /// <summary>Overwrites every sample from bytes already quantized (a generation job's output).</summary>
+        public void CopyFrom(NativeArray<byte> bytes)
+        {
+            bytes.CopyTo(densities);
+        }
+
+        /// <summary>Copies every sample's byte into a native array of the same length (a mesh job's input).</summary>
+        public void CopyTo(NativeArray<byte> bytes)
+        {
+            bytes.CopyFrom(densities);
+        }
+
+        /// <summary>Sets every sample to one density (a uniform chunk turning into a stored one).</summary>
+        public void Fill(float density)
+        {
+            Array.Fill(densities, Quantize(density));
+        }
+
+        /// <summary>Gives the array back to <see cref="VoxelArrayPool"/>; the storage can't be used afterwards.</summary>
+        public void Release()
+        {
+            VoxelArrayPool.Return(densities);
+            densities = null;
         }
 
         public void WriteData(BinaryWriter writer)
@@ -68,10 +110,17 @@ namespace Clube.Core
             }
         }
 
-        /// <summary>The byte a density is stored as: clamped to 0-1, then to the nearest 1/255.</summary>
+        /// <summary>The byte a density is stored as: clamped to 0-1, then to the nearest 1/255 (ties to even).</summary>
+        /// <remarks>Burst-compatible: generation jobs quantize with it too.</remarks>
         public static byte Quantize(float density)
         {
-            return (byte)Mathf.RoundToInt(Mathf.Clamp01(density) * Steps);
+            return (byte)math.round(math.saturate(density) * Steps);
+        }
+
+        /// <summary>The density a stored byte stands for.</summary>
+        public static float ToDensity(byte value)
+        {
+            return value / Steps;
         }
     }
 }

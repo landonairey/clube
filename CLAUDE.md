@@ -15,10 +15,16 @@ Two standing goals, equal in importance to shipping features:
 
 ## Source of truth: `Docs/clube-objectives.md`
 The scoped plan lives in [Docs/clube-objectives.md](Docs/clube-objectives.md).
-It defines the architecture rules (A1–A12), ground rules (G1–G5), and every
+It defines the architecture rules (A1–A14), ground rules (G1–G5), and every
 objective by ID. Reference objective IDs in branches, commits, and PRs.
 If this file and the objectives doc disagree, the objectives doc wins —
 fix this file.
+
+How the code fits together — the layers, the generation and mesh jobs, the
+streaming frame, threading rules, where upcoming systems plug in, and a list
+of self-contained optimization targets — is in
+[Docs/architecture.md](Docs/architecture.md). Read it before changing
+generation, meshing or streaming; keep it current in the same PR.
 
 Milestone 1 = Chapters 0–3. Chapters 4–5 are drafts; Chapters 6–8 are
 design exploration. Do not build ahead of the current chapter; flag it if a
@@ -181,8 +187,23 @@ rolls each sample against them (hash of the global sample, so borders agree).
 WorldLab's `OreDebugView` draws nodes, σ rings and an X-ray of ore samples;
 the panel's Ores section (`OreControls`) tunes the specs and shows ore counts
 (`MaterialCensus`).
-**Next:** Checkpoint 3.2 closes Milestone 1; M25's voxel size stays open.
-K35 (generation speed) is open.
+K35 and P1-P3 are done (2026-10-05, branch `architecture/chunk-pipeline`):
+generation is Burst jobs (`Generation/Fields` structs wrapped by the
+generator classes, `Generation/Fill` jobs ending in `ChunkFillKernel`; one
+height per column; uniform all-air or all-solid chunks keep no density
+storage), meshing is one Burst job per chunk with materials, normals and the
+buffers written into `Mesh.MeshData` (`Meshing/Jobs`; the managed mesher in
+`Meshing/Managed` stays for the labs and step-through), and `WorldView` is a
+façade over `World` (data), `ChunkPipeline` (jobs), `WorldStreamer` (the
+per-frame policy within a main-thread budget; edits rebuild the same frame)
+and `ChunkRendererPool` (renderers only for chunks with a surface).
+Colliders are cooked in jobs near the focus only. `WorldView` events are
+`ChunkLoaded(coord)`, `ChunkUnloaded(coord)`, `ChunkMeshed(coord, renderer)`;
+`WorldView.Stats` has per-phase timings; `StreamingBenchmark` (*Clube →
+Benchmarks → World streaming*) measures frames. Chunk byte arrays come from
+`VoxelArrayPool` and go back on `Chunk.Release` (the world calls it).
+**Next:** Checkpoint 3.2 closes Milestone 1; M25's voxel size stays open,
+and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
@@ -196,6 +217,10 @@ K35 (generation speed) is open.
   branch = one PR, listing the objective IDs it closes.
 - Folder structure: code under `Assets/Scripts/{Core,Debug,Game}/`, one
   asmdef per folder, grouped by feature inside (e.g. `Core/Meshing/`).
+  Core's folders are layers (A14, `Docs/architecture.md`): data (`Voxels`,
+  `World`, `Materials`, `Config`, `Items`) → algorithms (`Generation`,
+  `Meshing`, `Editing`, `Queries`, `Volume`) → `Streaming` → `Rendering`
+  (everything with a GameObject). Lower layers never use higher ones.
   Inspector/editor code goes in `Debug/Editor/` (`Clube.Debug.Editor`,
   editor-only); write `UnityEditor.Editor` in full there, since `Editor`
   alone names that namespace.
@@ -302,6 +327,26 @@ K35 (generation speed) is open.
 - Naming/formatting: follow the existing code (private fields camelCase,
   `[SerializeField] private`, XML doc comments on public types). Formalize
   later if needed.
+- Jobs: a generic job scheduled from generic code (e.g.
+  `HeightfieldGenerator<T>`) needs an `[assembly: RegisterGenericJobType]`
+  line per concrete type (`Generation/Fill/ChunkFillJobs.cs`), or Burst
+  never compiles it. Native buffers that outlive 4 frames must be
+  `Allocator.Persistent`. Main-thread reads of a `[ReadOnly]` array while
+  jobs read it are fine; writes are not.
+- Two implementations of one thing (managed ↔ Burst mesher, `OreField.Pick`
+  ↔ the fill kernel, `MarchingCubesJobTables` ↔ `MarchingCubesTables`)
+  each have a test comparing them; keep it, and fix the side that's wrong.
+- Unity gotcha: a `MeshCollider` keeps its old shape when its mesh's data
+  changes (no re-cook); reassign (`null`, then the mesh) to update it, after
+  `Physics.BakeMesh` in a job so the assignment is cheap (0.03 ms against
+  8 ms). `Physics.BakeMesh(int, …)` is obsolete in 6.3: pass an `EntityId`
+  (implicit from `GetInstanceID()`).
+- Performance gotcha: in the Editor a garbage collection over its large heap
+  stalls a frame by 5-10 ms, so per-chunk allocations show up as spikes.
+  Pool chunk arrays (`VoxelArrayPool`) and native buffers; check
+  `WorldView.Stats.Phases` before guessing where a frame went.
+- MCP gotcha: in `RunCommand` scripts `Mesh` resolves to a `Unity.AI.Mesh`
+  namespace; write `UnityEngine.Mesh` (or alias it).
 
 ## Environment
 - Unity 6.3 LTS, URP, Windows Build Support (IL2CPP)
