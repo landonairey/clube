@@ -171,8 +171,18 @@ UV2, weights in UV3), drawn by `Clube/Terrain Materials` (texture array,
 triplanar, debug colours). Views swap their first material through
 `TerrainRenderMaterials`. *Clube → Materials* generates placeholder textures and
 rebuilds the texture array. WorldLab shows Blended; ChunkLab keeps None.
-**Next:** M25's voxel size decision (8 per metre leads), then 3D (ore
-generation); K35 (generation speed) is open.
+3D is done (O1-O9; O10 is backlog). Ore materials are in the registry; where
+they generate is `OreGeneration` (cell size + one `OreSpec` per ore: nodes per
+cell, depth range below the surface, peak chance, σ per axis, hosts, priority) in
+`TerrainSettings`. `OreField` places node centroids per cell from the seed
+(`VoxelHash`), gathers the nodes reaching a chunk, and `ChunkGenerator.Fill`
+rolls each sample against them (hash of the global sample, so borders agree).
+`ItemDefinition` assets (`Assets/Config/Items/`) are what materials drop (O6).
+WorldLab's `OreDebugView` draws nodes, σ rings and an X-ray of ore samples;
+the panel's Ores section (`OreControls`) tunes the specs and shows ore counts
+(`MaterialCensus`).
+**Next:** Checkpoint 3.2 closes Milestone 1; M25's voxel size stays open.
+K35 (generation speed) is open.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
