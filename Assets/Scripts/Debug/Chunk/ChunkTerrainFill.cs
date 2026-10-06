@@ -131,7 +131,7 @@ namespace Clube.Debug
             Problem = null;
 
             // The chunk sits at the world origin; later chunks are offset by their coordinate (M1).
-            ChunkGenerator.Fill(chunk, generator, Vector3.zero, config.VoxelSize, config.Terrain.Layers);
+            ChunkGenerator.Fill(chunk, generator, Vector3.zero, config.VoxelSize, config.Terrain.Layers, OreField.Create(config.Terrain, generator));
             LastFillMilliseconds = stopwatch.Elapsed.TotalMilliseconds;
         }
     }

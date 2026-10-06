@@ -78,6 +78,9 @@ namespace Clube.Debug
         [SerializeField]
         private bool storageOpen;
 
+        [SerializeField]
+        private bool oresOpen;
+
         private WorldView worldView;
         private ChunkView chunkView;
         private ChunkTerrainFill terrainFill;
@@ -101,6 +104,7 @@ namespace Clube.Debug
         private BuildGridOverlay buildGrid;
         private LabChunkTarget chunkTarget;
         private StorageView storageView;
+        private OreDebugView oreView;
 
         private bool partsFound;
         private LabPanelFrame frame;
@@ -154,6 +158,7 @@ namespace Clube.Debug
             buildGrid = FindFirstObjectByType<BuildGridOverlay>();
             chunkTarget = FindFirstObjectByType<LabChunkTarget>();
             storageView = FindFirstObjectByType<StorageView>();
+            oreView = FindFirstObjectByType<OreDebugView>();
         }
 
         private void OnDisable()
@@ -198,7 +203,7 @@ namespace Clube.Debug
             foreach (Object part in new Object[]
                      {
                          Config, worldView, testFill, brush, chunkFocus, chunkVolume, selector, corners, volumeLab,
-                         stepThrough, flyCamera, playerToggle, player, labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView,
+                         stepThrough, flyCamera, playerToggle, player, labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView, oreView,
                      })
             {
                 if (part != null)
@@ -249,6 +254,10 @@ namespace Clube.Debug
             if (frame.Section("Storage", ref storageOpen))
             {
                 StorageControls.Draw(frame, config, chunkTarget, storageView);
+            }
+            if (worldView != null && frame.Section("Ores", ref oresOpen))
+            {
+                OreControls.Draw(frame, config, oreView, chunkFocus);
             }
             if (chunkFocus != null && frame.Section("Focused chunk", ref chunkOpen))
             {
