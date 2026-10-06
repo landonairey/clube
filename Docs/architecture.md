@@ -273,6 +273,25 @@ The lean `Game` scene (GW1–GW4) can now be built on `WorldView` directly; what
 remains for GW2 is removing the variant switches the game never uses (it would
 lock one edge placement, shading and material display).
 
+### Notes on `Clube.Debug`
+
+The lab code is in good shape where it matters most: every panel section is a
+shared `*Controls` class drawn by both the panel and the Inspector (M22), and
+the tools reach chunks only through `LabChunkTarget` / `IRenderedChunk` (M18).
+Three things to know before it grows further:
+
+- **`LabPanel` is the one coordinator that knows everything.** It finds 24 tools
+  by type and hand-codes each section's order and visibility. When the coming
+  systems bring their own lab sections (inventory, crafting, economy), turn it
+  into a registry: each tool exposes a section (title, order, "available",
+  draw), registers itself when enabled, and the panel just draws what's
+  registered. `LabPanelEditor` then mirrors the registry instead of the list.
+- **Step-through is the largest feature** (`StepThroughLab` 527 lines,
+  `StepThroughVisuals` 493). It records the managed mesher only, by design
+  (A11); keep it that way rather than teaching it the Burst job.
+- **Lab views on a world are opt-in work.** See the rule above; `OreDebugView`
+  and `WorldDebugView` show the pattern.
+
 ---
 
 ## 7. Where the next systems plug in
