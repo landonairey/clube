@@ -18,8 +18,9 @@ namespace Clube.Core
     /// to the <see cref="MaterialRegistry"/>. Voxels store only the id (M10).
     /// </summary>
     /// <remarks>
-    /// Later chapters add to it rather than replace it: ore generation settings (O1), the
-    /// item it drops (O6), hidden mineral species (PR2).
+    /// Where an ore generates is set per world (<see cref="OreSpec"/> in the terrain settings,
+    /// O1), not here. Later chapters add to it rather than replace it, e.g. hidden mineral
+    /// species (PR2).
     /// </remarks>
     [CreateAssetMenu(fileName = "VoxelMaterial", menuName = "Clube/Voxel Material")]
     public class VoxelMaterial : ScriptableObject
@@ -46,9 +47,9 @@ namespace Clube.Core
         [SerializeField, Min(0f)]
         private float hardness = 1f;
 
-        [Tooltip("Id of the item extracting it gives (O6). Empty until items exist.")]
+        [Tooltip("The item extracting it gives (O6).")]
         [SerializeField]
-        private string dropItem = "";
+        private ItemDefinition drop;
 
         /// <summary>Makes a material in code (tests, tools); the game's materials are assets.</summary>
         public static VoxelMaterial Create(int id, string displayName, VoxelMaterialCategory category = VoxelMaterialCategory.Aggregate)
@@ -73,6 +74,7 @@ namespace Clube.Core
 
         public float Hardness => hardness;
 
-        public string DropItem => dropItem;
+        /// <summary>The item extracting it gives (O6), or null.</summary>
+        public ItemDefinition Drop => drop;
     }
 }

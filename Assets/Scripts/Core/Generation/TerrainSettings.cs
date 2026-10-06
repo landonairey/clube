@@ -47,6 +47,10 @@ namespace Clube.Core
         [SerializeField]
         private TerrainLayers layers = new TerrainLayers();
 
+        [Tooltip("Ore nodes through the ground (3D): cell size and, per ore, how many, how deep, how rich and how spread.")]
+        [SerializeField]
+        private OreGeneration ores = new OreGeneration();
+
         [Header("Spline")]
         [Tooltip("Remaps the fractal noise (0-1 along the bottom) to a height (0 = level - amplitude, " +
                  "1 = level + amplitude). Flat stretches make plateaus, steep ones cliffs.")]
@@ -76,6 +80,9 @@ namespace Clube.Core
         /// <summary>Settable so lab controls can switch it at runtime; call <see cref="WorldConfig.NotifyChanged"/> after.</summary>
         /// <summary>Material by depth below the surface (M10).</summary>
         public TerrainLayers Layers => layers;
+
+        /// <summary>Ore generation (3D, O1-O5).</summary>
+        public OreGeneration Ores => ores;
 
         public TerrainGeneratorType Generator
         {
