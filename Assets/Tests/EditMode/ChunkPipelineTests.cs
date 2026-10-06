@@ -81,7 +81,8 @@ namespace Clube.Core.Tests
                 pipeline.StartGeneration(Vector3Int.zero);
                 pipeline.StartGeneration(Vector3Int.right);
                 pipeline.CancelGeneration(Vector3Int.zero);
-                Assert.That(pipeline.IsGenerating(Vector3Int.zero), Is.True, "still running");
+                Assert.That(pipeline.IsGenerating(Vector3Int.zero), Is.False, "cancelled: its job may still run, but nothing waits for it");
+                Assert.That(pipeline.GeneratingCount, Is.EqualTo(2), "it still counts against the job limit until it finishes");
 
                 TakeAll(pipeline, world, 1);
                 Assert.That(world.IsLoaded(Vector3Int.right), Is.True);
