@@ -136,14 +136,18 @@ namespace Clube.Debug
             Vector3Int voxels = chunk.VoxelCount;
             Vector3Int samples = chunk.SampleCount;
             int sampleTotal = samples.x * samples.y * samples.z;
+            long bytes = chunk.DensityMemoryBytes + chunk.Materials.MemoryBytes;
+            string storage = chunk.IsUniform
+                ? (chunk.UniformDensity >= worldView.Config.IsoLevel ? "all solid, no density storage" : "all air, no density storage")
+                : $"{bytes / 1024f:0.0} KB";
             string text = $"Chunk ({coord.x}, {coord.y}, {coord.z}), origin {worldView.ChunkWorldOrigin(coord)}\n" +
-                          $"{voxels.x} × {voxels.y} × {voxels.z} voxels, {sampleTotal:N0} samples ({sampleTotal * sizeof(float) / 1024f:0.0} KB)\n" +
+                          $"{voxels.x} × {voxels.y} × {voxels.z} voxels, {sampleTotal:N0} samples ({storage})\n" +
                           (worldView.World.IsEdited(coord) ? "Edited (kept in memory when unloaded)" : "Not edited (regenerated on reload)");
             if (worldView.TryGetRenderer(coord, out ChunkRenderer chunkRenderer))
             {
                 ChunkMeshStats stats = chunkRenderer.LastBuildStats;
                 text += $"\n{stats.VertexCount:N0} vertices, {stats.TriangleCount:N0} triangles\n" +
-                        $"Build {stats.TotalMilliseconds:0.00} ms (meshing {stats.MeshingMilliseconds:0.00}, upload {stats.UploadMilliseconds:0.00})";
+                        $"Meshed in a job; upload {stats.UploadMilliseconds:0.00} ms";
             }
 
             // Solid volume inside the chunk (V11, V12 summed over its voxels).

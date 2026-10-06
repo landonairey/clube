@@ -35,8 +35,11 @@ namespace Clube.Debug.Editor
             var view = (WorldView)target;
             if (view.World != null)
             {
+                StreamingStats stats = view.Stats;
                 EditorGUILayout.HelpBox(
-                    $"Loaded {view.World.LoadedCount} chunks · waiting {view.PendingCount} · edited {view.World.EditedCount}" +
+                    $"Loaded {view.World.LoadedCount} chunks · waiting {stats.Pending} · edited {view.World.EditedCount}\n" +
+                    $"Jobs: generating {stats.Generating} · meshing {stats.Meshing} · colliders {stats.Baking} · {stats.Renderers} with surface\n" +
+                    $"Streaming {stats.FrameMilliseconds:0.00} ms: {stats.Phases}" +
                     (view.Problem != null ? $"\nGenerate skipped: {view.Problem}" : ""),
                     view.Problem != null ? MessageType.Warning : MessageType.None);
             }
