@@ -91,6 +91,53 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void CancelledThenWantedAgain_IsGeneratedAfterAll()
+        {
+            World world = NewWorld();
+            using (ChunkPipeline pipeline = NewPipeline(world, Terrain()))
+            {
+                pipeline.StartGeneration(Vector3Int.zero);
+                pipeline.CancelGeneration(Vector3Int.zero);
+                Assert.That(pipeline.IsGenerating(Vector3Int.zero), Is.False, "cancelled");
+
+                // The focus came back before the job finished.
+                pipeline.StartGeneration(Vector3Int.zero);
+                Assert.That(pipeline.IsGenerating(Vector3Int.zero), Is.True);
+                TakeAll(pipeline, world, 1);
+                Assert.That(world.IsLoaded(Vector3Int.zero), Is.True);
+            }
+        }
+
+        [Test]
+        public void CancelledMesh_DoesNotBlockTheNextOne()
+        {
+            World world = NewWorld();
+            Chunk chunk = world.Load(Vector3Int.zero, new FlatGenerator(4.5f));
+            var settings = new ChunkMeshSettings(0.5f, 1f);
+            using (ChunkPipeline pipeline = NewPipeline(world, null))
+            {
+                // Streamed out (mesh cancelled) and straight back in, before and after the old job finishes.
+                pipeline.StartMesh(Vector3Int.zero, chunk, settings);
+                pipeline.CancelMesh(Vector3Int.zero);
+                Assert.That(pipeline.IsMeshing(Vector3Int.zero), Is.False);
+                Assert.DoesNotThrow(() => pipeline.StartMesh(Vector3Int.zero, chunk, settings));
+                pipeline.CancelMesh(Vector3Int.zero);
+
+                for (int attempt = 0; attempt < 1000 && pipeline.MeshingCount > 0; attempt++)
+                {
+                    pipeline.Poll();
+                    Assert.That(pipeline.TryTakeMeshed(out _), Is.False, "a cancelled mesh is never handed out");
+                    System.Threading.Thread.Sleep(1);
+                }
+                Assert.That(pipeline.IsMeshing(Vector3Int.zero), Is.False);
+
+                pipeline.StartMesh(Vector3Int.zero, chunk, settings);
+                Assert.That(pipeline.TryTakeMeshNow(Vector3Int.zero, out ChunkPipeline.MeshResult result), Is.True);
+                result.Discard();
+            }
+        }
+
+        [Test]
         public void ChunkAboveTheColumn_IsAirWithoutAJob()
         {
             World world = NewWorld();

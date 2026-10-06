@@ -67,6 +67,8 @@ namespace Clube.Core
             world = null;
             Collider?.Clear();
             mesh?.Clear();
+            // The counts were the old chunk's; the streamer's totals already took them off.
+            LastBuildStats = default;
             gameObject.SetActive(false);
             ChunkChanged?.Invoke(null);
         }

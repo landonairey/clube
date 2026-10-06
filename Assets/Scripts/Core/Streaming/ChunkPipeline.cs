@@ -73,15 +73,16 @@ namespace Clube.Core
         /// <summary>Collider shapes cooking now, or cooked and waiting to be taken.</summary>
         public int BakingCount => baking.Count + baked.Count;
 
+        /// <summary>True from <see cref="StartGeneration"/> until the chunk is taken; false once cancelled.</summary>
         public bool IsGenerating(Vector3Int coord)
         {
-            return generating.ContainsKey(coord) || generatedCoords.Contains(coord);
+            return (generating.TryGetValue(coord, out GenerationTask task) && !task.Cancelled) || generatedCoords.Contains(coord);
         }
 
-        /// <summary>True from <see cref="StartMesh"/> until the result is taken.</summary>
+        /// <summary>True from <see cref="StartMesh"/> until the result is taken; false once cancelled.</summary>
         public bool IsMeshing(Vector3Int coord)
         {
-            return meshing.ContainsKey(coord) || meshedCoords.Contains(coord);
+            return (meshing.TryGetValue(coord, out MeshTask task) && !task.Cancelled) || meshedCoords.Contains(coord);
         }
 
         public bool IsBaking(Vector3Int coord)
@@ -113,6 +114,13 @@ namespace Clube.Core
         {
             if (IsGenerating(coord))
             {
+                return;
+            }
+
+            // Cancelled but still running (the focus went away and came back): the same chunk, so keep it.
+            if (generating.TryGetValue(coord, out GenerationTask running))
+            {
+                running.Cancelled = false;
                 return;
             }
 
@@ -196,6 +204,15 @@ namespace Clube.Core
             if (IsMeshing(coord))
             {
                 throw new InvalidOperationException($"Chunk {coord} is already meshing.");
+            }
+
+            // A cancelled job of the chunk that was here before (it streamed out and back in)
+            // shows another Chunk object: wait for it and throw its result away.
+            if (meshing.TryGetValue(coord, out MeshTask stale))
+            {
+                meshing.Remove(coord);
+                stale.Handle.Complete();
+                stale.Data.Dispose();
             }
 
             Mesh.MeshDataArray data = Mesh.AllocateWritableMeshData(1);
@@ -433,7 +450,12 @@ namespace Clube.Core
                 task.Handle.Complete();
                 task.OnFinished(frame);
                 finished.Enqueue(task);
-                finishedCoords?.Add(coord);
+
+                // A cancelled task waits in the queue only to be freed; it isn't on its way to anyone.
+                if (!task.Cancelled)
+                {
+                    finishedCoords?.Add(coord);
+                }
             }
         }
 

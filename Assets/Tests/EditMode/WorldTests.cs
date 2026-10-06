@@ -163,11 +163,14 @@ namespace Clube.Core.Tests
         {
             World world = NewWorld();
             Chunk first = world.Load(Vector3Int.zero, Terrain());
+            float density = first.GetDensity(new Vector3Int(4, 4, 4));
+
+            // Unloading an unedited chunk gives its memory back (Chunk.Release): it can't be read afterwards.
             world.Unload(Vector3Int.zero);
             Chunk second = world.Load(Vector3Int.zero, Terrain());
 
             Assert.That(second, Is.Not.SameAs(first));
-            Assert.That(second.GetDensity(new Vector3Int(4, 4, 4)), Is.EqualTo(first.GetDensity(new Vector3Int(4, 4, 4))));
+            Assert.That(second.GetDensity(new Vector3Int(4, 4, 4)), Is.EqualTo(density));
         }
 
         [Test]

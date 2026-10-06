@@ -149,6 +149,27 @@ namespace Clube.Core.Tests
             Assert.That(world.Chunks[Vector3Int.zero].GetDensity(new Vector3Int(3, 3, 3)), Is.EqualTo(ByteVoxelStorage.ToDensity(ByteVoxelStorage.Quantize(0.25f))));
         }
 
+        [Test]
+        public void LeavingAndComingBack_BeforeJobsFinish_StillShowsEverything()
+        {
+            // Start loading, leave at once (jobs cancelled mid-flight), come straight back.
+            streamer.Update(Vector3.zero);
+            streamer.Update(new Vector3(20 * Size, 0f, 0f));
+            streamer.Update(Vector3.zero);
+            Settle(Vector3.zero);
+
+            foreach (var entry in world.Chunks)
+            {
+                Assert.That(entry.Value.IsDirty, Is.False, $"{entry.Key} was meshed");
+                bool shown = pool.TryGet(entry.Key, out ChunkRenderer chunkRenderer);
+                if (!entry.Value.IsUniform && shown)
+                {
+                    Assert.That(chunkRenderer.Chunk, Is.SameAs(entry.Value), $"{entry.Key} shows its own chunk");
+                }
+            }
+            Assert.That(pool.Active.Count, Is.GreaterThan(0));
+        }
+
         // Runs frames until nothing is pending or running.
         private void Settle(Vector3 focus)
         {
