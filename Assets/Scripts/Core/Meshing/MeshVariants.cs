@@ -42,7 +42,7 @@ namespace Clube.Core
         /// <summary>The C# loop (<see cref="ChunkMesher"/>), with strategy objects (A6) and step recording (A11).</summary>
         Managed,
 
-        /// <summary>A Burst-compiled job over native arrays (<see cref="BurstChunkMesher"/>); no step recording.</summary>
+        /// <summary>A Burst-compiled job over native arrays (<see cref="ChunkMeshJob"/>), materials included; no step recording. The streamed world always uses it.</summary>
         Burst,
     }
 }
