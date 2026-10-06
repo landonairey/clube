@@ -379,6 +379,7 @@ namespace Clube.Core
                                    || StreamingArea.HorizontalDistanceSquared(coord, wantedCentre.Value) <= keep;
                 if (world.IsLoaded(coord) || !stillWanted)
                 {
+                    chunk.Release();
                     continue;
                 }
                 world.Add(coord, chunk);
