@@ -399,3 +399,94 @@ WorldLab's setting. VoxelLab and ChunkLab stay on flat floats, so their
 corner values stay exact for teaching. Saves (S2) can write the bytes as
 they are; compressing them (run-length or a general-purpose compressor) is
 a choice for S2, worth up to 20% on top.
+
+## K35 and P3 — Generation in jobs, and streaming without stalls
+
+**Question.** WorldLab dropped to about 5 fps while chunks loaded, worst at
+8 voxels per metre (M25's lead: 4 m chunks of 32³ voxels, 8 layers). Where
+did the frame go, and how far can generation, meshing and colliders move off
+the main thread?
+
+**Before** (main at `deae91e`, measured in the Editor with a script around
+`World.Load`, `ChunkMeshBuilder.Build` and a `MeshCollider` assignment;
+WorldLab's terrain, render distance 2):
+
+| World | Chunks | With surface | Generate ms/chunk | Mesh + materials ms (surface chunk) | Collider cook ms (surface chunk) |
+|---|--:|--:|--:|--:|--:|
+| 16³ at 1 m, 2 layers | 26 | 13 | 5.68 | 1.04 | 0.22 |
+| 32³ at 1/8 m, 8 layers | 104 | 14 | 31.46 | 4.16 | 0.67 |
+
+`WorldView` loaded 4 chunks a frame, each generated, meshed (with the
+material pass) and its collider cooked on the main thread: ~130 ms a frame
+at 1/8 m, so 5-8 fps, and render distance 6 (904 chunks) took about 28 s.
+Every chunk paid the full generation cost, though **87% of them had no
+surface** (all air above the ground or all solid below it).
+
+**What changed** (see `architecture.md` for the design):
+- Generation is Burst jobs (`Generation/Fill`): one height per column,
+  shared by the chunks stacked on it; uniform chunks keep no density storage;
+  a chunk above its column's highest point needs no job at all.
+- Meshing is one Burst job per chunk, materials, normals and the vertex and
+  index buffers included, written into `Mesh.MeshData`.
+- Colliders are cooked in jobs (`Physics.BakeMesh`), only within 24 m of the
+  focus: assigning a pre-baked 28,800-triangle mesh takes 0.03 ms, against
+  8.2 ms to cook it on assignment.
+- `WorldStreamer` keeps many jobs in flight across frames and holds taking
+  their results to a main-thread budget (3 ms); chunk arrays are pooled.
+
+**Conditions.** Unity 6000.3.25f1, Editor, Release code optimization,
+**Burst safety checks on** (the Editor default; a player build is faster),
+Intel Core i9-10900K (20 threads, 19 job workers). WorldLab's config:
+fractal 2D Perlin (surface 12 m, amplitude 8 m), blended materials, three
+ores, byte storage.
+
+Generation alone, 32³ chunks at 1/8 m: **0.28-0.45 ms per chunk** on one
+thread (was 31.5 ms); render distance 6's 904 chunks in **21 ms** with every
+job in flight at once.
+
+Streaming from nothing (`StreamingBenchmark`, *Clube → Benchmarks → World
+streaming (P3)*: the real `WorldStreamer` with renderers, mesh upload and
+colliders, one simulated 60 fps frame at a time). "Streamer ms/frame" is the
+main-thread time it takes per frame while loading:
+
+| World | Render distance | Chunks | With surface | Frames to settle | Time to settle | Streamer ms/frame (mean) | p95 | max |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| 16³ at 1 m | 4 | 98 | 49 | 8 | 0.17 s | 7.82* | 36.1* | 36.1* |
+| 16³ at 1 m | 6 | 226 | 113 | 10 | 0.20 s | 2.25 | 4.28 | 4.28 |
+| 16³ at 1 m | 8 | 394 | 197 | 16 | 0.37 s | 2.37 | 4.30 | 4.30 |
+| 16³ at 1 m | 10 | 634 | 317 | 23 | 0.59 s | 2.35 | 3.62 | 3.78 |
+| 32³ at 1/8 m | 4 | 392 | 57 | 14 | 0.38 s | 1.65 | 5.53 | 5.53 |
+| 32³ at 1/8 m | 6 | 904 | 153 | 27 | 0.71 s | 1.88 | 4.94 | 5.66 |
+| 32³ at 1/8 m | 8 | 1,576 | 274 | 48 | 1.26 s | 2.99 | 6.35 | 8.23 |
+| 32³ at 1/8 m | 10 | 2,536 | 431 | 69 | 1.87 s | 2.69 | 5.75 | 6.06 |
+
+\* The first row of a fresh Editor session includes the one-off JIT and
+Burst compilation of the streaming code.
+
+Walking at 5 m/s after settling (1/8 m, render distance 6), the streamer
+took **0.83 ms a frame on average, 4.7 ms at most**.
+
+**Findings.**
+- **Most of a world is uniform.** At 1/8 m, three quarters of the chunks
+  are all air or all solid and five in six have no surface: skipping their
+  work is worth more than making it fast.
+- **Jobs were never the limit once they existed.** Generation and meshing
+  for a whole render distance take tens of milliseconds spread over 19
+  workers. What decided the frame time was the main thread's share:
+  a budget and an order for taking results (meshes before new chunks, so
+  finished meshes aren't starved), no allocation per chunk (pooled arrays:
+  a garbage collection on the Editor's heap stalled frames by 5-10 ms), and
+  no work hidden in "cheap" calls (filling a new storage before
+  overwriting it cost 0.4 ms per surface chunk; sorting the wanted list on
+  every chunk border crossing cost 5.6 ms at render distance 10).
+- **Remaining frame cost is scheduling**, not taking results: starting a
+  few dozen jobs with their ore lookups and snapshots is outside the budget
+  (`architecture.md`, target 1).
+- **8 voxels per metre is now affordable to stream**, but render distance
+  is in chunks, and 10 chunks is only 40 m at 4 m per chunk. Seeing further
+  needs level of detail (P7).
+
+**Decision.** The streamed world always generates and meshes with Burst
+jobs through `ChunkPipeline`; `WorldConfig.Mesher` only picks the
+single-chunk labs' mesher. K35 is done; P1-P3 are done for the lab world
+(the lean `Game` scene, GW, builds on the same path).
