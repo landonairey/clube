@@ -163,6 +163,7 @@ namespace Clube.Core
             // A new size or storage scheme means new storage: the old densities can't be kept (K1, 2G).
             if (Chunk.VoxelCount != Config.ChunkSize || !Config.StorageMatches(Chunk.Storage))
             {
+                Chunk.Release();
                 Chunk = CreateChunk();
                 ChunkChanged?.Invoke(Chunk);
             }
