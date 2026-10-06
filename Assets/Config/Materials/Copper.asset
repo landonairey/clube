@@ -18,4 +18,4 @@ MonoBehaviour:
   albedo: {fileID: 2800000, guid: c2d558b17edd80e4c80995748a8cf877, type: 3}
   debugColor: {r: 1, g: 0.45, b: 0.15, a: 1}
   hardness: 3.5
-  dropItem: 
+  drop: {fileID: 11400000, guid: 9feabda89ca47d5479fc62960a078576, type: 2}

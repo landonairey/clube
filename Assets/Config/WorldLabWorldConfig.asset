@@ -38,6 +38,36 @@ MonoBehaviour:
       band: {fileID: 11400000, guid: 0554987880d556d4cafb280d1242eb09, type: 2}
       bandDepth: 4
       baseMaterial: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+    ores:
+      cellSize: 16
+      ores:
+      - ore: {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
+        nodesPerCell: 2
+        minDepth: 4
+        maxDepth: 16
+        peakProbability: 0.6
+        spread: {x: 1.5, y: 1, z: 1.5}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: 0
+      - ore: {fileID: 11400000, guid: 7cbb344bf40f2c04bad682cdb7df7c8b, type: 2}
+        nodesPerCell: 1
+        minDepth: 6
+        maxDepth: 20
+        peakProbability: 0.5
+        spread: {x: 1.2, y: 0.8, z: 1.2}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: 1
+      - ore: {fileID: 11400000, guid: 028349ab45517db4984a7ae07bcf9347, type: 2}
+        nodesPerCell: 0.5
+        minDepth: 8
+        maxDepth: 24
+        peakProbability: 0.45
+        spread: {x: 1, y: 0.8, z: 1}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: 2
     heightCurve:
       serializedVersion: 2
       m_Curve:
