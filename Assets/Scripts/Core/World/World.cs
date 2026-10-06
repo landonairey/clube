@@ -79,7 +79,8 @@ namespace Clube.Core
         /// loaded chunk (the existing one if it was already loaded).
         /// </summary>
         /// <param name="layers">Materials by depth for generated chunks (M10); null leaves them all id 0.</param>
-        public Chunk Load(Vector3Int coord, ITerrainGenerator generator, TerrainLayers layers = null)
+        /// <param name="ores">Ore nodes for generated chunks (3D); null for none.</param>
+        public Chunk Load(Vector3Int coord, ITerrainGenerator generator, TerrainLayers layers = null, OreField ores = null)
         {
             if (loaded.TryGetValue(coord, out Chunk existing))
             {
@@ -99,7 +100,7 @@ namespace Clube.Core
             var chunk = new Chunk(createStorage(Grid.ChunkSize + Vector3Int.one));
             if (generator != null)
             {
-                ChunkGenerator.Fill(chunk, generator, Grid.ChunkOrigin(coord), Grid.VoxelSize, layers);
+                ChunkGenerator.Fill(chunk, generator, Grid.ChunkOrigin(coord), Grid.VoxelSize, layers, ores);
             }
             loaded.Add(coord, chunk);
             CopyBordersFromEditedNeighbours(coord, chunk);

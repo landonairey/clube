@@ -522,6 +522,7 @@ GameObject:
   - component: {fileID: 1350119464}
   - component: {fileID: 1350119465}
   - component: {fileID: 1350119466}
+  - component: {fileID: 1350119467}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -677,6 +678,7 @@ MonoBehaviour:
   displayOpen: 0
   buildGridOpen: 0
   storageOpen: 0
+  oresOpen: 0
 --- !u!114 &1350119464
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -730,6 +732,23 @@ MonoBehaviour:
   margin: {x: 70, y: 70}
   lineThickness: 3
   awayDimming: 0.45
+--- !u!114 &1350119467
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9aad64c118faea4cb63c78c2c563232, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Debug::Clube.Debug.OreDebugView
+  showNodes: 0
+  showSpread: 1
+  xRay: 0
+  cubeSize: 0.5
+  vertexColorMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0

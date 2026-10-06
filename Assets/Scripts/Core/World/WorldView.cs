@@ -57,6 +57,7 @@ namespace Clube.Core
 
         private WorldConfig runtimeConfig;
         private ITerrainGenerator generator;
+        private OreField ores;
         private string terrainFingerprint;
         private Vector3Int? wantedCentre;
         private int wantedDistance;
@@ -114,6 +115,9 @@ namespace Clube.Core
 
         /// <summary>Every loaded chunk's renderer by coordinate.</summary>
         public IReadOnlyDictionary<Vector3Int, ChunkRenderer> Renderers => renderers;
+
+        /// <summary>Where ore is placed (3D), for lab views; null when the terrain has no ores.</summary>
+        public OreField Ores => ores;
 
         /// <summary>The chunk under the focus point.</summary>
         public Vector3Int FocusChunk => World.Grid.WorldToChunk(transform.InverseTransformPoint(Focus.position));
@@ -249,12 +253,14 @@ namespace Clube.Core
             try
             {
                 generator = TerrainGenerators.Create(Config.Terrain);
+                ores = OreField.Create(Config.Terrain, generator);
                 Problem = null;
             }
             catch (Exception exception) when (exception is InvalidOperationException || exception is ArgumentException)
             {
                 // e.g. the heightmap generator with no heightmap: load empty chunks and say why.
                 generator = null;
+                ores = null;
                 Problem = exception.Message;
             }
         }
@@ -334,7 +340,7 @@ namespace Clube.Core
                     continue;
                 }
 
-                Chunk chunk = World.Load(coord, generator, Config.Terrain.Layers);
+                Chunk chunk = World.Load(coord, generator, Config.Terrain.Layers, ores);
                 ChunkRenderer chunkRenderer = pool.Count > 0 ? pool.Pop() : CreateRenderer();
                 chunkRenderer.transform.localPosition = World.Grid.ChunkOrigin(coord);
                 chunkRenderer.Show(World, coord, chunk, () => Config.MeshSettings);
