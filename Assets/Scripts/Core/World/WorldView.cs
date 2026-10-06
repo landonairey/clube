@@ -63,6 +63,9 @@ namespace Clube.Core
         private bool regenerateRequested;
         private bool remeshRequested;
 
+        // chunkMaterials with the surface swapped while materials show (M15).
+        private Material[] renderMaterials;
+
         /// <summary>Raised when a chunk is loaded and given a renderer.</summary>
         public event Action<Vector3Int, ChunkRenderer> ChunkLoaded;
 
@@ -164,6 +167,7 @@ namespace Clube.Core
 
             runtimeConfig = Instantiate(config);
             runtimeConfig.name = $"{config.name} (Play mode copy)";
+            ApplyRenderMaterials();
             StartWorld();
         }
 
@@ -202,11 +206,13 @@ namespace Clube.Core
             {
                 regenerateRequested = false;
                 remeshRequested = false;
+                ApplyRenderMaterials();
                 RestartWorld();
             }
             else if (remeshRequested)
             {
                 remeshRequested = false;
+                ApplyRenderMaterials();
                 foreach (Chunk chunk in World.Chunks.Values)
                 {
                     chunk.MarkDirty();
@@ -328,7 +334,7 @@ namespace Clube.Core
                     continue;
                 }
 
-                Chunk chunk = World.Load(coord, generator);
+                Chunk chunk = World.Load(coord, generator, Config.Terrain.Layers);
                 ChunkRenderer chunkRenderer = pool.Count > 0 ? pool.Pop() : CreateRenderer();
                 chunkRenderer.transform.localPosition = World.Grid.ChunkOrigin(coord);
                 chunkRenderer.Show(World, coord, chunk, () => Config.MeshSettings);
@@ -338,11 +344,25 @@ namespace Clube.Core
             }
         }
 
+        // Picks the surface material for the config's material display and gives it to every renderer.
+        private void ApplyRenderMaterials()
+        {
+            renderMaterials = TerrainRenderMaterials.For(chunkMaterials, Config);
+            foreach (ChunkRenderer chunkRenderer in renderers.Values)
+            {
+                chunkRenderer.Renderer.sharedMaterials = renderMaterials;
+            }
+            foreach (ChunkRenderer chunkRenderer in pool)
+            {
+                chunkRenderer.Renderer.sharedMaterials = renderMaterials;
+            }
+        }
+
         private ChunkRenderer CreateRenderer()
         {
             var chunkObject = new GameObject("Chunk", typeof(MeshFilter), typeof(MeshRenderer), typeof(ChunkRenderer));
             chunkObject.transform.SetParent(transform, false);
-            chunkObject.GetComponent<MeshRenderer>().sharedMaterials = chunkMaterials;
+            chunkObject.GetComponent<MeshRenderer>().sharedMaterials = renderMaterials ?? chunkMaterials;
             if (chunkColliders)
             {
                 chunkObject.AddComponent<ChunkCollider>();

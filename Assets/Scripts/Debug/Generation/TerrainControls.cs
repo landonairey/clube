@@ -66,12 +66,35 @@ namespace Clube.Debug
             }
 
             DrawShape(frame, config, terrain);
+            DrawLayers(frame, config, terrain.Layers);
 
             // Regenerating from the config also throws away every brush edit.
             if (GUILayout.Button("Reset terrain (undo all edits)", frame.Button))
             {
                 config.NotifyChanged();
             }
+        }
+
+        // How deep the top layer and the band reach (M10); the materials themselves are set in the config asset.
+        private static void DrawLayers(LabPanelFrame frame, WorldConfig config, TerrainLayers layers)
+        {
+            if (layers.IsEmpty)
+            {
+                return;
+            }
+            float top = frame.Slider($"{Name(layers.Top)} depth (m)", layers.TopDepth, 0f, 4f, "0.0#");
+            float band = frame.Slider($"{Name(layers.Band)} down to (m)", layers.BandDepth, 0f, 16f, "0.0#");
+            if (!Mathf.Approximately(top, layers.TopDepth) || !Mathf.Approximately(band, layers.BandDepth))
+            {
+                layers.TopDepth = top;
+                layers.BandDepth = band;
+                config.NotifyChanged();
+            }
+        }
+
+        private static string Name(VoxelMaterial material)
+        {
+            return material != null ? material.DisplayName : "None";
         }
 
         // The noise shape. Each real change regenerates, so dragging reshapes the terrain live.

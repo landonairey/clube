@@ -19,6 +19,8 @@ MonoBehaviour:
   edgePlacement: 0
   shading: 0
   mesher: 0
+  materialDisplay: 2
+  materials: {fileID: 11400000, guid: 115a733b281448b47abfa44225ff27cc, type: 2}
   storage: 1
   octreeMaxDepth: 4
   terrain:
@@ -30,6 +32,12 @@ MonoBehaviour:
     lacunarity: 2
     persistence: 0.5
     seed: 1
+    layers:
+      top: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
+      topDepth: 1
+      band: {fileID: 11400000, guid: 0554987880d556d4cafb280d1242eb09, type: 2}
+      bandDepth: 4
+      baseMaterial: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
     heightCurve:
       serializedVersion: 2
       m_Curve:

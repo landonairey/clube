@@ -286,6 +286,7 @@ MonoBehaviour:
   radius: 2
   strength: 1
   falloff: 0
+  addMaterial: {fileID: 11400000, guid: 0554987880d556d4cafb280d1242eb09, type: 2}
   repeatRate: 10
   digPreviewColor: {r: 1, g: 0.3, b: 0.2, a: 0.45}
   addPreviewColor: {r: 0.3, g: 1, b: 0.4, a: 0.45}
@@ -317,8 +318,10 @@ MonoBehaviour:
   volumeOpen: 0
   stepThroughOpen: 0
   cameraOpen: 0
+  playerOpen: 0
   displayOpen: 1
   buildGridOpen: 0
+  storageOpen: 0
 --- !u!114 &1265142459
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -333,7 +336,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.BuildGridOverlay
   show: 0
   cellSize: 1
-  heightLines: 1
   lineWidth: 1.5
   opacity: 0.8
   color: {r: 0.2, g: 0.9, b: 1, a: 1}

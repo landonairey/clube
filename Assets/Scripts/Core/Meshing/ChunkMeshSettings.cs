@@ -8,13 +8,15 @@ namespace Clube.Core
             float voxelSize,
             EdgePlacement edgePlacement = EdgePlacement.Interpolated,
             Shading shading = Shading.Flat,
-            MesherBackend backend = MesherBackend.Managed)
+            MesherBackend backend = MesherBackend.Managed,
+            MaterialDisplay materialDisplay = MaterialDisplay.None)
         {
             IsoLevel = isoLevel;
             VoxelSize = voxelSize;
             EdgePlacement = edgePlacement;
             Shading = shading;
             Backend = backend;
+            MaterialDisplay = materialDisplay;
         }
 
         public float IsoLevel { get; }
@@ -27,5 +29,8 @@ namespace Clube.Core
 
         /// <summary>Which mesher builds the mesh (K12); <see cref="ChunkMesher"/> itself is always the managed one.</summary>
         public MesherBackend Backend { get; }
+
+        /// <summary>How materials show (M15); anything but None adds the material pass after meshing.</summary>
+        public MaterialDisplay MaterialDisplay { get; }
     }
 }

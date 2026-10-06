@@ -25,11 +25,11 @@ namespace Clube.Core
             this.frequency = frequency;
         }
 
-        public float Density(Vector3 position)
+        public float Depth(Vector3 position)
         {
             float bump = noise.Sample(
                 position.x * frequency + Offset, position.y * frequency + Offset, position.z * frequency + Offset);
-            return TerrainDensity.FromDepth(level - position.y + amplitude * bump);
+            return level - position.y + amplitude * bump;
         }
     }
 }

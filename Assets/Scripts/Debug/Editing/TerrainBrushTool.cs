@@ -55,6 +55,10 @@ namespace Clube.Debug
         [SerializeField]
         private BrushFalloff falloff = BrushFalloff.Hard;
 
+        [Tooltip("Material that Add gives new ground (M10). None leaves id 0.")]
+        [SerializeField]
+        private VoxelMaterial addMaterial;
+
         [Tooltip("Applications per second while the mouse button is held.")]
         [SerializeField, Range(1f, 60f)]
         private float repeatRate = 10f;
@@ -115,7 +119,14 @@ namespace Clube.Debug
             set => falloff = value;
         }
 
-        public BrushSettings Brush => new BrushSettings(radius, strength, falloff);
+        /// <summary>Material that Add gives new ground (M10).</summary>
+        public VoxelMaterial AddMaterial
+        {
+            get => addMaterial;
+            set => addMaterial = value;
+        }
+
+        public BrushSettings Brush => new BrushSettings(radius, strength, falloff, addMaterial != null ? addMaterial.Id : (byte)0);
 
         /// <summary>Samples changed by the last application, for the readout.</summary>
         public int LastChangedSamples { get; private set; }

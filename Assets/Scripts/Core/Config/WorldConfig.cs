@@ -40,6 +40,14 @@ namespace Clube.Core
         [SerializeField]
         private MesherBackend mesher = MesherBackend.Managed;
 
+        [Tooltip("How terrain materials show (M15): none (the view's own material), hard seams, blended, or debug colours. Needs a material registry.")]
+        [SerializeField]
+        private MaterialDisplay materialDisplay = MaterialDisplay.None;
+
+        [Tooltip("Every terrain material and the render materials that draw them (M9). Generation layers (Terrain) pick from it.")]
+        [SerializeField]
+        private MaterialRegistry materials;
+
         [Tooltip("How each chunk stores its densities (A12, 2G): flat floats, single bytes, runs along an axis, or a sparse octree. " +
                  "Single bytes are the game's choice (M12): a quarter of the memory at the same speed. Changing it regenerates.")]
         [SerializeField]
@@ -102,6 +110,14 @@ namespace Clube.Core
             set => mesher = value;
         }
 
+        public MaterialDisplay MaterialDisplay
+        {
+            get => materialDisplay;
+            set => materialDisplay = value;
+        }
+
+        public MaterialRegistry Materials => materials;
+
         /// <summary>How each chunk stores its densities (2G). Changing it makes new chunks.</summary>
         public VoxelStorageType Storage
         {
@@ -129,7 +145,7 @@ namespace Clube.Core
             return VoxelStorages.Create(storage, sampleCount, octreeMaxDepth);
         }
 
-        public ChunkMeshSettings MeshSettings => new ChunkMeshSettings(isoLevel, voxelSize, edgePlacement, shading, mesher);
+        public ChunkMeshSettings MeshSettings => new ChunkMeshSettings(isoLevel, voxelSize, edgePlacement, shading, mesher, materials != null ? materialDisplay : MaterialDisplay.None);
 
         public TerrainSettings Terrain => terrain;
 

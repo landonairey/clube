@@ -8,9 +8,9 @@ namespace Clube.Core
     /// </summary>
     public abstract class HeightfieldGenerator : ITerrainGenerator
     {
-        public float Density(Vector3 position)
+        public float Depth(Vector3 position)
         {
-            return TerrainDensity.FromDepth(Height(position.x, position.z) - position.y);
+            return Height(position.x, position.z) - position.y;
         }
 
         /// <summary>Ground height in world units at a horizontal position.</summary>

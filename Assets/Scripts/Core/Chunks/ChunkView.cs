@@ -17,6 +17,9 @@ namespace Clube.Core
 
         private ChunkMeshBuilder meshBuilder;
 
+        // The renderer's own materials; the first is swapped while materials show (M15).
+        private Material[] ownMaterials;
+
         // Play mode works on a copy, so Inspector tweaks during Play revert on
         // exit like scene values do, instead of being saved into the asset.
         private WorldConfig runtimeConfig;
@@ -107,6 +110,8 @@ namespace Clube.Core
             Chunk = CreateChunk();
             meshBuilder = new ChunkMeshBuilder("Chunk");
             GetComponent<MeshFilter>().sharedMesh = meshBuilder.Mesh;
+            ownMaterials = Renderer.sharedMaterials;
+            Renderer.sharedMaterials = TerrainRenderMaterials.For(ownMaterials, Config);
         }
 
         private void OnEnable()
@@ -162,6 +167,7 @@ namespace Clube.Core
                 ChunkChanged?.Invoke(Chunk);
             }
 
+            Renderer.sharedMaterials = TerrainRenderMaterials.For(ownMaterials, Config);
             Chunk.MarkDirty();
         }
     }

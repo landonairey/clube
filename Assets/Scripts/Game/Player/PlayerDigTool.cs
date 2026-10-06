@@ -40,6 +40,10 @@ namespace Clube.Game
         [SerializeField]
         private InputActionReference largerAction;
 
+        [Tooltip("Material that placing puts down (M10), e.g. dirt.")]
+        [SerializeField]
+        private VoxelMaterial placeMaterial;
+
         [Tooltip("How far from the head the player can dig or place, in metres.")]
         [SerializeField, Min(0f)]
         private float reach = 6f;
@@ -143,7 +147,8 @@ namespace Clube.Game
             {
                 return;
             }
-            worldView.ApplyBrush(Target, new BrushSettings(Radius), operation);
+            byte material = placeMaterial != null ? placeMaterial.Id : (byte)0;
+            worldView.ApplyBrush(Target, new BrushSettings(Radius, material: material), operation);
         }
 
         private static bool IsHeld(InputActionReference reference)

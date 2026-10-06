@@ -15,5 +15,8 @@ namespace Clube.Core
 
         /// <summary>Writes a sample through the field's single edit path (A7).</summary>
         void SetDensity(Vector3Int sample, float density);
+
+        /// <summary>Writes a sample's material id (M10) through the same edit path.</summary>
+        void SetMaterial(Vector3Int sample, byte material);
     }
 }
