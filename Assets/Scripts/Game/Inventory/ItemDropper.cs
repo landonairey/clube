@@ -96,7 +96,8 @@ namespace Clube.Game
             }
 
             AimPoint(out Vector3 point);
-            int placed = TerrainPile.Place(worldView.World, point, material.Id, Mathf.Min(count, stack.Count), worldView.Config.IsoLevel);
+            PileSettings pile = PileSettings.For(material, new BuildGrid(worldView.Config.BuildCellSize));
+            int placed = TerrainPile.Place(worldView.World, point, material.Id, Mathf.Min(count, stack.Count), worldView.Config.IsoLevel, pile);
             if (placed == 0)
             {
                 return 0;

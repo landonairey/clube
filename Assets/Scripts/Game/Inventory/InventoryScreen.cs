@@ -13,11 +13,7 @@ namespace Clube.Game
     [RequireComponent(typeof(PlayerInventory))]
     public class InventoryScreen : MonoBehaviour
     {
-        private const int Columns = 9;
-        private const float SlotSize = 56f;
-        private const float Gap = 4f;
         private const float Padding = 12f;
-        private const float RowGap = 14f;
 
         [Tooltip("Opens and closes the screen (Tab).")]
         [SerializeField]
@@ -85,44 +81,26 @@ namespace Clube.Game
             }
 
             Inventory items = inventory.Inventory;
-            int hotbar = inventory.HotbarSlots;
-            int backpackRows = Mathf.CeilToInt((items.SlotCount - hotbar) / (float)Columns);
-            float width = Columns * SlotSize + (Columns - 1) * Gap + Padding * 2f;
-            float height = Padding * 2f + 24f + SlotSize * (1 + backpackRows) + Gap * Mathf.Max(0, backpackRows - 1) + RowGap;
+            float width = InventoryGridGui.RowWidth + Padding * 2f;
+            float height = Padding * 2f + 24f + InventoryGridGui.PlayerHeight(inventory);
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
-            GUI.Box(panel, GUIContent.none);
+            InventoryGridGui.Panel(panel);
             GUI.Label(new Rect(panel.x + Padding, panel.y + Padding, width - Padding * 2f, 20f),
                 picked >= 0 ? $"Inventory: place {items[picked].Item?.DisplayName}" : "Inventory (Tab to close)");
 
-            // The backpack above, the hotbar row along the bottom, as on screen.
-            float top = panel.y + Padding + 24f;
-            for (int slot = hotbar; slot < items.SlotCount; slot++)
+            int clicked = InventoryGridGui.DrawPlayer(new Vector2(panel.x + Padding, panel.y + Padding + 24f), inventory, picked);
+            if (clicked < 0)
             {
-                int index = slot - hotbar;
-                DrawSlot(items, slot, panel.x + Padding + (index % Columns) * (SlotSize + Gap), top + (index / Columns) * (SlotSize + Gap));
+                return;
             }
-            float hotbarTop = top + backpackRows * (SlotSize + Gap) - Gap + RowGap;
-            for (int slot = 0; slot < hotbar; slot++)
+            if (picked < 0)
             {
-                DrawSlot(items, slot, panel.x + Padding + slot * (SlotSize + Gap), hotbarTop);
+                picked = items[clicked].IsEmpty ? -1 : clicked;
             }
-        }
-
-        private void DrawSlot(Inventory items, int slot, float x, float y)
-        {
-            var rect = new Rect(x, y, SlotSize, SlotSize);
-            ItemSlotGui.Draw(rect, items[slot], slot == picked, slot < inventory.HotbarSlots ? (slot + 1).ToString() : null);
-            if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
+            else
             {
-                if (picked < 0)
-                {
-                    picked = items[slot].IsEmpty ? -1 : slot;
-                }
-                else
-                {
-                    items.Move(picked, slot);
-                    picked = -1;
-                }
+                items.Move(picked, clicked);
+                picked = -1;
             }
         }
     }

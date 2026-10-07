@@ -38,6 +38,15 @@ namespace Clube.Game
         /// <summary>What the selected slot holds; empty for an empty slot.</summary>
         public ItemStack SelectedStack => inventory.Inventory != null ? inventory.Inventory[Selected] : ItemStack.Empty;
 
+        /// <summary>Selects a hotbar slot (0-based), as its number key does; out-of-range slots are ignored.</summary>
+        public void Select(int slot)
+        {
+            if (slot >= 0 && slot < inventory.HotbarSlots)
+            {
+                Selected = slot;
+            }
+        }
+
         private void Awake()
         {
             inventory = GetComponent<PlayerInventory>();
@@ -62,7 +71,7 @@ namespace Clube.Game
             if (slotAction != null && slotAction.action.WasPressedThisFrame()
                 && int.TryParse(slotAction.action.activeControl?.name, out int key) && key >= 1 && key <= count)
             {
-                Selected = key - 1;
+                Select(key - 1);
             }
             if (scrollAction != null)
             {

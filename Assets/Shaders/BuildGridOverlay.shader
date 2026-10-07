@@ -1,8 +1,10 @@
 // Draws a world-space build grid on a mesh: lines where the surface crosses each grid
 // cell's x and z boundaries, so the grid drapes over the terrain like a map grid (no
 // height contours), a constant number of pixels wide. Added as an extra material on
-// terrain chunks; the lab's BuildGridOverlay turns it on and sets the cell size and colour
-// through global shader values, so with the grid off (opacity 0, the default) it draws nothing.
+// terrain chunks; the lab's BuildGridOverlay or the game's build mode (BuildGridDisplay,
+// GL23) turns it on and sets the cell size and colour through global shader values, so with
+// the grid off (opacity 0, the default) it draws nothing. Build mode also shows only a local
+// patch: the grid fades out radially from a focus point, and one cell can be lit.
 Shader "Clube/Build Grid Overlay"
 {
     SubShader
@@ -28,8 +30,12 @@ Shader "Clube/Build Grid Overlay"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            // Globals, set by BuildGridOverlay (Clube.Debug).
+            // Globals, set by BuildGridOverlay (Clube.Debug) or BuildGridDisplay (Clube.Game).
             float _ClubeBuildGridOpacity;
+            // (x, z) of the focus, the fade radius in metres (0: no fade, the whole grid), unused.
+            float4 _ClubeBuildGridFocus;
+            // The lit cell: (min x, min z, size) in metres, and 1 to light it or 0.
+            float4 _ClubeBuildGridHighlight;
             float _ClubeBuildGridCellSize;
             float _ClubeBuildGridLineWidth;
             float4 _ClubeBuildGridColor;
@@ -67,11 +73,27 @@ Shader "Clube/Build Grid Overlay"
 
                 // Anti-aliased line of the requested width.
                 float coverage = 1.0 - saturate(nearest - (_ClubeBuildGridLineWidth * 0.5 - 0.5));
-                if (coverage <= 0.0)
+
+                // Build mode: fade out radially around the focus, and light one cell.
+                float fade = 1.0;
+                if (_ClubeBuildGridFocus.z > 0.0)
+                {
+                    float distance = length(input.positionWS.xz - _ClubeBuildGridFocus.xy);
+                    fade = 1.0 - smoothstep(_ClubeBuildGridFocus.z * 0.15, _ClubeBuildGridFocus.z, distance);
+                }
+                float lit = 0.0;
+                if (_ClubeBuildGridHighlight.w > 0.0)
+                {
+                    float2 inCell = (input.positionWS.xz - _ClubeBuildGridHighlight.xy) / max(_ClubeBuildGridHighlight.z, 0.001);
+                    lit = all(inCell >= 0.0) && all(inCell <= 1.0) ? 0.3 : 0.0;
+                }
+
+                float alpha = max(coverage * fade, lit) * _ClubeBuildGridOpacity;
+                if (alpha <= 0.0)
                 {
                     discard;
                 }
-                return half4(_ClubeBuildGridColor.rgb, coverage * _ClubeBuildGridOpacity);
+                return half4(_ClubeBuildGridColor.rgb, alpha);
             }
             ENDHLSL
         }
