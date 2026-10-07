@@ -51,6 +51,7 @@ namespace Clube.Debug.Editor
                 { "loose stone", (StoneBase, StoneMix, null, Wear.Loose) },
                 { "cracked copper", (StoneBase, StoneMix, CopperFleck, Wear.Cracked) },
                 { "loose copper", (StoneBase, StoneMix, CopperFleck, Wear.Loose) },
+                { "rock", (new Color(0.38f, 0.37f, 0.36f), new Color(0.55f, 0.53f, 0.5f), null, Wear.Whole) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]
