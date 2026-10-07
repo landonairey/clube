@@ -4,8 +4,9 @@ using UnityEngine.InputSystem;
 namespace Clube.Game
 {
     /// <summary>
-    /// First-person walking (M6): Move walks, Sprint runs, Jump jumps, Look turns the body
-    /// left and right and tilts the head up and down. A <see cref="CharacterController"/>
+    /// First-person walking (M6): Move walks, Sprint runs, Jump jumps (keeping its run-up:
+    /// in the air Move only steers a little), Look turns the body left and right and tilts
+    /// the head up and down. A <see cref="CharacterController"/>
     /// collides with the terrain's chunk colliders (<see cref="Clube.Core.ChunkCollider"/>);
     /// gravity is applied here. Locks the cursor while enabled; FreeCursor (Left Alt)
     /// frees it to use menus or the lab panel, pausing look until it is pressed again.
@@ -66,10 +67,15 @@ namespace Clube.Game
         [SerializeField, Min(0.1f)]
         private float gravity = 20f;
 
+        [Tooltip("How fast Move can change the velocity while in the air, in metres per second squared. Low, so a jump keeps its run-up: at 4, turning a sprint around takes about 3.5 s.")]
+        [SerializeField, Min(0f)]
+        private float airAcceleration = 4f;
+
         private CharacterController body;
         private float yaw;
         private float pitch;
         private float fallSpeed;
+        private Vector3 velocity;
         private bool isCursorFree;
 
         // Lab tuning (M16); not saved, so the game always runs on the gravity set above.
@@ -123,7 +129,7 @@ namespace Clube.Game
             }
         }
 
-        /// <summary>Moves the player without colliding on the way, and stops any fall.</summary>
+        /// <summary>Moves the player without colliding on the way, and stops any fall or momentum.</summary>
         public void Teleport(Vector3 position)
         {
             // A CharacterController overwrites a transform move made while it is enabled.
@@ -131,6 +137,7 @@ namespace Clube.Game
             transform.position = position;
             Body.enabled = true;
             fallSpeed = 0f;
+            velocity = Vector3.zero;
         }
 
         private void OnEnable()
@@ -138,6 +145,7 @@ namespace Clube.Game
             yaw = transform.eulerAngles.y;
             pitch = head != null ? Mathf.DeltaAngle(0f, head.localEulerAngles.x) : 0f;
             fallSpeed = 0f;
+            velocity = Vector3.zero;
             Enable(moveAction);
             Enable(lookAction);
             Enable(jumpAction);
@@ -188,6 +196,8 @@ namespace Clube.Game
 
             if (Body.isGrounded)
             {
+                // On the ground the player goes where Move points, at once.
+                velocity = walk;
                 fallSpeed = GroundedFallSpeed;
                 if (jumpAction != null && jumpAction.action.WasPressedThisFrame())
                 {
@@ -196,10 +206,23 @@ namespace Clube.Game
             }
             else
             {
+                // In the air the run-up carries on; Move only nudges it, so there's no
+                // turning around on a dime. Letting go keeps the momentum.
+                if (walk != Vector3.zero)
+                {
+                    velocity = Vector3.MoveTowards(velocity, walk, airAcceleration * Time.deltaTime);
+                }
                 fallSpeed += Gravity * Time.deltaTime;
             }
 
-            CollisionFlags hits = Body.Move((walk + Vector3.down * fallSpeed) * Time.deltaTime);
+            CollisionFlags hits = Body.Move((velocity + Vector3.down * fallSpeed) * Time.deltaTime);
+
+            // Running into a wall in the air stops the part of the momentum going into it.
+            if (!Body.isGrounded && (hits & CollisionFlags.Sides) != 0)
+            {
+                Vector3 moved = Body.velocity;
+                velocity = new Vector3(moved.x, 0f, moved.z);
+            }
 
             // Bumping a ceiling ends the rise.
             if ((hits & CollisionFlags.Above) != 0 && fallSpeed < 0f)
