@@ -220,25 +220,81 @@ namespace Clube.Debug.Editor
             return texture;
         }
 
-        // Dark wandering lines, wrapping at the edges so the texture still tiles.
+        // Bold, angular fractures to suit the low-poly terrain: from a few impact points,
+        // rays of straight segments that kink and sometimes fork, each a dark groove with a
+        // light bevel along one side. Thick enough to read at 4+ voxels per metre, where one
+        // voxel covers only ~16 pixels of a tile. Wraps at the edges so it still tiles.
         private static void PaintCracks(Texture2D texture, System.Random random)
         {
-            const int Cracks = 7;
-            for (int i = 0; i < Cracks; i++)
+            Color[] original = texture.GetPixels();
+            const int Impacts = 6;
+            for (int i = 0; i < Impacts; i++)
             {
-                float x = random.Next(PlaceholderSize);
-                float y = random.Next(PlaceholderSize);
-                float angle = (float)(random.NextDouble() * Mathf.PI * 2.0);
-                int length = 40 + random.Next(50);
-                for (int step = 0; step < length; step++)
+                var start = new Vector2(random.Next(PlaceholderSize), random.Next(PlaceholderSize));
+                int rays = 3 + random.Next(2);
+                float firstAngle = (float)(random.NextDouble() * Mathf.PI * 2.0);
+                for (int ray = 0; ray < rays; ray++)
                 {
-                    angle += (float)(random.NextDouble() - 0.5) * 0.8f;
-                    x += Mathf.Cos(angle);
-                    y += Mathf.Sin(angle);
-                    Darken(texture, Mathf.RoundToInt(x), Mathf.RoundToInt(y), 0.3f);
-                    Darken(texture, Mathf.RoundToInt(x) + 1, Mathf.RoundToInt(y), 0.75f);
+                    float angle = firstAngle + ray * Mathf.PI * 2f / rays + (float)(random.NextDouble() - 0.5) * 0.6f;
+                    PaintFracture(texture, original, random, start, angle, 3 + random.Next(2), 2.8f);
                 }
             }
+        }
+
+        // One fracture: straight segments of 9-17 px, kinking up to ±0.5 rad, thinning as it goes.
+        private static void PaintFracture(Texture2D texture, Color[] original, System.Random random, Vector2 from, float angle, int segments, float width)
+        {
+            for (int segment = 0; segment < segments && width > 0.6f; segment++)
+            {
+                angle += (float)(random.NextDouble() - 0.5);
+                float length = 9f + random.Next(9);
+                Vector2 to = from + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * length;
+                PaintGroove(texture, original, from, to, width);
+                if (random.NextDouble() < 0.2)
+                {
+                    float side = random.NextDouble() < 0.5 ? -1f : 1f;
+                    PaintFracture(texture, original, random, to, angle + side * (0.6f + (float)random.NextDouble() * 0.5f), 2, width * 0.6f);
+                }
+                from = to;
+                width *= 0.85f;
+            }
+        }
+
+        // A light bevel offset by a pixel, then the dark groove over it.
+        private static void PaintGroove(Texture2D texture, Color[] original, Vector2 from, Vector2 to, float width)
+        {
+            int steps = Mathf.CeilToInt(Vector2.Distance(from, to) * 2f);
+            for (int pass = 0; pass < 2; pass++)
+            {
+                Vector2 offset = pass == 0 ? new Vector2(1f, -1f) : Vector2.zero;
+                float factor = pass == 0 ? 1.35f : 0.18f;
+                float radius = pass == 0 ? width * 0.6f : width * 0.5f;
+                for (int step = 0; step <= steps; step++)
+                {
+                    Vector2 point = Vector2.Lerp(from, to, (float)step / steps) + offset;
+                    int r = Mathf.CeilToInt(radius);
+                    for (int dy = -r; dy <= r; dy++)
+                    {
+                        for (int dx = -r; dx <= r; dx++)
+                        {
+                            if (dx * dx + dy * dy <= radius * radius + 0.25f)
+                            {
+                                SetShade(texture, original, Mathf.RoundToInt(point.x) + dx, Mathf.RoundToInt(point.y) + dy, factor);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Shades from the original pixel, so overlapping stamps don't stack into black or white.
+        private static void SetShade(Texture2D texture, Color[] original, int x, int y, float factor)
+        {
+            x = ((x % PlaceholderSize) + PlaceholderSize) % PlaceholderSize;
+            y = ((y % PlaceholderSize) + PlaceholderSize) % PlaceholderSize;
+            Color color = original[y * PlaceholderSize + x] * factor;
+            color.a = 1f;
+            texture.SetPixel(x, y, color);
         }
 
         // Pebbles: wrapped Voronoi cells, each its own shade, with dark gaps between them.
@@ -290,15 +346,6 @@ namespace Clube.Debug.Editor
             dx = Mathf.Min(dx, PlaceholderSize - dx);
             dy = Mathf.Min(dy, PlaceholderSize - dy);
             return Mathf.Sqrt(dx * dx + dy * dy);
-        }
-
-        private static void Darken(Texture2D texture, int x, int y, float factor)
-        {
-            x = ((x % PlaceholderSize) + PlaceholderSize) % PlaceholderSize;
-            y = ((y % PlaceholderSize) + PlaceholderSize) % PlaceholderSize;
-            Color color = texture.GetPixel(x, y) * factor;
-            color.a = 1f;
-            texture.SetPixel(x, y, color);
         }
 
         /// <summary>Value noise on lattices that divide the texture size, so it wraps without seams.</summary>
