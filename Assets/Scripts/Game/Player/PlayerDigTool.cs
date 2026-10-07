@@ -7,9 +7,11 @@ namespace Clube.Game
     /// <summary>
     /// Digging and placing for the player (M8): Attack digs and Place adds a sphere of
     /// terrain where the view's centre meets the surface, within reach, repeating while
-    /// held. Previous and Next shrink and grow the brush, whose radius is a player setting
-    /// (A3). Edits go through <see cref="WorldView.ApplyBrush"/>, the world's single edit
-    /// path (A7, M5). Draws a crosshair.
+    /// held. While a tool is held (<see cref="PlayerToolUser"/>), Attack hits with the
+    /// tool instead and only Place uses the brush. Previous and Next shrink and grow the
+    /// brush, whose radius is a player setting (A3). Edits go through
+    /// <see cref="WorldView.ApplyBrush"/>, the world's single edit path (A7, M5). Draws a
+    /// crosshair.
     /// </summary>
     /// <remarks>
     /// Placing never fills the player's own capsule, so the player can't bury itself.
@@ -53,6 +55,7 @@ namespace Clube.Game
         private float repeatRate = 5f;
 
         private PlayerController player;
+        private PlayerToolUser tools;
         private float nextApplyTime;
 
         /// <summary>Brush radius in metres (the player setting).</summary>
@@ -70,9 +73,13 @@ namespace Clube.Game
         /// <summary>The operation held down this frame, if any: what a preview should show.</summary>
         public BrushOperation? HeldOperation { get; private set; }
 
+        /// <summary>True while the player holds a tool (<see cref="PlayerToolUser"/>): Attack then hits with the tool, and only placing uses the brush.</summary>
+        public bool ToolHeld => tools != null && tools.isActiveAndEnabled && tools.Current != null;
+
         private void Awake()
         {
             player = GetComponent<PlayerController>();
+            tools = GetComponent<PlayerToolUser>();
         }
 
         private void OnEnable()
@@ -105,9 +112,10 @@ namespace Clube.Game
             }
 
             FindTarget();
-            HeldOperation = IsHeld(digAction) ? BrushOperation.Remove : IsHeld(placeAction) ? BrushOperation.Add : (BrushOperation?)null;
+            bool digging = !ToolHeld;
+            HeldOperation = digging && IsHeld(digAction) ? BrushOperation.Remove : IsHeld(placeAction) ? BrushOperation.Add : (BrushOperation?)null;
 
-            if (ShouldApply(digAction))
+            if (digging && ShouldApply(digAction))
             {
                 Apply(BrushOperation.Remove);
             }
@@ -185,7 +193,10 @@ namespace Clube.Game
             var centre = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
             GUI.DrawTexture(new Rect(centre.x - CrosshairSize, centre.y - 1f, CrosshairSize * 2f, 2f), Texture2D.whiteTexture);
             GUI.DrawTexture(new Rect(centre.x - 1f, centre.y - CrosshairSize, 2f, CrosshairSize * 2f), Texture2D.whiteTexture);
-            GUI.Label(new Rect(centre.x + 12f, centre.y + 12f, 160f, 20f), $"Brush {Radius:0.0} m");
+            if (!ToolHeld)
+            {
+                GUI.Label(new Rect(centre.x + 12f, centre.y + 12f, 160f, 20f), $"Brush {Radius:0.0} m");
+            }
         }
     }
 }

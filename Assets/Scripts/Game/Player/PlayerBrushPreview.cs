@@ -67,7 +67,9 @@ namespace Clube.Game
         // After the dig tool's Update has found this frame's target.
         private void LateUpdate()
         {
-            bool show = digTool.isActiveAndEnabled && digTool.HasTarget && material != null;
+            // While a tool is held, the brush only places, so it only shows while placing.
+            bool show = digTool.isActiveAndEnabled && digTool.HasTarget && material != null
+                && (!digTool.ToolHeld || digTool.HeldOperation == BrushOperation.Add);
             sphere.SetActive(show);
             if (!show)
             {
