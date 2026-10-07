@@ -57,6 +57,10 @@ namespace Clube.Core
         [SerializeField, Range(1, 8)]
         private int octreeMaxDepth = VoxelStorages.DefaultOctreeMaxDepth;
 
+        [Tooltip("Size of one build cell in metres (GL17, GL23): what placed objects snap to and what hard material stacks in. A whole number of voxels works best.")]
+        [SerializeField, Range(0.25f, 4f)]
+        private float buildCellSize = 1f;
+
         [Tooltip("How the terrain is generated: generator, surface level and amplitude, noise shape, seed (K8-K10).")]
         [SerializeField]
         private TerrainSettings terrain = new TerrainSettings();
@@ -84,6 +88,13 @@ namespace Clube.Core
         {
             get => voxelSize;
             set => voxelSize = Mathf.Max(0.01f, value);
+        }
+
+        /// <summary>Size of one build cell in metres (GL17, GL23).</summary>
+        public float BuildCellSize
+        {
+            get => buildCellSize;
+            set => buildCellSize = Mathf.Clamp(value, 0.25f, 4f);
         }
 
         public float IsoLevel

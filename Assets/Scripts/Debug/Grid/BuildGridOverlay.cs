@@ -15,6 +15,8 @@ namespace Clube.Debug
         private static readonly int CellSizeId = Shader.PropertyToID("_ClubeBuildGridCellSize");
         private static readonly int LineWidthId = Shader.PropertyToID("_ClubeBuildGridLineWidth");
         private static readonly int ColorId = Shader.PropertyToID("_ClubeBuildGridColor");
+        private static readonly int FocusId = Shader.PropertyToID("_ClubeBuildGridFocus");
+        private static readonly int HighlightId = Shader.PropertyToID("_ClubeBuildGridHighlight");
 
         public const float MinCellSize = 0.25f;
         public const float MaxCellSize = 4f;
@@ -80,6 +82,9 @@ namespace Clube.Debug
             Shader.SetGlobalFloat(CellSizeId, cellSize);
             Shader.SetGlobalFloat(LineWidthId, lineWidth);
             Shader.SetGlobalColor(ColorId, color);
+            // The whole grid, nothing lit: build mode (Clube.Game) sets these for its local patch.
+            Shader.SetGlobalVector(FocusId, Vector4.zero);
+            Shader.SetGlobalVector(HighlightId, Vector4.zero);
         }
     }
 }

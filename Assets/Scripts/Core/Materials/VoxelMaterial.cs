@@ -2,6 +2,16 @@ using UnityEngine;
 
 namespace Clube.Core
 {
+    /// <summary>How dropped material of a kind piles up (GL17).</summary>
+    public enum PileShape
+    {
+        /// <summary>Soft and medium ground (dirt, grass): a cone at its angle of repose.</summary>
+        Cone,
+
+        /// <summary>Hard material (stone, ore): a square block inside a build cell.</summary>
+        Block,
+    }
+
     /// <summary>What kind of material a <see cref="VoxelMaterial"/> is (M9).</summary>
     public enum VoxelMaterialCategory
     {
@@ -51,6 +61,14 @@ namespace Clube.Core
         [SerializeField]
         private ItemDefinition drop;
 
+        [Tooltip("How it piles up when dropped (GL17): a cone for soft ground, a block in the build cell for hard material.")]
+        [SerializeField]
+        private PileShape pileShape = PileShape.Cone;
+
+        [Tooltip("Steepest slope a cone pile of it keeps, in degrees (its angle of repose).")]
+        [SerializeField, Range(10f, 80f)]
+        private float reposeAngle = 40f;
+
         [Tooltip("What a tool turns it into once broken (MF5, GL3), e.g. stone → cracked stone → loose stone. None: breaking it removes it and gives its drop.")]
         [SerializeField]
         private VoxelMaterial breaksInto;
@@ -86,6 +104,20 @@ namespace Clube.Core
         /// removes it (and gives its <see cref="Drop"/>).
         /// </summary>
         public VoxelMaterial BreaksInto => breaksInto;
+
+        /// <summary>How it piles up when dropped (GL17).</summary>
+        public PileShape PileShape => pileShape;
+
+        /// <summary>Steepest slope of a cone pile, in degrees.</summary>
+        public float ReposeAngle => reposeAngle;
+
+        /// <summary>Sets how it piles, for materials made in code (tests, tools).</summary>
+        public VoxelMaterial WithPile(PileShape shape, float angle = 40f)
+        {
+            pileShape = shape;
+            reposeAngle = Mathf.Clamp(angle, 10f, 80f);
+            return this;
+        }
 
         /// <summary>Sets how it breaks, for materials made in code (tests, tools).</summary>
         public VoxelMaterial WithBreaking(float hardness, ItemDefinition drop = null, VoxelMaterial breaksInto = null)

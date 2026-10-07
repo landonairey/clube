@@ -213,15 +213,21 @@ reach in voxels: 1, or 3x3x3; power, hit rate), `VoxelMaterial.BreaksInto`
 chains stone/copper → cracked → loose (ids 6–9), `ToolStrike` (Core/Editing)
 hits every solid corner of the reached `VoxelBox` on `World` with `StrikeDamage`;
 in Game `PlayerToolUser` (Attack hits with the hotbar's tool, else the hand),
-`ToolCursor` (a cross on each mesh vertex the targets control, from `SurfacePoints`)
+`ToolCursor` (right-angle brackets at the 4 corners of the reach, GL18)
 and `PickupNotice`. LB: `Inventory`/`ItemStack` (Core/Items, `MaxStack` per
 item), `PlayerInventory` (takes `PlayerToolUser.Collected`), `Hotbar` (1–9,
 scroll, Q), `InventoryScreen` (Tab), drawn with `ItemSlotGui`. Player brush
 size is on [ and ]; G drops the selected item back into the ground (`ItemDropper`, `TerrainPile`; ores stack 256, dirt and stone 1024). Stand-in art: *Clube → Models → Build station models* and *Clube → Items → Generate icons*. LC (GL8–GL11): `Recipe` assets and `CraftingStation`
 (Core/Crafting, work by seconds or strikes), `PlayerInteractor` (E on an
 `IInteractable` within 3 m; tools ignore what's behind it), `StationObject`
-(furnace, anvil; `SnapToGround` places them near spawn) and `StationPanel`.
+(furnace, anvil) and `StationPanel`.
 LD (GL12–GL14): `Wallet` and `PriceList` (Core/Economy), `PlayerWallet` (coins HUD), `MerchantTable` and `MerchantPanel` (sell 1 or all). LE (GL15, GL16): the loop site (a flat valley over shallow copper; P from the fly camera starts there) and `Docs/20261007 loop playtest.md`. Milestone 2's first pass is complete pending a hand playtest of the controls; the notes list what the next pass should change (shaft lips, getting out of holes, items per swing).
+Second pass, building (GL17, GL18, GL23): G drops piles shaped per material
+(`VoxelMaterial.PileShape`: dirt cones, stone and ores fill build cells; `BuildGrid`,
+`WorldConfig.BuildCellSize`). The stations are `PlaceableDefinition` starting items
+(prefabs in `Assets/Prefabs/Stations/`): with one selected, `PlayerBuilder` shows a
+preview and a local patch of the build grid (`BuildGridDisplay`), B places it and
+holding B on a `PlacedObject` picks it up with its contents.
 M25's voxel size stays open,
 and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
 

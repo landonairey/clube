@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 434cb56f54d6739459d80c3ea884e0e1, type: 3}
+  m_Name: Merchant table
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.PlaceableDefinition
+  id: merchant-table
+  displayName: Merchant table
+  icon: {fileID: 2800000, guid: 39c2093e8dfc9da4fa309d1a4775ec5c, type: 3}
+  maxStack: 1
+  prefab: {fileID: 1496179932686027658, guid: 2c8f8540ab1a5e143af6ed63263d7486, type: 3}

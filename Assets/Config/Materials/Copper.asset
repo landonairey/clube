@@ -19,4 +19,6 @@ MonoBehaviour:
   debugColor: {r: 1, g: 0.45, b: 0.15, a: 1}
   hardness: 3.5
   drop: {fileID: 11400000, guid: 9feabda89ca47d5479fc62960a078576, type: 2}
+  pileShape: 1
+  reposeAngle: 40
   breaksInto: {fileID: 11400000, guid: 7ecc65adf73d9da42aee16f413c5acb0, type: 2}

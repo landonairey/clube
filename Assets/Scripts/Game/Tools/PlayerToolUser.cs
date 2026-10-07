@@ -51,11 +51,20 @@ namespace Clube.Game
         /// <summary>Raised when a hit lands, with what it did.</summary>
         public event Action<StrikeResult> Struck;
 
-        /// <summary>The tool in hand: the selected hotbar slot's, or the hand. Null only with neither.</summary>
-        public ToolDefinition Current => hotbar != null && hotbar.SelectedStack.Item is ToolDefinition tool ? tool : hand;
+        /// <summary>
+        /// The tool in hand: the selected hotbar slot's, or the hand. Null with neither, and while
+        /// a placeable item is selected (the hands are carrying it, GL23).
+        /// </summary>
+        public ToolDefinition Current => hotbar == null ? hand
+            : hotbar.SelectedStack.Item is ToolDefinition tool ? tool
+            : hotbar.SelectedStack.Item is PlaceableDefinition ? null
+            : hand;
 
         /// <summary>True when the held tool is aimed at ground within reach this frame.</summary>
         public bool HasReach { get; private set; }
+
+        /// <summary>Where the head looks, in the world view's space; set with <see cref="Reach"/>.</summary>
+        public Vector3 AimDirection { get; private set; }
 
         /// <summary>The voxels the held tool reaches this frame (global voxel indices); valid while <see cref="HasReach"/>.</summary>
         public VoxelBox Reach { get; private set; }
@@ -123,6 +132,8 @@ namespace Clube.Game
             {
                 return;
             }
+
+            AimDirection = worldView.transform.InverseTransformDirection(head.forward);
 
             Reach = tool.ImpactAround(ToolStrike.AimedVoxel(worldView.World, hit));
             HasReach = true;

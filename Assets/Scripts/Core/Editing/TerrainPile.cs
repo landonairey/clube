@@ -3,15 +3,43 @@ using UnityEngine;
 
 namespace Clube.Core
 {
+    /// <summary>How a <see cref="TerrainPile"/> grows: its shape, slope and the cells blocks fill (GL17).</summary>
+    public readonly struct PileSettings
+    {
+        public PileSettings(PileShape shape, float reposeAngle, BuildGrid grid)
+        {
+            Shape = shape;
+            ReposeAngle = Mathf.Clamp(reposeAngle, 10f, 80f);
+            Grid = grid;
+        }
+
+        /// <summary>A 40° cone: soft ground, and what tests use.</summary>
+        public static PileSettings Cone => new PileSettings(PileShape.Cone, 40f, new BuildGrid(1f));
+
+        /// <summary>The settings for a material, on a world's build grid.</summary>
+        public static PileSettings For(VoxelMaterial material, BuildGrid grid)
+        {
+            return material != null ? new PileSettings(material.PileShape, material.ReposeAngle, grid) : new PileSettings(PileShape.Cone, 40f, grid);
+        }
+
+        public PileShape Shape { get; }
+
+        /// <summary>Steepest slope of a cone, in degrees.</summary>
+        public float ReposeAngle { get; }
+
+        public BuildGrid Grid { get; }
+    }
+
     /// <summary>
-    /// Puts material back into the ground as a small pile (dropping items, I4/I6): fills
-    /// air samples one at a time, each resting on something solid, nearest the drop point
-    /// first, so the pile grows outwards and upwards like a mound. One sample per item, the
-    /// same amount a tool removed to collect it (GL5). Writes go through the world's edit
-    /// paths (A7), so border copies stay equal.
+    /// Puts material back into the ground as a pile (dropping items, I4/I6, GL17): fills air
+    /// samples one at a time, each resting on something solid. Soft ground grows as a cone at
+    /// its angle of repose around the drop point; hard material stacks as a level-topped block
+    /// inside the build cell it lands in, one cell high, then fills the next nearest cell. One
+    /// sample per item, the same amount a tool removed to collect it (GL5). Writes go through
+    /// the world's edit paths (A7), so border copies stay equal.
     /// </summary>
     /// <remarks>
-    /// Simple stacking only: no slumping to an angle of repose yet (SM1, SM2).
+    /// Piles don't slump once made; settling over time is SM1.
     /// </remarks>
     public static class TerrainPile
     {
@@ -21,49 +49,243 @@ namespace Clube.Core
             new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
         };
 
+        // How many cells around the first one a block pile may spread to.
+        private const int BlockCellRadius = 4;
+
         // Reused between calls; edits only run on the main thread.
         private static readonly List<Vector3Int> Candidates = new List<Vector3Int>();
         private static readonly HashSet<Vector3Int> Seen = new HashSet<Vector3Int>();
+        private static readonly List<Vector2Int> CellOrder = new List<Vector2Int>();
+        private static readonly HashSet<Vector2Int> Exhausted = new HashSet<Vector2Int>();
+
+        /// <summary>Places a 40° cone (soft ground). See <see cref="Place(World, Vector3, byte, int, float, PileSettings)"/>.</summary>
+        public static int Place(World world, Vector3 point, byte material, int count, float isoLevel)
+        {
+            return Place(world, point, material, count, isoLevel, PileSettings.Cone);
+        }
 
         /// <summary>
-        /// Fills up to <paramref name="count"/> samples with <paramref name="material"/>, starting
-        /// at the air sample nearest <paramref name="point"/> (relative to the world origin).
-        /// Returns how many it filled, fewer when there's no supported air nearby or the
-        /// samples aren't loaded.
+        /// Fills up to <paramref name="count"/> samples with <paramref name="material"/> around
+        /// <paramref name="point"/> (relative to the world origin), shaped by
+        /// <paramref name="settings"/>. Returns how many it filled: fewer when there's no
+        /// supported air nearby or the samples aren't loaded.
         /// </summary>
-        public static int Place(World world, Vector3 point, byte material, int count, float isoLevel)
+        public static int Place(World world, Vector3 point, byte material, int count, float isoLevel, PileSettings settings)
+        {
+            return settings.Shape == PileShape.Block
+                ? PlaceBlocks(world, point, material, count, isoLevel, settings.Grid)
+                : PlaceCone(world, point, material, count, isoLevel, settings.ReposeAngle);
+        }
+
+        // Nearest the start first, where height counts as distance / tan(angle): every sample
+        // filled lies under a cone of that slope, which grows outwards as it fills.
+        private static int PlaceCone(World world, Vector3 point, byte material, int count, float isoLevel, float reposeAngle)
         {
             Candidates.Clear();
             Seen.Clear();
+            Vector3Int start = SettledStart(world, point, isoLevel);
+            float climb = 1f / Mathf.Tan(reposeAngle * Mathf.Deg2Rad);
+            int filled = 0;
+            while (filled < count && Candidates.Count > 0)
+            {
+                int best = 0;
+                float bestScore = float.PositiveInfinity;
+                for (int i = 0; i < Candidates.Count; i++)
+                {
+                    Vector3Int d = Candidates[i] - start;
+                    float score = Mathf.Sqrt(d.x * d.x + d.z * d.z) + Mathf.Max(0, d.y) * climb;
+                    if (score < bestScore)
+                    {
+                        bestScore = score;
+                        best = i;
+                    }
+                }
+                if (Fill(world, best, material, isoLevel, null))
+                {
+                    filled++;
+                }
+            }
+            return filled;
+        }
+
+        // A cell at a time, filling the grid cube its lowest supported air is in (cells are
+        // cubes: the build grid in height too), lowest layer first so each block comes out level. The next cell is the one lowest under a stepped cone: its
+        // height in cell layers above the drop plus its distance in cells (the lower on a tie),
+        // so a full cell sends the next drop to its sides, then its corners, then up a layer.
+        private static int PlaceBlocks(World world, Vector3 point, byte material, int count, float isoLevel, BuildGrid grid)
+        {
+            float voxel = world.Grid.VoxelSize;
+            int cellSamples = Mathf.Max(1, Mathf.RoundToInt(grid.CellSize / voxel));
+            Vector3Int start = NearestAir(world, point, isoLevel);
+            Vector2Int first = grid.Cell(point);
+            OrderCells(grid, first, point);
+            Exhausted.Clear();
+
+            int filled = 0;
+            while (filled < count)
+            {
+                // The lowest-scoring cell that still has room.
+                Vector2Int best = default;
+                int bestFloor = 0;
+                float bestScore = float.PositiveInfinity;
+                foreach (Vector2Int cell in CellOrder)
+                {
+                    if (Exhausted.Contains(cell) || !TryFloor(world, grid, cell, start.y + cellSamples * 2, cellSamples * 8, isoLevel, out int floor))
+                    {
+                        continue;
+                    }
+                    float score = (floor - start.y) / (float)cellSamples + Vector2Int.Distance(cell, first);
+                    if (score < bestScore - 1e-4f || (score < bestScore + 1e-4f && floor < bestFloor))
+                    {
+                        best = cell;
+                        bestFloor = floor;
+                        bestScore = score;
+                    }
+                }
+                if (float.IsPositiveInfinity(bestScore))
+                {
+                    break;
+                }
+
+                // Up to the top of the grid cube the floor is in, so blocks line up in height too
+                // and a half-filled cell finishes its own cube.
+                int top = (Mathf.FloorToInt((float)bestFloor / cellSamples) + 1) * cellSamples - 1;
+                int placed = FillCell(world, grid, best, bestFloor, top, material, count - filled, isoLevel);
+                if (placed == 0)
+                {
+                    Exhausted.Add(best);
+                }
+                filled += placed;
+            }
+            return filled;
+        }
+
+        // A cell's lowest supported air (over its columns), searched down from a height.
+        private static bool TryFloor(World world, BuildGrid grid, Vector2Int cell, int fromY, int distance, float isoLevel, out int floor)
+        {
+            floor = int.MaxValue;
+            grid.SampleColumns(cell, world.Grid.VoxelSize, out Vector2Int min, out Vector2Int max);
+            for (int z = min.y; z <= max.y; z++)
+            {
+                for (int x = min.x; x <= max.x; x++)
+                {
+                    if (TrySurface(world, new Vector3Int(x, fromY, z), distance, isoLevel, out Vector3Int air))
+                    {
+                        floor = Mathf.Min(floor, air.y);
+                    }
+                }
+            }
+            return floor != int.MaxValue;
+        }
+
+        // Fills a cell's supported air from its floor up to a top, lowest layer first, at most
+        // a count; returns how many it filled.
+        private static int FillCell(World world, BuildGrid grid, Vector2Int cell, int floor, int top, byte material, int count, float isoLevel)
+        {
+            grid.SampleColumns(cell, world.Grid.VoxelSize, out Vector2Int min, out Vector2Int max);
+            Candidates.Clear();
+            Seen.Clear();
+            for (int z = min.y; z <= max.y; z++)
+            {
+                for (int x = min.x; x <= max.x; x++)
+                {
+                    if (TrySurface(world, new Vector3Int(x, top + 1, z), top + 1 - floor + 1, isoLevel, out Vector3Int air))
+                    {
+                        Consider(world, air, isoLevel);
+                    }
+                }
+            }
+
+            var bounds = new RectInt(min.x, min.y, max.x - min.x + 1, max.y - min.y + 1);
+            int filled = 0;
+            while (filled < count && Candidates.Count > 0)
+            {
+                int best = 0;
+                for (int i = 1; i < Candidates.Count; i++)
+                {
+                    if (Candidates[i].y < Candidates[best].y)
+                    {
+                        best = i;
+                    }
+                }
+                if (Candidates[best].y > top)
+                {
+                    Candidates.RemoveAt(best);
+                    continue;
+                }
+                if (Fill(world, best, material, isoLevel, bounds))
+                {
+                    filled++;
+                }
+            }
+            return filled;
+        }
+
+        // Fills the candidate at an index if it's still supported air, then offers its neighbours
+        // (only those inside the columns, when given). True when it filled.
+        private static bool Fill(World world, int index, byte material, float isoLevel, RectInt? columns)
+        {
+            Vector3Int sample = Candidates[index];
+            Candidates.RemoveAt(index);
+            if (!IsSupportedAir(world, sample, isoLevel))
+            {
+                return false;
+            }
+            world.SetMaterial(sample, material);
+            world.SetDensity(sample, 1f);
+            foreach (Vector3Int face in Faces)
+            {
+                Vector3Int next = sample + face;
+                if (columns == null || columns.Value.Contains(new Vector2Int(next.x, next.z)))
+                {
+                    Consider(world, next, isoLevel);
+                }
+            }
+            return true;
+        }
+
+        // The cells a block pile may use, nearest the drop point first.
+        private static void OrderCells(BuildGrid grid, Vector2Int first, Vector3 point)
+        {
+            CellOrder.Clear();
+            for (int z = -BlockCellRadius; z <= BlockCellRadius; z++)
+            {
+                for (int x = -BlockCellRadius; x <= BlockCellRadius; x++)
+                {
+                    CellOrder.Add(first + new Vector2Int(x, z));
+                }
+            }
+            var target = new Vector2(point.x, point.z);
+            CellOrder.Sort((a, b) => (grid.Centre(a) - target).sqrMagnitude.CompareTo((grid.Centre(b) - target).sqrMagnitude));
+        }
+
+        // The start of a cone: the air sample nearest the point, settled onto the first support below.
+        private static Vector3Int SettledStart(World world, Vector3 point, float isoLevel)
+        {
             Vector3Int start = NearestAir(world, point, isoLevel);
             Consider(world, start, isoLevel);
-            // Dropped mid-air, onto a slope or into a hole: settle onto the first support below.
             for (int down = 0; Candidates.Count == 0 && down < 64; down++)
             {
                 start += Vector3Int.down;
                 Consider(world, start, isoLevel);
             }
+            return start;
+        }
 
-            int filled = 0;
-            while (filled < count && Candidates.Count > 0)
+        // Walking down from a sample: the first loaded air with solid under it, within a distance.
+        private static bool TrySurface(World world, Vector3Int from, int distance, float isoLevel, out Vector3Int air)
+        {
+            for (int i = 0; i < distance; i++)
             {
-                int best = Nearest(start);
-                Vector3Int sample = Candidates[best];
-                Candidates.RemoveAt(best);
-                if (!IsSupportedAir(world, sample, isoLevel))
+                Vector3Int sample = from + Vector3Int.down * i;
+                if (IsSupportedAir(world, sample, isoLevel))
                 {
-                    continue;
-                }
-
-                world.SetMaterial(sample, material);
-                world.SetDensity(sample, 1f);
-                filled++;
-                foreach (Vector3Int face in Faces)
-                {
-                    Consider(world, sample + face, isoLevel);
+                    air = sample;
+                    return true;
                 }
             }
-            return filled;
+            air = default;
+            return false;
         }
 
         // The air sample nearest the point: the point's own when it's air, else the nearest
@@ -131,24 +353,6 @@ namespace Clube.Core
             float? density = world.GetDensity(sample);
             float? below = world.GetDensity(sample + Vector3Int.down);
             return density.HasValue && density.Value < isoLevel && below.HasValue && below.Value >= isoLevel;
-        }
-
-        // Nearest the start, with height counting double, so the pile spreads before it climbs.
-        private static int Nearest(Vector3Int start)
-        {
-            int best = 0;
-            float bestScore = float.PositiveInfinity;
-            for (int i = 0; i < Candidates.Count; i++)
-            {
-                Vector3Int d = Candidates[i] - start;
-                float score = d.x * d.x + d.z * d.z + 2f * d.y * d.y + (d.y > 0 ? d.y : 0);
-                if (score < bestScore)
-                {
-                    bestScore = score;
-                    best = i;
-                }
-            }
-            return best;
         }
     }
 }

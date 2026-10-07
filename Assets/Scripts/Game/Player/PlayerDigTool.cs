@@ -73,8 +73,8 @@ namespace Clube.Game
         /// <summary>The operation held down this frame, if any: what a preview should show.</summary>
         public BrushOperation? HeldOperation { get; private set; }
 
-        /// <summary>True while the player holds a tool (<see cref="PlayerToolUser"/>): Attack then hits with the tool, and only placing uses the brush.</summary>
-        public bool ToolHeld => tools != null && tools.isActiveAndEnabled && tools.Current != null;
+        /// <summary>True while the player has a <see cref="PlayerToolUser"/> (the hand counts as a tool): Attack then hits with the tool, and only placing uses the brush.</summary>
+        public bool ToolHeld => tools != null && tools.isActiveAndEnabled;
 
         private void Awake()
         {
