@@ -13,10 +13,9 @@ namespace Clube.Game
     /// each collected item is reported through <see cref="Collected"/>.
     /// </summary>
     /// <remarks>
-    /// Cycle steps through the tools and then to none, which hands Attack back to the
-    /// <see cref="PlayerDigTool"/>'s sphere brush. Until the hotbar (GL7) exists, the tools
-    /// are a fixed list here. Only works while the <see cref="PlayerController"/> is enabled
-    /// and its cursor is locked.
+    /// The tool is whatever the <see cref="Hotbar"/>'s selected slot holds (GL7), or the bare
+    /// <see cref="hand"/> when that isn't a tool. Only works while the
+    /// <see cref="PlayerController"/> is enabled and its cursor is locked.
     /// </remarks>
     [RequireComponent(typeof(PlayerController))]
     public class PlayerToolUser : MonoBehaviour
@@ -28,17 +27,13 @@ namespace Clube.Game
         [SerializeField]
         private InputActionReference useAction;
 
-        [Tooltip("Steps to the next tool, then to none (the brush).")]
+        [Tooltip("Picks the held item; without one, the hand is always held.")]
         [SerializeField]
-        private InputActionReference cycleAction;
+        private Hotbar hotbar;
 
-        [Tooltip("The tools the player carries, in cycling order.")]
+        [Tooltip("Used when the selected hotbar slot holds no tool: bare hands.")]
         [SerializeField]
-        private List<ToolDefinition> tools = new List<ToolDefinition>();
-
-        [Tooltip("Which tool is held at the start; -1 for none.")]
-        [SerializeField]
-        private int startTool;
+        private ToolDefinition hand;
 
         [Tooltip("How far from the head a tool reaches, in metres.")]
         [SerializeField, Min(0f)]
@@ -47,7 +42,6 @@ namespace Clube.Game
         private readonly List<Vector3Int> targets = new List<Vector3Int>();
         private readonly List<ItemDefinition> collected = new List<ItemDefinition>();
         private PlayerController player;
-        private int toolIndex;
         private float nextHitTime;
 
         /// <summary>Raised for each item a hit collects.</summary>
@@ -56,8 +50,8 @@ namespace Clube.Game
         /// <summary>Raised when a hit lands, with what it did.</summary>
         public event Action<StrikeResult> Struck;
 
-        /// <summary>The tool in hand, or null when none is (the brush digs instead).</summary>
-        public ToolDefinition Current => toolIndex >= 0 && toolIndex < tools.Count ? tools[toolIndex] : null;
+        /// <summary>The tool in hand: the selected hotbar slot's, or the hand. Null only with neither.</summary>
+        public ToolDefinition Current => hotbar != null && hotbar.SelectedStack.Item is ToolDefinition tool ? tool : hand;
 
         /// <summary>The samples the held tool would hit this frame, as global samples of <see cref="World"/>.</summary>
         public IReadOnlyList<Vector3Int> Targets => targets;
@@ -71,13 +65,11 @@ namespace Clube.Game
         private void Awake()
         {
             player = GetComponent<PlayerController>();
-            toolIndex = startTool;
         }
 
         private void OnEnable()
         {
             useAction?.action.Enable();
-            cycleAction?.action.Enable();
         }
 
         private void OnDisable()
@@ -91,12 +83,6 @@ namespace Clube.Game
             if (!player.enabled || player.IsCursorFree || worldView == null || !worldView.IsReady)
             {
                 return;
-            }
-
-            if (cycleAction != null && cycleAction.action.WasPressedThisFrame())
-            {
-                // Past the last tool comes "none" (index -1 wraps there too).
-                toolIndex = toolIndex + 1 >= tools.Count ? -1 : toolIndex + 1;
             }
 
             ToolDefinition tool = Current;
@@ -163,7 +149,7 @@ namespace Clube.Game
                 return;
             }
             var centre = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-            GUI.Label(new Rect(centre.x + 12f, centre.y + 12f, 200f, 20f), $"{tool.DisplayName} (Q to switch)");
+            GUI.Label(new Rect(centre.x + 12f, centre.y + 12f, 200f, 20f), tool.DisplayName);
         }
     }
 }

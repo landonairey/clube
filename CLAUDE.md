@@ -208,13 +208,16 @@ gameplay loop** (GL1–GL16: pickaxe and breaking stages, inventory, furnace,
 anvil, merchant and coins; copper ore → bun → ingot → sold), ahead of the rest
 of Chapter 4. Each GL item is the thinnest first pass of a Chapter 5–7
 objective; don't build the full versions early.
-LA (GL1–GL4) is done, GL5 half: `ToolDefinition` items (Hand, Pickaxe; a
+LA and LB (GL1–GL7) are done. LA: `ToolDefinition` items (Hand, Pickaxe; a
 `ToolImpact` shape in samples, power, hit rate), `VoxelMaterial.BreaksInto`
 chains stone/copper → cracked → loose (ids 6–9), `ToolStrike` (Core/Editing)
-hits every solid sample in the tool's shape on `World` with `StrikeDamage`, and in Game
-`PlayerToolUser` (Attack hits, Q cycles tools then the brush), `ToolCursor`
-(glows on the targets' surface vertices from `SampleSurface`) and `PickupNotice`
-listening to `PlayerToolUser.Collected`; LB's inventory hooks that event.
+hits every solid sample in the tool's shape on `World` with `StrikeDamage`;
+in Game `PlayerToolUser` (Attack hits with the hotbar's tool, else the hand),
+`ToolCursor` (glows on the targets' surface vertices from `SampleSurface`)
+and `PickupNotice`. LB: `Inventory`/`ItemStack` (Core/Items, `MaxStack` per
+item), `PlayerInventory` (takes `PlayerToolUser.Collected`), `Hotbar` (1–9,
+scroll, Q), `InventoryScreen` (Tab), drawn with `ItemSlotGui`. Player brush
+size is on [ and ]. Next is LC (furnace, anvil).
 M25's voxel size stays open,
 and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
 

@@ -48,7 +48,7 @@ Core/
   Voxels/        Chunk, IVoxelStorage + schemes (2G), VoxelMaterials (M10), VoxelArrayPool
   World/         World (loaded chunks, borders, edit paths), WorldGrid (coordinates)
   Materials/     VoxelMaterial, MaterialRegistry (M9), TerrainLayers, MaterialCensus
-  Items/         ItemDefinition (O6), ToolDefinition + ToolImpact (GL1)
+  Items/         ItemDefinition (O6), ToolDefinition + ToolImpact (GL1), Inventory + ItemStack (GL6)
   Generation/    TerrainSettings, ITerrainGenerator, TerrainGenerators, ChunkGenerator
     Generators/  managed generator classes (Flat, Sine, FractalPerlin2D, Spline, Perlin3D)
     Heightmaps/  Heightmap import, HeightmapGenerator, HeightmapExport (K29)

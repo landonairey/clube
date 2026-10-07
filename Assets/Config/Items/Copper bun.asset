@@ -9,13 +9,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ecb6323010a92224e80cbf8eb67bfd7b, type: 3}
-  m_Name: Hand
-  m_EditorClassIdentifier: Clube.Core::Clube.Core.ToolDefinition
-  id: hand
-  displayName: Hand
+  m_Script: {fileID: 11500000, guid: b52a02d234816184ab26033bd6eb47c4, type: 3}
+  m_Name: Copper bun
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
+  id: copper-bun
+  displayName: Copper bun
   icon: {fileID: 0}
-  maxStack: 1
-  impact: 0
-  power: 0.5
-  hitsPerSecond: 3
+  maxStack: 16
