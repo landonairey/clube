@@ -213,11 +213,11 @@ reach in voxels: 1, or 3x3x3; power, hit rate), `VoxelMaterial.BreaksInto`
 chains stone/copper → cracked → loose (ids 6–9), `ToolStrike` (Core/Editing)
 hits every solid corner of the reached `VoxelBox` on `World` with `StrikeDamage`;
 in Game `PlayerToolUser` (Attack hits with the hotbar's tool, else the hand),
-`ToolCursor` (outlines the surface triangles in the reach, from `SurfaceOutline`)
+`ToolCursor` (a cross on each mesh vertex the targets control, from `SurfacePoints`)
 and `PickupNotice`. LB: `Inventory`/`ItemStack` (Core/Items, `MaxStack` per
 item), `PlayerInventory` (takes `PlayerToolUser.Collected`), `Hotbar` (1–9,
 scroll, Q), `InventoryScreen` (Tab), drawn with `ItemSlotGui`. Player brush
-size is on [ and ]. LC (GL8–GL11): `Recipe` assets and `CraftingStation`
+size is on [ and ]; G drops the selected item back into the ground (`ItemDropper`, `TerrainPile`; ores stack 256, dirt and stone 1024). Stand-in art: *Clube → Models → Build station models* and *Clube → Items → Generate icons*. LC (GL8–GL11): `Recipe` assets and `CraftingStation`
 (Core/Crafting, work by seconds or strikes), `PlayerInteractor` (E on an
 `IInteractable` within 3 m; tools ignore what's behind it), `StationObject`
 (furnace, anvil; `SnapToGround` places them near spawn) and `StationPanel`.

@@ -442,7 +442,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -3, y: 0, z: -9}
-  m_LocalScale: {x: 1.2, y: 1.4, z: 1.2}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1013454347}
@@ -460,7 +460,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.SnapToGround
   worldView: {fileID: 1350119460}
-  offset: 0.6
+  offset: -0.05
   searchHeight: 60
 --- !u!114 &672449815
 MonoBehaviour:
@@ -504,6 +504,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 9056fef47877ecd4590c9955842f9e3e, type: 2}
+  - {fileID: 2100000, guid: 75a0724341c32194e83abb115701d2d1, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -546,8 +547,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Size: {x: 1.4, y: 2.1399999, z: 1.44}
+  m_Center: {x: 0, y: 1.0699999, z: 0.02000001}
 --- !u!33 &672449818
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -555,7 +556,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 672449812}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: 4300000, guid: 743ea7e525cbd384e8bc0a92f4418ce0, type: 2}
 --- !u!1001 &817266636
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -960,7 +961,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -1, y: 0, z: -7.5}
-  m_LocalScale: {x: 0.9, y: 0.6, z: 0.45}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1013454347}
@@ -978,7 +979,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.SnapToGround
   worldView: {fileID: 1350119460}
-  offset: 0.25
+  offset: -0.05
   searchHeight: 60
 --- !u!114 &1389567539
 MonoBehaviour:
@@ -1022,6 +1023,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 6789e172ab46cdd48b763c13102461e4, type: 2}
+  - {fileID: 2100000, guid: fbe0fe542a5bb55408c56851eaa3ff2a, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1064,8 +1066,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Size: {x: 0.89, y: 0.76, z: 0.5}
+  m_Center: {x: 0.11500001, y: 0.38, z: 0}
 --- !u!33 &1389567542
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -1073,7 +1075,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1389567536}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: 4300000, guid: 4853685db979dea48b6c0d11e854b863, type: 2}
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -1223,6 +1225,7 @@ GameObject:
   - component: {fileID: 1697135570}
   - component: {fileID: 1697135574}
   - component: {fileID: 1697135573}
+  - component: {fileID: 1697135575}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1288,6 +1291,7 @@ MonoBehaviour:
   sprintMultiplier: 1.75
   jumpHeight: 1.2
   gravity: 20
+  airAcceleration: 4
 --- !u!143 &1697135564
 CharacterController:
   m_ObjectHideFlags: 0
@@ -1375,6 +1379,7 @@ MonoBehaviour:
   material: {fileID: 2100000, guid: 58934120d95ad0642b01915b9293d46d, type: 2}
   idleColor: {r: 1, g: 0.95, b: 0.7, a: 0.9}
   damagedColor: {r: 1, g: 0.4, b: 0.05, a: 1}
+  armLength: 0.2
 --- !u!114 &1697135569
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1466,6 +1471,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerInteractor
   interactAction: {fileID: 1781555164194001046, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   reach: 3
+--- !u!114 &1697135575
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b3f4ba1c5b6787e4c8c0b3bc772ad28a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.ItemDropper
+  worldView: {fileID: 1350119460}
+  dropAction: {fileID: 5021587687345255064, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  reach: 5
+  holdSeconds: 0.4
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -80,6 +80,19 @@ namespace Clube.Core
             return total;
         }
 
+        /// <summary>Takes up to <paramref name="count"/> from one slot; returns how many it took.</summary>
+        public int RemoveAt(int slot, int count = 1)
+        {
+            int taken = Math.Min(Math.Max(0, count), slots[slot].Count);
+            if (taken == 0)
+            {
+                return 0;
+            }
+            slots[slot] = slots[slot].WithCount(slots[slot].Count - taken);
+            Changed?.Invoke();
+            return taken;
+        }
+
         /// <summary>
         /// Removes items, from the last stacks first, so the hotbar's are kept longest. All or
         /// nothing: returns false and changes nothing when there aren't enough.
