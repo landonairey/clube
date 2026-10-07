@@ -1048,9 +1048,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.ToolCursor
   material: {fileID: 2100000, guid: 58934120d95ad0642b01915b9293d46d, type: 2}
-  idleColor: {r: 1, g: 0.95, b: 0.7, a: 0.6}
-  damagedColor: {r: 1, g: 0.45, b: 0.1, a: 1}
-  size: 0.5
+  idleColor: {r: 1, g: 0.95, b: 0.7, a: 0.9}
+  damagedColor: {r: 1, g: 0.4, b: 0.05, a: 1}
 --- !u!114 &1697135569
 MonoBehaviour:
   m_ObjectHideFlags: 0

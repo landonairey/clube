@@ -7,9 +7,9 @@ using UnityEngine.InputSystem;
 namespace Clube.Game
 {
     /// <summary>
-    /// The player working the ground with a tool (GL1, GL2, GL5): aims at the sample under the
-    /// view's centre, finds the samples the held tool reaches, and hits them on Use, at the
-    /// tool's rate while held. Rock cracks, loosens and is collected (<see cref="ToolStrike"/>);
+    /// The player working the ground with a tool (GL1, GL2, GL5): aims at the voxel under the
+    /// view's centre, finds the voxels the held tool reaches and their solid corners, and hits
+    /// those on Use, at the tool's rate while held. Rock cracks, loosens and is collected (<see cref="ToolStrike"/>);
     /// each collected item is reported through <see cref="Collected"/>.
     /// </summary>
     /// <remarks>
@@ -53,6 +53,12 @@ namespace Clube.Game
         /// <summary>The tool in hand: the selected hotbar slot's, or the hand. Null only with neither.</summary>
         public ToolDefinition Current => hotbar != null && hotbar.SelectedStack.Item is ToolDefinition tool ? tool : hand;
 
+        /// <summary>True when the held tool is aimed at ground within reach this frame.</summary>
+        public bool HasReach { get; private set; }
+
+        /// <summary>The voxels the held tool reaches this frame (global voxel indices); valid while <see cref="HasReach"/>.</summary>
+        public VoxelBox Reach { get; private set; }
+
         /// <summary>The samples the held tool would hit this frame, as global samples of <see cref="World"/>.</summary>
         public IReadOnlyList<Vector3Int> Targets => targets;
 
@@ -75,11 +81,13 @@ namespace Clube.Game
         private void OnDisable()
         {
             targets.Clear();
+            HasReach = false;
         }
 
         private void Update()
         {
             targets.Clear();
+            HasReach = false;
             if (!player.enabled || player.IsCursorFree || worldView == null || !worldView.IsReady)
             {
                 return;
@@ -107,11 +115,9 @@ namespace Clube.Game
                 return;
             }
 
-            float iso = worldView.Config.IsoLevel;
-            if (ToolStrike.TryAim(worldView.World, hit, iso, out Vector3Int aimed))
-            {
-                ToolStrike.FindTargets(worldView.World, aimed, tool.Impact, iso, targets);
-            }
+            Reach = tool.ImpactAround(ToolStrike.AimedVoxel(worldView.World, hit));
+            HasReach = true;
+            ToolStrike.FindTargets(worldView.World, Reach, worldView.Config.IsoLevel, targets);
         }
 
         // On the press, then at the tool's rate while held.

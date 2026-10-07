@@ -16,6 +16,6 @@ MonoBehaviour:
   displayName: Hand
   icon: {fileID: 0}
   maxStack: 1
-  impact: 0
+  impactSize: 1
   power: 0.5
   hitsPerSecond: 3

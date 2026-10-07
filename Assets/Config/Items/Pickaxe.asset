@@ -16,6 +16,6 @@ MonoBehaviour:
   displayName: Pickaxe
   icon: {fileID: 0}
   maxStack: 1
-  impact: 1
+  impactSize: 3
   power: 1.5
   hitsPerSecond: 2.5

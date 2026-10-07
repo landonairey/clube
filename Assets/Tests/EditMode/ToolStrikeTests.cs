@@ -53,36 +53,37 @@ namespace Clube.Core.Tests
             Object.DestroyImmediate(stoneItem);
         }
 
-        private static ToolDefinition Pickaxe(ToolImpact impact = ToolImpact.Corner)
+        private static ToolDefinition Pickaxe()
         {
-            return ToolDefinition.Create("pickaxe", "Pickaxe", impact, 1.5f);
+            return ToolDefinition.Create("pickaxe", "Pickaxe", 3, 1.5f);
         }
 
-        private List<Vector3Int> Targets(Vector3Int aimed, ToolImpact impact)
+        private List<Vector3Int> Targets(VoxelBox box)
         {
             var targets = new List<Vector3Int>();
-            ToolStrike.FindTargets(world, aimed, impact, Iso, targets);
+            ToolStrike.FindTargets(world, box, Iso, targets);
             return targets;
         }
 
         [Test]
-        public void TryAim_PicksTheSolidCornerNearestTheHit()
+        public void AimedVoxel_IsTheHitVoxelInGlobalIndices()
         {
-            var hit = new WorldHit(Vector3Int.zero, new Vector3Int(2, 1, 2), new Vector3(2.6f, 1.5f, 2.7f));
+            var hit = new WorldHit(Vector3Int.right, new Vector3Int(2, 1, 2), new Vector3(6.6f, 1.5f, 2.7f));
 
-            Assert.IsTrue(ToolStrike.TryAim(world, hit, Iso, out Vector3Int sample));
-            Assert.AreEqual(new Vector3Int(3, 1, 3), sample);
+            Assert.AreEqual(new Vector3Int(Size + 2, 1, 2), ToolStrike.AimedVoxel(world, hit));
         }
 
         [Test]
-        public void FindTargets_ReachesEverySolidSampleInTheShape()
+        public void FindTargets_ReachesEverySolidCornerOfTheVoxels()
         {
-            List<Vector3Int> targets = Targets(new Vector3Int(2, 1, 2), ToolImpact.Plus);
+            // The hand's single voxel on the floor: its four lower corners are solid.
+            Assert.AreEqual(4, Targets(VoxelBox.Around(new Vector3Int(2, 1, 2), 1)).Count);
 
-            // On a floor: the aimed sample, its four sideways neighbours and the buried one
-            // below; the one above is air.
-            Assert.AreEqual(6, targets.Count);
-            CollectionAssert.Contains(targets, new Vector3Int(2, 0, 2));
+            // The pickaxe's 3x3x3 voxels: 4x4 corners across, solid in the two lowest
+            // layers (the floor and the buried one under it), air above.
+            List<Vector3Int> targets = Targets(VoxelBox.Around(new Vector3Int(2, 1, 2), 3));
+            Assert.AreEqual(32, targets.Count);
+            CollectionAssert.Contains(targets, new Vector3Int(1, 0, 1));
             CollectionAssert.DoesNotContain(targets, new Vector3Int(2, 2, 2));
         }
 
@@ -90,7 +91,7 @@ namespace Clube.Core.Tests
         public void Hit_BreaksStoneThroughCrackedAndLooseBeforeRemovingIt()
         {
             var aimed = new Vector3Int(2, 1, 2);
-            List<Vector3Int> targets = Targets(aimed, ToolImpact.Corner);
+            var targets = new List<Vector3Int> { aimed };
             var damage = new StrikeDamage();
             var collected = new List<ItemDefinition>();
             ToolDefinition pickaxe = Pickaxe();
@@ -118,9 +119,9 @@ namespace Clube.Core.Tests
         public void Hit_WeakToolTakesHardnessOverPowerHits()
         {
             var aimed = new Vector3Int(2, 1, 2);
-            List<Vector3Int> targets = Targets(aimed, ToolImpact.Corner);
+            var targets = new List<Vector3Int> { aimed };
             var damage = new StrikeDamage();
-            ToolDefinition hand = ToolDefinition.Create("hand", "Hand", ToolImpact.Corner, 0.5f);
+            ToolDefinition hand = ToolDefinition.Create("hand", "Hand", 1, 0.5f);
 
             for (int i = 0; i < 5; i++)
             {
@@ -138,7 +139,7 @@ namespace Clube.Core.Tests
         {
             // x = 4 is shared by chunk 0 (its last sample) and chunk 1 (its first).
             var aimed = new Vector3Int(Size, 1, 2);
-            List<Vector3Int> targets = Targets(aimed, ToolImpact.Corner);
+            var targets = new List<Vector3Int> { aimed };
             var damage = new StrikeDamage();
             ToolDefinition pickaxe = Pickaxe();
 
@@ -155,22 +156,24 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void SurfaceVertices_SitWhereTheMeshCrossesTheSamplesAirEdges()
+        public void SurfaceOutline_GivesTheTriangleEdgesInsideAVoxel()
         {
             var settings = new ChunkMeshSettings(Iso, 1f);
-            var vertices = new List<Vector3>();
+            var lines = new List<Vector3>();
 
-            // A top sample (density 1) under air (0): one vertex halfway up its one air edge.
-            SampleSurface.Vertices(world, new Vector3Int(2, 1, 2), settings, vertices);
-            CollectionAssert.AreEqual(new[] { new Vector3(2f, 1.5f, 2f) }, vertices);
+            // A floor voxel: solid below, air above, so a flat square of two triangles at
+            // y = 1.5, three edges each.
+            SurfaceOutline.AddEdges(world, new Vector3Int(2, 1, 2), settings, lines);
+            Assert.AreEqual(12, lines.Count);
+            foreach (Vector3 point in lines)
+            {
+                Assert.AreEqual(1.5f, point.y, 1e-5f);
+            }
 
-            // A buried sample shows nowhere, until the one above it is gone.
-            vertices.Clear();
-            SampleSurface.Vertices(world, new Vector3Int(2, 0, 2), settings, vertices);
-            CollectionAssert.IsEmpty(vertices);
-            world.SetDensity(new Vector3Int(2, 1, 2), 0f);
-            SampleSurface.Vertices(world, new Vector3Int(2, 0, 2), settings, vertices);
-            CollectionAssert.AreEqual(new[] { new Vector3(2f, 0.5f, 2f) }, vertices);
+            // A buried voxel has no surface.
+            lines.Clear();
+            SurfaceOutline.AddEdges(world, new Vector3Int(2, 0, 2), settings, lines);
+            CollectionAssert.IsEmpty(lines);
         }
     }
 }
