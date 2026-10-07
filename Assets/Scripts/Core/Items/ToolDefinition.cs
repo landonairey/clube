@@ -30,7 +30,7 @@ namespace Clube.Core
         /// <summary>Makes a tool in code (tests); the game's tools are assets.</summary>
         public static ToolDefinition Create(string id, string displayName, ToolImpact impact, float power, float hitsPerSecond = 2f)
         {
-            ToolDefinition tool = Create<ToolDefinition>(id, displayName);
+            ToolDefinition tool = Create<ToolDefinition>(id, displayName, 1);
             tool.impact = impact;
             tool.power = Mathf.Max(0.01f, power);
             tool.hitsPerSecond = hitsPerSecond;
