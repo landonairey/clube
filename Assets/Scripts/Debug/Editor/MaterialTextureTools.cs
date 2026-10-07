@@ -12,7 +12,8 @@ namespace Clube.Debug.Editor
     /// <item><i>Build texture array</i> packs every registry material's albedo into the
     /// registry's texture array, one layer per id. Run it after changing materials or textures.</item>
     /// <item><i>Generate placeholder textures</i> paints simple tileable noise textures for the
-    /// starting materials (grass, dirt, stone and the three ores in stone) until real art exists.</item>
+    /// starting materials (grass, dirt, stone and the three ores in stone), and cracked and
+    /// loose stages of stone and copper (GL3), until real art exists.</item>
     /// </list>
     /// </summary>
     public static class MaterialTextureTools
@@ -20,17 +21,33 @@ namespace Clube.Debug.Editor
         private const string PlaceholderFolder = "Assets/Textures/Terrain";
         private const int PlaceholderSize = 128;
 
-        // Natural colours for the placeholders: a base, a second colour mixed in by noise, and
-        // for ores the colour of the flecks scattered through stone.
-        private static readonly Dictionary<string, (Color Base, Color Mix, Color? Fleck)> Placeholders =
-            new Dictionary<string, (Color, Color, Color?)>
+        /// <summary>How broken a placeholder looks: whole, cracked or loose rubble (GL3).</summary>
+        private enum Wear
+        {
+            Whole,
+            Cracked,
+            Loose,
+        }
+
+        private static readonly Color StoneBase = new Color(0.45f, 0.45f, 0.47f);
+        private static readonly Color StoneMix = new Color(0.60f, 0.60f, 0.62f);
+        private static readonly Color CopperFleck = new Color(0.80f, 0.42f, 0.22f);
+
+        // Natural colours for the placeholders: a base, a second colour mixed in by noise, for
+        // ores the colour of the flecks scattered through stone, and how broken it looks (GL3).
+        private static readonly Dictionary<string, (Color Base, Color Mix, Color? Fleck, Wear Wear)> Placeholders =
+            new Dictionary<string, (Color, Color, Color?, Wear)>
             {
-                { "grass", (new Color(0.30f, 0.50f, 0.18f), new Color(0.45f, 0.62f, 0.25f), null) },
-                { "dirt", (new Color(0.40f, 0.28f, 0.18f), new Color(0.52f, 0.38f, 0.25f), null) },
-                { "stone", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), null) },
-                { "gold", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), new Color(0.95f, 0.78f, 0.25f)) },
-                { "silver", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), new Color(0.88f, 0.90f, 0.95f)) },
-                { "copper", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), new Color(0.80f, 0.42f, 0.22f)) },
+                { "grass", (new Color(0.30f, 0.50f, 0.18f), new Color(0.45f, 0.62f, 0.25f), null, Wear.Whole) },
+                { "dirt", (new Color(0.40f, 0.28f, 0.18f), new Color(0.52f, 0.38f, 0.25f), null, Wear.Whole) },
+                { "stone", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), null, Wear.Whole) },
+                { "gold", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), new Color(0.95f, 0.78f, 0.25f), Wear.Whole) },
+                { "silver", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), new Color(0.88f, 0.90f, 0.95f), Wear.Whole) },
+                { "copper", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), new Color(0.80f, 0.42f, 0.22f), Wear.Whole) },
+                { "cracked stone", (StoneBase, StoneMix, null, Wear.Cracked) },
+                { "loose stone", (StoneBase, StoneMix, null, Wear.Loose) },
+                { "cracked copper", (StoneBase, StoneMix, CopperFleck, Wear.Cracked) },
+                { "loose copper", (StoneBase, StoneMix, CopperFleck, Wear.Loose) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]
@@ -136,10 +153,10 @@ namespace Clube.Debug.Editor
         {
             Directory.CreateDirectory(PlaceholderFolder);
             int seed = 1;
-            foreach (KeyValuePair<string, (Color Base, Color Mix, Color? Fleck)> entry in Placeholders)
+            foreach (KeyValuePair<string, (Color Base, Color Mix, Color? Fleck, Wear Wear)> entry in Placeholders)
             {
                 string path = $"{PlaceholderFolder}/{entry.Key}.png";
-                File.WriteAllBytes(path, Paint(entry.Value.Base, entry.Value.Mix, entry.Value.Fleck, seed++).EncodeToPNG());
+                File.WriteAllBytes(path, Paint(entry.Value.Base, entry.Value.Mix, entry.Value.Fleck, entry.Value.Wear, seed++).EncodeToPNG());
                 AssetDatabase.ImportAsset(path);
                 var importer = (TextureImporter)AssetImporter.GetAtPath(path);
                 importer.isReadable = true;
@@ -150,7 +167,7 @@ namespace Clube.Debug.Editor
             UnityEngine.Debug.Log($"Wrote {Placeholders.Count} placeholder textures to {PlaceholderFolder}.");
         }
 
-        private static Texture2D Paint(Color baseColor, Color mix, Color? fleck, int seed)
+        private static Texture2D Paint(Color baseColor, Color mix, Color? fleck, Wear wear, int seed)
         {
             var texture = new Texture2D(PlaceholderSize, PlaceholderSize, TextureFormat.RGBA32, false);
             var random = new System.Random(seed);
@@ -190,8 +207,98 @@ namespace Clube.Debug.Editor
                     }
                 }
             }
+
+            if (wear == Wear.Cracked)
+            {
+                PaintCracks(texture, random);
+            }
+            else if (wear == Wear.Loose)
+            {
+                PaintRubble(texture, random);
+            }
             texture.Apply();
             return texture;
+        }
+
+        // Dark wandering lines, wrapping at the edges so the texture still tiles.
+        private static void PaintCracks(Texture2D texture, System.Random random)
+        {
+            const int Cracks = 7;
+            for (int i = 0; i < Cracks; i++)
+            {
+                float x = random.Next(PlaceholderSize);
+                float y = random.Next(PlaceholderSize);
+                float angle = (float)(random.NextDouble() * Mathf.PI * 2.0);
+                int length = 40 + random.Next(50);
+                for (int step = 0; step < length; step++)
+                {
+                    angle += (float)(random.NextDouble() - 0.5) * 0.8f;
+                    x += Mathf.Cos(angle);
+                    y += Mathf.Sin(angle);
+                    Darken(texture, Mathf.RoundToInt(x), Mathf.RoundToInt(y), 0.3f);
+                    Darken(texture, Mathf.RoundToInt(x) + 1, Mathf.RoundToInt(y), 0.75f);
+                }
+            }
+        }
+
+        // Pebbles: wrapped Voronoi cells, each its own shade, with dark gaps between them.
+        private static void PaintRubble(Texture2D texture, System.Random random)
+        {
+            const int Pebbles = 36;
+            const float Gap = 2.5f;
+            var centres = new Vector2[Pebbles];
+            var shades = new float[Pebbles];
+            for (int i = 0; i < Pebbles; i++)
+            {
+                centres[i] = new Vector2(random.Next(PlaceholderSize), random.Next(PlaceholderSize));
+                shades[i] = 0.75f + 0.4f * (float)random.NextDouble();
+            }
+
+            for (int y = 0; y < PlaceholderSize; y++)
+            {
+                for (int x = 0; x < PlaceholderSize; x++)
+                {
+                    float nearest = float.MaxValue;
+                    float second = float.MaxValue;
+                    int cell = 0;
+                    for (int i = 0; i < Pebbles; i++)
+                    {
+                        float distance = WrappedDistance(new Vector2(x, y), centres[i]);
+                        if (distance < nearest)
+                        {
+                            second = nearest;
+                            nearest = distance;
+                            cell = i;
+                        }
+                        else if (distance < second)
+                        {
+                            second = distance;
+                        }
+                    }
+                    float edge = Mathf.Clamp01((second - nearest) / Gap);
+                    Color color = texture.GetPixel(x, y) * shades[cell] * Mathf.Lerp(0.25f, 1f, edge);
+                    color.a = 1f;
+                    texture.SetPixel(x, y, color);
+                }
+            }
+        }
+
+        private static float WrappedDistance(Vector2 a, Vector2 b)
+        {
+            float dx = Mathf.Abs(a.x - b.x);
+            float dy = Mathf.Abs(a.y - b.y);
+            dx = Mathf.Min(dx, PlaceholderSize - dx);
+            dy = Mathf.Min(dy, PlaceholderSize - dy);
+            return Mathf.Sqrt(dx * dx + dy * dy);
+        }
+
+        private static void Darken(Texture2D texture, int x, int y, float factor)
+        {
+            x = ((x % PlaceholderSize) + PlaceholderSize) % PlaceholderSize;
+            y = ((y % PlaceholderSize) + PlaceholderSize) % PlaceholderSize;
+            Color color = texture.GetPixel(x, y) * factor;
+            color.a = 1f;
+            texture.SetPixel(x, y, color);
         }
 
         /// <summary>Value noise on lattices that divide the texture size, so it wraps without seams.</summary>
