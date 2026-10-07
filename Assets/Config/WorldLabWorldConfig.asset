@@ -38,6 +38,10 @@ MonoBehaviour:
       band: {fileID: 11400000, guid: 0554987880d556d4cafb280d1242eb09, type: 2}
       bandDepth: 4
       baseMaterial: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+      steepAngle: 35
+      steepMinHeight: 24
+      rock: {fileID: 11400000, guid: 0973106d156e276488793d7f6a916724, type: 2}
+      rockChance: 0.004
     ores:
       cellSize: 16
       ores:

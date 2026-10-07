@@ -5,16 +5,19 @@ namespace Clube.Core
 {
     /// <summary>
     /// Everything generation does once each sample's depth below the surface is known (K35):
-    /// the density (<see cref="TerrainDensity"/>), the material layer (M10), the ore rolls (3D),
-    /// and the chunk's <see cref="ChunkFillSummary"/>. Every generation path ends here
+    /// the density (<see cref="TerrainDensity"/>), the material layer (M10, bare rock on steep
+    /// columns, GL21), the ore rolls (3D), the surface rocks (GL22), and the chunk's
+    /// <see cref="ChunkFillSummary"/>. Every generation path ends here
     /// (<see cref="HeightfieldFillJob"/>, <see cref="VolumeFillJob{TVolume}"/> and
     /// <see cref="DepthFillJob"/>), so they can't disagree. Burst-compatible static code.
     /// </summary>
     public static class ChunkFillKernel
     {
         /// <param name="depths">Each sample's depth below the surface, in metres; read only.</param>
+        /// <param name="steepColumns">One per column (x fastest, then z): non-zero where the surface is steep
+        /// enough to be bare rock (GL21). Empty when the generator has no columns; nothing is steep then.</param>
         public static void Run(
-            NativeArray<float> depths, in ChunkSampleGrid grid, in ChunkFillSettings settings,
+            NativeArray<float> depths, NativeArray<byte> steepColumns, in ChunkSampleGrid grid, in ChunkFillSettings settings,
             NativeArray<OreNodeData> ores, ref ChunkFillOutput output)
         {
             if (settings.Format == DensityFormat.Byte)
@@ -28,10 +31,16 @@ namespace Clube.Core
                 output.Summary[0] = new ChunkFillSummary { UniformDensity = low == high, Density = low };
             }
 
-            WriteLayers(depths, settings.Layers, output.Materials);
+            WriteLayers(depths, steepColumns, grid, settings.Layers, output.Materials);
             if (ores.Length > 0)
             {
                 StampOres(depths, grid, settings.Seed, ores, output.Materials);
+            }
+            if (settings.Layers.RockChance > 0f && StampRocks(depths, steepColumns, grid, settings, ref output))
+            {
+                ChunkFillSummary withRocks = output.Summary[0];
+                withRocks.UniformDensity = false;
+                output.Summary[0] = withRocks;
             }
 
             ChunkFillSummary summary = output.Summary[0];
@@ -83,12 +92,100 @@ namespace Clube.Core
             high = (byte)highest;
         }
 
-        private static void WriteLayers(NativeArray<float> depths, in LayerTable layers, NativeArray<byte> materials)
+        private static void WriteLayers(
+            NativeArray<float> depths, NativeArray<byte> steepColumns, in ChunkSampleGrid grid, in LayerTable layers, NativeArray<byte> materials)
         {
-            for (int i = 0; i < depths.Length; i++)
+            if (steepColumns.Length == 0)
             {
-                materials[i] = layers.MaterialAt(depths[i]);
+                for (int i = 0; i < depths.Length; i++)
+                {
+                    materials[i] = layers.MaterialAt(depths[i]);
+                }
+                return;
             }
+
+            int3 count = grid.SampleCount;
+            for (int z = 0; z < count.z; z++)
+            {
+                for (int y = 0; y < count.y; y++)
+                {
+                    for (int x = 0; x < count.x; x++)
+                    {
+                        int i = grid.Index(x, y, z);
+                        materials[i] = layers.MaterialAt(depths[i], steepColumns[x + count.x * z] != 0);
+                    }
+                }
+            }
+        }
+
+        // Small rocks on the top layer (GL22): a column starts a cluster by a hash of its global
+        // position and the seed, and a cluster covers 1-3 columns (itself, then +x, then +z).
+        // In each covered column the first sample above the surface (depth in [-voxel, 0))
+        // becomes solid rock, a small bump in the mesh. Everything depends only on global
+        // positions, so chunks sharing a border agree. Returns true when it placed any.
+        private static bool StampRocks(
+            NativeArray<float> depths, NativeArray<byte> steepColumns, in ChunkSampleGrid grid, in ChunkFillSettings settings, ref ChunkFillOutput output)
+        {
+            LayerTable layers = settings.Layers;
+            bool bytes = settings.Format == DensityFormat.Byte;
+            bool any = false;
+            int3 count = grid.SampleCount;
+            for (int z = 0; z < count.z; z++)
+            {
+                for (int x = 0; x < count.x; x++)
+                {
+                    if (steepColumns.Length > 0 && steepColumns[x + count.x * z] != 0)
+                    {
+                        continue;
+                    }
+                    int2 column = grid.FirstSample.xz + new int2(x, z);
+                    if (!IsRockColumn(settings.Seed, column, layers.RockChance))
+                    {
+                        continue;
+                    }
+                    for (int y = 0; y < count.y; y++)
+                    {
+                        int i = grid.Index(x, y, z);
+                        float depth = depths[i];
+                        if (depth >= 0f || depth < -grid.VoxelSize)
+                        {
+                            continue;
+                        }
+                        if (bytes)
+                        {
+                            output.DensityBytes[i] = 255;
+                        }
+                        else
+                        {
+                            output.Densities[i] = 1f;
+                        }
+                        output.Materials[i] = layers.Rock;
+                        any = true;
+                    }
+                }
+            }
+            return any;
+        }
+
+        // Salts keep the rock hashes apart from the ore rolls'.
+        private const int RockSalt = 0x524F434B;
+
+        /// <summary>True when a global column is covered by a surface rock cluster (GL22).</summary>
+        public static bool IsRockColumn(int seed, int2 column, float chance)
+        {
+            return ClusterSize(seed, column, chance) >= 1
+                || ClusterSize(seed, column - new int2(1, 0), chance) >= 2
+                || ClusterSize(seed, column - new int2(0, 1), chance) >= 3;
+        }
+
+        // How many columns the cluster starting at a column covers: 0 when none starts there.
+        private static int ClusterSize(int seed, int2 column, float chance)
+        {
+            if (VoxelHash.Uniform(seed, column.x, 0, column.y, RockSalt) >= chance)
+            {
+                return 0;
+            }
+            return 1 + (int)(VoxelHash.Hash(seed, column.x, 0, column.y, RockSalt + 1) % 3u);
         }
 
         // Node by node over the samples each node reaches, rather than every node for every
