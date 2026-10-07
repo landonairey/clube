@@ -42,6 +42,7 @@ namespace Clube.Game
         private readonly List<Vector3Int> targets = new List<Vector3Int>();
         private readonly List<ItemDefinition> collected = new List<ItemDefinition>();
         private PlayerController player;
+        private PlayerInteractor interactor;
         private float nextHitTime;
 
         /// <summary>Raised for each item a hit collects.</summary>
@@ -71,6 +72,7 @@ namespace Clube.Game
         private void Awake()
         {
             player = GetComponent<PlayerController>();
+            interactor = GetComponent<PlayerInteractor>();
         }
 
         private void OnEnable()
@@ -89,6 +91,13 @@ namespace Clube.Game
             targets.Clear();
             HasReach = false;
             if (!player.enabled || player.IsCursorFree || worldView == null || !worldView.IsReady)
+            {
+                return;
+            }
+
+            // Looking at a station or another usable thing: Interact is for it, and the
+            // ground behind it is left alone.
+            if (interactor != null && interactor.Target != null)
             {
                 return;
             }
