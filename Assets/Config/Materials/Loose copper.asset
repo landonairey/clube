@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d59954c0fdd2f5d4c9594a66c55f0fc1, type: 3}
-  m_Name: Copper
+  m_Name: Loose copper
   m_EditorClassIdentifier: Clube.Core::Clube.Core.VoxelMaterial
-  id: 3
-  displayName: Copper
+  id: 9
+  displayName: Loose copper
   category: 1
-  albedo: {fileID: 2800000, guid: c2d558b17edd80e4c80995748a8cf877, type: 3}
-  debugColor: {r: 1, g: 0.45, b: 0.15, a: 1}
-  hardness: 3.5
+  albedo: {fileID: 2800000, guid: 3261ad6638a4dd445a70e7d902212b7d, type: 3}
+  debugColor: {r: 1, g: 0.65, b: 0.4, a: 1}
+  hardness: 0.25
   drop: {fileID: 11400000, guid: 9feabda89ca47d5479fc62960a078576, type: 2}
-  breaksInto: {fileID: 11400000, guid: 7ecc65adf73d9da42aee16f413c5acb0, type: 2}
+  breaksInto: {fileID: 0}

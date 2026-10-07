@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 791bd2f032751fe438513fb5dd86f0c3, type: 3}
   m_Name: WorldLabWorldConfig
   m_EditorClassIdentifier: Clube.Core::Clube.Core.WorldConfig
-  chunkSize: {x: 16, y: 16, z: 16}
-  worldHeightInChunks: 2
-  voxelSize: 1
+  chunkSize: {x: 32, y: 32, z: 32}
+  worldHeightInChunks: 6
+  voxelSize: 0.25
   isoLevel: 0.5
   edgePlacement: 0
   shading: 0
@@ -24,10 +24,10 @@ MonoBehaviour:
   storage: 1
   octreeMaxDepth: 4
   terrain:
-    generator: 4
-    surfaceLevel: 12
-    amplitude: 8
-    frequency: 0.03
+    generator: 5
+    surfaceLevel: 28.033195
+    amplitude: 13.012448
+    frequency: 0.048485477
     octaves: 4
     lacunarity: 2
     persistence: 0.5
@@ -90,8 +90,8 @@ MonoBehaviour:
         inWeight: 0
         outWeight: 0
       - serializedVersion: 3
-        time: 0.55
-        value: 0.75
+        time: 0.8246006
+        value: 0.95385665
         inSlope: 0
         outSlope: 0
         tangentMode: 0

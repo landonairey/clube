@@ -41,6 +41,14 @@ namespace Clube.Core
         private VoxelMaterial[] byId;
         private Vector4[] colors;
 
+        /// <summary>Makes a registry in code (tests, tools); the game's registry is an asset.</summary>
+        public static MaterialRegistry Create(params VoxelMaterial[] materials)
+        {
+            var registry = CreateInstance<MaterialRegistry>();
+            registry.materials.AddRange(materials);
+            return registry;
+        }
+
         public IReadOnlyList<VoxelMaterial> Materials => materials;
 
         /// <summary>Set by the Editor's texture array builder.</summary>

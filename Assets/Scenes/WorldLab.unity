@@ -555,7 +555,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 76097a2a7bf54db4ab48aea71d39cf4d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.WorldDebugView
-  showChunkBorders: 1
+  showChunkBorders: 0
   borderColor: {r: 0.45, g: 0.47, b: 0.52, a: 1}
   focusColor: {r: 1, g: 0.85, b: 0.2, a: 1}
   lineMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
@@ -617,9 +617,11 @@ MonoBehaviour:
   - {fileID: 2100000, guid: ae35e53838faf9a41b52f47d227d1236, type: 2}
   - {fileID: 2100000, guid: 26a88a27891ca024d969d561d22be9c8, type: 2}
   focus: {fileID: 0}
-  renderDistance: 4
-  chunksPerFrame: 4
+  renderDistance: 16
+  frameBudgetMilliseconds: 3
+  maxJobsInFlight: 0
   chunkColliders: 1
+  colliderRadius: 24
 --- !u!4 &1350119461
 Transform:
   m_ObjectHideFlags: 0
@@ -675,8 +677,8 @@ MonoBehaviour:
   stepThroughOpen: 0
   cameraOpen: 0
   playerOpen: 0
-  displayOpen: 0
-  buildGridOpen: 0
+  displayOpen: 1
+  buildGridOpen: 1
   storageOpen: 0
   oresOpen: 0
 --- !u!114 &1350119464
@@ -890,6 +892,9 @@ GameObject:
   - component: {fileID: 1697135562}
   - component: {fileID: 1697135561}
   - component: {fileID: 1697135566}
+  - component: {fileID: 1697135569}
+  - component: {fileID: 1697135568}
+  - component: {fileID: 1697135567}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1013,6 +1018,56 @@ MonoBehaviour:
   digColor: {r: 1, g: 0.3, b: 0.2, a: 0.3}
   placeColor: {r: 0.3, g: 1, b: 0.4, a: 0.3}
   blockedColor: {r: 0.5, g: 0.5, b: 0.5, a: 0.2}
+--- !u!114 &1697135567
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 914c0679690522947b022164658dc878, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PickupNotice
+  showSeconds: 2.5
+  fadeSeconds: 0.5
+--- !u!114 &1697135568
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d484ec9138e70d441950522eb7ec7057, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.ToolCursor
+  material: {fileID: 2100000, guid: 58934120d95ad0642b01915b9293d46d, type: 2}
+  idleColor: {r: 1, g: 0.95, b: 0.7, a: 0.6}
+  damagedColor: {r: 1, g: 0.45, b: 0.1, a: 1}
+  size: 0.5
+--- !u!114 &1697135569
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f117b0f1da303cf4e863be91a915a57d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerToolUser
+  worldView: {fileID: 1350119460}
+  useAction: {fileID: 1120369429361536294, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  cycleAction: {fileID: -4816418233369286161, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  tools:
+  - {fileID: 11400000, guid: 0cd0e3994cf57324687ce5035ec165d3, type: 2}
+  - {fileID: 11400000, guid: 5c26ed0b0bc9f364eb573719b28d57bf, type: 2}
+  startTool: 1
+  reach: 4
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ecb6323010a92224e80cbf8eb67bfd7b, type: 3}
+  m_Name: Pickaxe
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.ToolDefinition
+  id: pickaxe
+  displayName: Pickaxe
+  icon: {fileID: 0}
+  impact: 1
+  power: 1.5
+  hitsPerSecond: 2.5

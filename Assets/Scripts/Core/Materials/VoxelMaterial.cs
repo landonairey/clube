@@ -43,13 +43,17 @@ namespace Clube.Core
         [SerializeField]
         private Color debugColor = Color.grey;
 
-        [Tooltip("How hard it is to extract, relative to dirt = 1. Sets digging speed once tools exist (MF1).")]
+        [Tooltip("How hard it is to extract, relative to dirt = 1: how many hits of a tool it takes to break (GL3): each hit adds the tool's power, and it breaks once that reaches its hardness.")]
         [SerializeField, Min(0f)]
         private float hardness = 1f;
 
         [Tooltip("The item extracting it gives (O6).")]
         [SerializeField]
         private ItemDefinition drop;
+
+        [Tooltip("What a tool turns it into once broken (MF5, GL3), e.g. stone → cracked stone → loose stone. None: breaking it removes it and gives its drop.")]
+        [SerializeField]
+        private VoxelMaterial breaksInto;
 
         /// <summary>Makes a material in code (tests, tools); the game's materials are assets.</summary>
         public static VoxelMaterial Create(int id, string displayName, VoxelMaterialCategory category = VoxelMaterialCategory.Aggregate)
@@ -76,5 +80,20 @@ namespace Clube.Core
 
         /// <summary>The item extracting it gives (O6), or null.</summary>
         public ItemDefinition Drop => drop;
+
+        /// <summary>
+        /// The material a tool turns it into once broken (MF5, GL3), or null when breaking it
+        /// removes it (and gives its <see cref="Drop"/>).
+        /// </summary>
+        public VoxelMaterial BreaksInto => breaksInto;
+
+        /// <summary>Sets how it breaks, for materials made in code (tests, tools).</summary>
+        public VoxelMaterial WithBreaking(float hardness, ItemDefinition drop = null, VoxelMaterial breaksInto = null)
+        {
+            this.hardness = Mathf.Max(0f, hardness);
+            this.drop = drop;
+            this.breaksInto = breaksInto;
+            return this;
+        }
     }
 }

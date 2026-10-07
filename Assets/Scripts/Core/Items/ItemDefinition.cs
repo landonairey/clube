@@ -21,6 +21,22 @@ namespace Clube.Core
         [SerializeField]
         private Texture2D icon;
 
+        /// <summary>Makes an item in code (tests, tools); the game's items are assets.</summary>
+        public static ItemDefinition Create(string id, string displayName)
+        {
+            return Create<ItemDefinition>(id, displayName);
+        }
+
+        /// <summary>Makes an item of a derived kind in code (tests, tools).</summary>
+        protected static T Create<T>(string id, string displayName) where T : ItemDefinition
+        {
+            var item = CreateInstance<T>();
+            item.id = id;
+            item.displayName = displayName;
+            item.name = displayName;
+            return item;
+        }
+
         public string Id => id;
 
         public string DisplayName => displayName;
