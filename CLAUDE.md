@@ -208,7 +208,7 @@ gameplay loop** (GL1–GL16: pickaxe and breaking stages, inventory, furnace,
 anvil, merchant and coins; copper ore → bun → ingot → sold), ahead of the rest
 of Chapter 4. Each GL item is the thinnest first pass of a Chapter 5–7
 objective; don't build the full versions early.
-LA and LB (GL1–GL7) are done. LA: `ToolDefinition` items (Hand, Pickaxe; a
+LA, LB and LC (GL1–GL11) are done. LA: `ToolDefinition` items (Hand, Pickaxe; a
 reach in voxels: 1, or 3x3x3; power, hit rate), `VoxelMaterial.BreaksInto`
 chains stone/copper → cracked → loose (ids 6–9), `ToolStrike` (Core/Editing)
 hits every solid corner of the reached `VoxelBox` on `World` with `StrikeDamage`;
@@ -217,7 +217,11 @@ in Game `PlayerToolUser` (Attack hits with the hotbar's tool, else the hand),
 and `PickupNotice`. LB: `Inventory`/`ItemStack` (Core/Items, `MaxStack` per
 item), `PlayerInventory` (takes `PlayerToolUser.Collected`), `Hotbar` (1–9,
 scroll, Q), `InventoryScreen` (Tab), drawn with `ItemSlotGui`. Player brush
-size is on [ and ]. Next is LC (furnace, anvil).
+size is on [ and ]. LC (GL8–GL11): `Recipe` assets and `CraftingStation`
+(Core/Crafting, work by seconds or strikes), `PlayerInteractor` (E on an
+`IInteractable` within 3 m; tools ignore what's behind it), `StationObject`
+(furnace, anvil; `SnapToGround` places them near spawn) and `StationPanel`.
+Next is LD (coins, price list, merchant table).
 M25's voxel size stays open,
 and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
 
@@ -234,7 +238,7 @@ and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
 - Folder structure: code under `Assets/Scripts/{Core,Debug,Game}/`, one
   asmdef per folder, grouped by feature inside (e.g. `Core/Meshing/`).
   Core's folders are layers (A14, `Docs/architecture.md`): data (`Voxels`,
-  `World`, `Materials`, `Config`, `Items`) → algorithms (`Generation`,
+  `World`, `Materials`, `Config`, `Items`, `Crafting`) → algorithms (`Generation`,
   `Meshing`, `Editing`, `Queries`, `Volume`) → `Streaming` → `Rendering`
   (everything with a GameObject). Lower layers never use higher ones.
   Inspector/editor code goes in `Debug/Editor/` (`Clube.Debug.Editor`,

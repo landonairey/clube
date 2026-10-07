@@ -32,7 +32,7 @@ below it:
 | Presentation | `Rendering/` | Yes: MonoBehaviours, meshes, colliders | Main thread |
 | Runtime | `Streaming/` | Mesh data and job handles only | Main thread, schedules jobs |
 | Algorithms | `Generation/`, `Meshing/`, `Editing/`, `Queries/`, `Volume/` | No (structs, static code, managed reference paths) | Jobs or main thread |
-| Data | `Voxels/`, `World/`, `Materials/`, `Items/`, `Config/` | Only ScriptableObjects for definitions | Main thread |
+| Data | `Voxels/`, `World/`, `Materials/`, `Items/`, `Crafting/`, `Config/` | Only ScriptableObjects for definitions | Main thread |
 
 The rule that keeps this tidy: **data and algorithms never reach up.** A
 `Chunk` doesn't know it is drawn; a generator doesn't know about chunks; the
@@ -49,6 +49,7 @@ Core/
   World/         World (loaded chunks, borders, edit paths), WorldGrid (coordinates)
   Materials/     VoxelMaterial, MaterialRegistry (M9), TerrainLayers, MaterialCensus
   Items/         ItemDefinition (O6), ToolDefinition (GL1), Inventory + ItemStack (GL6)
+  Crafting/      Recipe, CraftingStation (GL8)
   Generation/    TerrainSettings, ITerrainGenerator, TerrainGenerators, ChunkGenerator
     Generators/  managed generator classes (Flat, Sine, FractalPerlin2D, Spline, Perlin3D)
     Heightmaps/  Heightmap import, HeightmapGenerator, HeightmapExport (K29)
