@@ -75,14 +75,14 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void FindTargets_ReachesOnlyExposedSolidSamples()
+        public void FindTargets_ReachesEverySolidSampleInTheShape()
         {
             List<Vector3Int> targets = Targets(new Vector3Int(2, 1, 2), ToolImpact.Plus);
 
-            // The aimed sample and its four sideways neighbours touch the air above; the one
-            // below is buried and the one above is air.
-            Assert.AreEqual(5, targets.Count);
-            CollectionAssert.DoesNotContain(targets, new Vector3Int(2, 0, 2));
+            // On a floor: the aimed sample, its four sideways neighbours and the buried one
+            // below; the one above is air.
+            Assert.AreEqual(6, targets.Count);
+            CollectionAssert.Contains(targets, new Vector3Int(2, 0, 2));
             CollectionAssert.DoesNotContain(targets, new Vector3Int(2, 2, 2));
         }
 
@@ -155,15 +155,22 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void RemovingASample_ExposesTheOneBelow()
+        public void SurfaceVertices_SitWhereTheMeshCrossesTheSamplesAirEdges()
         {
-            var aimed = new Vector3Int(2, 1, 2);
-            var below = new Vector3Int(2, 0, 2);
-            Assert.IsFalse(ToolStrike.IsExposedSolid(world, below, Iso));
+            var settings = new ChunkMeshSettings(Iso, 1f);
+            var vertices = new List<Vector3>();
 
-            world.SetDensity(aimed, 0f);
+            // A top sample (density 1) under air (0): one vertex halfway up its one air edge.
+            SampleSurface.Vertices(world, new Vector3Int(2, 1, 2), settings, vertices);
+            CollectionAssert.AreEqual(new[] { new Vector3(2f, 1.5f, 2f) }, vertices);
 
-            Assert.IsTrue(ToolStrike.IsExposedSolid(world, below, Iso));
+            // A buried sample shows nowhere, until the one above it is gone.
+            vertices.Clear();
+            SampleSurface.Vertices(world, new Vector3Int(2, 0, 2), settings, vertices);
+            CollectionAssert.IsEmpty(vertices);
+            world.SetDensity(new Vector3Int(2, 1, 2), 0f);
+            SampleSurface.Vertices(world, new Vector3Int(2, 0, 2), settings, vertices);
+            CollectionAssert.AreEqual(new[] { new Vector3(2f, 0.5f, 2f) }, vertices);
         }
     }
 }

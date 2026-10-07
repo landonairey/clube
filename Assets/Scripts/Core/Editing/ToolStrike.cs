@@ -9,22 +9,15 @@ namespace Clube.Core
     /// write goes through the world's edit paths and border copies stay equal (A7, M2).
     /// </summary>
     /// <remarks>
-    /// A hit adds the tool's power to the damage of every exposed solid sample in its impact
-    /// shape. A sample whose damage reaches its material's hardness breaks: it turns into the
-    /// material's <see cref="VoxelMaterial.BreaksInto"/> (solid → cracked → loose), or, at
-    /// the end of that chain, it's removed and its <see cref="VoxelMaterial.Drop"/> collected.
-    /// Only exposed samples (touching air) are reached, so a tool chips the surface away
-    /// rather than cracking rock it can't see.
+    /// A hit adds the tool's power to the damage of every solid sample in its impact shape,
+    /// buried ones too, so the shape works in 3D: on a floor the pickaxe also cracks the
+    /// sample below the aimed one, on a wall the one behind it. A sample whose damage reaches
+    /// its material's hardness breaks: it turns into the material's
+    /// <see cref="VoxelMaterial.BreaksInto"/> (solid → cracked → loose), or, at the end of
+    /// that chain, it's removed and its <see cref="VoxelMaterial.Drop"/> collected.
     /// </remarks>
     public static class ToolStrike
     {
-        // The six face neighbours: a solid sample touching air through one of them is exposed.
-        private static readonly Vector3Int[] Faces =
-        {
-            Vector3Int.right, Vector3Int.left, Vector3Int.up, Vector3Int.down,
-            new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
-        };
-
         /// <summary>
         /// The sample a tool aimed at a surface point works on: the solid corner of the hit
         /// voxel nearest the point. False if none of its corners is solid.
@@ -52,37 +45,19 @@ namespace Clube.Core
             return !float.IsPositiveInfinity(best);
         }
 
-        /// <summary>The samples a tool aimed at <paramref name="aimed"/> reaches: the exposed solid ones in its shape.</summary>
+        /// <summary>The samples a tool aimed at <paramref name="aimed"/> reaches: the loaded solid ones in its shape.</summary>
         public static void FindTargets(World world, Vector3Int aimed, ToolImpact impact, float isoLevel, List<Vector3Int> targets)
         {
             targets.Clear();
             foreach (Vector3Int offset in ToolImpacts.Offsets(impact))
             {
                 Vector3Int sample = aimed + offset;
-                if (IsExposedSolid(world, sample, isoLevel))
+                float? density = world.GetDensity(sample);
+                if (density.HasValue && density.Value >= isoLevel)
                 {
                     targets.Add(sample);
                 }
             }
-        }
-
-        /// <summary>True for a loaded solid sample with air on at least one face. Unloaded neighbours count as solid.</summary>
-        public static bool IsExposedSolid(World world, Vector3Int sample, float isoLevel)
-        {
-            float? density = world.GetDensity(sample);
-            if (!density.HasValue || density.Value < isoLevel)
-            {
-                return false;
-            }
-            foreach (Vector3Int face in Faces)
-            {
-                float? neighbour = world.GetDensity(sample + face);
-                if (neighbour.HasValue && neighbour.Value < isoLevel)
-                {
-                    return true;
-                }
-            }
-            return false;
         }
 
         /// <summary>One hit of a tool on the given samples (from <see cref="FindTargets"/>).</summary>

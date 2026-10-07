@@ -5,19 +5,20 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// The tool cursor (GL4, first pass of TL3): a soft glow on every sample ("corner") the
-    /// held tool would hit, so the player sees exactly what a swing reaches. Each glow warms
-    /// from <see cref="idleColor"/> towards <see cref="damagedColor"/> as its sample takes
-    /// damage, showing how close it is to breaking. The targets are solid samples, so they
-    /// sit just inside the ground: the glow material draws through it
-    /// (<c>Clube/Tool Cursor Glow</c>).
+    /// The tool cursor (GL4, first pass of TL3): lights up the surface the held tool would
+    /// hit. The targets are solid samples ("corners"), which sit just inside the ground, so
+    /// the glows go on the polygon corners each target gives the mesh
+    /// (<see cref="SampleSurface"/>): always on the surface the player sees. A buried target
+    /// shows nothing until digging uncovers it. Each glow warms from
+    /// <see cref="idleColor"/> towards <see cref="damagedColor"/> as its sample takes
+    /// damage, showing how close it is to breaking.
     /// </summary>
     [RequireComponent(typeof(PlayerToolUser))]
     public class ToolCursor : MonoBehaviour
     {
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
-        [Tooltip("A glow material with a _BaseColor that draws through the ground (ToolCursorGlow).")]
+        [Tooltip("A glow material with a _BaseColor (ToolCursorGlow).")]
         [SerializeField]
         private Material material;
 
@@ -29,9 +30,10 @@ namespace Clube.Game
 
         [Tooltip("Glow diameter as a fraction of the voxel size.")]
         [SerializeField, Range(0.1f, 1f)]
-        private float size = 0.6f;
+        private float size = 0.5f;
 
         private readonly List<MeshRenderer> glows = new List<MeshRenderer>();
+        private readonly List<Vector3> vertices = new List<Vector3>();
         private PlayerToolUser tools;
         private MaterialPropertyBlock properties;
 
@@ -69,18 +71,25 @@ namespace Clube.Game
                 return;
             }
 
-            ShowCount(targets.Count);
             World world = view.World;
-            float voxelSize = world.Grid.VoxelSize;
-            for (int i = 0; i < targets.Count; i++)
+            ChunkMeshSettings settings = view.Config.MeshSettings;
+            Vector3 scale = Vector3.one * (world.Grid.VoxelSize * size);
+            int shown = 0;
+            foreach (Vector3Int sample in targets)
             {
-                Vector3Int sample = targets[i];
-                Transform glow = glows[i].transform;
-                glow.SetPositionAndRotation(view.transform.TransformPoint(world.Grid.SampleToWorld(sample)), Quaternion.identity);
-                glow.localScale = Vector3.one * (voxelSize * size);
-                properties.SetColor(BaseColorId, Color.Lerp(idleColor, damagedColor, DamageFraction(view, sample)));
-                glows[i].SetPropertyBlock(properties);
+                vertices.Clear();
+                SampleSurface.Vertices(world, sample, settings, vertices);
+                Color color = Color.Lerp(idleColor, damagedColor, DamageFraction(view, sample));
+                foreach (Vector3 vertex in vertices)
+                {
+                    MeshRenderer glow = Glow(shown++);
+                    glow.transform.SetPositionAndRotation(view.transform.TransformPoint(vertex), Quaternion.identity);
+                    glow.transform.localScale = scale;
+                    properties.SetColor(BaseColorId, color);
+                    glow.SetPropertyBlock(properties);
+                }
             }
+            ShowCount(shown);
         }
 
         // How far a sample is towards breaking, 0-1.
@@ -97,13 +106,19 @@ namespace Clube.Game
             return hardness > 0f ? Mathf.Clamp01(damage / hardness) : 1f;
         }
 
-        // Shows the first count glows, making more as needed, and hides the rest.
-        private void ShowCount(int count)
+        // The glow at an index, made when first needed.
+        private MeshRenderer Glow(int index)
         {
-            while (glows.Count < count)
+            while (glows.Count <= index)
             {
                 glows.Add(CreateGlow());
             }
+            return glows[index];
+        }
+
+        // Shows the first count glows and hides the rest.
+        private void ShowCount(int count)
+        {
             for (int i = 0; i < glows.Count; i++)
             {
                 if (glows[i] != null)

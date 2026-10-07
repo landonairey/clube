@@ -1,5 +1,6 @@
-// A soft glow for the tool cursor (GL4): drawn additively and without a depth test, so
-// a marked corner shows even though it sits just inside the ground, as it always does.
+// A soft glow for the tool cursor (GL4), drawn additively on the terrain surface: each
+// glow sits on a polygon corner, so the half above the ground shows and terrain in front
+// of it still hides it.
 // Brightest where the sphere faces the camera and fading to nothing at its rim, so it
 // reads as a glow rather than a ball. The colour comes from _BaseColor (alpha scales it),
 // set per glow through a MaterialPropertyBlock.
@@ -22,7 +23,7 @@ Shader "Clube/Tool Cursor Glow"
 
             Blend One One
             ZWrite Off
-            ZTest Always
+            ZTest LEqual
             Cull Back
 
             HLSLPROGRAM
