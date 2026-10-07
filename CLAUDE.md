@@ -207,7 +207,15 @@ Benchmarks → World streaming*) measures frames. Chunk byte arrays come from
 gameplay loop** (GL1–GL16: pickaxe and breaking stages, inventory, furnace,
 anvil, merchant and coins; copper ore → bun → ingot → sold), ahead of the rest
 of Chapter 4. Each GL item is the thinnest first pass of a Chapter 5–7
-objective; don't build the full versions early. M25's voxel size stays open,
+objective; don't build the full versions early.
+LA (GL1–GL4) is done, GL5 half: `ToolDefinition` items (Hand, Pickaxe; a
+`ToolImpact` shape in samples, power, hit rate), `VoxelMaterial.BreaksInto`
+chains stone/copper → cracked → loose (ids 6–9), `ToolStrike` (Core/Editing)
+hits exposed solid samples on `World` with `StrikeDamage`, and in Game
+`PlayerToolUser` (Attack hits, Q cycles tools then the brush), `ToolCursor`
+(`Clube/Tool Cursor Glow`, draws through the ground) and `PickupNotice`
+listening to `PlayerToolUser.Collected`; LB's inventory hooks that event.
+M25's voxel size stays open,
 and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
 
 ## Conventions

@@ -48,7 +48,7 @@ Core/
   Voxels/        Chunk, IVoxelStorage + schemes (2G), VoxelMaterials (M10), VoxelArrayPool
   World/         World (loaded chunks, borders, edit paths), WorldGrid (coordinates)
   Materials/     VoxelMaterial, MaterialRegistry (M9), TerrainLayers, MaterialCensus
-  Items/         ItemDefinition (O6)
+  Items/         ItemDefinition (O6), ToolDefinition + ToolImpact (GL1)
   Generation/    TerrainSettings, ITerrainGenerator, TerrainGenerators, ChunkGenerator
     Generators/  managed generator classes (Flat, Sine, FractalPerlin2D, Spline, Perlin3D)
     Heightmaps/  Heightmap import, HeightmapGenerator, HeightmapExport (K29)
@@ -60,7 +60,7 @@ Core/
     Managed/     ChunkMesher and its strategies, the managed material pass: labs, step-through (A11)
     Jobs/        ChunkMeshJob: the Burst mesh build the world runs
     Recording/   MeshingRecorder (A11)
-  Editing/       TerrainBrush (K13–K16), IDensityField, IEditableTerrain
+  Editing/       TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5), IDensityField, IEditableTerrain
   Queries/       SurfaceRaycast, VoxelRaycast
   Volume/        VoxelVolume, ChunkVolume (V11, V12, K30)
   Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea
@@ -303,7 +303,7 @@ Notes for upcoming chapters, so new code lands in the right layer.
 | **M25 voxel size → LOD (P7).** At 8 voxels/m a chunk is 4 m wide, so render distance 10 is only 40 m. Seeing further needs coarser chunks far away. | `Streaming/` (which LOD a chunk column gets) + the existing jobs | Generation is a pure function of position and `ChunkSampleGrid` carries the voxel size, so a coarse chunk is the same jobs on a bigger voxel. Coarse chunks need no data kept and no colliders; seams between levels need skirts or Transvoxel. Render distance should become metres (or per-LOD rings) rather than chunks. |
 | **P5 caves, P12 multi-noise terrain** | new `IVolumeField` / `IHeightField` structs in `Fields/` | A height field plus a 3D modifier can be one volume field that samples the column height; see "Adding a generator". |
 | **P6 / S1–S6 save and load** | a new `Core/Persistence/` (format, versioning), called by `World` | `World.KeptChunks` and `IsEdited` say what to save; `VoxelStorages.Write/Read` serialize any scheme; run-length is the compact saved form (K26). Do file I/O in a job or a thread (S5). |
-| **I5 mining → inventory, PK1 mixed ore** | `Editing/` (what was removed, per material) → `Game` (inventory) | `TerrainBrush` returns `BrushResult`; extend it with removed volume per material id (the brush already reads each sample's material). |
+| **I5 mining → inventory, PK1 mixed ore** | `Editing/` (what was removed, per material) → `Game` (inventory) | Tools already collect: `ToolStrike.Hit` adds one drop per removed sample and `PlayerToolUser.Collected` reports it (GL5), so the inventory (GL6) subscribes there. For the brush, `BrushResult` would need removed volume per material id (the brush already reads each sample's material). |
 | **N1 inventory, CR crafting, T tech tree** | plain C# data models in Core (or a new `Clube.Items` / `Clube.Economy` assembly when they grow), UI in `Clube.Game` | `ItemDefinition` (O6) is the start. Keep the models free of MonoBehaviours so they're unit-testable (G3). |
 | **ST1 settlement scoring, U1 mini map** | `Generation/` queries | Column heights and `OreField.NodesInCell` answer "what's here" without generating voxels. |
 | **PK9/PK10 falling terrain, PK11 explosives** | `Editing/` | Everything goes through the A7 edit path; the streamer rebuilds whatever it dirties in the same frame (`MaxEditsPerFrame` caps a huge blast; the rest follow next frame). |
