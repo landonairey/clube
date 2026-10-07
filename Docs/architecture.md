@@ -61,7 +61,7 @@ Core/
     Jobs/        ChunkMeshJob: the Burst mesh build the world runs
     Recording/   MeshingRecorder (A11)
   Editing/       TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5), IDensityField, IEditableTerrain
-  Queries/       SurfaceRaycast, VoxelRaycast
+  Queries/       SurfaceRaycast, VoxelRaycast, SampleSurface (GL4)
   Volume/        VoxelVolume, ChunkVolume (V11, V12, K30)
   Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea
   Rendering/     WorldView, ChunkView, ChunkRenderer(+Pool), ChunkCollider, ChunkMeshBuilder

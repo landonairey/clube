@@ -211,9 +211,9 @@ objective; don't build the full versions early.
 LA (GL1–GL4) is done, GL5 half: `ToolDefinition` items (Hand, Pickaxe; a
 `ToolImpact` shape in samples, power, hit rate), `VoxelMaterial.BreaksInto`
 chains stone/copper → cracked → loose (ids 6–9), `ToolStrike` (Core/Editing)
-hits exposed solid samples on `World` with `StrikeDamage`, and in Game
+hits every solid sample in the tool's shape on `World` with `StrikeDamage`, and in Game
 `PlayerToolUser` (Attack hits, Q cycles tools then the brush), `ToolCursor`
-(`Clube/Tool Cursor Glow`, draws through the ground) and `PickupNotice`
+(glows on the targets' surface vertices from `SampleSurface`) and `PickupNotice`
 listening to `PlayerToolUser.Collected`; LB's inventory hooks that event.
 M25's voxel size stays open,
 and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
