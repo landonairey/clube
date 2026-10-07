@@ -208,7 +208,7 @@ gameplay loop** (GL1–GL16: pickaxe and breaking stages, inventory, furnace,
 anvil, merchant and coins; copper ore → bun → ingot → sold), ahead of the rest
 of Chapter 4. Each GL item is the thinnest first pass of a Chapter 5–7
 objective; don't build the full versions early.
-LA–LD (GL1–GL14) are done. LA: `ToolDefinition` items (Hand, Pickaxe; a
+LA–LE (GL1–GL16) are done. LA: `ToolDefinition` items (Hand, Pickaxe; a
 reach in voxels: 1, or 3x3x3; power, hit rate), `VoxelMaterial.BreaksInto`
 chains stone/copper → cracked → loose (ids 6–9), `ToolStrike` (Core/Editing)
 hits every solid corner of the reached `VoxelBox` on `World` with `StrikeDamage`;
@@ -221,7 +221,7 @@ size is on [ and ]; G drops the selected item back into the ground (`ItemDropper
 (Core/Crafting, work by seconds or strikes), `PlayerInteractor` (E on an
 `IInteractable` within 3 m; tools ignore what's behind it), `StationObject`
 (furnace, anvil; `SnapToGround` places them near spawn) and `StationPanel`.
-LD (GL12–GL14): `Wallet` and `PriceList` (Core/Economy), `PlayerWallet` (coins HUD), `MerchantTable` and `MerchantPanel` (sell 1 or all). Next is LE: the loop setup and playtest (GL15, GL16).
+LD (GL12–GL14): `Wallet` and `PriceList` (Core/Economy), `PlayerWallet` (coins HUD), `MerchantTable` and `MerchantPanel` (sell 1 or all). LE (GL15, GL16): the loop site (a flat valley over shallow copper; P from the fly camera starts there) and `Docs/20261007 loop playtest.md`. Milestone 2's first pass is complete pending a hand playtest of the controls; the notes list what the next pass should change (shaft lips, getting out of holes, items per swing).
 M25's voxel size stays open,
 and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
 
