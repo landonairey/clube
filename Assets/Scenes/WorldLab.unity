@@ -895,6 +895,9 @@ GameObject:
   - component: {fileID: 1697135569}
   - component: {fileID: 1697135568}
   - component: {fileID: 1697135567}
+  - component: {fileID: 1697135572}
+  - component: {fileID: 1697135571}
+  - component: {fileID: 1697135570}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1062,12 +1065,55 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerToolUser
   worldView: {fileID: 1350119460}
   useAction: {fileID: 1120369429361536294, guid: 052faaac586de48259a63d0c4782560b, type: 3}
-  cycleAction: {fileID: -4816418233369286161, guid: 052faaac586de48259a63d0c4782560b, type: 3}
-  tools:
-  - {fileID: 11400000, guid: 0cd0e3994cf57324687ce5035ec165d3, type: 2}
-  - {fileID: 11400000, guid: 5c26ed0b0bc9f364eb573719b28d57bf, type: 2}
-  startTool: 1
+  hotbar: {fileID: 1697135571}
+  hand: {fileID: 11400000, guid: 0cd0e3994cf57324687ce5035ec165d3, type: 2}
   reach: 4
+--- !u!114 &1697135570
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c60ef3bffe0825b438dd1f1e6f59b3bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.InventoryScreen
+  toggleAction: {fileID: 6583218457637385746, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+--- !u!114 &1697135571
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c07901afe34a1de4695c653602e7b644, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.Hotbar
+  slotAction: {fileID: -2862609552453239229, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  scrollAction: {fileID: 8435597003941692284, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  nextAction: {fileID: -4816418233369286161, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+--- !u!114 &1697135572
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5064bb5edc23d304188801140f04f78c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerInventory
+  hotbarSlots: 9
+  backpackSlots: 18
+  startingItems:
+  - Item: {fileID: 11400000, guid: 5c26ed0b0bc9f364eb573719b28d57bf, type: 2}
+    Count: 1
+  tools: {fileID: 1697135569}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

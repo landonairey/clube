@@ -355,7 +355,7 @@ namespace Clube.Debug
             var keys = new List<string> { "Right mouse look · WASD move · Q/E down/up · Shift fast" };
             if (playerToggle != null)
             {
-                keys.Add("P walk as the player: mouse look · WASD · Space jump · left dig · right place · 1/2 brush size · Alt free the cursor for this panel");
+                keys.Add("P walk as the player: mouse look · WASD · Space jump · left mine with the held tool · right place · [ ] brush size · 1-9, scroll, Q hotbar · Tab inventory · Alt free the cursor for this panel");
             }
             if (brush != null)
             {
