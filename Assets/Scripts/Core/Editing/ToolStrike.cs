@@ -9,53 +9,41 @@ namespace Clube.Core
     /// write goes through the world's edit paths and border copies stay equal (A7, M2).
     /// </summary>
     /// <remarks>
-    /// A hit adds the tool's power to the damage of every solid sample in its impact shape,
-    /// buried ones too, so the shape works in 3D: on a floor the pickaxe also cracks the
-    /// sample below the aimed one, on a wall the one behind it. A sample whose damage reaches
+    /// A tool reaches a cube of voxels around the one it's aimed at
+    /// (<see cref="ToolDefinition.ImpactSize"/>: 1 for the hand, 3 for the pickaxe), and a hit
+    /// adds its power to the damage of every solid corner (sample) of those voxels, buried
+    /// ones too, so it works in 3D on floors and walls alike. A sample whose damage reaches
     /// its material's hardness breaks: it turns into the material's
     /// <see cref="VoxelMaterial.BreaksInto"/> (solid → cracked → loose), or, at the end of
     /// that chain, it's removed and its <see cref="VoxelMaterial.Drop"/> collected.
     /// </remarks>
     public static class ToolStrike
     {
-        /// <summary>
-        /// The sample a tool aimed at a surface point works on: the solid corner of the hit
-        /// voxel nearest the point. False if none of its corners is solid.
-        /// </summary>
-        public static bool TryAim(World world, WorldHit hit, float isoLevel, out Vector3Int sample)
+        /// <summary>The voxel a ray hit, by global voxel index: what a tool is aimed at.</summary>
+        public static Vector3Int AimedVoxel(World world, WorldHit hit)
         {
-            sample = default;
-            Vector3Int first = world.Grid.ChunkFirstSample(hit.Chunk) + hit.Voxel;
-            float best = float.PositiveInfinity;
-            for (int corner = 0; corner < 8; corner++)
-            {
-                Vector3Int candidate = first + new Vector3Int(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1);
-                float? density = world.GetDensity(candidate);
-                if (!density.HasValue || density.Value < isoLevel)
-                {
-                    continue;
-                }
-                float distance = (world.Grid.SampleToWorld(candidate) - hit.Point).sqrMagnitude;
-                if (distance < best)
-                {
-                    best = distance;
-                    sample = candidate;
-                }
-            }
-            return !float.IsPositiveInfinity(best);
+            return world.Grid.ChunkFirstSample(hit.Chunk) + hit.Voxel;
         }
 
-        /// <summary>The samples a tool aimed at <paramref name="aimed"/> reaches: the loaded solid ones in its shape.</summary>
-        public static void FindTargets(World world, Vector3Int aimed, ToolImpact impact, float isoLevel, List<Vector3Int> targets)
+        /// <summary>The samples a tool reaching <paramref name="box"/> hits: every loaded solid corner of its voxels.</summary>
+        public static void FindTargets(World world, VoxelBox box, float isoLevel, List<Vector3Int> targets)
         {
             targets.Clear();
-            foreach (Vector3Int offset in ToolImpacts.Offsets(impact))
+            Vector3Int from = box.MinSample;
+            Vector3Int to = box.MaxSample;
+            for (int z = from.z; z <= to.z; z++)
             {
-                Vector3Int sample = aimed + offset;
-                float? density = world.GetDensity(sample);
-                if (density.HasValue && density.Value >= isoLevel)
+                for (int y = from.y; y <= to.y; y++)
                 {
-                    targets.Add(sample);
+                    for (int x = from.x; x <= to.x; x++)
+                    {
+                        var sample = new Vector3Int(x, y, z);
+                        float? density = world.GetDensity(sample);
+                        if (density.HasValue && density.Value >= isoLevel)
+                        {
+                            targets.Add(sample);
+                        }
+                    }
                 }
             }
         }

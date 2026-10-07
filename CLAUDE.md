@@ -209,11 +209,11 @@ anvil, merchant and coins; copper ore → bun → ingot → sold), ahead of the 
 of Chapter 4. Each GL item is the thinnest first pass of a Chapter 5–7
 objective; don't build the full versions early.
 LA and LB (GL1–GL7) are done. LA: `ToolDefinition` items (Hand, Pickaxe; a
-`ToolImpact` shape in samples, power, hit rate), `VoxelMaterial.BreaksInto`
+reach in voxels: 1, or 3x3x3; power, hit rate), `VoxelMaterial.BreaksInto`
 chains stone/copper → cracked → loose (ids 6–9), `ToolStrike` (Core/Editing)
-hits every solid sample in the tool's shape on `World` with `StrikeDamage`;
+hits every solid corner of the reached `VoxelBox` on `World` with `StrikeDamage`;
 in Game `PlayerToolUser` (Attack hits with the hotbar's tool, else the hand),
-`ToolCursor` (glows on the targets' surface vertices from `SampleSurface`)
+`ToolCursor` (outlines the surface triangles in the reach, from `SurfaceOutline`)
 and `PickupNotice`. LB: `Inventory`/`ItemStack` (Core/Items, `MaxStack` per
 item), `PlayerInventory` (takes `PlayerToolUser.Collected`), `Hotbar` (1–9,
 scroll, Q), `InventoryScreen` (Tab), drawn with `ItemSlotGui`. Player brush

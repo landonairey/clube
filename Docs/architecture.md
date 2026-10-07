@@ -45,10 +45,10 @@ and never the other way round.
 ```
 Core/
   Config/        WorldConfig (A2), ChunkSizing (M25)
-  Voxels/        Chunk, IVoxelStorage + schemes (2G), VoxelMaterials (M10), VoxelArrayPool
+  Voxels/        Chunk, IVoxelStorage + schemes (2G), VoxelMaterials (M10), VoxelArrayPool, VoxelBox
   World/         World (loaded chunks, borders, edit paths), WorldGrid (coordinates)
   Materials/     VoxelMaterial, MaterialRegistry (M9), TerrainLayers, MaterialCensus
-  Items/         ItemDefinition (O6), ToolDefinition + ToolImpact (GL1), Inventory + ItemStack (GL6)
+  Items/         ItemDefinition (O6), ToolDefinition (GL1), Inventory + ItemStack (GL6)
   Generation/    TerrainSettings, ITerrainGenerator, TerrainGenerators, ChunkGenerator
     Generators/  managed generator classes (Flat, Sine, FractalPerlin2D, Spline, Perlin3D)
     Heightmaps/  Heightmap import, HeightmapGenerator, HeightmapExport (K29)
@@ -61,7 +61,7 @@ Core/
     Jobs/        ChunkMeshJob: the Burst mesh build the world runs
     Recording/   MeshingRecorder (A11)
   Editing/       TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5), IDensityField, IEditableTerrain
-  Queries/       SurfaceRaycast, VoxelRaycast, SampleSurface (GL4)
+  Queries/       SurfaceRaycast, VoxelRaycast, SurfaceOutline (GL4)
   Volume/        VoxelVolume, ChunkVolume (V11, V12, K30)
   Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea
   Rendering/     WorldView, ChunkView, ChunkRenderer(+Pool), ChunkCollider, ChunkMeshBuilder

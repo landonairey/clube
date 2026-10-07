@@ -14,7 +14,7 @@ namespace Clube.Core.Tests
         {
             ore = ItemDefinition.Create("copper-ore", "Copper ore", maxStack: 10);
             stone = ItemDefinition.Create("stone", "Stone", maxStack: 10);
-            pickaxe = ToolDefinition.Create("pickaxe", "Pickaxe", ToolImpact.Plus, 1.5f);
+            pickaxe = ToolDefinition.Create("pickaxe", "Pickaxe", 3, 1.5f);
         }
 
         [TearDown]
