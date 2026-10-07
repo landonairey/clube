@@ -25,6 +25,7 @@ namespace Clube.Game
 
         private PlayerInventory inventory;
         private PlayerController player;
+        private StationPanel stationPanel;
         private int picked = -1;
 
         public bool IsOpen { get; private set; }
@@ -33,6 +34,7 @@ namespace Clube.Game
         {
             inventory = GetComponent<PlayerInventory>();
             player = GetComponent<PlayerController>();
+            stationPanel = GetComponent<StationPanel>();
         }
 
         private void OnEnable()
@@ -54,7 +56,9 @@ namespace Clube.Game
             {
                 return;
             }
-            if (toggleAction != null && toggleAction.action.WasPressedThisFrame())
+
+            // One screen at a time: not over a station's panel.
+            if (toggleAction != null && toggleAction.action.WasPressedThisFrame() && (stationPanel == null || !stationPanel.IsOpen))
             {
                 SetOpen(!IsOpen);
             }
