@@ -10,7 +10,6 @@ namespace Clube.Core.Tests
         private ItemDefinition ingot;
         private Recipe smelt;
         private Recipe hammer;
-        private Inventory inventory;
 
         [SetUp]
         public void SetUp()
@@ -20,7 +19,6 @@ namespace Clube.Core.Tests
             ingot = ItemDefinition.Create("copper-ingot", "Copper ingot");
             smelt = Recipe.Create(StationKind.Furnace, new ItemAmount(bun, 1), RecipeWork.Time, 6f, new ItemAmount(ore, 8));
             hammer = Recipe.Create(StationKind.Anvil, new ItemAmount(ingot, 1), RecipeWork.Strikes, 6f, new ItemAmount(bun, 1));
-            inventory = new Inventory(4);
         }
 
         [TearDown]
@@ -33,100 +31,113 @@ namespace Clube.Core.Tests
             Object.DestroyImmediate(ingot);
         }
 
-        [Test]
-        public void Start_TakesTheInputs()
+        private CraftingStation Furnace()
         {
-            inventory.Add(ore, 10);
-            var furnace = new CraftingStation(StationKind.Furnace);
+            return new CraftingStation(StationKind.Furnace, new[] { smelt, hammer });
+        }
 
-            Assert.IsTrue(furnace.Start(smelt, inventory));
-
-            Assert.AreEqual(2, inventory.Count(ore));
-            Assert.IsTrue(furnace.IsBusy);
+        private CraftingStation Anvil()
+        {
+            return new CraftingStation(StationKind.Anvil, new[] { smelt, hammer });
         }
 
         [Test]
-        public void Start_RefusesWithoutInputsOnTheWrongStationOrWhileBusy()
+        public void Station_KeepsOnlyItsOwnKindOfRecipe()
         {
-            inventory.Add(ore, 7);
-            var furnace = new CraftingStation(StationKind.Furnace);
-            var anvil = new CraftingStation(StationKind.Anvil);
-
-            Assert.IsFalse(furnace.Start(smelt, inventory), "Seven ore aren't enough.");
-            inventory.Add(ore, 9);
-            Assert.IsFalse(anvil.Start(smelt, inventory), "An anvil doesn't smelt.");
-            Assert.IsTrue(furnace.Start(smelt, inventory));
-            Assert.IsFalse(furnace.Start(smelt, inventory), "One recipe at a time.");
-            Assert.AreEqual(8, inventory.Count(ore));
+            CollectionAssert.AreEqual(new[] { smelt }, Furnace().Recipes);
+            CollectionAssert.AreEqual(new[] { hammer }, Anvil().Recipes);
         }
 
         [Test]
-        public void TimeRecipe_FinishesAfterItsSeconds()
+        public void Furnace_WorksThroughALoadedStack_OneRecipeAtATime()
         {
-            inventory.Add(ore, 8);
-            var furnace = new CraftingStation(StationKind.Furnace);
-            furnace.Start(smelt, inventory);
+            CraftingStation furnace = Furnace();
+            furnace.Input.Add(ore, 24);
 
             furnace.Tick(5f);
             Assert.IsTrue(furnace.IsBusy);
+            Assert.AreEqual(16, furnace.Input.Count(ore), "The first 8 went in when it started.");
             Assert.AreEqual(5f / 6f, furnace.Progress, 1e-4f);
-            Assert.IsFalse(furnace.Strike(), "Smelting isn't struck.");
 
             furnace.Tick(1f);
+            Assert.AreEqual(1, furnace.Output.Count(bun));
+
+            furnace.Tick(12f);
+            Assert.AreEqual(3, furnace.Output.Count(bun));
+            Assert.AreEqual(0, furnace.Input.Count(ore));
             Assert.IsFalse(furnace.IsBusy);
-            Assert.AreEqual(bun, furnace.Output.Item);
-            Assert.AreEqual(1, furnace.Output.Count);
         }
 
         [Test]
-        public void StrikeRecipe_FinishesAfterItsStrikes()
+        public void Furnace_StaysIdleWithoutAFullLoad()
         {
-            inventory.Add(bun, 1);
-            var anvil = new CraftingStation(StationKind.Anvil);
-            anvil.Start(hammer, inventory);
+            CraftingStation furnace = Furnace();
+            furnace.Input.Add(ore, 7);
+
+            furnace.Tick(60f);
+
+            Assert.IsFalse(furnace.IsBusy);
+            Assert.AreEqual(7, furnace.Input.Count(ore));
+            Assert.IsTrue(furnace.Output[0].IsEmpty);
+            Assert.IsFalse(furnace.Strike(), "Smelting isn't struck.");
+        }
+
+        [Test]
+        public void Anvil_HammersOneBunPerSixStrikes_AndTimeDoesNothing()
+        {
+            CraftingStation anvil = Anvil();
+            anvil.Input.Add(bun, 2);
 
             anvil.Tick(100f);
-            Assert.AreEqual(6, anvil.StrikesLeft, "Time alone doesn't hammer.");
+            Assert.IsFalse(anvil.IsBusy, "Time alone doesn't hammer.");
+
             for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(anvil.Strike());
+            }
+            Assert.AreEqual(1, anvil.StrikesLeft);
+            Assert.AreEqual(1, anvil.Input.Count(bun), "The first bun is on the anvil.");
+
+            anvil.Strike();
+            Assert.AreEqual(1, anvil.Output.Count(ingot));
+            for (int i = 0; i < 6; i++)
             {
                 anvil.Strike();
             }
-            Assert.AreEqual(1, anvil.StrikesLeft);
-
-            anvil.Strike();
-            Assert.IsFalse(anvil.IsBusy);
-            Assert.AreEqual(ingot, anvil.Output.Item);
+            Assert.AreEqual(2, anvil.Output.Count(ingot));
+            Assert.IsFalse(anvil.Strike(), "Nothing left to strike.");
         }
 
         [Test]
-        public void Output_PilesUpUntilTakenAndBlocksWhenFull()
+        public void FullOutput_StopsTheStation_UntilTaken()
         {
-            inventory.Add(ore, 64);
-            var furnace = new CraftingStation(StationKind.Furnace);
-            for (int i = 0; i < 4; i++)
-            {
-                furnace.Start(smelt, inventory);
-                furnace.Tick(6f);
-            }
-            Assert.AreEqual(4, furnace.Output.Count);
-            Assert.IsFalse(furnace.CanStart(smelt, inventory), "A fifth bun wouldn't fit on the stack of four.");
+            CraftingStation furnace = Furnace();
+            furnace.Input.Add(ore, 48);
 
-            Assert.AreEqual(0, furnace.TakeOutput(inventory));
-            Assert.AreEqual(4, inventory.Count(bun));
-            Assert.IsTrue(furnace.Output.IsEmpty);
-            Assert.IsTrue(furnace.CanStart(smelt, inventory));
+            furnace.Tick(600f);
+            Assert.AreEqual(4, furnace.Output.Count(bun), "Four buns fill the output stack.");
+            Assert.AreEqual(16, furnace.Input.Count(ore));
+            Assert.IsFalse(furnace.IsBusy);
+
+            var player = new Inventory(4);
+            Assert.AreEqual(4, furnace.Output.MoveTo(0, player));
+            furnace.Tick(12f);
+            Assert.AreEqual(2, furnace.Output.Count(bun));
+            Assert.AreEqual(4, player.Count(bun));
         }
 
         [Test]
-        public void TakeOutput_LeavesWhatDoesNotFit()
+        public void MoveTo_MovesWhatFitsAndLeavesTheRest()
         {
-            inventory.Add(ore, 8);
-            var furnace = new CraftingStation(StationKind.Furnace);
-            furnace.Start(smelt, inventory);
-            furnace.Tick(6f);
+            var player = new Inventory(2);
+            player.Add(ore, 64);
+            player.Add(ore, 30);
+            var input = new Inventory(1);
+            input.Add(ore, 50);
 
-            Assert.AreEqual(1, furnace.TakeOutput(new Inventory(0)), "Nowhere to put it: it stays.");
-            Assert.AreEqual(1, furnace.Output.Count);
+            Assert.AreEqual(14, player.MoveTo(0, input), "Only 14 more fit on the 50.");
+            Assert.AreEqual(50, player[0].Count);
+            Assert.AreEqual(64, input.Count(ore));
         }
     }
 }

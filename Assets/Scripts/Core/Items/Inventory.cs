@@ -80,6 +80,21 @@ namespace Clube.Core
             return total;
         }
 
+        /// <summary>
+        /// Moves the stack in one slot into another inventory (a station's slots, a chest),
+        /// as much as fits there; the rest stays. Returns how many moved.
+        /// </summary>
+        public int MoveTo(int slot, Inventory target)
+        {
+            ItemStack stack = slots[slot];
+            if (stack.IsEmpty || target == null || target == this)
+            {
+                return 0;
+            }
+            int moved = stack.Count - target.Add(stack.Item, stack.Count);
+            return RemoveAt(slot, moved);
+        }
+
         /// <summary>Takes up to <paramref name="count"/> from one slot; returns how many it took.</summary>
         public int RemoveAt(int slot, int count = 1)
         {

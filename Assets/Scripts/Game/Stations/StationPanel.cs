@@ -1,3 +1,4 @@
+using System.Text;
 using Clube.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -5,17 +6,19 @@ using UnityEngine.InputSystem;
 namespace Clube.Game
 {
     /// <summary>
-    /// The screen for a <see cref="StationObject"/> the player is using (GL10, GL11): each
-    /// recipe with what it needs and how many the player has, a button to start it, the work
-    /// in progress (a smelting bar, or a Strike button on the anvil, which supplies the
-    /// hammer), and the finished output to take. Frees the cursor while open; Interact (E)
-    /// closes it, as does walking away.
+    /// The screen for a <see cref="StationObject"/> the player is using (GL10, GL11, GL19, GL20),
+    /// in slots like the hotbar: the station's input slots, then the work (a smelting bar, or a
+    /// Strike button on the anvil, which supplies the hammer), then its output slot, and the
+    /// player's inventory below. Click one of your stacks to load it, an input stack to take it
+    /// back, the output to collect it. The furnace keeps working through what's loaded with
+    /// the screen closed. Frees the cursor while open; Interact (E) closes it, as does
+    /// walking away.
     /// </summary>
     [RequireComponent(typeof(PlayerInventory))]
     public class StationPanel : MonoBehaviour
     {
-        private const float Width = 380f;
-        private const float RowHeight = 26f;
+        private const float Padding = 12f;
+        private const float WorkWidth = 150f;
 
         [Tooltip("Closes the panel (E).")]
         [SerializeField]
@@ -97,67 +100,71 @@ namespace Clube.Game
 
             CraftingStation station = Current.Station;
             Inventory items = inventory.Inventory;
-            float height = 90f + RowHeight * (Current.Recipes.Count * 2 + 3);
-            var area = new Rect((Screen.width - Width) * 0.5f, (Screen.height - height) * 0.5f, Width, height);
-            GUI.Box(area, GUIContent.none);
-            GUILayout.BeginArea(new Rect(area.x + 12f, area.y + 10f, area.width - 24f, area.height - 20f));
-            GUILayout.Label($"{Current.DisplayName}   (E to close)");
-
-            foreach (Recipe recipe in Current.Recipes)
+            float slot = InventoryGridGui.SlotSize;
+            float gap = InventoryGridGui.Gap;
+            float width = InventoryGridGui.RowWidth + Padding * 2f;
+            float height = Padding * 2f + 24f + 22f * station.Recipes.Count + slot + 30f + 22f + InventoryGridGui.PlayerHeight(inventory);
+            var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
+            InventoryGridGui.Panel(panel);
+            float x = panel.x + Padding;
+            float y = panel.y + Padding;
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   (E to close)");
+            y += 24f;
+            foreach (Recipe recipe in station.Recipes)
             {
-                if (recipe == null || recipe.Station != station.Kind)
-                {
-                    continue;
-                }
-                GUILayout.Space(6f);
-                GUILayout.Label(Describe(recipe, items));
-                GUI.enabled = station.CanStart(recipe, items);
-                if (GUILayout.Button(StartLabel(recipe), GUILayout.Height(RowHeight)))
-                {
-                    station.Start(recipe, items);
-                }
-                GUI.enabled = true;
+                GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), Describe(recipe));
+                y += 22f;
             }
 
-            GUILayout.Space(8f);
-            if (station.IsBusy)
+            // Input slots, the work in the middle, the output slot.
+            int input = InventoryGridGui.DrawRow(new Vector2(x, y), station.Input);
+            if (input >= 0)
             {
-                Recipe active = station.Active;
-                if (active.Work == RecipeWork.Strikes)
-                {
-                    GUILayout.Label($"On the anvil: {Name(active.Inputs)}");
-                    if (GUILayout.Button($"Strike  ({station.StrikesLeft} left)", GUILayout.Height(RowHeight * 1.4f)))
-                    {
-                        station.Strike();
-                    }
-                }
-                else
-                {
-                    GUILayout.Label($"Smelting {active.Output.Item.DisplayName}: {Mathf.RoundToInt(station.Progress * 100f)}%");
-                    Rect bar = GUILayoutUtility.GetRect(Width - 24f, 12f);
-                    GUI.Box(bar, GUIContent.none);
-                    GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * station.Progress, bar.height), Texture2D.whiteTexture);
-                }
+                station.Input.MoveTo(input, items);
             }
-            else
+            float workX = x + station.Input.SlotCount * (slot + gap) + 12f;
+            DrawWork(new Rect(workX, y, WorkWidth, slot), station);
+            int output = InventoryGridGui.DrawRow(new Vector2(workX + WorkWidth + 12f, y), station.Output);
+            if (output >= 0)
             {
-                GUILayout.Label("Idle");
+                station.Output.MoveTo(output, items);
             }
+            y += slot + 30f;
 
-            GUI.enabled = !station.Output.IsEmpty;
-            string take = station.Output.IsEmpty ? "Nothing to take" : $"Take {station.Output.Count} {station.Output.Item.DisplayName}";
-            if (GUILayout.Button(take, GUILayout.Height(RowHeight)))
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Your items: click a stack to load it");
+            y += 22f;
+            int mine = InventoryGridGui.DrawPlayer(new Vector2(x, y), inventory, -1);
+            if (mine >= 0)
             {
-                station.TakeOutput(items);
+                items.MoveTo(mine, station.Input);
             }
-            GUI.enabled = true;
-            GUILayout.EndArea();
         }
 
-        // "8 Copper ore (you have 23) → 1 Copper bun · 6 s"
-        private static string Describe(Recipe recipe, Inventory items)
+        // The smelting bar, or the anvil's Strike button, between input and output.
+        private static void DrawWork(Rect area, CraftingStation station)
         {
-            var text = new System.Text.StringBuilder();
+            bool strikes = station.Active != null ? station.Active.Work == RecipeWork.Strikes : station.Ready(RecipeWork.Strikes) != null;
+            if (strikes)
+            {
+                string label = station.IsBusy ? $"Strike ({station.StrikesLeft} left)" : "Strike";
+                if (GUI.Button(new Rect(area.x, area.y + 8f, area.width, area.height - 16f), label))
+                {
+                    station.Strike();
+                }
+                return;
+            }
+
+            string status = station.IsBusy ? $"Working {Mathf.RoundToInt(station.Progress * 100f)}%" : "Idle";
+            GUI.Label(new Rect(area.x, area.y + 6f, area.width, 20f), status);
+            var bar = new Rect(area.x, area.y + 30f, area.width, 12f);
+            GUI.Box(bar, GUIContent.none);
+            GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * station.Progress, bar.height), Texture2D.whiteTexture);
+        }
+
+        // "8 Copper ore → 1 Copper bun · 6 s"
+        private static string Describe(Recipe recipe)
+        {
+            var text = new StringBuilder();
             foreach (ItemAmount input in recipe.Inputs)
             {
                 if (input.Item == null)
@@ -168,22 +175,10 @@ namespace Clube.Game
                 {
                     text.Append(" + ");
                 }
-                text.Append($"{input.Count} {input.Item.DisplayName} (you have {items.Count(input.Item)})");
+                text.Append($"{input.Count} {input.Item.DisplayName}");
             }
-            string work = recipe.Work == RecipeWork.Time ? $"{recipe.Amount:0.#} s" : $"{recipe.Amount:0} strikes";
+            string work = recipe.Work == RecipeWork.Time ? $"{recipe.Amount:0.#} s each" : $"{recipe.Amount:0} strikes each";
             return $"{text} → {recipe.Output.Count} {recipe.Output.Item?.DisplayName} · {work}";
-        }
-
-        private static string StartLabel(Recipe recipe)
-        {
-            return recipe.Work == RecipeWork.Time
-                ? $"Smelt {recipe.Output.Item?.DisplayName}"
-                : $"Place {Name(recipe.Inputs)} on the anvil";
-        }
-
-        private static string Name(System.Collections.Generic.IReadOnlyList<ItemAmount> amounts)
-        {
-            return amounts.Count > 0 && amounts[0].Item != null ? amounts[0].Item.DisplayName.ToLowerInvariant() : "it";
         }
     }
 }

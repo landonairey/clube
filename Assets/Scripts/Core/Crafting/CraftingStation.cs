@@ -1,13 +1,15 @@
 using System;
+using System.Collections.Generic;
 
 namespace Clube.Core
 {
     /// <summary>
-    /// A station working one <see cref="Recipe"/> at a time (GL8): <see cref="Start"/> takes
-    /// the inputs from an inventory, the work is done by time (<see cref="Tick"/>) or by
-    /// strikes (<see cref="Strike"/>), and the result waits in <see cref="Output"/> until
-    /// <see cref="TakeOutput"/> moves it into an inventory. Finished results of the same item
-    /// pile up, so a furnace can keep smelting while nobody empties it.
+    /// A station that works its recipes on what's loaded into it (GL8, GL19): items go into
+    /// its <see cref="Input"/> slots, it works one recipe at a time, and results stack in its
+    /// <see cref="Output"/> slot until taken. A recipe starts as soon as its inputs are loaded
+    /// and its result fits: on its own for time recipes (the furnace smelts a whole stack of ore
+    /// bun after bun), on the next <see cref="Strike"/> for strike recipes (the anvil hammers
+    /// one bun at a time). It stops when the inputs run out or the output is full.
     /// </summary>
     /// <remarks>
     /// Plain data with no UI, like <see cref="Inventory"/>, so it's unit tested and the same
@@ -15,17 +17,41 @@ namespace Clube.Core
     /// </remarks>
     public sealed class CraftingStation
     {
+        public const int DefaultInputSlots = 2;
+
+        private readonly List<Recipe> recipes = new List<Recipe>();
         private float done;
 
-        public CraftingStation(StationKind kind)
+        /// <param name="recipes">What it can make; recipes for another kind of station are left out.</param>
+        public CraftingStation(StationKind kind, IEnumerable<Recipe> recipes, int inputSlots = DefaultInputSlots)
         {
             Kind = kind;
+            foreach (Recipe recipe in recipes)
+            {
+                if (recipe != null && recipe.Station == kind && recipe.Output.Item != null)
+                {
+                    this.recipes.Add(recipe);
+                }
+            }
+            Input = new Inventory(inputSlots);
+            Output = new Inventory(1);
+            Input.Changed += OnContentsChanged;
+            Output.Changed += OnContentsChanged;
         }
 
         /// <summary>Raised after anything about the station changes, progress included.</summary>
         public event Action Changed;
 
         public StationKind Kind { get; }
+
+        /// <summary>The recipes it can make.</summary>
+        public IReadOnlyList<Recipe> Recipes => recipes;
+
+        /// <summary>What's loaded to be worked.</summary>
+        public Inventory Input { get; }
+
+        /// <summary>One slot of finished results.</summary>
+        public Inventory Output { get; }
 
         /// <summary>The recipe being worked, or null when idle.</summary>
         public Recipe Active { get; private set; }
@@ -40,51 +66,47 @@ namespace Clube.Core
             ? Math.Max(0, (int)Math.Ceiling(Active.Amount - done - 1e-4f))
             : 0;
 
-        /// <summary>Finished results waiting to be taken.</summary>
-        public ItemStack Output { get; private set; }
-
-        /// <summary>True when the station could start the recipe with this inventory's items.</summary>
-        public bool CanStart(Recipe recipe, Inventory from)
+        /// <summary>The recipe that would start next with what's loaded, or null.</summary>
+        public Recipe Ready(RecipeWork work)
         {
-            if (recipe == null || recipe.Station != Kind || IsBusy || recipe.Output.Item == null || !recipe.HasInputs(from))
+            foreach (Recipe recipe in recipes)
             {
-                return false;
+                if (recipe.Work == work && recipe.HasInputs(Input) && Fits(recipe.Output))
+                {
+                    return recipe;
+                }
             }
-            // The result has to fit on what's already waiting.
-            return Output.IsEmpty
-                || (Output.Item == recipe.Output.Item && Output.Space >= recipe.Output.Count);
+            return null;
         }
 
-        /// <summary>Takes the inputs and starts the work. False, changing nothing, when it can't.</summary>
-        public bool Start(Recipe recipe, Inventory from)
-        {
-            if (!CanStart(recipe, from))
-            {
-                return false;
-            }
-            foreach (ItemAmount input in recipe.Inputs)
-            {
-                from.Remove(input.Item, input.Count);
-            }
-            Active = recipe;
-            done = 0f;
-            Changed?.Invoke();
-            return true;
-        }
-
-        /// <summary>Lets time pass: works an active time recipe.</summary>
+        /// <summary>Lets time pass: starts and works time recipes, as many as the time covers.</summary>
         public void Tick(float seconds)
         {
-            if (Active != null && Active.Work == RecipeWork.Time && seconds > 0f)
+            while (seconds > 0f)
             {
-                Work(seconds);
+                if (Active == null && !TryStart(RecipeWork.Time))
+                {
+                    return;
+                }
+                if (Active.Work != RecipeWork.Time)
+                {
+                    return;
+                }
+                float needed = Active.Amount - done;
+                float used = Math.Min(seconds, needed);
+                seconds -= used;
+                Work(used);
             }
         }
 
-        /// <summary>One strike: works an active strike recipe. False when there was nothing to strike.</summary>
+        /// <summary>One strike: starts a strike recipe if none is under way, then works it. False when there was nothing to strike.</summary>
         public bool Strike()
         {
-            if (Active == null || Active.Work != RecipeWork.Strikes)
+            if (Active == null && !TryStart(RecipeWork.Strikes))
+            {
+                return false;
+            }
+            if (Active.Work != RecipeWork.Strikes)
             {
                 return false;
             }
@@ -92,20 +114,28 @@ namespace Clube.Core
             return true;
         }
 
-        /// <summary>Moves the waiting output into an inventory; returns how many didn't fit (and stay).</summary>
-        public int TakeOutput(Inventory to)
+        private bool TryStart(RecipeWork work)
         {
-            if (Output.IsEmpty)
+            Recipe recipe = Ready(work);
+            if (recipe == null)
             {
-                return 0;
+                return false;
             }
-            int left = to.Add(Output.Item, Output.Count);
-            if (left != Output.Count)
+            foreach (ItemAmount input in recipe.Inputs)
             {
-                Output = Output.WithCount(left);
-                Changed?.Invoke();
+                Input.Remove(input.Item, input.Count);
             }
-            return left;
+            Active = recipe;
+            done = 0f;
+            Changed?.Invoke();
+            return true;
+        }
+
+        // The result has to fit on what's already waiting.
+        private bool Fits(ItemAmount result)
+        {
+            ItemStack waiting = Output[0];
+            return waiting.IsEmpty || (waiting.Item == result.Item && waiting.Space >= result.Count);
         }
 
         private void Work(float amount)
@@ -114,10 +144,15 @@ namespace Clube.Core
             if (done + 1e-4f >= Active.Amount)
             {
                 ItemAmount result = Active.Output;
-                Output = new ItemStack(result.Item, (Output.IsEmpty ? 0 : Output.Count) + result.Count);
                 Active = null;
                 done = 0f;
+                Output.Add(result.Item, result.Count);
             }
+            Changed?.Invoke();
+        }
+
+        private void OnContentsChanged()
+        {
             Changed?.Invoke();
         }
     }

@@ -5,15 +5,16 @@ using UnityEngine.InputSystem;
 namespace Clube.Game
 {
     /// <summary>
-    /// The screen for trading at a <see cref="MerchantTable"/> (GL14, first pass of TR4):
-    /// every item the merchant buys, its price, how many the player has, and buttons to sell
-    /// one or all of them; the player's coins at the bottom. Frees the cursor while open;
+    /// The screen for trading at a <see cref="MerchantTable"/> (GL14, GL20; first pass of TR4):
+    /// the player's inventory in slots like the hotbar, with the merchant's price on every
+    /// stack it buys; pick a stack and sell one or all of it. The player's coins show at the
+    /// bottom. Frees the cursor while open;
     /// Interact (E) closes it, as does walking away.
     /// </summary>
     [RequireComponent(typeof(PlayerInventory), typeof(PlayerWallet))]
     public class MerchantPanel : MonoBehaviour
     {
-        private const float Width = 420f;
+        private const float Padding = 12f;
         private const float RowHeight = 26f;
 
         [Tooltip("Closes the panel (E).")]
@@ -28,6 +29,7 @@ namespace Clube.Game
         private PlayerWallet wallet;
         private PlayerController player;
         private int openedFrame;
+        private int selected = -1;
 
         /// <summary>The table being used, or null when closed.</summary>
         public MerchantTable Current { get; private set; }
@@ -54,6 +56,7 @@ namespace Clube.Game
         public void Open(MerchantTable table)
         {
             Current = table;
+            selected = -1;
             openedFrame = Time.frameCount;
             if (player != null)
             {
@@ -107,39 +110,58 @@ namespace Clube.Game
             }
 
             Inventory items = inventory.Inventory;
-            int rows = Current.Prices.Prices.Count;
-            float height = 100f + RowHeight * rows;
-            var area = new Rect((Screen.width - Width) * 0.5f, (Screen.height - height) * 0.5f, Width, height);
-            GUI.Box(area, GUIContent.none);
-            GUILayout.BeginArea(new Rect(area.x + 12f, area.y + 10f, area.width - 24f, area.height - 20f));
-            GUILayout.Label($"{Current.DisplayName} buys   (E to close)");
-            GUILayout.Space(4f);
+            PriceList prices = Current.Prices;
+            float width = InventoryGridGui.RowWidth + Padding * 2f;
+            float height = Padding * 2f + 24f + 22f + InventoryGridGui.PlayerHeight(inventory) + 12f + RowHeight + 6f;
+            var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
+            InventoryGridGui.Panel(panel);
+            float x = panel.x + Padding;
+            float y = panel.y + Padding;
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   (E to close)");
+            GUI.Label(new Rect(panel.xMax - Padding - 160f, y, 160f, 20f), $"Your coins: {wallet.Wallet.Coins}");
+            y += 24f;
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Your items: prices show on what the merchant buys. Click one to sell it.");
+            y += 22f;
 
-            foreach (ItemPrice price in Current.Prices.Prices)
+            int clicked = InventoryGridGui.DrawPlayer(new Vector2(x, y), inventory, selected,
+                stack => !stack.IsEmpty && prices.TryGetPrice(stack.Item, out int coins) ? $"{coins}c" : null);
+            if (clicked >= 0)
             {
-                if (price.Item == null)
-                {
-                    continue;
-                }
-                int have = items.Count(price.Item);
-                GUILayout.BeginHorizontal();
-                GUILayout.Label($"{price.Item.DisplayName}: {price.Coins} each (you have {have})", GUILayout.Width(250f));
-                GUI.enabled = have > 0;
-                if (GUILayout.Button("Sell 1", GUILayout.Height(RowHeight)))
-                {
-                    Sell(price.Item, 1);
-                }
-                if (GUILayout.Button($"Sell all", GUILayout.Height(RowHeight)))
-                {
-                    Sell(price.Item, have);
-                }
-                GUI.enabled = true;
-                GUILayout.EndHorizontal();
+                selected = clicked == selected ? -1 : clicked;
             }
+            y += InventoryGridGui.PlayerHeight(inventory) + 12f;
 
-            GUILayout.FlexibleSpace();
-            GUILayout.Label($"Your coins: {wallet.Wallet.Coins}");
-            GUILayout.EndArea();
+            ItemStack chosen = selected >= 0 ? items[selected] : ItemStack.Empty;
+            bool buys = !chosen.IsEmpty && prices.TryGetPrice(chosen.Item, out _);
+            string what = chosen.IsEmpty ? "Pick a stack to sell" : buys ? chosen.Item.DisplayName : $"The merchant doesn't buy {chosen.Item.DisplayName}";
+            GUI.Label(new Rect(x, y + 4f, 260f, 20f), what);
+            GUI.enabled = buys;
+            if (GUI.Button(new Rect(x + 270f, y, 90f, RowHeight), "Sell 1"))
+            {
+                SellFromSlot(selected, 1);
+            }
+            if (GUI.Button(new Rect(x + 366f, y, 90f, RowHeight), "Sell stack"))
+            {
+                SellFromSlot(selected, chosen.Count);
+            }
+            GUI.enabled = true;
+        }
+
+        // Sells from one slot, so the stack the player picked is the one that goes.
+        private void SellFromSlot(int slot, int count)
+        {
+            Inventory items = inventory.Inventory;
+            ItemStack stack = items[slot];
+            if (stack.IsEmpty || !Current.Prices.TryGetPrice(stack.Item, out int coins))
+            {
+                return;
+            }
+            int sold = items.RemoveAt(slot, count);
+            wallet.Wallet.Earn(sold * coins);
+            if (items[slot].IsEmpty)
+            {
+                selected = -1;
+            }
         }
     }
 }
