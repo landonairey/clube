@@ -555,7 +555,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 76097a2a7bf54db4ab48aea71d39cf4d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.WorldDebugView
-  showChunkBorders: 1
+  showChunkBorders: 0
   borderColor: {r: 0.45, g: 0.47, b: 0.52, a: 1}
   focusColor: {r: 1, g: 0.85, b: 0.2, a: 1}
   lineMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
@@ -617,7 +617,7 @@ MonoBehaviour:
   - {fileID: 2100000, guid: ae35e53838faf9a41b52f47d227d1236, type: 2}
   - {fileID: 2100000, guid: 26a88a27891ca024d969d561d22be9c8, type: 2}
   focus: {fileID: 0}
-  renderDistance: 4
+  renderDistance: 16
   frameBudgetMilliseconds: 3
   maxJobsInFlight: 0
   chunkColliders: 1
@@ -677,8 +677,8 @@ MonoBehaviour:
   stepThroughOpen: 0
   cameraOpen: 0
   playerOpen: 0
-  displayOpen: 0
-  buildGridOpen: 0
+  displayOpen: 1
+  buildGridOpen: 1
   storageOpen: 0
   oresOpen: 0
 --- !u!114 &1350119464
