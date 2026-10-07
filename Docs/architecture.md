@@ -309,6 +309,7 @@ Notes for upcoming chapters, so new code lands in the right layer.
 | **N1 inventory, CR crafting, T tech tree** | plain C# data models in Core (or a new `Clube.Items` / `Clube.Economy` assembly when they grow), UI in `Clube.Game` | `ItemDefinition` (O6) is the start. Keep the models free of MonoBehaviours so they're unit-testable (G3). |
 | **ST1 settlement scoring, U1 mini map** | `Generation/` queries | Column heights and `OreField.NodesInCell` answer "what's here" without generating voxels. |
 | **PK9/PK10 falling terrain, PK11 explosives** | `Editing/` | Everything goes through the A7 edit path; the streamer rebuilds whatever it dirties in the same frame (`MaxEditsPerFrame` caps a huge blast; the rest follow next frame). |
+| **PK17 building, walls and floors** | `World/BuildGrid` (Core) for the cells; placing in `Clube.Game/Building` | `PlayerBuilder` places any `PlaceableDefinition` (an item with a prefab) on a build cell, and `PlacedObject` turns it back into the item. Hard-material piles already fill build cells (`TerrainPile` with `PileShape.Block`, GL17), so blocks of terrain and placed objects share one grid. Saving placed objects joins P6/S1. |
 | **NPCs, towns (7A, 7B)** | `Clube.Game` (behaviour), Core for anything simulated off screen | Raycasts against data (`World.Raycast`) work without colliders, for anything far from the player. |
 
 ---
