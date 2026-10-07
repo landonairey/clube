@@ -228,6 +228,13 @@ Second pass, building (GL17, GL18, GL23): G drops piles shaped per material
 (prefabs in `Assets/Prefabs/Stations/`): with one selected, `PlayerBuilder` shows a
 preview and a local patch of the build grid (`BuildGridDisplay`), B places it and
 holding B on a `PlacedObject` picks it up with its contents.
+Second pass, terrain and stations (GL19–GL22): heightfield chunks get bordered
+column heights (`ChunkSampleGrid.BorderedColumns`), so `ChunkFillKernel` can mark
+steep columns, which take stone in their top layers (`TerrainLayers` steep angle
+and height), and stamp surface rocks (Rock, id 10, `IsRockColumn` hashes the
+global column). `CraftingStation` has input and output inventories (2 and 1
+slots); `InventoryGridGui` draws the same slot grid in the inventory, station and
+merchant screens.
 M25's voxel size stays open,
 and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
 
