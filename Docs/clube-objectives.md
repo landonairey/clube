@@ -343,8 +343,8 @@ Where it runs: in WorldLab with the player (P), like Checkpoint 3.1; it moves in
 - [x] **GL14** `Game` Merchant table *(first pass of TR4)*: sell items from the inventory at the listed price; the wallet shows on the HUD. *(Done: `MerchantTable` (low-poly stall near spawn, an `IInteractable`) opens the player's `MerchantPanel`: what it buys, price, how many you have, Sell 1 and Sell all.)*
 
 ### LE — Loop playtest
-- [ ] **GL15** `Game` Loop setup: the player starts with the hand and a pickaxe near copper they can reach (a shallow copper `OreSpec`, or a node placed near the spawn), with a furnace, anvil and merchant table close by.
-- [ ] **GL16** Playtest and notes in `Docs/` *(first pass of EC6)*: time spent on each leg, what felt tedious or unclear, and what the next pass should change.
+- [x] **GL15** `Game` Loop setup: the player starts with the hand and a pickaxe near copper they can reach (a shallow copper `OreSpec`, or a node placed near the spawn), with a furnace, anvil and merchant table close by. *(Done 2026-10-07: WorldLab's spawn and stations moved to a flat valley 16 m from the origin, over a copper node 4.7 m down, found by scanning the seed's copper nodes; the fly camera starts there, so P drops the player in with the pickaxe. See `Docs/20261007 loop playtest.md`.)*
+- [x] **GL16** Playtest and notes in `Docs/` *(first pass of EC6)*: time spent on each leg, what felt tedious or unclear, and what the next pass should change. *(Done: `Docs/20261007 loop playtest.md`. The loop runs end to end: 14 copper ore, a bun in 6 s, an ingot in 6 strikes, 36 coins. Main findings: the player gets stuck on lips in their own shaft, pillaring with dirt is the only way out, and each swing yields too many items. A hand playtest of the controls is still owed.)*
 
 **Done when:** in one session the player mines copper ore with the pickaxe (seeing it crack, loosen and land in the inventory), smelts it into a bun, hammers the bun into an ingot and sells it for coins, with the inventory and wallet right at every step and no lab component needed.
 
