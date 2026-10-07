@@ -73,6 +73,12 @@ namespace Clube.Core
 
         /// <summary>The same columns, as a <see cref="ColumnBlock"/>.</summary>
         public ColumnBlock Columns => new ColumnBlock(FirstSample.xz, SampleCount.xz, VoxelSize);
+
+        /// <summary>
+        /// The chunk's columns with one more on every side, so a column's slope can be taken from
+        /// its neighbours' heights the same way in every chunk that shares it (GL21, M2).
+        /// </summary>
+        public ColumnBlock BorderedColumns => new ColumnBlock(FirstSample.xz - 1, SampleCount.xz + 2, VoxelSize);
     }
 
     /// <summary>

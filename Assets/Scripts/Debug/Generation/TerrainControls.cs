@@ -90,6 +90,19 @@ namespace Clube.Debug
                 layers.BandDepth = band;
                 config.NotifyChanged();
             }
+
+            // Bare rock on steep mountain slopes (GL21) and small surface rocks (GL22).
+            float steep = frame.Slider($"{Name(layers.Base)} on slopes from (°, 90 off)", layers.SteepAngle, 10f, 90f, "0");
+            float steepHeight = frame.Slider("…above height (m)", layers.SteepMinHeight, 0f, 64f, "0.#");
+            float rocks = frame.Slider($"{Name(layers.Rock)} chance per column", layers.RockChance, 0f, 0.05f, "0.000");
+            if (!Mathf.Approximately(steep, layers.SteepAngle) || !Mathf.Approximately(steepHeight, layers.SteepMinHeight)
+                || !Mathf.Approximately(rocks, layers.RockChance))
+            {
+                layers.SteepAngle = steep;
+                layers.SteepMinHeight = steepHeight;
+                layers.RockChance = rocks;
+                config.NotifyChanged();
+            }
         }
 
         private static string Name(VoxelMaterial material)

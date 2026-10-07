@@ -97,9 +97,9 @@ namespace Clube.Core
             {
                 case HeightfieldGenerator heightfield:
                 {
-                    var heights = new NativeArray<float>(grid.ColumnCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+                    var heights = new NativeArray<float>(grid.BorderedColumns.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
                     var range = new NativeArray<float2>(1, Allocator.Persistent);
-                    JobHandle columns = heightfield.ScheduleColumnHeights(grid.Columns, heights, range, dependsOn);
+                    JobHandle columns = heightfield.ScheduleColumnHeights(grid.BorderedColumns, heights, range, dependsOn);
                     JobHandle fill = ScheduleFromColumns(heights, range, grid, settings, ores, output, columns);
                     return JobHandle.CombineDependencies(heights.Dispose(fill), range.Dispose(fill));
                 }

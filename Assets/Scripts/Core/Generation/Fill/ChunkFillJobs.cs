@@ -53,8 +53,12 @@ namespace Clube.Core
 
     /// <summary>
     /// Fills one chunk of a heightfield terrain from its column heights (K35): each sample's
-    /// depth is its column's height minus its own, then <see cref="ChunkFillKernel"/> does the
-    /// rest. A chunk wholly above its columns' highest point is all air and skips the arrays.
+    /// depth is its column's height minus its own, and each column's slope (from its
+    /// neighbours' heights) says whether it is bare rock (GL21); then
+    /// <see cref="ChunkFillKernel"/> does the rest. The heights cover
+    /// <see cref="ChunkSampleGrid.BorderedColumns"/>, one column more on every side, so border
+    /// columns get the same slope in both chunks. A chunk wholly above its columns' highest
+    /// point is all air and skips the arrays.
     /// </summary>
     [BurstCompile]
     public struct HeightfieldFillJob : IJob
@@ -76,20 +80,33 @@ namespace Clube.Core
 
             var depths = new NativeArray<float>(Grid.Length, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
             int3 count = Grid.SampleCount;
+            int stride = count.x + 2;
             for (int z = 0; z < count.z; z++)
             {
                 for (int y = 0; y < count.y; y++)
                 {
                     float height = (Grid.FirstSample.y + y) * Grid.VoxelSize;
                     int row = Grid.Index(0, y, z);
-                    int column = count.x * z;
+                    int column = stride * (z + 1) + 1;
                     for (int x = 0; x < count.x; x++)
                     {
                         depths[row + x] = Heights[column + x] - height;
                     }
                 }
             }
-            ChunkFillKernel.Run(depths, Grid, Settings, Ores, ref Output);
+
+            var steep = new NativeArray<byte>(Settings.Layers.SteepGradient > 0f ? count.x * count.z : 0, Allocator.Temp);
+            for (int z = 0; z < count.z && steep.Length > 0; z++)
+            {
+                for (int x = 0; x < count.x; x++)
+                {
+                    int centre = stride * (z + 1) + x + 1;
+                    float dx = (Heights[centre + 1] - Heights[centre - 1]) / (2f * Grid.VoxelSize);
+                    float dz = (Heights[centre + stride] - Heights[centre - stride]) / (2f * Grid.VoxelSize);
+                    steep[x + count.x * z] = Settings.Layers.IsSteep(math.sqrt(dx * dx + dz * dz), Heights[centre]) ? (byte)1 : (byte)0;
+                }
+            }
+            ChunkFillKernel.Run(depths, steep, Grid, Settings, Ores, ref Output);
         }
     }
 
@@ -117,7 +134,7 @@ namespace Clube.Core
                     }
                 }
             }
-            ChunkFillKernel.Run(depths, Grid, Settings, Ores, ref Output);
+            ChunkFillKernel.Run(depths, default, Grid, Settings, Ores, ref Output);
         }
     }
 
@@ -137,7 +154,7 @@ namespace Clube.Core
 
         public void Execute()
         {
-            ChunkFillKernel.Run(Depths, Grid, Settings, Ores, ref Output);
+            ChunkFillKernel.Run(Depths, default, Grid, Settings, Ores, ref Output);
         }
     }
 }

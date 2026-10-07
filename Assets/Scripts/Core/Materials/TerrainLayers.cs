@@ -5,8 +5,10 @@ namespace Clube.Core
 {
     /// <summary>
     /// Which material generated ground is made of, by depth below the surface (M10): a top
-    /// layer (grass), a band under it (dirt), then the base (stone) all the way down. Held
-    /// in <see cref="TerrainSettings"/>; depths are in metres, like the terrain itself.
+    /// layer (grass), a band under it (dirt), then the base (stone) all the way down; steep
+    /// mountain slopes show the base instead (GL21), and small rocks lie scattered on the top
+    /// layer (GL22). Held in <see cref="TerrainSettings"/>; depths are in metres, like the
+    /// terrain itself.
     /// </summary>
     [Serializable]
     public class TerrainLayers
@@ -30,6 +32,22 @@ namespace Clube.Core
         [Tooltip("Everything deeper, e.g. stone.")]
         [SerializeField]
         private VoxelMaterial baseMaterial;
+
+        [Tooltip("Slopes at least this steep (degrees) show the base material instead of the top layers (GL21). 90 turns it off.")]
+        [SerializeField, Range(10f, 90f)]
+        private float steepAngle = 90f;
+
+        [Tooltip("Height (metres) above which steep slopes turn to the base material, so only mountains do.")]
+        [SerializeField]
+        private float steepMinHeight = 24f;
+
+        [Tooltip("Small rocks scattered on the top layer (GL22): clusters of 1-3 samples just above the surface. None for no rocks.")]
+        [SerializeField]
+        private VoxelMaterial rock;
+
+        [Tooltip("Chance that a surface column starts a rock cluster.")]
+        [SerializeField, Range(0f, 0.05f)]
+        private float rockChance = 0.004f;
 
         public VoxelMaterial Top
         {
@@ -59,6 +77,33 @@ namespace Clube.Core
         {
             get => baseMaterial;
             set => baseMaterial = value;
+        }
+
+        /// <summary>Slopes at least this steep, in degrees, show the base material above <see cref="SteepMinHeight"/> (GL21); 90 is off.</summary>
+        public float SteepAngle
+        {
+            get => steepAngle;
+            set => steepAngle = Mathf.Clamp(value, 10f, 90f);
+        }
+
+        public float SteepMinHeight
+        {
+            get => steepMinHeight;
+            set => steepMinHeight = value;
+        }
+
+        /// <summary>The material of the small surface rocks (GL22), or null for none.</summary>
+        public VoxelMaterial Rock
+        {
+            get => rock;
+            set => rock = value;
+        }
+
+        /// <summary>Chance that a surface column starts a rock cluster.</summary>
+        public float RockChance
+        {
+            get => rockChance;
+            set => rockChance = Mathf.Clamp(value, 0f, 0.05f);
         }
 
         /// <summary>True when no layer has a material, so generation can skip materials.</summary>

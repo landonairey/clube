@@ -137,7 +137,7 @@ namespace Clube.Core
             task.Ores = ChunkGenerator.CollectOres(ores, task.Grid, Allocator.Persistent);
             if (generator is HeightfieldGenerator heightfield)
             {
-                task.Column = ColumnFor(new Vector2Int(coord.x, coord.z), task.Grid.Columns, heightfield);
+                task.Column = ColumnFor(new Vector2Int(coord.x, coord.z), task.Grid.BorderedColumns, heightfield);
                 task.Column.Users++;
                 task.Handle = ChunkGenerator.ScheduleFromColumns(
                     task.Column.Heights, task.Column.Range, task.Grid, fillSettings, task.Ores, task.Output, task.Column.Job);
