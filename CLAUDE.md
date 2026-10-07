@@ -26,7 +26,8 @@ of self-contained optimization targets — is in
 [Docs/architecture.md](Docs/architecture.md). Read it before changing
 generation, meshing or streaming; keep it current in the same PR.
 
-Milestone 1 = Chapters 0–3. Chapters 4–5 are drafts; Chapters 6–8 are
+Milestone 1 = Chapters 0–3. Milestone 2 = the first gameplay loop (its own
+section after Chapter 3, scheduled before the rest of Chapter 4). Chapters 4–5 are drafts; Chapters 6–8 are
 design exploration. Do not build ahead of the current chapter; flag it if a
 change starts pulling in a later chapter's direction.
 
@@ -202,7 +203,11 @@ Colliders are cooked in jobs near the focus only. `WorldView` events are
 `WorldView.Stats` has per-phase timings; `StreamingBenchmark` (*Clube →
 Benchmarks → World streaming*) measures frames. Chunk byte arrays come from
 `VoxelArrayPool` and go back on `Chunk.Release` (the world calls it).
-**Next:** Checkpoint 3.2 closes Milestone 1; M25's voxel size stays open,
+**Next:** Checkpoint 3.2 closes Milestone 1; then **Milestone 2 — the first
+gameplay loop** (GL1–GL16: pickaxe and breaking stages, inventory, furnace,
+anvil, merchant and coins; copper ore → bun → ingot → sold), ahead of the rest
+of Chapter 4. Each GL item is the thinnest first pass of a Chapter 5–7
+objective; don't build the full versions early. M25's voxel size stays open,
 and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
 
 ## Conventions

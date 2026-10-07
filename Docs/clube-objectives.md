@@ -2,10 +2,11 @@
 
 Project: `E:\Repos\Unity3D\clube` (fresh restart; earlier terrain-demo repo is reference only, not ported)
 Target: Milestone 1 — Destructible Terrain Demo = **Chapters 0–3** (ends at Checkpoint 3.2)
+Next: **Milestone 2 — First gameplay loop** (collect → refine → craft → sell), scheduled straight after Checkpoint 3.2 and ahead of the rest of Chapter 4 *(added 2026-10-06)*
 
 Each objective has an ID so it maps 1:1 to a GitHub issue; PRs group objectives per sub-section (see G2). Items marked *(added)* are suggestions beyond the original list — keep, cut, or defer as you like. Items marked *(backlog)* were imported from the 2026-10-01 ideas backlog and are just as open to change.
 
-**Plan maturity:** Chapters 0–3 are scoped and schedulable. Chapters 4–5 are drafts. Chapters 6–8 are design exploration — context for decisions, not work to schedule.
+**Plan maturity:** Chapters 0–3 are scoped and schedulable, and so is Milestone 2 (the first pass of the loop, pulling thin slices of Chapters 5–7 forward). Chapters 4–5 are drafts. Chapters 6–8 are design exploration — context for decisions, not work to schedule.
 
 **Settled decisions:**
 - Render pipeline: **URP** (project created from the URP template). Shader work (M11, M13, M14) targets URP.
@@ -311,7 +312,47 @@ Ore nodes are generated as a procedural centroid with a 3D Gaussian falloff. Eac
 
 ---
 
+## Milestone 2 — First gameplay loop *(added 2026-10-06 — next after Checkpoint 3.2)*
+
+Goal: play the first pass of the core loop end to end: **collect → refine → craft → sell**. Test case: mine copper ore with a pickaxe, smelt it in a furnace into a copper **bun** (the rough, dome-shaped ingot a smelt leaves), strike the bun on the anvil into a refined **ingot**, and sell the ingot at a merchant table for coins.
+
+This milestone comes before the rest of Chapter 4 (P4–P16, the lean game world). Each GL objective is the thinnest version of an objective that already lives in Chapters 5–7 (named in brackets); the full version stays there and builds on this one. Keep every GL piece behind the same seams the full version needs (data in `Clube.Core`, player-facing parts in `Clube.Game`, A1), but don't build the full version early: no drag and drop, no supply and demand, no fuel tiers, no quality.
+
+Where it runs: in WorldLab with the player (P), like Checkpoint 3.1; it moves into the lean `Game` scene with GW3 (see Open questions). The loop is `Clube.Game` code, so it must not depend on any lab component.
+
+### LA — Tools and breaking
+- [ ] **GL1** `Core` Tool model *(first pass of TL1)*: a tool is an item (I1) with an impact shape given in sample corners around the aimed corner, and a power per material category (aggregate, ore, soft). Two tools: **hand** and **pickaxe**.
+- [ ] **GL2** `Game` Use a tool: the hotbar's tool (GL7) acts on the corners under the crosshair on Attack, with a placeholder swing (MF2 later). Edits go through the A7 path (`World`, so borders stay seamless, M2). In the loop this replaces `PlayerDigTool`'s sphere for mining; the sphere brush stays for the labs and for placing.
+- [ ] **GL3** `Core` Breaking stages *(first pass of MF5)*: a hard sample is not removed outright. Pickaxe hits move it **solid → cracked → loose** (stone → cracked stone → loose stone; copper ore → cracked copper ore → loose copper ore), and the mesh updates at each stage. Hits per stage come from the material's hardness (M9) against the tool's power, so the hand barely dents stone. Simplest form first: cracked and loose are extra registry materials (ids, textures), so the mesher and material pass need no changes.
+- [ ] **GL4** `Game` Tool cursor *(first pass of TL3)*: a soft glow on the corners the tool will hit, replacing `PlayerBrushPreview`'s sphere while a tool is held.
+- [ ] **GL5** `Game` Collect loose material *(first pass of I5)*: hitting a loose sample with the pickaxe or the hand removes it and adds its drop item (O6) to the inventory. No world pickups yet (I2, MF3).
+
+### LB — Inventory
+- [ ] **GL6** `Core` Inventory model *(first pass of N1, with N4's tests)*: slots, stacks with a max size, add and remove, full-inventory handling. Holds material drops (O6), the hand and pickaxe, and non-material items: copper bun, copper ingot (I1's first non-material items).
+- [ ] **GL7** `Game` Hotbar and inventory screen *(first pass of N3, N2)*: number keys pick the hand or pickaxe; a simple screen lists the stacks and counts.
+
+### LC — Refining and crafting
+- [ ] **GL8** `Core` Recipes and stations *(first pass of CR1)*: a recipe has inputs, outputs, the station that runs it, and a cost in time (furnace) or strikes (anvil). Two recipes: copper ore → copper bun (furnace), copper bun → copper ingot (anvil).
+- [ ] **GL9** `Game` Interaction *(first pass of I3)*: look at a station, a prompt shows ("E — use furnace"), and E opens it.
+- [ ] **GL10** `Game` Furnace: load copper ore, smelt for a set time, take out a copper bun. Fuel is left out of the first pass (wood and charcoal are HF1); stations are placed by hand in the scene, not built (PK17).
+- [ ] **GL11** `Game` Anvil: strike the bun a set number of times (a hammer held or supplied by the anvil, CR2) to get a refined copper ingot.
+
+### LD — Selling
+- [ ] **GL12** `Core` Currency and wallet *(first pass of TR3)*: one coin balance with earn and spend, unit tested (G3).
+- [ ] **GL13** `Core` Price list *(first pass of TR1)*: a fixed price per item in one asset; supply, demand and town prices come later (TR1, TR2).
+- [ ] **GL14** `Game` Merchant table *(first pass of TR4)*: sell items from the inventory at the listed price; the wallet shows on the HUD.
+
+### LE — Loop playtest
+- [ ] **GL15** `Game` Loop setup: the player starts with the hand and a pickaxe near copper they can reach (a shallow copper `OreSpec`, or a node placed near the spawn), with a furnace, anvil and merchant table close by.
+- [ ] **GL16** Playtest and notes in `Docs/` *(first pass of EC6)*: time spent on each leg, what felt tedious or unclear, and what the next pass should change.
+
+**Done when:** in one session the player mines copper ore with the pickaxe (seeing it crack, loosen and land in the inventory), smelts it into a bun, hammers the bun into an ingot and sells it for coins, with the inventory and wallet right at every step and no lab component needed.
+
+---
+
 ## Chapter 4 — Procedurally generated chunks (`Game`) *(draft — to be expanded)*
+
+*(2026-10-06)* The rest of this chapter comes after Milestone 2.
 
 - [x] **P1** `Core` Chunks stream in/out around the player (load/unload radius from render distance). *(Done 2026-10-05: `WorldStreamer`, nearest first, one chunk of slack before unloading, the wanted area's offsets sorted once per render distance.)*
 - [x] **P2** `Core` Chunk object pooling. *(Done 2026-10-05: `ChunkRendererPool` (renderers only for chunks with a surface, about 1 in 6 at 8/m) and `VoxelArrayPool` (density and material arrays come back when the world drops a chunk).)*
@@ -335,6 +376,17 @@ Ore nodes are generated as a procedural centroid with a 3D Gaussian falloff. Eac
 - [ ] **P14** `Core` *(added 2026-10-05)* Cellular (Worley/Voronoi) noise generator imitating the cracked, bubbly cooling surface of slag: another K9 generator, or a detail layer on top of others, seeded like the rest (K10). Could also shape slag heaps around smelting sites (PR6, 6D).
 - [ ] **P15** `Lab` *(added 2026-10-05)* Infinite vs bounded world: compare the current endless streamed world (M1) with a size-limited map holding a limited set of biomes, and so a limited set of tribes and races (Chapter 8). Compare generation cost, how exploration feels, save size (S2), and how deliberately biomes (P8, PK5), tribe territories and settlements (7B) can be placed. Decision recorded in `Docs/` (see Open questions).
 - [ ] **P16** `Core + Game` *(added 2026-10-05)* Render distance in metres, not chunks: the chunk size now changes with the voxel size (M25, `ChunkSizing`), so "6 chunks" is 96 m at 1/m and 24 m at 8/m. Store the player setting (M3) in metres, turn it into chunk rings in `WorldStreamer`, and pair it with P7's levels.
+
+### Material-driven meshing *(added 2026-10-06)*
+Materials that mesh differently: smooth soil, faceted rock, square chiselled blocks, Voronoi deep rock and oversized crystal voxels side by side. Rule for the whole section: **no gaps at any seam**. Every mixed seam gets a test that the vertices on both sides match, like M2's border tests, and a lab view to inspect it. Each mode is looked up per material from data (a table indexed by material id), not a branch per vertex, so A6 still holds.
+
+- [ ] **MX1** `Core + Lab` Edge steps per material: how many positions a vertex may take along an edge depends on the material's softness. Stone: midpoint only (1 position, 1 bit: solid or not); clay: 3 positions (2 bits); dirt: 7 (3 bits); sand: 15 (4 bits). Hard rock stays faceted, soft ground rolls smoothly.
+  - Open: snap the interpolated position to the nearest of the 2^b − 1 evenly spaced points, or store the density in b bits per sample (which also shrinks storage, P13)? And which material decides an edge between two materials (the solid end, as `VertexMaterialSampler` does)?
+  - Generalises P13 (midpoint and binary density, stone's case) and V3 (interpolated vs midpoint, now per material).
+- [ ] **MX2** `Core + Lab` Chiselled voxels: a voxel flagged as chiselled meshes as a cube with square edges, inside the marching cubes surface, with no gaps where the two meet. The mesh side of the chisel skill (SK8) and tool (TL2).
+- [ ] **MX3** `Core + Lab` Voronoi deep rock: rare deep-earth materials mesh as Voronoi cells within the build grid (M23) instead of marching cubes. A transition helper blends the marching cubes surface into the cells: only slightly gradual, never gapped. Cells seeded per build cell from the world seed (like O2), so borders agree. Related: P14 (cellular noise).
+- [ ] **MX4** `Core + Lab` Large-voxel veins and crystals: rare formations whose material uses marching voxels 2× or 4× the normal size, with a seam helper where they meet normal voxels. The same problem as P7's level-of-detail seams (Transvoxel or skirts): solve it once for both.
+- [ ] **MX5** `Lab` Trees from marching voxels: test building trees in the marching voxel grid, with finer edge steps than the midpoint (possibly all 255, the full 8 bits that `FlatByte` already stores, MX1), and judge the look and cost against a separate tree mesh. Feeds PK7.
 
 ### Lean game world *(added 2026-10-05; final section of Chapter 4)*
 Once the player walks around a world (3B), build a new world scene that is not a lab: the architectural choices the labs compared are baked in and can no longer be changed at run time. Fixing them lets the code drop the variant switches, lab hooks and copies the labs need, so it's simpler and faster. This is A13 made concrete, and the `Game` scene the later chapters build on.
@@ -393,6 +445,31 @@ Other screens are already planned elsewhere: inventory (N2), settings and key bi
 - [ ] **MF2** `Game` Test different ore-cracking and pickaxe-swinging animations.
 - [ ] **MF3** `Game` Dropped material behaviour: compare the feel of loose dirt and ore clumping back into the terrain mesh (an A7 edit, like PK9) vs dropping as items to pick back up (I2). Decision recorded in `Docs/`.
 - [ ] **MF4** `Game` *(added 2026-10-05)* Mining particle effects: dust, chips and debris when terrain is dug, scaled by the amount removed (`BrushResult`) and coloured by the material (M10).
+- [ ] **MF5** `Core + Game` *(added 2026-10-06)* Breaking stages for hard materials: the pickaxe turns rock into cracked rock, then into loose rock; loose rock can be picked up with a shovel, a pickaxe or by hand (TL2, TL4). First pass in Milestone 2 (GL3, GL5); the full version covers every hard material and tool, and how loose material behaves when left (SM1, MF3).
+
+### 5G — Tools *(added 2026-10-06)*
+Tools act on marching voxel **corners** (density samples), not on a world-space sphere like the lab brush: each tool has an impact shape in corners. A corner's size is the voxel size, so M25's choice sets how big each tool feels (at 8 per metre a corner is 12.5 cm).
+
+- [ ] **TL1** `Core` Tool model: impact shape (corners around the aimed one), strength per material category, and which materials it works on. First pass: GL1.
+- [ ] **TL2** `Core + Game` The tool set:
+
+  | Tool | Impact | Works on | Notes |
+  |---|---|---|---|
+  | Hand | 1 corner | Soft material | Scoops single corners; very inefficient on hard material; picks up loose rock |
+  | Trowel | 1 corner (shared by up to 8 voxels) | Soft material | Fine shaping |
+  | Shovel | 4+ corners, maybe 12 in a solid plus shape | Soft and loose material | Picks up loose rock; carries material to drop (SM2) |
+  | Pickaxe | About the shovel's area | Hard material | Cracks and loosens rock (MF5); picks up loose rock |
+  | Mattock | Between shovel and pickaxe | Hard soil, roots | |
+  | Rake | A whole build-grid cell (M23) of corners | Soft material only | Smooths the surface flat |
+  | Chisel | One whole marching voxel | Rock | Squares it off (MX2, SK8) |
+  | Axe, hatchet, saw | — | Wood | Woodcutting (PK7, MX5) |
+
+- [ ] **TL3** `Game` Tool cursor: a soft glow on the corners within the tool's impact; the chisel's cursor outlines the whole voxel. First pass: GL4.
+- [ ] **TL4** `Core` Tool efficiency: tool against material (hardness, M9) sets how much each use does, so the hand is slow on stone and the rake does nothing to it. Ties to MF1 (tool upgrades) and CR3 (better metals).
+
+### 5H — Soft ground *(added 2026-10-06; promotes PK9)*
+- [ ] **SM1** `Core + Lab` Stability: soft materials get a stability from the voxels beneath them; stone is highly stable, sand barely. After an edit, unstable edges slump (move density and material downhill through the A7 path, M5) until every sample is above its material's threshold, like an angle of repose. Answers PK9's question of what "unsupported" means for densities. A lab view colours samples by stability.
+- [ ] **SM2** `Core + Game` Dropping material: material poured from a bucket or shovel at a target surface falls with gravity and settles until stable (SM1). Pairs with I6 (placing uses inventory material).
 
 ---
 
@@ -411,6 +488,7 @@ Other screens are already planned elsewhere: inventory (N2), settings and key bi
   - Note: compare the surface normal angle against a max slope that rises with skill; it can drive `CharacterController.slopeLimit` directly. Benefits from tall terrain (M17).
 - [ ] **SK6** `Game` *(backlog)* Skill books hidden in merchant shops (7C) and blacksmith camps (ST2) that raise a skill once read.
 - [ ] **SK7** *(added 2026-10-05)* Recyclable skills: decide what this means before prototyping it (reusing a learned skill in a new line, e.g. forging know-how speeding up recycling in PR6, or regaining spent progress). Part of the SK3 decision.
+- [ ] **SK8** *(added 2026-10-06)* Chisel skill: lets the player shape marching voxels into square-edged blocks with the chisel (TL2), meshed by MX2. Skill could set how cleanly or quickly a voxel squares off.
 
 ### 6B — Prospecting skill
 Prospecting reads the same probability field that ore generation uses (O1–O4). Skill controls how clearly the player sees it.
@@ -508,7 +586,7 @@ Villages and towns are placed where the natural resources would support them.
 - [ ] **EC3** `Core` Per-town influence meter driven by the player's share of trade and production.
 - [ ] **EC4** `Core` Rival businesses or town guilds that compete for the same markets.
 - [ ] **EC5** `Game` Ledger UI: wealth over time, influence per town, best trade routes.
-- [ ] **EC6** *(backlog)* Core loop design pass: collecting → crafting → selling. Explore what makes each leg enjoyable and how they hand off to each other; playtest before building more systems on top.
+- [ ] **EC6** *(backlog)* Core loop design pass: collecting → crafting → selling. Explore what makes each leg enjoyable and how they hand off to each other; playtest before building more systems on top. *(2026-10-06: the first pass is Milestone 2, GL1–GL16, with copper as the test case.)*
 - [ ] **EC7** `Core` *(backlog)* Mining rights: the player pays a fee to unlock mining in an area. Fees are set by the nearby city or lord and tied to the player's standing with them (EC3), feeding the town-dominance goal. Needs a region map (ST1).
 
 ### 7E — World events *(backlog)*
@@ -613,12 +691,13 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
   - Wood is already in the plan as fuel and charcoal (HF1); species could differ in burn temperature, building or tool use, and trade value (TR1).
   - Growth over time, saplings and replanting tie into PK3 (ecology) and PK5 (which species grow where).
   - Fits the skill question in 6A (woodcutting as a skill).
+  - *(Added 2026-10-06)* Whether trees are built from marching voxels is tested in MX5; the axe, hatchet and saw are in the tool set (TL2).
 
 - **PK8 Water.** Oceans, lakes and rivers.
   - Static water bodies are needed anyway for settlement scoring (ST1) and water power (DV2); see Open questions.
   - **Stretch goal:** flowing water physics (filling dug holes, flooding mines, the "pumping water out of deep mines" problem in DV3).
 
-- **PK9 Gravity voxels.** Loose materials such as sand and gravel fall when nothing supports them, like Minecraft's gravity blocks.
+- **PK9 Gravity voxels.** *(Promoted 2026-10-06 to SM1–SM2 in 5H: stability from support below, slumping to a threshold, poured material settling.)* Loose materials such as sand and gravel fall when nothing supports them, like Minecraft's gravity blocks.
   - A material property in the M9 registry (e.g. "loose"), checked after edits through the A7 path; falling voxels move density and material, then dirty the affected chunks (M5).
   - Raises a smooth-terrain question Minecraft doesn't have: what "unsupported" means for densities rather than whole blocks.
 
@@ -671,3 +750,7 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
 - Do settlements (7B) belong to tribes, so a town's culture shapes what it makes and trades?
 - *(Added 2026-10-05)* Infinite procedural world, or a bounded map with a limited set of biomes and so of tribes and races? Tested in P15.
 - *(Added 2026-10-05)* Building on a grid (Valheim) or off-grid (Rust)? Part of PK17, sized by M25.
+- *(Added 2026-10-06)* Where does Milestone 2's loop run: WorldLab with the player (the default, like Checkpoint 3.1), or should the lean `Game` scene (GW3) be pulled forward so the loop is played without lab tools at all?
+- *(Added 2026-10-06)* Breaking stages (GL3, MF5): cracked and loose as extra materials (simple, no mesher changes, but triples the ore ids), or a separate per-sample damage value beside the material (needs storage and shader work)?
+- *(Added 2026-10-06)* Tools act on corners (TL1), so their size depends on the voxel size: settle M25 before tuning tool shapes, or define shapes in metres and convert?
+- *(Added 2026-10-06)* MX1 edge steps: snap vertex positions per material, or store densities in fewer bits per material?
