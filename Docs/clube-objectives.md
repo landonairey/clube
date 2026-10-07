@@ -348,6 +348,17 @@ Where it runs: in WorldLab with the player (P), like Checkpoint 3.1; it moves in
 
 **Done when:** in one session the player mines copper ore with the pickaxe (seeing it crack, loosen and land in the inventory), smelts it into a bun, hammers the bun into an ingot and sells it for coins, with the inventory and wallet right at every step and no lab component needed.
 
+### Second pass *(added 2026-10-07, after the first playtest)*
+Changes asked for after `Docs/20261007 loop playtest.md`. The playtest's own findings (lips in shafts, getting out of holes, items per swing) stay open alongside these.
+
+- [ ] **GL17** `Core + Game` Piles by material *(first pass of SM2)*: dropped soft and medium material (dirt, grass) piles up as a cone at its angle of repose; hard material (stone, ore) stacks as a cube inside the build cell it lands in, filling the next cell over once that's full. The shape is a per-material setting.
+- [ ] **GL18** `Game` Tool cursor, perimeter only *(refines GL4)*: a small right-angle marker at each of the 4 corners of the reached area's face on the surface, for the hand and the pickaxe alike, instead of a cross on every vertex.
+- [ ] **GL19** `Core + Game` The furnace takes a stack *(refines GL10)*: stations get input slots; the furnace works through what's in them one recipe at a time and stacks the results in its output; the anvil does the same, a strike at a time.
+- [ ] **GL20** `Game` Slot screens *(first pass of N2 for stations)*: the furnace, anvil and merchant screens show item slots like the hotbar: the station's input and output slots, the player's inventory, and the merchant's prices on the slots it buys.
+- [ ] **GL21** `Core + Config` Stone on steep slopes: where the surface is steeper than a set angle above a set height, the top layers are the base material (stone). Slope comes from the column heights, with a one-column border so chunks agree (M2).
+- [ ] **GL22** `Core + Config` Surface rocks *(first step of collecting)*: a Rock material scattered on grassy ground as clusters of 1–3 samples just above the surface, small bumps in the mesh, placed by a hash of the column so every chunk agrees; mined by hand into a Rock item.
+- [ ] **GL23** `Core + Game` Placeable stations *(first pass of PK17)*: the player starts with a furnace, an anvil and a merchant table as items. With one selected, build mode shows the build grid locally (the aimed cell lit, the grid fading out radially) and a preview snapped to the cell; B places it, holding B while looking at a placed one picks it back up. The build cell size moves into `WorldConfig` so Core and the game share it.
+
 ---
 
 ## Chapter 4 — Procedurally generated chunks (`Game`) *(draft — to be expanded)*
