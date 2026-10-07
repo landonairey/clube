@@ -6,13 +6,12 @@ using UnityEngine.Rendering;
 namespace Clube.Game
 {
     /// <summary>
-    /// The tool cursor (GL4, first pass of TL3): outlines the surface mesh inside the voxels
-    /// the held tool reaches (a single voxel for the hand, 3×3×3 for the pickaxe), so the
-    /// player sees exactly which part of the ground a hit will work on. The outline is the
-    /// mesh's own triangle edges (<see cref="SurfaceOutline"/>), drawn just in front of the
-    /// surface. Each voxel's lines warm from <see cref="idleColor"/> towards
-    /// <see cref="damagedColor"/> as its corners take damage, showing how close it is to
-    /// breaking.
+    /// The tool cursor (GL4, first pass of TL3): a small cross lying on the terrain mesh at
+    /// every triangle corner the next hit can move. The held tool's reach gives the solid
+    /// corners (samples) it will hit; each one controls the mesh vertices on its edges to air
+    /// (<see cref="SurfacePoints"/>), and those are where the crosses go, flat on the surface.
+    /// Each cross warms from <see cref="idleColor"/> towards <see cref="damagedColor"/> as
+    /// its sample takes damage, showing how close it is to breaking.
     /// </summary>
     [RequireComponent(typeof(PlayerToolUser))]
     public class ToolCursor : MonoBehaviour
@@ -22,16 +21,21 @@ namespace Clube.Game
         private Material material;
 
         [SerializeField]
-        private Color idleColor = new Color(1f, 0.95f, 0.7f, 0.9f);
+        private Color idleColor = new Color(1f, 0.95f, 0.7f, 0.95f);
 
         [SerializeField]
-        private Color damagedColor = new Color(1f, 0.4f, 0.05f, 1f);
+        private Color damagedColor = new Color(1f, 0.35f, 0.05f, 1f);
 
+        [Tooltip("Length of each arm of a cross, as a fraction of the voxel size.")]
+        [SerializeField, Range(0.05f, 0.5f)]
+        private float armLength = 0.2f;
+
+        private readonly List<SurfacePoint> surfacePoints = new List<SurfacePoint>();
         private readonly List<Vector3> points = new List<Vector3>();
         private readonly List<Color> colors = new List<Color>();
         private readonly List<int> indices = new List<int>();
         private PlayerToolUser tools;
-        private GameObject outline;
+        private GameObject markers;
         private UnityEngine.Mesh mesh;
 
         private void Awake()
@@ -40,35 +44,35 @@ namespace Clube.Game
             mesh = new UnityEngine.Mesh { name = "Tool Cursor" };
             mesh.MarkDynamic();
 
-            outline = new GameObject("Tool Cursor");
-            outline.AddComponent<MeshFilter>().sharedMesh = mesh;
-            var outlineRenderer = outline.AddComponent<MeshRenderer>();
-            outlineRenderer.sharedMaterial = material;
-            outlineRenderer.shadowCastingMode = ShadowCastingMode.Off;
-            outlineRenderer.receiveShadows = false;
-            outline.SetActive(false);
+            markers = new GameObject("Tool Cursor");
+            markers.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var markerRenderer = markers.AddComponent<MeshRenderer>();
+            markerRenderer.sharedMaterial = material;
+            markerRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            markerRenderer.receiveShadows = false;
+            markers.SetActive(false);
         }
 
         private void OnDisable()
         {
-            if (outline != null)
+            if (markers != null)
             {
-                outline.SetActive(false);
+                markers.SetActive(false);
             }
         }
 
         private void OnDestroy()
         {
-            Destroy(outline);
+            Destroy(markers);
             Destroy(mesh);
         }
 
-        // After the tool user's Update has found this frame's reach.
+        // After the tool user's Update has found this frame's targets.
         private void LateUpdate()
         {
             WorldView view = tools.WorldView;
-            bool show = material != null && tools.Current != null && tools.HasReach && view != null && view.IsReady;
-            outline.SetActive(show);
+            bool show = material != null && tools.Current != null && tools.Targets.Count > 0 && view != null && view.IsReady;
+            markers.SetActive(show);
             if (!show)
             {
                 return;
@@ -76,34 +80,27 @@ namespace Clube.Game
 
             World world = view.World;
             ChunkMeshSettings settings = view.Config.MeshSettings;
-            VoxelBox box = tools.Reach;
+            float arm = world.Grid.VoxelSize * armLength;
             points.Clear();
             colors.Clear();
-            for (int z = box.Min.z; z <= box.Max.z; z++)
+            foreach (Vector3Int sample in tools.Targets)
             {
-                for (int y = box.Min.y; y <= box.Max.y; y++)
+                surfacePoints.Clear();
+                SurfacePoints.ForSample(world, sample, settings, surfacePoints);
+                if (surfacePoints.Count == 0)
                 {
-                    for (int x = box.Min.x; x <= box.Max.x; x++)
-                    {
-                        var voxel = new Vector3Int(x, y, z);
-                        int before = points.Count;
-                        SurfaceOutline.AddEdges(world, voxel, settings, points);
-                        if (points.Count == before)
-                        {
-                            continue;
-                        }
-                        Color color = Color.Lerp(idleColor, damagedColor, DamageFraction(view, voxel));
-                        for (int i = before; i < points.Count; i++)
-                        {
-                            colors.Add(color);
-                        }
-                    }
+                    continue;
+                }
+                Color color = Color.Lerp(idleColor, damagedColor, DamageFraction(view, sample));
+                foreach (SurfacePoint point in surfacePoints)
+                {
+                    AddCross(point, arm, color);
                 }
             }
 
-            // The points are in the world view's space, so the outline sits where it does.
-            outline.transform.SetPositionAndRotation(view.transform.position, view.transform.rotation);
-            outline.transform.localScale = view.transform.lossyScale;
+            // The points are in the world view's space, so the markers sit where it does.
+            markers.transform.SetPositionAndRotation(view.transform.position, view.transform.rotation);
+            markers.transform.localScale = view.transform.lossyScale;
             indices.Clear();
             for (int i = 0; i < points.Count; i++)
             {
@@ -115,24 +112,35 @@ namespace Clube.Game
             mesh.SetIndices(indices, MeshTopology.Lines, 0);
         }
 
-        // How far the voxel's most damaged corner is towards breaking, 0-1.
-        private float DamageFraction(WorldView view, Vector3Int voxel)
+        // Two short lines crossing at the point, in the surface's plane.
+        private void AddCross(SurfacePoint point, float arm, Color color)
         {
-            float most = 0f;
-            for (int corner = 0; corner < MarchingCubes.CornerCount; corner++)
+            Vector3 n = point.Normal;
+            Vector3 other = Mathf.Abs(n.y) < 0.9f ? Vector3.up : Vector3.right;
+            Vector3 u = Vector3.Cross(n, other).normalized * arm;
+            Vector3 v = Vector3.Cross(n, u.normalized) * arm;
+            points.Add(point.Position - u);
+            points.Add(point.Position + u);
+            points.Add(point.Position - v);
+            points.Add(point.Position + v);
+            for (int i = 0; i < 4; i++)
             {
-                Vector3Int sample = voxel + MarchingCubes.CornerOffset(corner);
-                float damage = tools.Damage.Get(sample);
-                if (damage <= 0f)
-                {
-                    continue;
-                }
-                byte? id = view.World.GetMaterial(sample);
-                VoxelMaterial voxelMaterial = id.HasValue && view.Config.Materials != null ? view.Config.Materials.Get(id.Value) : null;
-                float hardness = voxelMaterial != null ? voxelMaterial.Hardness : 1f;
-                most = Mathf.Max(most, hardness > 0f ? Mathf.Clamp01(damage / hardness) : 1f);
+                colors.Add(color);
             }
-            return most;
+        }
+
+        // How far a sample is towards breaking, 0-1.
+        private float DamageFraction(WorldView view, Vector3Int sample)
+        {
+            float damage = tools.Damage.Get(sample);
+            if (damage <= 0f)
+            {
+                return 0f;
+            }
+            byte? id = view.World.GetMaterial(sample);
+            VoxelMaterial voxelMaterial = id.HasValue && view.Config.Materials != null ? view.Config.Materials.Get(id.Value) : null;
+            float hardness = voxelMaterial != null ? voxelMaterial.Hardness : 1f;
+            return hardness > 0f ? Mathf.Clamp01(damage / hardness) : 1f;
         }
     }
 }

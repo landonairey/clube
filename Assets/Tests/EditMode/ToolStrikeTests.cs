@@ -156,24 +156,26 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void SurfaceOutline_GivesTheTriangleEdgesInsideAVoxel()
+        public void SurfacePoints_AreTheVerticesASampleControlsFacingTheAir()
         {
             var settings = new ChunkMeshSettings(Iso, 1f);
-            var lines = new List<Vector3>();
+            var points = new List<SurfacePoint>();
 
-            // A floor voxel: solid below, air above, so a flat square of two triangles at
-            // y = 1.5, three edges each.
-            SurfaceOutline.AddEdges(world, new Vector3Int(2, 1, 2), settings, lines);
-            Assert.AreEqual(12, lines.Count);
-            foreach (Vector3 point in lines)
-            {
-                Assert.AreEqual(1.5f, point.y, 1e-5f);
-            }
+            // A floor sample (1) under air (0): one vertex halfway up its edge to the air,
+            // facing up.
+            SurfacePoints.ForSample(world, new Vector3Int(2, 1, 2), settings, points);
+            Assert.AreEqual(1, points.Count);
+            Assert.AreEqual(new Vector3(2f, 1.5f, 2f), points[0].Position);
+            Assert.AreEqual(1f, Vector3.Dot(points[0].Normal, Vector3.up), 1e-4f);
 
-            // A buried voxel has no surface.
-            lines.Clear();
-            SurfaceOutline.AddEdges(world, new Vector3Int(2, 0, 2), settings, lines);
-            CollectionAssert.IsEmpty(lines);
+            // A buried sample controls nothing, until the one above it is gone.
+            points.Clear();
+            SurfacePoints.ForSample(world, new Vector3Int(2, 0, 2), settings, points);
+            CollectionAssert.IsEmpty(points);
+            world.SetDensity(new Vector3Int(2, 1, 2), 0f);
+            SurfacePoints.ForSample(world, new Vector3Int(2, 0, 2), settings, points);
+            Assert.AreEqual(1, points.Count);
+            Assert.AreEqual(new Vector3(2f, 0.5f, 2f), points[0].Position);
         }
     }
 }
