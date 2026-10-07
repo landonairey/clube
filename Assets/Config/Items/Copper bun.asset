@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
   id: copper-bun
   displayName: Copper bun
-  icon: {fileID: 0}
+  icon: {fileID: 2800000, guid: eb8497d09defe494f876cdf1a3ee7a7c, type: 3}
   maxStack: 16

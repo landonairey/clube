@@ -15,3 +15,4 @@ MonoBehaviour:
   id: stone
   displayName: Stone
   icon: {fileID: 2800000, guid: 5bf0f682b3c875b4a857edba51a9c4c9, type: 3}
+  maxStack: 1024

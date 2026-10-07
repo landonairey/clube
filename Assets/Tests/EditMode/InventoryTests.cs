@@ -98,6 +98,18 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void RemoveAt_TakesFromThatSlotOnly()
+        {
+            var inventory = new Inventory(3);
+            inventory.Add(ore, 14);
+
+            Assert.AreEqual(3, inventory.RemoveAt(1, 3));
+            Assert.AreEqual(1, inventory.RemoveAt(1, 10), "Only what the slot still holds.");
+            Assert.IsTrue(inventory[1].IsEmpty);
+            Assert.AreEqual(10, inventory[0].Count);
+        }
+
+        [Test]
         public void Move_SwapsDifferentItemsAndMergesTheSameItem()
         {
             var inventory = new Inventory(3);

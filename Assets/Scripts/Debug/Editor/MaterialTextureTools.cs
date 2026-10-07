@@ -21,6 +21,9 @@ namespace Clube.Debug.Editor
         private const string PlaceholderFolder = "Assets/Textures/Terrain";
         private const int PlaceholderSize = 128;
 
+        // Cracked and loose stages: fine enough to read per voxel at 4 voxels per metre.
+        private const int DetailSize = 512;
+
         /// <summary>How broken a placeholder looks: whole, cracked or loose rubble (GL3).</summary>
         private enum Wear
         {
@@ -169,12 +172,15 @@ namespace Clube.Debug.Editor
 
         private static Texture2D Paint(Color baseColor, Color mix, Color? fleck, Wear wear, int seed)
         {
-            var texture = new Texture2D(PlaceholderSize, PlaceholderSize, TextureFormat.RGBA32, false);
+            // Broken stages show per voxel, so they get the finer texture.
+            int size = wear == Wear.Whole ? PlaceholderSize : DetailSize;
+            float scale = size / (float)PlaceholderSize;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
             var random = new System.Random(seed);
-            var noise = new TileableNoise(random, PlaceholderSize);
-            for (int y = 0; y < PlaceholderSize; y++)
+            var noise = new TileableNoise(random, size);
+            for (int y = 0; y < size; y++)
             {
-                for (int x = 0; x < PlaceholderSize; x++)
+                for (int x = 0; x < size; x++)
                 {
                     float n = noise.Sample(x, y);
                     Color color = Color.Lerp(baseColor, mix, n);
@@ -187,20 +193,20 @@ namespace Clube.Debug.Editor
             if (fleck.HasValue)
             {
                 // Small clusters of ore in the stone.
-                int clusters = PlaceholderSize * PlaceholderSize / 300;
+                int clusters = size * size / 300;
                 for (int i = 0; i < clusters; i++)
                 {
-                    int cx = random.Next(PlaceholderSize);
-                    int cy = random.Next(PlaceholderSize);
-                    int radius = 1 + random.Next(3);
+                    int cx = random.Next(size);
+                    int cy = random.Next(size);
+                    int radius = Mathf.Max(1, Mathf.RoundToInt((1 + random.Next(3)) * Mathf.Sqrt(scale)));
                     for (int dy = -radius; dy <= radius; dy++)
                     {
                         for (int dx = -radius; dx <= radius; dx++)
                         {
                             if (dx * dx + dy * dy <= radius * radius)
                             {
-                                int px = (cx + dx + PlaceholderSize) % PlaceholderSize;
-                                int py = (cy + dy + PlaceholderSize) % PlaceholderSize;
+                                int px = (cx + dx + size) % size;
+                                int py = (cy + dy + size) % size;
                                 texture.SetPixel(px, py, fleck.Value * (0.85f + 0.3f * (float)random.NextDouble()));
                             }
                         }
@@ -220,40 +226,47 @@ namespace Clube.Debug.Editor
             return texture;
         }
 
-        // Bold, angular fractures to suit the low-poly terrain: from a few impact points,
-        // rays of straight segments that kink and sometimes fork, each a dark groove with a
-        // light bevel along one side. Thick enough to read at 4+ voxels per metre, where one
-        // voxel covers only ~16 pixels of a tile. Wraps at the edges so it still tiles.
+        // Angular fractures to suit the low-poly terrain: from impact points about 40 cm
+        // apart, rays of straight segments that kink and sometimes fork, each a dark groove
+        // with a light bevel along one side. Sized so every 25 cm voxel shows some (a voxel
+        // covers 64 pixels of a 512-pixel tile at 4 voxels per metre). Wraps so it tiles.
         private static void PaintCracks(Texture2D texture, System.Random random)
         {
+            int size = texture.width;
+            float scale = size / (float)PlaceholderSize;
             Color[] original = texture.GetPixels();
-            const int Impacts = 6;
-            for (int i = 0; i < Impacts; i++)
+            // Impact points on a jittered grid, so cracks cover the tile evenly.
+            int across = Mathf.Max(1, Mathf.RoundToInt(1.2f * scale));
+            float cell = size / (float)across;
+            for (int i = 0; i < across * across; i++)
             {
-                var start = new Vector2(random.Next(PlaceholderSize), random.Next(PlaceholderSize));
+                var start = new Vector2(
+                    (i % across + 0.15f + 0.7f * (float)random.NextDouble()) * cell,
+                    (i / across + 0.15f + 0.7f * (float)random.NextDouble()) * cell);
                 int rays = 3 + random.Next(2);
                 float firstAngle = (float)(random.NextDouble() * Mathf.PI * 2.0);
                 for (int ray = 0; ray < rays; ray++)
                 {
                     float angle = firstAngle + ray * Mathf.PI * 2f / rays + (float)(random.NextDouble() - 0.5) * 0.6f;
-                    PaintFracture(texture, original, random, start, angle, 3 + random.Next(2), 2.8f);
+                    PaintFracture(texture, original, random, start, angle, 3 + random.Next(2), 1.4f + scale * 0.5f, scale);
                 }
             }
         }
 
-        // One fracture: straight segments of 9-17 px, kinking up to ±0.5 rad, thinning as it goes.
-        private static void PaintFracture(Texture2D texture, Color[] original, System.Random random, Vector2 from, float angle, int segments, float width)
+        // One fracture: straight segments, kinking up to ±0.5 rad, thinning as it goes.
+        private static void PaintFracture(
+            Texture2D texture, Color[] original, System.Random random, Vector2 from, float angle, int segments, float width, float scale)
         {
             for (int segment = 0; segment < segments && width > 0.6f; segment++)
             {
                 angle += (float)(random.NextDouble() - 0.5);
-                float length = 9f + random.Next(9);
+                float length = (9f + random.Next(9)) * scale * 0.5f;
                 Vector2 to = from + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * length;
                 PaintGroove(texture, original, from, to, width);
-                if (random.NextDouble() < 0.2)
+                if (random.NextDouble() < 0.12)
                 {
                     float side = random.NextDouble() < 0.5 ? -1f : 1f;
-                    PaintFracture(texture, original, random, to, angle + side * (0.6f + (float)random.NextDouble() * 0.5f), 2, width * 0.6f);
+                    PaintFracture(texture, original, random, to, angle + side * (0.6f + (float)random.NextDouble() * 0.5f), 2, width * 0.6f, scale);
                 }
                 from = to;
                 width *= 0.85f;
@@ -290,48 +303,96 @@ namespace Clube.Debug.Editor
         // Shades from the original pixel, so overlapping stamps don't stack into black or white.
         private static void SetShade(Texture2D texture, Color[] original, int x, int y, float factor)
         {
-            x = ((x % PlaceholderSize) + PlaceholderSize) % PlaceholderSize;
-            y = ((y % PlaceholderSize) + PlaceholderSize) % PlaceholderSize;
-            Color color = original[y * PlaceholderSize + x] * factor;
+            int size = texture.width;
+            x = ((x % size) + size) % size;
+            y = ((y % size) + size) % size;
+            Color color = original[y * size + x] * factor;
             color.a = 1f;
             texture.SetPixel(x, y, color);
         }
 
-        // Pebbles: wrapped Voronoi cells, each its own shade, with dark gaps between them.
+        // Pebbles about 12 cm across: wrapped Voronoi cells, each its own shade, with dark
+        // gaps between them, so a 25 cm voxel shows a few stones.
         private static void PaintRubble(Texture2D texture, System.Random random)
         {
-            const int Pebbles = 36;
-            const float Gap = 2.5f;
-            var centres = new Vector2[Pebbles];
-            var shades = new float[Pebbles];
-            for (int i = 0; i < Pebbles; i++)
+            int size = texture.width;
+            float scale = size / (float)PlaceholderSize;
+            int pebbles = Mathf.RoundToInt(14f * scale * scale);
+            float gap = 1.2f + scale;
+            // Centres kept apart: two nearly on top of each other smear a dark band between them.
+            float spacing = size / Mathf.Sqrt(pebbles);
+            var placed = new List<Vector2>();
+            for (int attempt = 0; attempt < pebbles * 30 && placed.Count < pebbles; attempt++)
             {
-                centres[i] = new Vector2(random.Next(PlaceholderSize), random.Next(PlaceholderSize));
+                var candidate = new Vector2(random.Next(size), random.Next(size));
+                bool clear = true;
+                foreach (Vector2 other in placed)
+                {
+                    if (WrappedDistance(candidate, other, size) < spacing * 0.6f)
+                    {
+                        clear = false;
+                        break;
+                    }
+                }
+                if (clear)
+                {
+                    placed.Add(candidate);
+                }
+            }
+            pebbles = placed.Count;
+            Vector2[] centres = placed.ToArray();
+            var shades = new float[pebbles];
+            for (int i = 0; i < pebbles; i++)
+            {
                 shades[i] = 0.75f + 0.4f * (float)random.NextDouble();
             }
 
-            for (int y = 0; y < PlaceholderSize; y++)
+            // Pebbles by coarse grid cell, so each pixel only checks the ones nearby.
+            int cells = Mathf.Max(1, Mathf.RoundToInt(Mathf.Sqrt(pebbles) / 2f));
+            float cellSize = size / (float)cells;
+            var grid = new List<int>[cells, cells];
+            for (int i = 0; i < pebbles; i++)
             {
-                for (int x = 0; x < PlaceholderSize; x++)
+                int gx = Mathf.Min(cells - 1, (int)(centres[i].x / cellSize));
+                int gy = Mathf.Min(cells - 1, (int)(centres[i].y / cellSize));
+                (grid[gx, gy] ??= new List<int>()).Add(i);
+            }
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
                 {
                     float nearest = float.MaxValue;
                     float second = float.MaxValue;
                     int cell = 0;
-                    for (int i = 0; i < Pebbles; i++)
+                    int cx = (int)(x / cellSize);
+                    int cy = (int)(y / cellSize);
+                    for (int oy = -1; oy <= 1; oy++)
                     {
-                        float distance = WrappedDistance(new Vector2(x, y), centres[i]);
-                        if (distance < nearest)
+                        for (int ox = -1; ox <= 1; ox++)
                         {
-                            second = nearest;
-                            nearest = distance;
-                            cell = i;
-                        }
-                        else if (distance < second)
-                        {
-                            second = distance;
+                            List<int> nearby = grid[((cx + ox) % cells + cells) % cells, ((cy + oy) % cells + cells) % cells];
+                            if (nearby == null)
+                            {
+                                continue;
+                            }
+                            foreach (int i in nearby)
+                            {
+                                float distance = WrappedDistance(new Vector2(x, y), centres[i], size);
+                                if (distance < nearest)
+                                {
+                                    second = nearest;
+                                    nearest = distance;
+                                    cell = i;
+                                }
+                                else if (distance < second)
+                                {
+                                    second = distance;
+                                }
+                            }
                         }
                     }
-                    float edge = Mathf.Clamp01((second - nearest) / Gap);
+                    float edge = Mathf.Clamp01((second - nearest) / gap);
                     Color color = texture.GetPixel(x, y) * shades[cell] * Mathf.Lerp(0.25f, 1f, edge);
                     color.a = 1f;
                     texture.SetPixel(x, y, color);
@@ -339,12 +400,12 @@ namespace Clube.Debug.Editor
             }
         }
 
-        private static float WrappedDistance(Vector2 a, Vector2 b)
+        private static float WrappedDistance(Vector2 a, Vector2 b, int size)
         {
             float dx = Mathf.Abs(a.x - b.x);
             float dy = Mathf.Abs(a.y - b.y);
-            dx = Mathf.Min(dx, PlaceholderSize - dx);
-            dy = Mathf.Min(dy, PlaceholderSize - dy);
+            dx = Mathf.Min(dx, size - dx);
+            dy = Mathf.Min(dy, size - dy);
             return Mathf.Sqrt(dx * dx + dy * dy);
         }
 

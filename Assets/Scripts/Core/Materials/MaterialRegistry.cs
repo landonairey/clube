@@ -65,6 +65,30 @@ namespace Clube.Core
             return id < MaxMaterials ? byId[id] : null;
         }
 
+        /// <summary>
+        /// The material an item becomes when put back into the ground (dropping, I4): one
+        /// that drops it and doesn't break any further, so the end of its break chain (stone
+        /// goes back as loose stone, copper ore as loose copper). Null for items no material
+        /// drops, like tools.
+        /// </summary>
+        public VoxelMaterial PlacedFrom(ItemDefinition item)
+        {
+            VoxelMaterial any = null;
+            foreach (VoxelMaterial material in materials)
+            {
+                if (material == null || item == null || material.Drop != item)
+                {
+                    continue;
+                }
+                if (material.BreaksInto == null)
+                {
+                    return material;
+                }
+                any ??= material;
+            }
+            return any;
+        }
+
         /// <summary>The material with this display name (ignoring case), or null.</summary>
         public VoxelMaterial Find(string displayName)
         {

@@ -5,10 +5,12 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// A short notice for each kind of item the player collects ("+3 Copper ore"), counted up
-    /// while more of it keeps coming and fading a moment after the last (first pass of U2).
-    /// Listens to the <see cref="PlayerInventory"/> when there is one (with "Inventory full:
-    /// Copper ore" for what didn't fit), otherwise to <see cref="PlayerToolUser.Collected"/>.
+    /// Short notices about the player's items (first pass of U2): "+3 Copper ore" as items
+    /// come in, "Inventory full: Copper ore" for what didn't fit, "-12 Stone" when dropping
+    /// and "Can't drop Pickaxe" when the selected item can't go into the ground. Counts add
+    /// up while more of the same keeps coming, and each fades a moment after the last.
+    /// Listens to the <see cref="PlayerInventory"/> when there is one, otherwise to
+    /// <see cref="PlayerToolUser.Collected"/>, and to the <see cref="ItemDropper"/>.
     /// </summary>
     [RequireComponent(typeof(PlayerToolUser))]
     public class PickupNotice : MonoBehaviour
@@ -26,24 +28,39 @@ namespace Clube.Game
         private readonly List<Notice> notices = new List<Notice>();
         private PlayerToolUser tools;
         private PlayerInventory inventory;
+        private ItemDropper dropper;
         private GUIStyle style;
+
+        private enum Kind
+        {
+            Added,
+            Full,
+            Dropped,
+            CantDrop,
+        }
 
         private void Awake()
         {
             tools = GetComponent<PlayerToolUser>();
             inventory = GetComponent<PlayerInventory>();
+            dropper = GetComponent<ItemDropper>();
         }
 
         private void OnEnable()
         {
             if (inventory != null)
             {
-                inventory.Added += OnCollected;
+                inventory.Added += OnAdded;
                 inventory.Rejected += OnRejected;
             }
             else
             {
-                tools.Collected += OnCollected;
+                tools.Collected += OnAdded;
+            }
+            if (dropper != null)
+            {
+                dropper.Dropped += OnDropped;
+                dropper.Refused += OnRefused;
             }
         }
 
@@ -51,37 +68,52 @@ namespace Clube.Game
         {
             if (inventory != null)
             {
-                inventory.Added -= OnCollected;
+                inventory.Added -= OnAdded;
                 inventory.Rejected -= OnRejected;
             }
             else
             {
-                tools.Collected -= OnCollected;
+                tools.Collected -= OnAdded;
+            }
+            if (dropper != null)
+            {
+                dropper.Dropped -= OnDropped;
+                dropper.Refused -= OnRefused;
             }
         }
 
-        private void OnCollected(ItemDefinition item)
+        private void OnAdded(ItemDefinition item)
         {
-            Note(item, full: false);
+            Note(item, Kind.Added, 1);
         }
 
         private void OnRejected(ItemDefinition item)
         {
-            Note(item, full: true);
+            Note(item, Kind.Full, 1);
         }
 
-        private void Note(ItemDefinition item, bool full)
+        private void OnDropped(ItemDefinition item, int count)
+        {
+            Note(item, Kind.Dropped, count);
+        }
+
+        private void OnRefused(ItemDefinition item)
+        {
+            Note(item, Kind.CantDrop, 1);
+        }
+
+        private void Note(ItemDefinition item, Kind kind, int count)
         {
             foreach (Notice notice in notices)
             {
-                if (notice.Item == item && notice.Full == full)
+                if (notice.Item == item && notice.Kind == kind)
                 {
-                    notice.Count++;
+                    notice.Count += count;
                     notice.LastTime = Time.time;
                     return;
                 }
             }
-            notices.Add(new Notice { Item = item, Full = full, Count = 1, LastTime = Time.time });
+            notices.Add(new Notice { Item = item, Kind = kind, Count = count, LastTime = Time.time });
         }
 
         private void OnGUI()
@@ -99,19 +131,32 @@ namespace Clube.Game
             {
                 float left = showSeconds - (Time.time - notice.LastTime);
                 GUI.color = new Color(1f, 1f, 1f, fadeSeconds > 0f ? Mathf.Clamp01(left / fadeSeconds) : 1f);
-                string text = notice.Full
-                    ? $"Inventory full: {notice.Item.DisplayName}"
-                    : $"+{notice.Count} {notice.Item.DisplayName}";
-                GUI.Label(new Rect(0f, y, Screen.width, LineHeight), text, style);
+                GUI.Label(new Rect(0f, y, Screen.width, LineHeight), Text(notice), style);
                 y += LineHeight;
             }
             GUI.color = previous;
         }
 
+        private static string Text(Notice notice)
+        {
+            string name = notice.Item.DisplayName;
+            switch (notice.Kind)
+            {
+                case Kind.Full:
+                    return $"Inventory full: {name}";
+                case Kind.Dropped:
+                    return $"-{notice.Count} {name}";
+                case Kind.CantDrop:
+                    return $"Can't drop {name}";
+                default:
+                    return $"+{notice.Count} {name}";
+            }
+        }
+
         private sealed class Notice
         {
             public ItemDefinition Item;
-            public bool Full;
+            public Kind Kind;
             public int Count;
             public float LastTime;
         }
