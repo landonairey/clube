@@ -5,7 +5,8 @@ namespace Clube.Game
 {
     /// <summary>
     /// Draws one inventory slot with IMGUI (GL7): a dark square, the item's icon (or its
-    /// name when it has none), its count, and a bright border when selected. Shared by the
+    /// name when it has none), its count, a bright border when selected, and an optional
+    /// corner note such as a price. Shared by the
     /// <see cref="Hotbar"/> and the <see cref="InventoryScreen"/> so slots look the same in both.
     /// </summary>
     public static class ItemSlotGui
@@ -17,7 +18,8 @@ namespace Clube.Game
         private static GUIStyle nameStyle;
         private static GUIStyle countStyle;
 
-        public static void Draw(Rect rect, ItemStack stack, bool selected, string key = null)
+        /// <param name="corner">Small text for the lower left, e.g. a merchant's price; null for none.</param>
+        public static void Draw(Rect rect, ItemStack stack, bool selected, string key = null, string corner = null)
         {
             EnsureStyles();
             Fill(rect, Background);
@@ -43,6 +45,13 @@ namespace Clube.Game
             if (key != null)
             {
                 GUI.Label(new Rect(rect.x + 3f, rect.y + 1f, 20f, 16f), key);
+            }
+            if (!string.IsNullOrEmpty(corner))
+            {
+                Color previous = GUI.color;
+                GUI.color = new Color(1f, 0.85f, 0.35f);
+                GUI.Label(new Rect(rect.x + 3f, rect.yMax - 18f, rect.width - 6f, 16f), corner);
+                GUI.color = previous;
             }
         }
 

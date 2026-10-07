@@ -5,9 +5,10 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// A crafting station standing in the world (GL10, GL11; CR4): a furnace, an anvil. Holds
-    /// the <see cref="CraftingStation"/> that does the work and the recipes it offers, lets
-    /// time pass for it, and opens the player's <see cref="StationPanel"/> when used.
+    /// A crafting station standing in the world (GL10, GL11, GL19; CR4): a furnace, an anvil.
+    /// Holds the <see cref="CraftingStation"/> that does the work, with its slots and the
+    /// recipes it offers, lets time pass for it, and opens the player's
+    /// <see cref="StationPanel"/> when used.
     /// </summary>
     /// <remarks>
     /// Placed by hand in the scene for now; building them is PK17. Needs a collider on it or
@@ -35,7 +36,7 @@ namespace Clube.Game
 
         private void Awake()
         {
-            Station = new CraftingStation(kind);
+            Station = new CraftingStation(kind, recipes);
         }
 
         private void Update()
