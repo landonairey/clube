@@ -213,7 +213,7 @@ reach in voxels: 1, or 3x3x3; power, hit rate), `VoxelMaterial.BreaksInto`
 chains stone/copper → cracked → loose (ids 6–9), `ToolStrike` (Core/Editing)
 hits every solid corner of the reached `VoxelBox` on `World` with `StrikeDamage`;
 in Game `PlayerToolUser` (Attack hits with the hotbar's tool, else the hand),
-`ToolCursor` (right-angle brackets at the 4 corners of the reach, GL18)
+`ToolCursor` (shades the mesh triangles inside the reached voxels, GL24; the pickaxe reaches a 4x4x4 ball, `VoxelReach`)
 and `PickupNotice`. LB: `Inventory`/`ItemStack` (Core/Items, `MaxStack` per
 item), `PlayerInventory` (takes `PlayerToolUser.Collected`), `Hotbar` (1–9,
 scroll, Q), `InventoryScreen` (Tab), drawn with `ItemSlotGui`. Player brush

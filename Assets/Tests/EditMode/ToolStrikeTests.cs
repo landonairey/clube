@@ -88,6 +88,32 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Ball_IsTheCubeWithoutItsEdgesAndCorners()
+        {
+            var ball = VoxelReach.Around(new Vector3Int(2, 1, 2), 4, rounded: true);
+
+            Assert.AreEqual(32, ball.Count, "4x4x4 = 64, less 8 corners and 24 edge voxels.");
+            Assert.IsFalse(ball.Contains(ball.Box.Min), "A corner is left out.");
+            Assert.IsFalse(ball.Contains(ball.Box.Min + new Vector3Int(1, 0, 0)), "So is an edge voxel.");
+            Assert.IsTrue(ball.Contains(ball.Box.Min + new Vector3Int(1, 1, 0)), "A face voxel stays.");
+            Assert.AreEqual(1, VoxelReach.Around(Vector3Int.zero, 1, rounded: true).Count, "Too small to round.");
+        }
+
+        [Test]
+        public void FindTargets_InABall_SkipsCornersOnlyTheLeftOutVoxelsShare()
+        {
+            // Box voxels 1-4 across x and z, 0-3 up; the floor is samples y 0 and 1.
+            var ball = VoxelReach.Around(new Vector3Int(2, 1, 2), 4, rounded: true);
+            List<Vector3Int> targets = new List<Vector3Int>();
+            ToolStrike.FindTargets(world, ball, Iso, targets);
+
+            CollectionAssert.DoesNotContain(targets, new Vector3Int(1, 0, 1), "Only the corner voxel has it.");
+            CollectionAssert.DoesNotContain(targets, new Vector3Int(2, 0, 1), "Only corner and edge voxels have it.");
+            CollectionAssert.Contains(targets, new Vector3Int(2, 0, 2), "A face voxel of the ball has it.");
+            CollectionAssert.Contains(targets, new Vector3Int(2, 1, 2));
+        }
+
+        [Test]
         public void Hit_BreaksStoneThroughCrackedAndLooseBeforeRemovingIt()
         {
             var aimed = new Vector3Int(2, 1, 2);
