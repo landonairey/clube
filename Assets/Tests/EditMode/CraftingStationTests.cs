@@ -56,11 +56,12 @@ namespace Clube.Core.Tests
 
             furnace.Tick(5f);
             Assert.IsTrue(furnace.IsBusy);
-            Assert.AreEqual(16, furnace.Input.Count(ore), "The first 8 went in when it started.");
+            Assert.AreEqual(24, furnace.Input.Count(ore), "The ore being smelted stays in until it's done.");
             Assert.AreEqual(5f / 6f, furnace.Progress, 1e-4f);
 
             furnace.Tick(1f);
             Assert.AreEqual(1, furnace.Output.Count(bun));
+            Assert.AreEqual(16, furnace.Input.Count(ore), "Finishing used up the first 8.");
 
             furnace.Tick(12f);
             Assert.AreEqual(3, furnace.Output.Count(bun));
@@ -96,16 +97,38 @@ namespace Clube.Core.Tests
                 Assert.IsTrue(anvil.Strike());
             }
             Assert.AreEqual(1, anvil.StrikesLeft);
-            Assert.AreEqual(1, anvil.Input.Count(bun), "The first bun is on the anvil.");
+            Assert.AreEqual(2, anvil.Input.Count(bun), "The struck bun is still a bun until the last strike.");
 
             anvil.Strike();
             Assert.AreEqual(1, anvil.Output.Count(ingot));
+            Assert.AreEqual(1, anvil.Input.Count(bun), "The last strike turned one bun into the ingot.");
             for (int i = 0; i < 6; i++)
             {
                 anvil.Strike();
             }
             Assert.AreEqual(2, anvil.Output.Count(ingot));
             Assert.IsFalse(anvil.Strike(), "Nothing left to strike.");
+        }
+
+        [Test]
+        public void TakingTheInputOutPartWay_KeepsItAndResetsTheWork()
+        {
+            CraftingStation anvil = Anvil();
+            anvil.Input.Add(bun, 1);
+            for (int i = 0; i < 3; i++)
+            {
+                anvil.Strike();
+            }
+            Assert.AreEqual(3, anvil.StrikesLeft);
+
+            var player = new Inventory(4);
+            Assert.AreEqual(1, anvil.Input.MoveTo(0, player), "The struck bun comes back out whole.");
+            Assert.AreEqual(1, player.Count(bun));
+            Assert.IsFalse(anvil.IsBusy, "The work is dropped.");
+
+            player.MoveTo(0, anvil.Input);
+            anvil.Strike();
+            Assert.AreEqual(5, anvil.StrikesLeft, "Put back, it starts over.");
         }
 
         [Test]
