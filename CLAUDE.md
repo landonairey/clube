@@ -236,6 +236,8 @@ global column). A hit on a small piece of Rock picks it up whole
 (`VoxelMaterial.PickUpPieceSize`, GL25). `CraftingStation` has input and output inventories (2 and 1
 slots); `InventoryGridGui` draws the same slot grid in the inventory, station and
 merchant screens.
+Third pass (GL26): the Landscape generator (`LandscapeHeight`) gives WorldLab plains at 20 m and
+ridged ranges about 100 m tall in a 160 m world (20 layers); first pass of P12.
 M25's voxel size stays open,
 and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
 

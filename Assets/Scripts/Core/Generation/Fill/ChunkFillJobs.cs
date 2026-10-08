@@ -11,6 +11,7 @@ using Unity.Mathematics;
 [assembly: RegisterGenericJobType(typeof(ColumnHeightsJob<FractalNoiseHeight>))]
 [assembly: RegisterGenericJobType(typeof(ColumnHeightsJob<SplineHeight>))]
 [assembly: RegisterGenericJobType(typeof(ColumnHeightsJob<HeightmapHeight>))]
+[assembly: RegisterGenericJobType(typeof(ColumnHeightsJob<LandscapeHeight>))]
 [assembly: RegisterGenericJobType(typeof(VolumeFillJob<Perlin3DVolume>))]
 
 namespace Clube.Core

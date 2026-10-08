@@ -32,6 +32,10 @@ namespace Clube.Core
                     Heightmap heightmap = settings.LoadHeightmap()
                         ?? throw new InvalidOperationException("The heightmap generator needs a heightmap image or RAW file.");
                     return new HeightmapGenerator(heightmap, settings.SurfaceLevel, settings.Amplitude, settings.HeightmapUnitsPerPixel);
+                case TerrainGeneratorType.Landscape:
+                    return new LandscapeGenerator(
+                        settings.Seed, settings.SurfaceLevel, settings.Amplitude, settings.FeatureSize, settings.MountainCoverage,
+                        settings.Octaves, settings.Lacunarity, settings.Persistence);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(settings.Generator), settings.Generator, null);
             }

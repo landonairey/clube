@@ -51,6 +51,15 @@ namespace Clube.Core
         [SerializeField]
         private OreGeneration ores = new OreGeneration();
 
+        [Header("Landscape")]
+        [Tooltip("Landscape (GL26): width of a mountain, in metres. Ranges and plains are several times wider. Amplitude is the mountains' height above the plains, Surface level the plains' height, Octaves the ridges' detail.")]
+        [SerializeField, Min(10f)]
+        private float featureSize = 250f;
+
+        [Tooltip("Landscape: share of the land that is mountains, 0-1; the rest is plains and foothills.")]
+        [SerializeField, Range(0f, 1f)]
+        private float mountainCoverage = 0.35f;
+
         [Header("Spline")]
         [Tooltip("Remaps the fractal noise (0-1 along the bottom) to a height (0 = level - amplitude, " +
                  "1 = level + amplitude). Flat stretches make plateaus, steep ones cliffs.")]
@@ -126,6 +135,20 @@ namespace Clube.Core
         {
             get => persistence;
             set => persistence = Mathf.Clamp01(value);
+        }
+
+        /// <summary>Landscape (GL26): width of a mountain, in metres.</summary>
+        public float FeatureSize
+        {
+            get => featureSize;
+            set => featureSize = Mathf.Max(10f, value);
+        }
+
+        /// <summary>Landscape: share of the land that is mountains, 0-1.</summary>
+        public float MountainCoverage
+        {
+            get => mountainCoverage;
+            set => mountainCoverage = Mathf.Clamp01(value);
         }
 
         /// <summary>Settable so lab controls can reseed at runtime; call <see cref="WorldConfig.NotifyChanged"/> after.</summary>

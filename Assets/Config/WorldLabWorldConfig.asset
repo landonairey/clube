@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: WorldLabWorldConfig
   m_EditorClassIdentifier: Clube.Core::Clube.Core.WorldConfig
   chunkSize: {x: 32, y: 32, z: 32}
-  worldHeightInChunks: 6
+  worldHeightInChunks: 20
   voxelSize: 0.25
   isoLevel: 0.5
   edgePlacement: 0
@@ -23,12 +23,13 @@ MonoBehaviour:
   materials: {fileID: 11400000, guid: 115a733b281448b47abfa44225ff27cc, type: 2}
   storage: 1
   octreeMaxDepth: 4
+  buildCellSize: 1
   terrain:
-    generator: 5
-    surfaceLevel: 28.033195
-    amplitude: 13.012448
+    generator: 7
+    surfaceLevel: 20
+    amplitude: 110
     frequency: 0.048485477
-    octaves: 4
+    octaves: 5
     lacunarity: 2
     persistence: 0.5
     seed: 1
@@ -72,6 +73,8 @@ MonoBehaviour:
         hosts:
         - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
         priority: 2
+    featureSize: 250
+    mountainCoverage: 0.35
     heightCurve:
       serializedVersion: 2
       m_Curve:
