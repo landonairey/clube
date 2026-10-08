@@ -380,6 +380,15 @@ and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
   `WorldView.Stats.Phases` before guessing where a frame went.
 - MCP gotcha: in `RunCommand` scripts `Mesh` resolves to a `Unity.AI.Mesh`
   namespace; write `UnityEngine.Mesh` (or alias it).
+- Burst gotcha: after a long Editor session the Burst JIT can stop rebuilding
+  and keep running an old native copy of a job against changed structs (seen
+  2026-10-07: generation produced floating garbage after a pull). Signs: a job
+  is wrong but the same struct's `Execute()` called directly is right, and
+  Burst stack traces cite line numbers from an older version of the file.
+  Fix: close Unity, delete `Library/BurstCache`, reopen.
+- Player screens (inventory, station, merchant) set `PlayerController.IsInMenu`,
+  not the cursor: FreeCursor can't lock the cursor under an open screen, and
+  `MenuClosedThisFrame` stops the E that closed a screen from reopening it.
 
 ## Environment
 - Unity 6.3 LTS, URP, Windows Build Support (IL2CPP)

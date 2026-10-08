@@ -69,7 +69,7 @@ namespace Clube.Game
             picked = -1;
             if (player != null)
             {
-                player.IsCursorFree = open;
+                player.IsInMenu = open;
             }
         }
 
