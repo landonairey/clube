@@ -268,7 +268,7 @@ Transform:
   m_GameObject: {fileID: 159121154}
   serializedVersion: 2
   m_LocalRotation: {x: 0.18768197, y: 0.5999358, z: -0.14745247, w: 0.76361656}
-  m_LocalPosition: {x: -19.5, y: 21, z: 3}
+  m_LocalPosition: {x: -19.5, y: 60, z: 3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -947,6 +947,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSpawn
   worldView: {fileID: 1350119460}
   fallLimit: 20
+  stuckSeconds: 0.25
 --- !u!114 &1697135563
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1058,7 +1059,7 @@ MonoBehaviour:
   material: {fileID: 2100000, guid: 58934120d95ad0642b01915b9293d46d, type: 2}
   idleColor: {r: 1, g: 0.95, b: 0.7, a: 0.9}
   damagedColor: {r: 1, g: 0.4, b: 0.05, a: 1}
-  armLength: 0.2
+  faceOpacity: 0.3
 --- !u!114 &1697135569
 MonoBehaviour:
   m_ObjectHideFlags: 0
