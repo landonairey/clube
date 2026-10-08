@@ -73,6 +73,8 @@ namespace Clube.Core
         /// </summary>
         public static JobHandle Schedule(ChunkMeshInput input, ChunkMeshSettings settings, Mesh.MeshDataArray output, JobHandle dependsOn = default)
         {
+            // Sealed faces mesh as air: write it into the copy, the chunk keeps its data.
+            MeshSeals.Apply(settings.Seal, input.Densities, input.DensityBytes, input.SampleCount);
             JobHandle job = new ChunkMeshJob
             {
                 Densities = input.Densities,
