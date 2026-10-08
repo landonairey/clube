@@ -47,7 +47,8 @@ namespace Clube.Game
         private void Update()
         {
             Target = null;
-            if (!player.enabled || player.IsCursorFree)
+            // On the frame a screen closed, its E mustn't reopen what's still under the crosshair.
+            if (!player.enabled || player.IsCursorFree || player.MenuClosedThisFrame)
             {
                 return;
             }

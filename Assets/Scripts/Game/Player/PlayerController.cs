@@ -76,7 +76,10 @@ namespace Clube.Game
         private float pitch;
         private float fallSpeed;
         private Vector3 velocity;
+        // Freed by FreeCursor; a menu frees it separately (isInMenu).
         private bool isCursorFree;
+        private bool isInMenu;
+        private int menuClosedFrame = -1;
 
         // Lab tuning (M16); not saved, so the game always runs on the gravity set above.
         private float gravityMultiplier = 1f;
@@ -113,21 +116,39 @@ namespace Clube.Game
         public float JumpAirtime => 2f * Mathf.Sqrt(2f * jumpHeight / Gravity);
 
         /// <summary>
-        /// True while the cursor is free for menus or the lab panel: looking pauses, and tools
-        /// like <see cref="PlayerDigTool"/> ignore clicks. Walking still works.
+        /// True while the cursor is free, for a menu (<see cref="IsInMenu"/>) or by FreeCursor
+        /// for the lab panel: looking pauses, and tools like <see cref="PlayerDigTool"/> ignore
+        /// clicks. Walking still works.
         /// </summary>
-        public bool IsCursorFree
+        public bool IsCursorFree => isInMenu || isCursorFree;
+
+        /// <summary>
+        /// True while one of the player's screens is open (inventory, a station, the merchant);
+        /// they set it as they open and close. The cursor stays free until it's closed, whatever
+        /// FreeCursor does.
+        /// </summary>
+        public bool IsInMenu
         {
-            get => isCursorFree;
+            get => isInMenu;
             set
             {
-                isCursorFree = value;
+                if (isInMenu && !value)
+                {
+                    menuClosedFrame = Time.frameCount;
+                }
+                isInMenu = value;
                 if (isActiveAndEnabled)
                 {
-                    SetCursorLocked(!value);
+                    SetCursorLocked(!IsCursorFree);
                 }
             }
         }
+
+        /// <summary>
+        /// True on the frame a screen closed, so the key press that closed it (E) isn't also
+        /// taken by something else, like using the station still under the crosshair.
+        /// </summary>
+        public bool MenuClosedThisFrame => menuClosedFrame == Time.frameCount;
 
         /// <summary>Moves the player without colliding on the way, and stops any fall or momentum.</summary>
         public void Teleport(Vector3 position)
@@ -151,7 +172,7 @@ namespace Clube.Game
             Enable(jumpAction);
             Enable(sprintAction);
             Enable(freeCursorAction);
-            SetCursorLocked(!isCursorFree);
+            SetCursorLocked(!IsCursorFree);
         }
 
         private void OnDisable()
@@ -161,11 +182,13 @@ namespace Clube.Game
 
         private void Update()
         {
-            if (freeCursorAction != null && freeCursorAction.action.WasPressedThisFrame())
+            // While a menu is open the cursor stays free: FreeCursor can't lock it under the menu.
+            if (!isInMenu && freeCursorAction != null && freeCursorAction.action.WasPressedThisFrame())
             {
-                IsCursorFree = !IsCursorFree;
+                isCursorFree = !isCursorFree;
+                SetCursorLocked(!isCursorFree);
             }
-            if (!isCursorFree)
+            if (!IsCursorFree)
             {
                 Look(Read<Vector2>(lookAction));
             }

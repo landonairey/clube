@@ -10,6 +10,9 @@ namespace Clube.Core
     /// and its result fits: on its own for time recipes (the furnace smelts a whole stack of ore
     /// bun after bun), on the next <see cref="Strike"/> for strike recipes (the anvil hammers
     /// one bun at a time). It stops when the inputs run out or the output is full.
+    /// The inputs stay in their slots while they're worked and are used up only when the
+    /// recipe finishes, so a struck bun is still a bun until the last strike; taking them out
+    /// part way resets the work.
     /// </summary>
     /// <remarks>
     /// Plain data with no UI, like <see cref="Inventory"/>, so it's unit tested and the same
@@ -114,16 +117,13 @@ namespace Clube.Core
             return true;
         }
 
+        // The inputs stay put until the recipe finishes (Work).
         private bool TryStart(RecipeWork work)
         {
             Recipe recipe = Ready(work);
             if (recipe == null)
             {
                 return false;
-            }
-            foreach (ItemAmount input in recipe.Inputs)
-            {
-                Input.Remove(input.Item, input.Count);
             }
             Active = recipe;
             done = 0f;
@@ -143,16 +143,27 @@ namespace Clube.Core
             done += amount;
             if (done + 1e-4f >= Active.Amount)
             {
-                ItemAmount result = Active.Output;
+                // Finished: the inputs turn into the result.
+                Recipe finished = Active;
                 Active = null;
                 done = 0f;
-                Output.Add(result.Item, result.Count);
+                foreach (ItemAmount input in finished.Inputs)
+                {
+                    Input.Remove(input.Item, input.Count);
+                }
+                Output.Add(finished.Output.Item, finished.Output.Count);
             }
             Changed?.Invoke();
         }
 
+        // Inputs taken out, or the output filled, part way through: the work starts over.
         private void OnContentsChanged()
         {
+            if (Active != null && (!Active.HasInputs(Input) || !Fits(Active.Output)))
+            {
+                Active = null;
+                done = 0f;
+            }
             Changed?.Invoke();
         }
     }

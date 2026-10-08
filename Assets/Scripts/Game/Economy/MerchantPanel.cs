@@ -60,7 +60,7 @@ namespace Clube.Game
             openedFrame = Time.frameCount;
             if (player != null)
             {
-                player.IsCursorFree = true;
+                player.IsInMenu = true;
             }
         }
 
@@ -73,7 +73,7 @@ namespace Clube.Game
             Current = null;
             if (player != null)
             {
-                player.IsCursorFree = false;
+                player.IsInMenu = false;
             }
         }
 
