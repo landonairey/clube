@@ -154,7 +154,7 @@ namespace Clube.Game
         private void Hit(ToolDefinition tool)
         {
             collected.Clear();
-            StrikeResult result = ToolStrike.Hit(worldView.World, targets, tool, worldView.Config.Materials, Damage, collected);
+            StrikeResult result = ToolStrike.Hit(worldView.World, targets, tool, worldView.Config.Materials, Damage, collected, worldView.Config.IsoLevel);
             Struck?.Invoke(result);
             foreach (ItemDefinition item in collected)
             {

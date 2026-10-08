@@ -114,6 +114,56 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Hit_PicksUpASmallLoosePieceWhole_AndLeavesTheGroundAlone()
+        {
+            ItemDefinition rockItem = ItemDefinition.Create("rock", "Rock");
+            VoxelMaterial rock = VoxelMaterial.Create(10, "Rock").WithBreaking(5f, rockItem).WithPickUp(4);
+            MaterialRegistry withRock = MaterialRegistry.Create(stone, cracked, loose, rock);
+            try
+            {
+                // A two-sample stone lying on the floor (the floor's top is y = 1).
+                foreach (var sample in new[] { new Vector3Int(2, 2, 2), new Vector3Int(3, 2, 2) })
+                {
+                    world.SetDensity(sample, 1f);
+                    world.SetMaterial(sample, rock.Id);
+                }
+                var hand = ToolDefinition.Create("hand", "Hand", 1, 0.5f);
+                List<Vector3Int> targets = Targets(VoxelBox.Around(new Vector3Int(2, 1, 2), 1));
+                Assert.Contains(new Vector3Int(2, 2, 2), targets);
+                var damage = new StrikeDamage();
+                var collected = new List<ItemDefinition>();
+
+                StrikeResult result = ToolStrike.Hit(world, targets, hand, withRock, damage, collected, Iso);
+
+                Assert.AreEqual(2, result.Removed, "Both samples of the stone came up at once, though it's hardness 5.");
+                CollectionAssert.AreEqual(new[] { rockItem, rockItem }, collected);
+                Assert.AreEqual(0f, world.GetDensity(new Vector3Int(3, 2, 2)), "Including the part outside the reach.");
+                Assert.AreEqual(0f, damage.Get(new Vector3Int(2, 1, 2)), "The ground under it took no damage.");
+                Assert.AreEqual(1f, world.GetDensity(new Vector3Int(2, 1, 2)));
+            }
+            finally
+            {
+                Object.DestroyImmediate(withRock);
+                Object.DestroyImmediate(rock);
+                Object.DestroyImmediate(rockItem);
+            }
+        }
+
+        [Test]
+        public void Hit_BreaksAPieceTooBigToPickUp_LikeAnyGround()
+        {
+            // The stone floor is one big piece: with a pick-up size of 4 it's still broken a sample at a time.
+            stone.WithPickUp(4);
+            var targets = new List<Vector3Int> { new Vector3Int(2, 1, 2) };
+            var collected = new List<ItemDefinition>();
+
+            StrikeResult result = ToolStrike.Hit(world, targets, Pickaxe(), registry, new StrikeDamage(), collected, Iso);
+
+            Assert.AreEqual(0, result.Removed);
+            Assert.AreEqual(1f, world.GetDensity(new Vector3Int(2, 1, 2)));
+        }
+
+        [Test]
         public void Hit_BreaksStoneThroughCrackedAndLooseBeforeRemovingIt()
         {
             var aimed = new Vector3Int(2, 1, 2);

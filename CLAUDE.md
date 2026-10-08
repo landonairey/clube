@@ -232,7 +232,8 @@ Second pass, terrain and stations (GL19–GL22): heightfield chunks get bordered
 column heights (`ChunkSampleGrid.BorderedColumns`), so `ChunkFillKernel` can mark
 steep columns, which take stone in their top layers (`TerrainLayers` steep angle
 and height), and stamp surface rocks (Rock, id 10, `IsRockColumn` hashes the
-global column). `CraftingStation` has input and output inventories (2 and 1
+global column). A hit on a small piece of Rock picks it up whole
+(`VoxelMaterial.PickUpPieceSize`, GL25). `CraftingStation` has input and output inventories (2 and 1
 slots); `InventoryGridGui` draws the same slot grid in the inventory, station and
 merchant screens.
 M25's voxel size stays open,
