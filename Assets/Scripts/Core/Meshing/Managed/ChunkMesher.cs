@@ -46,12 +46,15 @@ namespace Clube.Core
             // Densities are read a whole Z layer at a time (K32); each voxel spans two.
             float[] near = LayerBuffer(ref nearLayer, layerSize);
             float[] far = LayerBuffer(ref farLayer, layerSize);
+            var count = new Unity.Mathematics.int3(chunk.SampleCount.x, chunk.SampleCount.y, chunk.SampleCount.z);
             chunk.ReadLayer(0, far);
+            MeshSeals.ApplyToLayer(settings.Seal, far, 0, count);
 
             for (int z = 0; z < voxelCount.z; z++)
             {
                 (near, far) = (far, near);
                 chunk.ReadLayer(z + 1, far);
+                MeshSeals.ApplyToLayer(settings.Seal, far, z + 1, count);
 
                 for (int y = 0; y < voxelCount.y; y++)
                 {

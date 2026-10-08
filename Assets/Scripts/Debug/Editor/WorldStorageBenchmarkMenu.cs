@@ -11,7 +11,7 @@ namespace Clube.Debug.Editor
     /// </summary>
     internal static class WorldStorageBenchmarkMenu
     {
-        private const string ConfigPath = "Assets/Config/WorldLabWorldConfig.asset";
+        private const string ConfigPath = "Assets/Config/ProceduralWorldLabWorldConfig.asset";
 
         [MenuItem("Clube/Benchmarks/Storage at scale (M12)")]
         private static void Run()

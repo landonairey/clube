@@ -612,7 +612,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9cefe58c5492334ba9ecc434b7f67a0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Core::Clube.Core.WorldView
-  config: {fileID: 11400000, guid: b8ca195e979ea82418e6510f13b246be, type: 2}
+  config: {fileID: 11400000, guid: bc6c17f975d3d7b4db908a9ef5e31e70, type: 2}
   chunkMaterials:
   - {fileID: 2100000, guid: ae35e53838faf9a41b52f47d227d1236, type: 2}
   - {fileID: 2100000, guid: 26a88a27891ca024d969d561d22be9c8, type: 2}
@@ -1058,7 +1058,7 @@ MonoBehaviour:
   material: {fileID: 2100000, guid: 58934120d95ad0642b01915b9293d46d, type: 2}
   idleColor: {r: 1, g: 0.95, b: 0.7, a: 0.9}
   damagedColor: {r: 1, g: 0.4, b: 0.05, a: 1}
-  faceOpacity: 0.3
+  armLength: 0.2
 --- !u!114 &1697135569
 MonoBehaviour:
   m_ObjectHideFlags: 0

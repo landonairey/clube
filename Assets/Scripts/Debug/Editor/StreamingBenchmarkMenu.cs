@@ -16,7 +16,7 @@ namespace Clube.Debug.Editor
     /// </summary>
     internal static class StreamingBenchmarkMenu
     {
-        private const string ConfigPath = "Assets/Config/WorldLabWorldConfig.asset";
+        private const string ConfigPath = "Assets/Config/ProceduralWorldLabWorldConfig.asset";
         private const float FrameBudgetMs = 3f;
 
         private static readonly int[] RenderDistances = { 4, 6, 8 };

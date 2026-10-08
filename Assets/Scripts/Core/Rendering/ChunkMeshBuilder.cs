@@ -128,7 +128,7 @@ namespace Clube.Core
         // Material ids per vertex, normals before splitting, then the display's splitter (A6).
         private void BuildMaterials(Chunk chunk, ChunkMeshSettings settings)
         {
-            VertexMaterialSampler.Assign(chunk, settings.IsoLevel, settings.VoxelSize, vertices, vertexMaterials);
+            VertexMaterialSampler.Assign(chunk, settings.IsoLevel, settings.VoxelSize, vertices, vertexMaterials, settings.Seal);
             MeshNormals.Compute(vertices, triangles, normals);
             MaterialSplitters.For(settings.MaterialDisplay).Split(vertices, normals, triangles, vertexMaterials, materialMesh);
         }

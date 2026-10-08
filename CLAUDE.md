@@ -87,6 +87,12 @@ K31 is done: every lab has the one in-game `LabPanel` (see 3A+). The demo
 build sets `CLUBE_LAB_BUILD` so step-through recording works in the exe.
 
 ## Chapter 3 — Collection of chunks (`WorldLab`)
+Since 2026-10-08 (M26, M27) there are two world labs from the same scene setup:
+`ProceduralWorldLab` (the streamed world, formerly WorldLab; config
+`ProceduralWorldLabWorldConfig`) and `WorldLab`, a fixed 104 m square of chunks loaded once
+(`WorldConfig.FixedArea`, `StreamingSettings.FixedColumns`) with walls down its outer faces
+(`WorldConfig.SealEdges`: `MeshSeal` meshes those faces' samples as air, mesh only). ChunkLab
+has the same walls toggle. "WorldLab" below means either unless it's about streaming.
 3A is done (M1–M5). `WorldGrid` converts world positions, global samples,
 chunk coordinates and local samples (floored, so negatives work). `World`
 (plain data) holds the loaded chunks and the world-wide edit paths:
@@ -246,7 +252,7 @@ and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
   Game reference Core; **Core never references Debug or Game.** Debug also
   references Game (lab tools tune the player, M16); Game never references Debug.
 - Namespaces match assembly names (`Clube.Core`, `Clube.Debug`, `Clube.Game`).
-- Scenes (A9): `VoxelLab`, `ChunkLab`, `WorldLab`, `Game`. The `Game` scene
+- Scenes (A9): `VoxelLab`, `ChunkLab`, `WorldLab` (fixed area), `ProceduralWorldLab` (streamed), `Game`. The `Game` scene
   contains no `Clube.Debug` components (A10).
 - Docs go in `Docs/` (capital D, G5).
 - Workflow (G2): one objective = one GitHub issue; one sub-section = one

@@ -12,7 +12,7 @@ namespace Clube.Debug.Editor
     /// </summary>
     internal static class WorldMeshBenchmarkMenu
     {
-        private const string ConfigPath = "Assets/Config/WorldLabWorldConfig.asset";
+        private const string ConfigPath = "Assets/Config/ProceduralWorldLabWorldConfig.asset";
 
         // WorldLab's default, the game's player setting, and a far view.
         private static readonly int[] RenderDistances = { 4, 6, 8 };

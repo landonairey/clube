@@ -9,7 +9,8 @@ namespace Clube.Core
             EdgePlacement edgePlacement = EdgePlacement.Interpolated,
             Shading shading = Shading.Flat,
             MesherBackend backend = MesherBackend.Managed,
-            MaterialDisplay materialDisplay = MaterialDisplay.None)
+            MaterialDisplay materialDisplay = MaterialDisplay.None,
+            MeshSeal seal = MeshSeal.None)
         {
             IsoLevel = isoLevel;
             VoxelSize = voxelSize;
@@ -17,6 +18,7 @@ namespace Clube.Core
             Shading = shading;
             Backend = backend;
             MaterialDisplay = materialDisplay;
+            Seal = seal;
         }
 
         public float IsoLevel { get; }
@@ -32,5 +34,14 @@ namespace Clube.Core
 
         /// <summary>How materials show (M15); anything but None adds the material pass after meshing.</summary>
         public MaterialDisplay MaterialDisplay { get; }
+
+        /// <summary>Faces of the chunk meshed as air, closing the surface with walls there (labs); none in the game.</summary>
+        public MeshSeal Seal { get; }
+
+        /// <summary>The same settings with another seal (the world seals each chunk on its own faces).</summary>
+        public ChunkMeshSettings WithSeal(MeshSeal seal)
+        {
+            return new ChunkMeshSettings(IsoLevel, VoxelSize, EdgePlacement, Shading, Backend, MaterialDisplay, seal);
+        }
     }
 }

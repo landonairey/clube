@@ -16,18 +16,20 @@ namespace Clube.Core
 
         /// <param name="vertices">Chunk-local vertex positions, as the mesher wrote them.</param>
         /// <param name="materials">Cleared, then one material id per vertex.</param>
-        public static void Assign(Chunk chunk, float isoLevel, float voxelSize, IReadOnlyList<Vector3> vertices, List<byte> materials)
+        public static void Assign(
+            Chunk chunk, float isoLevel, float voxelSize, IReadOnlyList<Vector3> vertices, List<byte> materials, MeshSeal seal = MeshSeal.None)
         {
             materials.Clear();
             Vector3Int last = chunk.SampleCount - Vector3Int.one;
+            var count = new Unity.Mathematics.int3(chunk.SampleCount.x, chunk.SampleCount.y, chunk.SampleCount.z);
             foreach (Vector3 vertex in vertices)
             {
-                materials.Add(chunk.GetMaterial(SolidEnd(chunk, isoLevel, vertex / voxelSize, last)));
+                materials.Add(chunk.GetMaterial(SolidEnd(chunk, isoLevel, vertex / voxelSize, last, seal, count)));
             }
         }
 
         // The sample at the solid end of the edge the vertex lies on, in sample coordinates.
-        private static Vector3Int SolidEnd(Chunk chunk, float isoLevel, Vector3 grid, Vector3Int last)
+        private static Vector3Int SolidEnd(Chunk chunk, float isoLevel, Vector3 grid, Vector3Int last, MeshSeal seal, Unity.Mathematics.int3 count)
         {
             // The edge runs along the axis whose coordinate is furthest from a whole number.
             int axis = 0;
@@ -55,8 +57,9 @@ namespace Clube.Core
             Vector3Int high = low;
             high[axis] = Mathf.Min(low[axis] + 1, last[axis]);
 
-            bool lowSolid = chunk.GetDensity(low) >= isoLevel;
-            bool highSolid = chunk.GetDensity(high) >= isoLevel;
+            // A sealed sample was meshed as air (MeshSeal), so the wall's solid end is the other one.
+            bool lowSolid = chunk.GetDensity(low) >= isoLevel && !MeshSeals.IsSealed(seal, low.x, low.y, low.z, count);
+            bool highSolid = chunk.GetDensity(high) >= isoLevel && !MeshSeals.IsSealed(seal, high.x, high.y, high.z, count);
             if (lowSolid != highSolid)
             {
                 return lowSolid ? low : high;

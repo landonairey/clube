@@ -29,6 +29,15 @@ namespace Clube.Core
 
         /// <summary>Edited chunks rebuilt in the frame of the edit at most; more wait for the next frame.</summary>
         public int MaxEditsPerFrame;
+
+        /// <summary>
+        /// Labs: a fixed square of chunk columns (x, z) to load whole and keep, instead of
+        /// streaming around the focus; null streams. <see cref="RenderDistance"/> is ignored then.
+        /// </summary>
+        public RectInt? FixedColumns;
+
+        /// <summary>Labs: a fixed area meshes its outer faces as air, walls showing its underground (<see cref="MeshSeal"/>).</summary>
+        public bool SealEdges;
     }
 
     /// <summary>Live counts from a <see cref="WorldStreamer"/>, for readouts.</summary>
@@ -154,6 +163,13 @@ namespace Clube.Core
             set => settings.RenderDistance = value;
         }
 
+        /// <summary>Labs: whether a fixed area seals its outer faces; call <see cref="RemeshAll"/> after changing it.</summary>
+        public bool SealEdges
+        {
+            get => settings.SealEdges;
+            set => settings.SealEdges = value;
+        }
+
         /// <summary>Wanted chunks not loaded yet.</summary>
         public int PendingCount
         {
@@ -250,12 +266,13 @@ namespace Clube.Core
                     Apply(coord, chunk, stale);
                 }
 
-                if (chunk.IsUniform)
+                ChunkMeshSettings chunkSettings = ForChunk(current, coord);
+                if (HasNoSurface(chunk, chunkSettings))
                 {
                     MeshUniform(coord, chunk);
                     continue;
                 }
-                pipeline.StartMesh(coord, chunk, current);
+                pipeline.StartMesh(coord, chunk, chunkSettings);
                 if (pipeline.TryTakeMeshNow(coord, out ChunkPipeline.MeshResult result))
                 {
                     Apply(coord, chunk, result);
@@ -332,6 +349,21 @@ namespace Clube.Core
         // distance changes, so it's rebuilt then, nearest chunks first.
         private void UpdateWanted(Vector3Int centre)
         {
+            if (settings.FixedColumns.HasValue)
+            {
+                // A fixed area is wanted whole, wherever the focus goes: worked out once, nearest
+                // the first focus first.
+                if (wantedCentre.HasValue)
+                {
+                    return;
+                }
+                wantedCentre = centre;
+                StreamingArea.CollectFixed(settings.FixedColumns.Value, centre, settings.HeightInChunks, wanted);
+                wantedSet.Clear();
+                wantedSet.UnionWith(wanted);
+                loadCursor = 0;
+                return;
+            }
             if (wantedCentre == centre && wantedDistance == settings.RenderDistance)
             {
                 return;
@@ -352,7 +384,7 @@ namespace Clube.Core
             scratch.Clear();
             foreach (Vector3Int coord in world.Chunks.Keys)
             {
-                if (!wantedSet.Contains(coord) && StreamingArea.HorizontalDistanceSquared(coord, centre) > keep)
+                if (!wantedSet.Contains(coord) && (settings.FixedColumns.HasValue || StreamingArea.HorizontalDistanceSquared(coord, centre) > keep))
                 {
                     scratch.Add(coord);
                 }
@@ -376,7 +408,7 @@ namespace Clube.Core
             {
                 first = false;
                 bool stillWanted = wantedSet.Contains(coord)
-                                   || StreamingArea.HorizontalDistanceSquared(coord, wantedCentre.Value) <= keep;
+                                   || !settings.FixedColumns.HasValue && StreamingArea.HorizontalDistanceSquared(coord, wantedCentre.Value) <= keep;
                 if (world.IsLoaded(coord) || !stillWanted)
                 {
                     chunk.Release();
@@ -438,13 +470,30 @@ namespace Clube.Core
                 {
                     continue;
                 }
-                if (chunk.IsUniform)
+                ChunkMeshSettings chunkSettings = ForChunk(current, coord);
+                if (HasNoSurface(chunk, chunkSettings))
                 {
                     MeshUniform(coord, chunk);
                     continue;
                 }
-                pipeline.StartMesh(coord, chunk, current);
+                pipeline.StartMesh(coord, chunk, chunkSettings);
             }
+        }
+
+        // A uniform chunk has no surface, unless it's solid with a sealed face: that face is a wall.
+        private static bool HasNoSurface(Chunk chunk, ChunkMeshSettings settings)
+        {
+            return chunk.IsUniform && (settings.Seal == MeshSeal.None || chunk.UniformDensity < settings.IsoLevel);
+        }
+
+        // A chunk's own seal: its faces on a sealed fixed area's outside, none otherwise (the
+        // config's seal is for a single chunk, which seals every face).
+        private ChunkMeshSettings ForChunk(ChunkMeshSettings settings, Vector3Int coord)
+        {
+            MeshSeal seal = this.settings.SealEdges && this.settings.FixedColumns.HasValue
+                ? StreamingArea.FixedSeal(this.settings.FixedColumns.Value, coord)
+                : MeshSeal.None;
+            return settings.WithSeal(seal);
         }
 
         // Shows a finished mesh: the chunk's renderer, given one if this is its first surface.
@@ -459,7 +508,7 @@ namespace Clube.Core
                     ChunkMeshed?.Invoke(coord, null);
                     return;
                 }
-                chunkRenderer = renderers.Take(world, coord, chunk, meshSettings);
+                chunkRenderer = renderers.Take(world, coord, chunk, () => ForChunk(meshSettings(), coord));
             }
 
             // A collider bake may still be reading the old mesh.

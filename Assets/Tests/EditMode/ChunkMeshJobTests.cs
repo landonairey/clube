@@ -43,6 +43,16 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void SealedChunk_MatchesManagedPath(
+            [Values(VoxelStorageType.Flat, VoxelStorageType.FlatByte)] VoxelStorageType storage,
+            [Values(MeshSeal.All, MeshSeal.MinX | MeshSeal.MaxZ | MeshSeal.MinY)] MeshSeal seal)
+        {
+            Chunk chunk = RandomChunk(new Vector3Int(6, 5, 7), storage, seed: 17);
+            BuildBoth(chunk, new ChunkMeshSettings(0.5f, 1f, materialDisplay: MaterialDisplay.Blended, seal: seal));
+            AssertSameMesh(managed.Mesh, burst.Mesh, true);
+        }
+
+        [Test]
         public void UniformMaterials_MatchManagedPath()
         {
             Chunk chunk = RandomChunk(new Vector3Int(5, 5, 5), VoxelStorageType.FlatByte, seed: 7, withMaterials: false);
@@ -76,7 +86,7 @@ namespace Clube.Core.Tests
 
         private static ChunkMeshSettings With(ChunkMeshSettings settings, MesherBackend backend)
         {
-            return new ChunkMeshSettings(settings.IsoLevel, settings.VoxelSize, settings.EdgePlacement, settings.Shading, backend, settings.MaterialDisplay);
+            return new ChunkMeshSettings(settings.IsoLevel, settings.VoxelSize, settings.EdgePlacement, settings.Shading, backend, settings.MaterialDisplay, settings.Seal);
         }
 
         private static void AssertSameMesh(Mesh expected, Mesh actual, bool withMaterials)
