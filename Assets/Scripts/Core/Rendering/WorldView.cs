@@ -241,6 +241,7 @@ namespace Clube.Core
             {
                 remeshRequested = false;
                 renderers.SetMaterials(TerrainRenderMaterials.For(chunkMaterials, Config));
+                streamer.SealEdges = Config.SealEdges;
                 streamer.RemeshAll();
             }
 
@@ -273,6 +274,8 @@ namespace Clube.Core
                 Colliders = chunkColliders,
                 ColliderRadius = colliderRadius,
                 MaxEditsPerFrame = 32,
+                FixedColumns = Config.FixedColumns,
+                SealEdges = Config.SealEdges,
             });
             streamer.ChunkLoaded += coord => ChunkLoaded?.Invoke(coord);
             streamer.ChunkUnloaded += coord => ChunkUnloaded?.Invoke(coord);
@@ -310,7 +313,7 @@ namespace Clube.Core
         // Only the terrain-shaping values force a regenerate; the rest just remesh.
         private string TerrainFingerprint()
         {
-            return $"{Config.ChunkSize}|{Config.VoxelSize}|{Config.WorldHeightInChunks}|{Config.Storage}|{Config.OctreeMaxDepth}|" +
+            return $"{Config.ChunkSize}|{Config.VoxelSize}|{Config.WorldHeightInChunks}|{Config.Storage}|{Config.OctreeMaxDepth}|{Config.FixedColumns}|" +
                    JsonUtility.ToJson(Config.Terrain);
         }
 

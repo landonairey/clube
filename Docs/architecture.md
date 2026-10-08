@@ -191,6 +191,12 @@ flowchart TB
     CP["ChunkPipeline — mechanism<br/>generation, mesh and bake jobs"] -. jobs .-> Workers((worker threads))
 ```
 
+**Fixed areas (labs, M27).** With `StreamingSettings.FixedColumns` set, the wanted set is that
+square of columns, every layer, worked out once nearest the first focus; nothing unloads and
+render distance is ignored. With `SealEdges`, each chunk on the square's outside is meshed with
+a `MeshSeal` for those faces (and the bottom): the mesh job writes air into its density copy
+there, so walls show the underground while the chunk's data stays as generated.
+
 ### One frame
 
 `WorldView.Update` → `WorldStreamer.Update(focus)`:

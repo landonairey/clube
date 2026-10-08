@@ -8,7 +8,8 @@ namespace Clube.Debug
     /// (down to 1/16 m, or picked as marching voxels per metre) and, for a world, its height
     /// in chunk layers. Changing the voxel size keeps the chunk and world size in metres
     /// (<see cref="ChunkSizing"/>, M25), so the terrain stays the same, only sampled finer or
-    /// coarser. Any change makes new chunks, so edits are lost. Edits the runtime config copy and calls <see cref="WorldConfig.NotifyChanged"/>.
+    /// coarser. Any change makes new chunks, so edits are lost. Also the labs' edge walls (M26) and, for a
+    /// world, a fixed area instead of streaming (M27). Edits the runtime config copy and calls <see cref="WorldConfig.NotifyChanged"/>.
     /// </summary>
     public static class ChunkShapeControls
     {
@@ -66,6 +67,34 @@ namespace Clube.Debug
             frame.Line(withLayers
                 ? $"Chunk {side * voxelSize:0.##} m wide · world {side * voxelSize * layers:0.##} m high"
                 : $"Chunk {side * voxelSize:0.##} m wide · {side * side * side:N0} voxels");
+
+            DrawEdges(frame, config, withLayers);
+        }
+
+        // Sealed edges (walls showing the underground) and, for a world, a fixed area instead of streaming.
+        private static void DrawEdges(LabPanelFrame frame, WorldConfig config, bool withLayers)
+        {
+            bool seal = frame.ToggleField(withLayers ? "Walls on the fixed area's edges" : "Walls on the chunk's edges", config.SealEdges);
+            bool fixedArea = withLayers ? frame.ToggleField("Fixed area (no streaming)", config.FixedArea) : config.FixedArea;
+            float areaSize = withLayers && fixedArea
+                ? Mathf.Round(frame.Slider("Fixed area size (m)", config.FixedAreaSize, 16f, 400f, "0"))
+                : config.FixedAreaSize;
+            if (seal != config.SealEdges || fixedArea != config.FixedArea || !Mathf.Approximately(areaSize, config.FixedAreaSize))
+            {
+                config.SealEdges = seal;
+                config.FixedArea = fixedArea;
+                config.FixedAreaSize = areaSize;
+                config.NotifyChanged();
+            }
+            if (withLayers && fixedArea && config.FixedColumns is RectInt columns)
+            {
+                float width = columns.width * config.ChunkSize.x * config.VoxelSize;
+                frame.Line($"{columns.width} x {columns.height} chunk columns · {width:0.#} m square");
+            }
+            else if (withLayers && seal)
+            {
+                frame.Line("Walls only show on a fixed area.");
+            }
         }
     }
 }

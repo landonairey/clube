@@ -34,6 +34,57 @@ namespace Clube.Core
             }
         }
 
+        /// <summary>
+        /// Every chunk of a fixed area (labs): the columns in <paramref name="columns"/> (x, z), each
+        /// with <paramref name="heightInChunks"/> layers, nearest <paramref name="centre"/> first and,
+        /// within a column, bottom layer first.
+        /// </summary>
+        public static void CollectFixed(RectInt columns, Vector3Int centre, int heightInChunks, List<Vector3Int> coords)
+        {
+            coords.Clear();
+            for (int z = columns.yMin; z < columns.yMax; z++)
+            {
+                for (int x = columns.xMin; x < columns.xMax; x++)
+                {
+                    for (int y = 0; y < heightInChunks; y++)
+                    {
+                        coords.Add(new Vector3Int(x, y, z));
+                    }
+                }
+            }
+            coords.Sort((a, b) =>
+            {
+                int byDistance = HorizontalDistanceSquared(a, centre).CompareTo(HorizontalDistanceSquared(b, centre));
+                return byDistance != 0 ? byDistance : a.y.CompareTo(b.y);
+            });
+        }
+
+        /// <summary>
+        /// The faces of a fixed area's chunk that lie on the area's outside (its four sides and the
+        /// world's bottom): what a sealed fixed world meshes as air.
+        /// </summary>
+        public static MeshSeal FixedSeal(RectInt columns, Vector3Int coord)
+        {
+            MeshSeal seal = coord.y == 0 ? MeshSeal.MinY : MeshSeal.None;
+            if (coord.x == columns.xMin)
+            {
+                seal |= MeshSeal.MinX;
+            }
+            if (coord.x == columns.xMax - 1)
+            {
+                seal |= MeshSeal.MaxX;
+            }
+            if (coord.z == columns.yMin)
+            {
+                seal |= MeshSeal.MinZ;
+            }
+            if (coord.z == columns.yMax - 1)
+            {
+                seal |= MeshSeal.MaxZ;
+            }
+            return seal;
+        }
+
         public static int HorizontalDistanceSquared(Vector3Int coord, Vector3Int centre)
         {
             int dx = coord.x - centre.x;

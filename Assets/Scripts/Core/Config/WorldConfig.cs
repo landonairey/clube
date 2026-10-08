@@ -20,6 +20,18 @@ namespace Clube.Core
         [SerializeField, Min(1)]
         private int worldHeightInChunks = 2;
 
+        [Tooltip("Labs: mesh the outer faces as air, so marching cubes closes the ground with walls there and its underground shows, like a slice cut out of the world. A single chunk seals all six faces; a fixed world (Fixed area) seals its outer edges and bottom. Only the mesh changes.")]
+        [SerializeField]
+        private bool sealEdges;
+
+        [Tooltip("Load a fixed square of chunks around the world origin, all at once, instead of streaming around the focus; render distance is ignored and nothing unloads.")]
+        [SerializeField]
+        private bool fixedArea;
+
+        [Tooltip("Fixed area: width and depth of the square in metres, rounded up to whole chunks.")]
+        [SerializeField, Min(1f)]
+        private float fixedAreaSize = 100f;
+
         [Tooltip("Edge length of one voxel in world units.")]
         [SerializeField, Min(0.01f)]
         private float voxelSize = 1f;
@@ -90,6 +102,45 @@ namespace Clube.Core
             set => voxelSize = Mathf.Max(0.01f, value);
         }
 
+        /// <summary>Labs: whether the outer faces mesh as air, showing walls and the underground.</summary>
+        public bool SealEdges
+        {
+            get => sealEdges;
+            set => sealEdges = value;
+        }
+
+        /// <summary>Whether the world is a fixed square of chunks rather than streamed around the focus.</summary>
+        public bool FixedArea
+        {
+            get => fixedArea;
+            set => fixedArea = value;
+        }
+
+        /// <summary>Fixed area: width and depth in metres.</summary>
+        public float FixedAreaSize
+        {
+            get => fixedAreaSize;
+            set => fixedAreaSize = Mathf.Max(1f, value);
+        }
+
+        /// <summary>
+        /// The fixed area's chunk columns (x, z), centred on the world origin, or null when the
+        /// world streams. Rounded up to whole chunks.
+        /// </summary>
+        public RectInt? FixedColumns
+        {
+            get
+            {
+                if (!fixedArea)
+                {
+                    return null;
+                }
+                float chunkWidth = Mathf.Max(0.01f, chunkSize.x * voxelSize);
+                int columns = Mathf.Max(1, Mathf.CeilToInt(fixedAreaSize / chunkWidth - 1e-4f));
+                return new RectInt(-columns / 2, -columns / 2, columns, columns);
+            }
+        }
+
         /// <summary>Size of one build cell in metres (GL17, GL23).</summary>
         public float BuildCellSize
         {
@@ -156,7 +207,9 @@ namespace Clube.Core
             return VoxelStorages.Create(storage, sampleCount, octreeMaxDepth);
         }
 
-        public ChunkMeshSettings MeshSettings => new ChunkMeshSettings(isoLevel, voxelSize, edgePlacement, shading, mesher, materials != null ? materialDisplay : MaterialDisplay.None);
+        public ChunkMeshSettings MeshSettings => new ChunkMeshSettings(
+            isoLevel, voxelSize, edgePlacement, shading, mesher, materials != null ? materialDisplay : MaterialDisplay.None,
+            sealEdges ? MeshSeal.All : MeshSeal.None);
 
         public TerrainSettings Terrain => terrain;
 
