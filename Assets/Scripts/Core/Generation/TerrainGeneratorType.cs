@@ -23,5 +23,8 @@ namespace Clube.Core
 
         /// <summary>Heights read from a grayscale image or RAW file.</summary>
         Heightmap,
+
+        /// <summary>Plains, foothills and ridged mountains at a real scale, from several noise fields (GL26).</summary>
+        Landscape,
     }
 }

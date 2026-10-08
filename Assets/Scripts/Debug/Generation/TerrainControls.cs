@@ -115,7 +115,9 @@ namespace Clube.Debug
         {
             float worldHeight = config.ChunkSize.y * config.VoxelSize * config.WorldHeightInChunks;
             float surface = frame.Slider("Surface level", terrain.SurfaceLevel, 0f, Mathf.Max(1f, worldHeight), "0.0");
-            float amplitude = frame.Slider("Amplitude", terrain.Amplitude, 0f, Mathf.Max(1f, worldHeight * 0.5f), "0.0");
+            bool landscape = terrain.Generator == TerrainGeneratorType.Landscape;
+            float amplitude = frame.Slider(landscape ? "Mountain height (m)" : "Amplitude", terrain.Amplitude, 0f,
+                Mathf.Max(1f, landscape ? worldHeight : worldHeight * 0.5f), "0.0");
             float frequency = frame.Slider("Frequency", terrain.Frequency, 0.005f, 0.5f, "0.000");
             int octaves = Mathf.RoundToInt(frame.Slider("Octaves", terrain.Octaves, 1f, 8f, "0"));
             float lacunarity = frame.Slider("Lacunarity", terrain.Lacunarity, 1f, 4f, "0.00");
@@ -134,6 +136,20 @@ namespace Clube.Debug
                 config.NotifyChanged();
             }
             GUILayout.Label("Octaves, lacunarity and persistence shape the fractal generators.", frame.Hint);
+
+            if (landscape)
+            {
+                GUILayout.Label("Landscape", frame.Header);
+                float size = frame.Slider("Mountain width (m)", terrain.FeatureSize, 50f, 800f, "0");
+                float coverage = frame.Slider("Mountain coverage", terrain.MountainCoverage, 0f, 1f, "0.00");
+                if (!Mathf.Approximately(size, terrain.FeatureSize) || !Mathf.Approximately(coverage, terrain.MountainCoverage))
+                {
+                    terrain.FeatureSize = size;
+                    terrain.MountainCoverage = coverage;
+                    config.NotifyChanged();
+                }
+                GUILayout.Label("Surface level is the plains' height; Frequency isn't used. Mountains taller than the world are cut off: raise World height.", frame.Hint);
+            }
 
             if (terrain.Generator == TerrainGeneratorType.Spline)
             {
