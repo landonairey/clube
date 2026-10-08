@@ -1,7 +1,8 @@
-// The tool cursor's outline (GL4): the surface mesh's triangle edges inside the voxels a
-// tool reaches, as lines in their vertex colours. Each point is pulled 2 cm towards the
-// camera so the lines draw over the surface they lie on instead of fighting it for depth
-// (a polygon Offset barely moves lines); terrain in front of them still hides them.
+// The tool cursor (GL4, GL24): the surface mesh's triangles inside the voxels a tool
+// reaches, shaded and outlined in their vertex colours. Each point is pulled 2 cm towards
+// the camera so the faces and lines draw over the surface they lie on instead of fighting
+// it for depth (a polygon Offset barely moves lines); terrain in front of them still hides
+// them.
 Shader "Clube/Tool Cursor Lines"
 {
     SubShader

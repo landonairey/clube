@@ -63,11 +63,8 @@ namespace Clube.Game
         /// <summary>True when the held tool is aimed at ground within reach this frame.</summary>
         public bool HasReach { get; private set; }
 
-        /// <summary>Where the head looks, in the world view's space; set with <see cref="Reach"/>.</summary>
-        public Vector3 AimDirection { get; private set; }
-
         /// <summary>The voxels the held tool reaches this frame (global voxel indices); valid while <see cref="HasReach"/>.</summary>
-        public VoxelBox Reach { get; private set; }
+        public VoxelReach Reach { get; private set; }
 
         /// <summary>The samples the held tool would hit this frame, as global samples of <see cref="World"/>.</summary>
         public IReadOnlyList<Vector3Int> Targets => targets;
@@ -133,8 +130,6 @@ namespace Clube.Game
                 return;
             }
 
-            AimDirection = worldView.transform.InverseTransformDirection(head.forward);
-
             Reach = tool.ImpactAround(ToolStrike.AimedVoxel(worldView.World, hit));
             HasReach = true;
             ToolStrike.FindTargets(worldView.World, Reach, worldView.Config.IsoLevel, targets);
@@ -159,7 +154,7 @@ namespace Clube.Game
         private void Hit(ToolDefinition tool)
         {
             collected.Clear();
-            StrikeResult result = ToolStrike.Hit(worldView.World, targets, tool, worldView.Config.Materials, Damage, collected);
+            StrikeResult result = ToolStrike.Hit(worldView.World, targets, tool, worldView.Config.Materials, Damage, collected, worldView.Config.IsoLevel);
             Struck?.Invoke(result);
             foreach (ItemDefinition item in collected)
             {

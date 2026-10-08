@@ -213,7 +213,7 @@ reach in voxels: 1, or 3x3x3; power, hit rate), `VoxelMaterial.BreaksInto`
 chains stone/copper → cracked → loose (ids 6–9), `ToolStrike` (Core/Editing)
 hits every solid corner of the reached `VoxelBox` on `World` with `StrikeDamage`;
 in Game `PlayerToolUser` (Attack hits with the hotbar's tool, else the hand),
-`ToolCursor` (right-angle brackets at the 4 corners of the reach, GL18)
+`ToolCursor` (shades the mesh triangles inside the reached voxels, GL24; the pickaxe reaches a 4x4x4 ball, `VoxelReach`)
 and `PickupNotice`. LB: `Inventory`/`ItemStack` (Core/Items, `MaxStack` per
 item), `PlayerInventory` (takes `PlayerToolUser.Collected`), `Hotbar` (1–9,
 scroll, Q), `InventoryScreen` (Tab), drawn with `ItemSlotGui`. Player brush
@@ -232,7 +232,8 @@ Second pass, terrain and stations (GL19–GL22): heightfield chunks get bordered
 column heights (`ChunkSampleGrid.BorderedColumns`), so `ChunkFillKernel` can mark
 steep columns, which take stone in their top layers (`TerrainLayers` steep angle
 and height), and stamp surface rocks (Rock, id 10, `IsRockColumn` hashes the
-global column). `CraftingStation` has input and output inventories (2 and 1
+global column). A hit on a small piece of Rock picks it up whole
+(`VoxelMaterial.PickUpPieceSize`, GL25). `CraftingStation` has input and output inventories (2 and 1
 slots); `InventoryGridGui` draws the same slot grid in the inventory, station and
 merchant screens.
 Third pass (GL26): the Landscape generator (`LandscapeHeight`) gives WorldLab plains at 20 m and

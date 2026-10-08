@@ -69,6 +69,10 @@ namespace Clube.Core
         [SerializeField, Range(10f, 80f)]
         private float reposeAngle = 40f;
 
+        [Tooltip("Picked up whole (GL25): a hit on a connected piece of it no bigger than this many samples collects the whole piece at once, one drop per sample. 0: never; it's broken like any ground.")]
+        [SerializeField, Range(0, 32)]
+        private int pickUpPieceSize;
+
         [Tooltip("What a tool turns it into once broken (MF5, GL3), e.g. stone → cracked stone → loose stone. None: breaking it removes it and gives its drop.")]
         [SerializeField]
         private VoxelMaterial breaksInto;
@@ -111,11 +115,24 @@ namespace Clube.Core
         /// <summary>Steepest slope of a cone pile, in degrees.</summary>
         public float ReposeAngle => reposeAngle;
 
+        /// <summary>
+        /// The largest connected piece of it (in samples) a hit picks up whole, like a stone
+        /// lying on the grass (GL25); 0 when it's never picked up whole.
+        /// </summary>
+        public int PickUpPieceSize => pickUpPieceSize;
+
         /// <summary>Sets how it piles, for materials made in code (tests, tools).</summary>
         public VoxelMaterial WithPile(PileShape shape, float angle = 40f)
         {
             pileShape = shape;
             reposeAngle = Mathf.Clamp(angle, 10f, 80f);
+            return this;
+        }
+
+        /// <summary>Sets the largest piece picked up whole, for materials made in code (tests, tools).</summary>
+        public VoxelMaterial WithPickUp(int pieceSize)
+        {
+            pickUpPieceSize = Mathf.Clamp(pieceSize, 0, 32);
             return this;
         }
 
