@@ -9,8 +9,8 @@ namespace Clube.Core
     /// write goes through the world's edit paths and border copies stay equal (A7, M2).
     /// </summary>
     /// <remarks>
-    /// A tool reaches a cube of voxels around the one it's aimed at
-    /// (<see cref="ToolDefinition.ImpactSize"/>: 1 for the hand, 3 for the pickaxe), and a hit
+    /// A tool reaches a cube of voxels around the one it's aimed at, or a ball inside one
+    /// (<see cref="ToolDefinition.ImpactSize"/>: 1 for the hand, a 4-voxel ball for the pickaxe), and a hit
     /// adds its power to the damage of every solid corner (sample) of those voxels, buried
     /// ones too, so it works in 3D on floors and walls alike. A sample whose damage reaches
     /// its material's hardness breaks: it turns into the material's
@@ -25,12 +25,12 @@ namespace Clube.Core
             return world.Grid.ChunkFirstSample(hit.Chunk) + hit.Voxel;
         }
 
-        /// <summary>The samples a tool reaching <paramref name="box"/> hits: every loaded solid corner of its voxels.</summary>
-        public static void FindTargets(World world, VoxelBox box, float isoLevel, List<Vector3Int> targets)
+        /// <summary>The samples a tool reaching <paramref name="reach"/> hits: every loaded solid corner of its voxels.</summary>
+        public static void FindTargets(World world, VoxelReach reach, float isoLevel, List<Vector3Int> targets)
         {
             targets.Clear();
-            Vector3Int from = box.MinSample;
-            Vector3Int to = box.MaxSample;
+            Vector3Int from = reach.Box.MinSample;
+            Vector3Int to = reach.Box.MaxSample;
             for (int z = from.z; z <= to.z; z++)
             {
                 for (int y = from.y; y <= to.y; y++)
@@ -38,6 +38,10 @@ namespace Clube.Core
                     for (int x = from.x; x <= to.x; x++)
                     {
                         var sample = new Vector3Int(x, y, z);
+                        if (reach.Rounded && !reach.TouchesSample(sample))
+                        {
+                            continue;
+                        }
                         float? density = world.GetDensity(sample);
                         if (density.HasValue && density.Value >= isoLevel)
                         {

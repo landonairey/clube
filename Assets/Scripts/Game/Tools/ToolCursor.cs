@@ -6,19 +6,18 @@ using UnityEngine.Rendering;
 namespace Clube.Game
 {
     /// <summary>
-    /// The tool cursor (GL18, second pass of TL3): four small right-angle brackets lying on
-    /// the terrain at the corners of the held tool's area of impact, so the hand and the
-    /// pickaxe both show just the outline of what they reach. The reach box's face towards
-    /// the player (across the axis they look along most) gives the four corners; each corner,
-    /// and the ends of its two arms, are dropped onto the surface along that axis, so the
-    /// brackets follow the ground's slope. They warm from <see cref="idleColor"/> towards
-    /// <see cref="damagedColor"/> with the most damaged sample in reach, showing how close the
-    /// next hits are to breaking it.
+    /// The tool cursor (GL24, third pass of TL3): shades the surface mesh's triangles inside
+    /// every voxel the held tool reaches, and traces their edges, so the hand shows the one
+    /// voxel's patch of ground and the pickaxe its ball of 32. Each voxel is polygonised from
+    /// the world's densities exactly as the mesher does it (<see cref="MarchingCubes"/>, with
+    /// the world's edge placement), so the shading lies on the surface. It warms from
+    /// <see cref="idleColor"/> towards <see cref="damagedColor"/> with the most damaged sample
+    /// in reach, showing how close the next hits are to breaking it.
     /// </summary>
     [RequireComponent(typeof(PlayerToolUser))]
     public class ToolCursor : MonoBehaviour
     {
-        [Tooltip("An unlit vertex-colour line material drawn over the surface (ToolCursorLines).")]
+        [Tooltip("An unlit vertex-colour material drawn over the surface (ToolCursorLines); used for the faces and their edges.")]
         [SerializeField]
         private Material material;
 
@@ -28,13 +27,17 @@ namespace Clube.Game
         [SerializeField]
         private Color damagedColor = new Color(1f, 0.35f, 0.05f, 1f);
 
-        [Tooltip("Length of each arm of a bracket, as a fraction of the area's side.")]
-        [SerializeField, Range(0.05f, 0.5f)]
-        private float armLength = 0.25f;
+        [Tooltip("How opaque the shaded faces are; the edges use the full colour.")]
+        [SerializeField, Range(0f, 1f)]
+        private float faceOpacity = 0.3f;
 
+        private readonly List<Vector3> voxelVertices = new List<Vector3>();
+        private readonly List<int> voxelTriangles = new List<int>();
         private readonly List<Vector3> points = new List<Vector3>();
         private readonly List<Color> colors = new List<Color>();
-        private readonly List<int> indices = new List<int>();
+        private readonly List<int> faces = new List<int>();
+        private readonly List<int> edges = new List<int>();
+        private readonly float[] corners = new float[MarchingCubes.CornerCount];
         private PlayerToolUser tools;
         private GameObject markers;
         private UnityEngine.Mesh mesh;
@@ -42,13 +45,13 @@ namespace Clube.Game
         private void Awake()
         {
             tools = GetComponent<PlayerToolUser>();
-            mesh = new UnityEngine.Mesh { name = "Tool Cursor" };
+            mesh = new UnityEngine.Mesh { name = "Tool Cursor", subMeshCount = 2 };
             mesh.MarkDynamic();
 
             markers = new GameObject("Tool Cursor");
             markers.AddComponent<MeshFilter>().sharedMesh = mesh;
             var markerRenderer = markers.AddComponent<MeshRenderer>();
-            markerRenderer.sharedMaterial = material;
+            markerRenderer.sharedMaterials = new[] { material, material };
             markerRenderer.shadowCastingMode = ShadowCastingMode.Off;
             markerRenderer.receiveShadows = false;
             markers.SetActive(false);
@@ -79,95 +82,98 @@ namespace Clube.Game
                 return;
             }
 
+            Color edge = Color.Lerp(idleColor, damagedColor, MostDamaged(view));
+            Color face = new Color(edge.r, edge.g, edge.b, edge.a * faceOpacity);
             points.Clear();
             colors.Clear();
-            AddBrackets(view.World, view.Config.MeshSettings, tools.Reach, tools.AimDirection, Color.Lerp(idleColor, damagedColor, MostDamaged(view)));
+            faces.Clear();
+            edges.Clear();
+            AddReach(view.World, view.Config.MeshSettings, tools.Reach, face, edge);
 
             // The points are in the world view's space, so the markers sit where it does.
             markers.transform.SetPositionAndRotation(view.transform.position, view.transform.rotation);
             markers.transform.localScale = view.transform.lossyScale;
-            indices.Clear();
-            for (int i = 0; i < points.Count; i++)
-            {
-                indices.Add(i);
-            }
             mesh.Clear();
+            mesh.subMeshCount = 2;
             mesh.SetVertices(points);
             mesh.SetColors(colors);
-            mesh.SetIndices(indices, MeshTopology.Lines, 0);
+            mesh.SetIndices(faces, MeshTopology.Triangles, 0);
+            mesh.SetIndices(edges, MeshTopology.Lines, 1);
         }
 
-        // A bracket at each corner of the reach box's face across the axis looked along most.
-        private void AddBrackets(World world, ChunkMeshSettings settings, VoxelBox reach, Vector3 aim, Color color)
+        // Every reached voxel's surface triangles: each corner twice, a face colour for the
+        // shading and an edge colour for the outline.
+        private void AddReach(World world, ChunkMeshSettings settings, VoxelReach reach, Color face, Color edge)
         {
-            int axis = Mathf.Abs(aim.x) >= Mathf.Abs(aim.y) && Mathf.Abs(aim.x) >= Mathf.Abs(aim.z) ? 0
-                : Mathf.Abs(aim.y) >= Mathf.Abs(aim.z) ? 1 : 2;
-            int u = (axis + 1) % 3;
-            int v = (axis + 2) % 3;
-            float sign = aim[axis] >= 0f ? 1f : -1f;
-
-            Vector3 min = world.Grid.SampleToWorld(reach.MinSample);
-            Vector3 max = world.Grid.SampleToWorld(reach.MaxSample);
-            Vector3 size = max - min;
-            float arm = Mathf.Min(size[u], size[v]) * armLength;
-
-            // Rays run along the axis, from the player's side of the box, through it and a voxel past.
-            float voxel = world.Grid.VoxelSize;
-            float start = sign > 0f ? min[axis] - voxel : max[axis] + voxel;
-            float length = size[axis] + voxel * 2f;
-            Vector3 direction = Vector3.zero;
-            direction[axis] = sign;
-
-            for (int corner = 0; corner < 4; corner++)
+            IEdgeVertexPlacer placer = EdgeVertexPlacers.For(settings.EdgePlacement);
+            var writer = new FlatVertexWriter(voxelVertices);
+            float voxelSize = world.Grid.VoxelSize;
+            VoxelBox box = reach.Box;
+            for (int z = box.Min.z; z <= box.Max.z; z++)
             {
-                bool highU = (corner & 1) != 0;
-                bool highV = (corner & 2) != 0;
-                Vector3 at = Vector3.zero;
-                at[u] = highU ? max[u] : min[u];
-                at[v] = highV ? max[v] : min[v];
-                at[axis] = start;
-
-                // Arms run inward along the face's two axes.
-                Vector3 alongU = Vector3.zero;
-                alongU[u] = highU ? -arm : arm;
-                Vector3 alongV = Vector3.zero;
-                alongV[v] = highV ? -arm : arm;
-
-                if (!Drop(world, settings, at, direction, length, out Vector3 tip))
+                for (int y = box.Min.y; y <= box.Max.y; y++)
                 {
-                    continue;
+                    for (int x = box.Min.x; x <= box.Max.x; x++)
+                    {
+                        var voxel = new Vector3Int(x, y, z);
+                        if (!reach.Contains(voxel) || !ReadCorners(world, voxel))
+                        {
+                            continue;
+                        }
+                        voxelVertices.Clear();
+                        voxelTriangles.Clear();
+                        MarchingCubes.Polygonise(
+                            corners, settings.IsoLevel, world.Grid.SampleToWorld(voxel), voxelSize, placer, writer, voxelTriangles);
+                        for (int i = 0; i + 2 < voxelTriangles.Count; i += 3)
+                        {
+                            AddTriangle(voxelVertices[voxelTriangles[i]], voxelVertices[voxelTriangles[i + 1]], voxelVertices[voxelTriangles[i + 2]], face, edge);
+                        }
+                    }
                 }
-                AddArm(world, settings, tip, at + alongU, direction, length, color);
-                AddArm(world, settings, tip, at + alongV, direction, length, color);
             }
         }
 
-        // One arm from the corner to its end, the end dropped onto the surface too (or left in
-        // the corner's plane when the ground falls away there).
-        private void AddArm(World world, ChunkMeshSettings settings, Vector3 tip, Vector3 from, Vector3 direction, float length, Color color)
+        private void AddTriangle(Vector3 a, Vector3 b, Vector3 c, Color face, Color edge)
         {
-            if (!Drop(world, settings, from, direction, length, out Vector3 end))
-            {
-                end = from;
-                int axis = direction.x != 0f ? 0 : direction.y != 0f ? 1 : 2;
-                end[axis] = tip[axis];
-            }
-            points.Add(tip);
-            points.Add(end);
-            colors.Add(color);
-            colors.Add(color);
+            int first = points.Count;
+            points.Add(a);
+            points.Add(b);
+            points.Add(c);
+            colors.Add(face);
+            colors.Add(face);
+            colors.Add(face);
+            faces.Add(first);
+            faces.Add(first + 1);
+            faces.Add(first + 2);
+
+            int outline = points.Count;
+            points.Add(a);
+            points.Add(b);
+            points.Add(c);
+            colors.Add(edge);
+            colors.Add(edge);
+            colors.Add(edge);
+            edges.Add(outline);
+            edges.Add(outline + 1);
+            edges.Add(outline + 1);
+            edges.Add(outline + 2);
+            edges.Add(outline + 2);
+            edges.Add(outline);
         }
 
-        private static bool Drop(World world, ChunkMeshSettings settings, Vector3 from, Vector3 direction, float length, out Vector3 point)
+        // A voxel's 8 corner densities; false when any is unloaded.
+        private bool ReadCorners(World world, Vector3Int voxel)
         {
-            if (world.Raycast(new Ray(from, direction), settings, length, out WorldHit hit)
-                && Vector3.Dot(hit.Point - from, direction) <= length)
+            for (int corner = 0; corner < MarchingCubes.CornerCount; corner++)
             {
-                point = hit.Point;
-                return true;
+                float? density = world.GetDensity(voxel + MarchingCubes.CornerOffset(corner));
+                if (!density.HasValue)
+                {
+                    return false;
+                }
+                corners[corner] = density.Value;
             }
-            point = default;
-            return false;
+            return true;
         }
 
         // How far the most damaged sample in reach is towards breaking, 0-1.
