@@ -67,6 +67,9 @@ namespace Clube.Debug
             frame.Line(withLayers
                 ? $"Chunk {side * voxelSize:0.##} m wide · world {side * voxelSize * layers:0.##} m high"
                 : $"Chunk {side * voxelSize:0.##} m wide · {side * side * side:N0} voxels");
+            frame.Line(ChunkIndexBudget.Fits16Bit(size)
+                ? "Meshes always fit 16-bit indices (any GPU)"
+                : $"Meshes can reach {ChunkIndexBudget.MaxVertices(size):N0} vertices: 32-bit indices, not on every GPU");
 
             DrawEdges(frame, config, withLayers);
         }

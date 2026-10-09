@@ -523,10 +523,14 @@ vertices (3 edges per sample, 3n(n+1)² at most) fit up to **27³**. 16 x 48 x
 16 is 49,152 triangles but 147,456 unshared vertices; it fits only with shared
 vertices.
 
-This is a ceiling for noise, not for terrain. The mesher already switches a
-mesh to 32-bit indices past 65,535 vertices (`ChunkMeshJob`,
-`ChunkMeshBuilder`), so passing it costs index memory, not correctness. On
-real terrain the largest mesh below is 16,860 vertices for a 32 x 640 x 32
+The mesher switches a mesh to 32-bit indices past 65,535 vertices
+(`ChunkMeshJob`, `ChunkMeshBuilder`), but not every GPU has 32-bit index
+buffers (`SystemInfo.supports32bitsIndexBuffer`: older OpenGL ES 2.0 parts,
+WebGL 1), so a mesh past the limit can fail to draw there. The material pass
+doesn't raise the bound: its splitters copy a vertex at most once per
+triangle using it, so any mode stays at 3 vertices per triangle (a 16³
+checkerboard with a random material per sample gives the same counts in every
+mode). On real terrain the largest mesh below is 16,860 vertices for a 32 x 640 x 32
 column, a quarter of the limit.
 
 ### Columns vs cubes on the same terrain
@@ -600,11 +604,14 @@ surface) and loads in about 9 s of frames.
 **Decision.** Keep cubic chunks stacked in `WorldHeightInChunks` layers (the
 grid M1 already built); columns only win on sequential generation, which the
 streamer never does. **16³ is the plan of record** (2026-10-08): every chunk
-mesh then fits a 16-bit index buffer even for worst-case noise (49,152
-unshared vertices), and digs are cheapest. The world labs use it
+mesh then fits a 16-bit index buffer for any terrain and materials (at most
+61,440 vertices; 49,152 for the checkerboard), so it draws on every GPU, and digs are cheapest. The world labs use it
 (`ProceduralWorldLabWorldConfig`, `WorldLabWorldConfig`: 4 m chunks, 40
 layers), and the voxels-per-metre picker keeps world chunks at 16 per side.
 The cost is per-chunk overhead: streaming the same distance is slower, which
-P16 (render distance in metres) and P7 (LOD for distant chunks) address. The
-mesher still switches to 32-bit indices past 65,535 vertices, so a lab can
-try bigger chunks. M17 is done.
+P16 (render distance in metres) and P7 (LOD for distant chunks) address. `ChunkIndexBudget` (Core) holds the bound;
+`ChunkIndexBudgetTests` meshes the 16³ checkerboard in every shading, material
+mode and mesher and requires 16-bit indices; the panel says when a chunk size
+can pass the limit, and `WorldView` warns when that size runs on a GPU without
+32-bit indices. Labs can still try bigger chunks where 32-bit indices exist.
+M17 is done.

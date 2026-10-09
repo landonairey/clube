@@ -144,7 +144,8 @@ namespace Clube.Core
             WriteIndices(indices, vertices.Length, bounds);
         }
 
-        // 16-bit indices top out at 65,535 vertices, which a 32³ chunk can pass.
+        // 16-bit indices top out at 65,535 vertices, which chunks over 16³ can pass (ChunkIndexBudget);
+        // 32-bit index buffers are not on every GPU, so the game keeps to 16³.
         private void WriteIndices(NativeList<int> indices, int vertexCount, Bounds bounds)
         {
             if (vertexCount > ushort.MaxValue)

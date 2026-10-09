@@ -104,7 +104,9 @@ around its focus (the camera), nearest first, a few per frame, with pooled
 `ChunkRenderer`s; `ChunkMeshBuilder` builds meshes for it and `ChunkView`.
 Chunks are cubic, stacked `WorldHeightInChunks` layers from y = 0 (the M17
 decision; `ChunkShapeBenchmark` measured it against full-height columns), 16³ as
-the plan of record (every mesh fits 16-bit indices; the world labs use 4 m chunks, 40 layers).
+the plan of record: not every GPU has 32-bit index buffers, and a 16³ mesh fits 16-bit
+for any terrain (`ChunkIndexBudget`, guarded by `ChunkIndexBudgetTests`); the world labs use
+4 m chunks, 40 layers.
 Render distance is a player setting: `PlayerSettings` in
 `Clube.Game` (A3), applied by `RenderDistanceSetting` (M3). WorldLab adds
 `ChunkFocus` (M4; volume from the chunk tools' `ChunkVolumeStats`), `WorldDebugView` (chunk
