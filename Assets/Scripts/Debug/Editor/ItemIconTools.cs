@@ -30,6 +30,8 @@ namespace Clube.Debug.Editor
             Write("copper ingot", "Copper ingot", PaintIngot());
             Write("wood", "Wood", PaintLog());
             Write("leaves", "Leaves", PaintLeaf());
+            Write("clay", "Clay", PaintClay());
+            Write("brick", "Brick", PaintBrick());
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Wrote item icons to {Folder}.");
         }
@@ -135,6 +137,101 @@ namespace Clube.Debug.Editor
                 }
             }
             Outline(texture, CopperDark);
+            texture.Apply();
+            return texture;
+        }
+
+        // A lump of wet clay (GL34): a lumpy blob lit from the upper left, with a soft sheen.
+        private static Texture2D PaintClay()
+        {
+            Texture2D texture = Blank();
+            var random = new System.Random(13);
+            var dark = new Color(0.42f, 0.28f, 0.2f);
+            var mid = new Color(0.66f, 0.48f, 0.36f);
+            var sheen = new Color(0.85f, 0.7f, 0.58f);
+            var centre = new Vector2(Size * 0.5f, Size * 0.42f);
+            var light = new Vector2(-0.45f, 0.55f).normalized;
+            for (int y = 0; y < Size; y++)
+            {
+                for (int x = 0; x < Size; x++)
+                {
+                    Vector2 offset = new Vector2(x - centre.x, y - centre.y);
+                    float angle = Mathf.Atan2(offset.y, offset.x);
+                    // A wobbly outline, so it reads as a lump rather than a dome.
+                    float radius = Size * (0.36f + 0.04f * Mathf.Sin(angle * 3f + 0.7f) + 0.025f * Mathf.Sin(angle * 5f));
+                    Vector2 p = new Vector2(offset.x / radius, offset.y / (radius * 0.78f));
+                    float r2 = p.sqrMagnitude;
+                    if (r2 > 1f)
+                    {
+                        continue;
+                    }
+                    float height = Mathf.Sqrt(1f - r2);
+                    float shade = Mathf.Clamp01(0.5f + 0.5f * Vector2.Dot(p, light) * (1f - height) + 0.3f * height);
+                    Color color = Color.Lerp(dark, mid, shade);
+                    if (shade > 0.8f)
+                    {
+                        color = Color.Lerp(color, sheen, (shade - 0.8f) / 0.2f * 0.6f);
+                    }
+                    color *= 0.95f + 0.08f * (float)random.NextDouble();
+                    color.a = Mathf.Clamp01((1f - r2) * 6f);
+                    texture.SetPixel(x, y, color);
+                }
+            }
+            texture.Apply();
+            return texture;
+        }
+
+        // A brick seen from above at an angle, like the ingot: a lighter top face, a darker
+        // front face, a few pits, and an outline.
+        private static Texture2D PaintBrick()
+        {
+            Texture2D texture = Blank();
+            var random = new System.Random(17);
+            var light = new Color(0.78f, 0.38f, 0.25f);
+            var face = new Color(0.62f, 0.27f, 0.17f);
+            var dark = new Color(0.3f, 0.12f, 0.08f);
+            float left = Size * 0.14f, right = Size * 0.86f;
+            float frontY0 = Size * 0.26f, topY0 = Size * 0.5f, topY1 = Size * 0.72f;
+            float skew = Size * 0.08f;
+            for (int y = 0; y < Size; y++)
+            {
+                for (int x = 0; x < Size; x++)
+                {
+                    Color? color = null;
+                    if (y >= frontY0 && y < topY0 && x >= left && x <= right)
+                    {
+                        color = face;
+                    }
+                    else if (y >= topY0 && y <= topY1)
+                    {
+                        // The top face leans back to the right.
+                        float shift = (y - topY0) / (topY1 - topY0) * skew;
+                        if (x >= left + shift && x <= right + shift && x < Size)
+                        {
+                            color = light;
+                        }
+                    }
+                    else if (y >= frontY0 && y < topY1 && x > right)
+                    {
+                        // The right end, in shadow, widening towards the top.
+                        if (x <= right + (y - frontY0) / (topY1 - frontY0) * skew)
+                        {
+                            color = Color.Lerp(face, dark, 0.45f);
+                        }
+                    }
+                    if (color.HasValue)
+                    {
+                        Color c = color.Value * (0.9f + 0.15f * (float)random.NextDouble());
+                        if (random.NextDouble() < 0.03)
+                        {
+                            c *= 0.7f;
+                        }
+                        c.a = 1f;
+                        texture.SetPixel(x, y, c);
+                    }
+                }
+            }
+            Outline(texture, dark);
             texture.Apply();
             return texture;
         }

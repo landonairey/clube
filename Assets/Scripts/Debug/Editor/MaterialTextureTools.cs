@@ -32,6 +32,7 @@ namespace Clube.Debug.Editor
             Loose,
             Bark,
             Leaves,
+            Bricks,
         }
 
         private static readonly Color StoneBase = new Color(0.45f, 0.45f, 0.47f);
@@ -56,6 +57,8 @@ namespace Clube.Debug.Editor
                 { "rock", (new Color(0.38f, 0.37f, 0.36f), new Color(0.55f, 0.53f, 0.5f), null, Wear.Whole) },
                 { "wood", (new Color(0.36f, 0.25f, 0.16f), new Color(0.48f, 0.35f, 0.23f), null, Wear.Bark) },
                 { "leaves", (new Color(0.16f, 0.33f, 0.12f), new Color(0.30f, 0.50f, 0.18f), null, Wear.Leaves) },
+                { "clay", (new Color(0.62f, 0.45f, 0.33f), new Color(0.70f, 0.55f, 0.42f), null, Wear.Whole) },
+                { "brick", (new Color(0.62f, 0.28f, 0.18f), new Color(0.70f, 0.36f, 0.24f), null, Wear.Bricks) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]
@@ -234,6 +237,10 @@ namespace Clube.Debug.Editor
             else if (wear == Wear.Leaves)
             {
                 PaintLeaves(texture, random, mix);
+            }
+            else if (wear == Wear.Bricks)
+            {
+                PaintBricks(texture, random);
             }
             texture.Apply();
             return texture;
@@ -442,6 +449,38 @@ namespace Clube.Debug.Editor
                         float factor = distance <= width ? 0.45f : distance <= width + 1.2f ? 1.2f : 1f;
                         SetShade(texture, original, Mathf.RoundToInt(x) + dx, y, factor);
                     }
+                }
+            }
+        }
+
+        // Bricks (GL34): four bricks across and eight courses per tile, every other course offset by half a brick,
+        // each brick a little lighter or darker, in pale mortar joints. Tiles, like the rest.
+        private static void PaintBricks(Texture2D texture, System.Random random)
+        {
+            int size = texture.width;
+            int brickWidth = size / 4;
+            int brickHeight = size / 8;
+            int joint = Mathf.Max(1, size / 64);
+            var mortar = new Color(0.72f, 0.69f, 0.64f);
+            var shades = new float[4 * 8];
+            for (int i = 0; i < shades.Length; i++)
+            {
+                shades[i] = 0.85f + 0.3f * (float)random.NextDouble();
+            }
+            for (int y = 0; y < size; y++)
+            {
+                int course = y / brickHeight;
+                int offset = course % 2 == 0 ? 0 : brickWidth / 2;
+                for (int x = 0; x < size; x++)
+                {
+                    int along = (x + offset) % size;
+                    if (y % brickHeight < joint || along % brickWidth < joint)
+                    {
+                        texture.SetPixel(x, y, mortar * (0.92f + 0.12f * (float)random.NextDouble()));
+                        continue;
+                    }
+                    float shade = shades[(course % 8) * 4 + along / brickWidth];
+                    texture.SetPixel(x, y, texture.GetPixel(x, y) * shade);
                 }
             }
         }

@@ -16,3 +16,5 @@ MonoBehaviour:
   displayName: Wood
   icon: {fileID: 2800000, guid: cf5ae4223bf480d4faef2dca07a8845d, type: 3}
   maxStack: 256
+  unitVolume: 1
+  burnSeconds: 20

@@ -15,9 +15,14 @@ MonoBehaviour:
   station: 0
   inputs:
   - Item: {fileID: 11400000, guid: 9feabda89ca47d5479fc62960a078576, type: 2}
-    Count: 8
+    Count: 1
   output:
     Item: {fileID: 11400000, guid: dc5a1a0a6cbcb6141a8cb40a674ffd35, type: 2}
     Count: 1
   work: 0
-  amount: 6
+  amount: 0.75
+  byVolume: 1
+  content: {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
+  yield: 0.5
+  skill: 0
+  skilledYield: 1
