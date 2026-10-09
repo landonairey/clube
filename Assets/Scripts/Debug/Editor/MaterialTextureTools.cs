@@ -30,6 +30,8 @@ namespace Clube.Debug.Editor
             Whole,
             Cracked,
             Loose,
+            Bark,
+            Leaves,
         }
 
         private static readonly Color StoneBase = new Color(0.45f, 0.45f, 0.47f);
@@ -52,6 +54,8 @@ namespace Clube.Debug.Editor
                 { "cracked copper", (StoneBase, StoneMix, CopperFleck, Wear.Cracked) },
                 { "loose copper", (StoneBase, StoneMix, CopperFleck, Wear.Loose) },
                 { "rock", (new Color(0.38f, 0.37f, 0.36f), new Color(0.55f, 0.53f, 0.5f), null, Wear.Whole) },
+                { "wood", (new Color(0.36f, 0.25f, 0.16f), new Color(0.48f, 0.35f, 0.23f), null, Wear.Bark) },
+                { "leaves", (new Color(0.16f, 0.33f, 0.12f), new Color(0.30f, 0.50f, 0.18f), null, Wear.Leaves) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]
@@ -174,7 +178,7 @@ namespace Clube.Debug.Editor
         private static Texture2D Paint(Color baseColor, Color mix, Color? fleck, Wear wear, int seed)
         {
             // Broken stages show per voxel, so they get the finer texture.
-            int size = wear == Wear.Whole ? PlaceholderSize : DetailSize;
+            int size = wear == Wear.Whole || wear == Wear.Bark ? PlaceholderSize : DetailSize;
             float scale = size / (float)PlaceholderSize;
             var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
             var random = new System.Random(seed);
@@ -222,6 +226,14 @@ namespace Clube.Debug.Editor
             else if (wear == Wear.Loose)
             {
                 PaintRubble(texture, random);
+            }
+            else if (wear == Wear.Bark)
+            {
+                PaintBark(texture, random);
+            }
+            else if (wear == Wear.Leaves)
+            {
+                PaintLeaves(texture, random, mix);
             }
             texture.Apply();
             return texture;
@@ -397,6 +409,80 @@ namespace Clube.Debug.Editor
                     Color color = texture.GetPixel(x, y) * shades[cell] * Mathf.Lerp(0.25f, 1f, edge);
                     color.a = 1f;
                     texture.SetPixel(x, y, color);
+                }
+            }
+        }
+
+        // Bark: dark grooves running up the tile, wandering a little side to side and breaking
+        // off now and then, between lighter ridges. Wraps so it tiles.
+        private static void PaintBark(Texture2D texture, System.Random random)
+        {
+            int size = texture.width;
+            Color[] original = texture.GetPixels();
+            int grooves = 9 + random.Next(4);
+            for (int g = 0; g < grooves; g++)
+            {
+                float x = (g + (float)random.NextDouble() * 0.6f) * size / grooves;
+                float width = 1f + (float)random.NextDouble() * 1.5f;
+                float drift = 0f;
+                for (int y = 0; y < size; y++)
+                {
+                    drift = Mathf.Clamp(drift + ((float)random.NextDouble() - 0.5f) * 0.6f, -1f, 1f);
+                    x += drift * 0.35f;
+                    if (random.NextDouble() < 0.015)
+                    {
+                        // A break in the groove: skip a few pixels.
+                        y += 2 + random.Next(4);
+                        continue;
+                    }
+                    int r = Mathf.CeilToInt(width);
+                    for (int dx = -r - 1; dx <= r + 1; dx++)
+                    {
+                        float distance = Mathf.Abs(dx);
+                        float factor = distance <= width ? 0.45f : distance <= width + 1.2f ? 1.2f : 1f;
+                        SetShade(texture, original, Mathf.RoundToInt(x) + dx, y, factor);
+                    }
+                }
+            }
+        }
+
+        // Leaves: overlapping small leaf ovals at every angle, each its own green, darker where
+        // they lie deeper, over a dark green base.
+        private static void PaintLeaves(Texture2D texture, System.Random random, Color light)
+        {
+            int size = texture.width;
+            float scale = size / (float)PlaceholderSize;
+            int leaves = Mathf.RoundToInt(260f * scale * scale);
+            for (int i = 0; i < leaves; i++)
+            {
+                var centre = new Vector2(random.Next(size), random.Next(size));
+                float length = (4f + (float)random.NextDouble() * 3f) * scale;
+                float width = length * (0.4f + (float)random.NextDouble() * 0.15f);
+                float angle = (float)(random.NextDouble() * Mathf.PI);
+                var along = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                var across = new Vector2(-along.y, along.x);
+                // Later leaves lie on top, so they're lighter.
+                float depth = (float)i / leaves;
+                Color colour = Color.Lerp(texture.GetPixel((int)centre.x, (int)centre.y), light, 0.3f + 0.6f * depth)
+                               * (0.85f + 0.25f * (float)random.NextDouble());
+                colour.a = 1f;
+                int r = Mathf.CeilToInt(length);
+                for (int dy = -r; dy <= r; dy++)
+                {
+                    for (int dx = -r; dx <= r; dx++)
+                    {
+                        var offset = new Vector2(dx, dy);
+                        float u = Vector2.Dot(offset, along) / length;
+                        float v = Vector2.Dot(offset, across) / width;
+                        if (u * u + v * v > 1f)
+                        {
+                            continue;
+                        }
+                        // A pale midrib down the middle of the leaf.
+                        Color pixel = Mathf.Abs(v) < 0.12f ? colour * 1.15f : colour;
+                        pixel.a = 1f;
+                        texture.SetPixel(((int)centre.x + dx + size) % size, ((int)centre.y + dy + size) % size, pixel);
+                    }
                 }
             }
         }

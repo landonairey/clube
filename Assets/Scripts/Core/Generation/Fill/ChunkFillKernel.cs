@@ -6,7 +6,7 @@ namespace Clube.Core
     /// <summary>
     /// Everything generation does once each sample's depth below the surface is known (K35):
     /// the density (<see cref="TerrainDensity"/>), the material layer (M10, bare rock on steep
-    /// columns, GL21), the ore rolls (3D), the surface rocks (GL22), and the chunk's
+    /// columns, GL21), the ore rolls (3D), the surface rocks (GL22), the trees (GL30), and the chunk's
     /// <see cref="ChunkFillSummary"/>. Every generation path ends here
     /// (<see cref="HeightfieldFillJob"/>, <see cref="VolumeFillJob{TVolume}"/> and
     /// <see cref="DepthFillJob"/>), so they can't disagree. Burst-compatible static code.
@@ -16,9 +16,10 @@ namespace Clube.Core
         /// <param name="depths">Each sample's depth below the surface, in metres; read only.</param>
         /// <param name="steepColumns">One per column (x fastest, then z): non-zero where the surface is steep
         /// enough to be bare rock (GL21). Empty when the generator has no columns; nothing is steep then.</param>
+        /// <param name="trees">Tree parts reaching the chunk (<see cref="TreeField"/>); empty for none.</param>
         public static void Run(
             NativeArray<float> depths, NativeArray<byte> steepColumns, in ChunkSampleGrid grid, in ChunkFillSettings settings,
-            NativeArray<OreNodeData> ores, ref ChunkFillOutput output)
+            NativeArray<OreNodeData> ores, NativeArray<TreePart> trees, ref ChunkFillOutput output)
         {
             if (settings.Format == DensityFormat.Byte)
             {
@@ -41,6 +42,12 @@ namespace Clube.Core
                 ChunkFillSummary withRocks = output.Summary[0];
                 withRocks.UniformDensity = false;
                 output.Summary[0] = withRocks;
+            }
+            if (trees.Length > 0 && TreeStamp.Run(trees, grid, settings.Format, ref output))
+            {
+                ChunkFillSummary withTrees = output.Summary[0];
+                withTrees.UniformDensity = false;
+                output.Summary[0] = withTrees;
             }
 
             ChunkFillSummary summary = output.Summary[0];

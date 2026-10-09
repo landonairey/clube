@@ -76,6 +76,17 @@ MonoBehaviour:
         hosts:
         - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
         priority: 2
+    trees:
+      cellSize: 10
+      chance: 0.35
+      maxSlope: 12
+      height: {x: 7, y: 10}
+      trunkRadius: 0.4
+      branches: {x: 3, y: 5}
+      minBranchRadius: 0.22
+      leafRadius: {x: 0.55, y: 0.9}
+      wood: {fileID: 11400000, guid: cf152efb35813624a9fcb26da0602f3f, type: 2}
+      leaves: {fileID: 11400000, guid: c3a9464decc6a0d4386f7028c5aa4060, type: 2}
     featureSize: 250
     mountainCoverage: 0.35
     heightCurve:

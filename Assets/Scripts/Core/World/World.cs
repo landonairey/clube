@@ -87,7 +87,9 @@ namespace Clube.Core
         /// <param name="generator">The terrain; null leaves the chunk empty (all air).</param>
         /// <param name="layers">Materials by depth for generated chunks (M10); null leaves them all id 0.</param>
         /// <param name="ores">Ore nodes for generated chunks (3D); null for none.</param>
-        public Chunk Load(Vector3Int coord, ITerrainGenerator generator, TerrainLayers layers = null, OreField ores = null)
+        /// <param name="trees">Trees for generated chunks (GL30); null for none.</param>
+        public Chunk Load(
+            Vector3Int coord, ITerrainGenerator generator, TerrainLayers layers = null, OreField ores = null, TreeField trees = null)
         {
             if (loaded.TryGetValue(coord, out Chunk existing))
             {
@@ -99,7 +101,7 @@ namespace Clube.Core
             }
 
             Chunk chunk = generator != null
-                ? ChunkGenerator.Generate(generator, ChunkSampleGrid.ForChunk(Grid, coord), createStorage, layers, ores, PreferredFormat)
+                ? ChunkGenerator.Generate(generator, ChunkSampleGrid.ForChunk(Grid, coord), createStorage, layers, ores, PreferredFormat, trees)
                 : Chunk.Uniform(Grid.ChunkSize + Vector3Int.one, 0f, 0, createStorage);
             Add(coord, chunk);
             return chunk;

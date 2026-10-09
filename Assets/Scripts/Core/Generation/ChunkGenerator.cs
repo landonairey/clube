@@ -38,14 +38,15 @@ namespace Clube.Core
         /// <param name="chunkOrigin">World position of the chunk's sample (0,0,0); a whole number of voxels from the world origin.</param>
         /// <param name="layers">Materials by depth; null or empty leaves every material at id 0.</param>
         /// <param name="ores">Ore nodes to place; null for none.</param>
+        /// <param name="trees">Trees to grow (GL30); null for none.</param>
         public static void Fill(
             Chunk chunk, ITerrainGenerator generator, Vector3 chunkOrigin, float voxelSize,
-            TerrainLayers layers = null, OreField ores = null)
+            TerrainLayers layers = null, OreField ores = null, TreeField trees = null)
         {
             Vector3Int first = Vector3Int.RoundToInt(chunkOrigin / voxelSize);
             Vector3Int count = chunk.SampleCount;
             var grid = new ChunkSampleGrid(new int3(first.x, first.y, first.z), new int3(count.x, count.y, count.z), voxelSize);
-            using (ChunkFillOutput output = Run(generator, grid, layers, ores, chunk.StoresBytes ? DensityFormat.Byte : DensityFormat.Float))
+            using (ChunkFillOutput output = Run(generator, grid, layers, ores, trees, chunk.StoresBytes ? DensityFormat.Byte : DensityFormat.Float))
             {
                 chunk.Load(output, output.Summary[0]);
             }
@@ -57,9 +58,9 @@ namespace Clube.Core
         /// </summary>
         public static Chunk Generate(
             ITerrainGenerator generator, ChunkSampleGrid grid, Func<Vector3Int, IVoxelStorage> createStorage,
-            TerrainLayers layers = null, OreField ores = null, DensityFormat format = DensityFormat.Float)
+            TerrainLayers layers = null, OreField ores = null, DensityFormat format = DensityFormat.Float, TreeField trees = null)
         {
-            using (ChunkFillOutput output = Run(generator, grid, layers, ores, format))
+            using (ChunkFillOutput output = Run(generator, grid, layers, ores, trees, format))
             {
                 return FromOutput(grid, output, createStorage);
             }
@@ -87,11 +88,11 @@ namespace Clube.Core
         /// <summary>
         /// Schedules generating one chunk's samples into <paramref name="output"/>, by the path
         /// the generator's kind picks (see the remarks). Temporary buffers free themselves when
-        /// the jobs complete; <paramref name="ores"/> and <paramref name="output"/> stay the caller's.
+        /// the jobs complete; <paramref name="ores"/>, <paramref name="trees"/> and <paramref name="output"/> stay the caller's.
         /// </summary>
         public static JobHandle Schedule(
             ITerrainGenerator generator, ChunkSampleGrid grid, ChunkFillSettings settings,
-            NativeArray<OreNodeData> ores, ChunkFillOutput output, JobHandle dependsOn = default)
+            NativeArray<OreNodeData> ores, NativeArray<TreePart> trees, ChunkFillOutput output, JobHandle dependsOn = default)
         {
             switch (generator)
             {
@@ -100,24 +101,24 @@ namespace Clube.Core
                     var heights = new NativeArray<float>(grid.BorderedColumns.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
                     var range = new NativeArray<float2>(1, Allocator.Persistent);
                     JobHandle columns = heightfield.ScheduleColumnHeights(grid.BorderedColumns, heights, range, dependsOn);
-                    JobHandle fill = ScheduleFromColumns(heights, range, grid, settings, ores, output, columns);
+                    JobHandle fill = ScheduleFromColumns(heights, range, grid, settings, ores, trees, output, columns);
                     return JobHandle.CombineDependencies(heights.Dispose(fill), range.Dispose(fill));
                 }
                 case VolumeGenerator volume:
                 {
-                    if (grid.Bottom >= volume.SurfaceBounds.y + TerrainDensity.RampHalfWidth)
+                    if (trees.Length == 0 && grid.Bottom >= volume.SurfaceBounds.y + TerrainDensity.RampHalfWidth)
                     {
                         dependsOn.Complete();
                         output.Summary[0] = ChunkFillKernel.AllAir(settings.Layers);
                         return default;
                     }
-                    return volume.ScheduleFill(grid, settings, ores, output, dependsOn);
+                    return volume.ScheduleFill(grid, settings, ores, trees, output, dependsOn);
                 }
                 default:
                 {
                     var depths = new NativeArray<float>(grid.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
                     SampleDepths(generator, grid, depths);
-                    JobHandle fill = new DepthFillJob { Depths = depths, Grid = grid, Settings = settings, Ores = ores, Output = output }
+                    JobHandle fill = new DepthFillJob { Depths = depths, Grid = grid, Settings = settings, Ores = ores, Trees = trees, Output = output }
                         .Schedule(dependsOn);
                     return depths.Dispose(fill);
                 }
@@ -131,7 +132,7 @@ namespace Clube.Core
         /// </summary>
         public static JobHandle ScheduleFromColumns(
             NativeArray<float> heights, NativeArray<float2> heightRange, ChunkSampleGrid grid, ChunkFillSettings settings,
-            NativeArray<OreNodeData> ores, ChunkFillOutput output, JobHandle dependsOn = default)
+            NativeArray<OreNodeData> ores, NativeArray<TreePart> trees, ChunkFillOutput output, JobHandle dependsOn = default)
         {
             return new HeightfieldFillJob
             {
@@ -140,6 +141,7 @@ namespace Clube.Core
                 Grid = grid,
                 Settings = settings,
                 Ores = ores,
+                Trees = trees,
                 Output = output,
             }.Schedule(dependsOn);
         }
@@ -155,19 +157,27 @@ namespace Clube.Core
             return ores.ToJobNodes(Nodes, allocator);
         }
 
+        /// <summary>The tree parts reaching a chunk, as job data (empty, not default, when there are none).</summary>
+        public static NativeArray<TreePart> CollectTrees(TreeField trees, ChunkSampleGrid grid, Allocator allocator)
+        {
+            return trees != null ? trees.CollectJobParts(grid.Bounds, allocator) : new NativeArray<TreePart>(0, allocator);
+        }
+
         // Schedules and completes every job, leaving the output for the caller to read and dispose.
         private static ChunkFillOutput Run(
-            ITerrainGenerator generator, ChunkSampleGrid grid, TerrainLayers layers, OreField ores, DensityFormat format)
+            ITerrainGenerator generator, ChunkSampleGrid grid, TerrainLayers layers, OreField ores, TreeField trees, DensityFormat format)
         {
             var output = ChunkFillOutput.Allocate(grid.Length, format, Allocator.Persistent);
             NativeArray<OreNodeData> nodes = CollectOres(ores, grid, Allocator.Persistent);
+            NativeArray<TreePart> parts = CollectTrees(trees, grid, Allocator.Persistent);
             try
             {
-                Schedule(generator, grid, SettingsFor(layers, ores, format), nodes, output).Complete();
+                Schedule(generator, grid, SettingsFor(layers, ores, format), nodes, parts, output).Complete();
             }
             finally
             {
                 nodes.Dispose();
+                parts.Dispose();
             }
             return output;
         }

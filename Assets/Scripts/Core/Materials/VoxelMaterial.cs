@@ -20,6 +20,9 @@ namespace Clube.Core
 
         /// <summary>Holds a metal worth extracting: gold, silver, copper (3D, Chapter 5).</summary>
         Ore,
+
+        /// <summary>Grows on the surface: wood and leaves (GL30).</summary>
+        Plant,
     }
 
     /// <summary>

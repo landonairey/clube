@@ -51,6 +51,10 @@ namespace Clube.Core
         [SerializeField]
         private OreGeneration ores = new OreGeneration();
 
+        [Tooltip("Trees on flat ground (GL30): cell size, chance, slope limit, size and the wood and leaves materials.")]
+        [SerializeField]
+        private TreeGeneration trees = new TreeGeneration();
+
         [Header("Landscape")]
         [Tooltip("Landscape (GL26): width of a mountain, in metres. Ranges and plains are several times wider. Amplitude is the mountains' height above the plains, Surface level the plains' height, Octaves the ridges' detail.")]
         [SerializeField, Min(10f)]
@@ -92,6 +96,9 @@ namespace Clube.Core
 
         /// <summary>Ore generation (3D, O1-O5).</summary>
         public OreGeneration Ores => ores;
+
+        /// <summary>Tree generation (GL30).</summary>
+        public TreeGeneration Trees => trees;
 
         public TerrainGeneratorType Generator
         {
