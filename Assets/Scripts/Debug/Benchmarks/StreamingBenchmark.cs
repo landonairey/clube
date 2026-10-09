@@ -57,13 +57,14 @@ namespace Clube.Debug
             var results = new List<StreamingResult>();
             ITerrainGenerator generator = TerrainGenerators.Create(config.Terrain);
             OreField ores = OreField.Create(config.Terrain, generator);
+            TreeField trees = TreeField.Create(config.Terrain, generator);
             var materials = TerrainRenderMaterials.For(new Material[0], config);
 
             foreach (int distance in renderDistances)
             {
                 var root = new GameObject("Streaming Benchmark") { hideFlags = HideFlags.HideAndDontSave };
                 var world = new World(config.ChunkSize, config.VoxelSize, config.CreateStorage);
-                var pipeline = new ChunkPipeline(world.Grid, generator, config.Terrain.Layers, ores, world.PreferredFormat, world.StorageFactory);
+                var pipeline = new ChunkPipeline(world.Grid, generator, config.Terrain.Layers, ores, world.PreferredFormat, world.StorageFactory, trees);
                 var pool = new ChunkRendererPool(root.transform, true, materials);
                 var streamer = new WorldStreamer(world, pipeline, pool, () => config.MeshSettings, new StreamingSettings
                 {

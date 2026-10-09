@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d59954c0fdd2f5d4c9594a66c55f0fc1, type: 3}
+  m_Name: Wood
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.VoxelMaterial
+  id: 11
+  displayName: Wood
+  category: 2
+  albedo: {fileID: 2800000, guid: 82017dcceed2a954b96385bd6d01237e, type: 3}
+  debugColor: {r: 0.45, g: 0.3, b: 0.18, a: 1}
+  hardness: 2
+  drop: {fileID: 11400000, guid: ce1c9585acf5fc14f848a8b43eddc45d, type: 2}
+  pileShape: 1
+  reposeAngle: 40
+  pickUpPieceSize: 0
+  breaksInto: {fileID: 0}

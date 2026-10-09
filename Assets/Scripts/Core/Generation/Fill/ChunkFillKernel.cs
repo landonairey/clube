@@ -6,7 +6,7 @@ namespace Clube.Core
     /// <summary>
     /// Everything generation does once each sample's depth below the surface is known (K35):
     /// the density (<see cref="TerrainDensity"/>), the material layer (M10, bare rock on steep
-    /// columns, GL21), the ore rolls (3D), the surface rocks (GL22), and the chunk's
+    /// columns, GL21), the ore rolls (3D), the surface rocks (GL22), the trees (GL30), and the chunk's
     /// <see cref="ChunkFillSummary"/>. Every generation path ends here
     /// (<see cref="HeightfieldFillJob"/>, <see cref="VolumeFillJob{TVolume}"/> and
     /// <see cref="DepthFillJob"/>), so they can't disagree. Burst-compatible static code.
@@ -16,9 +16,10 @@ namespace Clube.Core
         /// <param name="depths">Each sample's depth below the surface, in metres; read only.</param>
         /// <param name="steepColumns">One per column (x fastest, then z): non-zero where the surface is steep
         /// enough to be bare rock (GL21). Empty when the generator has no columns; nothing is steep then.</param>
+        /// <param name="trees">Tree parts reaching the chunk (<see cref="TreeField"/>); empty for none.</param>
         public static void Run(
             NativeArray<float> depths, NativeArray<byte> steepColumns, in ChunkSampleGrid grid, in ChunkFillSettings settings,
-            NativeArray<OreNodeData> ores, ref ChunkFillOutput output)
+            NativeArray<OreNodeData> ores, NativeArray<TreePart> trees, ref ChunkFillOutput output)
         {
             if (settings.Format == DensityFormat.Byte)
             {
@@ -32,6 +33,10 @@ namespace Clube.Core
             }
 
             WriteLayers(depths, steepColumns, grid, settings.Layers, output.Materials);
+            if (settings.Layers.ClayChance > 0f)
+            {
+                StampClay(depths, steepColumns, grid, settings.Seed, settings.Layers, output.Materials);
+            }
             if (ores.Length > 0)
             {
                 StampOres(depths, grid, settings.Seed, ores, output.Materials);
@@ -41,6 +46,12 @@ namespace Clube.Core
                 ChunkFillSummary withRocks = output.Summary[0];
                 withRocks.UniformDensity = false;
                 output.Summary[0] = withRocks;
+            }
+            if (trees.Length > 0 && TreeStamp.Run(trees, grid, settings.Format, ref output))
+            {
+                ChunkFillSummary withTrees = output.Summary[0];
+                withTrees.UniformDensity = false;
+                output.Summary[0] = withTrees;
             }
 
             ChunkFillSummary summary = output.Summary[0];
@@ -165,6 +176,83 @@ namespace Clube.Core
                 }
             }
             return any;
+        }
+
+        // Surface clay deposits (GL34): only the material changes, so a deposit is flush with
+        // the ground around it. Every solid sample of a column shallower than the deposit's depth
+        // there becomes clay; steep (bare rock) columns are left alone. Depends only on global
+        // positions, so chunks sharing a border agree.
+        private static void StampClay(
+            NativeArray<float> depths, NativeArray<byte> steepColumns, in ChunkSampleGrid grid, int seed, in LayerTable layers,
+            NativeArray<byte> materials)
+        {
+            int3 count = grid.SampleCount;
+            for (int z = 0; z < count.z; z++)
+            {
+                for (int x = 0; x < count.x; x++)
+                {
+                    if (steepColumns.Length > 0 && steepColumns[x + count.x * z] != 0)
+                    {
+                        continue;
+                    }
+                    float deposit = ClayDepthAt(seed, grid.Position(x, 0, z).xz, layers);
+                    if (deposit <= 0f)
+                    {
+                        continue;
+                    }
+                    for (int y = 0; y < count.y; y++)
+                    {
+                        int i = grid.Index(x, y, z);
+                        if (depths[i] >= 0f && depths[i] < deposit)
+                        {
+                            materials[i] = layers.Clay;
+                        }
+                    }
+                }
+            }
+        }
+
+        private const int ClaySalt = 0x434C4159;
+
+        /// <summary>
+        /// How far down clay reaches at a column (GL34), in metres; 0 outside every deposit. A
+        /// cell holds a deposit by a hash of the seed and the cell: an ellipse at a hashed point,
+        /// deepest at its middle and thinning to nothing at its edge, like a lens.
+        /// </summary>
+        /// <param name="position">The column's x and z relative to the world origin.</param>
+        public static float ClayDepthAt(int seed, float2 position, in LayerTable layers)
+        {
+            if (layers.ClayChance <= 0f)
+            {
+                return 0f;
+            }
+            float size = layers.ClayCellSize;
+            int2 home = (int2)math.floor(position / size);
+            float deepest = 0f;
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int2 cell = home + new int2(dx, dz);
+                    if (VoxelHash.Uniform(seed, cell.x, 1, cell.y, ClaySalt) >= layers.ClayChance)
+                    {
+                        continue;
+                    }
+                    float2 centre = (cell + new float2(
+                        VoxelHash.Uniform(seed, cell.x, 1, cell.y, ClaySalt + 1),
+                        VoxelHash.Uniform(seed, cell.x, 1, cell.y, ClaySalt + 2))) * size;
+                    float2 radius = layers.ClayRadius * (0.5f + 0.5f * new float2(
+                        VoxelHash.Uniform(seed, cell.x, 1, cell.y, ClaySalt + 3),
+                        VoxelHash.Uniform(seed, cell.x, 1, cell.y, ClaySalt + 4)));
+                    float2 offset = (position - centre) / radius;
+                    float reach = math.dot(offset, offset);
+                    if (reach < 1f)
+                    {
+                        deepest = math.max(deepest, layers.ClayDepth * math.sqrt(1f - reach));
+                    }
+                }
+            }
+            return deepest;
         }
 
         // Salts keep the rock hashes apart from the ore rolls'.

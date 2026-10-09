@@ -89,7 +89,53 @@ namespace Clube.Game
         {
             var rect = new Rect(position.x, position.y, SlotSize, SlotSize);
             ItemSlotGui.Draw(rect, stack, selected, key, corner?.Invoke(stack));
+            if (!stack.IsEmpty && Event.current.type == EventType.Repaint && rect.Contains(Event.current.mousePosition))
+            {
+                hovered = stack;
+            }
             return GUI.Button(rect, GUIContent.none, GUIStyle.none);
+        }
+
+        private static ItemStack hovered;
+        private static GUIStyle tooltipStyle;
+
+        /// <summary>
+        /// Describes the stack under the mouse beside it (GL32, GL33): its count and volume, what
+        /// it's made of, how long it burns. Call after drawing a screen's slots.
+        /// </summary>
+        public static void DrawTooltip()
+        {
+            if (Event.current.type != EventType.Repaint || hovered.IsEmpty)
+            {
+                return;
+            }
+            ItemStack stack = hovered;
+            hovered = ItemStack.Empty;
+
+            tooltipStyle ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, wordWrap = true, padding = new RectOffset(8, 8, 6, 6) };
+            var content = new GUIContent(Describe(stack));
+            float width = 240f;
+            float height = tooltipStyle.CalcHeight(content, width);
+            Vector2 mouse = Event.current.mousePosition;
+            var rect = new Rect(Mathf.Min(mouse.x + 16f, Screen.width - width), Mathf.Min(mouse.y + 16f, Screen.height - height), width, height);
+            Panel(rect);
+            GUI.Label(rect, content, tooltipStyle);
+        }
+
+        /// <summary>"Copper ore ×12 · 12 vol / 80% Stone, 20% Copper".</summary>
+        public static string Describe(ItemStack stack)
+        {
+            string text = stack.Count > 1 ? $"{stack.Item.DisplayName} ×{stack.Count}" : stack.Item.DisplayName;
+            text += $"\nVolume {stack.Volume:0.##}";
+            if (stack.Contents != null)
+            {
+                text += $"\n{stack.Contents}";
+            }
+            if (stack.Item.IsFuel)
+            {
+                text += $"\nFuel: burns {stack.Item.BurnSeconds:0.#} s each";
+            }
+            return text;
         }
 
         private static int BackpackRows(PlayerInventory player)

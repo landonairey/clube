@@ -6,11 +6,11 @@ using UnityEngine;
 namespace Clube.Debug.Editor
 {
     /// <summary>
-    /// Paints stand-in icons for items that aren't terrain materials (GL7), until real art
-    /// exists: the copper bun (a rough dome, as a smelt leaves it) and the copper ingot (a
-    /// bar seen from above at an angle). <i>Clube → Items → Generate icons</i> writes them to
-    /// <c>Assets/Textures/Items/</c> and links each to its item. Material drops use their
-    /// material's terrain texture instead.
+    /// Paints stand-in icons (GL7, GL31), until real art exists: the copper bun (a rough dome,
+    /// as a smelt leaves it), the copper ingot (a bar seen from above at an angle), wood (a log
+    /// end-on, with its rings) and leaves (one leaf). <i>Clube → Items → Generate icons</i> writes them to
+    /// <c>Assets/Textures/Items/</c> and links each to its item. Other material drops use their
+    /// material's terrain texture.
     /// </summary>
     public static class ItemIconTools
     {
@@ -28,6 +28,10 @@ namespace Clube.Debug.Editor
             Directory.CreateDirectory(Folder);
             Write("copper bun", "Copper bun", PaintBun());
             Write("copper ingot", "Copper ingot", PaintIngot());
+            Write("wood", "Wood", PaintLog());
+            Write("leaves", "Leaves", PaintLeaf());
+            Write("clay", "Clay", PaintClay());
+            Write("brick", "Brick", PaintBrick());
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Wrote item icons to {Folder}.");
         }
@@ -133,6 +137,204 @@ namespace Clube.Debug.Editor
                 }
             }
             Outline(texture, CopperDark);
+            texture.Apply();
+            return texture;
+        }
+
+        // A lump of wet clay (GL34): a lumpy blob lit from the upper left, with a soft sheen.
+        private static Texture2D PaintClay()
+        {
+            Texture2D texture = Blank();
+            var random = new System.Random(13);
+            var dark = new Color(0.42f, 0.28f, 0.2f);
+            var mid = new Color(0.66f, 0.48f, 0.36f);
+            var sheen = new Color(0.85f, 0.7f, 0.58f);
+            var centre = new Vector2(Size * 0.5f, Size * 0.42f);
+            var light = new Vector2(-0.45f, 0.55f).normalized;
+            for (int y = 0; y < Size; y++)
+            {
+                for (int x = 0; x < Size; x++)
+                {
+                    Vector2 offset = new Vector2(x - centre.x, y - centre.y);
+                    float angle = Mathf.Atan2(offset.y, offset.x);
+                    // A wobbly outline, so it reads as a lump rather than a dome.
+                    float radius = Size * (0.36f + 0.04f * Mathf.Sin(angle * 3f + 0.7f) + 0.025f * Mathf.Sin(angle * 5f));
+                    Vector2 p = new Vector2(offset.x / radius, offset.y / (radius * 0.78f));
+                    float r2 = p.sqrMagnitude;
+                    if (r2 > 1f)
+                    {
+                        continue;
+                    }
+                    float height = Mathf.Sqrt(1f - r2);
+                    float shade = Mathf.Clamp01(0.5f + 0.5f * Vector2.Dot(p, light) * (1f - height) + 0.3f * height);
+                    Color color = Color.Lerp(dark, mid, shade);
+                    if (shade > 0.8f)
+                    {
+                        color = Color.Lerp(color, sheen, (shade - 0.8f) / 0.2f * 0.6f);
+                    }
+                    color *= 0.95f + 0.08f * (float)random.NextDouble();
+                    color.a = Mathf.Clamp01((1f - r2) * 6f);
+                    texture.SetPixel(x, y, color);
+                }
+            }
+            texture.Apply();
+            return texture;
+        }
+
+        // A brick seen from above at an angle, like the ingot: a lighter top face, a darker
+        // front face, a few pits, and an outline.
+        private static Texture2D PaintBrick()
+        {
+            Texture2D texture = Blank();
+            var random = new System.Random(17);
+            var light = new Color(0.78f, 0.38f, 0.25f);
+            var face = new Color(0.62f, 0.27f, 0.17f);
+            var dark = new Color(0.3f, 0.12f, 0.08f);
+            float left = Size * 0.14f, right = Size * 0.86f;
+            float frontY0 = Size * 0.26f, topY0 = Size * 0.5f, topY1 = Size * 0.72f;
+            float skew = Size * 0.08f;
+            for (int y = 0; y < Size; y++)
+            {
+                for (int x = 0; x < Size; x++)
+                {
+                    Color? color = null;
+                    if (y >= frontY0 && y < topY0 && x >= left && x <= right)
+                    {
+                        color = face;
+                    }
+                    else if (y >= topY0 && y <= topY1)
+                    {
+                        // The top face leans back to the right.
+                        float shift = (y - topY0) / (topY1 - topY0) * skew;
+                        if (x >= left + shift && x <= right + shift && x < Size)
+                        {
+                            color = light;
+                        }
+                    }
+                    else if (y >= frontY0 && y < topY1 && x > right)
+                    {
+                        // The right end, in shadow, widening towards the top.
+                        if (x <= right + (y - frontY0) / (topY1 - frontY0) * skew)
+                        {
+                            color = Color.Lerp(face, dark, 0.45f);
+                        }
+                    }
+                    if (color.HasValue)
+                    {
+                        Color c = color.Value * (0.9f + 0.15f * (float)random.NextDouble());
+                        if (random.NextDouble() < 0.03)
+                        {
+                            c *= 0.7f;
+                        }
+                        c.a = 1f;
+                        texture.SetPixel(x, y, c);
+                    }
+                }
+            }
+            Outline(texture, dark);
+            texture.Apply();
+            return texture;
+        }
+
+        // A short log lying across the icon: a bark-brown side, and its cut end facing the viewer
+        // with growth rings around a dark heart.
+        private static Texture2D PaintLog()
+        {
+            Texture2D texture = Blank();
+            var random = new System.Random(23);
+            var bark = new Color(0.36f, 0.24f, 0.14f);
+            var barkDark = new Color(0.22f, 0.14f, 0.08f);
+            var sapwood = new Color(0.85f, 0.70f, 0.48f);
+            var heart = new Color(0.62f, 0.42f, 0.24f);
+            var end = new Vector2(Size * 0.3f, Size * 0.5f);
+            float radius = Size * 0.24f;
+            float right = Size * 0.86f;
+            for (int y = 0; y < Size; y++)
+            {
+                for (int x = 0; x < Size; x++)
+                {
+                    float dy = y - end.y;
+                    Color? color = null;
+                    if (x >= end.x && x <= right && Mathf.Abs(dy) <= radius)
+                    {
+                        // The side: rounded shading, with streaks of bark along it.
+                        float round = 1f - Mathf.Abs(dy) / radius;
+                        color = Color.Lerp(barkDark, bark, 0.4f + 0.6f * round);
+                        if (random.NextDouble() < 0.12)
+                        {
+                            color = color.Value * 0.7f;
+                        }
+                    }
+                    float d = Vector2.Distance(new Vector2(x, y), end);
+                    if (d <= radius)
+                    {
+                        // The cut end: rings every few pixels, darker towards the heart.
+                        float ring = Mathf.Repeat(d / 2.6f, 1f);
+                        Color wood = Color.Lerp(heart, sapwood, d / radius);
+                        color = ring < 0.25f ? wood * 0.8f : wood;
+                        if (d > radius - 2f)
+                        {
+                            color = bark;
+                        }
+                    }
+                    if (color.HasValue)
+                    {
+                        Color c = color.Value * (0.95f + 0.08f * (float)random.NextDouble());
+                        c.a = 1f;
+                        texture.SetPixel(x, y, c);
+                    }
+                }
+            }
+            Outline(texture, barkDark);
+            texture.Apply();
+            return texture;
+        }
+
+        // One leaf on a slant: a pointed oval, lighter on top, with a midrib and a short stem.
+        private static Texture2D PaintLeaf()
+        {
+            Texture2D texture = Blank();
+            var random = new System.Random(29);
+            var green = new Color(0.25f, 0.52f, 0.18f);
+            var light = new Color(0.45f, 0.70f, 0.28f);
+            var dark = new Color(0.10f, 0.25f, 0.07f);
+            var centre = new Vector2(Size * 0.52f, Size * 0.54f);
+            var along = new Vector2(1f, 1f).normalized;
+            var across = new Vector2(-along.y, along.x);
+            float length = Size * 0.4f;
+            float width = Size * 0.2f;
+            for (int y = 0; y < Size; y++)
+            {
+                for (int x = 0; x < Size; x++)
+                {
+                    Vector2 offset = new Vector2(x, y) - centre;
+                    float u = Vector2.Dot(offset, along) / length;
+                    float v = Vector2.Dot(offset, across) / width;
+                    // Narrower towards both tips than an ellipse, for a leaf's point.
+                    float half = Mathf.Pow(Mathf.Max(0f, 1f - u * u), 0.75f);
+                    Color? color = null;
+                    if (Mathf.Abs(u) <= 1f && Mathf.Abs(v) <= half)
+                    {
+                        color = Color.Lerp(green, light, 0.5f + 0.5f * v / Mathf.Max(half, 0.01f) * 0.6f);
+                        if (Mathf.Abs(v) < 0.06f || (Mathf.Abs(Mathf.Repeat(u * 4f + Mathf.Abs(v) * 1.5f, 1f) - 0.5f) < 0.05f && Mathf.Abs(v) < half * 0.8f))
+                        {
+                            // Midrib and side veins.
+                            color = Color.Lerp(color.Value, light, 0.6f);
+                        }
+                    }
+                    else if (u < -1f && u > -1.35f && Mathf.Abs(v) < 0.08f)
+                    {
+                        color = dark;
+                    }
+                    if (color.HasValue)
+                    {
+                        Color c = color.Value * (0.95f + 0.08f * (float)random.NextDouble());
+                        c.a = 1f;
+                        texture.SetPixel(x, y, c);
+                    }
+                }
+            }
+            Outline(texture, dark);
             texture.Apply();
             return texture;
         }

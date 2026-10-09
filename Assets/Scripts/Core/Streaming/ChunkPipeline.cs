@@ -32,6 +32,7 @@ namespace Clube.Core
         private readonly WorldGrid grid;
         private readonly ITerrainGenerator generator;
         private readonly OreField ores;
+        private readonly TreeField trees;
         private readonly ChunkFillSettings fillSettings;
         private readonly Func<Vector3Int, IVoxelStorage> createStorage;
 
@@ -55,11 +56,12 @@ namespace Clube.Core
         /// <param name="format">The density format the world's storage holds (<see cref="World.PreferredFormat"/>).</param>
         public ChunkPipeline(
             WorldGrid grid, ITerrainGenerator generator, TerrainLayers layers, OreField ores, DensityFormat format,
-            Func<Vector3Int, IVoxelStorage> createStorage)
+            Func<Vector3Int, IVoxelStorage> createStorage, TreeField trees = null)
         {
             this.grid = grid;
             this.generator = generator;
             this.ores = ores;
+            this.trees = trees;
             this.createStorage = createStorage;
             fillSettings = ChunkGenerator.SettingsFor(layers, ores, format);
         }
@@ -125,8 +127,10 @@ namespace Clube.Core
             }
 
             var task = new GenerationTask { Coord = coord, Grid = ChunkSampleGrid.ForChunk(grid, coord) };
-            if (generator == null || IsAboveSurface(coord, task.Grid))
+            task.Trees = ChunkGenerator.CollectTrees(trees, task.Grid, Allocator.Persistent);
+            if (generator == null || (task.Trees.Length == 0 && IsAboveSurface(coord, task.Grid)))
             {
+                task.Trees.Dispose();
                 task.Air = true;
                 generated.Enqueue(task);
                 generatedCoords.Add(coord);
@@ -140,11 +144,11 @@ namespace Clube.Core
                 task.Column = ColumnFor(new Vector2Int(coord.x, coord.z), task.Grid.BorderedColumns, heightfield);
                 task.Column.Users++;
                 task.Handle = ChunkGenerator.ScheduleFromColumns(
-                    task.Column.Heights, task.Column.Range, task.Grid, fillSettings, task.Ores, task.Output, task.Column.Job);
+                    task.Column.Heights, task.Column.Range, task.Grid, fillSettings, task.Ores, task.Trees, task.Output, task.Column.Job);
             }
             else
             {
-                task.Handle = ChunkGenerator.Schedule(generator, task.Grid, fillSettings, task.Ores, task.Output);
+                task.Handle = ChunkGenerator.Schedule(generator, task.Grid, fillSettings, task.Ores, task.Trees, task.Output);
             }
             generating.Add(coord, task);
         }
@@ -557,6 +561,7 @@ namespace Clube.Core
             public ChunkSampleGrid Grid;
             public ChunkFillOutput Output;
             public NativeArray<OreNodeData> Ores;
+            public NativeArray<TreePart> Trees;
             public ColumnHeights Column;
 
             /// <summary>Known to be all air without a job: nothing allocated.</summary>
@@ -581,6 +586,10 @@ namespace Clube.Core
                 if (Ores.IsCreated)
                 {
                     Ores.Dispose();
+                }
+                if (Trees.IsCreated)
+                {
+                    Trees.Dispose();
                 }
             }
         }

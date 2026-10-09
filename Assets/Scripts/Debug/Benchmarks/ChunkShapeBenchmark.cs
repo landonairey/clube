@@ -106,6 +106,7 @@ namespace Clube.Debug
             var results = new List<ChunkShapeResult>();
             ITerrainGenerator generator = TerrainGenerators.Create(config.Terrain);
             OreField ores = OreField.Create(config.Terrain, generator);
+            TreeField trees = TreeField.Create(config.Terrain, generator);
             int side = config.ChunkSize.x;
             int layers = config.WorldHeightInChunks;
             var shapes = new[]
@@ -117,7 +118,7 @@ namespace Clube.Debug
             {
                 foreach ((string name, Vector3Int chunkSize, int height) in shapes)
                 {
-                    results.Add(Measure(config, generator, ores, area, name, chunkSize, height, digs, runs));
+                    results.Add(Measure(config, generator, ores, trees, area, name, chunkSize, height, digs, runs));
                 }
             }
             return results;
@@ -145,7 +146,7 @@ namespace Clube.Debug
         }
 
         private static ChunkShapeResult Measure(
-            WorldConfig config, ITerrainGenerator generator, OreField ores, Area area, string shape, Vector3Int chunkSize, int height,
+            WorldConfig config, ITerrainGenerator generator, OreField ores, TreeField trees, Area area, string shape, Vector3Int chunkSize, int height,
             int digs, int runs)
         {
             var coords = new List<Vector3Int>();
@@ -176,10 +177,10 @@ namespace Clube.Debug
                 var stopwatch = Stopwatch.StartNew();
                 foreach (Vector3Int coord in coords)
                 {
-                    world.Load(coord, generator, config.Terrain.Layers, ores);
+                    world.Load(coord, generator, config.Terrain.Layers, ores, trees);
                 }
                 generateMs[run] = stopwatch.Elapsed.TotalMilliseconds;
-                parallelGenerateMs[run] = GenerateInParallel(config, chunkSize, generator, ores, coords);
+                parallelGenerateMs[run] = GenerateInParallel(config, chunkSize, generator, ores, trees, coords);
 
                 List<Chunk> surface = SurfaceChunks(world);
                 stopwatch.Restart();
@@ -313,11 +314,12 @@ namespace Clube.Debug
         }
 
         // Every chunk through the pipeline at once, waited for, then taken.
-        private static double GenerateInParallel(WorldConfig config, Vector3Int chunkSize, ITerrainGenerator generator, OreField ores, List<Vector3Int> coords)
+        private static double GenerateInParallel(
+            WorldConfig config, Vector3Int chunkSize, ITerrainGenerator generator, OreField ores, TreeField trees, List<Vector3Int> coords)
         {
             var world = new World(chunkSize, config.VoxelSize, config.CreateStorage);
             var stopwatch = Stopwatch.StartNew();
-            using (var pipeline = new ChunkPipeline(world.Grid, generator, config.Terrain.Layers, ores, world.PreferredFormat, world.StorageFactory))
+            using (var pipeline = new ChunkPipeline(world.Grid, generator, config.Terrain.Layers, ores, world.PreferredFormat, world.StorageFactory, trees))
             {
                 foreach (Vector3Int coord in coords)
                 {

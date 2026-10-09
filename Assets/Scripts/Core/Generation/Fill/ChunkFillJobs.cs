@@ -59,7 +59,7 @@ namespace Clube.Core
     /// <see cref="ChunkFillKernel"/> does the rest. The heights cover
     /// <see cref="ChunkSampleGrid.BorderedColumns"/>, one column more on every side, so border
     /// columns get the same slope in both chunks. A chunk wholly above its columns' highest
-    /// point is all air and skips the arrays.
+    /// point, with no tree reaching it, is all air and skips the arrays.
     /// </summary>
     [BurstCompile]
     public struct HeightfieldFillJob : IJob
@@ -69,11 +69,12 @@ namespace Clube.Core
         public ChunkSampleGrid Grid;
         public ChunkFillSettings Settings;
         [ReadOnly] public NativeArray<OreNodeData> Ores;
+        [ReadOnly] public NativeArray<TreePart> Trees;
         public ChunkFillOutput Output;
 
         public void Execute()
         {
-            if (Grid.Bottom >= HeightRange[0].y + TerrainDensity.RampHalfWidth)
+            if (Trees.Length == 0 && Grid.Bottom >= HeightRange[0].y + TerrainDensity.RampHalfWidth)
             {
                 Output.Summary[0] = ChunkFillKernel.AllAir(Settings.Layers);
                 return;
@@ -107,7 +108,7 @@ namespace Clube.Core
                     steep[x + count.x * z] = Settings.Layers.IsSteep(math.sqrt(dx * dx + dz * dz), Heights[centre]) ? (byte)1 : (byte)0;
                 }
             }
-            ChunkFillKernel.Run(depths, steep, Grid, Settings, Ores, ref Output);
+            ChunkFillKernel.Run(depths, steep, Grid, Settings, Ores, Trees, ref Output);
         }
     }
 
@@ -119,6 +120,7 @@ namespace Clube.Core
         public ChunkSampleGrid Grid;
         public ChunkFillSettings Settings;
         [ReadOnly] public NativeArray<OreNodeData> Ores;
+        [ReadOnly] public NativeArray<TreePart> Trees;
         public ChunkFillOutput Output;
 
         public void Execute()
@@ -135,7 +137,7 @@ namespace Clube.Core
                     }
                 }
             }
-            ChunkFillKernel.Run(depths, default, Grid, Settings, Ores, ref Output);
+            ChunkFillKernel.Run(depths, default, Grid, Settings, Ores, Trees, ref Output);
         }
     }
 
@@ -151,11 +153,12 @@ namespace Clube.Core
         public ChunkSampleGrid Grid;
         public ChunkFillSettings Settings;
         [ReadOnly] public NativeArray<OreNodeData> Ores;
+        [ReadOnly] public NativeArray<TreePart> Trees;
         public ChunkFillOutput Output;
 
         public void Execute()
         {
-            ChunkFillKernel.Run(Depths, default, Grid, Settings, Ores, ref Output);
+            ChunkFillKernel.Run(Depths, default, Grid, Settings, Ores, Trees, ref Output);
         }
     }
 }

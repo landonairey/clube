@@ -55,7 +55,7 @@ namespace Clube.Game
             }
             else
             {
-                tools.Collected += OnAdded;
+                tools.Collected += OnCollected;
             }
             if (dropper != null)
             {
@@ -73,13 +73,18 @@ namespace Clube.Game
             }
             else
             {
-                tools.Collected -= OnAdded;
+                tools.Collected -= OnCollected;
             }
             if (dropper != null)
             {
                 dropper.Dropped -= OnDropped;
                 dropper.Refused -= OnRefused;
             }
+        }
+
+        private void OnCollected(ItemStack collected)
+        {
+            OnAdded(collected.Item);
         }
 
         private void OnAdded(ItemDefinition item)

@@ -70,6 +70,7 @@ namespace Clube.Debug
             var triangles = new List<int>();
             ITerrainGenerator generator = TerrainGenerators.Create(config.Terrain);
             OreField ores = OreField.Create(config.Terrain, generator);
+            TreeField trees = TreeField.Create(config.Terrain, generator);
             ChunkMeshSettings settings = config.MeshSettings;
 
             foreach (int distance in renderDistances)
@@ -88,10 +89,10 @@ namespace Clube.Debug
                     var stopwatch = Stopwatch.StartNew();
                     foreach (Vector3Int coord in coords)
                     {
-                        world.Load(coord, generator, config.Terrain.Layers, ores);
+                        world.Load(coord, generator, config.Terrain.Layers, ores, trees);
                     }
                     double generated = stopwatch.Elapsed.TotalMilliseconds;
-                    double generatedInParallel = GenerateInParallel(config, generator, ores, coords);
+                    double generatedInParallel = GenerateInParallel(config, generator, ores, trees, coords);
 
                     var surface = new List<Chunk>();
                     foreach (Chunk chunk in world.Chunks.Values)
@@ -161,11 +162,11 @@ namespace Clube.Debug
         }
 
         // Every chunk through the pipeline at once (no job limit), waited for, then taken.
-        private static double GenerateInParallel(WorldConfig config, ITerrainGenerator generator, OreField ores, List<Vector3Int> coords)
+        private static double GenerateInParallel(WorldConfig config, ITerrainGenerator generator, OreField ores, TreeField trees, List<Vector3Int> coords)
         {
             var world = new World(config.ChunkSize, config.VoxelSize, config.CreateStorage);
             var stopwatch = Stopwatch.StartNew();
-            using (var pipeline = new ChunkPipeline(world.Grid, generator, config.Terrain.Layers, ores, world.PreferredFormat, world.StorageFactory))
+            using (var pipeline = new ChunkPipeline(world.Grid, generator, config.Terrain.Layers, ores, world.PreferredFormat, world.StorageFactory, trees))
             {
                 foreach (Vector3Int coord in coords)
                 {

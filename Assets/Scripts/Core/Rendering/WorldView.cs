@@ -65,6 +65,7 @@ namespace Clube.Core
         private WorldConfig runtimeConfig;
         private ITerrainGenerator generator;
         private OreField ores;
+        private TreeField trees;
         private ChunkRendererPool renderers;
         private WorldStreamer streamer;
         private string terrainFingerprint;
@@ -123,6 +124,9 @@ namespace Clube.Core
 
         /// <summary>Where ore is placed (3D), for lab views; null when the terrain has no ores.</summary>
         public OreField Ores => ores;
+
+        /// <summary>Where trees grow (GL30); null when the terrain has no trees.</summary>
+        public TreeField Trees => trees;
 
         /// <summary>The chunk under the focus point.</summary>
         public Vector3Int FocusChunk => World.Grid.WorldToChunk(transform.InverseTransformPoint(Focus.position));
@@ -271,7 +275,7 @@ namespace Clube.Core
             World = new World(Config.ChunkSize, Config.VoxelSize, Config.CreateStorage);
             terrainFingerprint = TerrainFingerprint();
             CreateGenerator();
-            var pipeline = new ChunkPipeline(World.Grid, generator, Config.Terrain.Layers, ores, World.PreferredFormat, World.StorageFactory);
+            var pipeline = new ChunkPipeline(World.Grid, generator, Config.Terrain.Layers, ores, World.PreferredFormat, World.StorageFactory, trees);
             streamer = new WorldStreamer(World, pipeline, renderers, () => Config.MeshSettings, new StreamingSettings
             {
                 RenderDistance = renderDistance,
@@ -306,6 +310,7 @@ namespace Clube.Core
             {
                 generator = TerrainGenerators.Create(Config.Terrain);
                 ores = OreField.Create(Config.Terrain, generator);
+                trees = TreeField.Create(Config.Terrain, generator);
                 Problem = null;
             }
             catch (Exception exception) when (exception is InvalidOperationException || exception is ArgumentException)
@@ -313,6 +318,7 @@ namespace Clube.Core
                 // e.g. the heightmap generator with no heightmap: load empty chunks and say why.
                 generator = null;
                 ores = null;
+                trees = null;
                 Problem = exception.Message;
             }
         }

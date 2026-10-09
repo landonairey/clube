@@ -67,7 +67,7 @@ namespace Clube.Core
 
         /// <summary>Schedules a job filling one chunk's samples (<see cref="VolumeFillJob{TVolume}"/>).</summary>
         public abstract JobHandle ScheduleFill(
-            ChunkSampleGrid grid, ChunkFillSettings settings, NativeArray<OreNodeData> ores, ChunkFillOutput output,
+            ChunkSampleGrid grid, ChunkFillSettings settings, NativeArray<OreNodeData> ores, NativeArray<TreePart> trees, ChunkFillOutput output,
             JobHandle dependsOn = default);
     }
 
@@ -89,10 +89,10 @@ namespace Clube.Core
         }
 
         public override JobHandle ScheduleFill(
-            ChunkSampleGrid grid, ChunkFillSettings settings, NativeArray<OreNodeData> ores, ChunkFillOutput output,
+            ChunkSampleGrid grid, ChunkFillSettings settings, NativeArray<OreNodeData> ores, NativeArray<TreePart> trees, ChunkFillOutput output,
             JobHandle dependsOn = default)
         {
-            return new VolumeFillJob<TField> { Field = field, Grid = grid, Settings = settings, Ores = ores, Output = output }
+            return new VolumeFillJob<TField> { Field = field, Grid = grid, Settings = settings, Ores = ores, Trees = trees, Output = output }
                 .Schedule(dependsOn);
         }
     }
