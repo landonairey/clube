@@ -251,9 +251,10 @@ After 3A: 2D (K32, K12), the stacked labs (3A+), 2G and M12 are done; next 3B.
 - [x] **M5** `Core` *(added)* Terrain edits that cross chunk borders update all affected chunks. (`World.ApplyBrush` applies the brush to every loaded chunk it reaches; the brush result depends only on a sample's value and position, so shared copies stay equal. `TerrainBrushTool` now edits any `IEditableTerrain`: a `ChunkView` or a `WorldView`. Edited chunks are kept in memory when unloaded until saving exists.)
 - [x] **M12** `Lab` *(after 2G)* Storage at scale: repeat the K26 benchmark across many loaded chunks (total memory, load/unload time) and choose the `Core` storage for the game. Record the decision in `Docs/benchmarks.md`.
   - Result: `WorldStorageBenchmark` (*Clube → Benchmarks → Storage at scale*) on WorldLab's world at 16³ / 1 m and 32³ / 0.25 m. Decision: **single-byte storage** (`FlatByte`) for the game, now the `WorldConfig` default and WorldLab's setting: 0.25× memory at the same load, brush and streaming cost; run-length loses in memory at scale and the octree is second (0.38-0.58×, slower strokes). VoxelLab and ChunkLab keep exact floats. Generation dominates streaming (K35).
-- [ ] **M17** `Lab` *(backlog)* Chunk shape comparison: tall column chunks (Minecraft-style, full world height) vs cubic chunks stacked vertically to fill the elevation. Compare memory, mesh count and load time over the same terrain, and record the choice. Decide before M1 fixes the coordinate system.
+- [x] **M17** `Lab` *(backlog)* Chunk shape comparison: tall column chunks (Minecraft-style, full world height) vs cubic chunks stacked vertically to fill the elevation. Compare memory, mesh count and load time over the same terrain, and record the choice. Decide before M1 fixes the coordinate system. (`ChunkShapeBenchmark`, *Clube → Benchmarks → Chunk shape (M17)*; results in `benchmarks.md`. Stacked 32³ cubes against 32 x 640 x 32 columns on the same terrain: 7x less memory, 2-3.5x faster parallel generation, 6-8x faster meshing and 6x cheaper digs. A checkerboard shows the 16-bit index limit is 65,535 unique vertices: worst case 16³ unshared, 27³ shared; real terrain stays near 17k.)
   - Note: stacked cubic chunks allow tall peaks without paying for empty sky everywhere, which matters for mountain terrain and the mountaineering skill (SK5).
   - *(Decision for M1, 3A)* The coordinate system is 3D (`Vector3Int` chunk coordinates) with cubic chunks stacked in a fixed number of layers (`WorldHeightInChunks`), streamed horizontally by render distance. A column chunk is just a tall chunk size, so the comparison can still be run on this grid.
+  - *(Decision, M17, 2026-10-08)* Keep stacked cubic chunks. Columns only win on sequential generation, which the streamer never does; chunk edge length stays a config value.
 
 ### 3A+ — Stacked labs *(added, after K32)*
 Each lab contains the tools of the labs below it, built from the same scripts: `ChunkLab` has everything `VoxelLab` has for its selected voxel, and `WorldLab` has everything `ChunkLab` has for its focused chunk. Today most lab tools require a `ChunkView`, which world chunks aren't, so `WorldLab` has almost none of them, and the voxel tools exist twice (VoxelLab's and ChunkLab's own versions).
@@ -759,7 +760,7 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
 
 ## Open questions
 
-- Target chunk size for Chapter 3+ (16³ vs 32³)? And chunk shape: tall columns or stacked cubes (M17)?
+- Target chunk size for Chapter 3+ (16³ vs 32³)? (Shape is settled: stacked cubes, M17.)
 - Which A6 variants does the game lock in (likely interpolated + smooth)?
 - Density type for storage: float, half, or byte (affects K26 results and save size)? The backlog leans byte (K28).
 - Save file format: binary (compact, fast) vs JSON (readable, easier to debug)?

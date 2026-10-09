@@ -103,7 +103,7 @@ memory when unloaded. `WorldView` is the chunk manager: streams chunks
 around its focus (the camera), nearest first, a few per frame, with pooled
 `ChunkRenderer`s; `ChunkMeshBuilder` builds meshes for it and `ChunkView`.
 Chunks are cubic, stacked `WorldHeightInChunks` layers from y = 0 (the M17
-decision). Render distance is a player setting: `PlayerSettings` in
+decision; `ChunkShapeBenchmark` measured it against full-height columns). Render distance is a player setting: `PlayerSettings` in
 `Clube.Game` (A3), applied by `RenderDistanceSetting` (M3). WorldLab adds
 `ChunkFocus` (M4; volume from the chunk tools' `ChunkVolumeStats`), `WorldDebugView` (chunk
 borders, each grid edge drawn once with the focused chunk's in the highlight

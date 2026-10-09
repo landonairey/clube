@@ -490,3 +490,83 @@ took **0.83 ms a frame on average, 4.7 ms at most**.
 jobs through `ChunkPipeline`; `WorldConfig.Mesher` only picks the
 single-chunk labs' mesher. K35 is done; P1-P3 are done for the lab world
 (the lean `Game` scene, GW, builds on the same path).
+
+## M17 — Chunk shape: tall columns vs stacked cubes
+
+**Question.** Should a chunk be one tall column the full world height
+(Minecraft-style) or a cube stacked in layers? And how big can a chunk be
+before one mesh passes the 65,535 vertices a 16-bit index buffer addresses?
+
+### The vertex limit (checkerboard)
+
+A 16-bit index buffer can address 65,535 **unique vertices**; the triangle
+count only matters through how many vertices the triangles need. The worst
+case for marching cubes is a 3D checkerboard (alternating solid and air
+samples): every edge is crossed and every voxel makes 4 triangles. Measured
+with `ChunkMeshBuilder` (managed and Burst agree), for Flat shading (3
+unshared vertices per triangle, what the game draws) and Smooth (one vertex
+per crossed edge, shared):
+
+| Voxels | Triangles | Unshared vertices | Shared vertices | Fits 16-bit |
+|---|--:|--:|--:|---|
+| 15³ | 13,500 | 40,500 | 11,520 | both |
+| 16³ | 16,384 | 49,152 | 13,872 | both |
+| 17³ | 19,652 | 58,956 | 16,524 | both |
+| 16 x 48 x 16 | 49,152 | 147,456 | 40,528 | shared only |
+| 27³ | 78,732 | 236,196 | 63,504 | shared only |
+| 28³ | 87,808 | 263,424 | 70,644 | neither |
+| 32³ | 131,072 | 393,216 | 104,544 | neither |
+
+At most 5 triangles per voxel, so unshared vertices are at most 15 per voxel:
+**16³ is the largest cube guaranteed to fit 16-bit unshared**, and shared
+vertices (3 edges per sample, 3n(n+1)² at most) fit up to **27³**. 16 x 48 x
+16 is 49,152 triangles but 147,456 unshared vertices; it fits only with shared
+vertices.
+
+This is a ceiling for noise, not for terrain. The mesher already switches a
+mesh to 32-bit indices past 65,535 vertices (`ChunkMeshJob`,
+`ChunkMeshBuilder`), so passing it costs index memory, not correctness. On
+real terrain the largest mesh below is 16,860 vertices for a 32 x 640 x 32
+column, a quarter of the limit.
+
+### Columns vs cubes on the same terrain
+
+`ChunkShapeBenchmark` (*Clube → Benchmarks → Chunk shape (M17)*) loads the
+same 6 x 6 chunk columns twice: as 32³ cubes stacked 20 layers, and as
+32 x 640 x 32 columns. It generates them (one after another, then in
+parallel through `ChunkPipeline`), meshes them with the Burst mesher (same
+two ways), counts the stored bytes, then makes 25 one-metre digs at surface
+spots and times each one from the edit to every dirtied chunk remeshed,
+uploaded and its collider baked.
+
+Unity 6000.3.25f1, in the Editor with Release code optimization, Intel(R)
+Core(TM) i9-10900K CPU @ 3.70GHz (20 threads). Terrain:
+`ProceduralWorldLabWorldConfig`, Landscape, 0.25 m voxels, 160 m tall,
+storage FlatByte, Flat shading, materials Blended.
+
+| Area | Shape | Chunks | With surface | Stored | Generate ms | Generate ms (parallel) | Mesh ms | Mesh ms (parallel) | Vertices | Largest mesh | Over 16-bit | Dig ms (median) | Dig ms (max) | Chunks per dig |
+|--|--|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| Plains and foothills | 32³ cubes x 20 layers | 720 | 67 | 6.8 MB | 670.9 | 12.8 | 64.3 | 8.1 | 368,250 | 12,351 | 0 | 2.33 | 6.32 | 1.4 |
+| Plains and foothills | 32 x 640 x 32 columns | 36 | 36 | 47.9 MB | 296.4 | 45.7 | 492.5 | 64.0 | 368,250 | 13,362 | 0 | 14.80 | 44.55 | 1.3 |
+| Mountains | 32³ cubes x 20 layers | 720 | 79 | 7.6 MB | 779.3 | 23.1 | 77.0 | 9.8 | 459,882 | 13,863 | 0 | 2.73 | 7.70 | 1.6 |
+| Mountains | 32 x 640 x 32 columns | 36 | 36 | 47.9 MB | 295.7 | 45.3 | 502.9 | 65.0 | 459,882 | 16,860 | 0 | 15.43 | 45.90 | 1.3 |
+
+- **Memory: cubes store 7x less.** About 90% of the cubes are all air or
+  all solid and keep no density storage (K35); a column always spans the
+  surface, so it stores all 655,360 samples.
+- **Generation in parallel: cubes 2-3.5x faster.** One after another the
+  columns win (36 jobs against 720, so less overhead per job), but 36 jobs can't fill 20 threads the way
+  720 small ones do, and the streamer runs them in parallel.
+- **Meshing: cubes 6-8x faster.** Only the surface cubes are meshed; a column
+  walks its whole height of air and rock.
+- **Digs: cubes 6x faster.** A dig remeshes and re-bakes about 1.4 cubes of
+  32³ (2-3 ms, worst 8 ms) against a 640-high column (15 ms, worst 46 ms),
+  which is most of a 60 fps frame.
+- **Vertices are the same** (same surface), and neither shape comes near the
+  16-bit limit on real terrain.
+
+**Decision.** Keep cubic chunks stacked in `WorldHeightInChunks` layers (the
+grid M1 already built). Columns only win on sequential generation, which the
+streamer never does. Chunk edge length stays a config value: the 16³ / 27³ bounds
+only matter if 16-bit indices are ever required, since meshes past them
+already switch to 32-bit. M17 is done.

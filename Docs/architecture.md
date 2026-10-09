@@ -106,7 +106,8 @@ an edited neighbour takes that neighbour's border values.
 
 **Coordinates** (`WorldGrid`): world position ↔ global sample ↔ chunk ↔ local
 sample, floored so negatives work. Chunks are cubes stacked in
-`WorldHeightInChunks` layers from y = 0 (M17).
+`WorldHeightInChunks` layers from y = 0 (M17: against full-height
+columns they store 7x less and remesh a dig 6x faster; `benchmarks.md`).
 
 ---
 
