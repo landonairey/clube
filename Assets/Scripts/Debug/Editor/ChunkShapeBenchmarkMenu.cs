@@ -15,11 +15,11 @@ namespace Clube.Debug.Editor
     {
         private const string ConfigPath = "Assets/Config/ProceduralWorldLabWorldConfig.asset";
 
-        // The loop site's plains and foothills, and the range south-west of it (GL26).
+        // The loop site's plains and foothills, and the range south-west of it (GL26); 48 m squares.
         private static readonly ChunkShapeBenchmark.Area[] Areas =
         {
-            new ChunkShapeBenchmark.Area("Plains and foothills", new Vector2Int(0, 0), 6),
-            new ChunkShapeBenchmark.Area("Mountains", new Vector2Int(-23, -24), 6),
+            new ChunkShapeBenchmark.Area("Plains and foothills", new Vector2(0f, 0f), 48f),
+            new ChunkShapeBenchmark.Area("Mountains", new Vector2(-184f, -192f), 48f),
         };
 
         [MenuItem("Clube/Benchmarks/Chunk shape (M17)")]

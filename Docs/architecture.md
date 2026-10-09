@@ -108,6 +108,7 @@ an edited neighbour takes that neighbour's border values.
 sample, floored so negatives work. Chunks are cubes stacked in
 `WorldHeightInChunks` layers from y = 0 (M17: against full-height
 columns they store 7x less and remesh a dig 6x faster; `benchmarks.md`).
+Chunks are 16³ (plan of record), so every chunk mesh fits 16-bit indices.
 
 ---
 

@@ -84,10 +84,10 @@ namespace Clube.Debug
     {
         private const float DigRadius = 1f;
 
-        /// <summary>An area to measure: a square of chunk columns, by its centre column (x, z) and width.</summary>
+        /// <summary>An area to measure: a square by its centre (x, z) and width in metres, so it covers the same ground at any chunk size.</summary>
         public readonly struct Area
         {
-            public Area(string name, Vector2Int centre, int width)
+            public Area(string name, Vector2 centre, float width)
             {
                 Name = name;
                 Centre = centre;
@@ -96,9 +96,9 @@ namespace Clube.Debug
 
             public string Name { get; }
 
-            public Vector2Int Centre { get; }
+            public Vector2 Centre { get; }
 
-            public int Width { get; }
+            public float Width { get; }
         }
 
         public static IReadOnlyList<ChunkShapeResult> Run(WorldConfig config, IReadOnlyList<Area> areas, int digs = 25, int runs = 3)
@@ -149,10 +149,13 @@ namespace Clube.Debug
             int digs, int runs)
         {
             var coords = new List<Vector3Int>();
-            int half = area.Width / 2;
-            for (int z = area.Centre.y - half; z < area.Centre.y - half + area.Width; z++)
+            float chunkMetres = chunkSize.x * config.VoxelSize;
+            int width = Mathf.Max(1, Mathf.RoundToInt(area.Width / chunkMetres));
+            int minX = Mathf.FloorToInt((area.Centre.x - area.Width * 0.5f) / chunkMetres);
+            int minZ = Mathf.FloorToInt((area.Centre.y - area.Width * 0.5f) / chunkMetres);
+            for (int z = minZ; z < minZ + width; z++)
             {
-                for (int x = area.Centre.x - half; x < area.Centre.x - half + area.Width; x++)
+                for (int x = minX; x < minX + width; x++)
                 {
                     for (int y = 0; y < height; y++)
                     {
@@ -232,13 +235,13 @@ namespace Clube.Debug
             var editMs = new List<double>();
             double dirtied = 0;
             var random = new System.Random(17);
-            float width = area.Width * config.ChunkSize.x * config.VoxelSize;
-            Vector2 origin = ((Vector2)area.Centre - Vector2.one * half) * config.ChunkSize.x * config.VoxelSize;
+            float span = width * chunkMetres;
+            var origin = new Vector2(minX, minZ) * chunkMetres;
             float top = config.ChunkSize.x * config.VoxelSize * config.WorldHeightInChunks + 1f;
             var brush = new BrushSettings(DigRadius);
             for (int i = 0; i < digs; i++)
             {
-                var spot = new Vector3(origin.x + (float)random.NextDouble() * width, top, origin.y + (float)random.NextDouble() * width);
+                var spot = new Vector3(origin.x + (float)random.NextDouble() * span, top, origin.y + (float)random.NextDouble() * span);
                 if (!world.Raycast(new Ray(spot, Vector3.down), settings, top + 1f, out WorldHit hit))
                 {
                     continue;

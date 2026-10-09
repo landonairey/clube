@@ -567,6 +567,44 @@ storage FlatByte, Flat shading, materials Blended.
 
 **Decision.** Keep cubic chunks stacked in `WorldHeightInChunks` layers (the
 grid M1 already built). Columns only win on sequential generation, which the
-streamer never does. Chunk edge length stays a config value: the 16³ / 27³ bounds
-only matter if 16-bit indices are ever required, since meshes past them
-already switch to 32-bit. M17 is done.
+streamer never does.
+
+### Chunk size: 16³ vs 32³ cubes
+
+The same benchmark at 16³ (4 m chunks, 40 layers) over the same 48 m
+squares (the vertex totals match, so it is the same ground):
+
+| Area | Shape | Chunks | With surface | Stored | Generate ms | Generate ms (parallel) | Mesh ms | Mesh ms (parallel) | Vertices | Largest mesh | Over 16-bit | Dig ms (median) | Dig ms (max) | Chunks per dig |
+|--|--|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| Plains and foothills | 16³ cubes x 40 layers | 5,760 | 313 | 4.5 MB | 1533.5 | 41.3 | 51.5 | 6.4 | 368,250 | 3,312 | 0 | 1.35 | 4.53 | 2.4 |
+| Plains and foothills | 16 x 640 x 16 columns | 144 | 144 | 50.9 MB | 320.3 | 39.3 | 510.0 | 56.4 | 368,250 | 3,570 | 0 | 7.73 | 15.87 | 1.8 |
+| Mountains | 16³ cubes x 40 layers | 5,760 | 370 | 4.9 MB | 1660.6 | 45.3 | 61.6 | 7.6 | 459,882 | 3,501 | 0 | 1.39 | 2.90 | 2.6 |
+| Mountains | 16 x 640 x 16 columns | 144 | 144 | 50.9 MB | 320.3 | 40.2 | 513.3 | 57.4 | 459,882 | 5,118 | 0 | 7.95 | 16.06 | 1.8 |
+
+Streaming (`StreamingBenchmark`, 3 ms frame budget, same terrain):
+
+| Chunks | Render distance | View | Chunks | With surface | Frames to settle | Time to settle ms | Streamer ms/frame (mean) | p95 | max |
+|--|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| 32³ x 20 | 6 | 48 m | 2,260 | 162 | 63 | 1021 | 2.11 | 5.28 | 10.52 |
+| 16³ x 40 | 6 | 24 m | 4,520 | 196 | 122 | 1988 | 1.70 | 5.57 | 7.52 |
+| 16³ x 40 | 12 | 48 m | 17,640 | 684 | 488 | 8013 | 2.94 | 7.20 | 26.12 |
+
+Against 32³, 16³ chunks store a third less (more of them are uniform), mesh a
+little faster, and halve a dig (1.4 ms). They cost 3x the parallel generation
+time (8x the chunks, each with its own job and bookkeeping), 5x the meshes
+(renderers and draw calls), and render distance counts chunks, so the same
+setting sees half as far; at the same 48 m view the world takes 8 s to settle
+instead of 1 s. WorldLab's fixed 100 m square is 25,000 chunks (2,280 with a
+surface) and loads in about 9 s of frames.
+
+**Decision.** Keep cubic chunks stacked in `WorldHeightInChunks` layers (the
+grid M1 already built); columns only win on sequential generation, which the
+streamer never does. **16³ is the plan of record** (2026-10-08): every chunk
+mesh then fits a 16-bit index buffer even for worst-case noise (49,152
+unshared vertices), and digs are cheapest. The world labs use it
+(`ProceduralWorldLabWorldConfig`, `WorldLabWorldConfig`: 4 m chunks, 40
+layers), and the voxels-per-metre picker keeps world chunks at 16 per side.
+The cost is per-chunk overhead: streaming the same distance is slower, which
+P16 (render distance in metres) and P7 (LOD for distant chunks) address. The
+mesher still switches to 32-bit indices past 65,535 vertices, so a lab can
+try bigger chunks. M17 is done.

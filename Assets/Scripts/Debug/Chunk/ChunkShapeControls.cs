@@ -17,12 +17,12 @@ namespace Clube.Debug
         private const float MaxSide = 64f;
         private const float MinVoxelSize = 1f / 16f;
         private const float MaxVoxelSize = 2f;
-        private const float MaxLayers = 32f;
+        private const float MaxLayers = 160f;
 
-        // Chunk sides the voxel size picker chooses between: a world keeps chunks quick to
-        // build and stream; a lone chunk can be bigger.
+        // Chunk sides the voxel size picker chooses between: a world keeps 16³ chunks, the
+        // plan of record (M17: every mesh fits 16-bit indices); a lone chunk can be bigger.
         private const int KeepMinSide = 16;
-        private const int KeepMaxWorldSide = 32;
+        private const int KeepMaxWorldSide = 16;
         private const int KeepMaxChunkSide = 64;
 
         // Marching voxels per metre (one build-grid cell): the sizes the gameplay test compares.

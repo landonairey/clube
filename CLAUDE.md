@@ -103,7 +103,9 @@ memory when unloaded. `WorldView` is the chunk manager: streams chunks
 around its focus (the camera), nearest first, a few per frame, with pooled
 `ChunkRenderer`s; `ChunkMeshBuilder` builds meshes for it and `ChunkView`.
 Chunks are cubic, stacked `WorldHeightInChunks` layers from y = 0 (the M17
-decision; `ChunkShapeBenchmark` measured it against full-height columns). Render distance is a player setting: `PlayerSettings` in
+decision; `ChunkShapeBenchmark` measured it against full-height columns), 16³ as
+the plan of record (every mesh fits 16-bit indices; the world labs use 4 m chunks, 40 layers).
+Render distance is a player setting: `PlayerSettings` in
 `Clube.Game` (A3), applied by `RenderDistanceSetting` (M3). WorldLab adds
 `ChunkFocus` (M4; volume from the chunk tools' `ChunkVolumeStats`), `WorldDebugView` (chunk
 borders, each grid edge drawn once with the focused chunk's in the highlight
@@ -244,7 +246,7 @@ global column). A hit on a small piece of Rock picks it up whole
 slots); `InventoryGridGui` draws the same slot grid in the inventory, station and
 merchant screens.
 Third pass (GL26): the Landscape generator (`LandscapeHeight`) gives WorldLab plains at 20 m and
-ridged ranges about 100 m tall in a 160 m world (20 layers); first pass of P12.
+ridged ranges about 100 m tall in a 160 m world (40 layers of 4 m chunks); first pass of P12.
 M25's voxel size stays open,
 and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
 
