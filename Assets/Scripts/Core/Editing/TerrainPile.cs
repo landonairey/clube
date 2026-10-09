@@ -41,6 +41,26 @@ namespace Clube.Core
     /// <remarks>
     /// Piles don't slump once made; settling over time is SM1.
     /// </remarks>
+    /// <summary>
+    /// A pour in progress (GL27): material dropped a batch at a time onto one pile, which keeps
+    /// growing from where it began. Start each pour from <c>default</c> and pass it to every
+    /// <see cref="TerrainPile.Pour"/> of that pour.
+    /// </summary>
+    public struct PilePour
+    {
+        /// <summary>False until the first batch is placed.</summary>
+        public bool Started;
+
+        /// <summary>Where the pour was aimed first, relative to the world origin.</summary>
+        public Vector3 Point;
+
+        /// <summary>A cone pour's base: the first air sample on the ground, which every batch's cone is measured from.</summary>
+        public Vector3Int Base;
+
+        /// <summary>Samples placed so far.</summary>
+        public int Total;
+    }
+
     public static class TerrainPile
     {
         private static readonly Vector3Int[] Faces =
@@ -77,14 +97,60 @@ namespace Clube.Core
                 : PlaceCone(world, point, material, count, isoLevel, settings.ReposeAngle);
         }
 
-        // Nearest the start first, where height counts as distance / tan(angle): every sample
-        // filled lies under a cone of that slope, which grows outwards as it fills.
+        /// <summary>
+        /// Places one batch of a pour (GL27): like <see cref="Place(World, Vector3, byte, int, float, PileSettings)"/>,
+        /// but every batch of the pour builds on the same pile (a cone around the pour's first
+        /// base, or blocks from its first point), so the pile's size follows the total poured.
+        /// Returns how many it filled this batch.
+        /// </summary>
+        public static int Pour(World world, ref PilePour pour, Vector3 point, byte material, int count, float isoLevel, PileSettings settings)
+        {
+            if (!pour.Started)
+            {
+                pour.Point = point;
+            }
+            int placed;
+            if (settings.Shape == PileShape.Block)
+            {
+                placed = PlaceBlocks(world, pour.Point, material, count, isoLevel, settings.Grid);
+            }
+            else
+            {
+                Vector3Int? coneBase = pour.Started ? pour.Base : (Vector3Int?)null;
+                placed = PlaceCone(world, pour.Point, material, count, isoLevel, settings.ReposeAngle, coneBase, pour.Total + count, out Vector3Int start);
+                pour.Base = start;
+            }
+            pour.Started = true;
+            pour.Total += placed;
+            return placed;
+        }
+
         private static int PlaceCone(World world, Vector3 point, byte material, int count, float isoLevel, float reposeAngle)
+        {
+            return PlaceCone(world, point, material, count, isoLevel, reposeAngle, null, count, out _);
+        }
+
+        // Nearest the start first, where height counts as distance / tan(angle): every sample
+        // filled lies under a cone of that slope, which grows outwards as it fills. A pour's later
+        // batches keep its first base and start from the surface of the pile so far, out to the
+        // radius a cone of the whole amount needs.
+        private static int PlaceCone(
+            World world, Vector3 point, byte material, int count, float isoLevel, float reposeAngle,
+            Vector3Int? coneBase, int total, out Vector3Int start)
         {
             Candidates.Clear();
             Seen.Clear();
-            Vector3Int start = SettledStart(world, point, isoLevel);
-            float climb = 1f / Mathf.Tan(reposeAngle * Mathf.Deg2Rad);
+            float slope = Mathf.Tan(reposeAngle * Mathf.Deg2Rad);
+            if (coneBase.HasValue)
+            {
+                start = coneBase.Value;
+                SeedPileSurface(world, start, total, slope, isoLevel);
+            }
+            else
+            {
+                start = SettledStart(world, point, isoLevel);
+            }
+            float climb = 1f / slope;
             int filled = 0;
             while (filled < count && Candidates.Count > 0)
             {
@@ -106,6 +172,30 @@ namespace Clube.Core
                 }
             }
             return filled;
+        }
+
+        // The supported air on top of every column within the radius of a cone of total samples
+        // (V = pi r^2 h / 3, h = r tan(angle)), searched down from above its peak: where a pour's
+        // next batch can go.
+        private static void SeedPileSurface(World world, Vector3Int start, int total, float slope, float isoLevel)
+        {
+            int radius = Mathf.CeilToInt(Mathf.Pow(3f * total / (Mathf.PI * slope), 1f / 3f)) + 2;
+            int above = Mathf.CeilToInt(radius * slope) + 2;
+            for (int dz = -radius; dz <= radius; dz++)
+            {
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    if (dx * dx + dz * dz > radius * radius)
+                    {
+                        continue;
+                    }
+                    var top = new Vector3Int(start.x + dx, start.y + above, start.z + dz);
+                    if (TrySurface(world, top, above + radius + 4, isoLevel, out Vector3Int air))
+                    {
+                        Consider(world, air, isoLevel);
+                    }
+                }
+            }
         }
 
         // A cell at a time, filling the grid cube its lowest supported air is in (cells are

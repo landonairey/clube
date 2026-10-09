@@ -7,7 +7,8 @@ namespace Clube.Game
 {
     /// <summary>
     /// Drops what the selected hotbar slot holds back into the ground (first pass of I4/I6):
-    /// tapping Drop (G) drops one, holding it drops the whole stack. Each item becomes one
+    /// tapping Drop (G) drops one; holding it pours (GL27), faster the longer it's held, onto the
+    /// same pile, so the mound grows with the amount and any part of a stack can go. Each item becomes one
     /// sample of its material (<see cref="MaterialRegistry.PlacedFrom"/>, e.g. loose stone),
     /// piled where the player is looking (<see cref="TerrainPile"/>), or at their feet when
     /// nothing is in reach; a player the pile would bury is lifted onto it rather than left
@@ -20,7 +21,7 @@ namespace Clube.Game
         [SerializeField]
         private WorldView worldView;
 
-        [Tooltip("Tap to drop one, hold to drop the stack (G).")]
+        [Tooltip("Tap to drop one, hold to pour (G).")]
         [SerializeField]
         private InputActionReference dropAction;
 
@@ -28,15 +29,24 @@ namespace Clube.Game
         [SerializeField, Min(0f)]
         private float reach = 5f;
 
-        [Tooltip("Seconds Drop must be held to drop the whole stack.")]
+        [Tooltip("Seconds Drop must be held before it starts pouring.")]
         [SerializeField, Range(0.1f, 2f)]
-        private float holdSeconds = 0.4f;
+        private float holdSeconds = 0.3f;
+
+        [Tooltip("Items per second a pour starts at; it doubles every second it's held.")]
+        [SerializeField, Min(1f)]
+        private float pourRate = 8f;
+
+        [Tooltip("Fastest a pour gets, in items per second.")]
+        [SerializeField, Min(1f)]
+        private float maxPourRate = 256f;
 
         private PlayerInventory inventory;
         private Hotbar hotbar;
         private PlayerController player;
         private float pressedAt;
-        private bool stackDropped;
+        private float owed;
+        private PilePour pour;
 
         /// <summary>Raised after items are dropped, with how many.</summary>
         public event Action<ItemDefinition, int> Dropped;
@@ -66,19 +76,38 @@ namespace Clube.Game
             InputAction action = dropAction.action;
             if (action.WasPressedThisFrame())
             {
+                // A new pour: one item now, more while it's held, all on this pile.
                 pressedAt = Time.time;
-                stackDropped = false;
-                DropSelected(1);
+                owed = 0f;
+                pour = default;
+                Drop(1, ref pour);
             }
-            else if (action.IsPressed() && !stackDropped && Time.time - pressedAt >= holdSeconds)
+            else if (action.IsPressed() && Time.time - pressedAt >= holdSeconds)
             {
-                stackDropped = true;
-                DropSelected(int.MaxValue);
+                float held = Time.time - pressedAt - holdSeconds;
+                owed += Mathf.Min(maxPourRate, pourRate * Mathf.Pow(2f, held)) * Time.deltaTime;
+                int batch = Mathf.FloorToInt(owed);
+                if (batch > 0)
+                {
+                    owed -= batch;
+                    Drop(batch, ref pour);
+                }
             }
         }
 
-        /// <summary>Drops up to <paramref name="count"/> of the selected hotbar item into the ground; returns how many went.</summary>
+        /// <summary>Drops up to <paramref name="count"/> of the selected hotbar item into the ground as one pile; returns how many went.</summary>
         public int DropSelected(int count)
+        {
+            var single = default(PilePour);
+            return Drop(count, ref single);
+        }
+
+        /// <summary>
+        /// Drops one batch of a pour (GL27): up to <paramref name="count"/> of the selected item,
+        /// onto the pile <paramref name="into"/> began (a new one when it's <c>default</c>), which
+        /// stays where it began wherever the player looks after. Returns how many went.
+        /// </summary>
+        public int Drop(int count, ref PilePour into)
         {
             int slot = hotbar.Selected;
             ItemStack stack = inventory.Inventory[slot];
@@ -95,9 +124,13 @@ namespace Clube.Game
                 return 0;
             }
 
-            AimPoint(out Vector3 point);
+            Vector3 point = into.Point;
+            if (!into.Started)
+            {
+                AimPoint(out point);
+            }
             PileSettings pile = PileSettings.For(material, new BuildGrid(worldView.Config.BuildCellSize));
-            int placed = TerrainPile.Place(worldView.World, point, material.Id, Mathf.Min(count, stack.Count), worldView.Config.IsoLevel, pile);
+            int placed = TerrainPile.Pour(worldView.World, ref into, point, material.Id, Mathf.Min(count, stack.Count), worldView.Config.IsoLevel, pile);
             if (placed == 0)
             {
                 return 0;

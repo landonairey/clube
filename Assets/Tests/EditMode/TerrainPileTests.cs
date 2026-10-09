@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -146,6 +147,64 @@ namespace Clube.Core.Tests
                 }
             }
             Assert.AreEqual(1f, world.GetDensity(new Vector3Int(4, 3, 4)), "it does climb in the middle");
+        }
+
+        [Test]
+        public void Pour_InBatches_GrowsTheSameConeAsOneDrop()
+        {
+            var settings = new PileSettings(PileShape.Cone, 40f, new BuildGrid(1f));
+            var point = new Vector3(4f, 2f, 4f);
+            var pour = default(PilePour);
+            int poured = 0;
+            foreach (int batch in new[] { 1, 4, 10, 25 })
+            {
+                poured += TerrainPile.Pour(world, ref pour, point + new Vector3(batch, 0f, -batch) * 0.1f, Loose, batch, Iso, settings);
+            }
+            var pouredPile = Solids();
+
+            SetUp();
+            int dropped = TerrainPile.Place(world, point, Loose, 40, Iso, settings);
+
+            Assert.AreEqual(40, poured);
+            Assert.AreEqual(dropped, poured);
+            Assert.AreEqual(new Vector3Int(4, 2, 4), pour.Base, "Every batch measured from the first base.");
+            // The same cone: the same shells (distance from the base plus height over the slope),
+            // though samples tied on a shell may be filled in another order.
+            CollectionAssert.AreEqual(Shells(Solids(), 40f), Shells(pouredPile, 40f),
+                "Poured a batch at a time (wherever the aim drifts), the pile is the cone one drop of it all makes.");
+        }
+
+        // Each sample's cone score around (4, 2, 4), rounded and sorted.
+        private static List<float> Shells(List<Vector3Int> samples, float angle)
+        {
+            float climb = 1f / Mathf.Tan(angle * Mathf.Deg2Rad);
+            var shells = new List<float>();
+            foreach (Vector3Int sample in samples)
+            {
+                Vector3Int d = sample - new Vector3Int(4, 2, 4);
+                shells.Add(Mathf.Round((Mathf.Sqrt(d.x * d.x + d.z * d.z) + d.y * climb) * 1000f) / 1000f);
+            }
+            shells.Sort();
+            return shells;
+        }
+
+        private List<Vector3Int> Solids()
+        {
+            var solids = new List<Vector3Int>();
+            for (int z = 0; z <= Size; z++)
+            {
+                for (int y = 2; y <= Size; y++)
+                {
+                    for (int x = 0; x <= Size; x++)
+                    {
+                        if (world.GetDensity(new Vector3Int(x, y, z)) >= Iso)
+                        {
+                            solids.Add(new Vector3Int(x, y, z));
+                        }
+                    }
+                }
+            }
+            return solids;
         }
 
         [Test]
