@@ -58,6 +58,7 @@ Core/
     Fields/      the Burst shapes: IHeightField / IVolumeField structs
     Fill/        generation jobs and the shared ChunkFillKernel
     Ores/        OreSpec, OreField (placement), OreRoll (the roll, shared)
+    Trees/       TreeGeneration (settings), TreeField (placement), TreeShape (one tree), TreeStamp (into a chunk, GL30)
   Meshing/       MarchingCubes + tables, ChunkMeshSettings, variants (A6)
     Managed/     ChunkMesher and its strategies, the managed material pass: labs, step-through (A11)
     Jobs/        ChunkMeshJob: the Burst mesh build the world runs
@@ -124,7 +125,7 @@ flowchart LR
     G -- "wraps" --> F["field struct<br/>IHeightField / IVolumeField"]
     G -- "managed calls: Height, Depth" --> Labs[labs, ore placement, tests]
     G -- "schedules" --> J["ColumnHeightsJob&lt;T&gt; → HeightfieldFillJob<br/>or VolumeFillJob&lt;T&gt;"]
-    J --> K["ChunkFillKernel<br/>density, layers, ores, summary"]
+    J --> K["ChunkFillKernel<br/>density, layers, ores, rocks, trees, summary"]
     K --> O["ChunkFillOutput<br/>(bytes or floats, materials, summary)"]
     O --> C["Chunk (Load / Uniform)"]
 ```
@@ -142,6 +143,14 @@ flowchart LR
   densities, layer materials and ore, and reports whether the chunk came out
   uniform. Ore rolls use `OreRoll`, which `OreField.Pick` uses too, so the two
   can't drift.
+- **Trees** (GL30) are placed like ore: `TreeField` gives each square cell at most
+  one tree, rolled from the seed and the cell, rooted where the generator's depth
+  says the surface is and only where it's flat; `TreeShape` builds it as tapered
+  wood capsules (trunk, large and small branches) and leaf balls. A chunk gathers
+  the parts reaching it on the main thread, and the kernel stamps them last
+  (`TreeStamp`): each sample takes the part it is deepest inside, then keeps
+  whichever density is higher, the ground's or the tree's, with its material. A
+  chunk wholly above the ground is only skipped when no tree reaches it.
 - **Determinism** (P4, O4): every value is a pure function of position and seed,
   and positions come from integer global sample indices, so border copies agree
   exactly. Burst's float rounding differs from Mono by a few ULPs (heights

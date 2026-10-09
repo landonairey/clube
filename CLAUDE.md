@@ -249,6 +249,12 @@ slots); `InventoryGridGui` draws the same slot grid in the inventory, station an
 merchant screens.
 Third pass (GL26): the Landscape generator (`LandscapeHeight`) gives WorldLab plains at 20 m and
 ridged ranges about 100 m tall in a 160 m world (40 layers of 4 m chunks); first pass of P12.
+Fifth pass (GL30, GL31): trees grow in the density data. `TreeGeneration` (in `TerrainSettings`)
+sets them; `TreeField` places at most one per cell from the seed on flat ground, `TreeShape`
+builds it as tapered wood capsules (trunk, branches, twigs) and leaf balls, and `TreeStamp`
+writes the parts at the end of `ChunkFillKernel` (the deepest part wins per sample; a chunk above
+the ground still generates when a tree reaches it). Wood (id 11) and Leaves (id 12) are `Plant`
+materials with items, placeholder textures and icons. Branches thinner than about a voxel break up.
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16
