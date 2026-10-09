@@ -41,12 +41,13 @@ namespace Clube.Game
 
         private readonly List<Vector3Int> targets = new List<Vector3Int>();
         private readonly List<ItemDefinition> collected = new List<ItemDefinition>();
+        private readonly List<MinedSample> minedFrom = new List<MinedSample>();
         private PlayerController player;
         private PlayerInteractor interactor;
         private float nextHitTime;
 
-        /// <summary>Raised for each item a hit collects.</summary>
-        public event Action<ItemDefinition> Collected;
+        /// <summary>Raised for each item a hit collects, one at a time, with its contents (mixed ore, GL32).</summary>
+        public event Action<ItemStack> Collected;
 
         /// <summary>Raised when a hit lands, with what it did.</summary>
         public event Action<StrikeResult> Struck;
@@ -154,12 +155,25 @@ namespace Clube.Game
         private void Hit(ToolDefinition tool)
         {
             collected.Clear();
-            StrikeResult result = ToolStrike.Hit(worldView.World, targets, tool, worldView.Config.Materials, Damage, collected, worldView.Config.IsoLevel);
+            minedFrom.Clear();
+            StrikeResult result = ToolStrike.Hit(
+                worldView.World, targets, tool, worldView.Config.Materials, Damage, collected, worldView.Config.IsoLevel, minedFrom);
             Struck?.Invoke(result);
-            foreach (ItemDefinition item in collected)
+            for (int i = 0; i < collected.Count; i++)
             {
-                Collected?.Invoke(item);
+                Collected?.Invoke(new ItemStack(collected[i], 1, ContentsOf(minedFrom[i])));
             }
+        }
+
+        // What a mined sample is made of: ore from the node it came from (GL32), else nothing.
+        private Composition ContentsOf(MinedSample mined)
+        {
+            OreField ores = worldView.Ores;
+            if (ores == null || mined.Material == null)
+            {
+                return null;
+            }
+            return ores.ContentsAt(mined.Material, worldView.World.Grid.SampleToWorld(mined.Sample));
         }
 
         private void OnGUI()

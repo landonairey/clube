@@ -523,6 +523,8 @@ GameObject:
   - component: {fileID: 1350119465}
   - component: {fileID: 1350119466}
   - component: {fileID: 1350119467}
+  - component: {fileID: 1350119469}
+  - component: {fileID: 1350119468}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -751,6 +753,35 @@ MonoBehaviour:
   xRay: 0
   cubeSize: 0.5
   vertexColorMaterial: {fileID: 2100000, guid: 71eadc0c2880f93438f9683b627a9b40, type: 2}
+--- !u!114 &1350119468
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3beaa5001cc748c45bc82dc70bf21e9a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.DroppedGroundDrying
+  worldView: {fileID: 1350119460}
+  clock: {fileID: 1350119469}
+  dropper: {fileID: 1697135575}
+--- !u!114 &1350119469
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 65074e7b97d38af4d99fa491da142c7b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.GameClock
+  dayLengthSeconds: 1200
+  timeScale: 1
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -906,6 +937,7 @@ GameObject:
   - component: {fileID: 1697135579}
   - component: {fileID: 1697135578}
   - component: {fileID: 1697135580}
+  - component: {fileID: 1697135581}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1303,6 +1335,19 @@ MonoBehaviour:
   extraLines:
   - P  Fly camera (lab)
   shown: 1
+--- !u!114 &1697135581
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 040e6f6997d1643428f0c8e6b483ece7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSkills
+  blacksmithing: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

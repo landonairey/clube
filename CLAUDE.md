@@ -255,6 +255,15 @@ builds it as tapered wood capsules (trunk, branches, twigs) and leaf balls, and 
 writes the parts at the end of `ChunkFillKernel` (the deepest part wins per sample; a chunk above
 the ground still generates when a tree reaches it). Wood (id 11) and Leaves (id 12) are `Plant`
 materials with items, placeholder textures and icons. Branches thinner than about a voxel break up.
+Sixth pass (GL32–GL35, `Docs/20261009 clube-backlog.md`): volumes. One mined sample is 1 unit;
+`ItemDefinition.UnitVolume`. Mined ore carries a `Composition` (shares by volume, on
+`ItemStack.Contents`, blended when stacks merge) from its node's grade (`OreSpec.Grade`,
+`Gangue`, `ExtraContents`; `OreField.ContentsAt`). Recipes can work by volume: a `Content`'s
+share times a `Yield` (raised by a `CraftSkill`, `PlayerSkills` is a placeholder until SK1), and
+stations hold what's short of a whole item. The furnace burns fuel (`ItemDefinition.BurnSeconds`,
+a `Fuel` slot). Clay (13) deposits are surface lenses (`TerrainLayers.Clay`,
+`ChunkFillKernel.ClayDepthAt`); dropped clay dries into Brick (14) on a `GameClock`
+(`GroundDrying`, `DroppedGroundDrying`), or is fired in the furnace.
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16
@@ -407,7 +416,10 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   2026-10-07: generation produced floating garbage after a pull). Signs: a job
   is wrong but the same struct's `Execute()` called directly is right, and
   Burst stack traces cite line numbers from an older version of the file.
-  Fix: close Unity, delete `Library/BurstCache`, reopen.
+  Fix: close Unity, delete `Library/BurstCache`, reopen. Seen again 2026-10-09 straight after
+  adding fields to `LayerTable` (a struct the fill jobs read) in a running Editor: the
+  world generated as garbage. To keep working until a restart, turn Burst compilation off
+  (`BurstCompiler.Options.EnableBurstCompilation = false`); `GenerationJobTests` then pass.
 - Player screens (inventory, station, merchant) set `PlayerController.IsInMenu`,
   not the cursor: FreeCursor can't lock the cursor under an open screen, and
   `MenuClosedThisFrame` stops the E that closed a screen from reopening it.

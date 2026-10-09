@@ -16,3 +16,5 @@ MonoBehaviour:
   displayName: Copper bun
   icon: {fileID: 2800000, guid: eb8497d09defe494f876cdf1a3ee7a7c, type: 3}
   maxStack: 16
+  unitVolume: 0.5
+  burnSeconds: 0

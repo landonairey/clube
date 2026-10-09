@@ -21,3 +21,8 @@ MonoBehaviour:
     Count: 1
   work: 1
   amount: 6
+  byVolume: 1
+  content: {fileID: 0}
+  yield: 0.8
+  skill: 1
+  skilledYield: 0.95

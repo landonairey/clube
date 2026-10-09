@@ -48,8 +48,8 @@ Core/
   Voxels/        Chunk, IVoxelStorage + schemes (2G), VoxelMaterials (M10), VoxelArrayPool, VoxelBox
   World/         World (loaded chunks, borders, edit paths), WorldGrid (coordinates)
   Materials/     VoxelMaterial, MaterialRegistry (M9), TerrainLayers, MaterialCensus
-  Items/         ItemDefinition (O6), ToolDefinition (GL1), Inventory + ItemStack (GL6)
-  Crafting/      Recipe, CraftingStation (GL8)
+  Items/         ItemDefinition (O6), ToolDefinition (GL1), Inventory + ItemStack (GL6), Composition (GL32)
+  Crafting/      Recipe, CraftingStation (GL8; by volume GL33, fuel GL35)
   Economy/       Wallet, PriceList (GL12, GL13)
   Generation/    TerrainSettings, ITerrainGenerator, TerrainGenerators, ChunkGenerator
     Generators/  managed generator classes (Flat, Sine, FractalPerlin2D, Spline, Perlin3D)
@@ -63,7 +63,7 @@ Core/
     Managed/     ChunkMesher and its strategies, the managed material pass: labs, step-through (A11)
     Jobs/        ChunkMeshJob: the Burst mesh build the world runs
     Recording/   MeshingRecorder (A11)
-  Editing/       TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5), TerrainPile (I4), IDensityField, IEditableTerrain
+  Editing/       TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5), TerrainPile (I4), GroundDrying (GL34), IDensityField, IEditableTerrain
   Queries/       SurfaceRaycast, VoxelRaycast, SurfacePoints (GL4)
   Volume/        VoxelVolume, ChunkVolume (V11, V12, K30)
   Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea
@@ -125,7 +125,7 @@ flowchart LR
     G -- "wraps" --> F["field struct<br/>IHeightField / IVolumeField"]
     G -- "managed calls: Height, Depth" --> Labs[labs, ore placement, tests]
     G -- "schedules" --> J["ColumnHeightsJob&lt;T&gt; → HeightfieldFillJob<br/>or VolumeFillJob&lt;T&gt;"]
-    J --> K["ChunkFillKernel<br/>density, layers, ores, rocks, trees, summary"]
+    J --> K["ChunkFillKernel<br/>density, layers, clay, ores, rocks, trees, summary"]
     K --> O["ChunkFillOutput<br/>(bytes or floats, materials, summary)"]
     O --> C["Chunk (Load / Uniform)"]
 ```
@@ -143,6 +143,14 @@ flowchart LR
   densities, layer materials and ore, and reports whether the chunk came out
   uniform. Ore rolls use `OreRoll`, which `OreField.Pick` uses too, so the two
   can't drift.
+- **Clay** (GL34) only changes materials: `ClayDepthAt` gives each column the depth of
+  the deposit over it (at most one lens-shaped deposit per cell, hashed from the seed),
+  and the kernel turns the solid samples above that depth to clay, so deposits sit
+  flush with the ground. Steep columns are left as bare rock.
+- **Ore contents** (GL32): each node rolls its grade (and any extra contents) from
+  the seed and its cell when it's placed, so a node's ore is always the same mix.
+  Generation only stores the ore's material id; `OreField.ContentsAt` finds the node
+  that likeliest placed a mined sample and hands back its `Composition`.
 - **Trees** (GL30) are placed like ore: `TreeField` gives each square cell at most
   one tree, rolled from the seed and the cell, rooted where the generator's depth
   says the surface is and only where it's flat; `TreeShape` builds it as tapered

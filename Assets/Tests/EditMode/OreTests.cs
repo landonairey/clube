@@ -196,6 +196,37 @@ namespace Clube.Core.Tests
             Assert.That(oreSamples, Is.GreaterThan(0), "the test world has some ore");
         }
 
+        [Test]
+        public void ContentsAt_IsTheNearestNodesGrade_ForTheOreAndItsBrokenStages()
+        {
+            VoxelMaterial stone = VoxelMaterial.Create(Stone, "Stone");
+            VoxelMaterial loose = VoxelMaterial.Create(9, "Loose copper");
+            VoxelMaterial copper = VoxelMaterial.Create(Copper, "Copper", VoxelMaterialCategory.Ore).WithBreaking(3f, null, loose);
+            var settings = new OreGeneration { CellSize = 16f };
+            settings.Ores.Add(new OreSpec
+            {
+                Ore = copper, NodesPerCell = 2f, MinDepth = 6f, MaxDepth = 30f, Spread = new Vector3(2f, 1.5f, 2f),
+                Grade = new Vector2(0.1f, 0.4f), Gangue = stone,
+            });
+            var field = new OreField(settings, 11, new FlatGenerator(Surface));
+
+            var grades = new HashSet<float>();
+            for (int x = 0; x < 6; x++)
+            {
+                foreach (OreNode node in field.NodesInCell(new Vector3Int(x, 1, 0)))
+                {
+                    Assert.That(node.Contents.FractionOf(copper), Is.InRange(0.1f, 0.4f));
+                    Assert.AreEqual(1f - node.Contents.FractionOf(copper), node.Contents.FractionOf(stone), 1e-5f);
+                    Assert.AreSame(node.Contents, field.ContentsAt(loose, node.Centre), "Loose copper from a node has its grade.");
+                    grades.Add(node.Contents.FractionOf(copper));
+                }
+            }
+            Assert.That(grades.Count, Is.GreaterThan(1), "Nodes differ in grade.");
+            Assert.AreEqual(0.25f, field.ContentsAt(copper, new Vector3(0f, 1000f, 0f)).FractionOf(copper), 1e-5f,
+                "Far from every node: the spec's typical grade.");
+            Assert.IsNull(field.ContentsAt(stone, Vector3.zero), "Stone isn't ore.");
+        }
+
         private OreField Field(int seed, VoxelMaterial[] hosts = null, bool secondOre = false, float nodes = 2f, float peak = 0.7f)
         {
             var settings = new OreGeneration { CellSize = 16f };

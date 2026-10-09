@@ -46,6 +46,18 @@ namespace Clube.Core
         [SerializeField]
         private int priority;
 
+        [Tooltip("Share of the ore in what's mined from a node (GL32), rolled once per node between these: 0.2 is 20% ore, the rest rock.")]
+        [SerializeField]
+        private Vector2 grade = new Vector2(0.15f, 0.3f);
+
+        [Tooltip("What the rest of mined ore is (GL32), e.g. stone. None: the first host.")]
+        [SerializeField]
+        private VoxelMaterial gangue;
+
+        [Tooltip("Other contents of the ore (GL32), e.g. a trace of silver in copper, each rolled per node within its range.")]
+        [SerializeField]
+        private List<OreContentRange> extraContents = new List<OreContentRange>();
+
         public VoxelMaterial Ore
         {
             get => ore;
@@ -89,6 +101,73 @@ namespace Clube.Core
         {
             get => priority;
             set => priority = value;
+        }
+
+        /// <summary>Lowest and highest share of ore in a node (GL32), each 0-1.</summary>
+        public Vector2 Grade
+        {
+            get => new Vector2(Mathf.Clamp01(Mathf.Min(grade.x, grade.y)), Mathf.Clamp01(Mathf.Max(grade.x, grade.y)));
+            set => grade = value;
+        }
+
+        /// <summary>The rock the rest of the ore is (GL32): the gangue, or the first host, or null.</summary>
+        public VoxelMaterial Gangue
+        {
+            get => gangue != null ? gangue : hosts.Count > 0 ? hosts[0] : null;
+            set => gangue = value;
+        }
+
+        public List<OreContentRange> ExtraContents => extraContents;
+
+        /// <summary>
+        /// What ore from a node is made of (GL32), from rolls 0-1: the ore at
+        /// <paramref name="gradeRoll"/> through <see cref="Grade"/>, each extra content at its roll
+        /// through its range, and the <see cref="Gangue"/> for the rest.
+        /// </summary>
+        /// <param name="extraRoll">The roll for extra content <c>i</c>.</param>
+        public Composition ContentsFor(float gradeRoll, Func<int, float> extraRoll)
+        {
+            var shares = new List<Content>();
+            Vector2 range = Grade;
+            float oreShare = Mathf.Lerp(range.x, range.y, gradeRoll);
+            float left = 1f - oreShare;
+            shares.Add(new Content(ore, oreShare));
+            for (int i = 0; i < extraContents.Count; i++)
+            {
+                OreContentRange extra = extraContents[i];
+                if (extra.Material == null)
+                {
+                    continue;
+                }
+                float share = Mathf.Min(left, Mathf.Lerp(extra.Min, extra.Max, extraRoll != null ? extraRoll(i) : 0.5f));
+                shares.Add(new Content(extra.Material, share));
+                left -= share;
+            }
+            shares.Add(new Content(Gangue, left));
+            return Composition.From(shares);
+        }
+
+        /// <summary>A node's contents halfway through every range: for ore no node accounts for.</summary>
+        public Composition TypicalContents => ContentsFor(0.5f, null);
+    }
+
+    /// <summary>Another material in an ore and its share range (GL32), e.g. 0-5% silver in copper ore.</summary>
+    [Serializable]
+    public struct OreContentRange
+    {
+        public VoxelMaterial Material;
+
+        [Range(0f, 1f)]
+        public float Min;
+
+        [Range(0f, 1f)]
+        public float Max;
+
+        public OreContentRange(VoxelMaterial material, float min, float max)
+        {
+            Material = material;
+            Min = min;
+            Max = max;
         }
     }
 

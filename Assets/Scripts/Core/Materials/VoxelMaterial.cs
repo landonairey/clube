@@ -80,6 +80,14 @@ namespace Clube.Core
         [SerializeField]
         private VoxelMaterial breaksInto;
 
+        [Tooltip("What it turns into left out on the ground (GL34), e.g. clay → brick. None: it never changes.")]
+        [SerializeField]
+        private VoxelMaterial driesInto;
+
+        [Tooltip("In-game days it takes to dry once dropped on the ground.")]
+        [SerializeField, Min(0f)]
+        private float dryingDays = 2f;
+
         /// <summary>Makes a material in code (tests, tools); the game's materials are assets.</summary>
         public static VoxelMaterial Create(int id, string displayName, VoxelMaterialCategory category = VoxelMaterialCategory.Aggregate)
         {
@@ -112,6 +120,12 @@ namespace Clube.Core
         /// </summary>
         public VoxelMaterial BreaksInto => breaksInto;
 
+        /// <summary>What it turns into left out on the ground (GL34), or null when it never changes.</summary>
+        public VoxelMaterial DriesInto => driesInto;
+
+        /// <summary>In-game days it takes to dry once dropped (GL34).</summary>
+        public float DryingDays => dryingDays;
+
         /// <summary>How it piles up when dropped (GL17).</summary>
         public PileShape PileShape => pileShape;
 
@@ -136,6 +150,14 @@ namespace Clube.Core
         public VoxelMaterial WithPickUp(int pieceSize)
         {
             pickUpPieceSize = Mathf.Clamp(pieceSize, 0, 32);
+            return this;
+        }
+
+        /// <summary>Sets how it dries, for materials made in code (tests, tools).</summary>
+        public VoxelMaterial WithDrying(VoxelMaterial into, float days)
+        {
+            driesInto = into;
+            dryingDays = Mathf.Max(0f, days);
             return this;
         }
 

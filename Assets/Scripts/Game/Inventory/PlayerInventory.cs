@@ -67,9 +67,10 @@ namespace Clube.Game
             }
         }
 
-        private void OnCollected(ItemDefinition item)
+        private void OnCollected(ItemStack collected)
         {
-            if (Inventory.Add(item) > 0)
+            ItemDefinition item = collected.Item;
+            if (Inventory.Add(item, collected.Count, collected.Contents) > 0)
             {
                 Rejected?.Invoke(item);
             }

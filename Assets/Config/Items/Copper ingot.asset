@@ -16,3 +16,5 @@ MonoBehaviour:
   displayName: Copper ingot
   icon: {fileID: 2800000, guid: 6da31952c740e714bab3ffb842b0a223, type: 3}
   maxStack: 16
+  unitVolume: 0.4
+  burnSeconds: 0
