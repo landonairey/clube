@@ -12,8 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 791bd2f032751fe438513fb5dd86f0c3, type: 3}
   m_Name: ProceduralWorldLabWorldConfig
   m_EditorClassIdentifier: Clube.Core::Clube.Core.WorldConfig
-  chunkSize: {x: 32, y: 32, z: 32}
-  worldHeightInChunks: 20
+  chunkSize: {x: 16, y: 16, z: 16}
+  worldHeightInChunks: 40
+  sealEdges: 0
+  fixedArea: 0
+  fixedAreaSize: 100
   voxelSize: 0.25
   isoLevel: 0.5
   edgePlacement: 0

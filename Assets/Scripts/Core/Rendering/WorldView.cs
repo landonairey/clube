@@ -261,6 +261,13 @@ namespace Clube.Core
 
         private void StartWorld()
         {
+            if (!ChunkIndexBudget.Fits16Bit(Config.ChunkSize) && !SystemInfo.supports32bitsIndexBuffer)
+            {
+                UnityEngine.Debug.LogWarning(
+                    $"{Config.ChunkSize.x}x{Config.ChunkSize.y}x{Config.ChunkSize.z} chunks can need up to " +
+                    $"{ChunkIndexBudget.MaxVertices(Config.ChunkSize):N0} vertices, but this GPU has no 32-bit index buffers; " +
+                    "use 16³ chunks or smaller.", this);
+            }
             World = new World(Config.ChunkSize, Config.VoxelSize, Config.CreateStorage);
             terrainFingerprint = TerrainFingerprint();
             CreateGenerator();
