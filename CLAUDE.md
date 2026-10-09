@@ -169,7 +169,7 @@ section of Chapter 4 (GW1-GW4).
 M16 is done: the panel's Player section (`PlayerControls`) scales the
 player's gravity in Play mode and sets its jump height.
 M25 is under way: picking voxels per metre keeps chunk and world size in metres
-(`ChunkSizing`), so terrain stays the same at any voxel size; 8 per metre leads.
+(`ChunkSizing`), so terrain stays the same at any voxel size; 4 per metre (0.25 m) leads, pending playtests.
 `PlayerBrushPreview` shows the player's brush; `AxesHud` follows `Camera.main`
 (WorldLab keeps it on `World`, active in both camera modes); the build grid
 draws x and z lines only.
@@ -249,8 +249,10 @@ slots); `InventoryGridGui` draws the same slot grid in the inventory, station an
 merchant screens.
 Third pass (GL26): the Landscape generator (`LandscapeHeight`) gives WorldLab plains at 20 m and
 ridged ranges about 100 m tall in a 160 m world (40 layers of 4 m chunks); first pass of P12.
-M25's voxel size stays open,
-and at 8/m it needs P7 (LOD) and P16 (render distance in metres) to see far.
+Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
+voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
+testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16
+(render distance in metres) are what let the world be seen far.
 
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
