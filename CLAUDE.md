@@ -156,8 +156,8 @@ numbers. Generation dominates streaming (K35).
 re-baked after each rebuild). The player lives in `Clube.Game` (`Game/Player/`):
 `PlayerController` (CharacterController, Input System `Player` map; Left Alt
 frees the cursor for the lab panel),
-`PlayerSpawn` (waits for the chunk column, sets `WorldView.Focus`, respawns
-after a fall) and `PlayerDigTool` (Attack digs, Place adds; brush radius and
+`PlayerSpawn` (waits at the world's top for the chunk column, sets `WorldView.Focus`, lands
+on the highest ground under the capsule, respawns after a fall or when found inside solid ground) and `PlayerDigTool` (Attack digs, Place adds; brush radius and
 look sensitivity are `PlayerSettings`). In WorldLab, `PlayerCameraToggle` (P,
 or the Camera panel section) swaps the fly camera for the inactive `Player`
 object and turns the lab click tools off. The lean `Game` scene is the last
