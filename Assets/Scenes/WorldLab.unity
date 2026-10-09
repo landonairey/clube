@@ -905,6 +905,7 @@ GameObject:
   - component: {fileID: 1697135576}
   - component: {fileID: 1697135579}
   - component: {fileID: 1697135578}
+  - component: {fileID: 1697135580}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1173,6 +1174,8 @@ MonoBehaviour:
   dropAction: {fileID: 5021587687345255064, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   reach: 5
   holdSeconds: 0.4
+  pourRate: 8
+  maxPourRate: 256
 --- !u!114 &1697135576
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1215,6 +1218,7 @@ MonoBehaviour:
   worldView: {fileID: 1350119460}
   grid: {fileID: 1697135579}
   buildAction: {fileID: 6115972544124738638, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  rotateAction: {fileID: 6514722468704568403, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   previewMaterial: {fileID: 2100000, guid: c65cff14de89883489236a9b0d0383db, type: 2}
   clearColor: {r: 0.4, g: 1, b: 0.6, a: 0.35}
   blockedColor: {r: 1, g: 0.3, b: 0.25, a: 0.35}
@@ -1236,6 +1240,69 @@ MonoBehaviour:
   lineWidth: 1.5
   opacity: 0.9
   color: {r: 0.55, g: 0.95, b: 1, a: 1}
+--- !u!114 &1697135580
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6cf1180f8eb0cc84e9cc9106ac9dde51, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.KeybindSheet
+  actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  helpAction: {fileID: -2412158273471984300, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  rows:
+  - Label: Move
+    Action: Move
+    Keys: WASD
+  - Label: Jump
+    Action: Jump
+    Keys: 
+  - Label: Sprint
+    Action: Sprint
+    Keys: 
+  - Label: Use tool
+    Action: Attack
+    Keys: LMB
+  - Label: Add ground
+    Action: Place
+    Keys: 
+  - Label: Brush size
+    Action: Previous
+    Keys: '[ ]'
+  - Label: Use station
+    Action: Interact
+    Keys: 
+  - Label: Hotbar slot
+    Action: Hotbar
+    Keys: 1-9
+  - Label: Next slot
+    Action: NextSlot
+    Keys: 
+  - Label: Inventory
+    Action: Inventory
+    Keys: 
+  - Label: Drop (hold to pour)
+    Action: Drop
+    Keys: 
+  - Label: Place (hold to pick up)
+    Action: Build
+    Keys: 
+  - Label: Rotate placement
+    Action: Rotate
+    Keys: 
+  - Label: Free cursor
+    Action: FreeCursor
+    Keys: 
+  - Label: Hide this list
+    Action: Help
+    Keys: 
+  extraLines:
+  - P  Fly camera (lab)
+  shown: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -223,7 +223,7 @@ in Game `PlayerToolUser` (Attack hits with the hotbar's tool, else the hand),
 and `PickupNotice`. LB: `Inventory`/`ItemStack` (Core/Items, `MaxStack` per
 item), `PlayerInventory` (takes `PlayerToolUser.Collected`), `Hotbar` (1–9,
 scroll, Q), `InventoryScreen` (Tab), drawn with `ItemSlotGui`. Player brush
-size is on [ and ]; G drops the selected item back into the ground (`ItemDropper`, `TerrainPile`; ores stack 256, dirt and stone 1024). Stand-in art: *Clube → Models → Build station models* and *Clube → Items → Generate icons*. LC (GL8–GL11): `Recipe` assets and `CraftingStation`
+size is on [ and ]; G drops the selected item back into the ground, a tap one, a hold pouring onto one growing pile (`ItemDropper`, `TerrainPile.Pour`, GL27; ores stack 256, dirt and stone 1024). Stand-in art: *Clube → Models → Build station models* and *Clube → Items → Generate icons*. LC (GL8–GL11): `Recipe` assets and `CraftingStation`
 (Core/Crafting, work by seconds or strikes), `PlayerInteractor` (E on an
 `IInteractable` within 3 m; tools ignore what's behind it), `StationObject`
 (furnace, anvil) and `StationPanel`.
@@ -233,7 +233,8 @@ Second pass, building (GL17, GL18, GL23): G drops piles shaped per material
 `WorldConfig.BuildCellSize`). The stations are `PlaceableDefinition` starting items
 (prefabs in `Assets/Prefabs/Stations/`): with one selected, `PlayerBuilder` shows a
 preview and a local patch of the build grid (`BuildGridDisplay`), B places it and
-holding B on a `PlacedObject` picks it up with its contents.
+holding B on a `PlacedObject` picks it up with its contents. R turns the preview a quarter
+(GL28). `KeybindSheet` (Game/Hud) lists the keys in the lower left from the live bindings (F1 hides it, GL29).
 Second pass, terrain and stations (GL19–GL22): heightfield chunks get bordered
 column heights (`ChunkSampleGrid.BorderedColumns`), so `ChunkFillKernel` can mark
 steep columns, which take stone in their top layers (`TerrainLayers` steep angle

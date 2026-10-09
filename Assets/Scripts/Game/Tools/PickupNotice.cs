@@ -126,7 +126,8 @@ namespace Clube.Game
 
             style ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 16 };
             Color previous = GUI.color;
-            float y = Screen.height * 0.5f + 48f;
+            // Below the interact prompt (+24) and the build hint (+46).
+            float y = Screen.height * 0.5f + 72f;
             foreach (Notice notice in notices)
             {
                 float left = showSeconds - (Time.time - notice.LastTime);
