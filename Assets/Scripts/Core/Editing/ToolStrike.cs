@@ -61,11 +61,12 @@ namespace Clube.Core
         /// <param name="damage">Damage carried between hits.</param>
         /// <param name="collected">Gets one drop item per removed sample; may be null.</param>
         /// <param name="isoLevel">Density from which a sample is solid, for telling a loose piece apart.</param>
+        /// <param name="minedFrom">Gets, for each drop in <paramref name="collected"/>, the sample and material it came from (to look up its contents, GL32); may be null.</param>
         public static StrikeResult Hit(
             World world, IReadOnlyList<Vector3Int> targets, ToolDefinition tool, MaterialRegistry materials,
-            StrikeDamage damage, List<ItemDefinition> collected, float isoLevel = 0.5f)
+            StrikeDamage damage, List<ItemDefinition> collected, float isoLevel = 0.5f, List<MinedSample> minedFrom = null)
         {
-            int picked = PickUpPiece(world, targets, materials, collected, isoLevel);
+            int picked = PickUpPiece(world, targets, materials, collected, isoLevel, minedFrom);
             if (picked > 0)
             {
                 foreach (Vector3Int sample in Piece)
@@ -104,6 +105,7 @@ namespace Clube.Core
                 if (material != null && material.Drop != null)
                 {
                     collected?.Add(material.Drop);
+                    minedFrom?.Add(new MinedSample(sample, material));
                 }
             }
             return new StrikeResult(targets.Count, broken, removed);
@@ -124,7 +126,8 @@ namespace Clube.Core
         // (VoxelMaterial.PickUpPieceSize): removes it and collects a drop per sample. Returns
         // how many samples it took, 0 when no reached piece qualifies.
         private static int PickUpPiece(
-            World world, IReadOnlyList<Vector3Int> targets, MaterialRegistry materials, List<ItemDefinition> collected, float isoLevel)
+            World world, IReadOnlyList<Vector3Int> targets, MaterialRegistry materials, List<ItemDefinition> collected, float isoLevel,
+            List<MinedSample> minedFrom)
         {
             if (materials == null)
             {
@@ -144,6 +147,7 @@ namespace Clube.Core
                     if (material.Drop != null)
                     {
                         collected?.Add(material.Drop);
+                        minedFrom?.Add(new MinedSample(part, material));
                     }
                 }
                 return Piece.Count;
@@ -187,6 +191,20 @@ namespace Clube.Core
             }
             return Piece.Count > 0;
         }
+    }
+
+    /// <summary>Where a collected drop came from (GL32): its global sample and the material it was.</summary>
+    public readonly struct MinedSample
+    {
+        public MinedSample(Vector3Int sample, VoxelMaterial material)
+        {
+            Sample = sample;
+            Material = material;
+        }
+
+        public Vector3Int Sample { get; }
+
+        public VoxelMaterial Material { get; }
     }
 
     /// <summary>What one <see cref="ToolStrike.Hit"/> did.</summary>

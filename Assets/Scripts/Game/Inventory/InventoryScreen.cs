@@ -89,6 +89,7 @@ namespace Clube.Game
                 picked >= 0 ? $"Inventory: place {items[picked].Item?.DisplayName}" : "Inventory (Tab to close)");
 
             int clicked = InventoryGridGui.DrawPlayer(new Vector2(panel.x + Padding, panel.y + Padding + 24f), inventory, picked);
+            InventoryGridGui.DrawTooltip();
             if (clicked < 0)
             {
                 return;

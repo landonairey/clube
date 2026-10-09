@@ -49,6 +49,26 @@ namespace Clube.Core
         [SerializeField, Range(0f, 0.05f)]
         private float rockChance = 0.004f;
 
+        [Tooltip("Clay deposits at the surface (GL34): flush with the ground, reaching a little way down, deepest at the middle. None for no clay.")]
+        [SerializeField]
+        private VoxelMaterial clay;
+
+        [Tooltip("Size of the cells clay deposits are placed in, in metres: at most one deposit per cell.")]
+        [SerializeField, Min(2f)]
+        private float clayCellSize = 24f;
+
+        [Tooltip("Chance a cell has a clay deposit.")]
+        [SerializeField, Range(0f, 1f)]
+        private float clayChance = 0.3f;
+
+        [Tooltip("Largest radius of a deposit, in metres; each is between half this and this.")]
+        [SerializeField, Min(0.5f)]
+        private float clayRadius = 3f;
+
+        [Tooltip("How far down a deposit reaches at its middle, in metres.")]
+        [SerializeField, Min(0f)]
+        private float clayDepth = 0.75f;
+
         public VoxelMaterial Top
         {
             get => top;
@@ -104,6 +124,38 @@ namespace Clube.Core
         {
             get => rockChance;
             set => rockChance = Mathf.Clamp(value, 0f, 0.05f);
+        }
+
+        /// <summary>The material of the surface clay deposits (GL34), or null for none.</summary>
+        public VoxelMaterial Clay
+        {
+            get => clay;
+            set => clay = value;
+        }
+
+        public float ClayCellSize
+        {
+            get => Mathf.Max(2f, clayCellSize);
+            set => clayCellSize = Mathf.Max(2f, value);
+        }
+
+        /// <summary>Chance a cell has a clay deposit.</summary>
+        public float ClayChance
+        {
+            get => clayChance;
+            set => clayChance = Mathf.Clamp01(value);
+        }
+
+        public float ClayRadius
+        {
+            get => Mathf.Max(0.5f, clayRadius);
+            set => clayRadius = Mathf.Max(0.5f, value);
+        }
+
+        public float ClayDepth
+        {
+            get => clayDepth;
+            set => clayDepth = Mathf.Max(0f, value);
         }
 
         /// <summary>True when no layer has a material, so generation can skip materials.</summary>

@@ -31,6 +31,16 @@ namespace Clube.Core
         /// <summary>Chance that a surface column starts a rock cluster; 0 for no rocks.</summary>
         public float RockChance;
 
+        /// <summary>Material id of the surface clay deposits (GL34).</summary>
+        public byte Clay;
+
+        /// <summary>Chance a clay cell has a deposit; 0 for no clay.</summary>
+        public float ClayChance;
+
+        public float ClayCellSize;
+        public float ClayRadius;
+        public float ClayDepth;
+
         /// <summary>Every depth gets material id 0: what terrain without layers has.</summary>
         public static LayerTable None => default;
 
@@ -52,6 +62,11 @@ namespace Clube.Core
                 SteepMinHeight = layers.SteepMinHeight,
                 Rock = layers.Rock != null ? layers.Rock.Id : (byte)0,
                 RockChance = layers.Rock != null ? layers.RockChance : 0f,
+                Clay = layers.Clay != null ? layers.Clay.Id : (byte)0,
+                ClayChance = layers.Clay != null && layers.ClayDepth > 0f ? layers.ClayChance : 0f,
+                ClayCellSize = layers.ClayCellSize,
+                ClayRadius = layers.ClayRadius,
+                ClayDepth = layers.ClayDepth,
             };
         }
 

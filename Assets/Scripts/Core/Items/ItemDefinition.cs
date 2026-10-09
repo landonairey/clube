@@ -25,6 +25,14 @@ namespace Clube.Core
         [SerializeField, Min(1)]
         private int maxStack = 64;
 
+        [Tooltip("Volume of one, in mined samples (GL33): ore is 1, the sample it came from. Stations turn volumes into volumes, so a bun is the volume of metal a smelt leaves.")]
+        [SerializeField, Min(0.001f)]
+        private float unitVolume = 1f;
+
+        [Tooltip("Seconds one burns for as fuel in a furnace (GL35). 0: not a fuel.")]
+        [SerializeField, Min(0f)]
+        private float burnSeconds;
+
         /// <summary>Makes an item in code (tests, tools); the game's items are assets.</summary>
         public static ItemDefinition Create(string id, string displayName, int maxStack = 64)
         {
@@ -50,5 +58,21 @@ namespace Clube.Core
 
         /// <summary>Most of it one inventory slot holds (GL6).</summary>
         public int MaxStack => maxStack;
+
+        /// <summary>Volume of one, in mined samples (GL33).</summary>
+        public float UnitVolume => unitVolume;
+
+        /// <summary>Seconds one burns for as fuel (GL35); 0 when it isn't a fuel.</summary>
+        public float BurnSeconds => burnSeconds;
+
+        public bool IsFuel => burnSeconds > 0f;
+
+        /// <summary>Sets its volume and burn time, for items made in code (tests, tools).</summary>
+        public ItemDefinition With(float unitVolume = 1f, float burnSeconds = 0f)
+        {
+            this.unitVolume = Mathf.Max(0.001f, unitVolume);
+            this.burnSeconds = Mathf.Max(0f, burnSeconds);
+            return this;
+        }
     }
 }

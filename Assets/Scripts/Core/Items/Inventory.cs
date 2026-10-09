@@ -32,7 +32,8 @@ namespace Clube.Core
         /// Adds items, topping up stacks of the same item first, then filling empty slots.
         /// Returns how many didn't fit (0 when all of them did).
         /// </summary>
-        public int Add(ItemDefinition item, int count = 1)
+        /// <param name="contents">What the items are made of (mixed ore, GL32); a stack topped up with them blends its contents by volume.</param>
+        public int Add(ItemDefinition item, int count = 1, Composition contents = null)
         {
             if (item == null || count <= 0)
             {
@@ -45,7 +46,7 @@ namespace Clube.Core
                 if (slots[i].Item == item && slots[i].Space > 0)
                 {
                     int moved = Math.Min(left, slots[i].Space);
-                    slots[i] = slots[i].WithCount(slots[i].Count + moved);
+                    slots[i] = TopUp(slots[i], moved, contents);
                     left -= moved;
                 }
             }
@@ -54,7 +55,7 @@ namespace Clube.Core
                 if (slots[i].IsEmpty)
                 {
                     int moved = Math.Min(left, item.MaxStack);
-                    slots[i] = new ItemStack(item, moved);
+                    slots[i] = new ItemStack(item, moved, contents);
                     left -= moved;
                 }
             }
@@ -91,8 +92,27 @@ namespace Clube.Core
             {
                 return 0;
             }
-            int moved = stack.Count - target.Add(stack.Item, stack.Count);
+            int moved = stack.Count - target.Add(stack.Item, stack.Count, stack.Contents);
             return RemoveAt(slot, moved);
+        }
+
+        /// <summary>
+        /// What an item held here is made of, blended by volume across its stacks (GL32); null
+        /// when it has no contents or isn't here.
+        /// </summary>
+        public Composition ContentsOf(ItemDefinition item)
+        {
+            Composition contents = null;
+            int count = 0;
+            foreach (ItemStack stack in slots)
+            {
+                if (stack.Item == item)
+                {
+                    contents = Composition.Blend(contents, count, stack.Contents, stack.Count);
+                    count += stack.Count;
+                }
+            }
+            return contents;
         }
 
         /// <summary>Takes up to <paramref name="count"/> from one slot; returns how many it took.</summary>
@@ -151,7 +171,7 @@ namespace Clube.Core
             if (slots[to].Item == slots[from].Item && slots[to].Space > 0)
             {
                 int moved = Math.Min(slots[from].Count, slots[to].Space);
-                slots[to] = slots[to].WithCount(slots[to].Count + moved);
+                slots[to] = TopUp(slots[to], moved, slots[from].Contents);
                 slots[from] = slots[from].WithCount(slots[from].Count - moved);
             }
             else
@@ -159,6 +179,13 @@ namespace Clube.Core
                 (slots[from], slots[to]) = (slots[to], slots[from]);
             }
             Changed?.Invoke();
+        }
+
+        // A stack with more of its item on top, the contents blended by volume (GL32).
+        private static ItemStack TopUp(ItemStack stack, int added, Composition contents)
+        {
+            Composition blended = Composition.Blend(stack.Contents, stack.Count, contents, added);
+            return new ItemStack(stack.Item, stack.Count + added, blended);
         }
     }
 }

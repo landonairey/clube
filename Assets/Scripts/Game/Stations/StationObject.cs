@@ -26,6 +26,10 @@ namespace Clube.Game
         [SerializeField]
         private List<Recipe> recipes = new List<Recipe>();
 
+        [Tooltip("Needs fuel to work its time recipes (the furnace, GL35): it gets a fuel slot.")]
+        [SerializeField]
+        private bool burnsFuel;
+
         public string DisplayName => displayName;
 
         public CraftingStation Station { get; private set; }
@@ -36,7 +40,7 @@ namespace Clube.Game
 
         private void Awake()
         {
-            Station = new CraftingStation(kind, recipes);
+            Station = new CraftingStation(kind, recipes, CraftingStation.DefaultInputSlots, burnsFuel);
         }
 
         private void Update()

@@ -27,6 +27,10 @@ namespace Clube.Game
             {
                 MoveAll(station.Station.Input, inventory);
                 MoveAll(station.Station.Output, inventory);
+                if (station.Station.Fuel != null)
+                {
+                    MoveAll(station.Station.Fuel, inventory);
+                }
             }
             inventory.Add(Item);
             Destroy(gameObject);
@@ -45,7 +49,8 @@ namespace Clube.Game
                     return false;
                 }
             }
-            if (station != null && (!AddAll(station.Station.Input, trial) || !AddAll(station.Station.Output, trial)))
+            if (station != null && (!AddAll(station.Station.Input, trial) || !AddAll(station.Station.Output, trial)
+                || (station.Station.Fuel != null && !AddAll(station.Station.Fuel, trial))))
             {
                 return false;
             }

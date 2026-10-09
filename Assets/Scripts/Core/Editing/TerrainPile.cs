@@ -77,6 +77,13 @@ namespace Clube.Core
         private static readonly HashSet<Vector3Int> Seen = new HashSet<Vector3Int>();
         private static readonly List<Vector2Int> CellOrder = new List<Vector2Int>();
         private static readonly HashSet<Vector2Int> Exhausted = new HashSet<Vector2Int>();
+        private static readonly List<Vector3Int> Filled = new List<Vector3Int>();
+
+        /// <summary>
+        /// The global samples the last <see cref="Place(World, Vector3, byte, int, float, PileSettings)"/>
+        /// or <see cref="Pour"/> filled, e.g. to start clay drying (GL34). Overwritten by the next call.
+        /// </summary>
+        public static IReadOnlyList<Vector3Int> LastFilled => Filled;
 
         /// <summary>Places a 40° cone (soft ground). See <see cref="Place(World, Vector3, byte, int, float, PileSettings)"/>.</summary>
         public static int Place(World world, Vector3 point, byte material, int count, float isoLevel)
@@ -92,6 +99,7 @@ namespace Clube.Core
         /// </summary>
         public static int Place(World world, Vector3 point, byte material, int count, float isoLevel, PileSettings settings)
         {
+            Filled.Clear();
             return settings.Shape == PileShape.Block
                 ? PlaceBlocks(world, point, material, count, isoLevel, settings.Grid)
                 : PlaceCone(world, point, material, count, isoLevel, settings.ReposeAngle);
@@ -105,6 +113,7 @@ namespace Clube.Core
         /// </summary>
         public static int Pour(World world, ref PilePour pour, Vector3 point, byte material, int count, float isoLevel, PileSettings settings)
         {
+            Filled.Clear();
             if (!pour.Started)
             {
                 pour.Point = point;
@@ -323,6 +332,7 @@ namespace Clube.Core
             }
             world.SetMaterial(sample, material);
             world.SetDensity(sample, 1f);
+            Filled.Add(sample);
             foreach (Vector3Int face in Faces)
             {
                 Vector3Int next = sample + face;

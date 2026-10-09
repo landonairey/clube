@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -53,6 +54,9 @@ namespace Clube.Game
 
         /// <summary>Raised when the selected item can't be dropped.</summary>
         public event Action<ItemDefinition> Refused;
+
+        /// <summary>Raised after a drop, with the material it put down and the global samples it filled (clay drying, GL34).</summary>
+        public event Action<VoxelMaterial, IReadOnlyList<Vector3Int>> Piled;
 
         private void Awake()
         {
@@ -137,6 +141,7 @@ namespace Clube.Game
             }
             inventory.Inventory.RemoveAt(slot, placed);
             Dropped?.Invoke(stack.Item, placed);
+            Piled?.Invoke(material, TerrainPile.LastFilled);
             // A pile at the feet, or a big one spreading under them, can bury the player.
             LiftOutOfGround();
             return placed;

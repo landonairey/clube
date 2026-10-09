@@ -8,7 +8,7 @@ namespace Clube.Core
     /// <summary>One ore node (O2): a centroid with a 3D Gaussian falloff.</summary>
     public readonly struct OreNode
     {
-        public OreNode(int spec, byte material, Vector3 centre, Vector3 spread, float peak, int priority)
+        public OreNode(int spec, byte material, Vector3 centre, Vector3 spread, float peak, int priority, Composition contents = null)
         {
             Spec = spec;
             Material = material;
@@ -16,7 +16,11 @@ namespace Clube.Core
             Spread = spread;
             Peak = peak;
             Priority = priority;
+            Contents = contents;
         }
+
+        /// <summary>What ore mined from it is made of (GL32): its grade of ore, the rest rock.</summary>
+        public Composition Contents { get; }
 
         /// <summary>Index of the <see cref="OreSpec"/> it came from.</summary>
         public int Spec { get; }
@@ -80,6 +84,7 @@ namespace Clube.Core
         private readonly ulong[] hosts;
         private readonly Dictionary<Vector3Int, OreNode[]> cells = new Dictionary<Vector3Int, OreNode[]>();
         private readonly List<OreNode> scratch = new List<OreNode>();
+        private readonly List<OreNode> nearby = new List<OreNode>();
         private readonly Vector3 maxReach;
 
         public OreField(OreGeneration settings, int seed, ITerrainGenerator generator)
@@ -223,6 +228,57 @@ namespace Clube.Core
             return picked;
         }
 
+        /// <summary>
+        /// What ore mined at a position is made of (GL32): the contents of the node of its spec
+        /// likeliest to have placed it there, or the spec's typical contents when no node
+        /// reaches (ore poured back out of an inventory). Null when no spec makes the material.
+        /// </summary>
+        /// <param name="mined">The ore, or a stage it breaks into (cracked or loose copper).</param>
+        /// <param name="position">Relative to the world origin.</param>
+        public Composition ContentsAt(VoxelMaterial mined, Vector3 position)
+        {
+            int specIndex = SpecFor(mined);
+            if (specIndex < 0)
+            {
+                return null;
+            }
+            CollectNodes(new Bounds(position, Vector3.zero), nearby);
+            Composition best = null;
+            float bestChance = 0f;
+            foreach (OreNode node in nearby)
+            {
+                float chance = node.Spec == specIndex ? node.Probability(position) : 0f;
+                if (chance > bestChance)
+                {
+                    best = node.Contents;
+                    bestChance = chance;
+                }
+            }
+            nearby.Clear();
+            return best ?? settings.Ores[specIndex].TypicalContents;
+        }
+
+        // The spec whose ore is the material or breaks into it; -1 for none.
+        private int SpecFor(VoxelMaterial mined)
+        {
+            for (int i = 0; i < settings.Ores.Count; i++)
+            {
+                // Break chains are a few stages long; the bound guards a looped chain.
+                VoxelMaterial stage = settings.Ores[i]?.Ore;
+                for (int depth = 0; stage != null && depth < 8; depth++, stage = stage.BreaksInto)
+                {
+                    if (stage == mined)
+                    {
+                        return i;
+                    }
+                }
+            }
+            return -1;
+        }
+
+        // Keeps grade rolls apart from the placement rolls.
+        private const int GradeSalt = 0x47524144;
+
         private OreNode[] PlaceNodes(Vector3Int cell)
         {
             scratch.Clear();
@@ -254,7 +310,12 @@ namespace Clube.Core
                     {
                         continue;
                     }
-                    scratch.Add(new OreNode(specIndex, spec.Ore.Id, centre, spec.Spread, spec.PeakProbability, spec.Priority));
+                    int gradeSalt = GradeSalt + salt + attempt * 8;
+                    Vector3Int at = cell;
+                    Composition contents = spec.ContentsFor(
+                        VoxelHash.Uniform(seed, at.x, at.y, at.z, gradeSalt),
+                        i => VoxelHash.Uniform(seed, at.x, at.y, at.z, gradeSalt + 1 + i));
+                    scratch.Add(new OreNode(specIndex, spec.Ore.Id, centre, spec.Spread, spec.PeakProbability, spec.Priority, contents));
                     placed++;
                 }
             }

@@ -145,6 +145,7 @@ namespace Clube.Game
                 SellFromSlot(selected, chosen.Count);
             }
             GUI.enabled = true;
+            InventoryGridGui.DrawTooltip();
         }
 
         // Sells from one slot, so the stack the player picked is the one that goes.

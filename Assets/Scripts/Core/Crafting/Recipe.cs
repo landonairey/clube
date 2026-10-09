@@ -24,6 +24,18 @@ namespace Clube.Core
         Strikes,
     }
 
+    /// <summary>
+    /// A skill that improves a recipe's yield (GL33). A placeholder until skills are designed
+    /// (SK1): the player holds a level per skill from 0 to 1.
+    /// </summary>
+    public enum CraftSkill
+    {
+        None,
+
+        /// <summary>Less scale lost hammering metal (the anvil).</summary>
+        Blacksmithing,
+    }
+
     /// <summary>A number of one item: a recipe's input or output.</summary>
     [Serializable]
     public struct ItemAmount
@@ -69,6 +81,25 @@ namespace Clube.Core
         [SerializeField, Min(0.01f)]
         private float amount = 5f;
 
+        [Tooltip("Off: the output count is made from the input counts. On (GL33): the output is a volume, the inputs' volume (or their Content's share of it) times the yield; the station keeps what's short of a whole output item for the next run.")]
+        [SerializeField]
+        private bool byVolume;
+
+        [Tooltip("By volume: the part of the inputs that becomes the output, e.g. Copper for smelting copper ore (GL32). None: all of it.")]
+        [SerializeField]
+        private VoxelMaterial content;
+
+        [Tooltip("By volume: share of that volume that ends up in the output, e.g. 0.5 smelting copper ore, 0.8 hammering a bun (20% scale loss).")]
+        [SerializeField, Range(0f, 1f)]
+        private float yield = 1f;
+
+        [Tooltip("The skill that improves the yield (GL33), and the yield at full skill.")]
+        [SerializeField]
+        private CraftSkill skill;
+
+        [SerializeField, Range(0f, 1f)]
+        private float skilledYield = 1f;
+
         /// <summary>Makes a recipe in code (tests); the game's recipes are assets.</summary>
         public static Recipe Create(StationKind station, ItemAmount output, RecipeWork work, float amount, params ItemAmount[] inputs)
         {
@@ -92,6 +123,56 @@ namespace Clube.Core
 
         /// <summary>Seconds or strikes, by <see cref="Work"/>.</summary>
         public float Amount => amount;
+
+        /// <summary>True when the output is a volume (GL33) rather than a count.</summary>
+        public bool ByVolume => byVolume;
+
+        /// <summary>The part of the inputs that becomes the output, or null for all of it.</summary>
+        public VoxelMaterial Content => content;
+
+        public CraftSkill Skill => skill;
+
+        /// <summary>Makes the output by volume (GL33), for recipes made in code (tests).</summary>
+        public Recipe WithYield(float yield, VoxelMaterial content = null, CraftSkill skill = CraftSkill.None, float skilledYield = -1f)
+        {
+            byVolume = true;
+            this.yield = Mathf.Clamp01(yield);
+            this.content = content;
+            this.skill = skill;
+            this.skilledYield = skilledYield < 0f ? this.yield : Mathf.Clamp01(skilledYield);
+            return this;
+        }
+
+        /// <summary>The yield at a skill level from 0 (none) to 1 (mastered); just the yield for recipes no skill improves.</summary>
+        public float Yield(float skillLevel)
+        {
+            return skill == CraftSkill.None ? yield : Mathf.Lerp(yield, skilledYield, Mathf.Clamp01(skillLevel));
+        }
+
+        /// <summary>
+        /// The volume one run makes (GL33): each input's volume, or its <see cref="Content"/>'s
+        /// share of it, times the yield. 1 copper ore of 20% copper smelted at 50% makes 0.1.
+        /// </summary>
+        /// <param name="contentsOf">What each input item is made of (GL32); null or a null result counts as all <see cref="Content"/>.</param>
+        public float OutputVolume(Func<ItemDefinition, Composition> contentsOf, float skillLevel)
+        {
+            float volume = 0f;
+            foreach (ItemAmount input in inputs)
+            {
+                if (input.Item == null)
+                {
+                    continue;
+                }
+                float share = 1f;
+                if (content != null)
+                {
+                    Composition contents = contentsOf?.Invoke(input.Item);
+                    share = contents != null ? contents.FractionOf(content) : 1f;
+                }
+                volume += input.Count * input.Item.UnitVolume * share;
+            }
+            return volume * Yield(skillLevel);
+        }
 
         /// <summary>True when the inventory holds every input.</summary>
         public bool HasInputs(Inventory inventory)
