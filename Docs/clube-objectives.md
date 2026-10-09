@@ -380,6 +380,14 @@ Changes asked for after `Docs/20261007 loop playtest.md`. The playtest's own fin
 - [x] **GL30** `Core` Trees *(first pass of PK7; builds trees from marching voxels, as MX5 asks to test)*: an algorithm that grows similar but slightly varied trees on flat ground: a trunk, several large branches, smaller branches off those, and clumps of leaves at the branch ends, written into the density data as wood and leaves so they mesh, collide and dig like the terrain. *(Done 2026-10-08: `TreeGeneration` in `TerrainSettings` (cell size, chance, max slope, height, trunk radius, branch count, thinnest branch, leaf size, wood and leaves); `TreeField` places at most one tree per 10 m cell from the seed, where the ground within 1 m is under 12°; `TreeShape` builds it as tapered capsules and leaf balls; `TreeStamp` writes the parts at the end of `ChunkFillKernel`, so streaming, the labs and benchmarks all get them, and chunks above the ground aren't skipped when a tree reaches them. Both world labs grow them at chance 0.35. Thinnest branch 0.22 m: thinner ones break into floating bits at 0.25 m voxels. `TreeTests`: same tree per cell, different between cells, every part within the gathered spread, no trees on a 27° slope, stamping independent of part order, chunk borders agree.)*
 - [x] **GL31** `Core + Config` Wood and leaves *(first pass of PK7's wood)*: wood and leaves as terrain materials and items, with placeholder textures for the mesh and icons for the inventory. *(Done: `VoxelMaterial` Wood (id 11, hardness 2, drops Wood, piles in build cells) and Leaves (id 12, hardness 0.3, drops Leaves, cones at 55°), a new `Plant` category; items Wood (stacks of 256) and Leaves (1024); bark and leaf textures from *Clube → Materials → Generate placeholder textures*, and log and leaf icons from *Clube → Items → Generate icons*. Next pass candidates: an axe for wood (TL2), felling (a cut trunk dropping its tree), leaves that see through, prices at the merchant.)*
 
+### Sixth pass *(added 2026-10-09, from `Docs/20261009 clube-backlog.md`)*
+Volumes: one mined sample is 1 unit of volume; items carry a unit volume, and stations turn volumes into volumes, so yields and losses multiply through the chain.
+
+- [ ] **GL32** `Core + Config` Mixed ore *(first pass of PK1)*: a mined ore item holds contents by volume, e.g. copper ore that is 80% rock and 20% copper. The split comes from the grade of the node it spawned in, rolled per node from the seed within its spec's range, and can hold more than two contents (a spec lists extra contents, e.g. a trace of silver). Stacks of one ore blend their contents by volume. Separating ore from rock is PR7; seeing the contents depends on prospecting later (PS6).
+- [ ] **GL33** `Core + Game` Yield and scale loss *(first pass of PR4)*: smelting turns the ore content of what's loaded into metal at a yield (copper: 50%), and hammering a bun into an ingot loses scale (20%), which the blacksmithing skill reduces. 1 volume of 80/20 copper ore → 0.2 copper → a 0.1 bun → a 0.08 ingot. Stations keep the part of a volume too small for a whole item until more comes in. Skill levels are a placeholder on the player until SK1.
+- [ ] **GL34** `Core + Config + Game` Clay and bricks *(first pass of X2 for clay, HF2's bricks)*: clay deposits at the surface, flush with the terrain and reaching a little way down; clay piles in build cells like rock. Clay dropped on the ground dries into brick after 2 in-game days, or is fired into brick in the furnace.
+- [ ] **GL35** `Core + Game` Furnace fuel *(first pass of HF1)*: the furnace burns fuel from a fuel slot. Wood burns long, leaves burn out fast; it pulls the next fuel item into its burn-down bar as long as there is something to work.
+
 ---
 
 ## Chapter 4 — Procedurally generated chunks (`Game`) *(draft — to be expanded)*
@@ -531,6 +539,7 @@ Prospecting reads the same probability field that ore generation uses (O1–O4).
 - [ ] **PS3** `Core` Detection threshold: trace amounts (e.g. a few % gold) only show above a skill level or with better tools.
 - [ ] **PS4** `Game` Prospecting tools that scale with tech: bare hands and eyes → pan and sieve → magnifying lens (ties to 6E optics).
 - [ ] **PS5** `Lab` Side-by-side view of the true ore field vs what the player's skill reveals.
+- [ ] **PS6** `Core + Game` *(added 2026-10-09; parked until skills)* Seeing ore: below a prospecting level, ore in rock looks like its host rock, and mined ore shows a ? for its contents (GL32) until the skill can tell them.
 
 ### 6C — Ore processing
 Replace the usual "1 ore in, 1 bar out" with a short chain loosely based on the real thing.
@@ -541,11 +550,12 @@ Replace the usual "1 ore in, 1 bar out" with a short chain loosely based on the 
 - [ ] **PR4** `Core` Quality and yield as outputs of process choices (temperature, fuel, flux, number of refining passes), feeding into crafted item quality.
 - [ ] **PR5** Precious metal refining: panning for gold, and cupellation to separate silver from lead ores (needs lead from 5D).
 - [ ] **PR6** `Core` *(added 2026-10-05)* Recycling: save iron forge scale (and slag) to reprocess later as a kind of ore. Historically accurate: forge scale is mostly iron oxide and can go back into the bloomery (HF4), and slag still holds some metal. Open: whether scale is its own item or joins mixed ore (PK1).
+- [ ] **PR7** `Core` *(added 2026-10-09)* Separating ore from rock: skills and steps (sorting, crushing and washing, PR1) that raise the ore share of mixed ore (GL32) before smelting, and so its yield (GL33).
 
 ### 6D — Heat and fuel progression
 Furnace temperature is the key that unlocks metals.
 
-- [ ] **HF1** `Core` Fuel types with burn temperatures: wood → charcoal (charcoal kiln / clamp) → later coal or coke.
+- [ ] **HF1** `Core` Fuel types with burn temperatures: wood → charcoal (charcoal kiln / clamp) → later coal or coke. *(First pass 2026-10-09: GL35, burn time only.)*
 - [ ] **HF2** `Core` Furnace tiers: open fire / pit → clay-built furnace → fired brick furnace (clay → bricks via a kiln).
 - [ ] **HF3** `Core` Airflow: hand bellows → water-powered bellows (6E) for higher temperatures.
 - [ ] **HF4** `Core` Temperature gates: copper and bronze first; iron via a bloomery (makes a spongy bloom that must be hammered, not poured); steel later via carburizing iron.
@@ -697,6 +707,7 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
   - This falls out of existing work: a brush dig already covers many voxels, and the volume math (V11) can sum volume per material to give the composition.
   - Prospecting skill (PS3) decides which fractions the player can *see*; trace ores below the threshold are still there but show as the host material.
   - Open design points: are mixtures one inventory item with a composition, or do they auto-split? Does separation happen in processing (washing, sorting, panning in PR1)?
+  - *(Added 2026-10-09)* First pass: GL32. One item per ore, its contents blended by volume across a stack; separation is PR7.
 
 - **PK2 Multiplayer.** Big question mark; currently leaning **no** (not planning a full Steam release).
   - Don't design for it, but avoid closing the door cheaply: the core already keeps simulation separate from presentation (A1) and generation deterministic from seed (O4, ST5), which are the main things multiplayer would need.
