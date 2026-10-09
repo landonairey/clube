@@ -28,6 +28,10 @@ namespace Clube.Game
         [SerializeField]
         private InputActionReference buildAction;
 
+        [Tooltip("Turns what's being placed a quarter turn (R).")]
+        [SerializeField]
+        private InputActionReference rotateAction;
+
         [Tooltip("A transparent material with a _BaseColor for the preview (BrushPreview, URP Unlit).")]
         [SerializeField]
         private Material previewMaterial;
@@ -57,6 +61,7 @@ namespace Clube.Game
         private PlacedObject pressedOn;
         private GUIStyle hintStyle;
         private string hint;
+        private int quarterTurns;
         private PlaceableDefinition aimedItem;
         private Vector3 aimedPosition;
         private Quaternion aimedRotation;
@@ -66,6 +71,12 @@ namespace Clube.Game
 
         /// <summary>The placed object aimed at within reach, while nothing placeable is selected.</summary>
         public PlacedObject Target { get; private set; }
+
+        /// <summary>Turns what's being placed a quarter turn, on top of facing the player (what R does, GL28).</summary>
+        public void Rotate()
+        {
+            quarterTurns = (quarterTurns + 1) % 4;
+        }
 
         /// <summary>Places the selected item where the preview stands (what Build does). False when it can't go there.</summary>
         public bool TryPlace()
@@ -109,6 +120,7 @@ namespace Clube.Game
         private void OnEnable()
         {
             buildAction?.action.Enable();
+            rotateAction?.action.Enable();
         }
 
         private void OnDisable()
@@ -160,7 +172,12 @@ namespace Clube.Game
             Vector2 centre = cells.Centre(cell);
             Vector3 position = Ground(new Vector3(centre.x, local.y, centre.y));
             Vector3 toPlayer = transform.position - position;
-            float yaw = Mathf.Round(Mathf.Atan2(toPlayer.x, toPlayer.z) * Mathf.Rad2Deg / 90f) * 90f;
+            // Facing the player, then turned by R a quarter at a time (GL28).
+            if (rotateAction != null && rotateAction.action.WasPressedThisFrame())
+            {
+                Rotate();
+            }
+            float yaw = Mathf.Round(Mathf.Atan2(toPlayer.x, toPlayer.z) * Mathf.Rad2Deg / 90f) * 90f + quarterTurns * 90f;
             Quaternion rotation = Quaternion.Euler(0f, yaw, 0f);
 
             ShowPreview(placeable, position, rotation, out Bounds bounds);
@@ -179,7 +196,7 @@ namespace Clube.Game
             aimedPosition = position;
             aimedRotation = rotation;
             CanPlace = !blocked;
-            hint = blocked ? $"Something is in the way of the {placeable.DisplayName.ToLowerInvariant()}" : $"B  Place {placeable.DisplayName.ToLowerInvariant()}";
+            hint = blocked ? $"Something is in the way of the {placeable.DisplayName.ToLowerInvariant()}" : $"B  Place {placeable.DisplayName.ToLowerInvariant()}    R  Rotate";
             if (action != null && action.WasPressedThisFrame())
             {
                 TryPlace();
