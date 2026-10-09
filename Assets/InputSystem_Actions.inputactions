@@ -157,6 +157,24 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "Rotate",
+                    "type": "Button",
+                    "id": "c3e8a1f6-27b4-4d59-8e0a-91f4b6d2c7e5",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Help",
+                    "type": "Button",
+                    "id": "4a7f2c91-b3e5-4d08-96c1-e2a5d8f3b704",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -179,6 +197,28 @@
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
                     "action": "Build",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "e9b2d4a7-6c1f-4e83-a5d0-3f7c8b1e2a64",
+                    "path": "<Keyboard>/r",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Rotate",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "8d1e5b3a-f4c7-42a9-b6e0-7c2f9a4d1b85",
+                    "path": "<Keyboard>/f1",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Help",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
