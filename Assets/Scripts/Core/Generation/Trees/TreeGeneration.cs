@@ -49,6 +49,14 @@ namespace Clube.Core
         [SerializeField]
         private VoxelMaterial leaves;
 
+        [Tooltip("The tree's base, left standing when the trunk is cut: much harder than wood, and a worktop (GL36). None: the base is wood.")]
+        [SerializeField]
+        private VoxelMaterial stump;
+
+        [Tooltip("How far the stump stands above the ground, in metres: 0.75 is 3 voxels at 4 per metre.")]
+        [SerializeField, Range(0.25f, 2f)]
+        private float stumpHeight = 0.75f;
+
         public float CellSize
         {
             get => Mathf.Max(2f, cellSize);
@@ -110,6 +118,19 @@ namespace Clube.Core
         {
             get => leaves;
             set => leaves = value;
+        }
+
+        public float StumpHeight
+        {
+            get => stumpHeight;
+            set => stumpHeight = Mathf.Clamp(value, 0.25f, 2f);
+        }
+
+        /// <summary>What a tree's base is made of: the stump material, or wood when none is set.</summary>
+        public VoxelMaterial Stump
+        {
+            get => stump != null ? stump : wood;
+            set => stump = value;
         }
 
         /// <summary>True when trees can grow: some chance, and both materials set.</summary>

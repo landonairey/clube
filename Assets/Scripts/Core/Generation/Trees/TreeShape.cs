@@ -41,6 +41,7 @@ namespace Clube.Core
             var dice = new Dice(seed, cell);
             byte wood = settings.Wood.Id;
             byte leaves = settings.Leaves.Id;
+            byte stump = settings.Stump.Id;
             float minRadius = settings.MinBranchRadius;
             float height = dice.Range(settings.Height.x, settings.Height.y);
             float radius = math.max(minRadius, settings.TrunkRadius * dice.Range(0.85f, 1.15f));
@@ -59,7 +60,8 @@ namespace Clube.Core
                 trunk[i] = root + up * (height * t) + lean * (t * t) + wobble;
                 trunkRadii[i] = math.max(minRadius, radius * math.lerp(1f, 0.35f, t));
             }
-            parts.Add(TreePart.Segment(root - up * FootDepth, root + up * 0.5f, radius * 1.3f, radius, wood));
+            // The stump: the trunk's flared foot, in its own hard material, a little wider than the trunk above it.
+            parts.Add(TreePart.Segment(root - up * FootDepth, root + up * settings.StumpHeight, radius * 1.3f, radius * 1.08f, stump));
             for (int i = 0; i < TrunkSegments; i++)
             {
                 parts.Add(TreePart.Segment(trunk[i], trunk[i + 1], trunkRadii[i], trunkRadii[i + 1], wood));

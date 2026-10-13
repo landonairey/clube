@@ -12,6 +12,9 @@ namespace Clube.Core
 
         /// <summary>Works metal by striking it (GL11).</summary>
         Anvil,
+
+        /// <summary>A stump or bench for working wood by hand (GL36).</summary>
+        Worktop,
     }
 
     /// <summary>How a <see cref="Recipe"/>'s work is measured.</summary>

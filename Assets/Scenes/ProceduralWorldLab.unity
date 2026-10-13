@@ -938,6 +938,7 @@ GameObject:
   - component: {fileID: 1697135578}
   - component: {fileID: 1697135580}
   - component: {fileID: 1697135581}
+  - component: {fileID: 1697135582}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1348,6 +1349,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSkills
   blacksmithing: 0
+--- !u!114 &1697135582
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1011a8df7c00a8c44a134c94995f38af, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.StumpWorktops
+  recipes:
+  - {fileID: 11400000, guid: 4718a79fc1c2a81438a065cf5434da28, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

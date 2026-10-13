@@ -89,6 +89,30 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Shape_StandsOnAStump_ThatRisesTheSetHeight_WhenAStumpMaterialIsSet()
+        {
+            VoxelMaterial stump = VoxelMaterial.Create(15, "Stump", VoxelMaterialCategory.Plant);
+            try
+            {
+                TreeGeneration settings = Settings();
+                settings.Stump = stump;
+                settings.StumpHeight = 0.75f;
+                var parts = new List<TreePart>();
+                var root = new float3(0f, Ground, 0f);
+                TreeShape.Build(Seed, new Vector2Int(2, 3), root, settings, parts);
+
+                var stumps = parts.FindAll(p => p.Material == stump.Id);
+                Assert.That(stumps.Count, Is.EqualTo(1));
+                Assert.That(stumps[0].To.y - root.y, Is.EqualTo(0.75f).Within(1e-4f));
+                Assert.That(stumps[0].From.y, Is.LessThan(root.y), "The foot reaches into the ground.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(stump);
+            }
+        }
+
+        [Test]
         public void Field_GrowsTreesOnFlatGround_NotOnSlopes()
         {
             var flat = new TreeField(Settings(), Seed, new FlatGenerator(Ground));

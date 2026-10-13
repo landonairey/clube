@@ -80,6 +80,14 @@ namespace Clube.Core
         [SerializeField]
         private VoxelMaterial breaksInto;
 
+        [Tooltip("A worktop (GL36): the player can use it where it stands, like a station, e.g. a tree stump.")]
+        [SerializeField]
+        private bool isWorktop;
+
+        [Tooltip("Soft ground (GL39): grass, dirt, clay. Shovels reach wide on it; pickaxes only hit the one voxel aimed at. Everything else is hard.")]
+        [SerializeField]
+        private bool isSoft;
+
         [Tooltip("What it turns into left out on the ground (GL34), e.g. clay → brick. None: it never changes.")]
         [SerializeField]
         private VoxelMaterial driesInto;
@@ -120,6 +128,12 @@ namespace Clube.Core
         /// </summary>
         public VoxelMaterial BreaksInto => breaksInto;
 
+        /// <summary>True when the player can work at it where it stands (GL36), like a stump.</summary>
+        public bool IsWorktop => isWorktop;
+
+        /// <summary>True for soft ground (GL39): tools made for hard material only hit one voxel of it.</summary>
+        public bool IsSoft => isSoft;
+
         /// <summary>What it turns into left out on the ground (GL34), or null when it never changes.</summary>
         public VoxelMaterial DriesInto => driesInto;
 
@@ -150,6 +164,13 @@ namespace Clube.Core
         public VoxelMaterial WithPickUp(int pieceSize)
         {
             pickUpPieceSize = Mathf.Clamp(pieceSize, 0, 32);
+            return this;
+        }
+
+        /// <summary>Marks it soft ground, for materials made in code (tests, tools).</summary>
+        public VoxelMaterial WithSoft(bool soft = true)
+        {
+            isSoft = soft;
             return this;
         }
 

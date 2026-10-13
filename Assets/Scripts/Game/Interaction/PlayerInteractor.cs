@@ -22,6 +22,7 @@ namespace Clube.Game
 
         private readonly RaycastHit[] hits = new RaycastHit[8];
         private PlayerController player;
+        private StumpWorktops stumps;
         private GUIStyle promptStyle;
 
         /// <summary>What's under the crosshair and within reach this frame, or null.</summary>
@@ -32,6 +33,7 @@ namespace Clube.Game
         private void Awake()
         {
             player = GetComponent<PlayerController>();
+            stumps = GetComponent<StumpWorktops>();
         }
 
         private void OnEnable()
@@ -65,7 +67,7 @@ namespace Clube.Game
                     continue;
                 }
                 nearest = hit.distance;
-                Target = hit.collider.GetComponentInParent<IInteractable>();
+                Target = hit.collider.GetComponentInParent<IInteractable>() ?? stumps?.Find(hit);
             }
 
             if (Target != null && interactAction != null && interactAction.action.WasPressedThisFrame())
