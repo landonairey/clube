@@ -8,6 +8,7 @@ namespace Clube.Debug
     /// for tuning how jumps and falls feel, with the gravity and airtime they give. The
     /// multiplier is for trying values in Play mode; bake a good result into the player's
     /// own gravity.
+    /// In Play mode it also has a dev cheat button that gives 100 coins.
     /// </summary>
     public static class PlayerControls
     {
@@ -26,6 +27,13 @@ namespace Clube.Debug
             player.JumpHeight = frame.Slider(
                 "Jump height (m)", player.JumpHeight, PlayerController.MinJumpHeight, PlayerController.MaxJumpHeight, "0.0");
             frame.Line($"Gravity {player.Gravity:0.0} m/s² · jump airtime {player.JumpAirtime:0.00} s");
+
+            // Dev cheat: coins for trying the merchant without mining first.
+            PlayerWallet wallet = Application.isPlaying ? player.GetComponent<PlayerWallet>() : null;
+            if (wallet != null && frame.ButtonRow("Dev: give 100 coins") == 0)
+            {
+                wallet.Wallet.Earn(100);
+            }
         }
     }
 }
