@@ -150,7 +150,8 @@ namespace Clube.Core
                         continue;
                     }
                     int2 column = grid.FirstSample.xz + new int2(x, z);
-                    if (!IsRockColumn(settings.Seed, column, layers.RockChance))
+                    int rise = RockRise(settings.Seed, column, layers.RockChance);
+                    if (rise <= 0)
                     {
                         continue;
                     }
@@ -158,7 +159,7 @@ namespace Clube.Core
                     {
                         int i = grid.Index(x, y, z);
                         float depth = depths[i];
-                        if (depth >= 0f || depth < -grid.VoxelSize)
+                        if (depth >= 0f || depth < -grid.VoxelSize * rise)
                         {
                             continue;
                         }
@@ -258,18 +259,70 @@ namespace Clube.Core
         // Salts keep the rock hashes apart from the ore rolls'.
         private const int RockSalt = 0x524F434B;
 
-        /// <summary>True when a global column is covered by a surface rock cluster (GL22).</summary>
+        /// <summary>True when a global column is covered by a surface rock or boulder (GL22).</summary>
         public static bool IsRockColumn(int seed, int2 column, float chance)
         {
-            return ClusterSize(seed, column, chance) >= 1
-                || ClusterSize(seed, column - new int2(1, 0), chance) >= 2
-                || ClusterSize(seed, column - new int2(0, 1), chance) >= 3;
+            return RockRise(seed, column, chance) > 0;
+        }
+
+        /// <summary>
+        /// How many samples of rock stand on the surface in a global column (GL22): 1 for a small rock,
+        /// up to <see cref="BoulderRise"/> in the middle of a boulder, 0 when there is none. About one
+        /// rock in <see cref="BoulderOneIn"/> is a boulder: a dome <see cref="BoulderRadius"/> samples
+        /// wide, too big for a hit to pick up whole.
+        /// </summary>
+        public static int RockRise(int seed, int2 column, float chance)
+        {
+            int rise = ClusterSize(seed, column, chance) >= 1
+                       || ClusterSize(seed, column - new int2(1, 0), chance) >= 2
+                       || ClusterSize(seed, column - new int2(0, 1), chance) >= 3
+                ? 1
+                : 0;
+            if (chance <= 0f)
+            {
+                return rise;
+            }
+            for (int dz = -BoulderRadius; dz <= BoulderRadius; dz++)
+            {
+                for (int dx = -BoulderRadius; dx <= BoulderRadius; dx++)
+                {
+                    float distanceSquared = dx * dx + dz * dz;
+                    if (distanceSquared > BoulderRadius * BoulderRadius || !IsBoulderStart(seed, column - new int2(dx, dz), chance))
+                    {
+                        continue;
+                    }
+                    float dome = math.sqrt(1f - distanceSquared / (BoulderRadius * BoulderRadius + 1f));
+                    rise = math.max(rise, (int)math.round(BoulderRise * dome));
+                }
+            }
+            return rise;
+        }
+
+        /// <summary>Samples from the middle of a boulder to its edge.</summary>
+        public const int BoulderRadius = 3;
+
+        /// <summary>Samples a boulder stands above the surface at its middle.</summary>
+        public const int BoulderRise = 3;
+
+        /// <summary>About one rock in this many is a boulder.</summary>
+        public const int BoulderOneIn = 10;
+
+        // A boulder is a rock start whose second hash comes up 0 in BoulderOneIn.
+        private static bool IsBoulderStart(int seed, int2 column, float chance)
+        {
+            return VoxelHash.Uniform(seed, column.x, 0, column.y, RockSalt) < chance
+                   && VoxelHash.Hash(seed, column.x, 0, column.y, RockSalt + 2) % (uint)BoulderOneIn == 0u;
         }
 
         // How many columns the cluster starting at a column covers: 0 when none starts there.
         private static int ClusterSize(int seed, int2 column, float chance)
         {
             if (VoxelHash.Uniform(seed, column.x, 0, column.y, RockSalt) >= chance)
+            {
+                return 0;
+            }
+            // A boulder start isn't also a small rock cluster.
+            if (IsBoulderStart(seed, column, chance))
             {
                 return 0;
             }

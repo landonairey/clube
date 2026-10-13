@@ -44,7 +44,7 @@ MonoBehaviour:
       baseMaterial: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
       steepAngle: 35
       steepMinHeight: 24
-      rock: {fileID: 11400000, guid: 0973106d156e276488793d7f6a916724, type: 2}
+      rock: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
       rockChance: 0.004
       clay: {fileID: 11400000, guid: b167c5abf07b4be419155d7e54a546e6, type: 2}
       clayCellSize: 24

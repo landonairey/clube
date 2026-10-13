@@ -139,13 +139,42 @@ namespace Clube.Core.Tests
                         }
                         rocks++;
                         float depth = generator.Height(x * Voxel, z * Voxel) - y * Voxel;
-                        Assert.That(depth, Is.LessThan(0f).And.GreaterThanOrEqualTo(-Voxel - 1e-4f), $"{sample} sits just above the surface");
+                        int rise = ChunkFillKernel.RockRise(0, new int2(x, z), layers.RockChance);
+                        Assert.That(depth, Is.LessThan(0f).And.GreaterThanOrEqualTo(-Voxel * rise - 1e-4f), $"{sample} sits just above the surface, within its column's rise");
                         Assert.AreEqual(1f, chunk.GetDensity(sample), 1e-6f, $"{sample} is solid");
                         Assert.IsTrue(ChunkFillKernel.IsRockColumn(0, new int2(x, z), layers.RockChance), $"{sample}'s column has a rock");
                     }
                 }
             }
             Assert.Greater(rocks, 0, "at 5% a column, an 8x8 chunk should have rocks");
+        }
+
+        [Test]
+        public void Boulders_AreRoughlyOneRockInTen_AndRiseAboveASmallRock()
+        {
+            int starts = 0;
+            int boulders = 0;
+            int tallest = 0;
+            for (int z = -200; z < 200; z++)
+            {
+                for (int x = -200; x < 200; x++)
+                {
+                    var column = new int2(x, z);
+                    int rise = ChunkFillKernel.RockRise(3, column, 0.05f);
+                    tallest = System.Math.Max(tallest, rise);
+                    if (rise == ChunkFillKernel.BoulderRise)
+                    {
+                        boulders++;
+                    }
+                    if (rise == 1 && ChunkFillKernel.IsRockColumn(3, column, 0.05f))
+                    {
+                        starts++;
+                    }
+                }
+            }
+            Assert.AreEqual(ChunkFillKernel.BoulderRise, tallest);
+            Assert.Greater(boulders, 0, "Some columns are a boulder's middle.");
+            Assert.Greater(starts, boulders, "Small rocks are the common kind.");
         }
     }
 }
