@@ -31,6 +31,10 @@ namespace Clube.Core
         private readonly Dictionary<Vector3Int, Chunk> loaded = new Dictionary<Vector3Int, Chunk>();
         private readonly Dictionary<Vector3Int, Chunk> editedUnloaded = new Dictionary<Vector3Int, Chunk>();
         private readonly HashSet<Vector3Int> edited = new HashSet<Vector3Int>();
+
+        // Loaded chunks that became dirty since they were last collected (CollectDirty); a chunk may
+        // have been cleaned since, so readers check.
+        private readonly HashSet<Vector3Int> dirty = new HashSet<Vector3Int>();
         private readonly List<Vector3Int> scratchChunks = new List<Vector3Int>();
         private readonly List<(Chunk Chunk, Vector3Int Coord, float Entry)> raycastCandidates =
             new List<(Chunk, Vector3Int, float)>();
@@ -131,7 +135,34 @@ namespace Clube.Core
         public void Add(Vector3Int coord, Chunk chunk)
         {
             loaded.Add(coord, chunk);
+            chunk.BecameDirty = _ => dirty.Add(coord);
+            if (chunk.IsDirty)
+            {
+                dirty.Add(coord);
+            }
             CopyBordersFromEditedNeighbours(coord, chunk);
+        }
+
+        /// <summary>
+        /// Adds every loaded chunk that is dirty now to <paramref name="into"/> (cleared first), and
+        /// forgets the ones cleaned since they were noted: what needs meshing, found without
+        /// scanning every loaded chunk.
+        /// </summary>
+        public void CollectDirty(List<Vector3Int> into)
+        {
+            into.Clear();
+            foreach (Vector3Int coord in dirty)
+            {
+                if (loaded.TryGetValue(coord, out Chunk chunk) && chunk.IsDirty)
+                {
+                    into.Add(coord);
+                }
+            }
+            if (into.Count != dirty.Count)
+            {
+                dirty.Clear();
+                dirty.UnionWith(into);
+            }
         }
 
         /// <summary>
@@ -163,6 +194,8 @@ namespace Clube.Core
                 return;
             }
             loaded.Remove(coord);
+            dirty.Remove(coord);
+            chunk.BecameDirty = null;
             if (edited.Contains(coord))
             {
                 editedUnloaded[coord] = chunk;
@@ -185,6 +218,7 @@ namespace Clube.Core
                 chunk.Release();
             }
             loaded.Clear();
+            dirty.Clear();
             editedUnloaded.Clear();
             edited.Clear();
         }

@@ -69,6 +69,9 @@ namespace Clube.Core
         /// <summary>Chunks generating now, or generated and waiting to be taken.</summary>
         public int GeneratingCount => generating.Count + generated.Count;
 
+        /// <summary>Generation jobs running now: what the streamer's job limit counts. Chunks known without a job don't.</summary>
+        public int GenerationJobsRunning => generating.Count;
+
         /// <summary>Meshes building now, or built and waiting to be taken.</summary>
         public int MeshingCount => meshing.Count + meshed.Count;
 
@@ -109,24 +112,38 @@ namespace Clube.Core
         // ---- Generation -------------------------------------------------------------------
 
         /// <summary>
-        /// Starts generating a chunk. One wholly above the surface is all air and is ready at
-        /// once, without a job.
+        /// Starts generating a chunk. One wholly above the surface is all air, and one buried
+        /// deeper than the surface layers with no ore or tree reaching it is all base rock; both
+        /// are ready at once, without a job. Returns false, starting nothing but its column's
+        /// heights, while a heightfield chunk waits for those heights: call again later.
         /// </summary>
-        public void StartGeneration(Vector3Int coord)
+        public bool StartGeneration(Vector3Int coord)
         {
             if (IsGenerating(coord))
             {
-                return;
+                return true;
             }
 
             // Cancelled but still running (the focus went away and came back): the same chunk, so keep it.
             if (generating.TryGetValue(coord, out GenerationTask running))
             {
                 running.Cancelled = false;
-                return;
+                return true;
             }
 
-            var task = new GenerationTask { Coord = coord, Grid = ChunkSampleGrid.ForChunk(grid, coord) };
+            var chunkGrid = ChunkSampleGrid.ForChunk(grid, coord);
+            ColumnHeights column = null;
+            if (generator is HeightfieldGenerator columnHeights)
+            {
+                // Knowing the column first lets most chunks (air above, rock below) skip the fill job.
+                column = ColumnFor(new Vector2Int(coord.x, coord.z), chunkGrid.BorderedColumns, columnHeights);
+                if (!column.Job.IsCompleted)
+                {
+                    return false;
+                }
+            }
+
+            var task = new GenerationTask { Coord = coord, Grid = chunkGrid };
             task.Trees = ChunkGenerator.CollectTrees(trees, task.Grid, Allocator.Persistent);
             if (generator == null || (task.Trees.Length == 0 && IsAboveSurface(coord, task.Grid)))
             {
@@ -134,14 +151,24 @@ namespace Clube.Core
                 task.Air = true;
                 generated.Enqueue(task);
                 generatedCoords.Add(coord);
-                return;
+                return true;
+            }
+
+            task.Ores = ChunkGenerator.CollectOres(ores, task.Grid, Allocator.Persistent);
+            if (column != null && task.Trees.Length == 0 && task.Ores.Length == 0 && IsBuried(task.Grid, column))
+            {
+                task.Trees.Dispose();
+                task.Ores.Dispose();
+                task.Solid = true;
+                generated.Enqueue(task);
+                generatedCoords.Add(coord);
+                return true;
             }
 
             task.Output = ChunkFillOutput.Allocate(task.Grid.Length, fillSettings.Format, Allocator.Persistent);
-            task.Ores = ChunkGenerator.CollectOres(ores, task.Grid, Allocator.Persistent);
             if (generator is HeightfieldGenerator heightfield)
             {
-                task.Column = ColumnFor(new Vector2Int(coord.x, coord.z), task.Grid.BorderedColumns, heightfield);
+                task.Column = column ?? ColumnFor(new Vector2Int(coord.x, coord.z), task.Grid.BorderedColumns, heightfield);
                 task.Column.Users++;
                 task.Handle = ChunkGenerator.ScheduleFromColumns(
                     task.Column.Heights, task.Column.Range, task.Grid, fillSettings, task.Ores, task.Trees, task.Output, task.Column.Job);
@@ -151,6 +178,7 @@ namespace Clube.Core
                 task.Handle = ChunkGenerator.Schedule(generator, task.Grid, fillSettings, task.Ores, task.Trees, task.Output);
             }
             generating.Add(coord, task);
+            return true;
         }
 
         /// <summary>Drops a chunk's generation (it left the streamed area); its job finishes and its result is thrown away.</summary>
@@ -188,7 +216,9 @@ namespace Clube.Core
                 }
                 generatedCoords.Remove(task.Coord);
                 coord = task.Coord;
-                chunk = task.Air ? AirChunk(task.Grid) : ChunkGenerator.FromOutput(task.Grid, task.Output, createStorage);
+                chunk = task.Air ? AirChunk(task.Grid)
+                    : task.Solid ? RockChunk(task.Grid)
+                    : ChunkGenerator.FromOutput(task.Grid, task.Output, createStorage);
                 task.Dispose();
                 return true;
             }
@@ -481,6 +511,22 @@ namespace Clube.Core
             }
         }
 
+        // A chunk whose top is deeper below its lowest column than the surface layers (and the density
+        // ramp, and clay lenses) reach: every sample is solid base material. Ores and trees are
+        // checked by the caller.
+        private bool IsBuried(ChunkSampleGrid chunkGrid, ColumnHeights column)
+        {
+            LayerTable layers = fillSettings.Layers;
+            float surfaceLayers = Mathf.Max(TerrainDensity.RampHalfWidth, Mathf.Max(layers.BandEnd, layers.ClayDepth));
+            return chunkGrid.Top <= column.Lowest - surfaceLayers;
+        }
+
+        private Chunk RockChunk(ChunkSampleGrid chunkGrid)
+        {
+            var sampleCount = new Vector3Int(chunkGrid.SampleCount.x, chunkGrid.SampleCount.y, chunkGrid.SampleCount.z);
+            return Chunk.Uniform(sampleCount, 1f, fillSettings.Layers.Base, createStorage);
+        }
+
         private Chunk AirChunk(ChunkSampleGrid chunkGrid)
         {
             ChunkFillSummary air = ChunkFillKernel.AllAir(fillSettings.Layers);
@@ -567,6 +613,9 @@ namespace Clube.Core
             /// <summary>Known to be all air without a job: nothing allocated.</summary>
             public bool Air;
 
+            // Buried below the surface layers with nothing in it: all base rock, no job (IsBuried).
+            public bool Solid;
+
             public override void OnFinished(int frame)
             {
                 if (Column != null)
@@ -619,6 +668,16 @@ namespace Clube.Core
             {
                 Heights = new NativeArray<float>(length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
                 Range = new NativeArray<float2>(1, Allocator.Persistent);
+            }
+
+            /// <summary>The lowest column; only read once <see cref="Job"/> is complete.</summary>
+            public float Lowest
+            {
+                get
+                {
+                    Job.Complete();
+                    return Range[0].x;
+                }
             }
 
             /// <summary>The highest column; only read once <see cref="Job"/> is complete.</summary>

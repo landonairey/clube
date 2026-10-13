@@ -112,6 +112,12 @@ namespace Clube.Core
         private StreamingSettings settings;
 
         private readonly List<Vector3Int> wanted = new List<Vector3Int>();
+
+        // The world's dirty chunks, collected each frame (World.CollectDirty).
+        private readonly List<Vector3Int> dirtyScratch = new List<Vector3Int>();
+
+        // Wanted chunks that came up before their column's heights were ready (ChunkPipeline.StartGeneration).
+        private readonly List<Vector3Int> waitingForColumns = new List<Vector3Int>();
         private readonly HashSet<Vector3Int> wantedSet = new HashSet<Vector3Int>();
         private readonly HashSet<Vector3Int> meshedOnce = new HashSet<Vector3Int>();
         private readonly List<Vector3Int> scratch = new List<Vector3Int>();
@@ -200,8 +206,12 @@ namespace Clube.Core
             phases.Poll = Lap();
 
             Vector3Int centre = world.Grid.WorldToChunk(focus);
-            UpdateWanted(centre);
-            UnloadUnwanted(centre);
+            // Chunks only leave the wanted area when it changes; between changes, AddGenerated drops
+            // late arrivals, so there's no need to scan every loaded chunk each frame.
+            if (UpdateWanted(centre))
+            {
+                UnloadUnwanted(centre);
+            }
             phases.Area = Lap();
 
             // Meshes first, with half the budget: they change what's on screen. Each stage takes at
@@ -239,11 +249,12 @@ namespace Clube.Core
         public void RebuildEdited(Vector3 focus)
         {
             scratch.Clear();
-            foreach (KeyValuePair<Vector3Int, Chunk> entry in world.Chunks)
+            world.CollectDirty(dirtyScratch);
+            foreach (Vector3Int dirtyCoord in dirtyScratch)
             {
-                if (entry.Value.IsDirty && meshedOnce.Contains(entry.Key))
+                if (meshedOnce.Contains(dirtyCoord))
                 {
-                    scratch.Add(entry.Key);
+                    scratch.Add(dirtyCoord);
                     if (scratch.Count >= Mathf.Max(1, settings.MaxEditsPerFrame))
                     {
                         break;
@@ -334,6 +345,7 @@ namespace Clube.Core
                 ChunkUnloaded?.Invoke(coord);
             }
             meshedOnce.Clear();
+            waitingForColumns.Clear();
         }
 
         /// <summary>
@@ -347,11 +359,12 @@ namespace Clube.Core
 
         // The wanted area only changes when the focus crosses into another chunk or the
         // distance changes, so it's rebuilt then, nearest chunks first.
-        private void UpdateWanted(Vector3Int centre)
+        // True when the wanted area changed (and so chunks may have left it).
+        private bool UpdateWanted(Vector3Int centre)
         {
             if (wantedCentre == centre && wantedDistance == settings.RenderDistance)
             {
-                return;
+                return false;
             }
             wantedCentre = centre;
             wantedDistance = settings.RenderDistance;
@@ -365,6 +378,7 @@ namespace Clube.Core
             wantedSet.Clear();
             wantedSet.UnionWith(wanted);
             loadCursor = 0;
+            return true;
         }
 
         // Chunks just outside the wanted area are kept (one chunk of slack), so walking back
@@ -410,12 +424,32 @@ namespace Clube.Core
             }
         }
 
-        // Nearest first, past the chunks already loaded or on their way (the cursor), up to the job limit.
+        // Nearest first, past the chunks already loaded or on their way (the cursor), up to the job
+        // limit. Chunks the pipeline knows without a job (air above the surface, rock below it) don't
+        // count against the limit, only against the frame budget; chunks whose column heights
+        // aren't ready yet wait and go first next frame.
         private void StartGenerating()
         {
             int limit = MaxJobsInFlight;
-            while (loadCursor < wanted.Count && pipeline.GeneratingCount < limit)
+            for (int i = 0; i < waitingForColumns.Count && pipeline.GenerationJobsRunning < limit
+                            && (i < limit || Before(settings.FrameBudgetMilliseconds));)
             {
+                Vector3Int waiting = waitingForColumns[i];
+                if (!wantedSet.Contains(waiting) || world.IsLoaded(waiting) || pipeline.StartGeneration(waiting))
+                {
+                    waitingForColumns.RemoveAt(i);
+                }
+                else
+                {
+                    i++;
+                }
+            }
+            // At least a job limit's worth of starts a frame, as before; more while the budget lasts.
+            int started = 0;
+            while (loadCursor < wanted.Count && pipeline.GenerationJobsRunning < limit
+                   && (started < limit || Before(settings.FrameBudgetMilliseconds)))
+            {
+                started++;
                 Vector3Int coord = wanted[loadCursor];
                 loadCursor++;
                 if (world.IsLoaded(coord) || pipeline.IsGenerating(coord))
@@ -427,7 +461,10 @@ namespace Clube.Core
                     ChunkLoaded?.Invoke(coord);
                     continue;
                 }
-                pipeline.StartGeneration(coord);
+                if (!pipeline.StartGeneration(coord))
+                {
+                    waitingForColumns.Add(coord);
+                }
             }
         }
 
@@ -450,17 +487,27 @@ namespace Clube.Core
         private void StartMeshing()
         {
             int limit = MaxJobsInFlight;
+            if (pipeline.MeshingCount >= limit)
+            {
+                return;
+            }
             ChunkMeshSettings current = meshSettings();
-            foreach (Vector3Int coord in wanted)
+
+            // The world's dirty chunks in the wanted area, nearest first.
+            world.CollectDirty(dirtyScratch);
+            dirtyScratch.RemoveAll(coord => !wantedSet.Contains(coord) || pipeline.IsMeshing(coord));
+            if (wantedCentre.HasValue)
+            {
+                Vector3Int centre = wantedCentre.Value;
+                dirtyScratch.Sort((a, b) => DistanceSquared(a, centre).CompareTo(DistanceSquared(b, centre)));
+            }
+            foreach (Vector3Int coord in dirtyScratch)
             {
                 if (pipeline.MeshingCount >= limit)
                 {
                     break;
                 }
-                if (!world.TryGetChunk(coord, out Chunk chunk) || !chunk.IsDirty || pipeline.IsMeshing(coord))
-                {
-                    continue;
-                }
+                Chunk chunk = world.Chunks[coord];
                 ChunkMeshSettings chunkSettings = ForChunk(current, coord);
                 if (HasNoSurface(chunk, chunkSettings))
                 {
@@ -623,6 +670,12 @@ namespace Clube.Core
             float dx = Mathf.Max(min.x - focus.x, 0f, focus.x - max.x);
             float dz = Mathf.Max(min.z - focus.z, 0f, focus.z - max.z);
             return Mathf.Sqrt(dx * dx + dz * dz);
+        }
+
+        private static int DistanceSquared(Vector3Int a, Vector3Int b)
+        {
+            Vector3Int d = a - b;
+            return d.x * d.x + d.y * d.y + d.z * d.z;
         }
 
         // Whether this frame's streaming has run for less than the given time so far.

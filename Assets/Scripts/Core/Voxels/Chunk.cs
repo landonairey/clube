@@ -27,6 +27,7 @@ namespace Clube.Core
         // Null while the chunk is uniform.
         private IVoxelStorage storage;
         private float uniformDensity;
+        private bool isDirty = true;
 
         /// <summary>Creates a chunk with flat-array storage and every density at 0 (empty).</summary>
         public Chunk(Vector3Int voxelCount)
@@ -92,7 +93,11 @@ namespace Clube.Core
         public VoxelMaterials Materials => materials;
 
         /// <summary>True when the densities or meshing inputs changed since the last rebuild.</summary>
-        public bool IsDirty { get; private set; } = true;
+        public bool IsDirty => isDirty;
+
+        // Told when a clean chunk becomes dirty, so the world can keep a set of dirty chunks
+        // instead of scanning them all (World.CollectDirty).
+        internal Action<Chunk> BecameDirty { get; set; }
 
         public float GetDensity(Vector3Int sample)
         {
@@ -134,7 +139,7 @@ namespace Clube.Core
 
             EnsureStorage();
             storage.SetDensity(sample.x, sample.y, sample.z, density);
-            IsDirty = true;
+            SetDirty();
         }
 
         public byte GetMaterial(Vector3Int sample)
@@ -151,7 +156,7 @@ namespace Clube.Core
             }
 
             materials.Set(sample.x, sample.y, sample.z, material);
-            IsDirty = true;
+            SetDirty();
         }
 
         /// <summary>
@@ -188,7 +193,7 @@ namespace Clube.Core
             {
                 materials.CopyFrom(output.Materials);
             }
-            IsDirty = true;
+            SetDirty();
         }
 
         /// <summary>Copies every density's byte into a mesh job's input. Needs <see cref="StoresBytes"/>.</summary>
@@ -227,13 +232,23 @@ namespace Clube.Core
         /// <summary>Requests a rebuild without changing densities, e.g. after the iso level changes.</summary>
         public void MarkDirty()
         {
-            IsDirty = true;
+            SetDirty();
         }
 
         /// <summary>Called by whatever rebuilt the chunk's mesh.</summary>
         public void MarkClean()
         {
-            IsDirty = false;
+            isDirty = false;
+        }
+
+        private void SetDirty()
+        {
+            if (isDirty)
+            {
+                return;
+            }
+            isDirty = true;
+            BecameDirty?.Invoke(this);
         }
 
         // A uniform chunk keeps no storage; a chunk given its storage (the labs) can't drop it.

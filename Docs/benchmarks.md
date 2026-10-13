@@ -615,3 +615,16 @@ mode and mesher and requires 16-bit indices; the panel says when a chunk size
 can pass the limit, and `WorldView` warns when that size runs on a GPU without
 32-bit indices. Labs can still try bigger chunks where 32-bit indices exist.
 M17 is done.
+
+## Streaming a fixed area without jobs for air and buried rock (2026-10-12)
+
+WorldLab's config: Landscape terrain, a 104 m square (25 × 25 chunk columns) of 40 layers of 4 m chunks, render distance 32, 3 ms frame budget, Editor with Burst. Measured by stepping `WorldStreamer` in an edit-mode script (10 ms sleep between frames for the workers).
+
+25,000 chunks: 18,086 air, 5,601 buried rock, 1,313 with a surface (1,013 renderers).
+
+| | Frames to settle | Time to settle | Streamer ms per idle frame |
+|---|--:|--:|--:|
+| Before: every non-air chunk a fill job, air known only once its column finished; full scans for unloading and dirty chunks | 707 | ~12 s | 5–8 |
+| Air and buried rock without a job, not counted against the job limit; unload scan only when the area changes; `World` keeps a dirty set | 111 | 2.2 s | 0.24 |
+
+The load was limited by job slots, not by the CPU: air chunks waiting on their column, and buried rock, each held a slot. The first frame still spends about 40 ms collecting and sorting the 25,000 wanted chunks.

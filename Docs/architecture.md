@@ -222,17 +222,23 @@ there, so walls show the underground while the chunk's data stays as generated.
 `WorldView.Update` → `WorldStreamer.Update(focus)`:
 
 1. **Poll**: finished jobs move to ready queues (cheap; nothing copied yet).
-2. **Area**: rebuild the wanted list when the focus crosses a chunk border
-   (precomputed offsets, no sort); unload what left it (renderers back to the
+2. **Area**: rebuild the wanted list when the focus crosses a chunk border or the
+   render distance changes (precomputed offsets, no sort); only then unload what left it (renderers back to the
    pool, unedited chunks' memory back to `VoxelArrayPool`).
 3. **Apply meshes** (up to half the frame budget): hand finished mesh data to
    renderers; a chunk's first surface takes a renderer from the pool.
 4. **Add chunks** (rest of the budget): copy finished generation results into
    new chunks and add them to the world.
 5. **Start generation**, nearest first, up to the in-flight limit (two jobs per
-   worker by default). A chunk wholly above its column's highest point is air
-   without a job.
-6. **Start meshing**: dirty chunks, nearest first; uniform ones need no job.
+   worker by default). Heightfield chunks wait for their column's heights (one
+   job per column); then a chunk wholly above the column's highest point is air,
+   and one buried deeper than the surface layers below its lowest point, with no
+   ore node or tree reaching it, is all base rock: both are made without a job
+   and don't count against the limit, only the frame budget. At WorldLab's 104 m
+   square and 40 layers that is 94% of the chunks.
+
+6. **Start meshing**: the world's dirty chunks (`World.CollectDirty`, kept as a
+   set, not scanned), nearest first; uniform ones need no job.
 7. **Colliders**: cook shapes in jobs (`Physics.BakeMesh`) for renderers within
    the collider radius; assign finished ones; drop shapes well outside it.
 8. **Flush**: start the scheduled jobs on the workers now.
@@ -352,10 +358,6 @@ it, and when it's done. None needs the big picture changed. Measure with
    aren't held to the frame budget (scheduling 38 jobs with their ore lookups and
    snapshots costs 1–2 ms on a busy frame). *Measure:* `StreamingStats.Phases`
    max over a load. *Done when:* p95 streamer time ≤ the budget + 0.5 ms.
-2. **Dirty set instead of scans.** `StartMeshing` walks the whole wanted list and
-   `RebuildEdited` the whole world every frame to find dirty chunks (fine at
-   2,500 chunks, not at 20,000). Have `World` record coordinates it dirtied.
-   *Done when:* both are O(dirty chunks).
 3. **Pool the pipeline's native buffers.** Each generation allocates a
    `ChunkFillOutput` and ore array, each mesh job a `ChunkMeshInput`
    (`Allocator.Persistent`). Keep a few per size and reuse them. *Measure:*
@@ -378,8 +380,9 @@ it, and when it's done. None needs the big picture changed. Measure with
    stroke ms at 8 voxels/m. *Done when:* ≥ 3× faster, `TerrainBrushTests` and
    `WorldTests` pass.
 7. **Load what the camera sees first.** `StreamingArea` orders by distance only.
-   Weight chunks in front of the camera ahead, and skip chunks below the surface
-   until they're needed for meshing a neighbour or an edit.
+   Weight chunks in front of the camera ahead. (Skipping the job for buried rock
+   is done; buried chunks that hold ore still run one, and could wait until a
+   neighbour or an edit needs them.)
 8. **Batch collider bakes and mesh uploads.** One `IJobParallelFor` over all mesh
    ids instead of a job per mesh; one `ApplyAndDisposeWritableMeshData` for
    several meshes. *Measure:* `colliders` and `apply` phases.
