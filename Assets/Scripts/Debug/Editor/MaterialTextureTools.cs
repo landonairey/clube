@@ -15,9 +15,32 @@ namespace Clube.Debug.Editor
     /// starting materials (grass, dirt, stone and the three ores in stone), and cracked and
     /// loose stages of stone and copper (GL3), until real art exists.</item>
     /// </list>
+    /// The texture array asset is generated, not tracked in git (it is over 50 MB): when the Editor
+    /// opens and a registry has none, it is built from the albedos.
     /// </summary>
     public static class MaterialTextureTools
     {
+        [InitializeOnLoadMethod]
+        private static void BuildMissingTextureArrays()
+        {
+            // Waits for the first import to finish, so the albedos are loaded.
+            EditorApplication.delayCall += () =>
+            {
+                if (EditorApplication.isPlayingOrWillChangePlaymode)
+                {
+                    return;
+                }
+                foreach (string guid in AssetDatabase.FindAssets("t:" + nameof(MaterialRegistry)))
+                {
+                    var registry = AssetDatabase.LoadAssetAtPath<MaterialRegistry>(AssetDatabase.GUIDToAssetPath(guid));
+                    if (registry != null && registry.Textures == null)
+                    {
+                        BuildTextureArray(registry);
+                    }
+                }
+            };
+        }
+
         private const string PlaceholderFolder = "Assets/Textures/Terrain";
         private const int PlaceholderSize = 128;
 
