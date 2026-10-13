@@ -54,6 +54,7 @@ namespace Clube.Game
         private PlayerInventory inventory;
         private Hotbar hotbar;
         private PlayerController player;
+        private PlayerParcels parcels;
         private GameObject preview;
         private PlaceableDefinition previewItem;
         private MaterialPropertyBlock properties;
@@ -114,6 +115,7 @@ namespace Clube.Game
             inventory = GetComponent<PlayerInventory>();
             hotbar = GetComponent<Hotbar>();
             player = GetComponent<PlayerController>();
+            parcels = GetComponent<PlayerParcels>();
             properties = new MaterialPropertyBlock();
         }
 
@@ -182,7 +184,8 @@ namespace Clube.Game
             Quaternion rotation = Quaternion.Euler(0f, yaw, 0f);
 
             ShowPreview(placeable, position, rotation, out Bounds bounds);
-            bool blocked = Blocked(bounds, rotation);
+            bool locked = parcels != null && !parcels.CanEdit(position);
+            bool blocked = locked || Blocked(bounds, rotation);
             properties.SetColor(BaseColorId, blocked ? blockedColor : clearColor);
             foreach (MeshRenderer part in preview.GetComponentsInChildren<MeshRenderer>())
             {
@@ -197,7 +200,8 @@ namespace Clube.Game
             aimedPosition = position;
             aimedRotation = rotation;
             CanPlace = !blocked;
-            hint = blocked ? $"Something is in the way of the {placeable.DisplayName.ToLowerInvariant()}" : $"B  Place {placeable.DisplayName.ToLowerInvariant()}    R  Rotate";
+            hint = locked ? "You don't own this land"
+                : blocked ? $"Something is in the way of the {placeable.DisplayName.ToLowerInvariant()}" : $"B  Place {placeable.DisplayName.ToLowerInvariant()}    R  Rotate";
             if (action != null && action.WasPressedThisFrame())
             {
                 TryPlace();

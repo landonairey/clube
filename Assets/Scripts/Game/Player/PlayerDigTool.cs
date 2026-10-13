@@ -55,6 +55,7 @@ namespace Clube.Game
         private float repeatRate = 5f;
 
         private PlayerController player;
+        private PlayerParcels parcels;
         private PlayerToolUser tools;
         private float nextApplyTime;
 
@@ -79,6 +80,7 @@ namespace Clube.Game
         private void Awake()
         {
             player = GetComponent<PlayerController>();
+            parcels = GetComponent<PlayerParcels>();
             tools = GetComponent<PlayerToolUser>();
         }
 
@@ -151,7 +153,7 @@ namespace Clube.Game
 
         private void Apply(BrushOperation operation)
         {
-            if (!HasTarget || (operation == BrushOperation.Add && PlaceBlocked))
+            if (!HasTarget || (operation == BrushOperation.Add && PlaceBlocked) || (parcels != null && !parcels.CanEdit(Target)))
             {
                 return;
             }

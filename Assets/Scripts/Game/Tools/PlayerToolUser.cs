@@ -44,6 +44,7 @@ namespace Clube.Game
         private readonly List<MinedSample> minedFrom = new List<MinedSample>();
         private PlayerController player;
         private PlayerInteractor interactor;
+        private PlayerParcels parcels;
         private float nextHitTime;
         private string brokenName;
         private float brokenUntil;
@@ -82,6 +83,7 @@ namespace Clube.Game
         {
             player = GetComponent<PlayerController>();
             interactor = GetComponent<PlayerInteractor>();
+            parcels = GetComponent<PlayerParcels>();
         }
 
         private void OnEnable()
@@ -141,6 +143,11 @@ namespace Clube.Game
             Reach = tool.ReachesWideOn(ground) ? tool.ImpactAround(aimed) : VoxelReach.Around(aimed, 1, false);
             HasReach = true;
             ToolStrike.FindTargets(worldView.World, Reach, worldView.Config.IsoLevel, targets);
+            // Locked land (GL42) is left alone: the tool digs right up to the border.
+            if (parcels != null)
+            {
+                targets.RemoveAll(sample => !parcels.CanEditSample(sample));
+            }
         }
 
         // On the press, then at the tool's rate while held.

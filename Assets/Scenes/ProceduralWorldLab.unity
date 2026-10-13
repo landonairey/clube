@@ -986,6 +986,8 @@ GameObject:
   - component: {fileID: 1697135580}
   - component: {fileID: 1697135581}
   - component: {fileID: 1697135582}
+  - component: {fileID: 1697135584}
+  - component: {fileID: 1697135583}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1410,6 +1412,36 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.StumpWorktops
   recipes:
   - {fileID: 11400000, guid: 4718a79fc1c2a81438a065cf5434da28, type: 2}
+--- !u!114 &1697135583
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b25b70e224b041d4bbdb9d811f6ad388, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.ParcelBorders
+  material: {fileID: 2100000, guid: 7306c3d226f246045a04b0c391c5dfd0, type: 2}
+  color: {r: 1, g: 0.82, b: 0.3, a: 0.18}
+--- !u!114 &1697135584
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 90007a2bfaf973f4bb436b5a84955e35, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerParcels
+  worldView: {fileID: 1350119460}
+  sizeInChunks: 8
+  firstPrice: 100
+  priceStep: 100
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

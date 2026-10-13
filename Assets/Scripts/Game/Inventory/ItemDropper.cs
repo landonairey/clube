@@ -45,6 +45,7 @@ namespace Clube.Game
         private PlayerInventory inventory;
         private Hotbar hotbar;
         private PlayerController player;
+        private PlayerParcels parcels;
         private float pressedAt;
         private float owed;
         private PilePour pour;
@@ -63,6 +64,7 @@ namespace Clube.Game
             inventory = GetComponent<PlayerInventory>();
             hotbar = GetComponent<Hotbar>();
             player = GetComponent<PlayerController>();
+            parcels = GetComponent<PlayerParcels>();
         }
 
         private void OnEnable()
@@ -132,6 +134,12 @@ namespace Clube.Game
             if (!into.Started)
             {
                 AimPoint(out point);
+            }
+            // Nothing goes onto locked land (GL42).
+            if (parcels != null && !parcels.CanEdit(worldView.transform.TransformPoint(point)))
+            {
+                Refused?.Invoke(stack.Item);
+                return 0;
             }
             PileSettings pile = PileSettings.For(material, new BuildGrid(worldView.Config.BuildCellSize));
             int placed = TerrainPile.Pour(worldView.World, ref into, point, material.Id, Mathf.Min(count, stack.Count), worldView.Config.IsoLevel, pile);
