@@ -145,7 +145,8 @@ namespace Clube.Game
             }
 
             InputAction action = buildAction != null ? buildAction.action : null;
-            if (hotbar.SelectedStack.Item is PlaceableDefinition placeable && placeable.Prefab != null)
+            // Aimed at something already placed, Build's hold picks it up even with another placeable in hand.
+            if (hotbar.SelectedStack.Item is PlaceableDefinition placeable && placeable.Prefab != null && Aimed() == null)
             {
                 Build(placeable, action);
                 return;
