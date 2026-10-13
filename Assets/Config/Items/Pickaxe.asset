@@ -22,5 +22,5 @@ MonoBehaviour:
   impactShape: 1
   wideOn: 2
   power: 1.5
-  maxHits: 100
+  maxHits: 200
   hitsPerSecond: 2.5
