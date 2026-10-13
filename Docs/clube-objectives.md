@@ -388,6 +388,20 @@ Volumes: one mined sample is 1 unit of volume; items carry a unit volume, and st
 - [x] **GL34** `Core + Config + Game` Clay and bricks *(first pass of X2 for clay, HF2's bricks)*: clay deposits at the surface, flush with the terrain and reaching a little way down; clay piles in build cells like rock. Clay dropped on the ground dries into brick after 2 in-game days, or is fired into brick in the furnace. *(Done: Clay (id 13, hardness 0.8, piles in build cells, `VoxelMaterial.DriesInto` Brick after 2 days) and Brick (id 14, hardness 2.5) materials, items, textures and icons. `TerrainLayers.Clay` (cell size 24 m, chance 0.3, radius 3 m, depth 0.75 m): `ChunkFillKernel.ClayDepthAt` gives a lens per cell and only the material changes. `GroundDrying` (Core) tracks samples a drop placed (`TerrainPile.LastFilled`, `ItemDropper.Piled`) and turns those still there; `GameClock` (Game, 20-minute days, a time scale for testing) and `DroppedGroundDrying` on the world labs' World. Fire brick: 1 clay → 1 brick in 4 s. Drying isn't saved yet (S2).)*
 - [x] **GL35** `Core + Game` Furnace fuel *(first pass of HF1)*: the furnace burns fuel from a fuel slot. Wood burns long, leaves burn out fast; it pulls the next fuel item into its burn-down bar as long as there is something to work. *(Done: `ItemDefinition.BurnSeconds` (wood 20 s, leaves 2 s); a `CraftingStation` made with `burnsFuel` has a `Fuel` slot and works time recipes only while burning, lighting the next item when the last burns out and there's work; the fire burns down when idle. `CraftingStation.Load` sends fuel to the fuel slot unless a recipe takes it. The furnace prefab burns fuel; its screen has the fuel slot and an orange burn-down bar; picking a furnace up returns its fuel.)*
 
+### Seventh pass *(added 2026-10-12, asked during play on 2026-10-12)*
+- [x] **GL36** `Core + Config + Game` Stump worktop *(first pass of WS1)*: a felled tree leaves a stump, a much harder material that needs a later tool upgrade to remove, and the stump is the first crafting worktop: wood chopped from the tree crafts into sticks there. *(Done 2026-10-12: Stump material (id 15, hardness 100000, no drop) stamped as the trunk's foot, `TreeGeneration.StumpHeight` 0.75 m (3 voxels at 4/m); `VoxelMaterial.IsWorktop`; `StumpWorktops` (Game) turns the connected worktop samples under the crosshair into a `StationObject` (new `StationKind.Worktop`) that keeps its contents; Whittle sticks: 1 wood → 4 sticks in 2 strikes.)*
+- [x] **GL37** `Core + Game` Tool durability *(first pass of CR5)*: the pickaxe breaks after a number of landed swings. *(Done: `ItemStack.Wear` follows a tool between slots, `Inventory.Wear` empties the slot at `ToolDefinition.MaxHits` (pickaxe 200, shovel 100, hand never); the crosshair shows hits left and slots a wear bar.)*
+- [x] **GL38** `Core + Game` A merchant at the world origin that sells tools *(first pass of TR4's buying)*: one build square at chunk (0, 0) is levelled and a merchant table stands on it, selling a replacement pickaxe; prices can be per lot of units (1 coin per 1000 dirt). *(Done: `MerchantSite` levels the square through `World.SetDensity` once the column loads; `MerchantTable.Offers` (pickaxe and shovel, 100 coins); `ItemPrice.Units`.)*
+- [x] **GL39** `Core + Game` Shovel, and reach by ground *(first pass of TL2, TL4)*: the shovel digs soft ground (grass, dirt, clay, leaves) with the pickaxe's wide reach and hits one voxel on stone and ore; the pickaxe is the reverse. Both have placeholder icons. *(Done: `VoxelMaterial.IsSoft`, `ToolDefinition.WideOn` (Anything, Soft, Hard) and `ToolStrike.AimedMaterial`; the Shovel item; icons painted by *Clube → Items → Generate icons*.)*
+- [x] **GL40** `Core + Game` Selling by the item *(refines GL14)*: Sell 1 or the stack, each showing its payout; prices can be by volume (copper ingot 1 coin per 4 volume), parts of a coin add up in the wallet, and the merchant buys worn tools for less (50 coins new). *(Done: `PriceList.PriceOf`, `ItemPrice.ByVolume`, `Wallet.EarnFraction`; the lab panel's Player section has a dev button for 100 coins.)*
+- [x] **GL41** `Core + Config` Two copper ores *(first pass of PR2)*: chalcopyrite (brass-yellow) and malachite (brass-green) replace copper ore; malachite has twice the copper by volume; both smelt into the copper bun. *(Done: chalcopyrite is the old copper family renamed (ids 3, 8, 9), malachite ids 16–18; grade 12–30% vs 24–60%; one node per cell each; both smelt recipes in the furnace. Species are named from the start; hiding them until alchemy (PR2) is still open.)*
+
+Also in this pass, without IDs: render distance works at run time in both world labs (up to 64 chunks; the fixed WorldLab streams within its square), coyote time and hold-to-repeat jumping, surface rocks are stone with about one in ten a boulder too big to lift, holding B picks up a placed station even with a placeable in hand, and the generated material texture array is no longer tracked in git.
+
+### Eighth pass *(added 2026-10-12, from `Docs/20261012 clube-backlog.md` — next)*
+- [ ] **GL42** `Core + Game` Pay to unlock sections of the world *(first pass of EC7)*: the world is divided into sections of chunks; the player starts in one and pays coins to unlock a neighbouring section for digging and building. Open: section size (a square of chunk columns, matching WorldLab's fixed area?), how locked sections show (walls like `SealEdges`, a tint, or a fence), whether they still stream in to be seen, and how the price grows.
+- [ ] **GL43** `Lab + Game` Cheat commands: give the player any amount of coins and of any item, from a command line or the lab panel. Kept out of the `Game` scene's release build (A10). *(Started 2026-10-12: the lab panel's dev button for 100 coins.)*
+
 ---
 
 ## Chapter 4 — Procedurally generated chunks (`Game`) *(draft — to be expanded)*
@@ -427,6 +441,7 @@ Materials that mesh differently: smooth soil, faceted rock, square chiselled blo
 - [ ] **MX3** `Core + Lab` Voronoi deep rock: rare deep-earth materials mesh as Voronoi cells within the build grid (M23) instead of marching cubes. A transition helper blends the marching cubes surface into the cells: only slightly gradual, never gapped. Cells seeded per build cell from the world seed (like O2), so borders agree. Related: P14 (cellular noise).
 - [ ] **MX4** `Core + Lab` Large-voxel veins and crystals: rare formations whose material uses marching voxels 2× or 4× the normal size, with a seam helper where they meet normal voxels. The same problem as P7's level-of-detail seams (Transvoxel or skirts): solve it once for both.
 - [ ] **MX5** `Lab` Trees from marching voxels: test building trees in the marching voxel grid, with finer edge steps than the midpoint (possibly all 255, the full 8 bits that `FlatByte` already stores, MX1), and judge the look and cost against a separate tree mesh. Feeds PK7. *(2026-10-08: GL30 builds them from marching voxels with the interpolated edges the world uses; at 0.25 m voxels a branch needs a radius of about a voxel to stay whole. The comparison against a separate tree mesh is still open.)*
+- [ ] **MX6** `Core + Game` *(added 2026-10-12)* Precise placement: once the player has precision and measurement tools (brass instruments, ML7), placed material can go down as full voxel cubes, so some chunks (or regions of them) mesh cubes instead of marching cubes. MX2's square-edged voxels, reached by placing rather than chiselling; the same no-gaps rule applies where cube regions meet the smooth surface.
 
 ### Lean game world *(added 2026-10-05; final section of Chapter 4)*
 Once the player walks around a world (3B), build a new world scene that is not a lab: the architectural choices the labs compared are baked in and can no longer be changed at run time. Fixing them lets the code drop the variant switches, lab hooks and copies the labs need, so it's simpler and faster. This is A13 made concrete, and the `Game` scene the later chapters build on.
@@ -471,9 +486,9 @@ Features that make the procedural world feel like a game.
 **Done when:** the player can mine materials into the inventory, rearrange them, place terrain from them, quit, and load back into the same world with edits and inventory intact.
 
 ### 5D — More materials *(placeholder)*
-- [ ] **X1** `Core` Additional ore types (e.g. tin, iron, lead, coal) — new entries in the M9 registry, likely driven by what the tech tree needs.
+- [ ] **X1** `Core` Additional ore types (e.g. tin, iron, lead, coal) — new entries in the M9 registry, likely driven by what the tech tree needs. *(2026-10-12: tin first, as an early, low-skill ore (ML4); bauxite nodes for alumina (HF8). The full list is the 6H ladder.)*
 - [ ] **X2** `Core` Alternative aggregates (e.g. sand, gravel, clay, granite, limestone), with rules for where each appears.
-- [ ] **X3** `Core` *(backlog)* Gemstones as a drop chance from certain host ores, with rarity set the same way as O10. Feeds jewelry crafting (CR8).
+- [ ] **X3** `Core` *(backlog)* Gemstones as a drop chance from certain host ores, with rarity set the same way as O10. Feeds jewelry crafting (CR8). *(2026-10-12: gemstone tiers and organic gems in ML17.)*
 
 ### 5E — HUD *(backlog)*
 Other screens are already planned elsewhere: inventory (N2), settings and key binds (P10), skill tree (SK4), tech tree (T3).
@@ -506,11 +521,23 @@ Tools act on marching voxel **corners** (density samples), not on a world-space 
   | Axe, hatchet, saw | — | Wood | Woodcutting (PK7, MX5) |
 
 - [ ] **TL3** `Game` Tool cursor: a soft glow on the corners within the tool's impact; the chisel's cursor outlines the whole voxel. First pass: GL4.
-- [ ] **TL4** `Core` Tool efficiency: tool against material (hardness, M9) sets how much each use does, so the hand is slow on stone and the rake does nothing to it. Ties to MF1 (tool upgrades) and CR3 (better metals).
+- [ ] **TL4** `Core` Tool efficiency: tool against material (hardness, M9) sets how much each use does, so the hand is slow on stone and the rake does nothing to it. Ties to MF1 (tool upgrades) and CR3 (better metals). *(2026-10-12: first pass GL39, the shovel and pickaxe reaching wide only on soft or hard ground.)*
 
 ### 5H — Soft ground *(added 2026-10-06; promotes PK9)*
 - [ ] **SM1** `Core + Lab` Stability: soft materials get a stability from the voxels beneath them; stone is highly stable, sand barely. After an edit, unstable edges slump (move density and material downhill through the A7 path, M5) until every sample is above its material's threshold, like an angle of repose. Answers PK9's question of what "unsupported" means for densities. A lab view colours samples by stability.
 - [ ] **SM2** `Core + Game` Dropping material: material poured from a bucket or shovel at a target surface falls with gravity and settles until stable (SM1). Pairs with I6 (placing uses inventory material).
+
+### 5I — Workstations *(added 2026-10-12)*
+Stations grow from what's lying around: a stump, then a large stone, then a bench the player builds. GL36's stump is the first pass.
+
+- [ ] **WS1** `Core + Game` Workstation ladder: the tree stump is the first worktop (GL36); a large stone comes next, for sharpening tools, breaking rock and hammering on; after that a wood plank workbench. Each unlocks its own recipes.
+- [ ] **WS2** `Core` Tools kept at the worktop: tools crafted there are stored on it, and the better their quality, the better what's crafted there (CR3). A grind wheel made with high-quality tools sharpens better still.
+- [ ] **WS3** `Core` Hidden workplace bonus: a station on flat ground works better, and better again on a hard floor (stone, brick). Measured from the samples under it; not shown to the player.
+- [ ] **WS4** `Core + Game` Stations built into the terrain: equipment and work areas are made of material in the terrain mesh itself (a stone furnace is cobblestone on the ground), like the stump (GL36, `VoxelMaterial.IsWorktop`), rather than separate objects (GL23). Replaces placed prefabs for stations that suit it.
+- [ ] **WS5** `Core + Game` Protected stations: digging leaves a station's samples alone; the player clicks to unlock one, which removes E (use) from it, and can then dig it up for its raw materials.
+
+### 5J — Achievements *(added 2026-10-12)*
+- [ ] **AC1** `Game` *"Well, that's the hard way to do that"*: build a furnace by placing its voxels by hand in exactly the right places (WS4) and light it.
 
 ---
 
@@ -545,7 +572,7 @@ Prospecting reads the same probability field that ore generation uses (O1–O4).
 Replace the usual "1 ore in, 1 bar out" with a short chain loosely based on the real thing.
 
 - [ ] **PR1** Research pass: pick 3–5 steps worth making gameplay from crushing → washing/sorting → roasting → smelting (with fuel and flux) → refining.
-- [ ] **PR2** `Core` Mineral identity: each ore material has a true mineral species (e.g. copper ore as **malachite** or **chalcopyrite**). Before the alchemy unlock the player just sees "copper ore"; after it, the species is revealed. The true identity is always stored; only the display depends on knowledge. (Requires M9 registry to support sub-species.)
+- [ ] **PR2** `Core` Mineral identity: each ore material has a true mineral species (e.g. copper ore as **malachite** or **chalcopyrite**). Before the alchemy unlock the player just sees "copper ore"; after it, the species is revealed. The true identity is always stored; only the display depends on knowledge. (Requires M9 registry to support sub-species.) *(2026-10-12: GL41 splits copper into chalcopyrite and malachite as separate materials, named from the start; hiding the species is still to do.)*
 - [ ] **PR3** `Core` Species-specific routes: e.g. malachite smelts fairly directly with charcoal, while chalcopyrite needs roasting first to drive off sulphur. Knowing the species lets the player pick the better route and get higher yield.
 - [ ] **PR4** `Core` Quality and yield as outputs of process choices (temperature, fuel, flux, number of refining passes), feeding into crafted item quality.
 - [ ] **PR5** Precious metal refining: panning for gold, and cupellation to separate silver from lead ores (needs lead from 5D).
@@ -556,10 +583,22 @@ Replace the usual "1 ore in, 1 bar out" with a short chain loosely based on the 
 Furnace temperature is the key that unlocks metals.
 
 - [ ] **HF1** `Core` Fuel types with burn temperatures: wood → charcoal (charcoal kiln / clamp) → later coal or coke. *(First pass 2026-10-09: GL35, burn time only.)*
-- [ ] **HF2** `Core` Furnace tiers: open fire / pit → clay-built furnace → fired brick furnace (clay → bricks via a kiln).
+- [ ] **HF2** `Core` Furnace tiers: open fire / pit → clay-built furnace → fired brick furnace (clay → bricks via a kiln). *(2026-10-12: the ladder is now loose stone → clay → brick (sand + clay) → silica brick → ceramic (alumina + silica), each hotter and more durable; see HF7.)*
 - [ ] **HF3** `Core` Airflow: hand bellows → water-powered bellows (6E) for higher temperatures.
 - [ ] **HF4** `Core` Temperature gates: copper and bronze first; iron via a bloomery (makes a spongy bloom that must be hammered, not poured); steel later via carburizing iron.
 - [ ] **HF5** `Lab` Readout of furnace temperature against each metal's threshold for tuning.
+- [ ] **HF6** `Core + Game` *(added 2026-10-12)* Furnace state of health: a furnace wears with every cycle it runs. Repairing it with its own building material restores its health, but only up to a maximum that fades from 100% with cycle use, the CR5 model applied to stations.
+- [ ] **HF7** `Core` *(added 2026-10-12)* Furnace build material: what a furnace is built of sets how fast it wears, its highest temperature, and what repairs it.
+
+  | Built of | Wear | Heat | Repaired with | Unlocks |
+  |---|---|---|---|---|
+  | Loose stone | Fastest | Lowest | Stone | Hot forging copper (ML2), pottery (ML3) |
+  | Clay | Slower | Hotter | Clay | Iron (ML6) |
+  | Brick (sand + clay) | More durable | Hotter again | Brick | |
+  | Silica brick (sand refined to silica) | A slight boost | A slight boost | Silica brick | |
+  | Ceramic (alumina + silica) | Most durable | Hot enough for steel | Ceramic | Steel (ML10) |
+
+- [ ] **HF8** `Core + Config` *(added 2026-10-12)* Refractory supply chain: bauxite ore nodes in the world (X1), refined to alumina; additives to alumina improve particular properties for particular uses (heat, wear, strength). Sand refined to silica feeds silica bricks, glass (ML14) and cast iron (ML11).
 
 ### 6E — Da Vinci-like inventions *(select few)*
 - [ ] **DV1** Glass: sand + heat → glass → crude lenses. Lenses improve prospecting (PS4) and alchemy analysis.
@@ -574,6 +613,7 @@ Furnace temperature is the key that unlocks metals.
 - [ ] **CR4** `Game` Crafting stations: forge, anvil, kiln, alchemy bench.
 - [ ] **CR5** `Core` *(backlog)* Item state of health: tools, weapons and armour lose durability with use, faster or harder use wearing them down quicker. Repairs can't restore them to 100%: irrecoverable damage builds up slowly, modelled on battery capacity retention over cycle life.
   - Implementation sketch: two values per item, current durability and max capacity (SOH). Repairs refill durability up to max; max only ever decreases. Saved with the item (S3).
+  - *(2026-10-12)* First pass: GL37 (hits until a tool breaks, no repair). Furnaces get the same model in HF6.
 - [ ] **CR6** `Core` *(backlog)* Repair: costs some time and base materials, with the cost driven by a repair, blacksmith, or general crafting skill (6A).
 - [ ] **CR7** `Core` *(backlog)* Recycling: break items and tools back down to base materials. Yield depends on a recycling (or general crafting) skill and scales with the item's state of health (CR5), so worn items return less.
 - [ ] **CR8** `Core` *(backlog)* Jewelry crafting from precious metals (PR5) and gems (X3), sold alongside blacksmithed weapons and armour (TR5).
@@ -583,6 +623,44 @@ Furnace temperature is the key that unlocks metals.
 - [ ] **T2** `Core` Tech tree data model: nodes, prerequisites, unlock costs, what each unlocks (items, recipes, stations, ore identification).
 - [ ] **T3** `Game` Tech tree UI.
 - [ ] **T4** `Core` Tech and skill progress included in the save file (extends S3).
+
+### 6H — Materials and tools ladder *(added 2026-10-12)*
+The order materials unlock in, and what each is for. It feeds T1's research pass and the T2 tree; furnace gates are HF7's. Several later metals sit past the medieval setting (see the setting-fit open question).
+
+- [ ] **ML1** `Core` Primitive tools: wood makes a basic stick and spear; stone with those wooden pieces makes a stone hatchet and hammer; leather strips for strapping add a little durability (CR5). Bone is sharper than stone but less durable, and makes a bone sewing needle (TX2).
+- [ ] **ML2** `Core` Copper tools: cold forging gives a very low yield; hot forging a higher one, and needs at least a stone furnace (HF7). Builds on GL33's yields.
+- [ ] **ML3** `Core` Pottery: clay fired in a stone furnace makes basic pottery.
+- [ ] **ML4** `Core + Config` Tin, an early low-skill ore: alloyed with copper into bronze tools; alone, basic jewellery and decorative plates.
+- [ ] **ML5** `Core` Coal as smelting fuel (HF1).
+- [ ] **ML6** `Core` Iron: needs at least a clay furnace, with coal for fuel (HF4).
+- [ ] **ML7** `Core` Zinc: alloyed with copper into brass, for technical implements, measuring pieces, clockwork and instruments (TK3, MX6), and later galvanized steel.
+- [ ] **ML8** `Core` Lead: weights for scales (and cupellation, PR5).
+- [ ] **ML9** `Core` Silver: jewellery and plateware (CR8).
+- [ ] **ML10** `Core` Steel: needs at least a ceramic furnace, coal, and bellows (HF3).
+- [ ] **ML11** `Core` Cast iron from iron, silica and coal (carbon): a lower melting point, for complex moulds.
+- [ ] **ML12** `Core + Game` Gold: jewellery, and it unlocks travelling merchants between cities (7C).
+- [ ] **ML13** `Core` Later metals: nickel (advanced alloys, stainless steel), cobalt (stronger equipment), platinum (high-value crafting; unlocks stock market manipulation), aluminium from bauxite (HF8), titanium (lightweight equipment), tungsten (heavy-duty tools and alloys, tool steel), iridium (ultra rare).
+- [ ] **ML14** `Core` Non-metals: glass once silica can be refined from sand (DV1); limestone, which unlocks concrete with sand, crushed stone and water; soft rubber from rubber trees; sulfur, which unlocks vulcanized rubber; gunpowder (from sulfur and coal, or by the potassium nitrate route; see Open questions); mercury for advanced scientific instruments.
+- [ ] **ML15** `Core` Wood tiers, soft wood to hard wood: harder woods raise the value of what's crafted from them (PK7, TR5).
+- [ ] **ML16** `Core` Stone tiers: each unlocks different masonry items and infrastructure.
+- [ ] **ML17** `Core` Gemstone tiers (X3): garnet and diamond for tool hardness, the rest for jewellery (CR8). Organic gems tracked too: ivory, jet, amber, pearls and mother of pearl; clams drop pearls, and mother of pearl as a rarer drop.
+
+### 6I — Textiles *(added 2026-10-12)*
+- [ ] **TX1** `Core` Three base materials for textiles: fibres, wool and hide.
+- [ ] **TX2** `Core` Fibres from plants (straw grass, tall grass, bamboo): fibres → twine → rope (on a rope spinner, TX5); fibres → cloth; stitching from fibres and leather (with the bone needle, ML1).
+- [ ] **TX3** `Core` Wool from animals: raw wool → yarn → string and cloth. Rabbit fur, goat, sheep, yak and alpaca wool are each their own raw material.
+- [ ] **TX4** `Core` Plant fibres by crop: cotton plants → cotton bolls → yarn; hemp → twine (with an Easter egg: hemp grows twice as much on seed 420).
+- [ ] **TX5** `Core + Game` Textile equipment: a rope spinner makes rope, an improvement on twine; a loom makes improved cloth; gold thread unlocks luxury garments.
+- [ ] **TX6** `Core` Hide: leather → straps (ML1's strapping).
+- Needs plants and animals beyond trees, which aren't in the plan yet (PK13). Linens and carpets feed the shop display bonus (TR7).
+
+### 6J — Timekeeping *(added 2026-10-12)*
+Builds on the game clock (GL34's `GameClock`) and the day/night cycle (PK4).
+
+- [ ] **TK1** `Game` Sleeping roll, from a bunch of cloth (TX2): sleep through the night.
+- [ ] **TK2** `Game` Sundial: a crude measure of the time of day.
+- [ ] **TK3** `Game` Clock: needs precision weights (lead, ML8) and brass gears (ML7).
+- [ ] **TK4** `Game` Wristwatch: mastery of precision instruments. Gifting one to a miner for hire unlocks a bonus (PK16).
 
 ---
 
@@ -621,6 +699,7 @@ Villages and towns are placed where the natural resources would support them.
 - [ ] **TR4** `Game` Buy/sell UI with merchant NPCs, showing the town's prices.
 - [ ] **TR5** `Core` Item quality (CR3) affects sale price.
 - [ ] **TR6** `Core` *(backlog)* Ore value from contained metal: value is the weight of the valuable element locked in the mineral (PR2 species), with the amount of ore measured as volume from marching cubes extraction (I5, V11).
+- [ ] **TR7** `Core + Game` *(added 2026-10-12)* Player-owned shop: the player sets up a shop that sells to locals or travellers. What's on display adds an appearance bonus (fine linens and carpets, TX5; high-quality goods, CR3) that nudges the average selling price up. Part of EC2's venture.
 
 ### 7D — Economic goal
 - [ ] **EC1** Design pass: what "taking control" of a town means (e.g. market share of key goods, owning its workshops, becoming its main supplier) and the win condition.
@@ -630,7 +709,8 @@ Villages and towns are placed where the natural resources would support them.
 - [ ] **EC4** `Core` Rival businesses or town guilds that compete for the same markets.
 - [ ] **EC5** `Game` Ledger UI: wealth over time, influence per town, best trade routes.
 - [ ] **EC6** *(backlog)* Core loop design pass: collecting → crafting → selling. Explore what makes each leg enjoyable and how they hand off to each other; playtest before building more systems on top. *(2026-10-06: the first pass is Milestone 2, GL1–GL16, with copper as the test case.)*
-- [ ] **EC7** `Core` *(backlog)* Mining rights: the player pays a fee to unlock mining in an area. Fees are set by the nearby city or lord and tied to the player's standing with them (EC3), feeding the town-dominance goal. Needs a region map (ST1).
+- [ ] **EC7** `Core` *(backlog)* Mining rights: the player pays a fee to unlock mining in an area. Fees are set by the nearby city or lord and tied to the player's standing with them (EC3), feeding the town-dominance goal. Needs a region map (ST1). *(2026-10-12: first pass GL42, paying to unlock sections of chunks.)*
+- [ ] **EC8** `Core + Game` *(added 2026-10-12)* Toll bridge: a bridge across hard terrain makes travel much easier, and charges a toll to cross. The player could build one as income, or pay others'.
 
 ### 7E — World events *(backlog)*
 - [ ] **WE1** `Core` Meteor event: a rare meteor crash-lands on the terrain (crater via a large A7 edit, like PK11), leaving a good source of high-quality iron.
@@ -765,8 +845,9 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
 - **PK14 Grandfather's cottage.** *(backlog)* An old cottage that, as part of the story line, turns out to be the player's grandfather's house. A mountain climber game demo is still on his computer, and the player must figure out how to turn it on or unlock it.
 
 - **PK15 Evolving title music.** *(backlog)* Menu music gains instruments as the player unlocks things: leather making adds drums and percussion; brass or another metal adds stringed instruments.
+  - *(Added 2026-10-12)* The ladder: it starts with birds and nature sounds; leather and wood crafting (drums) adds percussion; wood carving adds flutes; strings and better wood add the lute; brass adds horns; brass strings add guitar, violin and cello.
 
-- **PK16 Timepiece Easter egg.** *(backlog)* A side quest to gift a timepiece to the local ore miner; afterwards he mines on beat with the title music (PK15). Timepieces tie into PK6 timekeeping.
+- **PK16 Timepiece Easter egg.** *(backlog)* A side quest to gift a timepiece to the local ore miner; afterwards he mines on beat with the title music (PK15). Timepieces tie into PK6 timekeeping. *(2026-10-12: the timepiece is TK4's wristwatch, gifted to a miner for hire.)*
 
 - **PK17 Building system.** *(backlog)* Parked; it was in an earlier "Milestone 3 / Alpha" plan with undecided status. Would overlap with EC2 (owning property and workshops).
   - *(Added 2026-10-05)* First decision when it's picked up: building snapped to a grid, like Valheim, or placed freely, off-grid, like Rust (as a start). The build grid overlay (M23) can preview snapped placement, and M25 sets the grid's size against the marching voxels (see Open questions).
@@ -790,7 +871,9 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
 - Mixed ore (PK1): single composite item or auto-split into separate items?
 - Water bodies (rivers, lakes) are needed for settlement scoring (ST1) and water power (DV2) — which chapter adds them? (Parked as PK8, with flowing water as a stretch goal.)
 - Settlement generation before or after the economy design is settled (EC1)?
-- Setting fit: a Computational tribe and the Combined sequence's computational era clash with the medieval + Da Vinci setting. Reframe (e.g. clockwork, counting machines, runes/sigils as 'bits'), push to a later era, or relax the setting? The backlog adds two more cases: coffee (I7) only reached Europe in the 1600s (an exotic import, or a period stimulant instead?), and asteroid mining as an end goal (EC1) leaves the medieval world entirely.
+- Setting fit: a Computational tribe and the Combined sequence's computational era clash with the medieval + Da Vinci setting. Reframe (e.g. clockwork, counting machines, runes/sigils as 'bits'), push to a later era, or relax the setting? The backlog adds two more cases: coffee (I7) only reached Europe in the 1600s (an exotic import, or a period stimulant instead?), and asteroid mining as an end goal (EC1) leaves the medieval world entirely. *(2026-10-12)* The materials ladder (6H) adds more: aluminium, titanium, tungsten, stainless steel, vulcanized rubber and a stock market (platinum, ML13) are 19th–20th century.
+- *(Added 2026-10-12)* Gunpowder (ML14): just sulfur and coal, or the potassium nitrate (saltpetre) route, which is historically right and could be a more satisfying chain?
+- *(Added 2026-10-12)* Sections unlocked by paying (GL42): how big is a section, how do locked ones look, and does the price rise with each one?
 - Dropped material (MF3): clump back into terrain, or drop as items? Interacts with mixed ore (PK1) and gravity voxels (PK9).
 - Do settlements (7B) belong to tribes, so a town's culture shapes what it makes and trades?
 - *(Added 2026-10-05)* Infinite procedural world, or a bounded map with a limited set of biomes and so of tribes and races? Tested in P15.
