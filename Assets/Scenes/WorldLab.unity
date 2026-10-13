@@ -726,10 +726,12 @@ MonoBehaviour:
   stepThroughOpen: 0
   cameraOpen: 0
   playerOpen: 0
+  cheatsOpen: 0
   displayOpen: 1
   buildGridOpen: 1
   storageOpen: 0
   oresOpen: 0
+  items: {fileID: 11400000, guid: 529535e765d597b47b63cf6a57402d86, type: 2}
 --- !u!114 &1350119464
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1411,6 +1413,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.StumpWorktops
   recipes:
+  - {fileID: 11400000, guid: a3738c3ced64737449f5ad3ad8cdf4cd, type: 2}
+  - {fileID: 11400000, guid: 94d08de95a5f51c4dad353cc38fb0d40, type: 2}
+  - {fileID: 11400000, guid: 58c231621d094754888613a6d3e07203, type: 2}
   - {fileID: 11400000, guid: 4718a79fc1c2a81438a065cf5434da28, type: 2}
 --- !u!114 &1697135583
 MonoBehaviour:
