@@ -32,6 +32,7 @@ namespace Clube.Game
         private PlayerController player;
         private PlayerSkills skills;
         private int openedFrame;
+        private GUIStyle recipeStyle;
 
         /// <summary>The station being used, or null when closed.</summary>
         public StationObject Current { get; private set; }
@@ -114,9 +115,25 @@ namespace Clube.Game
             float y = panel.y + Padding;
             GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   (E to close)");
             y += 24f;
+            // With several recipes, click one to make only it (ML1: sticks and stone make a spear, a
+            // hatchet or a hammer); click it again to let any start.
+            bool choosable = station.Recipes.Count > 1;
             foreach (Recipe recipe in station.Recipes)
             {
-                GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), Describe(recipe));
+                var row = new Rect(x, y, width - Padding * 2f, 20f);
+                if (!choosable)
+                {
+                    GUI.Label(row, Describe(recipe));
+                }
+                else
+                {
+                    bool chosen = station.Chosen == recipe;
+                    recipeStyle ??= new GUIStyle(GUI.skin.button) { alignment = TextAnchor.MiddleLeft };
+                    if (GUI.Button(row, (chosen ? "\u25B6 " : "   ") + Describe(recipe), recipeStyle))
+                    {
+                        station.Chosen = chosen ? null : recipe;
+                    }
+                }
                 y += 22f;
             }
 

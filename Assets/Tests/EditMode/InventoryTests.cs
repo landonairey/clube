@@ -179,6 +179,14 @@ namespace Clube.Core.Tests
             Assert.IsTrue(axe.ReachesWideOn(null), "Unknown ground counts as hard.");
             Assert.IsTrue(hand.ReachesWideOn(dirt) && hand.ReachesWideOn(stone));
 
+            VoxelMaterial wood = VoxelMaterial.Create(11, "Wood", VoxelMaterialCategory.Plant);
+            ToolDefinition hatchet = ToolDefinition.Create("hatchet", "Hatchet", 3, 1.2f).WithWideOn(ReachOn.Wood);
+            Assert.IsTrue(hatchet.ReachesWideOn(wood));
+            Assert.IsFalse(hatchet.ReachesWideOn(stone));
+            Assert.IsFalse(axe.ReachesWideOn(wood), "Wood isn't hard ground: the pickaxe hits one voxel of it.");
+            Object.DestroyImmediate(wood);
+            Object.DestroyImmediate(hatchet);
+
             foreach (Object o in new Object[] { dirt, stone, shovel, axe, hand })
             {
                 Object.DestroyImmediate(o);

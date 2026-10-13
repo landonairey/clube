@@ -42,6 +42,32 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void ChosenRecipe_IsTheOnlyOneThatStarts_WhenRecipesShareInputs()
+        {
+            ItemDefinition spear = ItemDefinition.Create("spear", "Spear");
+            Recipe spearRecipe = Recipe.Create(StationKind.Anvil, new ItemAmount(spear, 1), RecipeWork.Strikes, 1f, new ItemAmount(bun, 2));
+            var station = new CraftingStation(StationKind.Anvil, new[] { hammer, spearRecipe });
+            try
+            {
+                station.Input.Add(bun, 2);
+                Assert.AreSame(hammer, station.Ready(RecipeWork.Strikes), "Unchosen: the first recipe whose inputs are loaded.");
+
+                station.Chosen = spearRecipe;
+                Assert.AreSame(spearRecipe, station.Ready(RecipeWork.Strikes));
+                Assert.IsTrue(station.Strike());
+                Assert.AreEqual(spear, station.Output[0].Item);
+
+                station.Chosen = smelt;
+                Assert.IsNull(station.Chosen, "A recipe the station doesn't make can't be chosen.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(spearRecipe);
+                Object.DestroyImmediate(spear);
+            }
+        }
+
+        [Test]
         public void Station_KeepsOnlyItsOwnKindOfRecipe()
         {
             CollectionAssert.AreEqual(new[] { smelt }, Furnace().Recipes);
