@@ -44,7 +44,7 @@ namespace Clube.Core.Tests
                 foreach (Vector3Int coord in coords)
                 {
                     expected.Load(coord, generator);
-                    pipeline.StartGeneration(coord);
+                    Start(pipeline, coord);
                 }
                 TakeAll(pipeline, actual, coords.Count);
             }
@@ -78,8 +78,8 @@ namespace Clube.Core.Tests
             World world = NewWorld();
             using (ChunkPipeline pipeline = NewPipeline(world, Terrain()))
             {
-                pipeline.StartGeneration(Vector3Int.zero);
-                pipeline.StartGeneration(Vector3Int.right);
+                Start(pipeline, Vector3Int.zero);
+                Start(pipeline, Vector3Int.right);
                 pipeline.CancelGeneration(Vector3Int.zero);
                 Assert.That(pipeline.IsGenerating(Vector3Int.zero), Is.False, "cancelled: its job may still run, but nothing waits for it");
                 Assert.That(pipeline.GeneratingCount, Is.EqualTo(2), "it still counts against the job limit until it finishes");
@@ -97,12 +97,12 @@ namespace Clube.Core.Tests
             World world = NewWorld();
             using (ChunkPipeline pipeline = NewPipeline(world, Terrain()))
             {
-                pipeline.StartGeneration(Vector3Int.zero);
+                Start(pipeline, Vector3Int.zero);
                 pipeline.CancelGeneration(Vector3Int.zero);
                 Assert.That(pipeline.IsGenerating(Vector3Int.zero), Is.False, "cancelled");
 
                 // The focus came back before the job finished.
-                pipeline.StartGeneration(Vector3Int.zero);
+                Start(pipeline, Vector3Int.zero);
                 Assert.That(pipeline.IsGenerating(Vector3Int.zero), Is.True);
                 TakeAll(pipeline, world, 1);
                 Assert.That(world.IsLoaded(Vector3Int.zero), Is.True);
@@ -146,13 +146,31 @@ namespace Clube.Core.Tests
             {
                 // The first chunk of the column computes its heights; once they're known, the
                 // chunk high above needs no job.
-                pipeline.StartGeneration(Vector3Int.zero);
+                Start(pipeline, Vector3Int.zero);
                 TakeAll(pipeline, world, 1);
-                pipeline.StartGeneration(new Vector3Int(0, 5, 0));
+                Assert.That(pipeline.StartGeneration(new Vector3Int(0, 5, 0)), Is.True, "the column is known now");
 
                 Assert.That(pipeline.TryTakeGenerated(out Vector3Int coord, out Chunk chunk), Is.True, "ready at once");
                 Assert.That(coord, Is.EqualTo(new Vector3Int(0, 5, 0)));
                 Assert.That(chunk.IsUniform && chunk.UniformDensity == 0f, Is.True);
+            }
+        }
+
+        [Test]
+        public void ChunkBuriedBelowTheSurfaceLayers_IsRockWithoutAJob()
+        {
+            World world = NewWorld();
+            using (ChunkPipeline pipeline = NewPipeline(world, new FlatGenerator(4f)))
+            {
+                Start(pipeline, Vector3Int.zero);
+                TakeAll(pipeline, world, 1);
+
+                // Wholly below the ground, deeper than the density ramp, with no layers, ores or trees.
+                Assert.That(pipeline.StartGeneration(new Vector3Int(0, -2, 0)), Is.True);
+                Assert.That(pipeline.GenerationJobsRunning, Is.Zero, "no job for it");
+                Assert.That(pipeline.TryTakeGenerated(out Vector3Int coord, out Chunk chunk), Is.True, "ready at once");
+                Assert.That(coord, Is.EqualTo(new Vector3Int(0, -2, 0)));
+                Assert.That(chunk.IsUniform && chunk.UniformDensity == 1f, Is.True);
             }
         }
 
@@ -219,6 +237,18 @@ namespace Clube.Core.Tests
 
             Assert.DoesNotThrow(() => pipeline.Dispose());
             Assert.That(pipeline.GeneratingCount + pipeline.MeshingCount + pipeline.BakingCount, Is.Zero);
+        }
+
+        // Starts a chunk, waiting (as the streamer does a frame at a time) while its column's heights are computed.
+        private static void Start(ChunkPipeline pipeline, Vector3Int coord)
+        {
+            for (int attempt = 0; attempt < 10000 && !pipeline.StartGeneration(coord); attempt++)
+            {
+                pipeline.Flush();
+                pipeline.Poll();
+                System.Threading.Thread.Sleep(1);
+            }
+            Assert.That(pipeline.StartGeneration(coord), Is.True, $"{coord} started");
         }
 
         // Polls until the given number of chunks were generated and added.
