@@ -19,3 +19,11 @@ MonoBehaviour:
   debugColor: {r: 0.62, g: 0.38, b: 0.18, a: 1}
   hardness: 1
   drop: {fileID: 11400000, guid: 155e4f6fdac2e164786af465109e9cec, type: 2}
+  pileShape: 0
+  reposeAngle: 40
+  pickUpPieceSize: 0
+  breaksInto: {fileID: 0}
+  isWorktop: 0
+  isSoft: 1
+  driesInto: {fileID: 0}
+  dryingDays: 2

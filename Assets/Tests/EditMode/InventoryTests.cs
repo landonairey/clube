@@ -162,5 +162,27 @@ namespace Clube.Core.Tests
             Assert.IsTrue(inventory[2].IsEmpty);
             Object.DestroyImmediate(worn);
         }
+
+        [Test]
+        public void ReachesWideOn_FollowsTheGroundTheToolIsMadeFor()
+        {
+            VoxelMaterial dirt = VoxelMaterial.Create(1, "Dirt").WithSoft();
+            VoxelMaterial stone = VoxelMaterial.Create(0, "Stone");
+            ToolDefinition shovel = ToolDefinition.Create("shovel", "Shovel", 4, 1.5f).WithWideOn(ReachOn.Soft);
+            ToolDefinition axe = ToolDefinition.Create("axe", "Axe", 4, 1.5f).WithWideOn(ReachOn.Hard);
+            ToolDefinition hand = ToolDefinition.Create("hand", "Hand", 1, 1f);
+
+            Assert.IsTrue(shovel.ReachesWideOn(dirt));
+            Assert.IsFalse(shovel.ReachesWideOn(stone));
+            Assert.IsFalse(axe.ReachesWideOn(dirt));
+            Assert.IsTrue(axe.ReachesWideOn(stone));
+            Assert.IsTrue(axe.ReachesWideOn(null), "Unknown ground counts as hard.");
+            Assert.IsTrue(hand.ReachesWideOn(dirt) && hand.ReachesWideOn(stone));
+
+            foreach (Object o in new Object[] { dirt, stone, shovel, axe, hand })
+            {
+                Object.DestroyImmediate(o);
+            }
+        }
     }
 }

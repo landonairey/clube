@@ -12,6 +12,18 @@ namespace Clube.Core
         Ball,
     }
 
+    /// <summary>Which ground a tool reaches its whole cube on (GL39); on the rest it hits one voxel, like the hand.</summary>
+    public enum ReachOn
+    {
+        Anything,
+
+        /// <summary>Soft ground: grass, dirt, clay (the shovel).</summary>
+        Soft,
+
+        /// <summary>Hard ground: stone, ore (the pickaxe).</summary>
+        Hard,
+    }
+
     /// <summary>
     /// An item the player works the ground with (TL1, GL1): the hand, the pickaxe, later the
     /// shovel, trowel, rake and the rest of TL2. A tool reaches a cube of
@@ -36,9 +48,17 @@ namespace Clube.Core
         [SerializeField]
         private ImpactShape impactShape = ImpactShape.Cube;
 
+        [Tooltip("The ground its whole reach applies to (GL39). On other ground it hits only the voxel aimed at, like the hand.")]
+        [SerializeField]
+        private ReachOn wideOn = ReachOn.Anything;
+
         [Tooltip("Damage each hit adds to every corner it reaches, in hardness units (dirt = 1).")]
         [SerializeField, Min(0.01f)]
         private float power = 1f;
+
+        [Tooltip("Hits it takes before it breaks (GL37), each swing that lands counting one. 0: never wears out.")]
+        [SerializeField, Min(0)]
+        private int maxHits;
 
         [Tooltip("Hits per second while the use button is held.")]
         [SerializeField, Range(0.5f, 10f)]
@@ -56,26 +76,32 @@ namespace Clube.Core
             return tool;
         }
 
-        [Tooltip("Hits it takes before it breaks (GL37), each swing that lands counting one. 0: never wears out.")]
-        [SerializeField, Min(0)]
-        private int maxHits;
-
         /// <summary>Voxels per side of the cube it reaches.</summary>
         public int ImpactSize => impactSize;
 
         public ImpactShape ImpactShape => impactShape;
 
+        /// <summary>The ground its whole reach applies to.</summary>
+        public ReachOn WideOn => wideOn;
+
+        /// <summary>True when a hit on this material (null: unknown, counted as hard) uses the tool's whole reach (GL39).</summary>
+        public bool ReachesWideOn(VoxelMaterial aimed)
+        {
+            bool soft = aimed != null && aimed.IsSoft;
+            return wideOn == ReachOn.Anything || (wideOn == ReachOn.Soft) == soft;
+        }
+
+        /// <summary>Limits the whole reach to one kind of ground, for tools made in code (tests, tools).</summary>
+        public ToolDefinition WithWideOn(ReachOn ground)
+        {
+            wideOn = ground;
+            return this;
+        }
+
         public float Power => power;
 
         public float HitsPerSecond => hitsPerSecond;
 
-        /// <summary>The voxels it reaches when aimed at <paramref name="voxel"/>.</summary>
-        public VoxelReach ImpactAround(Vector3Int voxel)
-        {
-            return VoxelReach.Around(voxel, impactSize, impactShape == ImpactShape.Ball);
-        }
-    }
-}
         /// <summary>Hits it takes before it breaks, or 0 when it never wears out.</summary>
         public int MaxHits => maxHits;
 
@@ -86,3 +112,10 @@ namespace Clube.Core
             return this;
         }
 
+        /// <summary>The voxels it reaches when aimed at <paramref name="voxel"/>.</summary>
+        public VoxelReach ImpactAround(Vector3Int voxel)
+        {
+            return VoxelReach.Around(voxel, impactSize, impactShape == ImpactShape.Ball);
+        }
+    }
+}

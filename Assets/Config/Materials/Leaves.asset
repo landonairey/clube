@@ -23,3 +23,7 @@ MonoBehaviour:
   reposeAngle: 55
   pickUpPieceSize: 0
   breaksInto: {fileID: 0}
+  isWorktop: 0
+  isSoft: 1
+  driesInto: {fileID: 0}
+  dryingDays: 2

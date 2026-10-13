@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Clube.Debug.Editor
 {
     /// <summary>
-    /// Paints stand-in icons (GL7, GL31), until real art exists: the copper bun (a rough dome,
+    /// Paints stand-in icons (GL7, GL31, GL39), until real art exists: the pickaxe and shovel, the copper bun (a rough dome,
     /// as a smelt leaves it), the copper ingot (a bar seen from above at an angle), wood (a log
     /// end-on, with its rings) and leaves (one leaf). <i>Clube → Items → Generate icons</i> writes them to
     /// <c>Assets/Textures/Items/</c> and links each to its item. Other material drops use their
@@ -32,6 +32,8 @@ namespace Clube.Debug.Editor
             Write("leaves", "Leaves", PaintLeaf());
             Write("clay", "Clay", PaintClay());
             Write("brick", "Brick", PaintBrick());
+            Write("pickaxe", "Pickaxe", PaintPickaxe());
+            Write("shovel", "Shovel", PaintShovel());
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Wrote item icons to {Folder}.");
         }
@@ -337,6 +339,87 @@ namespace Clube.Debug.Editor
             Outline(texture, dark);
             texture.Apply();
             return texture;
+        }
+
+        private static readonly Color Steel = new Color(0.62f, 0.66f, 0.72f);
+        private static readonly Color SteelLight = new Color(0.86f, 0.9f, 0.95f);
+        private static readonly Color Handle = new Color(0.55f, 0.36f, 0.18f);
+        private static readonly Color HandleLight = new Color(0.72f, 0.5f, 0.28f);
+
+        // A wooden handle running up to the right, with a curved steel head across its top.
+        private static Texture2D PaintPickaxe()
+        {
+            Texture2D texture = Blank();
+            Line(texture, new Vector2(12f, 8f), new Vector2(46f, 46f), 3.2f, Handle);
+            Line(texture, new Vector2(11f, 10f), new Vector2(45f, 48f), 1.2f, HandleLight);
+            var from = new Vector2(14f, 40f);
+            var bend = new Vector2(44f, 66f);
+            var to = new Vector2(58f, 30f);
+            Vector2 previous = from;
+            for (int i = 1; i <= 16; i++)
+            {
+                float t = i / 16f;
+                Vector2 point = (1f - t) * (1f - t) * from + 2f * (1f - t) * t * bend + t * t * to;
+                // Thickest at the middle, tapering to a point at each end like a pick.
+                float width = 1.2f + 4.2f * Mathf.Sin(t * Mathf.PI);
+                Line(texture, previous, point, width, Steel);
+                previous = point;
+            }
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
+        // A wooden shaft with a short grip across the top and a rounded steel blade at the foot.
+        private static Texture2D PaintShovel()
+        {
+            Texture2D texture = Blank();
+            Line(texture, new Vector2(18f, 54f), new Vector2(40f, 26f), 3.2f, Handle);
+            Line(texture, new Vector2(17f, 56f), new Vector2(39f, 28f), 1.2f, HandleLight);
+            Line(texture, new Vector2(11f, 50f), new Vector2(26f, 61f), 3f, Handle);
+
+            // The blade: an ellipse long along the shaft, centred below its end.
+            var axis = new Vector2(0.62f, -0.78f).normalized;
+            var across = new Vector2(axis.y, -axis.x);
+            var centre = new Vector2(47f, 16f);
+            for (int y = 0; y < Size; y++)
+            {
+                for (int x = 0; x < Size; x++)
+                {
+                    Vector2 offset = new Vector2(x, y) - centre;
+                    float along = Vector2.Dot(offset, axis) / 13f;
+                    float side = Vector2.Dot(offset, across) / 10f;
+                    // Flatter at the shaft end, rounder at the tip.
+                    if (along * along + side * side < 1f && (along > -0.7f))
+                    {
+                        texture.SetPixel(x, y, side < -0.35f ? SteelLight : Steel);
+                    }
+                }
+            }
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
+        // A round-ended line from one point to the other, <width> pixels thick.
+        private static void Line(Texture2D texture, Vector2 from, Vector2 to, float width, Color color)
+        {
+            int steps = Mathf.CeilToInt(Vector2.Distance(from, to) * 2f) + 1;
+            float radius = width * 0.5f;
+            for (int i = 0; i <= steps; i++)
+            {
+                Vector2 point = Vector2.Lerp(from, to, i / (float)steps);
+                for (int y = Mathf.Max(0, Mathf.FloorToInt(point.y - radius)); y <= Mathf.Min(Size - 1, Mathf.CeilToInt(point.y + radius)); y++)
+                {
+                    for (int x = Mathf.Max(0, Mathf.FloorToInt(point.x - radius)); x <= Mathf.Min(Size - 1, Mathf.CeilToInt(point.x + radius)); x++)
+                    {
+                        if ((new Vector2(x, y) - point).sqrMagnitude <= radius * radius)
+                        {
+                            texture.SetPixel(x, y, color);
+                        }
+                    }
+                }
+            }
         }
 
         private static Texture2D Blank()

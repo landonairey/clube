@@ -25,6 +25,27 @@ namespace Clube.Core
             return world.Grid.ChunkFirstSample(hit.Chunk) + hit.Voxel;
         }
 
+        private static readonly List<Vector3Int> AimScratch = new List<Vector3Int>();
+
+        /// <summary>The material of the ground in the aimed voxel (its first solid corner), or null when it has none (GL39).</summary>
+        public static VoxelMaterial AimedMaterial(World world, Vector3Int voxel, float isoLevel, MaterialRegistry materials)
+        {
+            if (materials == null)
+            {
+                return null;
+            }
+            FindTargets(world, VoxelReach.Around(voxel, 1, false), isoLevel, AimScratch);
+            foreach (Vector3Int sample in AimScratch)
+            {
+                byte? id = world.GetMaterial(sample);
+                if (id.HasValue)
+                {
+                    return materials.Get(id.Value);
+                }
+            }
+            return null;
+        }
+
         /// <summary>The samples a tool reaching <paramref name="reach"/> hits: every loaded solid corner of its voxels.</summary>
         public static void FindTargets(World world, VoxelReach reach, float isoLevel, List<Vector3Int> targets)
         {

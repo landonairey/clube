@@ -133,7 +133,12 @@ namespace Clube.Game
                 return;
             }
 
-            Reach = tool.ImpactAround(ToolStrike.AimedVoxel(worldView.World, hit));
+            // A tool made for one kind of ground reaches wide only on it; elsewhere it hits the aimed voxel alone.
+            Vector3Int aimed = ToolStrike.AimedVoxel(worldView.World, hit);
+            VoxelMaterial ground = tool.WideOn == ReachOn.Anything
+                ? null
+                : ToolStrike.AimedMaterial(worldView.World, aimed, worldView.Config.IsoLevel, worldView.Config.Materials);
+            Reach = tool.ReachesWideOn(ground) ? tool.ImpactAround(aimed) : VoxelReach.Around(aimed, 1, false);
             HasReach = true;
             ToolStrike.FindTargets(worldView.World, Reach, worldView.Config.IsoLevel, targets);
         }
@@ -161,18 +166,13 @@ namespace Clube.Game
             StrikeResult result = ToolStrike.Hit(
                 worldView.World, targets, tool, worldView.Config.Materials, Damage, collected, worldView.Config.IsoLevel, minedFrom);
             Struck?.Invoke(result);
+            WearTool(tool);
             for (int i = 0; i < collected.Count; i++)
             {
                 Collected?.Invoke(new ItemStack(collected[i], 1, ContentsOf(minedFrom[i])));
             }
         }
-            WearTool(tool);
 
-        // What a mined sample is made of: ore from the node it came from (GL32), else nothing.
-        private Composition ContentsOf(MinedSample mined)
-        {
-            OreField ores = worldView.Ores;
-            if (ores == null || mined.Material == null)
         // Each swing wears the held tool (GL37); the hand never breaks.
         private void WearTool(ToolDefinition tool)
         {
@@ -187,6 +187,11 @@ namespace Clube.Game
             }
         }
 
+        // What a mined sample is made of: ore from the node it came from (GL32), else nothing.
+        private Composition ContentsOf(MinedSample mined)
+        {
+            OreField ores = worldView.Ores;
+            if (ores == null || mined.Material == null)
             {
                 return null;
             }
@@ -195,14 +200,14 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            if (Time.time < brokenUntil)
+            {
+                GUI.Label(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f + 48f, 300f, 24f), $"Your {brokenName.ToLowerInvariant()} broke!");
+            }
             ToolDefinition tool = Current;
             if (tool == null || !player.enabled || player.IsCursorFree)
             {
                 return;
-            }
-            if (Time.time < brokenUntil)
-            {
-                GUI.Label(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f + 48f, 300f, 24f), $"Your {brokenName.ToLowerInvariant()} broke!");
             }
             var centre = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
             string wear = tool.MaxHits > 0 && hotbar != null && hotbar.SelectedStack.Item == tool

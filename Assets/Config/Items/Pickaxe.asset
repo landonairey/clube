@@ -14,12 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ToolDefinition
   id: pickaxe
   displayName: Pickaxe
-  icon: {fileID: 0}
+  icon: {fileID: 2800000, guid: fbe33e3c8ffaaba49865d3608714f522, type: 3}
   maxStack: 1
   unitVolume: 1
   burnSeconds: 0
   impactSize: 4
   impactShape: 1
+  wideOn: 2
   power: 1.5
   maxHits: 100
   hitsPerSecond: 2.5
