@@ -236,6 +236,7 @@ namespace Clube.Core
         private void OnValidate()
         {
             chunkSize = Vector3Int.Max(chunkSize, Vector3Int.one);
+            terrain.KeepShapePerGenerator();
             FitNewHeightmapToChunk();
             Changed?.Invoke();
         }

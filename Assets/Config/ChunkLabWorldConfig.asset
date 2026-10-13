@@ -14,6 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Core::Clube.Core.WorldConfig
   chunkSize: {x: 8, y: 8, z: 8}
   worldHeightInChunks: 2
+  sealEdges: 0
+  fixedArea: 0
+  fixedAreaSize: 100
   voxelSize: 1
   isoLevel: 0.5
   edgePlacement: 0
@@ -23,6 +26,7 @@ MonoBehaviour:
   materials: {fileID: 11400000, guid: 115a733b281448b47abfa44225ff27cc, type: 2}
   storage: 0
   octreeMaxDepth: 4
+  buildCellSize: 1
   terrain:
     generator: 4
     surfaceLevel: 4
@@ -31,6 +35,8 @@ MonoBehaviour:
     octaves: 4
     lacunarity: 2
     persistence: 0.5
+    shapes: []
+    shapeOwner: 4
     seed: 1
     layers:
       top: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
@@ -38,6 +44,33 @@ MonoBehaviour:
       band: {fileID: 11400000, guid: 0554987880d556d4cafb280d1242eb09, type: 2}
       bandDepth: 4
       baseMaterial: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+      steepAngle: 90
+      steepMinHeight: 24
+      rock: {fileID: 0}
+      rockChance: 0.004
+      clay: {fileID: 0}
+      clayCellSize: 24
+      clayChance: 0.3
+      clayRadius: 3
+      clayDepth: 0.75
+    ores:
+      cellSize: 16
+      ores: []
+    trees:
+      cellSize: 10
+      chance: 0
+      maxSlope: 12
+      height: {x: 7, y: 10}
+      trunkRadius: 0.4
+      branches: {x: 3, y: 5}
+      minBranchRadius: 0.22
+      leafRadius: {x: 0.55, y: 0.9}
+      wood: {fileID: 0}
+      leaves: {fileID: 0}
+      stump: {fileID: 0}
+      stumpHeight: 0.75
+    featureSize: 250
+    mountainCoverage: 0.35
     heightCurve:
       serializedVersion: 2
       m_Curve:

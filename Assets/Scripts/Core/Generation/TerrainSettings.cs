@@ -39,6 +39,17 @@ namespace Clube.Core
         [SerializeField, Range(0f, 1f)]
         private float persistence = 0.5f;
 
+        // Every generator's own surface level, amplitude, frequency and octaves (GL44): the fields above
+        // hold the selected generator's, and switching stores them here and brings back the new
+        // one's, so each keeps a scale that suits it (Landscape's 110 m amplitude is its mountains;
+        // on fractal Perlin it would be ±110 m hills).
+        [SerializeField, HideInInspector]
+        private GeneratorShape[] shapes = new GeneratorShape[0];
+
+        // Which generator the fields above belong to; -1 until known (configs saved before GL44).
+        [SerializeField, HideInInspector]
+        private int shapeOwner = -1;
+
         [Tooltip("Seed for every noise generator (K10). The same seed always gives the same terrain.")]
         [SerializeField]
         private int seed = 1;
@@ -103,7 +114,88 @@ namespace Clube.Core
         public TerrainGeneratorType Generator
         {
             get => generator;
-            set => generator = value;
+            set
+            {
+                generator = value;
+                KeepShapePerGenerator();
+            }
+        }
+
+        /// <summary>
+        /// After the generator changed (from code, or an Inspector edit through
+        /// <c>WorldConfig.OnValidate</c>): stores the shape values for the generator they were set
+        /// for, and brings back the newly selected generator's, if it has any stored (GL44).
+        /// </summary>
+        public void KeepShapePerGenerator()
+        {
+            int now = (int)generator;
+            if (shapeOwner == now)
+            {
+                return;
+            }
+            if (shapeOwner >= 0)
+            {
+                StoreShape(shapeOwner, CurrentShape);
+                if (now < shapes.Length && shapes[now].IsSet)
+                {
+                    GeneratorShape shape = shapes[now];
+                    surfaceLevel = shape.SurfaceLevel;
+                    amplitude = shape.Amplitude;
+                    frequency = shape.Frequency;
+                    octaves = shape.Octaves;
+                    lacunarity = shape.Lacunarity;
+                    persistence = shape.Persistence;
+                }
+            }
+            shapeOwner = now;
+        }
+
+        /// <summary>Sets the shape values a generator uses when it's selected, without selecting it.</summary>
+        public void SetShape(TerrainGeneratorType type, float level, float amplitudeValue, float frequencyValue, int octaveCount)
+        {
+            KeepShapePerGenerator();
+            var shape = new GeneratorShape
+            {
+                IsSet = true, SurfaceLevel = level, Amplitude = Mathf.Max(0f, amplitudeValue),
+                Frequency = Mathf.Max(0.001f, frequencyValue), Octaves = Mathf.Clamp(octaveCount, 1, 8),
+                Lacunarity = lacunarity, Persistence = persistence,
+            };
+            if (type == generator)
+            {
+                surfaceLevel = shape.SurfaceLevel;
+                amplitude = shape.Amplitude;
+                frequency = shape.Frequency;
+                octaves = shape.Octaves;
+            }
+            StoreShape((int)type, shape);
+        }
+
+        private GeneratorShape CurrentShape => new GeneratorShape
+        {
+            IsSet = true, SurfaceLevel = surfaceLevel, Amplitude = amplitude, Frequency = frequency,
+            Octaves = octaves, Lacunarity = lacunarity, Persistence = persistence,
+        };
+
+        private void StoreShape(int type, GeneratorShape shape)
+        {
+            if (type >= shapes.Length)
+            {
+                Array.Resize(ref shapes, type + 1);
+            }
+            shapes[type] = shape;
+        }
+
+        // One generator's shape values, kept while another is selected.
+        [Serializable]
+        private struct GeneratorShape
+        {
+            public bool IsSet;
+            public float SurfaceLevel;
+            public float Amplitude;
+            public float Frequency;
+            public int Octaves;
+            public float Lacunarity;
+            public float Persistence;
         }
 
         // The shape values are settable for lab controls too; call WorldConfig.NotifyChanged after.

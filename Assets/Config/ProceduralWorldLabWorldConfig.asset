@@ -35,6 +35,57 @@ MonoBehaviour:
     octaves: 5
     lacunarity: 2
     persistence: 0.5
+    shapes:
+    - IsSet: 1
+      SurfaceLevel: 28
+      Amplitude: 13
+      Frequency: 0.048
+      Octaves: 4
+      Lacunarity: 2
+      Persistence: 0.5
+    - IsSet: 1
+      SurfaceLevel: 28
+      Amplitude: 13
+      Frequency: 0.048
+      Octaves: 4
+      Lacunarity: 2
+      Persistence: 0.5
+    - IsSet: 1
+      SurfaceLevel: 28
+      Amplitude: 13
+      Frequency: 0.048
+      Octaves: 4
+      Lacunarity: 2
+      Persistence: 0.5
+    - IsSet: 1
+      SurfaceLevel: 28
+      Amplitude: 13
+      Frequency: 0.048
+      Octaves: 4
+      Lacunarity: 2
+      Persistence: 0.5
+    - IsSet: 1
+      SurfaceLevel: 28
+      Amplitude: 13
+      Frequency: 0.048
+      Octaves: 4
+      Lacunarity: 2
+      Persistence: 0.5
+    - IsSet: 1
+      SurfaceLevel: 28
+      Amplitude: 13
+      Frequency: 0.048
+      Octaves: 4
+      Lacunarity: 2
+      Persistence: 0.5
+    - IsSet: 1
+      SurfaceLevel: 28
+      Amplitude: 13
+      Frequency: 0.048
+      Octaves: 4
+      Lacunarity: 2
+      Persistence: 0.5
+    shapeOwner: 7
     seed: 1
     layers:
       top: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
