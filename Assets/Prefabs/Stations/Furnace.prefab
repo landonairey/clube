@@ -131,4 +131,5 @@ MonoBehaviour:
   recipes:
   - {fileID: 11400000, guid: 528fb321b82b1354ba41a95cd7208a06, type: 2}
   - {fileID: 11400000, guid: 2ea129385f04d4e4191060b48a63ffdf, type: 2}
+  - {fileID: 11400000, guid: 5deb817244217e6458d8b59c0f758ba8, type: 2}
   burnsFuel: 1

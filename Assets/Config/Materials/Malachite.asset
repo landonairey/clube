@@ -10,15 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d59954c0fdd2f5d4c9594a66c55f0fc1, type: 3}
-  m_Name: Copper
+  m_Name: Malachite
   m_EditorClassIdentifier: Clube.Core::Clube.Core.VoxelMaterial
-  id: 3
-  displayName: Copper
+  id: 16
+  displayName: Malachite
   category: 1
-  albedo: {fileID: 2800000, guid: c2d558b17edd80e4c80995748a8cf877, type: 3}
-  debugColor: {r: 1, g: 0.45, b: 0.15, a: 1}
+  albedo: {fileID: 2800000, guid: 949b9879a60b71142a984c365268657a, type: 3}
+  debugColor: {r: 0.48, g: 0.66, b: 0.3, a: 1}
   hardness: 3.5
-  drop: {fileID: 11400000, guid: 9feabda89ca47d5479fc62960a078576, type: 2}
+  drop: {fileID: 11400000, guid: 1e3311289ece4ce428134389e92a4e43, type: 2}
   pileShape: 1
   reposeAngle: 40
-  breaksInto: {fileID: 11400000, guid: 7ecc65adf73d9da42aee16f413c5acb0, type: 2}
+  pickUpPieceSize: 0
+  breaksInto: {fileID: 11400000, guid: 4e672b82024c08f4387772f395f40e11, type: 2}
+  isWorktop: 0
+  isSoft: 0
+  driesInto: {fileID: 0}
+  dryingDays: 2

@@ -55,7 +55,7 @@ MonoBehaviour:
       cellSize: 16
       ores:
       - ore: {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
-        nodesPerCell: 2
+        nodesPerCell: 1
         minDepth: 4
         maxDepth: 16
         peakProbability: 0.6
@@ -64,6 +64,21 @@ MonoBehaviour:
         - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
         priority: 0
         grade: {x: 0.12, y: 0.3}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents:
+        - Material: {fileID: 11400000, guid: 7cbb344bf40f2c04bad682cdb7df7c8b, type: 2}
+          Min: 0
+          Max: 0.03
+      - ore: {fileID: 11400000, guid: 8d7e9d76247091549940794050b1d237, type: 2}
+        nodesPerCell: 1
+        minDepth: 4
+        maxDepth: 16
+        peakProbability: 0.6
+        spread: {x: 1.5, y: 1, z: 1.5}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: 0
+        grade: {x: 0.24, y: 0.6}
         gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
         extraContents:
         - Material: {fileID: 11400000, guid: 7cbb344bf40f2c04bad682cdb7df7c8b, type: 2}

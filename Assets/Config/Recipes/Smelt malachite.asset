@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: eb68c50b39e0a91499017be61cd90094, type: 3}
-  m_Name: Smelt copper bun
+  m_Name: Smelt malachite
   m_EditorClassIdentifier: Clube.Core::Clube.Core.Recipe
   station: 0
   inputs:
-  - Item: {fileID: 11400000, guid: 9feabda89ca47d5479fc62960a078576, type: 2}
+  - Item: {fileID: 11400000, guid: 1e3311289ece4ce428134389e92a4e43, type: 2}
     Count: 1
   output:
     Item: {fileID: 11400000, guid: dc5a1a0a6cbcb6141a8cb40a674ffd35, type: 2}
@@ -22,7 +22,7 @@ MonoBehaviour:
   work: 0
   amount: 0.75
   byVolume: 1
-  content: {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
+  content: {fileID: 11400000, guid: 8d7e9d76247091549940794050b1d237, type: 2}
   yield: 0.5
   skill: 0
   skilledYield: 1

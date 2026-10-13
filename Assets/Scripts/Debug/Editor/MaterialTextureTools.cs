@@ -37,7 +37,8 @@ namespace Clube.Debug.Editor
 
         private static readonly Color StoneBase = new Color(0.45f, 0.45f, 0.47f);
         private static readonly Color StoneMix = new Color(0.60f, 0.60f, 0.62f);
-        private static readonly Color CopperFleck = new Color(0.80f, 0.42f, 0.22f);
+        private static readonly Color ChalcopyriteFleck = new Color(0.86f, 0.72f, 0.22f);
+        private static readonly Color MalachiteFleck = new Color(0.48f, 0.66f, 0.30f);
 
         // Natural colours for the placeholders: a base, a second colour mixed in by noise, for
         // ores the colour of the flecks scattered through stone, and how broken it looks (GL3).
@@ -49,11 +50,14 @@ namespace Clube.Debug.Editor
                 { "stone", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), null, Wear.Whole) },
                 { "gold", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), new Color(0.95f, 0.78f, 0.25f), Wear.Whole) },
                 { "silver", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), new Color(0.88f, 0.90f, 0.95f), Wear.Whole) },
-                { "copper", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), new Color(0.80f, 0.42f, 0.22f), Wear.Whole) },
+                { "chalcopyrite", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), ChalcopyriteFleck, Wear.Whole) },
+                { "malachite", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), MalachiteFleck, Wear.Whole) },
                 { "cracked stone", (StoneBase, StoneMix, null, Wear.Cracked) },
                 { "loose stone", (StoneBase, StoneMix, null, Wear.Loose) },
-                { "cracked copper", (StoneBase, StoneMix, CopperFleck, Wear.Cracked) },
-                { "loose copper", (StoneBase, StoneMix, CopperFleck, Wear.Loose) },
+                { "cracked chalcopyrite", (StoneBase, StoneMix, ChalcopyriteFleck, Wear.Cracked) },
+                { "loose chalcopyrite", (StoneBase, StoneMix, ChalcopyriteFleck, Wear.Loose) },
+                { "cracked malachite", (StoneBase, StoneMix, MalachiteFleck, Wear.Cracked) },
+                { "loose malachite", (StoneBase, StoneMix, MalachiteFleck, Wear.Loose) },
                 { "rock", (new Color(0.38f, 0.37f, 0.36f), new Color(0.55f, 0.53f, 0.5f), null, Wear.Whole) },
                 { "wood", (new Color(0.36f, 0.25f, 0.16f), new Color(0.48f, 0.35f, 0.23f), null, Wear.Bark) },
                 { "leaves", (new Color(0.16f, 0.33f, 0.12f), new Color(0.30f, 0.50f, 0.18f), null, Wear.Leaves) },
