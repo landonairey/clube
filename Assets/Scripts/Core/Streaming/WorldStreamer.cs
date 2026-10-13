@@ -349,21 +349,6 @@ namespace Clube.Core
         // distance changes, so it's rebuilt then, nearest chunks first.
         private void UpdateWanted(Vector3Int centre)
         {
-            if (settings.FixedColumns.HasValue)
-            {
-                // A fixed area is wanted whole, wherever the focus goes: worked out once, nearest
-                // the first focus first.
-                if (wantedCentre.HasValue)
-                {
-                    return;
-                }
-                wantedCentre = centre;
-                StreamingArea.CollectFixed(settings.FixedColumns.Value, centre, settings.HeightInChunks, wanted);
-                wantedSet.Clear();
-                wantedSet.UnionWith(wanted);
-                loadCursor = 0;
-                return;
-            }
             if (wantedCentre == centre && wantedDistance == settings.RenderDistance)
             {
                 return;
@@ -371,6 +356,12 @@ namespace Clube.Core
             wantedCentre = centre;
             wantedDistance = settings.RenderDistance;
             StreamingArea.Collect(centre, settings.RenderDistance, settings.HeightInChunks, wanted);
+            if (settings.FixedColumns.HasValue)
+            {
+                // A fixed area is the same circle around the focus, cut to its square of columns.
+                RectInt area = settings.FixedColumns.Value;
+                wanted.RemoveAll(coord => !area.Contains(new Vector2Int(coord.x, coord.z)));
+            }
             wantedSet.Clear();
             wantedSet.UnionWith(wanted);
             loadCursor = 0;
@@ -384,7 +375,7 @@ namespace Clube.Core
             scratch.Clear();
             foreach (Vector3Int coord in world.Chunks.Keys)
             {
-                if (!wantedSet.Contains(coord) && (settings.FixedColumns.HasValue || StreamingArea.HorizontalDistanceSquared(coord, centre) > keep))
+                if (!wantedSet.Contains(coord) && StreamingArea.HorizontalDistanceSquared(coord, centre) > keep)
                 {
                     scratch.Add(coord);
                 }
@@ -408,7 +399,7 @@ namespace Clube.Core
             {
                 first = false;
                 bool stillWanted = wantedSet.Contains(coord)
-                                   || !settings.FixedColumns.HasValue && StreamingArea.HorizontalDistanceSquared(coord, wantedCentre.Value) <= keep;
+                                   || StreamingArea.HorizontalDistanceSquared(coord, wantedCentre.Value) <= keep;
                 if (world.IsLoaded(coord) || !stillWanted)
                 {
                     chunk.Release();

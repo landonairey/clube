@@ -28,7 +28,7 @@ namespace Clube.Core
     public class WorldView : MonoBehaviour, IEditableTerrain
     {
         public const int MinRenderDistance = 1;
-        public const int MaxRenderDistance = 32;
+        public const int MaxRenderDistance = 64;
 
         [SerializeField]
         private WorldConfig config;
@@ -90,6 +90,16 @@ namespace Clube.Core
         public string Problem { get; private set; }
 
         public bool IsReady => World != null;
+
+        // Inspector edits in Play mode reach the streamer too.
+        private void OnValidate()
+        {
+            renderDistance = Mathf.Clamp(renderDistance, MinRenderDistance, MaxRenderDistance);
+            if (streamer != null)
+            {
+                streamer.RenderDistance = renderDistance;
+            }
+        }
 
         /// <summary>Radius in chunks of the loaded area, horizontally (M3).</summary>
         public int RenderDistance

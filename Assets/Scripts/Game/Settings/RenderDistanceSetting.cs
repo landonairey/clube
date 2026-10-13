@@ -40,6 +40,16 @@ namespace Clube.Game
             }
         }
 
+        // The lab panel and the WorldView Inspector set the view directly; carry that back into
+        // the setting so it stays the one source of truth and isn't re-applied over the change.
+        private void Update()
+        {
+            if (settings != null && worldView.RenderDistance != settings.RenderDistance)
+            {
+                settings.RenderDistance = worldView.RenderDistance;
+            }
+        }
+
         private void Apply()
         {
             worldView.RenderDistance = settings.RenderDistance;

@@ -28,6 +28,9 @@ namespace Clube.Game
         // Keeps the controller pressed onto the ground, so it stays grounded walking downhill.
         private const float GroundedFallSpeed = 2f;
 
+        // Seconds after leaving the ground that a jump still works.
+        private const float CoyoteTime = 0.15f;
+
         [SerializeField]
         private PlayerSettings settings;
 
@@ -75,6 +78,7 @@ namespace Clube.Game
         private float yaw;
         private float pitch;
         private float fallSpeed;
+        private float lastGroundedTime = float.NegativeInfinity;
         private Vector3 velocity;
         // Freed by FreeCursor; a menu frees it separately (isInMenu).
         private bool isCursorFree;
@@ -217,18 +221,28 @@ namespace Clube.Game
                 walk = walk.normalized * speed;
             }
 
+            bool jumpPressed = jumpAction != null && jumpAction.action.WasPressedThisFrame();
+            // Holding Jump jumps again at every landing.
+            bool jumpHeld = jumpAction != null && jumpAction.action.IsPressed();
             if (Body.isGrounded)
             {
                 // On the ground the player goes where Move points, at once.
                 velocity = walk;
                 fallSpeed = GroundedFallSpeed;
-                if (jumpAction != null && jumpAction.action.WasPressedThisFrame())
+                lastGroundedTime = Time.time;
+                if (jumpHeld)
                 {
-                    fallSpeed = -Mathf.Sqrt(2f * Gravity * jumpHeight);
+                    Jump();
                 }
             }
             else
             {
+                // Running downhill the controller is often a frame off the ground; a jump
+                // pressed just after leaving it still counts (and only on the way down or level).
+                if (jumpPressed && fallSpeed >= 0f && Time.time - lastGroundedTime <= CoyoteTime)
+                {
+                    Jump();
+                }
                 // In the air the run-up carries on; Move only nudges it, so there's no
                 // turning around on a dime. Letting go keeps the momentum.
                 if (walk != Vector3.zero)
@@ -252,6 +266,12 @@ namespace Clube.Game
             {
                 fallSpeed = 0f;
             }
+        }
+
+        private void Jump()
+        {
+            fallSpeed = -Mathf.Sqrt(2f * Gravity * jumpHeight);
+            lastGroundedTime = float.NegativeInfinity;
         }
 
         private static T Read<T>(InputActionReference reference) where T : struct
