@@ -13,11 +13,19 @@ namespace Clube.Core
         [Min(0)]
         public int Coins;
 
-        public ItemPrice(ItemDefinition item, int coins)
+        [Tooltip("Units the price is for, e.g. 1000 for 1 coin per 1000 dirt. 0 or 1: the price is per item.")]
+        [Min(1)]
+        public int Units;
+
+        public ItemPrice(ItemDefinition item, int coins, int units = 1)
         {
             Item = item;
             Coins = coins;
+            Units = units;
         }
+
+        /// <summary>Items in the lot the price is for (at least 1).</summary>
+        public int Lot => Units < 1 ? 1 : Units;
     }
 
     /// <summary>
@@ -42,19 +50,33 @@ namespace Clube.Core
 
         public IReadOnlyList<ItemPrice> Prices => prices;
 
-        /// <summary>The price paid for one of the item; false when it isn't bought.</summary>
-        public bool TryGetPrice(ItemDefinition item, out int coins)
+        /// <summary>The coins paid for a lot of the item, and how many items make a lot (GL38); false when it isn't listed.</summary>
+        public bool TryGetLot(ItemDefinition item, out int coins, out int lot)
         {
             foreach (ItemPrice price in prices)
             {
                 if (price.Item != null && price.Item == item)
                 {
                     coins = price.Coins;
+                    lot = price.Lot;
                     return true;
                 }
             }
             coins = 0;
+            lot = 1;
             return false;
+        }
+
+        /// <summary>The price paid for one of the item; false when it isn't bought.</summary>
+        public bool TryGetPrice(ItemDefinition item, out int coins)
+        {
+            return TryGetLot(item, out coins, out _);
+        }
+
+        /// <summary>The most that can be sold of <paramref name="available"/> items: whole lots only (GL38).</summary>
+        public int Sellable(ItemDefinition item, int available)
+        {
+            return TryGetLot(item, out _, out int lot) ? available / lot * lot : 0;
         }
 
         /// <summary>
@@ -64,16 +86,17 @@ namespace Clube.Core
         /// </summary>
         public int Sell(ItemDefinition item, int count, Inventory from, Wallet to)
         {
-            if (count <= 0 || !TryGetPrice(item, out int coins))
+            if (count <= 0 || !TryGetLot(item, out int coins, out int lot))
             {
                 return 0;
             }
-            int sold = Math.Min(count, from.Count(item));
+            // Whole lots only: 999 dirt is worth nothing at 1 coin per 1000.
+            int sold = Math.Min(count, from.Count(item)) / lot * lot;
             if (sold == 0 || !from.Remove(item, sold))
             {
                 return 0;
             }
-            to.Earn(sold * coins);
+            to.Earn(sold / lot * coins);
             return sold;
         }
     }

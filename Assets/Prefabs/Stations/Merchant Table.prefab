@@ -128,3 +128,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.MerchantTable
   displayName: Merchant
   prices: {fileID: 11400000, guid: 44577251d34951d40bd1ac9b329bc569, type: 2}
+  offers:
+  - Item: {fileID: 11400000, guid: 5c26ed0b0bc9f364eb573719b28d57bf, type: 2}
+    Coins: 100
+    Units: 1

@@ -77,5 +77,34 @@ namespace Clube.Core.Tests
             Assert.AreEqual(5, inventory.Count(stone));
             Assert.AreEqual(0, wallet.Coins);
         }
+
+        [Test]
+        public void Sell_PaysWholeLotsOnly_WhenAPriceIsPerManyUnits()
+        {
+            using var _ = new TempList(out PriceList bulk, new ItemPrice(stone, 1, 1000));
+            var inventory = new Inventory(4);
+            inventory.Add(stone, 1);
+            var wallet = new Wallet();
+
+            Assert.AreEqual(0, bulk.Sell(stone, 999, inventory, wallet), "Too few for a lot.");
+            Assert.AreEqual(0, wallet.Coins);
+            Assert.AreEqual(2000, bulk.Sellable(stone, 2500));
+        }
+
+        private sealed class TempList : System.IDisposable
+        {
+            private readonly PriceList list;
+
+            public TempList(out PriceList made, params ItemPrice[] prices)
+            {
+                list = PriceList.Create(prices);
+                made = list;
+            }
+
+            public void Dispose()
+            {
+                Object.DestroyImmediate(list);
+            }
+        }
     }
 }

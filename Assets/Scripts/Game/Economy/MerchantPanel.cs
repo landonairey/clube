@@ -17,6 +17,9 @@ namespace Clube.Game
         private const float Padding = 12f;
         private const float RowHeight = 26f;
 
+        // The sell buttons carry what they pay on a second line.
+        private const float SellRowHeight = 44f;
+
         [Tooltip("Closes the panel (E).")]
         [SerializeField]
         private InputActionReference closeAction;
@@ -112,7 +115,8 @@ namespace Clube.Game
             Inventory items = inventory.Inventory;
             PriceList prices = Current.Prices;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
-            float height = Padding * 2f + 24f + 22f + InventoryGridGui.PlayerHeight(inventory) + 12f + RowHeight + 6f;
+            float offerRows = Current.Offers.Count > 0 ? Current.Offers.Count * (RowHeight + 4f) + 28f : 0f;
+            float height = Padding * 2f + 24f + 22f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + offerRows;
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
@@ -124,7 +128,7 @@ namespace Clube.Game
             y += 22f;
 
             int clicked = InventoryGridGui.DrawPlayer(new Vector2(x, y), inventory, selected,
-                stack => !stack.IsEmpty && prices.TryGetPrice(stack.Item, out int coins) ? $"{coins}c" : null);
+                stack => !stack.IsEmpty && prices.TryGetLot(stack.Item, out int coins, out int lot) ? FormatPrice(coins, lot) : null);
             if (clicked >= 0)
             {
                 selected = clicked == selected ? -1 : clicked;
@@ -132,20 +136,77 @@ namespace Clube.Game
             y += InventoryGridGui.PlayerHeight(inventory) + 12f;
 
             ItemStack chosen = selected >= 0 ? items[selected] : ItemStack.Empty;
-            bool buys = !chosen.IsEmpty && prices.TryGetPrice(chosen.Item, out _);
-            string what = chosen.IsEmpty ? "Pick a stack to sell" : buys ? chosen.Item.DisplayName : $"The merchant doesn't buy {chosen.Item.DisplayName}";
+            bool buys = false;
+            int lot = 1;
+            int lotCoins = 0;
+            if (!chosen.IsEmpty)
+            {
+                buys = prices.TryGetLot(chosen.Item, out lotCoins, out lot) && chosen.Count >= lot;
+            }
+            string what = chosen.IsEmpty ? "Pick a stack to sell"
+                : buys ? $"{chosen.Item.DisplayName}: {FormatPrice(lotCoins, lot)}"
+                : prices.TryGetLot(chosen.Item, out _, out int needed) ? $"Needs {needed} to sell"
+                : $"The merchant doesn't buy {chosen.Item.DisplayName}";
             GUI.Label(new Rect(x, y + 4f, 260f, 20f), what);
             GUI.enabled = buys;
-            if (GUI.Button(new Rect(x + 270f, y, 90f, RowHeight), "Sell 1"))
+            int stackCoins = buys ? chosen.Count / lot * lotCoins : 0;
+            string oneLabel = (lot > 1 ? $"Sell {lot}" : "Sell 1") + (buys ? $"\n{lotCoins}c" : "");
+            string stackLabel = "Sell stack" + (buys ? $"\n{stackCoins}c" : "");
+            if (GUI.Button(new Rect(x + 270f, y, 100f, SellRowHeight), oneLabel))
             {
-                SellFromSlot(selected, 1);
+                SellFromSlot(selected, lot);
             }
-            if (GUI.Button(new Rect(x + 366f, y, 90f, RowHeight), "Sell stack"))
+            if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), stackLabel))
             {
                 SellFromSlot(selected, chosen.Count);
             }
             GUI.enabled = true;
+            y += SellRowHeight + 6f;
+            DrawOffers(x, y, width - Padding * 2f);
             InventoryGridGui.DrawTooltip();
+        }
+
+        private static string FormatPrice(int coins, int lot)
+        {
+            return lot > 1 ? $"{coins}c per {lot}" : $"{coins}c";
+        }
+
+        // What the merchant sells: one button per offer, greyed out when the player can't pay or has no room.
+        private void DrawOffers(float x, float y, float width)
+        {
+            if (Current.Offers.Count == 0)
+            {
+                return;
+            }
+            GUI.Label(new Rect(x, y, width, 20f), "For sale");
+            y += 24f;
+            foreach (ItemPrice offer in Current.Offers)
+            {
+                if (offer.Item == null)
+                {
+                    continue;
+                }
+                GUI.enabled = wallet.Wallet.Coins >= offer.Coins;
+                if (GUI.Button(new Rect(x, y, 260f, RowHeight), $"Buy {offer.Item.DisplayName}  ({offer.Coins}c)"))
+                {
+                    Buy(offer);
+                }
+                GUI.enabled = true;
+                y += RowHeight + 4f;
+            }
+        }
+
+        // Pays for one item and puts it in the inventory; a full inventory refuses the sale.
+        private void Buy(ItemPrice offer)
+        {
+            if (inventory.Inventory.Add(offer.Item, 1) > 0)
+            {
+                return;
+            }
+            if (!wallet.Wallet.Spend(offer.Coins))
+            {
+                inventory.Inventory.Remove(offer.Item, 1);
+            }
         }
 
         // Sells from one slot, so the stack the player picked is the one that goes.
@@ -153,12 +214,13 @@ namespace Clube.Game
         {
             Inventory items = inventory.Inventory;
             ItemStack stack = items[slot];
-            if (stack.IsEmpty || !Current.Prices.TryGetPrice(stack.Item, out int coins))
+            if (stack.IsEmpty || !Current.Prices.TryGetLot(stack.Item, out int coins, out int lot))
             {
                 return;
             }
-            int sold = items.RemoveAt(slot, count);
-            wallet.Wallet.Earn(sold * coins);
+            int whole = Mathf.Min(count, stack.Count) / lot * lot;
+            int sold = items.RemoveAt(slot, whole);
+            wallet.Wallet.Earn(sold / lot * coins);
             if (items[slot].IsEmpty)
             {
                 selected = -1;
