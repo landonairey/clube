@@ -17,15 +17,31 @@ namespace Clube.Core
         [Min(1)]
         public int Units;
 
-        public ItemPrice(ItemDefinition item, int coins, int units = 1)
+        [Tooltip("Units are volume, not items: the price is for that much of what the item holds (its unit volume each), so the lot is as many items as make that volume.")]
+        public bool ByVolume;
+
+        public ItemPrice(ItemDefinition item, int coins, int units = 1, bool byVolume = false)
         {
             Item = item;
             Coins = coins;
             Units = units;
+            ByVolume = byVolume;
         }
 
         /// <summary>Items in the lot the price is for (at least 1).</summary>
-        public int Lot => Units < 1 ? 1 : Units;
+        public int Lot
+        {
+            get
+            {
+                int units = Units < 1 ? 1 : Units;
+                if (!ByVolume || Item == null || Item.UnitVolume <= 0f)
+                {
+                    return units;
+                }
+                // A little under, so 4 volume of 0.4 each is 10 items, not 11 from float error.
+                return Math.Max(1, (int)Math.Ceiling(units / Item.UnitVolume - 1e-3f));
+            }
+        }
     }
 
     /// <summary>
@@ -71,6 +87,44 @@ namespace Clube.Core
         public bool TryGetPrice(ItemDefinition item, out int coins)
         {
             return TryGetLot(item, out coins, out _);
+        }
+
+        /// <summary>
+        /// What <paramref name="count"/> of a stack's items fetch (GL40): whole lots at the listed price,
+        /// and for a tool that wears out, less as it wears: a tool with half its hits left is worth half.
+        /// 0 when the item isn't bought.
+        /// </summary>
+        public int ValueOf(ItemStack stack, int count)
+        {
+            if (stack.IsEmpty || !TryGetLot(stack.Item, out int coins, out int lot))
+            {
+                return 0;
+            }
+            float value = Math.Min(count, stack.Count) / lot * coins;
+            if (stack.Item is ToolDefinition tool && tool.MaxHits > 0)
+            {
+                value *= Math.Max(0f, 1f - (float)stack.Wear / tool.MaxHits);
+            }
+            return (int)Math.Round(value, MidpointRounding.AwayFromZero);
+        }
+
+        /// <summary>
+        /// What <paramref name="count"/> of a stack's items are worth in coins, not rounded (GL40): the price
+        /// spread over its lot, so one ingot of a lot of ten is a tenth of a coin, less for a worn tool.
+        /// 0 when the item isn't bought.
+        /// </summary>
+        public float PriceOf(ItemStack stack, int count)
+        {
+            if (stack.IsEmpty || count <= 0 || !TryGetLot(stack.Item, out int coins, out int lot))
+            {
+                return 0f;
+            }
+            float value = (float)Math.Min(count, stack.Count) * coins / lot;
+            if (stack.Item is ToolDefinition tool && tool.MaxHits > 0)
+            {
+                value *= Math.Max(0f, 1f - (float)stack.Wear / tool.MaxHits);
+            }
+            return value;
         }
 
         /// <summary>The most that can be sold of <paramref name="available"/> items: whole lots only (GL38).</summary>

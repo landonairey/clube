@@ -124,11 +124,11 @@ namespace Clube.Game
             GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   (E to close)");
             GUI.Label(new Rect(panel.xMax - Padding - 160f, y, 160f, 20f), $"Your coins: {wallet.Wallet.Coins}");
             y += 24f;
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Your items: prices show on what the merchant buys. Click one to sell it.");
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Click one of your items to see what the merchant pays for it.");
             y += 22f;
 
             int clicked = InventoryGridGui.DrawPlayer(new Vector2(x, y), inventory, selected,
-                stack => !stack.IsEmpty && prices.TryGetLot(stack.Item, out int coins, out int lot) ? FormatPrice(coins, lot) : null);
+                _ => null);
             if (clicked >= 0)
             {
                 selected = clicked == selected ? -1 : clicked;
@@ -136,25 +136,17 @@ namespace Clube.Game
             y += InventoryGridGui.PlayerHeight(inventory) + 12f;
 
             ItemStack chosen = selected >= 0 ? items[selected] : ItemStack.Empty;
-            bool buys = false;
-            int lot = 1;
-            int lotCoins = 0;
-            if (!chosen.IsEmpty)
-            {
-                buys = prices.TryGetLot(chosen.Item, out lotCoins, out lot) && chosen.Count >= lot;
-            }
+            bool buys = !chosen.IsEmpty && prices.TryGetLot(chosen.Item, out _, out _);
             string what = chosen.IsEmpty ? "Pick a stack to sell"
-                : buys ? $"{chosen.Item.DisplayName}: {FormatPrice(lotCoins, lot)}"
-                : prices.TryGetLot(chosen.Item, out _, out int needed) ? $"Needs {needed} to sell"
+                : buys ? $"{chosen.Item.DisplayName}: {FormatCoins(prices.PriceOf(chosen, 1))} each"
                 : $"The merchant doesn't buy {chosen.Item.DisplayName}";
             GUI.Label(new Rect(x, y + 4f, 260f, 20f), what);
             GUI.enabled = buys;
-            int stackCoins = buys ? chosen.Count / lot * lotCoins : 0;
-            string oneLabel = (lot > 1 ? $"Sell {lot}" : "Sell 1") + (buys ? $"\n{lotCoins}c" : "");
-            string stackLabel = "Sell stack" + (buys ? $"\n{stackCoins}c" : "");
+            string oneLabel = "Sell 1" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, 1))}" : "");
+            string stackLabel = "Sell stack" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, chosen.Count))}" : "");
             if (GUI.Button(new Rect(x + 270f, y, 100f, SellRowHeight), oneLabel))
             {
-                SellFromSlot(selected, lot);
+                SellFromSlot(selected, 1);
             }
             if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), stackLabel))
             {
@@ -166,9 +158,10 @@ namespace Clube.Game
             InventoryGridGui.DrawTooltip();
         }
 
-        private static string FormatPrice(int coins, int lot)
+        // Coins to two places at most: "50c", "0.1c", "0.001c".
+        private static string FormatCoins(float coins)
         {
-            return lot > 1 ? $"{coins}c per {lot}" : $"{coins}c";
+            return coins >= 0.01f || coins == 0f ? $"{coins:0.##}c" : $"{coins:0.###}c";
         }
 
         // What the merchant sells: one button per offer, greyed out when the player can't pay or has no room.
@@ -214,13 +207,15 @@ namespace Clube.Game
         {
             Inventory items = inventory.Inventory;
             ItemStack stack = items[slot];
-            if (stack.IsEmpty || !Current.Prices.TryGetLot(stack.Item, out int coins, out int lot))
+            if (stack.IsEmpty || !Current.Prices.TryGetLot(stack.Item, out _, out _))
             {
                 return;
             }
-            int whole = Mathf.Min(count, stack.Count) / lot * lot;
-            int sold = items.RemoveAt(slot, whole);
-            wallet.Wallet.Earn(sold / lot * coins);
+            // Any number sells; a price that isn't a whole coin is kept as a part of one (Wallet.EarnFraction).
+            int sold = Mathf.Min(count, stack.Count);
+            float earned = Current.Prices.PriceOf(stack, sold);
+            items.RemoveAt(slot, sold);
+            wallet.Wallet.EarnFraction(earned);
             if (items[slot].IsEmpty)
             {
                 selected = -1;

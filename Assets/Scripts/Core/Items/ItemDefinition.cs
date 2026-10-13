@@ -50,6 +50,13 @@ namespace Clube.Core
             return item;
         }
 
+        /// <summary>Sets the volume of one, for items made in code (tests, tools).</summary>
+        public ItemDefinition WithUnitVolume(float volume)
+        {
+            unitVolume = Mathf.Max(0.0001f, volume);
+            return this;
+        }
+
         public string Id => id;
 
         public string DisplayName => displayName;
