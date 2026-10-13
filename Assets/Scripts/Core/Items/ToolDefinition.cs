@@ -56,6 +56,10 @@ namespace Clube.Core
             return tool;
         }
 
+        [Tooltip("Hits it takes before it breaks (GL37), each swing that lands counting one. 0: never wears out.")]
+        [SerializeField, Min(0)]
+        private int maxHits;
+
         /// <summary>Voxels per side of the cube it reaches.</summary>
         public int ImpactSize => impactSize;
 
@@ -72,3 +76,13 @@ namespace Clube.Core
         }
     }
 }
+        /// <summary>Hits it takes before it breaks, or 0 when it never wears out.</summary>
+        public int MaxHits => maxHits;
+
+        /// <summary>Sets how many hits it lasts, for tools made in code (tests, tools).</summary>
+        public ToolDefinition WithDurability(int hits)
+        {
+            maxHits = Mathf.Max(0, hits);
+            return this;
+        }
+

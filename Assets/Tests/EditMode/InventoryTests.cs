@@ -146,5 +146,21 @@ namespace Clube.Core.Tests
 
             Assert.AreEqual(4, changes);
         }
+
+        [Test]
+        public void Wear_BreaksTheToolAfterItsHits_AndTravelsWithTheStack()
+        {
+            ToolDefinition worn = ToolDefinition.Create("worn", "Worn", 3, 1.5f).WithDurability(3);
+            var inventory = new Inventory(4);
+            inventory.Add(worn);
+
+            Assert.IsFalse(inventory.Wear(0, worn.MaxHits));
+            inventory.Move(0, 2);
+            Assert.AreEqual(1, inventory[2].Wear, "Wear moves with the tool.");
+            Assert.IsFalse(inventory.Wear(2, worn.MaxHits));
+            Assert.IsTrue(inventory.Wear(2, worn.MaxHits), "The third hit breaks it.");
+            Assert.IsTrue(inventory[2].IsEmpty);
+            Object.DestroyImmediate(worn);
+        }
     }
 }

@@ -9,11 +9,12 @@ namespace Clube.Core
     {
         public static readonly ItemStack Empty = default;
 
-        public ItemStack(ItemDefinition item, int count, Composition contents = null)
+        public ItemStack(ItemDefinition item, int count, Composition contents = null, int wear = 0)
         {
             Item = count > 0 ? item : null;
             Count = item != null && count > 0 ? count : 0;
             Contents = Item != null ? contents : null;
+            Wear = Item != null ? System.Math.Max(0, wear) : 0;
         }
 
         /// <summary>The item, or null for an empty slot.</summary>
@@ -23,6 +24,9 @@ namespace Clube.Core
 
         /// <summary>What each item is made of by volume (GL32), or null for items that are just themselves.</summary>
         public Composition Contents { get; }
+
+        /// <summary>Hits a tool has taken (GL37); 0 for new tools and for everything that doesn't wear out.</summary>
+        public int Wear { get; }
 
         public bool IsEmpty => Item == null;
 
@@ -34,7 +38,7 @@ namespace Clube.Core
 
         public ItemStack WithCount(int count)
         {
-            return new ItemStack(Item, count, Contents);
+            return new ItemStack(Item, count, Contents, Wear);
         }
     }
 }

@@ -38,6 +38,12 @@ namespace Clube.Game
         /// <summary>What the selected slot holds; empty for an empty slot.</summary>
         public ItemStack SelectedStack => inventory.Inventory != null ? inventory.Inventory[Selected] : ItemStack.Empty;
 
+        /// <summary>Wears the selected slot's tool by one hit (GL37); true when it broke and the slot emptied.</summary>
+        public bool WearSelected(int maxHits)
+        {
+            return inventory.Inventory != null && inventory.Inventory.Wear(Selected, maxHits);
+        }
+
         /// <summary>Selects a hotbar slot (0-based), as its number key does; out-of-range slots are ignored.</summary>
         public void Select(int slot)
         {

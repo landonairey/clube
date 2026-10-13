@@ -45,6 +45,8 @@ namespace Clube.Game
         private PlayerController player;
         private PlayerInteractor interactor;
         private float nextHitTime;
+        private string brokenName;
+        private float brokenUntil;
 
         /// <summary>Raised for each item a hit collects, one at a time, with its contents (mixed ore, GL32).</summary>
         public event Action<ItemStack> Collected;
@@ -164,12 +166,27 @@ namespace Clube.Game
                 Collected?.Invoke(new ItemStack(collected[i], 1, ContentsOf(minedFrom[i])));
             }
         }
+            WearTool(tool);
 
         // What a mined sample is made of: ore from the node it came from (GL32), else nothing.
         private Composition ContentsOf(MinedSample mined)
         {
             OreField ores = worldView.Ores;
             if (ores == null || mined.Material == null)
+        // Each swing wears the held tool (GL37); the hand never breaks.
+        private void WearTool(ToolDefinition tool)
+        {
+            if (hotbar == null || tool.MaxHits <= 0 || hotbar.SelectedStack.Item != tool)
+            {
+                return;
+            }
+            if (hotbar.WearSelected(tool.MaxHits))
+            {
+                brokenName = tool.DisplayName;
+                brokenUntil = Time.time + 3f;
+            }
+        }
+
             {
                 return null;
             }
@@ -183,8 +200,15 @@ namespace Clube.Game
             {
                 return;
             }
+            if (Time.time < brokenUntil)
+            {
+                GUI.Label(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f + 48f, 300f, 24f), $"Your {brokenName.ToLowerInvariant()} broke!");
+            }
             var centre = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-            GUI.Label(new Rect(centre.x + 12f, centre.y + 12f, 200f, 20f), tool.DisplayName);
+            string wear = tool.MaxHits > 0 && hotbar != null && hotbar.SelectedStack.Item == tool
+                ? $" ({tool.MaxHits - hotbar.SelectedStack.Wear}/{tool.MaxHits})"
+                : "";
+            GUI.Label(new Rect(centre.x + 12f, centre.y + 12f, 220f, 20f), tool.DisplayName + wear);
         }
     }
 }

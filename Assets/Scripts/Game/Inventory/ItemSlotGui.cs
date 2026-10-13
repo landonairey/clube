@@ -40,6 +40,13 @@ namespace Clube.Game
                 {
                     GUI.Label(Inset(rect, 3f), stack.Count.ToString(), countStyle);
                 }
+                if (stack.Item is ToolDefinition worn && worn.MaxHits > 0 && stack.Wear > 0)
+                {
+                    // Wear bar along the bottom: green when fresh, red when nearly gone.
+                    float left = Mathf.Clamp01(1f - (float)stack.Wear / worn.MaxHits);
+                    var bar = new Rect(rect.x + 4f, rect.yMax - 8f, (rect.width - 8f) * left, 4f);
+                    Fill(bar, Color.Lerp(new Color(0.85f, 0.2f, 0.15f), new Color(0.35f, 0.8f, 0.25f), left));
+                }
             }
 
             if (key != null)

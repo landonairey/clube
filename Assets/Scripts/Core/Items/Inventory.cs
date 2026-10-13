@@ -33,7 +33,7 @@ namespace Clube.Core
         /// Returns how many didn't fit (0 when all of them did).
         /// </summary>
         /// <param name="contents">What the items are made of (mixed ore, GL32); a stack topped up with them blends its contents by volume.</param>
-        public int Add(ItemDefinition item, int count = 1, Composition contents = null)
+        public int Add(ItemDefinition item, int count = 1, Composition contents = null, int wear = 0)
         {
             if (item == null || count <= 0)
             {
@@ -55,7 +55,7 @@ namespace Clube.Core
                 if (slots[i].IsEmpty)
                 {
                     int moved = Math.Min(left, item.MaxStack);
-                    slots[i] = new ItemStack(item, moved, contents);
+                    slots[i] = new ItemStack(item, moved, contents, wear);
                     left -= moved;
                 }
             }
@@ -92,7 +92,7 @@ namespace Clube.Core
             {
                 return 0;
             }
-            int moved = stack.Count - target.Add(stack.Item, stack.Count, stack.Contents);
+            int moved = stack.Count - target.Add(stack.Item, stack.Count, stack.Contents, stack.Wear);
             return RemoveAt(slot, moved);
         }
 
@@ -113,6 +113,24 @@ namespace Clube.Core
                 }
             }
             return contents;
+        }
+
+        /// <summary>
+        /// Wears the tool in a slot by one hit (GL37). It breaks, leaving the slot empty, once it has
+        /// taken <paramref name="maxHits"/>; returns true then. Does nothing for an empty slot.
+        /// </summary>
+        public bool Wear(int slot, int maxHits)
+        {
+            ItemStack stack = slots[slot];
+            if (stack.IsEmpty)
+            {
+                return false;
+            }
+            int wear = stack.Wear + 1;
+            bool broke = wear >= maxHits;
+            slots[slot] = broke ? ItemStack.Empty : new ItemStack(stack.Item, stack.Count, stack.Contents, wear);
+            Changed?.Invoke();
+            return broke;
         }
 
         /// <summary>Takes up to <paramref name="count"/> from one slot; returns how many it took.</summary>
