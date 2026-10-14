@@ -628,3 +628,27 @@ WorldLab's config: Landscape terrain, a 104 m square (25 × 25 chunk columns) of
 | Air and buried rock without a job, not counted against the job limit; unload scan only when the area changes; `World` keeps a dirty set | 111 | 2.2 s | 0.24 |
 
 The load was limited by job slots, not by the CPU: air chunks waiting on their column, and buried rock, each held a slot. The first frame still spends about 40 ms collecting and sorting the 25,000 wanted chunks.
+
+## Large fixed areas: 400 m at render distance 64 (2026-10-13)
+
+A 400 m WorldLab (100 × 100 columns, 40 layers) at render distance 64 took about 15 minutes to load in Play mode and then ran at single-digit fps. Measured at 100 m and 200 m in edit mode (WorldLab config, Editor with Burst), 400 m extrapolated:
+
+| | 100 m | 200 m | 400 m (×4) |
+|---|--:|--:|--:|
+| Chunks | 25,000 | 100,000 | ~400,000 |
+| With a surface (renderers) | 2,438 | 8,576 | ~34,000 |
+| Vertices / triangles | 4.1 M / 1.4 M | 14 M / 4.7 M | ~56 M / ~19 M |
+| Streamer main-thread time for the whole load | | 3.1 s | ~12 s |
+
+What was slow, and what changed:
+
+| | Before | After |
+|---|--:|--:|
+| `World.Raycast` (100k chunks; the player's tools cast several times a frame) | 2.9 ms | 0.05 ms (walks the chunk grid along the ray) |
+| `StreamingStats.Pending` (the lab panel reads it twice a frame) | a scan of the wanted area | kept up to date |
+| Colliders | every renderer checked each frame | only the chunks around the focus |
+| Load budget | 3 ms a frame: ~4,000 frames at 400 m, minutes at low fps | 30 ms until the area first loads (`LoadingBudgetMilliseconds`): ~400 frames |
+| Build grid overlay | a second pass on every chunk | within 32 m of the focus (`OverlayRadius`) |
+| Streamer, idle frame at 200 m | | 0.44 ms |
+
+Rendering the whole 200 m world (untextured, warmed up): 20–25 ms with the terrain material only, 25–28 ms with the overlay on every chunk. (A first render that also uploads the meshes takes ~750 ms; an earlier comparison mistook that for the overlay's cost.) At 400 m that's ~80–100 ms a frame for rendering alone: what's left is too many objects and triangles, which needs LOD (P7) and merging chunks into larger render meshes.
