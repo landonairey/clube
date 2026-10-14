@@ -264,6 +264,18 @@ stations hold what's short of a whole item. The furnace burns fuel (`ItemDefinit
 a `Fuel` slot). Clay (13) deposits are surface lenses (`TerrainLayers.Clay`,
 `ChunkFillKernel.ClayDepthAt`); dropped clay dries into Brick (14) on a `GameClock`
 (`GroundDrying`, `DroppedGroundDrying`), or is fired in the furnace.
+Ninth pass (GL47-GL55, `Docs/20261013 clube-backlog.md`): the beginning path. `SkillSet` (Core/Skills:
+Crafting, Woodcutting, Mining, Smelting; level n at 10 n (n + 1) xp) lives on `PlayerSkills`, which
+awards xp per mined sample (`PlayerToolUser.Mined`) and per finished recipe
+(`CraftingStation.Completed`). Recipes give xp and can need a level (`Recipe.UnlockSkill/Level`,
+checked against `CraftingStation.Learner`; `StationObject` connects the player). `SkillsHud` shows
+levels and names unlocks. The player starts with bare hands (no pickaxe or furnace): wood from
+trees, sticks and a pointy stick at the stump, a campfire (`StationKind.Campfire`) smelts
+cassiterite (id 19, shallow and at the surface) into tin; the stone pick, hatchet, hammer, furnace
+and spear unlock by Crafting level; bronze buns and ingots alloy at Smelting 3. Until Mining 3,
+`OreKnowledge` hides chalcopyrite and malachite: the terrain shader remaps their layers to stone
+(`_LayerRemap`, set by `MaterialRegistry.ShowAs`, runtime only) and their drops are "? ore",
+identified by composition when the level is reached.
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16
@@ -415,6 +427,11 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   stalls a frame by 5-10 ms, so per-chunk allocations show up as spikes.
   Pool chunk arrays (`VoxelArrayPool`) and native buffers; check
   `WorldView.Stats.Phases` before guessing where a frame went.
+- Compile errors after shell edits may not reach `ReadConsole`; search
+  `%LOCALAPPDATA%/Unity/Editor/Editor.log` for `error CS` before assuming a script compiled.
+- Placeholder terrain textures (`MaterialTextureTools`) are seeded by entry order: append new
+  materials at the end, and after regenerating, `git checkout` any unrelated PNGs that changed,
+  then rebuild the texture array.
 - MCP gotcha: in `RunCommand` scripts `Mesh` resolves to a `Unity.AI.Mesh`
   namespace; write `UnityEngine.Mesh` (or alias it).
 - Burst gotcha: after a long Editor session the Burst JIT can stop rebuilding
