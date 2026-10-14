@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
   id: cassiterite
   displayName: Cassiterite
-  icon: {fileID: 0}
+  icon: {fileID: 2800000, guid: 8ba5fd1e3cd242c4db74a323efbb9cc6, type: 3}
   maxStack: 256
   unitVolume: 1
   burnSeconds: 0
