@@ -18,9 +18,20 @@ MonoBehaviour:
   maxStack: 1
   unitVolume: 1
   burnSeconds: 0
-  impactSize: 2
+  impactSize: 1
   impactShape: 0
   wideOn: 2
   power: 1.5
   maxHits: 80
   hitsPerSecond: 2
+  hitsOn:
+  - Material: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+    WholeCategory: 0
+    Hits: 1
+  - Material: {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
+    WholeCategory: 1
+    Hits: 1
+  - Material: {fileID: 11400000, guid: b167c5abf07b4be419155d7e54a546e6, type: 2}
+    WholeCategory: 0
+    Hits: 2
+  hitsOnAnything: 0

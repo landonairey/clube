@@ -189,8 +189,7 @@ namespace Clube.Game
                 }
                 byte? id = view.World.GetMaterial(sample);
                 VoxelMaterial voxelMaterial = id.HasValue && view.Config.Materials != null ? view.Config.Materials.Get(id.Value) : null;
-                float hardness = voxelMaterial != null ? voxelMaterial.Hardness : 1f;
-                most = Mathf.Max(most, hardness > 0f ? Mathf.Clamp01(damage / hardness) : 1f);
+                most = Mathf.Max(most, ToolStrike.DamageFraction(tools.Current, voxelMaterial, damage));
             }
             return most;
         }

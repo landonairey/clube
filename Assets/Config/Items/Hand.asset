@@ -16,6 +16,34 @@ MonoBehaviour:
   displayName: Hand
   icon: {fileID: 0}
   maxStack: 1
+  unitVolume: 1
+  burnSeconds: 0
   impactSize: 1
+  impactShape: 0
+  wideOn: 0
   power: 0.5
+  maxHits: 0
   hitsPerSecond: 3
+  hitsOn:
+  - Material: {fileID: 11400000, guid: cf152efb35813624a9fcb26da0602f3f, type: 2}
+    WholeCategory: 0
+    Hits: 4
+  - Material: {fileID: 11400000, guid: c3a9464decc6a0d4386f7028c5aa4060, type: 2}
+    WholeCategory: 0
+    Hits: 1
+  - Material: {fileID: 11400000, guid: 0554987880d556d4cafb280d1242eb09, type: 2}
+    WholeCategory: 0
+    Hits: 2
+  - Material: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
+    WholeCategory: 0
+    Hits: 2
+  - Material: {fileID: 11400000, guid: b167c5abf07b4be419155d7e54a546e6, type: 2}
+    WholeCategory: 0
+    Hits: 2
+  - Material: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+    WholeCategory: 0
+    Hits: 0
+  - Material: {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
+    WholeCategory: 1
+    Hits: 0
+  hitsOnAnything: 0

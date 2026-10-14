@@ -66,6 +66,10 @@ namespace Clube.Core
         [SerializeField]
         private TreeGeneration trees = new TreeGeneration();
 
+        [Tooltip("The land the player starts on: generation makes sure it has a few trees and a clay deposit.")]
+        [SerializeField]
+        private StartArea startArea = new StartArea();
+
         [Header("Landscape")]
         [Tooltip("Landscape (GL26): width of a mountain, in metres. Ranges and plains are several times wider. Amplitude is the mountains' height above the plains, Surface level the plains' height, Octaves the ridges' detail.")]
         [SerializeField, Min(10f)]
@@ -110,6 +114,9 @@ namespace Clube.Core
 
         /// <summary>Tree generation (GL30).</summary>
         public TreeGeneration Trees => trees;
+
+        /// <summary>The start area generation stocks with trees and clay.</summary>
+        public StartArea StartArea => startArea;
 
         public TerrainGeneratorType Generator
         {

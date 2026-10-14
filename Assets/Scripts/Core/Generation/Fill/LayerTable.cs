@@ -41,8 +41,44 @@ namespace Clube.Core
         public float ClayRadius;
         public float ClayDepth;
 
+        /// <summary>A deposit put in the start area when the seed gave it none (<see cref="StartArea"/>): its middle, x and z.</summary>
+        public float2 StartClayCentre;
+
+        /// <summary>That deposit's radius in metres; 0 when there is none.</summary>
+        public float StartClayRadius;
+
         /// <summary>Every depth gets material id 0: what terrain without layers has.</summary>
         public static LayerTable None => default;
+
+        /// <summary>
+        /// The table for a terrain's layers, with a clay deposit added in the middle of the start area
+        /// when it wants clay and no deposit from the seed reaches into it. Checked on a 1 m grid.
+        /// </summary>
+        public static LayerTable From(TerrainLayers layers, StartArea start, int seed)
+        {
+            LayerTable table = From(layers);
+            if (start == null || !start.Clay || layers == null || layers.Clay == null || layers.ClayDepth <= 0f || layers.ClayRadius <= 0f)
+            {
+                return table;
+            }
+            UnityEngine.Rect area = start.Area;
+            for (float z = area.yMin + 0.5f; z < area.yMax; z += 1f)
+            {
+                for (float x = area.xMin + 0.5f; x < area.xMax; x += 1f)
+                {
+                    if (ChunkFillKernel.ClayDepthAt(seed, new float2(x, z), table) > 0f)
+                    {
+                        return table;
+                    }
+                }
+            }
+            table.StartClayCentre = new float2(area.center.x, area.center.y);
+            table.StartClayRadius = layers.ClayRadius;
+            // Its own material and depth, even if the layers gave no table (no top, band or base).
+            table.Clay = layers.Clay.Id;
+            table.ClayDepth = layers.ClayDepth;
+            return table;
+        }
 
         /// <summary>The table for a terrain's layers; <see cref="None"/> when it has none.</summary>
         public static LayerTable From(TerrainLayers layers)

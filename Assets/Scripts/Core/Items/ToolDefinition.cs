@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Clube.Core
@@ -25,6 +27,19 @@ namespace Clube.Core
 
         /// <summary>Plants: wood and leaves (the hatchet, ML1).</summary>
         Wood,
+    }
+
+    /// <summary>Exact hits a tool takes on a material (or a whole category of them); 0: can't break it.</summary>
+    [Serializable]
+    public struct MaterialHits
+    {
+        public VoxelMaterial Material;
+
+        [Tooltip("Every material of the Material's category (e.g. all ore), not just its break chain.")]
+        public bool WholeCategory;
+
+        [Min(0)]
+        public int Hits;
     }
 
     /// <summary>
@@ -66,6 +81,15 @@ namespace Clube.Core
         [Tooltip("Hits per second while the use button is held.")]
         [SerializeField, Range(0.5f, 10f)]
         private float hitsPerSecond = 2f;
+
+        [Tooltip("Exact hits it takes to remove a material whole (ML1 tuning, 2026-10-13), overriding power against hardness. " +
+                 "An entry covers its material's break chain (stone, cracked, loose), or with Whole Category every material of that category (e.g. all ore). 0 hits: can't break it.")]
+        [SerializeField]
+        private List<MaterialHits> hitsOn = new List<MaterialHits>();
+
+        [Tooltip("Hits it takes to remove any material no entry above covers. 0: power against hardness, as before. Worktops (stumps) are never covered by this.")]
+        [SerializeField, Min(0)]
+        private int hitsOnAnything;
 
         /// <summary>Makes a tool in code (tests); the game's tools are assets.</summary>
         public static ToolDefinition Create(
@@ -113,6 +137,74 @@ namespace Clube.Core
         public float Power => power;
 
         public float HitsPerSecond => hitsPerSecond;
+
+        /// <summary>
+        /// The exact hits this tool takes to remove <paramref name="material"/> whole, when a rule sets
+        /// them (an entry for it or its break chain, then one for its category, then
+        /// <c>hitsOnAnything</c>): true, with 0 hits meaning it can't break it. False: no rule, so
+        /// power against hardness decides, a stage at a time.
+        /// </summary>
+        public bool HitsFor(VoxelMaterial material, out int hits)
+        {
+            hits = 0;
+            if (material == null)
+            {
+                return false;
+            }
+            foreach (MaterialHits rule in hitsOn)
+            {
+                if (!rule.WholeCategory && rule.Material != null && SameChain(rule.Material, material))
+                {
+                    hits = rule.Hits;
+                    return true;
+                }
+            }
+            foreach (MaterialHits rule in hitsOn)
+            {
+                if (rule.WholeCategory && rule.Material != null && rule.Material.Category == material.Category)
+                {
+                    hits = rule.Hits;
+                    return true;
+                }
+            }
+            if (hitsOnAnything > 0 && !material.IsWorktop)
+            {
+                hits = hitsOnAnything;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>Sets exact hits for a material (and its break chain), for tools made in code (tests).</summary>
+        public ToolDefinition WithHits(VoxelMaterial material, int hits, bool wholeCategory = false)
+        {
+            hitsOn.Add(new MaterialHits { Material = material, Hits = Mathf.Max(0, hits), WholeCategory = wholeCategory });
+            return this;
+        }
+
+        /// <summary>Sets the hits for every material no rule covers, for tools made in code (tests).</summary>
+        public ToolDefinition WithHitsOnAnything(int hits)
+        {
+            hitsOnAnything = Mathf.Max(0, hits);
+            return this;
+        }
+
+        // True when one material is the other or follows it in its break chain (stone → cracked → loose).
+        private static bool SameChain(VoxelMaterial rule, VoxelMaterial material)
+        {
+            for (VoxelMaterial stage = rule; stage != null; stage = stage.BreaksInto)
+            {
+                if (stage == material)
+                {
+                    return true;
+                }
+                if (stage.BreaksInto == rule)
+                {
+                    break;
+                }
+            }
+            return false;
+        }
 
         /// <summary>Hits it takes before it breaks, or 0 when it never wears out.</summary>
         public int MaxHits => maxHits;

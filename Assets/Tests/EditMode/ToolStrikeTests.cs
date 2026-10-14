@@ -192,6 +192,65 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Hit_WithoutStages_RemovesStoneWholeAndGivesItsLastStagesDrop()
+        {
+            var aimed = new Vector3Int(2, 1, 2);
+            var targets = new List<Vector3Int> { aimed };
+            var damage = new StrikeDamage();
+            var collected = new List<ItemDefinition>();
+            ToolDefinition pickaxe = Pickaxe();
+
+            ToolStrike.Hit(world, targets, pickaxe, registry, damage, collected, breakInStages: false);
+            Assert.AreEqual(1f, world.GetDensity(aimed), "Still two hits of 1.5 for hardness 3.");
+            StrikeResult result = ToolStrike.Hit(world, targets, pickaxe, registry, damage, collected, breakInStages: false);
+            Assert.AreEqual(1, result.Removed);
+            Assert.AreEqual(0f, world.GetDensity(aimed), "No cracked or loose stage.");
+            CollectionAssert.AreEqual(new[] { stoneItem }, collected);
+            Object.DestroyImmediate(pickaxe);
+        }
+
+        [Test]
+        public void Hit_SetHits_RemoveTheWholeChain_AndZeroHitsCantBreakIt()
+        {
+            var aimed = new Vector3Int(2, 1, 2);
+            var targets = new List<Vector3Int> { aimed };
+            var collected = new List<ItemDefinition>();
+            ToolDefinition hand = ToolDefinition.Create("hand", "Hand", 1, 1f).WithHits(stone, 0);
+            ToolDefinition hammer = ToolDefinition.Create("hammer", "Hammer", 1, 1f).WithHits(stone, 1);
+            ToolDefinition twoHits = ToolDefinition.Create("two", "Two", 1, 1f).WithHitsOnAnything(2);
+            try
+            {
+                var damage = new StrikeDamage();
+                for (int i = 0; i < 10; i++)
+                {
+                    ToolStrike.Hit(world, targets, hand, registry, damage, collected);
+                }
+                Assert.AreEqual(1f, world.GetDensity(aimed), "0 hits: the hand can't break stone.");
+                Assert.AreEqual(stone.Id, world.GetMaterial(aimed));
+
+                StrikeResult result = ToolStrike.Hit(world, targets, hammer, registry, new StrikeDamage(), collected);
+                Assert.AreEqual(1, result.Removed, "One hit takes the stone whole, even with stages on.");
+                CollectionAssert.AreEqual(new[] { stoneItem }, collected);
+
+                var next = new List<Vector3Int> { new Vector3Int(1, 1, 1) };
+                world.SetMaterial(next[0], cracked.Id);
+                damage = new StrikeDamage();
+                ToolStrike.Hit(world, next, twoHits, registry, damage, collected);
+                Assert.AreEqual(1f, world.GetDensity(next[0]));
+                ToolStrike.Hit(world, next, twoHits, registry, damage, collected);
+                Assert.AreEqual(0f, world.GetDensity(next[0]), "The rule for any material counts hits too.");
+
+                Assert.IsTrue(hand.HitsFor(loose, out int looseHits) && looseHits == 0, "A rule covers its material's break chain.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(hand);
+                Object.DestroyImmediate(hammer);
+                Object.DestroyImmediate(twoHits);
+            }
+        }
+
+        [Test]
         public void Hit_WeakToolTakesHardnessOverPowerHits()
         {
             var aimed = new Vector3Int(2, 1, 2);

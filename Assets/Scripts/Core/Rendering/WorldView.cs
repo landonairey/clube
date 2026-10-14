@@ -285,7 +285,7 @@ namespace Clube.Core
             World = new World(Config.ChunkSize, Config.VoxelSize, Config.CreateStorage);
             terrainFingerprint = TerrainFingerprint();
             CreateGenerator();
-            var pipeline = new ChunkPipeline(World.Grid, generator, Config.Terrain.Layers, ores, World.PreferredFormat, World.StorageFactory, trees);
+            var pipeline = new ChunkPipeline(World.Grid, generator, Config.Terrain.Layers, ores, World.PreferredFormat, World.StorageFactory, trees, Config.Terrain.StartArea);
             streamer = new WorldStreamer(World, pipeline, renderers, () => Config.MeshSettings, new StreamingSettings
             {
                 RenderDistance = renderDistance,

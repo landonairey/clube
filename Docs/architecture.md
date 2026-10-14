@@ -147,6 +147,13 @@ flowchart LR
   the deposit over it (at most one lens-shaped deposit per cell, hashed from the seed),
   and the kernel turns the solid samples above that depth to clay, so deposits sit
   flush with the ground. Steep columns are left as bare rock.
+- **The start area** (`StartArea`, in `TerrainSettings`): a square the player starts on that
+  generation stocks for the first loop. `TreeField` counts the seed's trees rooted in it and
+  grows more on its flattest spots up to the minimum; `LayerTable.From(layers, start, seed)`
+  checks for clay on a 1 m grid and, when there is none, adds one deposit in its middle
+  (`StartClayCentre`, `StartClayRadius`), which `ClayDepthAt` adds to the hashed ones. Both
+  are worked out once on the main thread, so the jobs see plain data. The world labs set it to
+  the parcel the player lands in (GL42).
 - **Ore contents** (GL32): each node rolls its grade (and any extra contents) from
   the seed and its cell when it's placed, so a node's ore is always the same mix.
   Generation only stores the ore's material id; `OreField.ContentsAt` finds the node
