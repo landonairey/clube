@@ -36,8 +36,11 @@ namespace Clube.Core
         // have been cleaned since, so readers check.
         private readonly HashSet<Vector3Int> dirty = new HashSet<Vector3Int>();
         private readonly List<Vector3Int> scratchChunks = new List<Vector3Int>();
-        private readonly List<(Chunk Chunk, Vector3Int Coord, float Entry)> raycastCandidates =
-            new List<(Chunk, Vector3Int, float)>();
+        // The box of chunk coordinates anything was ever loaded in (it only grows, until Clear): rays
+        // walk the chunk grid inside it, so a cast costs the same whatever the world size.
+        private Vector3Int loadedMin;
+        private Vector3Int loadedMax;
+        private bool anyLoaded;
 
         private readonly Func<Vector3Int, IVoxelStorage> createStorage;
         private DensityFormat? preferredFormat;
@@ -135,6 +138,9 @@ namespace Clube.Core
         public void Add(Vector3Int coord, Chunk chunk)
         {
             loaded.Add(coord, chunk);
+            loadedMin = anyLoaded ? Vector3Int.Min(loadedMin, coord) : coord;
+            loadedMax = anyLoaded ? Vector3Int.Max(loadedMax, coord) : coord;
+            anyLoaded = true;
             chunk.BecameDirty = _ => dirty.Add(coord);
             if (chunk.IsDirty)
             {
@@ -219,6 +225,7 @@ namespace Clube.Core
             }
             loaded.Clear();
             dirty.Clear();
+            anyLoaded = false;
             editedUnloaded.Clear();
             edited.Clear();
         }
@@ -324,50 +331,97 @@ namespace Clube.Core
 
         /// <summary>
         /// Where a ray first hits the surface of any loaded chunk, without meshes or
-        /// colliders (<see cref="SurfaceRaycast"/> per chunk, nearest chunks first).
+        /// colliders (<see cref="SurfaceRaycast"/> per chunk, nearest chunks first). Walks the
+        /// chunk grid along the ray, so its cost depends on the ray's length, not on how many
+        /// chunks are loaded.
         /// </summary>
         /// <param name="ray">Relative to the world origin.</param>
         /// <param name="maxDistance">Chunks entered beyond this distance aren't tested.</param>
         public bool Raycast(Ray ray, ChunkMeshSettings settings, float maxDistance, out WorldHit hit)
         {
             hit = default;
-            Vector3 size = Grid.ChunkWorldSize;
-            raycastCandidates.Clear();
-            foreach (KeyValuePair<Vector3Int, Chunk> entry in loaded)
+            if (!anyLoaded)
             {
-                // Every sample the same, border samples too: no surface crosses the chunk.
-                if (entry.Value.IsUniform)
+                return false;
+            }
+            Vector3 size = Grid.ChunkWorldSize;
+            Vector3 direction = ray.direction.normalized;
+
+            // Only the part of the ray inside the box of loaded chunks.
+            Vector3 boxMin = Grid.ChunkOrigin(loadedMin);
+            Vector3 boxMax = Grid.ChunkOrigin(loadedMax + Vector3Int.one);
+            float near = 0f;
+            float far = maxDistance;
+            for (int axis = 0; axis < 3; axis++)
+            {
+                if (Mathf.Abs(direction[axis]) < 1e-8f)
                 {
+                    if (ray.origin[axis] < boxMin[axis] || ray.origin[axis] > boxMax[axis])
+                    {
+                        return false;
+                    }
                     continue;
                 }
-                var bounds = new Bounds(Grid.ChunkOrigin(entry.Key) + size * 0.5f, size);
-                if (bounds.IntersectRay(ray, out float entryDistance) && entryDistance <= maxDistance)
-                {
-                    raycastCandidates.Add((entry.Value, entry.Key, entryDistance));
-                }
+                float t0 = (boxMin[axis] - ray.origin[axis]) / direction[axis];
+                float t1 = (boxMax[axis] - ray.origin[axis]) / direction[axis];
+                near = Mathf.Max(near, Mathf.Min(t0, t1));
+                far = Mathf.Min(far, Mathf.Max(t0, t1));
             }
-            raycastCandidates.Sort((a, b) => a.Entry.CompareTo(b.Entry));
-
-            // A chunk entered later can still hold a nearer hit than one entered earlier,
-            // so keep the nearest hit and stop once chunks start beyond it.
-            float best = float.PositiveInfinity;
-            foreach ((Chunk chunk, Vector3Int coord, float entry) in raycastCandidates)
+            if (near > far)
             {
-                if (entry > best)
+                return false;
+            }
+
+            // Grid walk (Amanatides & Woo) from the chunk the ray enters the box in. tNext is the
+            // distance at which the ray crosses into the next chunk along each axis.
+            Vector3 start = ray.origin + direction * near;
+            Vector3Int cell = Vector3Int.Min(Vector3Int.Max(Grid.WorldToChunk(start), loadedMin), loadedMax);
+            var step = new Vector3Int(direction.x > 0f ? 1 : -1, direction.y > 0f ? 1 : -1, direction.z > 0f ? 1 : -1);
+            Vector3 tNext = default;
+            Vector3 tDelta = default;
+            for (int axis = 0; axis < 3; axis++)
+            {
+                if (Mathf.Abs(direction[axis]) < 1e-8f)
+                {
+                    tNext[axis] = float.PositiveInfinity;
+                    tDelta[axis] = float.PositiveInfinity;
+                    continue;
+                }
+                float boundary = (cell[axis] + (step[axis] > 0 ? 1 : 0)) * size[axis];
+                tNext[axis] = (boundary - ray.origin[axis]) / direction[axis];
+                tDelta[axis] = size[axis] / Mathf.Abs(direction[axis]);
+            }
+
+            // A chunk entered later can still hold a slightly nearer hit than one entered
+            // earlier (a surface ending at a border), so keep the nearest hit and stop once
+            // chunks start beyond it.
+            float best = float.PositiveInfinity;
+            float entry = near;
+            while (entry <= far && entry <= best)
+            {
+                // Every sample the same, border samples too: no surface crosses the chunk.
+                if (loaded.TryGetValue(cell, out Chunk chunk) && !chunk.IsUniform)
+                {
+                    Vector3 origin = Grid.ChunkOrigin(cell);
+                    var localRay = new Ray(ray.origin - origin, direction);
+                    if (SurfaceRaycast.Cast(localRay, chunk, settings, out Vector3Int voxel, out Vector3 point))
+                    {
+                        float distance = Vector3.Dot(point - localRay.origin, direction);
+                        if (distance < best)
+                        {
+                            best = distance;
+                            hit = new WorldHit(cell, voxel, point + origin);
+                        }
+                    }
+                }
+
+                int next = tNext.x < tNext.y ? (tNext.x < tNext.z ? 0 : 2) : (tNext.y < tNext.z ? 1 : 2);
+                entry = tNext[next];
+                tNext[next] += tDelta[next];
+                cell[next] += step[next];
+                if (cell[next] < loadedMin[next] || cell[next] > loadedMax[next])
                 {
                     break;
-                }
-
-                Vector3 origin = Grid.ChunkOrigin(coord);
-                var localRay = new Ray(ray.origin - origin, ray.direction);
-                if (SurfaceRaycast.Cast(localRay, chunk, settings, out Vector3Int voxel, out Vector3 point))
-                {
-                    float distance = Vector3.Dot(point - localRay.origin, ray.direction.normalized);
-                    if (distance < best)
-                    {
-                        best = distance;
-                        hit = new WorldHit(coord, voxel, point + origin);
-                    }
                 }
             }
             return !float.IsPositiveInfinity(best);

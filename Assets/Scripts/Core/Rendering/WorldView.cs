@@ -33,7 +33,7 @@ namespace Clube.Core
         [SerializeField]
         private WorldConfig config;
 
-        [Tooltip("Materials for every chunk renderer (the terrain material, then ChunkDepthPrepass).")]
+        [Tooltip("Materials for chunk renderers: the terrain material, then overlays (the build grid), drawn only within the overlay radius.")]
         [SerializeField]
         private Material[] chunkMaterials;
 
@@ -49,6 +49,16 @@ namespace Clube.Core
                  "The jobs themselves run on worker threads; this caps how long the frame waits on their results.")]
         [SerializeField, Range(0.5f, 16f)]
         private float frameBudgetMilliseconds = 3f;
+
+        [Tooltip("The budget while the area first loads (at the start, after regenerating, or when the render distance grows), " +
+                 "until it is all loaded and meshed. A big area loads in seconds instead of minutes, at a lower frame rate meanwhile.")]
+        [SerializeField, Range(0.5f, 100f)]
+        private float loadingBudgetMilliseconds = 30f;
+
+        [Tooltip("How far from the focus, horizontally in metres, chunks draw the overlay materials (every chunk material after the first). " +
+                 "Each overlay is a second pass over every triangle, so far chunks skip it. 0: every chunk.")]
+        [SerializeField, Min(0f)]
+        private float overlayRadius = 32f;
 
         [Tooltip("Jobs of each kind (generation, meshing, colliders) running at once. 0: two per worker thread.")]
         [SerializeField, Min(0)]
@@ -123,6 +133,9 @@ namespace Clube.Core
 
         /// <summary>Wanted chunks still waiting to load.</summary>
         public int PendingCount => streamer?.PendingCount ?? 0;
+
+        /// <summary>True while the area loads in bulk, with the larger loading budget.</summary>
+        public bool IsLoading => streamer?.IsLoading ?? false;
 
         /// <summary>Live streaming counts: jobs in flight, renderers, vertices, main-thread time.</summary>
         public StreamingStats Stats => streamer?.Stats ?? default;
@@ -292,6 +305,8 @@ namespace Clube.Core
                 HeightInChunks = Config.WorldHeightInChunks,
                 MaxJobsInFlight = maxJobsInFlight,
                 FrameBudgetMilliseconds = frameBudgetMilliseconds,
+                LoadingBudgetMilliseconds = loadingBudgetMilliseconds,
+                OverlayRadius = overlayRadius,
                 Colliders = chunkColliders,
                 ColliderRadius = colliderRadius,
                 MaxEditsPerFrame = 32,

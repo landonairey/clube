@@ -36,7 +36,7 @@ namespace Clube.Debug
             frame.Line($"Loaded {world.LoadedCount} · waiting {stats.Pending} · edited {world.EditedCount}");
             frame.Line($"Jobs: generating {stats.Generating} · meshing {stats.Meshing} · colliders {stats.Baking}");
             frame.Line($"{stats.Renderers:N0} with surface · {stats.Vertices:N0} vertices · {stats.Triangles:N0} triangles");
-            frame.Line($"Streaming {stats.FrameMilliseconds:0.00} ms of the frame");
+            frame.Line($"Streaming {stats.FrameMilliseconds:0.00} ms of the frame" + (worldView.IsLoading ? " (loading)" : ""));
 
             ChunkShapeControls.Draw(frame, worldView.Config, withLayers: true);
         }
