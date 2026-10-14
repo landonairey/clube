@@ -83,9 +83,11 @@ namespace Clube.Core
         /// <param name="collected">Gets one drop item per removed sample; may be null.</param>
         /// <param name="isoLevel">Density from which a sample is solid, for telling a loose piece apart.</param>
         /// <param name="minedFrom">Gets, for each drop in <paramref name="collected"/>, the sample and material it came from (to look up its contents, GL32); may be null.</param>
+        /// <param name="breakInStages">True: a broken material turns into the next stage of its chain (stone → cracked → loose, GL3). False: it's removed whole at once. Tools with set hits for a material (<see cref="ToolDefinition.HitsFor"/>) always remove it whole.</param>
         public static StrikeResult Hit(
             World world, IReadOnlyList<Vector3Int> targets, ToolDefinition tool, MaterialRegistry materials,
-            StrikeDamage damage, List<ItemDefinition> collected, float isoLevel = 0.5f, List<MinedSample> minedFrom = null)
+            StrikeDamage damage, List<ItemDefinition> collected, float isoLevel = 0.5f, List<MinedSample> minedFrom = null,
+            bool breakInStages = true)
         {
             int picked = PickUpPiece(world, targets, materials, collected, isoLevel, minedFrom);
             if (picked > 0)
@@ -107,15 +109,28 @@ namespace Clube.Core
                     continue;
                 }
                 VoxelMaterial material = materials != null ? materials.Get(id.Value) : null;
-                float hardness = material != null ? material.Hardness : 1f;
-                if (damage.Add(sample, tool.Power) < hardness)
+
+                // A tool with set hits for this material removes it whole after that many (ML1).
+                bool byRule = tool.HitsFor(material, out int hits);
+                if (byRule)
                 {
-                    continue;
+                    if (hits <= 0 || damage.Add(sample, 1f / hits) < 1f - 1e-4f)
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    float hardness = material != null ? material.Hardness : 1f;
+                    if (damage.Add(sample, tool.Power) < hardness)
+                    {
+                        continue;
+                    }
                 }
 
                 damage.Forget(sample);
                 broken++;
-                if (material != null && material.BreaksInto != null)
+                if (!byRule && breakInStages && material != null && material.BreaksInto != null)
                 {
                     world.SetMaterial(sample, material.BreaksInto.Id);
                     continue;
@@ -123,13 +138,47 @@ namespace Clube.Core
 
                 world.SetDensity(sample, 0f);
                 removed++;
-                if (material != null && material.Drop != null)
+                // Removed whole, it gives what its last stage would (loose stone gives stone).
+                ItemDefinition drop = FinalDrop(material);
+                if (drop != null)
                 {
-                    collected?.Add(material.Drop);
+                    collected?.Add(drop);
                     minedFrom?.Add(new MinedSample(sample, material));
                 }
             }
             return new StrikeResult(targets.Count, broken, removed);
+        }
+
+        /// <summary>
+        /// How far a sample is from breaking under a tool, 0 to 1, from the damage carried: for the
+        /// tool cursor's warming colour. Set hits count against 1, otherwise against hardness.
+        /// </summary>
+        public static float DamageFraction(ToolDefinition tool, VoxelMaterial material, float damage)
+        {
+            if (tool != null && tool.HitsFor(material, out int hits))
+            {
+                return hits > 0 ? Mathf.Clamp01(damage) : 0f;
+            }
+            float hardness = material != null ? material.Hardness : 1f;
+            return hardness > 0f ? Mathf.Clamp01(damage / hardness) : 1f;
+        }
+
+        // What a material gives removed whole: the drop of the last stage of its break chain, or its own.
+        private static ItemDefinition FinalDrop(VoxelMaterial material)
+        {
+            if (material == null)
+            {
+                return null;
+            }
+            ItemDefinition drop = material.Drop;
+            for (VoxelMaterial stage = material.BreaksInto; stage != null && stage != material; stage = stage.BreaksInto)
+            {
+                if (stage.Drop != null)
+                {
+                    drop = stage.Drop;
+                }
+            }
+            return drop;
         }
 
         private static readonly Vector3Int[] Faces =

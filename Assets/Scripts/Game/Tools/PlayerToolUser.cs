@@ -35,6 +35,10 @@ namespace Clube.Game
         [SerializeField]
         private ToolDefinition hand;
 
+        [Tooltip("Hard materials break in stages, solid → cracked → loose (GL3). Off: each comes off whole when broken (the 2026-10-13 hit-count playtest).")]
+        [SerializeField]
+        private bool breakInStages;
+
         [Tooltip("How far from the head a tool reaches, in metres.")]
         [SerializeField, Min(0f)]
         private float reach = 4f;
@@ -171,7 +175,7 @@ namespace Clube.Game
             collected.Clear();
             minedFrom.Clear();
             StrikeResult result = ToolStrike.Hit(
-                worldView.World, targets, tool, worldView.Config.Materials, Damage, collected, worldView.Config.IsoLevel, minedFrom);
+                worldView.World, targets, tool, worldView.Config.Materials, Damage, collected, worldView.Config.IsoLevel, minedFrom, breakInStages);
             Struck?.Invoke(result);
             WearTool(tool);
             for (int i = 0; i < collected.Count; i++)
