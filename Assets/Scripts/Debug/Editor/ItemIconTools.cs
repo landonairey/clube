@@ -34,6 +34,10 @@ namespace Clube.Debug.Editor
             Write("brick", "Brick", PaintBrick());
             Write("pickaxe", "Pickaxe", PaintPickaxe());
             Write("shovel", "Shovel", PaintShovel());
+            Write("stick", "Stick", PaintStick());
+            Write("spear", "Spear", PaintSpear());
+            Write("stone hatchet", "Stone hatchet", PaintHatchet());
+            Write("stone hammer", "Stone hammer", PaintHammer());
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Wrote item icons to {Folder}.");
         }
@@ -396,6 +400,73 @@ namespace Clube.Debug.Editor
                     }
                 }
             }
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
+        private static readonly Color StoneHead = new Color(0.55f, 0.55f, 0.58f);
+        private static readonly Color StoneHeadLight = new Color(0.72f, 0.72f, 0.74f);
+        private static readonly Color Lashing = new Color(0.78f, 0.68f, 0.45f);
+
+        // A plain stick, slightly bent, with a knot.
+        private static Texture2D PaintStick()
+        {
+            Texture2D texture = Blank();
+            Line(texture, new Vector2(12f, 10f), new Vector2(34f, 34f), 3.4f, Handle);
+            Line(texture, new Vector2(34f, 34f), new Vector2(52f, 54f), 3f, Handle);
+            Line(texture, new Vector2(12f, 12f), new Vector2(50f, 55f), 1.1f, HandleLight);
+            Line(texture, new Vector2(30f, 30f), new Vector2(24f, 42f), 2f, Handle);
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
+        // A long shaft with a whittled point at the top right.
+        private static Texture2D PaintSpear()
+        {
+            Texture2D texture = Blank();
+            Line(texture, new Vector2(6f, 6f), new Vector2(50f, 50f), 3f, Handle);
+            Line(texture, new Vector2(6f, 8f), new Vector2(49f, 51f), 1f, HandleLight);
+            for (int i = 0; i < 8; i++)
+            {
+                float t = i / 7f;
+                Line(texture, Vector2.Lerp(new Vector2(48f, 48f), new Vector2(60f, 60f), t), Vector2.Lerp(new Vector2(48f, 48f), new Vector2(60f, 60f), t), Mathf.Lerp(4.5f, 1f, t), HandleLight);
+            }
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
+        // A short handle with a stone blade lashed across its top.
+        private static Texture2D PaintHatchet()
+        {
+            Texture2D texture = Blank();
+            Line(texture, new Vector2(14f, 8f), new Vector2(36f, 50f), 3.4f, Handle);
+            Line(texture, new Vector2(13f, 10f), new Vector2(35f, 51f), 1.1f, HandleLight);
+            // The blade: a wedge, wide at its cutting edge on the right.
+            for (int i = 0; i <= 10; i++)
+            {
+                float t = i / 10f;
+                Vector2 from = Vector2.Lerp(new Vector2(30f, 50f), new Vector2(54f, 42f), t);
+                Line(texture, from, from + new Vector2(0f, Mathf.Lerp(6f, 18f, t)), 3f, StoneHead);
+            }
+            Line(texture, new Vector2(50f, 44f), new Vector2(54f, 58f), 1.6f, StoneHeadLight);
+            Line(texture, new Vector2(30f, 47f), new Vector2(40f, 53f), 2f, Lashing);
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
+        // A handle with a blocky stone head lashed across its top.
+        private static Texture2D PaintHammer()
+        {
+            Texture2D texture = Blank();
+            Line(texture, new Vector2(18f, 6f), new Vector2(32f, 46f), 3.4f, Handle);
+            Line(texture, new Vector2(17f, 8f), new Vector2(31f, 47f), 1.1f, HandleLight);
+            Line(texture, new Vector2(16f, 50f), new Vector2(48f, 42f), 12f, StoneHead);
+            Line(texture, new Vector2(17f, 54f), new Vector2(47f, 47f), 2.5f, StoneHeadLight);
+            Line(texture, new Vector2(28f, 42f), new Vector2(36f, 50f), 2f, Lashing);
             Outline(texture, new Color(0.12f, 0.12f, 0.14f));
             texture.Apply();
             return texture;

@@ -339,6 +339,12 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   To test frame-driven behaviour, pause and advance with
   `EditorApplication.Step()` from `RunCommand`. `Camera_Capture` skips
   IMGUI; use `ScreenCapture.CaptureScreenshot` to see `OnGUI` HUDs.
+  A faster way for one object's components: in Play mode, loop
+  `go.SendMessage("Update")` (and `"LateUpdate"`) with a short sleep between
+  calls, so jobs finish; e.g. pumping the `World` object runs `WorldView` and
+  `RenderDistanceSetting` frame by frame. For pictures, render the world from
+  an edit-mode `WorldStreamer` into a `RenderTexture` with a temporary camera
+  (no texture array there, so the terrain shows untextured).
 - MCP gotcha: an asset created in a `RunCommand` script and then assigned
   after `EditorSceneManager.OpenScene` saves as a null reference (the
   object goes stale). Re-load it with `AssetDatabase.LoadAssetAtPath`

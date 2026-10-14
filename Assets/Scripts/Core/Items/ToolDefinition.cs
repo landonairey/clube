@@ -22,6 +22,9 @@ namespace Clube.Core
 
         /// <summary>Hard ground: stone, ore (the pickaxe).</summary>
         Hard,
+
+        /// <summary>Plants: wood and leaves (the hatchet, ML1).</summary>
+        Wood,
     }
 
     /// <summary>
@@ -87,8 +90,17 @@ namespace Clube.Core
         /// <summary>True when a hit on this material (null: unknown, counted as hard) uses the tool's whole reach (GL39).</summary>
         public bool ReachesWideOn(VoxelMaterial aimed)
         {
-            bool soft = aimed != null && aimed.IsSoft;
-            return wideOn == ReachOn.Anything || (wideOn == ReachOn.Soft) == soft;
+            switch (wideOn)
+            {
+                case ReachOn.Soft:
+                    return aimed != null && aimed.IsSoft;
+                case ReachOn.Hard:
+                    return aimed == null || (!aimed.IsSoft && aimed.Category != VoxelMaterialCategory.Plant);
+                case ReachOn.Wood:
+                    return aimed != null && aimed.Category == VoxelMaterialCategory.Plant;
+                default:
+                    return true;
+            }
         }
 
         /// <summary>Limits the whole reach to one kind of ground, for tools made in code (tests, tools).</summary>

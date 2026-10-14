@@ -66,6 +66,23 @@ namespace Clube.Core
         /// <summary>The recipes it can make.</summary>
         public IReadOnlyList<Recipe> Recipes => recipes;
 
+        /// <summary>
+        /// The recipe the player picked (ML1), when several share inputs (sticks and stone make a
+        /// spear, a hatchet or a hammer): only it starts. Null: the first recipe whose inputs are
+        /// loaded starts, as before. Setting one this station doesn't make clears it.
+        /// </summary>
+        public Recipe Chosen
+        {
+            get => chosen;
+            set
+            {
+                chosen = value != null && recipes.Contains(value) ? value : null;
+                Changed?.Invoke();
+            }
+        }
+
+        private Recipe chosen;
+
         /// <summary>What's loaded to be worked.</summary>
         public Inventory Input { get; }
 
@@ -157,6 +174,11 @@ namespace Clube.Core
         /// <summary>The recipe that would start next with what's loaded, or null.</summary>
         public Recipe Ready(RecipeWork work)
         {
+            // A chosen recipe is the only one that starts; others sharing its inputs wait (ML1).
+            if (Chosen != null)
+            {
+                return Chosen.Work == work && Chosen.HasInputs(Input) && Fits(Chosen) ? Chosen : null;
+            }
             foreach (Recipe recipe in recipes)
             {
                 if (recipe.Work == work && recipe.HasInputs(Input) && Fits(recipe))

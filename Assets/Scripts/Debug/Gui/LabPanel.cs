@@ -70,6 +70,9 @@ namespace Clube.Debug
         private bool playerOpen;
 
         [SerializeField]
+        private bool cheatsOpen;
+
+        [SerializeField]
         private bool displayOpen;
 
         [SerializeField]
@@ -80,6 +83,12 @@ namespace Clube.Debug
 
         [SerializeField]
         private bool oresOpen;
+
+        [Tooltip("Every item, for the Cheats section's item picker and give command (GL43).")]
+        [SerializeField]
+        private ItemCatalog items;
+
+        private readonly CheatControls.State cheats = new CheatControls.State();
 
         private WorldView worldView;
         private ChunkView chunkView;
@@ -311,6 +320,10 @@ namespace Clube.Debug
             if (player != null && frame.Section("Player", ref playerOpen))
             {
                 PlayerControls.Draw(frame, player);
+            }
+            if (player != null && frame.Section("Cheats", ref cheatsOpen))
+            {
+                CheatControls.Draw(frame, player, items, cheats);
             }
             if (frame.Section("Display", ref displayOpen))
             {
