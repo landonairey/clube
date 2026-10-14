@@ -86,6 +86,8 @@ namespace Clube.Debug.Editor
                 { "leaves", (new Color(0.16f, 0.33f, 0.12f), new Color(0.30f, 0.50f, 0.18f), null, Wear.Leaves) },
                 { "clay", (new Color(0.62f, 0.45f, 0.33f), new Color(0.70f, 0.55f, 0.42f), null, Wear.Whole) },
                 { "brick", (new Color(0.62f, 0.28f, 0.18f), new Color(0.70f, 0.36f, 0.24f), null, Wear.Bricks) },
+                // Added last, so the entries above keep their seeds and textures.
+                { "cassiterite", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), new Color(0.22f, 0.15f, 0.10f), Wear.Whole) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]

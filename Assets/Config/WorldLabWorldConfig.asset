@@ -105,6 +105,20 @@ MonoBehaviour:
     ores:
       cellSize: 16
       ores:
+      - ore: {fileID: 11400000, guid: fcb47a3195818b0449ad72b166340337, type: 2}
+        nodesPerCell: 1.5
+        minDepth: 0
+        maxDepth: 6
+        peakProbability: 0.6
+        spread: {x: 1.5, y: 1, z: 1.5}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        - {fileID: 11400000, guid: 0554987880d556d4cafb280d1242eb09, type: 2}
+        - {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
+        priority: 0
+        grade: {x: 0.25, y: 0.55}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents: []
       - ore: {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
         nodesPerCell: 1
         minDepth: 4

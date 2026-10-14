@@ -26,3 +26,7 @@ MonoBehaviour:
   yield: 1
   skill: 0
   skilledYield: 1
+  experienceSkill: 4
+  experience: 1
+  unlockSkill: 0
+  unlockLevel: 0
