@@ -49,12 +49,16 @@ namespace Clube.Game
         private PlayerController player;
         private PlayerInteractor interactor;
         private PlayerParcels parcels;
+        private OreKnowledge knowledge;
         private float nextHitTime;
         private string brokenName;
         private float brokenUntil;
 
         /// <summary>Raised for each item a hit collects, one at a time, with its contents (mixed ore, GL32).</summary>
         public event Action<ItemStack> Collected;
+
+        /// <summary>Raised for each sample a hit breaks and collects, with its material (GL47: experience).</summary>
+        public event Action<VoxelMaterial> Mined;
 
         /// <summary>Raised when a hit lands, with what it did.</summary>
         public event Action<StrikeResult> Struck;
@@ -88,6 +92,7 @@ namespace Clube.Game
             player = GetComponent<PlayerController>();
             interactor = GetComponent<PlayerInteractor>();
             parcels = GetComponent<PlayerParcels>();
+            knowledge = GetComponent<OreKnowledge>();
         }
 
         private void OnEnable()
@@ -180,7 +185,10 @@ namespace Clube.Game
             WearTool(tool);
             for (int i = 0; i < collected.Count; i++)
             {
-                Collected?.Invoke(new ItemStack(collected[i], 1, ContentsOf(minedFrom[i])));
+                Mined?.Invoke(minedFrom[i].Material);
+                var stack = new ItemStack(collected[i], 1, ContentsOf(minedFrom[i]));
+                // Ore the player can't tell yet comes out as "? ore" (GL54).
+                Collected?.Invoke(knowledge != null ? knowledge.Disguise(stack, minedFrom[i].Material) : stack);
             }
         }
 

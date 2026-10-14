@@ -4,18 +4,49 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// The player's skill levels, 0 (none) to 1 (mastered), as far as recipes read them (GL33):
-    /// blacksmithing lowers the scale lost hammering an ingot. A placeholder set in the
-    /// Inspector until skills are designed and earned (SK1); stations read it through
-    /// <see cref="StationPanel"/>.
+    /// The player's skills (GL47): experience and levels in crafting, woodcutting, mining and
+    /// smelting (<see cref="SkillSet"/>). Breaking ground with a tool trains woodcutting (wood,
+    /// leaves) or mining (stone, ore, soil), by the amounts below; finishing a recipe at a station
+    /// trains the skill the recipe names (<see cref="StationObject"/> reports it). Levels unlock
+    /// recipes (GL48) and what the player can see (<see cref="OreKnowledge"/>).
     /// </summary>
+    /// <remarks>
+    /// Blacksmithing, the 0-1 level that lowers scale loss on the anvil (GL33), is still the
+    /// Inspector placeholder; it isn't one of the four earned skills yet.
+    /// </remarks>
     public class PlayerSkills : MonoBehaviour
     {
         [Tooltip("Lowers the scale lost on the anvil: 0 loses the recipe's base share, 1 its skilled share.")]
         [SerializeField, Range(0f, 1f)]
         private float blacksmithing;
 
-        /// <summary>The level of a skill, 0-1; 0 for <see cref="CraftSkill.None"/>.</summary>
+        [Header("Experience per sample broken")]
+        [Tooltip("Woodcutting: wood and stumps.")]
+        [SerializeField, Min(0f)]
+        private float wood = 1f;
+
+        [Tooltip("Woodcutting: leaves.")]
+        [SerializeField, Min(0f)]
+        private float leaves = 0.2f;
+
+        [Tooltip("Mining: stone and other hard ground.")]
+        [SerializeField, Min(0f)]
+        private float stone = 1f;
+
+        [Tooltip("Mining: ore.")]
+        [SerializeField, Min(0f)]
+        private float ore = 2f;
+
+        [Tooltip("Mining: soft ground (grass, dirt, clay).")]
+        [SerializeField, Min(0f)]
+        private float soil = 0.25f;
+
+        private PlayerToolUser tools;
+
+        /// <summary>Experience and levels in the four skills.</summary>
+        public SkillSet Skills { get; } = new SkillSet();
+
+        /// <summary>The level of a yield skill, 0-1 (GL33); 0 for <see cref="CraftSkill.None"/>.</summary>
         public float Level(CraftSkill skill)
         {
             return skill == CraftSkill.Blacksmithing ? blacksmithing : 0f;
@@ -25,6 +56,57 @@ namespace Clube.Game
         {
             get => blacksmithing;
             set => blacksmithing = Mathf.Clamp01(value);
+        }
+
+        private void Awake()
+        {
+            tools = GetComponent<PlayerToolUser>();
+        }
+
+        private void OnEnable()
+        {
+            if (tools != null)
+            {
+                tools.Mined += OnMined;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (tools != null)
+            {
+                tools.Mined -= OnMined;
+            }
+        }
+
+        /// <summary>Experience for a finished recipe (the station that made it calls this).</summary>
+        public void Completed(Recipe recipe)
+        {
+            if (recipe != null)
+            {
+                Skills.Award(recipe.ExperienceSkill, recipe.Experience);
+            }
+        }
+
+        // One sample broken by the player's tool.
+        private void OnMined(VoxelMaterial material)
+        {
+            if (material == null)
+            {
+                return;
+            }
+            switch (material.Category)
+            {
+                case VoxelMaterialCategory.Plant:
+                    Skills.Award(SkillType.Woodcutting, material.IsSoft ? leaves : wood);
+                    break;
+                case VoxelMaterialCategory.Ore:
+                    Skills.Award(SkillType.Mining, ore);
+                    break;
+                default:
+                    Skills.Award(SkillType.Mining, material.IsSoft ? soil : stone);
+                    break;
+            }
         }
     }
 }

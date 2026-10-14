@@ -41,6 +41,7 @@ namespace Clube.Game
         private void Awake()
         {
             Station = new CraftingStation(kind, recipes, CraftingStation.DefaultInputSlots, burnsFuel);
+            ConnectToPlayer();
         }
 
         /// <summary>Sets up a station made in code, such as a stump worktop (GL36), replacing what Awake built.</summary>
@@ -51,11 +52,25 @@ namespace Clube.Game
             recipes = new List<Recipe>(offered);
             burnsFuel = false;
             Station = new CraftingStation(kind, recipes, CraftingStation.DefaultInputSlots, burnsFuel);
+            ConnectToPlayer();
         }
 
         private void Update()
         {
             Station.Tick(Time.deltaTime);
+        }
+
+        // The player's skills decide which recipes can start (GL48), and finished ones train them (GL47).
+        // One player: found once, inactive too (the labs keep the player off until P).
+        private void ConnectToPlayer()
+        {
+            var skills = FindFirstObjectByType<PlayerSkills>(FindObjectsInactive.Include);
+            if (skills == null)
+            {
+                return;
+            }
+            Station.Learner = skills.Skills;
+            Station.Completed += skills.Completed;
         }
 
         public void Interact(PlayerInteractor by)

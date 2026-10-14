@@ -22,6 +22,7 @@ namespace Clube.Core
 
         private static readonly int TexturesId = Shader.PropertyToID("_Textures");
         private static readonly int MaterialColorsId = Shader.PropertyToID("_MaterialColors");
+        private static readonly int LayerRemapId = Shader.PropertyToID("_LayerRemap");
 
         [SerializeField]
         private List<VoxelMaterial> materials = new List<VoxelMaterial>();
@@ -40,6 +41,10 @@ namespace Clube.Core
 
         private VoxelMaterial[] byId;
         private Vector4[] colors;
+
+        // The texture layer each id is drawn with (GL54): its own, or another material's while it's
+        // hidden. Runtime state only; never saved.
+        private float[] layerRemap;
 
         /// <summary>Makes a registry in code (tests, tools); the game's registry is an asset.</summary>
         public static MaterialRegistry Create(params VoxelMaterial[] materials)
@@ -122,6 +127,23 @@ namespace Clube.Core
             }
         }
 
+        /// <summary>
+        /// Draws one material with another's texture and colour (GL54), e.g. copper ore as stone until
+        /// the player can tell them apart, or as itself again with <paramref name="shownAs"/> null.
+        /// Takes effect at once on every chunk; the meshes are unchanged.
+        /// </summary>
+        public void ShowAs(VoxelMaterial material, VoxelMaterial shownAs)
+        {
+            if (material == null)
+            {
+                return;
+            }
+            EnsureLookup();
+            layerRemap[material.Id] = shownAs != null ? shownAs.Id : material.Id;
+            Prepare(terrainMaterial);
+            Prepare(debugMaterial);
+        }
+
         // Array properties aren't saved with a material asset, so they're set before each use.
         private void Prepare(Material material)
         {
@@ -135,6 +157,7 @@ namespace Clube.Core
                 material.SetTexture(TexturesId, textures);
             }
             material.SetVectorArray(MaterialColorsId, colors);
+            material.SetFloatArray(LayerRemapId, layerRemap);
         }
 
         private void EnsureLookup()
@@ -145,6 +168,11 @@ namespace Clube.Core
             }
             byId = new VoxelMaterial[MaxMaterials];
             colors = new Vector4[MaxMaterials];
+            layerRemap = new float[MaxMaterials];
+            for (int i = 0; i < MaxMaterials; i++)
+            {
+                layerRemap[i] = i;
+            }
             foreach (VoxelMaterial material in materials)
             {
                 if (material == null)
