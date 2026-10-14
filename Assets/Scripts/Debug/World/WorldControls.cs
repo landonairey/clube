@@ -16,6 +16,20 @@ namespace Clube.Debug
             worldView.RenderDistance = Mathf.RoundToInt(
                 frame.Slider("Render distance (chunks)", worldView.RenderDistance, WorldView.MinRenderDistance, WorldView.MaxRenderDistance, "0"));
 
+            // A fixed area only streams within its square, so past the distance to its farthest
+            // corner more distance changes nothing; say where that is, from where the focus stands.
+            RectInt? area = worldView.Config.FixedColumns;
+            if (area.HasValue && worldView.IsReady && worldView.Focus != null)
+            {
+                Vector3Int focus = worldView.FocusChunk;
+                int dx = Mathf.Max(Mathf.Abs(area.Value.xMin - focus.x), Mathf.Abs(area.Value.xMax - 1 - focus.x));
+                int dz = Mathf.Max(Mathf.Abs(area.Value.yMin - focus.z), Mathf.Abs(area.Value.yMax - 1 - focus.z));
+                int whole = Mathf.CeilToInt(Mathf.Sqrt(dx * dx + dz * dz));
+                frame.Line(worldView.RenderDistance >= whole
+                    ? $"Fixed area {area.Value.width} × {area.Value.height} chunks: all loaded (from {whole})"
+                    : $"Fixed area {area.Value.width} × {area.Value.height} chunks: all loaded from {whole}");
+            }
+
             // Fixed lines, so the panel doesn't resize as the counts change while loading.
             World world = worldView.World;
             StreamingStats stats = worldView.Stats;
