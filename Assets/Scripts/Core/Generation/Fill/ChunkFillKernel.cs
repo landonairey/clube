@@ -33,7 +33,7 @@ namespace Clube.Core
             }
 
             WriteLayers(depths, steepColumns, grid, settings.Layers, output.Materials);
-            if (settings.Layers.ClayChance > 0f)
+            if (settings.Layers.ClayChance > 0f || settings.Layers.StartClayRadius > 0f)
             {
                 StampClay(depths, steepColumns, grid, settings.Seed, settings.Layers, output.Materials);
             }
@@ -223,13 +223,23 @@ namespace Clube.Core
         /// <param name="position">The column's x and z relative to the world origin.</param>
         public static float ClayDepthAt(int seed, float2 position, in LayerTable layers)
         {
+            // The start area's deposit, when one was added (StartArea): round, full depth in its middle.
+            float deepest = 0f;
+            if (layers.StartClayRadius > 0f)
+            {
+                float2 fromStart = (position - layers.StartClayCentre) / layers.StartClayRadius;
+                float startReach = math.dot(fromStart, fromStart);
+                if (startReach < 1f)
+                {
+                    deepest = layers.ClayDepth * math.sqrt(1f - startReach);
+                }
+            }
             if (layers.ClayChance <= 0f)
             {
-                return 0f;
+                return deepest;
             }
             float size = layers.ClayCellSize;
             int2 home = (int2)math.floor(position / size);
-            float deepest = 0f;
             for (int dz = -1; dz <= 1; dz++)
             {
                 for (int dx = -1; dx <= 1; dx++)

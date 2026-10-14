@@ -172,6 +172,12 @@ MonoBehaviour:
       leaves: {fileID: 11400000, guid: c3a9464decc6a0d4386f7028c5aa4060, type: 2}
       stump: {fileID: 11400000, guid: 952ddae6481d48843915df3131af25ce, type: 2}
       stumpHeight: 0.75
+    startArea:
+      enabled: 1
+      min: {x: -32, y: 0}
+      size: 32
+      minTrees: 2
+      clay: 1
     featureSize: 250
     mountainCoverage: 0.35
     heightCurve:

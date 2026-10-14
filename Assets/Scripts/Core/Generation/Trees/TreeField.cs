@@ -45,9 +45,18 @@ namespace Clube.Core
         private readonly List<TreePart> scratch = new List<TreePart>();
         private readonly List<TreePart> gathered = new List<TreePart>();
 
-        public TreeField(TreeGeneration settings, int seed, ITerrainGenerator generator)
+        // Spots tried in a forced cell (StartArea) before giving up on it.
+        private const int ForcedAttempts = 12;
+
+        private readonly StartArea start;
+
+        // Cells given a tree to make up the start area's count; null until worked out.
+        private HashSet<Vector2Int> forced;
+
+        public TreeField(TreeGeneration settings, int seed, ITerrainGenerator generator, StartArea start = null)
         {
             this.settings = settings;
+            this.start = start;
             this.seed = seed;
             this.generator = generator;
             maxGradient = Mathf.Tan(settings.MaxSlope * Mathf.Deg2Rad);
@@ -56,7 +65,7 @@ namespace Clube.Core
         /// <summary>A tree field for the terrain's settings, or null when it has no trees.</summary>
         public static TreeField Create(TerrainSettings terrain, ITerrainGenerator generator)
         {
-            return generator != null && terrain.Trees.HasTrees ? new TreeField(terrain.Trees, terrain.Seed, generator) : null;
+            return generator != null && terrain.Trees.HasTrees ? new TreeField(terrain.Trees, terrain.Seed, generator, terrain.StartArea) : null;
         }
 
         public float CellSize => settings.CellSize;
@@ -64,6 +73,7 @@ namespace Clube.Core
         /// <summary>The tree growing in a cell, if any: its root and parts. The same every time.</summary>
         public bool TryGetTree(Vector2Int cell, out Vector3 root, out IReadOnlyList<TreePart> parts)
         {
+            StockStartArea();
             Tree tree = TreeIn(cell);
             root = tree.Root;
             parts = tree.Parts;
@@ -77,6 +87,7 @@ namespace Clube.Core
         public void CollectParts(Bounds box, List<TreePart> results)
         {
             results.Clear();
+            StockStartArea();
             float size = CellSize;
             float reach = settings.MaxSpread + GatherMargin;
             int fromX = Mathf.FloorToInt((box.min.x - reach) / size);
@@ -115,6 +126,61 @@ namespace Clube.Core
             return parts;
         }
 
+        // The start area gets at least its minimum of trees (StartArea): the seed's trees rooted in it
+        // count, and the area's other cells are given a tree, on the first flat spot found, until
+        // there are enough. Worked out once, before any tree is handed out.
+        private void StockStartArea()
+        {
+            if (forced != null)
+            {
+                return;
+            }
+            forced = new HashSet<Vector2Int>();
+            if (start == null || start.MinTrees <= 0)
+            {
+                return;
+            }
+            Rect area = start.Area;
+            float size = CellSize;
+            var empty = new List<Vector2Int>();
+            int count = 0;
+            for (int z = Mathf.FloorToInt(area.yMin / size); z <= Mathf.FloorToInt((area.yMax - 0.01f) / size); z++)
+            {
+                for (int x = Mathf.FloorToInt(area.xMin / size); x <= Mathf.FloorToInt((area.xMax - 0.01f) / size); x++)
+                {
+                    var cell = new Vector2Int(x, z);
+                    Tree tree = TreeIn(cell);
+                    if (tree.Parts != null && area.Contains(new Vector2(tree.Root.x, tree.Root.z)))
+                    {
+                        count++;
+                    }
+                    else
+                    {
+                        empty.Add(cell);
+                    }
+                }
+            }
+            foreach (Vector2Int cell in empty)
+            {
+                if (count >= start.MinTrees)
+                {
+                    break;
+                }
+                forced.Add(cell);
+                cells.Remove(cell);
+                if (TreeIn(cell).Parts != null)
+                {
+                    count++;
+                }
+                else
+                {
+                    // No flat spot: the cell keeps whatever the seed gave it.
+                    forced.Remove(cell);
+                    cells.Remove(cell);
+                }
+            }
+        }
+
         private Tree TreeIn(Vector2Int cell)
         {
             if (cells.TryGetValue(cell, out Tree tree))
@@ -133,6 +199,10 @@ namespace Clube.Core
         // The cell's tree, or none: a roll, a spot inside the cell, and flat ground there.
         private Tree Grow(Vector2Int cell)
         {
+            if (forced != null && forced.Contains(cell))
+            {
+                return GrowForced(cell);
+            }
             if (VoxelHash.Uniform(seed, cell.x, 0, cell.y, CellSalt) >= settings.Chance)
             {
                 return default;
@@ -145,9 +215,38 @@ namespace Clube.Core
             {
                 return default;
             }
+            return Build(cell, new Vector3(x, ground, z));
+        }
 
+        // A tree the start area needs: hashed spots in the part of the cell inside the area, the
+        // first on flat ground; none when the cell has no flat spot.
+        private Tree GrowForced(Vector2Int cell)
+        {
+            float size = CellSize;
+            Rect area = start.Area;
+            float fromX = Mathf.Max(cell.x * size, area.xMin) + 1f;
+            float toX = Mathf.Min((cell.x + 1) * size, area.xMax) - 1f;
+            float fromZ = Mathf.Max(cell.y * size, area.yMin) + 1f;
+            float toZ = Mathf.Min((cell.y + 1) * size, area.yMax) - 1f;
+            if (fromX > toX || fromZ > toZ)
+            {
+                return default;
+            }
+            for (int attempt = 0; attempt < ForcedAttempts; attempt++)
+            {
+                float x = Mathf.Lerp(fromX, toX, VoxelHash.Uniform(seed, cell.x, attempt, cell.y, CellSalt + 3));
+                float z = Mathf.Lerp(fromZ, toZ, VoxelHash.Uniform(seed, cell.x, attempt, cell.y, CellSalt + 4));
+                if (TryFindGround(x, z, out float ground) && IsFlat(x, ground, z))
+                {
+                    return Build(cell, new Vector3(x, ground, z));
+                }
+            }
+            return default;
+        }
+
+        private Tree Build(Vector2Int cell, Vector3 root)
+        {
             scratch.Clear();
-            var root = new Vector3(x, ground, z);
             TreeShape.Build(seed, cell, root, settings, scratch);
             Bounds bounds = scratch[0].Bounds(GatherMargin);
             foreach (TreePart part in scratch)

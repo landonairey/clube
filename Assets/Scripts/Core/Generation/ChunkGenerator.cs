@@ -80,9 +80,10 @@ namespace Clube.Core
         }
 
         /// <summary>The fill settings for a terrain's layers and ores.</summary>
-        public static ChunkFillSettings SettingsFor(TerrainLayers layers, OreField ores, DensityFormat format)
+        public static ChunkFillSettings SettingsFor(TerrainLayers layers, OreField ores, DensityFormat format, StartArea start = null)
         {
-            return new ChunkFillSettings(LayerTable.From(layers), ores?.Seed ?? 0, format);
+            int seed = ores?.Seed ?? 0;
+            return new ChunkFillSettings(LayerTable.From(layers, start, seed), seed, format);
         }
 
         /// <summary>

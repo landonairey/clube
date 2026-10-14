@@ -56,14 +56,14 @@ namespace Clube.Core
         /// <param name="format">The density format the world's storage holds (<see cref="World.PreferredFormat"/>).</param>
         public ChunkPipeline(
             WorldGrid grid, ITerrainGenerator generator, TerrainLayers layers, OreField ores, DensityFormat format,
-            Func<Vector3Int, IVoxelStorage> createStorage, TreeField trees = null)
+            Func<Vector3Int, IVoxelStorage> createStorage, TreeField trees = null, StartArea start = null)
         {
             this.grid = grid;
             this.generator = generator;
             this.ores = ores;
             this.trees = trees;
             this.createStorage = createStorage;
-            fillSettings = ChunkGenerator.SettingsFor(layers, ores, format);
+            fillSettings = ChunkGenerator.SettingsFor(layers, ores, format, start);
         }
 
         /// <summary>Chunks generating now, or generated and waiting to be taken.</summary>
