@@ -21,6 +21,14 @@ namespace Clube.Core
         /// <summary>Main-thread time the streamer may spend a frame taking finished chunks and meshes, in milliseconds.</summary>
         public float FrameBudgetMilliseconds;
 
+        /// <summary>
+        /// The budget while the area first loads (at the start, after <see cref="WorldStreamer.UnloadAll"/>,
+        /// or when the render distance grows), until everything wanted is loaded and meshed. Larger
+        /// than <see cref="FrameBudgetMilliseconds"/>: with a big area, a few milliseconds of each
+        /// slow frame would take minutes. 0 or less uses the frame budget.
+        /// </summary>
+        public float LoadingBudgetMilliseconds;
+
         /// <summary>Whether chunks get colliders (M6).</summary>
         public bool Colliders;
 
@@ -38,6 +46,12 @@ namespace Clube.Core
 
         /// <summary>Labs: a fixed area meshes its outer faces as air, walls showing its underground (<see cref="MeshSeal"/>).</summary>
         public bool SealEdges;
+
+        /// <summary>
+        /// How far from the focus, horizontally in metres, chunks draw the overlay materials (every
+        /// material after the first, like the build grid). 0 or less: every chunk.
+        /// </summary>
+        public float OverlayRadius;
     }
 
     /// <summary>Live counts from a <see cref="WorldStreamer"/>, for readouts.</summary>
@@ -125,6 +139,13 @@ namespace Clube.Core
         private Vector3Int? wantedCentre;
         private int wantedDistance;
         private int loadCursor;
+        // Wanted chunks that are loaded, kept up to date so PendingCount needn't scan the area.
+        private int wantedLoaded;
+        // Whether the area is loading in bulk (LoadingBudgetMilliseconds applies), and this frame's budget.
+        private bool bulkLoading = true;
+        private float budget;
+        // The chunk the focus was in when far colliders were last dropped.
+        private Vector3Int? collidersCentre;
         private StreamingStats stats;
         private double lapStart;
 
@@ -166,7 +187,7 @@ namespace Clube.Core
         public int RenderDistance
         {
             get => settings.RenderDistance;
-            set => settings.RenderDistance = value;
+            set => SetRenderDistance(value);
         }
 
         /// <summary>Labs: whether a fixed area seals its outer faces; call <see cref="RemeshAll"/> after changing it.</summary>
@@ -177,21 +198,10 @@ namespace Clube.Core
         }
 
         /// <summary>Wanted chunks not loaded yet.</summary>
-        public int PendingCount
-        {
-            get
-            {
-                int pending = 0;
-                foreach (Vector3Int coord in wanted)
-                {
-                    if (!world.IsLoaded(coord))
-                    {
-                        pending++;
-                    }
-                }
-                return pending;
-            }
-        }
+        public int PendingCount => wanted.Count - wantedLoaded;
+
+        /// <summary>True while the area loads in bulk, with the larger loading budget (see <see cref="StreamingSettings.LoadingBudgetMilliseconds"/>).</summary>
+        public bool IsLoading => bulkLoading;
 
         private int MaxJobsInFlight => settings.MaxJobsInFlight > 0 ? settings.MaxJobsInFlight : Mathf.Max(4, JobsUtility.JobWorkerCount * 2);
 
@@ -201,6 +211,9 @@ namespace Clube.Core
             frameClock.Restart();
             lapStart = 0;
             StreamingPhases phases = default;
+            budget = bulkLoading && settings.LoadingBudgetMilliseconds > settings.FrameBudgetMilliseconds
+                ? settings.LoadingBudgetMilliseconds
+                : settings.FrameBudgetMilliseconds;
 
             pipeline.Poll();
             phases.Poll = Lap();
@@ -212,13 +225,15 @@ namespace Clube.Core
             {
                 UnloadUnwanted(centre);
             }
+            float chunkWidth = world.Grid.ChunkWorldSize.x;
+            renderers.SetOverlayFocus(centre, settings.OverlayRadius > 0f ? Mathf.CeilToInt(settings.OverlayRadius / chunkWidth) : -1);
             phases.Area = Lap();
 
             // Meshes first, with half the budget: they change what's on screen. Each stage takes at
             // least one result a frame, so neither can starve the other.
-            ApplyMeshes(settings.FrameBudgetMilliseconds * 0.5);
+            ApplyMeshes(budget * 0.5);
             phases.ApplyMeshes = Lap();
-            AddGenerated(settings.FrameBudgetMilliseconds);
+            AddGenerated(budget);
             phases.AddChunks = Lap();
             StartGenerating();
             phases.StartGeneration = Lap();
@@ -226,6 +241,13 @@ namespace Clube.Core
             phases.StartMeshing = Lap();
             UpdateColliders(focus);
             phases.Colliders = Lap();
+
+            // The bulk load is over once everything wanted has been started, loaded and meshed.
+            if (bulkLoading && loadCursor >= wanted.Count && waitingForColumns.Count == 0 && PendingCount == 0
+                && pipeline.GeneratingCount == 0 && pipeline.MeshingCount == 0 && dirtyScratch.Count == 0)
+            {
+                bulkLoading = false;
+            }
 
             pipeline.Flush();
             stats.FrameMilliseconds = frameClock.Elapsed.TotalMilliseconds;
@@ -346,6 +368,9 @@ namespace Clube.Core
             }
             meshedOnce.Clear();
             waitingForColumns.Clear();
+            wantedLoaded = 0;
+            bulkLoading = true;
+            collidersCentre = null;
         }
 
         /// <summary>
@@ -378,6 +403,14 @@ namespace Clube.Core
             wantedSet.Clear();
             wantedSet.UnionWith(wanted);
             loadCursor = 0;
+            wantedLoaded = 0;
+            foreach (Vector3Int coord in wanted)
+            {
+                if (world.IsLoaded(coord))
+                {
+                    wantedLoaded++;
+                }
+            }
             return true;
         }
 
@@ -420,6 +453,10 @@ namespace Clube.Core
                     continue;
                 }
                 world.Add(coord, chunk);
+                if (wantedSet.Contains(coord))
+                {
+                    wantedLoaded++;
+                }
                 ChunkLoaded?.Invoke(coord);
             }
         }
@@ -432,7 +469,7 @@ namespace Clube.Core
         {
             int limit = MaxJobsInFlight;
             for (int i = 0; i < waitingForColumns.Count && pipeline.GenerationJobsRunning < limit
-                            && (i < limit || Before(settings.FrameBudgetMilliseconds));)
+                            && (i < limit || Before(budget));)
             {
                 Vector3Int waiting = waitingForColumns[i];
                 if (!wantedSet.Contains(waiting) || world.IsLoaded(waiting) || pipeline.StartGeneration(waiting))
@@ -447,7 +484,7 @@ namespace Clube.Core
             // At least a job limit's worth of starts a frame, as before; more while the budget lasts.
             int started = 0;
             while (loadCursor < wanted.Count && pipeline.GenerationJobsRunning < limit
-                   && (started < limit || Before(settings.FrameBudgetMilliseconds)))
+                   && (started < limit || Before(budget)))
             {
                 started++;
                 Vector3Int coord = wanted[loadCursor];
@@ -458,6 +495,7 @@ namespace Clube.Core
                 }
                 if (world.TryRestoreKept(coord, out _))
                 {
+                    wantedLoaded++;
                     ChunkLoaded?.Invoke(coord);
                     continue;
                 }
@@ -584,44 +622,73 @@ namespace Clube.Core
                 return;
             }
 
+            float chunkWidth = world.Grid.ChunkWorldSize.x;
+            float dropDistance = settings.ColliderRadius + chunkWidth;
             while (pipeline.TryTakeBaked(out Vector3Int coord, out int version))
             {
+                // A bake that finishes after the focus moved well away isn't needed any more.
                 if (renderers.TryGet(coord, out ChunkRenderer chunkRenderer) && chunkRenderer.Collider != null
-                    && chunkRenderer.MeshVersion == version)
+                    && chunkRenderer.MeshVersion == version && HorizontalDistance(coord, focus) <= dropDistance)
                 {
                     chunkRenderer.Collider.Assign(chunkRenderer.Mesh, version);
                 }
             }
 
-            float chunkWidth = world.Grid.ChunkWorldSize.x;
-            foreach (KeyValuePair<Vector3Int, ChunkRenderer> entry in renderers.Active)
+            // Shapes only exist near the focus, so far ones are dropped only when the focus moves to
+            // another chunk; each frame only the chunks around the focus are checked, not every renderer.
+            Vector3Int centre = world.Grid.WorldToChunk(focus);
+            if (collidersCentre != centre)
             {
-                ChunkCollider chunkCollider = entry.Value.Collider;
-                if (chunkCollider == null)
+                collidersCentre = centre;
+                foreach (KeyValuePair<Vector3Int, ChunkRenderer> entry in renderers.Active)
                 {
-                    continue;
-                }
-                float distance = HorizontalDistance(entry.Key, focus);
-                if (distance > settings.ColliderRadius + chunkWidth)
-                {
+                    ChunkCollider chunkCollider = entry.Value.Collider;
                     // Well outside (a chunk of slack, so the edge doesn't flicker): no shape needed.
-                    if (chunkCollider.Version >= 0 && !pipeline.IsBaking(entry.Key))
+                    if (chunkCollider != null && chunkCollider.Version >= 0 && !pipeline.IsBaking(entry.Key)
+                        && HorizontalDistance(entry.Key, focus) > dropDistance)
                     {
                         chunkCollider.Clear();
                     }
-                    continue;
                 }
-                if (distance > settings.ColliderRadius || chunkCollider.Version == entry.Value.MeshVersion || pipeline.IsBaking(entry.Key))
-                {
-                    continue;
-                }
-                if (entry.Value.Mesh.vertexCount == 0)
-                {
-                    chunkCollider.Assign(entry.Value.Mesh, entry.Value.MeshVersion);
-                    continue;
-                }
-                pipeline.StartBake(entry.Key, entry.Value.Mesh, entry.Value.MeshVersion, chunkCollider.CookingOptions);
             }
+
+            int reach = Mathf.CeilToInt(settings.ColliderRadius / chunkWidth) + 1;
+            for (int dz = -reach; dz <= reach; dz++)
+            {
+                for (int dx = -reach; dx <= reach; dx++)
+                {
+                    for (int layer = 0; layer < settings.HeightInChunks; layer++)
+                    {
+                        var coord = new Vector3Int(centre.x + dx, layer, centre.z + dz);
+                        if (!renderers.TryGet(coord, out ChunkRenderer chunkRenderer) || chunkRenderer.Collider == null)
+                        {
+                            continue;
+                        }
+                        ChunkCollider chunkCollider = chunkRenderer.Collider;
+                        if (HorizontalDistance(coord, focus) > settings.ColliderRadius
+                            || chunkCollider.Version == chunkRenderer.MeshVersion || pipeline.IsBaking(coord))
+                        {
+                            continue;
+                        }
+                        if (chunkRenderer.Mesh.vertexCount == 0)
+                        {
+                            chunkCollider.Assign(chunkRenderer.Mesh, chunkRenderer.MeshVersion);
+                            continue;
+                        }
+                        pipeline.StartBake(coord, chunkRenderer.Mesh, chunkRenderer.MeshVersion, chunkCollider.CookingOptions);
+                    }
+                }
+            }
+        }
+
+        private void SetRenderDistance(int distance)
+        {
+            // A larger area loads in bulk again, with the loading budget.
+            if (distance > settings.RenderDistance)
+            {
+                bulkLoading = true;
+            }
+            settings.RenderDistance = distance;
         }
 
         private void BakeNow(Vector3Int coord, ChunkRenderer chunkRenderer)

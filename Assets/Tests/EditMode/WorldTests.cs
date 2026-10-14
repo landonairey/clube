@@ -194,6 +194,66 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Raycast_WalkingTheGrid_MatchesTestingEveryChunk()
+        {
+            World world = NewWorld();
+            for (int z = -2; z <= 1; z++)
+            {
+                for (int y = 0; y <= 1; y++)
+                {
+                    for (int x = -2; x <= 2; x++)
+                    {
+                        world.Load(new Vector3Int(x, y, z), Terrain());
+                    }
+                }
+            }
+
+            var random = new System.Random(7);
+            float R(float min, float max) => min + (float)random.NextDouble() * (max - min);
+            int hits = 0;
+            for (int i = 0; i < 300; i++)
+            {
+                // Origins inside and outside the loaded box, some rays along an axis.
+                var origin = new Vector3(R(-30f, 30f), R(-5f, 30f), R(-30f, 20f));
+                Vector3 direction = i % 10 == 0 ? Vector3.down : i % 10 == 1 ? Vector3.right : new Vector3(R(-1f, 1f), R(-1f, 0.3f), R(-1f, 1f));
+                var ray = new Ray(origin, direction);
+
+                bool walked = world.Raycast(ray, Settings, 100f, out WorldHit walkedHit);
+                bool everyChunk = RaycastEveryChunk(world, ray, out WorldHit expected);
+                Assert.That(walked, Is.EqualTo(everyChunk), $"ray {i} from {origin} along {direction}");
+                if (everyChunk)
+                {
+                    hits++;
+                    Assert.That(walkedHit.Chunk, Is.EqualTo(expected.Chunk), $"ray {i}");
+                    Assert.That(Vector3.Distance(walkedHit.Point, expected.Point), Is.LessThan(1e-4f), $"ray {i}");
+                }
+            }
+            Assert.That(hits, Is.GreaterThan(30), "Enough rays hit to make the comparison mean something.");
+        }
+
+        // The nearest hit over every loaded chunk, the way World.Raycast worked before it walked the grid.
+        private static bool RaycastEveryChunk(World world, Ray ray, out WorldHit hit)
+        {
+            hit = default;
+            float best = float.PositiveInfinity;
+            foreach (var entry in world.Chunks)
+            {
+                Vector3 origin = world.Grid.ChunkOrigin(entry.Key);
+                var localRay = new Ray(ray.origin - origin, ray.direction);
+                if (!entry.Value.IsUniform && SurfaceRaycast.Cast(localRay, entry.Value, Settings, out Vector3Int voxel, out Vector3 point))
+                {
+                    float distance = Vector3.Dot(point - localRay.origin, ray.direction);
+                    if (distance < best && distance <= 100f)
+                    {
+                        best = distance;
+                        hit = new WorldHit(entry.Key, voxel, point + origin);
+                    }
+                }
+            }
+            return !float.IsPositiveInfinity(best);
+        }
+
+        [Test]
         public void Raycast_MissesWhenNothingIsLoaded()
         {
             World world = NewWorld();

@@ -252,7 +252,12 @@ there, so walls show the underground while the chunk's data stays as generated.
 8. **Flush**: start the scheduled jobs on the workers now.
 
 Steps 3–4 always take at least one result each, so neither can starve the other,
-and stop when the budget (`WorldView.frameBudgetMilliseconds`, 3 ms) runs out.
+and stop when the budget (`WorldView.frameBudgetMilliseconds`, 3 ms) runs out. Until
+the area first finishes loading (and again after a regenerate or a larger render
+distance), the larger `loadingBudgetMilliseconds` (30 ms) applies instead, so a big
+fixed area loads in seconds rather than minutes. Overlay materials (every chunk
+material after the first: the build grid) are drawn only within `overlayRadius` of
+the focus.
 `StreamingStats.Phases` reports each step's time (the WorldView Inspector shows
 it) — look there first when a frame runs long.
 
@@ -375,11 +380,9 @@ it, and when it's done. None needs the big picture changed. Measure with
    index of each edge for the current and previous Z slice in arrays. *Measure:*
    `MesherSpeedBenchmark`, smooth rows. *Done when:* smooth ≈ flat cost, and
    `ChunkMeshJobTests` pass.
-5. **World raycast over the chunk grid.** `World.Raycast` tests every loaded
-   chunk's bounds, and `SurfaceRaycast.Cast` allocates lists and a closure per
-   call (the player casts every frame). Walk chunks along the ray (like
-   `VoxelRaycast` over voxels) and reuse buffers. *Done when:* no allocations per
-   cast, cost independent of render distance.
+5. **Raycasts without allocations.** `World.Raycast` walks the chunk grid now, but
+   `SurfaceRaycast.Cast` still allocates lists and a closure per call (the player casts
+   every frame). Reuse buffers. *Done when:* no allocations per cast.
 6. **Brush on chunk spans.** `World.ApplyBrush` goes through `IDensityField` per
    sample, each a dictionary lookup plus `ChunksContainingSample`. Precompute the
    chunks the sphere reaches and work on their local boxes; keep the soft
