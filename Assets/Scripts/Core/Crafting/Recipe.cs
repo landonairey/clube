@@ -15,6 +15,9 @@ namespace Clube.Core
 
         /// <summary>A stump or bench for working wood by hand (GL36).</summary>
         Worktop,
+
+        /// <summary>An open fire of wood ringed with stone (GL52): the first smelter, before the furnace.</summary>
+        Campfire,
     }
 
     /// <summary>How a <see cref="Recipe"/>'s work is measured.</summary>
@@ -103,6 +106,20 @@ namespace Clube.Core
         [SerializeField, Range(0f, 1f)]
         private float skilledYield = 1f;
 
+        [Tooltip("The skill finishing it trains (GL47), and how much experience it gives.")]
+        [SerializeField]
+        private SkillType experienceSkill;
+
+        [SerializeField, Min(0f)]
+        private float experience;
+
+        [Tooltip("The skill level it needs before it can be made (GL48). None: it can always be made.")]
+        [SerializeField]
+        private SkillType unlockSkill;
+
+        [SerializeField, Range(0, SkillSet.MaxLevel)]
+        private int unlockLevel;
+
         /// <summary>Makes a recipe in code (tests); the game's recipes are assets.</summary>
         public static Recipe Create(StationKind station, ItemAmount output, RecipeWork work, float amount, params ItemAmount[] inputs)
         {
@@ -116,7 +133,40 @@ namespace Clube.Core
             return recipe;
         }
 
+        /// <summary>Sets the experience it gives, for recipes made in code (tests).</summary>
+        public Recipe WithExperience(SkillType skillType, float amount)
+        {
+            experienceSkill = skillType;
+            experience = Mathf.Max(0f, amount);
+            return this;
+        }
+
+        /// <summary>Sets the level it needs, for recipes made in code (tests).</summary>
+        public Recipe WithUnlock(SkillType skillType, int level)
+        {
+            unlockSkill = skillType;
+            unlockLevel = Mathf.Clamp(level, 0, SkillSet.MaxLevel);
+            return this;
+        }
+
         public StationKind Station => station;
+
+        /// <summary>The skill finishing it trains (GL47); <see cref="SkillType.None"/> for none.</summary>
+        public SkillType ExperienceSkill => experienceSkill;
+
+        /// <summary>Experience finishing it gives.</summary>
+        public float Experience => experience;
+
+        /// <summary>The skill it needs a level in (GL48); <see cref="SkillType.None"/> when anyone can make it.</summary>
+        public SkillType UnlockSkill => unlockSkill;
+
+        public int UnlockLevel => unlockLevel;
+
+        /// <summary>True when a player with these skills can make it; always with no skills given.</summary>
+        public bool IsUnlockedFor(SkillSet skills)
+        {
+            return skills == null || skills.Has(unlockSkill, unlockLevel);
+        }
 
         public IReadOnlyList<ItemAmount> Inputs => inputs;
 
