@@ -18,11 +18,12 @@ MonoBehaviour:
   albedo: {fileID: 2800000, guid: 82017dcceed2a954b96385bd6d01237e, type: 3}
   debugColor: {r: 0.3, g: 0.2, b: 0.12, a: 1}
   hardness: 100000
-  drop: {fileID: 0}
+  drop: {fileID: 11400000, guid: ce1c9585acf5fc14f848a8b43eddc45d, type: 2}
   pileShape: 1
   reposeAngle: 40
   pickUpPieceSize: 0
   breaksInto: {fileID: 0}
   isWorktop: 1
+  isSoft: 0
   driesInto: {fileID: 0}
   dryingDays: 2
