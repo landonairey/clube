@@ -405,6 +405,20 @@ Also in this pass, without IDs: render distance works at run time in both world 
 - [x] **GL46** `Config` Prices by volume for raw materials *(refines GL40)*: 1 coin for 10 volume of grass, dirt or leaves; 1 coin per volume of clay, wood or stone; 2 per volume of chalcopyrite or malachite; 20 for silver ore, 200 for gold ore. Stumps drop wood. *(Done 2026-10-13: `Merchant prices` entries by volume; the Stump material's drop.)*
 - [x] **GL43** `Lab + Game` Cheat commands: give the player any amount of coins and of any item, from a command line or the lab panel. Kept out of the `Game` scene's release build (A10). *(Done 2026-10-12: the lab panel's Cheats section (`CheatControls`, in the Inspector too): +100, +1,000 and +10,000 coins, an item picker over every item with Give 1, 10, 100 or a stack, and a command line (`CheatCommands`: `coins 500`, `give chalcopyrite 300`, `help`). Items come from `ItemCatalog` (Core/Items, `Assets/Config/Items/ItemCatalog.asset`), which the editor keeps listing every item asset (`ItemCatalogBuilder`); saves can use it later (S3). Typing in the command line still moves the player, since the lab panel needs the cursor freed.)*
 
+### Ninth pass *(added 2026-10-13, from `Docs/20261013 clube-backlog.md`)*
+The beginning path: the player starts with bare hands and grows four skills, Crafting, Woodcutting, Mining and Smelting, which unlock better tools, stations and recipes. Hand → pointy stick → stone pick; campfire → furnace; tin → copper (once it can be seen) → bronze.
+
+- [ ] **GL47** `Core + Game` Skills and experience *(first pass of SK1)*: four skills with experience and levels. Breaking wood and leaves gives woodcutting xp; stone, ore and soil give mining xp; finishing a recipe gives the xp its recipe names (crafting at the stump, smelting at the campfire or furnace). Levels show on screen, with a note when one goes up.
+- [ ] **GL48** `Core + Game` Recipes unlocked by skill level *(first pass of CR1's required skill, T2)*: a recipe can need a level in a skill; until then it shows locked on the station screen and never starts.
+- [ ] **GL49** `Core + Config` Pointy stick: the first tool, whittled at the stump; it harvests better than the hand (wood, soil, and stone and ore slowly).
+- [ ] **GL50** `Config` Stone pick: a stone on a stick, unlocked by crafting level; it gathers stone and ore better than the pointy stick.
+- [ ] **GL51** `Core + Config` Tin: cassiterite ore, in shallow deposits, some at the surface; it smelts into a tin bun, which hammers into a tin ingot (first tin of X1, ML4).
+- [ ] **GL52** `Game + Config` Campfire: the first smelter, built from wood and stone at the stump and placed like the other stations; it burns fuel and smelts cassiterite into tin buns.
+- [ ] **GL53** `Config` Furnace by crafting: the furnace is no longer a starting item; it's built from stone at the stump once crafting is high enough, and smelts tin as well as copper.
+- [ ] **GL54** `Game` Copper ore hidden until mining is high enough *(first pass of PS6)*: chalcopyrite and malachite look like the stone around them, and mined they give "? ore"; at the mining level that unlocks them they show, and the "? ore" the player holds turns into what it is.
+- [ ] **GL55** `Config` Bronze, the first alloy: a tin bun and copper buns make bronze buns, tin and copper ingots make bronze ingots, and a bronze bun hammers into a bronze ingot. Unlocked by smelting level.
+
+
 ---
 
 ## Chapter 4 — Procedurally generated chunks (`Game`) *(draft — to be expanded)*
