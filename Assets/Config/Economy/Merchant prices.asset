@@ -73,3 +73,23 @@ MonoBehaviour:
     Coins: 2
     Units: 1
     ByVolume: 1
+  - Item: {fileID: 11400000, guid: abc86bcbe8361da41bd3f644418bc0a3, type: 2}
+    Coins: 2
+    Units: 1
+    ByVolume: 1
+  - Item: {fileID: 11400000, guid: e49cea8103fd9d94682cdecb145df7f8, type: 2}
+    Coins: 1
+    Units: 6
+    ByVolume: 1
+  - Item: {fileID: 11400000, guid: f222312d73ba0ba46989e52f953c6890, type: 2}
+    Coins: 1
+    Units: 4
+    ByVolume: 1
+  - Item: {fileID: 11400000, guid: 56075ba9caed56344878c38cc65cceba, type: 2}
+    Coins: 1
+    Units: 4
+    ByVolume: 1
+  - Item: {fileID: 11400000, guid: 6942444238c904f45ae591e148df29a1, type: 2}
+    Coins: 1
+    Units: 2
+    ByVolume: 1

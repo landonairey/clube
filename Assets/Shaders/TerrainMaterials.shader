@@ -50,6 +50,10 @@ Shader "Clube/Terrain Materials"
             // Set from the registry; not a material property, so it stays out of UnityPerMaterial.
             float4 _MaterialColors[64];
 
+            // The layer each material id is drawn with (GL54): its own, or another's while it's hidden
+            // (copper ore shown as stone). Set from the registry like the colours.
+            float _LayerRemap[64];
+
             struct Attributes
             {
                 float4 positionOS : POSITION;
@@ -95,6 +99,7 @@ Shader "Clube/Terrain Materials"
             {
                 float3 weights = input.materialWeights / max(dot(input.materialWeights, 1.0), 1e-5);
                 int3 ids = (int3)round(input.materialIds);
+                ids = int3((int)_LayerRemap[ids.x], (int)_LayerRemap[ids.y], (int)_LayerRemap[ids.z]);
                 half3 albedo = 0;
                 if (_DebugColors > 0.5)
                 {

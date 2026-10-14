@@ -12,7 +12,7 @@ namespace Clube.Debug
     /// there, from the world down to the voxel: world, terrain, brush, meshing, chunk (its
     /// shape and test fill, or WorldLab's focused chunk), voxel (corners, case, presets,
     /// volume), step-through, camera and display. Each section is drawn by a shared
-    /// <c>*Controls</c> class, so a knob looks and works the same in every lab. Tab hides it.
+    /// <c>*Controls</c> class, so a knob looks and works the same in every lab. F2 hides it.
     /// </summary>
     /// <remarks>
     /// Edits go through the same paths as the Inspector: config edits call
@@ -21,7 +21,7 @@ namespace Clube.Debug
     /// </remarks>
     public class LabPanel : MonoBehaviour
     {
-        [Tooltip("Show the panel when Play mode starts. Tab toggles it.")]
+        [Tooltip("Show the panel when Play mode starts. F2 toggles it.")]
         [SerializeField]
         private bool startOpen = true;
 
@@ -178,7 +178,7 @@ namespace Clube.Debug
         private void Update()
         {
             Keyboard keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.tabKey.wasPressedThisFrame)
+            if (keyboard != null && keyboard.f2Key.wasPressedThisFrame)
             {
                 open = !open;
                 if (!open)
@@ -390,7 +390,7 @@ namespace Clube.Debug
             {
                 keys.Add("Scroll pull volume pieces apart");
             }
-            keys.Add("Tab hide panel");
+            keys.Add("F2 hide panel");
             return string.Join("\n", keys);
         }
     }

@@ -12,10 +12,10 @@ namespace Clube.Debug
     /// </summary>
     public static class CheatCommands
     {
-        public const string Help = "coins <amount> · give <item> [count] · help";
+        public const string Help = "coins <amount> · give <item> [count] · level <skill|all> <n> · xp <skill> <amount> · help";
 
         /// <summary>Runs one command line; returns what happened, for the panel to show.</summary>
-        public static string Run(string line, PlayerInventory inventory, PlayerWallet wallet, ItemCatalog catalog)
+        public static string Run(string line, PlayerInventory inventory, PlayerWallet wallet, ItemCatalog catalog, PlayerSkills skills = null)
         {
             string[] words = (line ?? "").Trim().Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
             if (words.Length == 0 || words[0].ToLowerInvariant() == "help")
@@ -54,9 +54,48 @@ namespace Clube.Debug
                     }
                     return GiveItems(inventory, item, count);
 
+                case "level":
+                case "xp":
+                    return Skills(words, skills);
+
                 default:
                     return $"Unknown command \"{words[0]}\". {Help}";
             }
+        }
+
+        // "level mining 3", "level all 5", "xp smelting 40" (GL47).
+        private static string Skills(string[] words, PlayerSkills skills)
+        {
+            if (skills == null)
+            {
+                return "The player has no skills (Play mode only)";
+            }
+            if (words.Length < 3 || !float.TryParse(words[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float amount) || amount < 0f)
+            {
+                return $"Usage: {words[0]} <skill|all> <amount>";
+            }
+            bool all = words[1].ToLowerInvariant() == "all";
+            SkillType one = SkillType.None;
+            if (!all && (!System.Enum.TryParse(words[1], true, out one) || one == SkillType.None))
+            {
+                return $"No skill called \"{words[1]}\" (crafting, woodcutting, mining, smelting)";
+            }
+            foreach (SkillType skill in new[] { SkillType.Crafting, SkillType.Woodcutting, SkillType.Mining, SkillType.Smelting })
+            {
+                if (!all && skill != one)
+                {
+                    continue;
+                }
+                if (words[0].ToLowerInvariant() == "level")
+                {
+                    skills.Skills.RaiseTo(skill, (int)amount);
+                }
+                else
+                {
+                    skills.Skills.Award(skill, amount);
+                }
+            }
+            return all ? $"All skills: {words[0]} {amount}" : $"{words[1]}: level {skills.Skills.Level(one)} ({skills.Skills.Experience(one):0} xp)";
         }
 
         public static string GiveCoins(PlayerWallet wallet, int coins)

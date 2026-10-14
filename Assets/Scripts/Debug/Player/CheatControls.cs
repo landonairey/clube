@@ -91,7 +91,7 @@ namespace Clube.Debug
             GUILayout.EndHorizontal();
             if ((enter || run) && !string.IsNullOrWhiteSpace(state.Command))
             {
-                state.Result = CheatCommands.Run(state.Command, inventory, wallet, catalog);
+                state.Result = CheatCommands.Run(state.Command, inventory, wallet, catalog, player.GetComponent<PlayerSkills>());
                 state.Command = "";
                 if (enter)
                 {

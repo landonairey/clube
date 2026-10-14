@@ -61,6 +61,15 @@ namespace Clube.Core
         /// <summary>Raised after anything about the station changes, progress included.</summary>
         public event Action Changed;
 
+        /// <summary>Raised when a recipe finishes (GL47), for the experience it gives.</summary>
+        public event Action<Recipe> Completed;
+
+        /// <summary>
+        /// The skills of whoever uses the station (GL48): recipes they haven't unlocked never start.
+        /// Null: every recipe can start.
+        /// </summary>
+        public SkillSet Learner { get; set; }
+
         public StationKind Kind { get; }
 
         /// <summary>The recipes it can make.</summary>
@@ -177,11 +186,11 @@ namespace Clube.Core
             // A chosen recipe is the only one that starts; others sharing its inputs wait (ML1).
             if (Chosen != null)
             {
-                return Chosen.Work == work && Chosen.HasInputs(Input) && Fits(Chosen) ? Chosen : null;
+                return Chosen.Work == work && Chosen.IsUnlockedFor(Learner) && Chosen.HasInputs(Input) && Fits(Chosen) ? Chosen : null;
             }
             foreach (Recipe recipe in recipes)
             {
-                if (recipe.Work == work && recipe.HasInputs(Input) && Fits(recipe))
+                if (recipe.Work == work && recipe.IsUnlockedFor(Learner) && recipe.HasInputs(Input) && Fits(recipe))
                 {
                     return recipe;
                 }
@@ -306,6 +315,7 @@ namespace Clube.Core
                 {
                     Output.Add(finished.Output.Item, finished.Output.Count);
                 }
+                Completed?.Invoke(finished);
             }
             Changed?.Invoke();
         }

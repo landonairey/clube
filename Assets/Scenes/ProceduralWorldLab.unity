@@ -990,6 +990,8 @@ GameObject:
   - component: {fileID: 1697135582}
   - component: {fileID: 1697135584}
   - component: {fileID: 1697135583}
+  - component: {fileID: 1697135586}
+  - component: {fileID: 1697135585}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1161,6 +1163,7 @@ MonoBehaviour:
   useAction: {fileID: 1120369429361536294, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   hotbar: {fileID: 1697135571}
   hand: {fileID: 11400000, guid: 0cd0e3994cf57324687ce5035ec165d3, type: 2}
+  breakInStages: 0
   reach: 4
 --- !u!114 &1697135570
 MonoBehaviour:
@@ -1205,10 +1208,6 @@ MonoBehaviour:
   hotbarSlots: 9
   backpackSlots: 18
   startingItems:
-  - Item: {fileID: 11400000, guid: 5c26ed0b0bc9f364eb573719b28d57bf, type: 2}
-    Count: 1
-  - Item: {fileID: 11400000, guid: 3bb600d34e85227419ea87cf67170804, type: 2}
-    Count: 1
   - Item: {fileID: 11400000, guid: a7da00b5e4b7de14693dc2f5a9e24e58, type: 2}
     Count: 1
   - Item: {fileID: 11400000, guid: 40a193c1adccc5b4d8a9fd4956cb370d, type: 2}
@@ -1400,6 +1399,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSkills
   blacksmithing: 0
+  wood: 1
+  leaves: 0.2
+  stone: 1
+  ore: 2
+  soil: 0.25
 --- !u!114 &1697135582
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1413,10 +1417,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.StumpWorktops
   recipes:
+  - {fileID: 11400000, guid: 4718a79fc1c2a81438a065cf5434da28, type: 2}
+  - {fileID: 11400000, guid: 74e8bd7f43379dd4aa596695997acab2, type: 2}
+  - {fileID: 11400000, guid: a1a8b63791d70f54190b6343ce8d31c7, type: 2}
+  - {fileID: 11400000, guid: 3daad1d4d3fb0234bb8376f566d80a0d, type: 2}
   - {fileID: 11400000, guid: a3738c3ced64737449f5ad3ad8cdf4cd, type: 2}
   - {fileID: 11400000, guid: 94d08de95a5f51c4dad353cc38fb0d40, type: 2}
+  - {fileID: 11400000, guid: 7a96a8cb02a57304a8d2a5b1c1339e05, type: 2}
   - {fileID: 11400000, guid: 58c231621d094754888613a6d3e07203, type: 2}
-  - {fileID: 11400000, guid: 4718a79fc1c2a81438a065cf5434da28, type: 2}
 --- !u!114 &1697135583
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1447,6 +1455,51 @@ MonoBehaviour:
   sizeInChunks: 8
   firstPrice: 100
   priceStep: 100
+--- !u!114 &1697135585
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8c7015fff614f204f89ac523abda271f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.SkillsHud
+  unlocks:
+  - {fileID: 11400000, guid: a1a8b63791d70f54190b6343ce8d31c7, type: 2}
+  - {fileID: 11400000, guid: 3daad1d4d3fb0234bb8376f566d80a0d, type: 2}
+  - {fileID: 11400000, guid: a3738c3ced64737449f5ad3ad8cdf4cd, type: 2}
+  - {fileID: 11400000, guid: 94d08de95a5f51c4dad353cc38fb0d40, type: 2}
+  - {fileID: 11400000, guid: 7a96a8cb02a57304a8d2a5b1c1339e05, type: 2}
+  - {fileID: 11400000, guid: 58c231621d094754888613a6d3e07203, type: 2}
+  - {fileID: 11400000, guid: 5494c424192226542928114696f6423b, type: 2}
+  - {fileID: 11400000, guid: 2614ff98739cae048a781553184c28b6, type: 2}
+--- !u!114 &1697135586
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cc219a35e82f8245b33dcf7ada62ad5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.OreKnowledge
+  worldView: {fileID: 1350119460}
+  hidden:
+  - {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
+  - {fileID: 11400000, guid: 7ecc65adf73d9da42aee16f413c5acb0, type: 2}
+  - {fileID: 11400000, guid: f58c64750cb382d42b0ab8008263addc, type: 2}
+  - {fileID: 11400000, guid: 8d7e9d76247091549940794050b1d237, type: 2}
+  - {fileID: 11400000, guid: 4e672b82024c08f4387772f395f40e11, type: 2}
+  - {fileID: 11400000, guid: debe2c5e9edbed84dab39106277c66dc, type: 2}
+  shownAs: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+  skill: 3
+  level: 3
+  unknownOre: {fileID: 11400000, guid: d2d5efa38b9222c4e8f56dd1ec3f4fcf, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

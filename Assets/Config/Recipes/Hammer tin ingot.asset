@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb68c50b39e0a91499017be61cd90094, type: 3}
+  m_Name: Hammer tin ingot
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.Recipe
+  station: 1
+  inputs:
+  - Item: {fileID: 11400000, guid: e49cea8103fd9d94682cdecb145df7f8, type: 2}
+    Count: 1
+  output:
+    Item: {fileID: 11400000, guid: f222312d73ba0ba46989e52f953c6890, type: 2}
+    Count: 1
+  work: 1
+  amount: 6
+  byVolume: 1
+  content: {fileID: 0}
+  yield: 0.8
+  skill: 1
+  skilledYield: 0.95
+  experienceSkill: 1
+  experience: 3
+  unlockSkill: 0
+  unlockLevel: 0

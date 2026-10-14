@@ -23,6 +23,7 @@ namespace Clube.Debug.Editor
             Save("Furnace", Furnace());
             Save("Anvil", Anvil());
             Save("Merchant Table", MerchantTable());
+            Save("Campfire", Campfire());
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Built station models in {Folder}.");
         }
@@ -73,6 +74,29 @@ namespace Clube.Debug.Editor
             model.Box(1, new Vector3(0f, 1.98f, 0f), new Vector3(1.9f, 0.05f, 1.15f), Quaternion.Euler(-10f, 0f, 0f));
             model.Box(0, new Vector3(-0.45f, 1.07f, -0.1f), new Vector3(0.35f, 0.34f, 0.35f));
             return model.Build("Merchant Table");
+        }
+
+        // Submeshes: 0 stone, 1 embers, 2 wood. A ring of stones round a bed of embers, with
+        // logs leaning together over it (GL52).
+        private static Mesh Campfire()
+        {
+            var model = new ModelBuilder(3);
+            const int stones = 9;
+            for (int i = 0; i < stones; i++)
+            {
+                float angle = i * Mathf.PI * 2f / stones;
+                var at = new Vector3(Mathf.Cos(angle) * 0.55f, 0.09f, Mathf.Sin(angle) * 0.55f);
+                float size = i % 2 == 0 ? 0.24f : 0.2f;
+                model.Box(0, at, new Vector3(size, 0.18f, size * 0.85f), Quaternion.Euler(0f, -angle * Mathf.Rad2Deg + 15f * i, 0f));
+            }
+            model.Box(1, new Vector3(0f, 0.03f, 0f), new Vector3(0.75f, 0.06f, 0.75f));
+            for (int i = 0; i < 3; i++)
+            {
+                float yaw = i * 120f;
+                model.Box(2, new Vector3(0f, 0.22f, 0f) + Quaternion.Euler(0f, yaw, 0f) * new Vector3(0.16f, 0f, 0f),
+                    new Vector3(0.6f, 0.09f, 0.09f), Quaternion.Euler(0f, yaw, 32f));
+            }
+            return model.Build("Campfire");
         }
 
         private static void Save(string name, Mesh mesh)

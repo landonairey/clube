@@ -121,7 +121,15 @@ namespace Clube.Game
             foreach (Recipe recipe in station.Recipes)
             {
                 var row = new Rect(x, y, width - Padding * 2f, 20f);
-                if (!choosable)
+                if (!recipe.IsUnlockedFor(station.Learner))
+                {
+                    // Locked (GL48): shown, greyed, with the level it needs.
+                    bool wasEnabled = GUI.enabled;
+                    GUI.enabled = false;
+                    GUI.Label(row, $"Needs {recipe.UnlockSkill} {recipe.UnlockLevel}:  {Describe(recipe)}");
+                    GUI.enabled = wasEnabled;
+                }
+                else if (!choosable)
                 {
                     GUI.Label(row, Describe(recipe));
                 }

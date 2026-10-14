@@ -21,13 +21,23 @@ namespace Clube.Debug.Editor
         private static readonly Color Copper = new Color(0.78f, 0.42f, 0.2f);
         private static readonly Color CopperLight = new Color(1f, 0.72f, 0.45f);
         private static readonly Color CopperDark = new Color(0.4f, 0.17f, 0.08f);
+        private static readonly Color Tin = new Color(0.68f, 0.7f, 0.72f);
+        private static readonly Color TinLight = new Color(0.92f, 0.93f, 0.95f);
+        private static readonly Color TinDark = new Color(0.32f, 0.33f, 0.36f);
+        private static readonly Color Bronze = new Color(0.7f, 0.5f, 0.24f);
+        private static readonly Color BronzeLight = new Color(0.95f, 0.78f, 0.45f);
+        private static readonly Color BronzeDark = new Color(0.34f, 0.22f, 0.08f);
 
         [MenuItem("Clube/Items/Generate icons")]
         public static void GenerateIcons()
         {
             Directory.CreateDirectory(Folder);
-            Write("copper bun", "Copper bun", PaintBun());
-            Write("copper ingot", "Copper ingot", PaintIngot());
+            Write("copper bun", "Copper bun", PaintBun(Copper, CopperLight, CopperDark));
+            Write("copper ingot", "Copper ingot", PaintIngot(Copper, CopperLight, CopperDark));
+            Write("tin bun", "Tin bun", PaintBun(Tin, TinLight, TinDark));
+            Write("tin ingot", "Tin ingot", PaintIngot(Tin, TinLight, TinDark));
+            Write("bronze bun", "Bronze bun", PaintBun(Bronze, BronzeLight, BronzeDark));
+            Write("bronze ingot", "Bronze ingot", PaintIngot(Bronze, BronzeLight, BronzeDark));
             Write("wood", "Wood", PaintLog());
             Write("leaves", "Leaves", PaintLeaf());
             Write("clay", "Clay", PaintClay());
@@ -38,6 +48,10 @@ namespace Clube.Debug.Editor
             Write("spear", "Spear", PaintSpear());
             Write("stone hatchet", "Stone hatchet", PaintHatchet());
             Write("stone hammer", "Stone hammer", PaintHammer());
+            Write("pointy stick", "Pointy stick", PaintPointyStick());
+            Write("stone pick", "Stone pick", PaintStonePick());
+            Write("campfire", "Campfire", PaintCampfire());
+            Write("unknown ore", "Unknown ore", PaintUnknownOre());
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Wrote item icons to {Folder}.");
         }
@@ -67,7 +81,7 @@ namespace Clube.Debug.Editor
         }
 
         // A dome lit from the upper left, with a dark rim and a pitted, uneven surface.
-        private static Texture2D PaintBun()
+        private static Texture2D PaintBun(Color metal, Color bright, Color dark)
         {
             Texture2D texture = Blank();
             var random = new System.Random(7);
@@ -86,10 +100,10 @@ namespace Clube.Debug.Editor
                     }
                     float height = Mathf.Sqrt(1f - r2);
                     float shade = Mathf.Clamp01(0.55f + 0.45f * Vector2.Dot(p, light) * (1f - height) + 0.35f * height);
-                    Color color = Color.Lerp(CopperDark, Copper, shade);
+                    Color color = Color.Lerp(dark, metal, shade);
                     if (shade > 0.85f)
                     {
-                        color = Color.Lerp(color, CopperLight, (shade - 0.85f) / 0.15f);
+                        color = Color.Lerp(color, bright, (shade - 0.85f) / 0.15f);
                     }
                     // Pits and grain from the smelt.
                     color *= 0.88f + 0.2f * (float)random.NextDouble();
@@ -103,7 +117,7 @@ namespace Clube.Debug.Editor
         }
 
         // A trapezoid bar: a bright top face, a darker front face below it, and an outline.
-        private static Texture2D PaintIngot()
+        private static Texture2D PaintIngot(Color metal, Color light, Color dark)
         {
             Texture2D texture = Blank();
             var random = new System.Random(11);
@@ -121,7 +135,7 @@ namespace Clube.Debug.Editor
                         float half = Mathf.Lerp(Size * 0.36f, Size * 0.28f, t);
                         if (Mathf.Abs(x - Size * 0.5f) <= half)
                         {
-                            color = Color.Lerp(Copper, CopperLight, 0.35f + 0.4f * t);
+                            color = Color.Lerp(metal, light, 0.35f + 0.4f * t);
                         }
                     }
                     else if (y >= frontY0 && y < topY0)
@@ -131,7 +145,7 @@ namespace Clube.Debug.Editor
                         float half = Mathf.Lerp(Size * 0.36f, Size * 0.4f, t);
                         if (Mathf.Abs(x - Size * 0.5f) <= half)
                         {
-                            color = Color.Lerp(Copper, CopperDark, 0.25f + 0.35f * t);
+                            color = Color.Lerp(metal, dark, 0.25f + 0.35f * t);
                         }
                     }
                     if (color.HasValue)
@@ -142,7 +156,7 @@ namespace Clube.Debug.Editor
                     }
                 }
             }
-            Outline(texture, CopperDark);
+            Outline(texture, dark);
             texture.Apply();
             return texture;
         }
@@ -467,6 +481,94 @@ namespace Clube.Debug.Editor
             Line(texture, new Vector2(16f, 50f), new Vector2(48f, 42f), 12f, StoneHead);
             Line(texture, new Vector2(17f, 54f), new Vector2(47f, 47f), 2.5f, StoneHeadLight);
             Line(texture, new Vector2(28f, 42f), new Vector2(36f, 50f), 2f, Lashing);
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
+        // A short stick whittled to a point at the top right.
+        private static Texture2D PaintPointyStick()
+        {
+            Texture2D texture = Blank();
+            Line(texture, new Vector2(12f, 10f), new Vector2(44f, 42f), 3.4f, Handle);
+            Line(texture, new Vector2(12f, 12f), new Vector2(43f, 43f), 1.1f, HandleLight);
+            for (int i = 0; i < 8; i++)
+            {
+                float t = i / 7f;
+                Vector2 at = Vector2.Lerp(new Vector2(42f, 40f), new Vector2(54f, 52f), t);
+                Line(texture, at, at, Mathf.Lerp(4f, 1f, t), new Color(0.86f, 0.74f, 0.52f));
+            }
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
+        // A handle with a pointed stone head lashed across its top.
+        private static Texture2D PaintStonePick()
+        {
+            Texture2D texture = Blank();
+            Line(texture, new Vector2(14f, 8f), new Vector2(34f, 48f), 3.4f, Handle);
+            Line(texture, new Vector2(13f, 10f), new Vector2(33f, 49f), 1.1f, HandleLight);
+            for (int i = 0; i <= 12; i++)
+            {
+                float t = i / 12f;
+                Vector2 at = Vector2.Lerp(new Vector2(16f, 52f), new Vector2(54f, 44f), t);
+                // Thickest in the middle, a point at each end.
+                Line(texture, at, at, 1.5f + 6f * Mathf.Sin(t * Mathf.PI), t < 0.5f ? StoneHead : StoneHeadLight);
+            }
+            Line(texture, new Vector2(30f, 44f), new Vector2(38f, 52f), 2f, Lashing);
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
+        // A ring of stones, crossed logs and a flame.
+        private static Texture2D PaintCampfire()
+        {
+            Texture2D texture = Blank();
+            Line(texture, new Vector2(14f, 18f), new Vector2(50f, 30f), 5f, Handle);
+            Line(texture, new Vector2(14f, 30f), new Vector2(50f, 18f), 5f, HandleLight);
+            for (int i = 0; i < 9; i++)
+            {
+                float angle = i * Mathf.PI * 2f / 9f;
+                var at = new Vector2(32f + Mathf.Cos(angle) * 22f, 22f + Mathf.Sin(angle) * 8f);
+                Line(texture, at, at, 7f, i % 2 == 0 ? StoneHead : StoneHeadLight);
+            }
+            var flame = new Color(1f, 0.55f, 0.15f);
+            var core = new Color(1f, 0.88f, 0.4f);
+            for (int i = 0; i < 10; i++)
+            {
+                float t = i / 9f;
+                Vector2 at = new Vector2(32f + Mathf.Sin(t * 5f) * 3f, 26f + t * 28f);
+                Line(texture, at, at, Mathf.Lerp(14f, 2f, t), flame);
+                Line(texture, at, at, Mathf.Lerp(7f, 0.5f, t), core);
+            }
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
+        // A grey lump of rock with a question mark: ore the player can't tell yet (GL54).
+        private static Texture2D PaintUnknownOre()
+        {
+            Texture2D texture = Blank();
+            for (int i = 0; i < 6; i++)
+            {
+                float angle = i * Mathf.PI / 3f;
+                var at = new Vector2(32f + Mathf.Cos(angle) * 10f, 30f + Mathf.Sin(angle) * 8f);
+                Line(texture, at, at, 18f, i % 2 == 0 ? StoneHead : StoneHeadLight);
+            }
+            var mark = new Color(0.14f, 0.14f, 0.16f);
+            Vector2 previous = new Vector2(25f, 42f);
+            for (int i = 1; i <= 10; i++)
+            {
+                float angle = Mathf.Lerp(Mathf.PI * 0.95f, -Mathf.PI * 0.35f, i / 10f);
+                var at = new Vector2(32f + Mathf.Cos(angle) * 7f, 40f + Mathf.Sin(angle) * 7f);
+                Line(texture, previous, at, 3.2f, mark);
+                previous = at;
+            }
+            Line(texture, previous, new Vector2(32f, 28f), 3.2f, mark);
+            Line(texture, new Vector2(32f, 21f), new Vector2(32f, 21f), 4f, mark);
             Outline(texture, new Color(0.12f, 0.12f, 0.14f));
             texture.Apply();
             return texture;
