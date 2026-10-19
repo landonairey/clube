@@ -418,6 +418,19 @@ The beginning path: the player starts with bare hands and grows four skills, Cra
 - [x] **GL54** `Game` Copper ore hidden until mining is high enough *(first pass of PS6)*: chalcopyrite and malachite look like the stone around them, and mined they give "? ore"; at the mining level that unlocks them they show, and the "? ore" the player holds turns into what it is. Done: Mining 3; `OreKnowledge` remaps the hidden layers in the terrain shader (`MaterialRegistry.ShowAs`), disguises drops and identifies held "? ore" by its composition.
 - [x] **GL55** `Config` Bronze, the first alloy: a tin bun and copper buns make bronze buns, tin and copper ingots make bronze ingots, and a bronze bun hammers into a bronze ingot. Unlocked by smelting level. Done: 1 tin + 3 copper make 4 bronze, Smelting 3.
 
+### Tenth pass *(added 2026-10-19, from `Docs/20261019 clube-backlog.md` — next)*
+Fixes and comforts after playing the beginning path.
+
+- [ ] **GL56** `Game` Parcel fence *(refines GL42)*: the border of the player's land is a fence-high band that follows the ground, about a metre above the surface, and carries on down through the ground to the bottom of the world, so it shows in the walls of a hole dug next to it. Posts and a top rail make it read as a fence.
+- [ ] **GL57** `Game` Split a stack when selling *(first pass of N1's split)*: the merchant screen has a slider for how many of the picked stack to sell, with the payout, besides Sell 1 and Sell stack (sell 100 of 109 stone for exactly 100 coins).
+- [ ] **GL58** `Game` Recipe preview: with a recipe picked (or the one that would start next), the empty output slot shows its result greyed out, so the player sees what they're about to make.
+- [ ] **GL59** `Game` Made tools go to the inventory: an item that doesn't stack (a tool, a station) shows in the output slot for a moment, then moves into the player's inventory when there's room.
+- [ ] **GL60** `Game` Leftovers come back: walking away from a worktop or anvil (or closing its screen) moves what's left in its input slots back into the player's inventory when there's room. Smelters keep theirs, since they work on with the screen closed.
+- [ ] **GL61** `Core + Config` Fixed batches, no work in progress *(replaces GL33's held volumes, fixes held tin blocking a different ore at the campfire)*: every recipe takes a fixed count of inputs and makes a fixed count of outputs; nothing is held between runs. Smelting ratios come from the average ore grades (e.g. 5 chalcopyrite or 3 malachite make a copper bun), and hammering a bun makes one ingot (its smaller volume is the scale lost). The output slot holding a different item shows as the reason a recipe waits.
+- [ ] **GL62** `Config` Rebalanced bun and ingot prices *(refines GL40, GL46)*: each step of refining is worth more than what went into it, so smelting and hammering pay (they were worth less than the ore).
+- [ ] **GL63** `Config` Bronze tools *(first pass of ML4's bronze tools, CR3)*: a bronze pick, hatchet and shovel, hammered at the anvil from bronze ingots and a stick, unlocked by crafting level; stronger and longer-lasting than stone, below the merchant's iron tools.
+- [ ] **GL64** `Game` A smaller inventory *(to be specified: "reduced, like what we added to the dev tracker for next steps")*.
+
 
 ---
 
@@ -484,6 +497,7 @@ Features that make the procedural world feel like a game.
 - [ ] **I4** `Game` Drop items from inventory back into the world. *(First pass 2026-10-06: `ItemDropper`, G taps one or holds for the stack; each item becomes one sample of its material (the end of its break chain, so loose stone), piled where the player looks or at their feet (`TerrainPile`), lifting the player out if buried. Tools and crafted items can't be dropped until pickups exist (I2).)*
 - [ ] **I5** `Game` *(added)* Mining produces items: removed terrain adds material to the inventory based on material type and volume removed (reuses V11 volume math — move it to `Core` at this point).
 - [ ] **I6** `Game` *(added)* Placing terrain uses up material from the inventory.
+- [ ] **I8** `Game` *(added 2026-10-19)* Dropped items as objects *(refines I4, I2; feeds MF3)*: an item dropped from the inventory falls as a 3D object with physics and collides with the ground, to be picked back up. Each item needs a world model; one too small or too large to show well drops as a nondescript sack.
 - [ ] **I7** `Game` *(backlog)* Consumables with timed effects. First one: coffee, a daytime stimulant boost (pairs with PK4 day/night). See the setting-fit open question.
 
 ### 5B — Inventory management
