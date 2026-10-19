@@ -7,7 +7,7 @@ namespace Clube.Game
     /// <summary>
     /// The screen for trading at a <see cref="MerchantTable"/> (GL14, GL20; first pass of TR4):
     /// the player's inventory in slots like the hotbar, with the merchant's price on every
-    /// stack it buys; pick a stack and sell one or all of it. The player's coins show at the
+    /// stack it buys; pick a stack and sell one, all of it, or a part set on a slider (GL57). The player's coins show at the
     /// bottom. Frees the cursor while open;
     /// Interact (E) closes it, as does walking away.
     /// </summary>
@@ -33,6 +33,8 @@ namespace Clube.Game
         private PlayerController player;
         private int openedFrame;
         private int selected = -1;
+        private int splitCount = 1;
+        private GUIStyle countStyle;
 
         /// <summary>The table being used, or null when closed.</summary>
         public MerchantTable Current { get; private set; }
@@ -116,7 +118,7 @@ namespace Clube.Game
             PriceList prices = Current.Prices;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
             float offerRows = Current.Offers.Count > 0 ? Current.Offers.Count * (RowHeight + 4f) + 28f : 0f;
-            float height = Padding * 2f + 24f + 22f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + offerRows;
+            float height = Padding * 2f + 24f + 22f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + SellRowHeight + 6f + offerRows;
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
@@ -132,6 +134,7 @@ namespace Clube.Game
             if (clicked >= 0)
             {
                 selected = clicked == selected ? -1 : clicked;
+                splitCount = selected >= 0 ? items[selected].Count : 1;
             }
             y += InventoryGridGui.PlayerHeight(inventory) + 12f;
 
@@ -151,6 +154,31 @@ namespace Clube.Game
             if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), stackLabel))
             {
                 SellFromSlot(selected, chosen.Count);
+            }
+            y += SellRowHeight + 6f;
+
+            // Part of the stack (GL57): a slider for how many, e.g. 100 of 109 stone for exactly 100 coins.
+            int most = buys ? chosen.Count : 1;
+            splitCount = Mathf.Clamp(splitCount, 1, most);
+            GUI.Label(new Rect(x, y + 12f, 60f, 20f), "Sell part");
+            splitCount = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(x + 64f, y + 18f, 196f, 16f), splitCount, 1f, most));
+            if (buys)
+            {
+                // Arrow buttons for the last few, which a slider over a big stack can't hit.
+                if (GUI.Button(new Rect(x + 270f, y + 8f, 24f, 28f), "-"))
+                {
+                    splitCount = Mathf.Max(1, splitCount - 1);
+                }
+                if (GUI.Button(new Rect(x + 346f, y + 8f, 24f, 28f), "+"))
+                {
+                    splitCount = Mathf.Min(most, splitCount + 1);
+                }
+                GUI.Label(new Rect(x + 296f, y + 12f, 48f, 20f), splitCount.ToString(), countStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter });
+            }
+            string partLabel = $"Sell {(buys ? splitCount : 0)}" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, splitCount))}" : "");
+            if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), partLabel))
+            {
+                SellFromSlot(selected, splitCount);
             }
             GUI.enabled = true;
             y += SellRowHeight + 6f;
