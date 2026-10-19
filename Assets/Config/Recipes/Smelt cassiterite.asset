@@ -15,18 +15,13 @@ MonoBehaviour:
   station: 0
   inputs:
   - Item: {fileID: 11400000, guid: abc86bcbe8361da41bd3f644418bc0a3, type: 2}
-    Count: 1
+    Count: 3
   output:
     Item: {fileID: 11400000, guid: e49cea8103fd9d94682cdecb145df7f8, type: 2}
     Count: 1
   work: 0
-  amount: 0.75
-  byVolume: 1
-  content: {fileID: 11400000, guid: fcb47a3195818b0449ad72b166340337, type: 2}
-  yield: 0.5
-  skill: 0
-  skilledYield: 1
+  amount: 3
   experienceSkill: 4
-  experience: 3
+  experience: 9
   unlockSkill: 0
   unlockLevel: 0

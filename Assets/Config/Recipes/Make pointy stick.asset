@@ -21,11 +21,6 @@ MonoBehaviour:
     Count: 1
   work: 1
   amount: 2
-  byVolume: 0
-  content: {fileID: 0}
-  yield: 1
-  skill: 0
-  skilledYield: 1
   experienceSkill: 1
   experience: 5
   unlockSkill: 0

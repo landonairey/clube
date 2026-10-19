@@ -49,7 +49,7 @@ Core/
   World/         World (loaded chunks, borders, edit paths), WorldGrid (coordinates)
   Materials/     VoxelMaterial, MaterialRegistry (M9), TerrainLayers, MaterialCensus
   Items/         ItemDefinition (O6), ToolDefinition (GL1), Inventory + ItemStack (GL6), Composition (GL32)
-  Crafting/      Recipe, CraftingStation (GL8; by volume GL33, fuel GL35)
+  Crafting/      Recipe, CraftingStation (GL8; fixed batches GL61, fuel GL35)
   Economy/       Wallet, PriceList (GL12, GL13)
   Skills/        SkillSet: experience and levels per skill (GL47)
   Generation/    TerrainSettings, ITerrainGenerator, TerrainGenerators, ChunkGenerator
