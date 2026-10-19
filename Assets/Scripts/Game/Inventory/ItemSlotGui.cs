@@ -62,6 +62,35 @@ namespace Clube.Game
             }
         }
 
+        /// <summary>
+        /// An item drawn greyed out over an empty slot (GL58): what a station is about to make.
+        /// Draw it after the slot itself.
+        /// </summary>
+        public static void Ghost(Rect rect, ItemDefinition item, int count)
+        {
+            if (item == null)
+            {
+                return;
+            }
+            EnsureStyles();
+            Color previous = GUI.color;
+            GUI.color = new Color(0.6f, 0.6f, 0.6f, 0.4f);
+            Rect inner = Inset(rect, 6f);
+            if (item.Icon != null)
+            {
+                GUI.DrawTexture(inner, item.Icon, ScaleMode.ScaleToFit);
+            }
+            else
+            {
+                GUI.Label(inner, item.DisplayName, nameStyle);
+            }
+            if (count > 1)
+            {
+                GUI.Label(Inset(rect, 3f), count.ToString(), countStyle);
+            }
+            GUI.color = previous;
+        }
+
         private static void EnsureStyles()
         {
             if (nameStyle != null)
