@@ -151,6 +151,9 @@ namespace Clube.Core
         /// <summary>Where trees grow (GL30); null when the terrain has no trees.</summary>
         public TreeField Trees => trees;
 
+        /// <summary>The terrain as generated, before edits; null when it couldn't be made (see <see cref="Problem"/>).</summary>
+        public ITerrainGenerator Generator => generator;
+
         /// <summary>The chunk under the focus point.</summary>
         public Vector3Int FocusChunk => World.Grid.WorldToChunk(transform.InverseTransformPoint(Focus.position));
 
