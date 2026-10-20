@@ -31,8 +31,8 @@ namespace Clube.Core
         [ReadOnly] public NativeArray<byte> Materials;
         public byte UniformMaterial;
 
-        /// <summary>Square marks (GL86): samples meshed as sharp cubes rather than marching cubes; empty when none.</summary>
-        [ReadOnly] public NativeArray<byte> Squares;
+        /// <summary>Carve flags (GL92, <see cref="CarveFlags"/>): voxels the chisel carved out; empty when none are.</summary>
+        [ReadOnly] public NativeArray<byte> Carves;
 
         public int3 SampleCount;
         public float IsoLevel;
@@ -47,8 +47,6 @@ namespace Clube.Core
         public void Execute()
         {
             NativeArray<float> densities = DensityBytes.Length > 0 ? ToFloats(DensityBytes) : Densities;
-            // Square samples are left out of marching cubes (meshed as air) and drawn as cubes after.
-            NativeArray<float> marching = Squares.Length > 0 ? WithoutSquares(densities) : densities;
             var positions = new NativeList<float3>(1024, Allocator.Temp);
             var vertexMaterials = new NativeList<byte>(1024, Allocator.Temp);
             var indices = new NativeList<int>(4096, Allocator.Temp);
@@ -59,11 +57,11 @@ namespace Clube.Core
                 var shared = new SharedVertices { ByEdge = new NativeHashMap<int, int>(1024, Allocator.Temp) };
                 if (midpoint)
                 {
-                    Extract(marching, new MidpointPlacement(), ref shared, ref positions, ref vertexMaterials, ref indices);
+                    Extract(densities, new MidpointPlacement(), ref shared, ref positions, ref vertexMaterials, ref indices);
                 }
                 else
                 {
-                    Extract(marching, new InterpolatedPlacement(), ref shared, ref positions, ref vertexMaterials, ref indices);
+                    Extract(densities, new InterpolatedPlacement(), ref shared, ref positions, ref vertexMaterials, ref indices);
                 }
             }
             else
@@ -71,17 +69,23 @@ namespace Clube.Core
                 var separate = new SeparateVertices();
                 if (midpoint)
                 {
-                    Extract(marching, new MidpointPlacement(), ref separate, ref positions, ref vertexMaterials, ref indices);
+                    Extract(densities, new MidpointPlacement(), ref separate, ref positions, ref vertexMaterials, ref indices);
                 }
                 else
                 {
-                    Extract(marching, new InterpolatedPlacement(), ref separate, ref positions, ref vertexMaterials, ref indices);
+                    Extract(densities, new InterpolatedPlacement(), ref separate, ref positions, ref vertexMaterials, ref indices);
                 }
             }
 
-            if (Squares.Length > 0)
+            // Carved voxels are left empty above; their solid neighbours get flat walls towards them.
+            if (midpoint)
             {
-                SquareVoxels.AddCubes(densities, Squares, Materials, UniformMaterial, SampleCount, IsoLevel, VoxelSize,
+                CarvedVoxels.AddWalls(densities, Carves, Materials, UniformMaterial, SampleCount, IsoLevel, VoxelSize, new MidpointPlacement(),
+                    ref positions, ref vertexMaterials, ref indices);
+            }
+            else
+            {
+                CarvedVoxels.AddWalls(densities, Carves, Materials, UniformMaterial, SampleCount, IsoLevel, VoxelSize, new InterpolatedPlacement(),
                     ref positions, ref vertexMaterials, ref indices);
             }
 
@@ -115,60 +119,8 @@ namespace Clube.Core
             where TSharing : struct, IVertexSharing
         {
             SurfaceExtraction.Extract(
-                densities, Materials, UniformMaterial, SampleCount, IsoLevel, VoxelSize,
+                densities, Materials, UniformMaterial, Carves, SampleCount, IsoLevel, VoxelSize,
                 placement, ref sharing, ref positions, ref vertexMaterials, ref indices);
-        }
-
-        // Marching cubes treats square samples as air, so it leaves the cubes to SquareVoxels; but a square
-        // sample touching unchiselled solid ground stays solid for it, so the ground runs up to the cubes
-        // with no gap between (its own rounding is then hidden inside them).
-        private NativeArray<float> WithoutSquares(NativeArray<float> densities)
-        {
-            var marching = new NativeArray<float>(densities, Allocator.Temp);
-            int3 count = SampleCount;
-            for (int z = 0; z < count.z; z++)
-            {
-                for (int y = 0; y < count.y; y++)
-                {
-                    for (int x = 0; x < count.x; x++)
-                    {
-                        int i = x + count.x * (y + count.y * z);
-                        if (Squares[i] != 0 && !TouchesPlainSolid(new int3(x, y, z), densities))
-                        {
-                            marching[i] = 0f;
-                        }
-                    }
-                }
-            }
-            return marching;
-        }
-
-        // A face neighbour inside the chunk that's solid and not square.
-        private bool TouchesPlainSolid(int3 sample, NativeArray<float> densities)
-        {
-            for (int side = 0; side < 6; side++)
-            {
-                int3 step = side switch
-                {
-                    0 => new int3(1, 0, 0),
-                    1 => new int3(-1, 0, 0),
-                    2 => new int3(0, 1, 0),
-                    3 => new int3(0, -1, 0),
-                    4 => new int3(0, 0, 1),
-                    _ => new int3(0, 0, -1),
-                };
-                int3 next = sample + step;
-                if (math.any(next < 0) || math.any(next >= SampleCount))
-                {
-                    continue;
-                }
-                int i = next.x + SampleCount.x * (next.y + SampleCount.y * next.z);
-                if (Squares[i] == 0 && densities[i] >= IsoLevel)
-                {
-                    return true;
-                }
-            }
-            return false;
         }
 
         private static NativeArray<float> ToFloats(NativeArray<byte> bytes)

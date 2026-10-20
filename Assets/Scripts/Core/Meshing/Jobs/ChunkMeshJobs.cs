@@ -21,10 +21,10 @@ namespace Clube.Core
         public byte UniformMaterial;
         public int3 SampleCount;
 
-        /// <summary>Square marks, one byte per sample (GL86); empty when the chunk has none.</summary>
-        public NativeArray<byte> Squares;
+        /// <summary>Carve flags, one byte per sample (GL92, <see cref="CarveFlags"/>); empty when the chunk has none.</summary>
+        public NativeArray<byte> Carves;
 
-        /// <summary>Copies the chunk's densities, materials and square marks into new native arrays.</summary>
+        /// <summary>Copies the chunk's densities, materials and carve flags into new native arrays.</summary>
         public static ChunkMeshInput Snapshot(Chunk chunk, Allocator allocator)
         {
             int length = chunk.SampleCount.x * chunk.SampleCount.y * chunk.SampleCount.z;
@@ -36,9 +36,9 @@ namespace Clube.Core
                 Materials = new NativeArray<byte>(chunk.Materials.IsUniform ? 0 : length, allocator, NativeArrayOptions.UninitializedMemory),
                 UniformMaterial = chunk.Materials.UniformId,
                 SampleCount = new int3(chunk.SampleCount.x, chunk.SampleCount.y, chunk.SampleCount.z),
-                Squares = new NativeArray<byte>(chunk.HasSquares ? length : 0, allocator, NativeArrayOptions.UninitializedMemory),
+                Carves = new NativeArray<byte>(chunk.HasCarves ? length : 0, allocator, NativeArrayOptions.UninitializedMemory),
             };
-            chunk.CopySquares(input.Squares);
+            chunk.CopyCarves(input.Carves);
             if (bytes)
             {
                 chunk.CopyDensities(input.DensityBytes);
@@ -56,7 +56,7 @@ namespace Clube.Core
             Densities.Dispose();
             DensityBytes.Dispose();
             Materials.Dispose();
-            Squares.Dispose();
+            Carves.Dispose();
         }
 
         /// <summary>Frees the arrays once <paramref name="job"/> (which reads them) completes.</summary>
@@ -64,7 +64,7 @@ namespace Clube.Core
         {
             return JobHandle.CombineDependencies(
                 JobHandle.CombineDependencies(Densities.Dispose(job), DensityBytes.Dispose(job), Materials.Dispose(job)),
-                Squares.Dispose(job));
+                Carves.Dispose(job));
         }
     }
 
@@ -90,7 +90,7 @@ namespace Clube.Core
                 Materials = input.Materials,
                 UniformMaterial = input.UniformMaterial,
                 SampleCount = input.SampleCount,
-                Squares = input.Squares,
+                Carves = input.Carves,
                 IsoLevel = settings.IsoLevel,
                 VoxelSize = settings.VoxelSize,
                 EdgePlacement = settings.EdgePlacement,

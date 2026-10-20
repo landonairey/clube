@@ -77,8 +77,9 @@ namespace Clube.Core
     {
         /// <param name="densities">Every sample, X fastest, then Y, then Z.</param>
         /// <param name="materials">Every sample's material id, or empty when all are <paramref name="uniformMaterial"/>.</param>
+        /// <param name="carves">Carve flags per sample (GL92): carved voxels are left empty; empty when none are.</param>
         public static void Extract<TPlacement, TSharing>(
-            NativeArray<float> densities, NativeArray<byte> materials, byte uniformMaterial,
+            NativeArray<float> densities, NativeArray<byte> materials, byte uniformMaterial, NativeArray<byte> carves,
             int3 sampleCount, float isoLevel, float voxelSize,
             TPlacement placement, ref TSharing sharing,
             ref NativeList<float3> positions, ref NativeList<byte> vertexMaterials, ref NativeList<int> indices)
@@ -163,6 +164,11 @@ namespace Clube.Core
                         }
 
                         int voxelIndex = near + row + x;
+                        if (carves.Length > 0 && (carves[voxelIndex] & CarveFlags.Above) != 0)
+                        {
+                            // Carved out (GL92): CarvedVoxels walls it off instead.
+                            continue;
+                        }
                         float3 origin = new float3(x, y, z) * voxelSize;
                         for (int edge = 0; edge < MarchingCubes.EdgeCount; edge++)
                         {
