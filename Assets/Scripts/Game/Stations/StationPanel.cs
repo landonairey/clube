@@ -10,9 +10,11 @@ namespace Clube.Game
     /// in slots like the hotbar: the station's input slots, then the work (a smelting bar, or a
     /// Strike button on the anvil, which supplies the hammer), then its output slot, and the
     /// player's inventory below. Click one of your stacks to load it, an input stack to take it
-    /// back, the output to collect it. The furnace keeps working through what's loaded with
-    /// the screen closed. Frees the cursor while open; Interact (E) closes it, as does
-    /// walking away.
+    /// back, the output to collect it. The empty output slot shows what's about to be made,
+    /// greyed out (GL58); a made tool moves to the inventory by itself (GL59). The furnace keeps
+    /// working through what's loaded with the screen closed; a worktop or anvil hands its
+    /// leftovers back when the screen closes (GL60). Frees the cursor while open; Interact (E)
+    /// closes it, as does walking away.
     /// </summary>
     [RequireComponent(typeof(PlayerInventory))]
     public class StationPanel : MonoBehaviour
@@ -28,9 +30,13 @@ namespace Clube.Game
         [SerializeField, Min(1f)]
         private float closeDistance = 5f;
 
+        [Tooltip("Seconds a made tool or station shows in the output slot before it moves to the inventory (GL59).")]
+        [SerializeField, Min(0f)]
+        private float collectDelay = 0.6f;
+
         private PlayerInventory inventory;
+        private float madeSince = -1f;
         private PlayerController player;
-        private PlayerSkills skills;
         private int openedFrame;
         private GUIStyle recipeStyle;
 
@@ -43,7 +49,6 @@ namespace Clube.Game
         {
             inventory = GetComponent<PlayerInventory>();
             player = GetComponent<PlayerController>();
-            skills = GetComponent<PlayerSkills>();
         }
 
         private void OnEnable()
@@ -72,6 +77,14 @@ namespace Clube.Game
             {
                 return;
             }
+            CraftingStation station = Current.Station;
+            // Leftovers come back (GL60) from stations that only work while used; smelters keep
+            // theirs and work on. Made tools come along too (GL59).
+            if (!station.WorksUnattended)
+            {
+                station.ReturnInputs(inventory.Inventory);
+            }
+            CollectUnstackable(station);
             Current = null;
             if (player != null)
             {
@@ -84,6 +97,22 @@ namespace Clube.Game
             if (Current == null)
             {
                 return;
+            }
+            // A made tool or station shows in the output slot for a moment, then moves to the
+            // inventory (GL59).
+            ItemStack made = Current.Station.Output[0];
+            if (made.IsEmpty || made.Item.MaxStack > 1)
+            {
+                madeSince = -1f;
+            }
+            else if (madeSince < 0f)
+            {
+                madeSince = Time.unscaledTime;
+            }
+            else if (Time.unscaledTime - madeSince >= collectDelay)
+            {
+                CollectUnstackable(Current.Station);
+                madeSince = -1f;
             }
             // The press that opened the panel mustn't close it in the same frame.
             bool closePressed = Time.frameCount != openedFrame && closeAction != null && closeAction.action.WasPressedThisFrame();
@@ -102,7 +131,6 @@ namespace Clube.Game
             }
 
             CraftingStation station = Current.Station;
-            station.Skills = skills != null ? skills.Level : (System.Func<CraftSkill, float>)null;
             Inventory items = inventory.Inventory;
             float slot = InventoryGridGui.SlotSize;
             float gap = InventoryGridGui.Gap;
@@ -153,10 +181,23 @@ namespace Clube.Game
             }
             float workX = x + station.Input.SlotCount * (slot + gap) + 12f;
             DrawWork(new Rect(workX, y, WorkWidth, slot), station);
-            int output = InventoryGridGui.DrawRow(new Vector2(workX + WorkWidth + 12f, y), station.Output);
+            var outputAt = new Vector2(workX + WorkWidth + 12f, y);
+            int output = InventoryGridGui.DrawRow(outputAt, station.Output);
             if (output >= 0)
             {
                 station.Output.MoveTo(output, items);
+            }
+            // What it's about to make, greyed out in the empty output slot (GL58).
+            Recipe upcoming = station.Upcoming;
+            if (upcoming != null && station.Output[0].IsEmpty)
+            {
+                ItemSlotGui.Ghost(new Rect(outputAt.x, outputAt.y, slot, slot), upcoming.Output.Item, upcoming.Output.Count);
+            }
+            // Why a loaded recipe waits: a different result sits in the output slot (GL61).
+            string blocked = Blocked(station);
+            if (blocked != null)
+            {
+                GUI.Label(new Rect(workX, y + slot + 4f, width - (workX - panel.x) - Padding, 20f), blocked);
             }
             if (station.BurnsFuel)
             {
@@ -202,28 +243,28 @@ namespace Clube.Game
             var bar = new Rect(area.x, area.y + 22f, area.width, 12f);
             GUI.Box(bar, GUIContent.none);
             GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * station.Progress, bar.height), Texture2D.whiteTexture);
+        }
 
-            // What's been made but isn't a whole item yet, e.g. copper gathering for the next bun.
-            string held = Held(station);
-            if (held != null)
+        // Moves an item that doesn't stack (a tool, a station) from the output into the inventory, if there's room.
+        private void CollectUnstackable(CraftingStation station)
+        {
+            ItemStack made = station.Output[0];
+            if (!made.IsEmpty && made.Item.MaxStack <= 1)
             {
-                GUI.Label(new Rect(area.x, area.y + 36f, area.width, 20f), held);
+                station.Output.MoveTo(0, inventory.Inventory);
             }
         }
 
-        // "Held 0.3 / 0.5 Copper bun" for the first recipe by volume with anything held.
-        private static string Held(CraftingStation station)
+        // "Take the Tin bun out first" when the upcoming recipe's result doesn't fit on what's waiting.
+        private static string Blocked(CraftingStation station)
         {
-            foreach (Recipe recipe in station.Recipes)
+            Recipe next = station.Upcoming;
+            if (next == null || station.IsBusy || !next.HasInputs(station.Input) || station.OutputFits(next))
             {
-                ItemDefinition item = recipe.Output.Item;
-                float volume = recipe.ByVolume ? station.Held(item) : 0f;
-                if (volume > 0.001f)
-                {
-                    return $"Held {volume:0.##} / {item.UnitVolume:0.##}";
-                }
+                return null;
             }
-            return null;
+            ItemStack waiting = station.Output[0];
+            return waiting.Item == next.Output.Item ? "Output full: take it out" : $"Take the {waiting.Item.DisplayName} out first";
         }
 
         // The fuel burning now as a bar that empties (GL35).
@@ -239,8 +280,7 @@ namespace Clube.Game
             GUI.color = previous;
         }
 
-        // "8 Copper ore → 1 Copper bun · 6 s", or by volume (GL33):
-        // "1 Copper ore → Copper bun · 50% of its Copper · 0.8 s each"
+        // "5 Chalcopyrite → 1 Copper bun · 4 s each"
         private static string Describe(Recipe recipe)
         {
             var text = new StringBuilder();
@@ -257,11 +297,6 @@ namespace Clube.Game
                 text.Append($"{input.Count} {input.Item.DisplayName}");
             }
             string work = recipe.Work == RecipeWork.Time ? $"{recipe.Amount:0.#} s each" : $"{recipe.Amount:0} strikes each";
-            if (recipe.ByVolume)
-            {
-                string of = recipe.Content != null ? $" of its {recipe.Content.DisplayName}" : "";
-                return $"{text} → {recipe.Output.Item?.DisplayName} · {recipe.Yield(0f) * 100f:0}%{of} · {work}";
-            }
             return $"{text} → {recipe.Output.Count} {recipe.Output.Item?.DisplayName} · {work}";
         }
     }

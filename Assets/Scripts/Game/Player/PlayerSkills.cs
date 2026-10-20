@@ -10,16 +10,8 @@ namespace Clube.Game
     /// trains the skill the recipe names (<see cref="StationObject"/> reports it). Levels unlock
     /// recipes (GL48) and what the player can see (<see cref="OreKnowledge"/>).
     /// </summary>
-    /// <remarks>
-    /// Blacksmithing, the 0-1 level that lowers scale loss on the anvil (GL33), is still the
-    /// Inspector placeholder; it isn't one of the four earned skills yet.
-    /// </remarks>
     public class PlayerSkills : MonoBehaviour
     {
-        [Tooltip("Lowers the scale lost on the anvil: 0 loses the recipe's base share, 1 its skilled share.")]
-        [SerializeField, Range(0f, 1f)]
-        private float blacksmithing;
-
         [Header("Experience per sample broken")]
         [Tooltip("Woodcutting: wood and stumps.")]
         [SerializeField, Min(0f)]
@@ -45,18 +37,6 @@ namespace Clube.Game
 
         /// <summary>Experience and levels in the four skills.</summary>
         public SkillSet Skills { get; } = new SkillSet();
-
-        /// <summary>The level of a yield skill, 0-1 (GL33); 0 for <see cref="CraftSkill.None"/>.</summary>
-        public float Level(CraftSkill skill)
-        {
-            return skill == CraftSkill.Blacksmithing ? blacksmithing : 0f;
-        }
-
-        public float Blacksmithing
-        {
-            get => blacksmithing;
-            set => blacksmithing = Mathf.Clamp01(value);
-        }
 
         private void Awake()
         {

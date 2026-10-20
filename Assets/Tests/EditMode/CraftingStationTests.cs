@@ -189,73 +189,86 @@ namespace Clube.Core.Tests
             Assert.AreEqual(64, input.Count(ore));
         }
 
-        // The worked example from GL33: 1 volume of 80/20 ore → 0.2 copper → a 0.1 bun → a 0.08 ingot.
+        // GL61: a fixed count in, a fixed count out, and nothing held between runs.
         [Test]
-        public void ByVolume_YieldsMultiplyThroughTheChain()
+        public void FixedBatch_LeavesOnlyWholeLeftoverInputs()
         {
-            VoxelMaterial stone = VoxelMaterial.Create(0, "Stone");
-            VoxelMaterial copper = VoxelMaterial.Create(3, "Copper", VoxelMaterialCategory.Ore);
-            ItemDefinition smallBun = ItemDefinition.Create("bun", "Bun").With(unitVolume: 0.1f);
-            ItemDefinition smallIngot = ItemDefinition.Create("ingot", "Ingot").With(unitVolume: 0.08f);
-            Recipe smeltByVolume = Recipe.Create(StationKind.Furnace, new ItemAmount(smallBun, 1), RecipeWork.Time, 1f, new ItemAmount(ore, 1))
-                .WithYield(0.5f, copper);
-            Recipe hammerByVolume = Recipe.Create(StationKind.Anvil, new ItemAmount(smallIngot, 1), RecipeWork.Strikes, 1f, new ItemAmount(smallBun, 1))
-                .WithYield(0.8f, null, CraftSkill.Blacksmithing, 0.95f);
+            Recipe five = Recipe.Create(StationKind.Furnace, new ItemAmount(bun, 1), RecipeWork.Time, 1f, new ItemAmount(ore, 5));
             try
             {
-                Composition eightyTwenty = Composition.From(new Content(stone, 0.8f), new Content(copper, 0.2f));
-                Assert.AreEqual(0.1f, smeltByVolume.OutputVolume(_ => eightyTwenty, 0f), 1e-5f);
-                Assert.AreEqual(0.08f, hammerByVolume.OutputVolume(null, 0f), 1e-5f);
-                Assert.AreEqual(0.095f, hammerByVolume.OutputVolume(null, 1f), 1e-5f, "Mastered blacksmithing loses 5%, not 20%.");
-
-                var furnace = new CraftingStation(StationKind.Furnace, new[] { smeltByVolume });
-                furnace.Input.Add(ore, 1, eightyTwenty);
-                furnace.Tick(1f);
-                Assert.AreEqual(1, furnace.Output.Count(smallBun));
-
-                var anvil = new CraftingStation(StationKind.Anvil, new[] { hammerByVolume });
-                furnace.Output.MoveTo(0, anvil.Input);
-                anvil.Strike();
-                Assert.AreEqual(1, anvil.Output.Count(smallIngot));
-                Assert.AreEqual(0f, anvil.Held(smallIngot), 1e-4f);
+                var furnace = new CraftingStation(StationKind.Furnace, new[] { five });
+                furnace.Input.Add(ore, 7);
+                furnace.Tick(10f);
+                Assert.AreEqual(1, furnace.Output.Count(bun));
+                Assert.AreEqual(2, furnace.Input.Count(ore), "Two ore short of a batch stay as ore.");
+                Assert.IsFalse(furnace.IsBusy);
             }
             finally
             {
-                Object.DestroyImmediate(smeltByVolume);
-                Object.DestroyImmediate(hammerByVolume);
-                Object.DestroyImmediate(smallBun);
-                Object.DestroyImmediate(smallIngot);
-                Object.DestroyImmediate(stone);
-                Object.DestroyImmediate(copper);
+                Object.DestroyImmediate(five);
+            }
+        }
+
+        // The campfire bug behind GL61: tin left from an earlier run mustn't stop a different ore for good.
+        [Test]
+        public void DifferentResultWaitingInTheOutput_HoldsTheNextRecipe_UntilTaken()
+        {
+            ItemDefinition tinOre = ItemDefinition.Create("tin-ore", "Cassiterite");
+            ItemDefinition tinBun = ItemDefinition.Create("tin-bun", "Tin bun");
+            Recipe smeltTin = Recipe.Create(StationKind.Furnace, new ItemAmount(tinBun, 1), RecipeWork.Time, 1f, new ItemAmount(tinOre, 3));
+            var player = new Inventory(4);
+            try
+            {
+                var furnace = new CraftingStation(StationKind.Furnace, new[] { smeltTin, smelt });
+                furnace.Input.Add(tinOre, 3);
+                furnace.Tick(2f);
+                Assert.AreEqual(1, furnace.Output.Count(tinBun));
+
+                furnace.Input.Add(ore, 8);
+                furnace.Tick(10f);
+                Assert.AreSame(smelt, furnace.Upcoming, "The copper is what's next.");
+                Assert.IsFalse(furnace.OutputFits(smelt), "The tin bun is in the way.");
+                Assert.AreEqual(8, furnace.Input.Count(ore));
+
+                furnace.Output.MoveTo(0, player);
+                furnace.Tick(10f);
+                Assert.AreEqual(1, furnace.Output.Count(bun));
+                Assert.AreEqual(0, furnace.Input.Count(ore));
+            }
+            finally
+            {
+                Object.DestroyImmediate(smeltTin);
+                Object.DestroyImmediate(tinOre);
+                Object.DestroyImmediate(tinBun);
             }
         }
 
         [Test]
-        public void ByVolume_HoldsWhatsShortOfAWholeItem_UntilMoreComesIn()
+        public void Upcoming_IsTheChosenRecipe_OrTheFirstWithItsInputsLoaded()
         {
-            VoxelMaterial copper = VoxelMaterial.Create(3, "Copper", VoxelMaterialCategory.Ore);
-            ItemDefinition halfBun = ItemDefinition.Create("bun", "Bun").With(unitVolume: 0.5f);
-            Recipe smeltByVolume = Recipe.Create(StationKind.Furnace, new ItemAmount(halfBun, 1), RecipeWork.Time, 1f, new ItemAmount(ore, 1))
-                .WithYield(0.5f, copper);
-            try
-            {
-                var furnace = new CraftingStation(StationKind.Furnace, new[] { smeltByVolume });
-                furnace.Input.Add(ore, 7, Composition.From(new Content(copper, 0.2f), new Content(VoxelMaterial.Create(0, "Stone"), 0.8f)));
+            CraftingStation anvil = Anvil();
+            Assert.IsNull(anvil.Upcoming, "Nothing loaded.");
+            anvil.Input.Add(bun, 1);
+            Assert.AreSame(hammer, anvil.Upcoming);
+            anvil.Chosen = hammer;
+            anvil.Input.RemoveAt(0, 1);
+            Assert.AreSame(hammer, anvil.Upcoming, "A chosen recipe shows before its inputs are in.");
+        }
 
-                furnace.Tick(4f);
-                Assert.AreEqual(0, furnace.Output.Count(halfBun), "0.4 of copper isn't a bun yet.");
-                Assert.AreEqual(0.4f, furnace.Held(halfBun), 1e-4f);
+        // GL60: the anvil only works while used, so its leftovers go back; the furnace works on.
+        [Test]
+        public void ReturnInputs_MovesWhatFits_AndOnlySmeltersWorkUnattended()
+        {
+            CraftingStation anvil = Anvil();
+            Assert.IsFalse(anvil.WorksUnattended);
+            Assert.IsTrue(Furnace().WorksUnattended);
 
-                furnace.Tick(3f);
-                Assert.AreEqual(1, furnace.Output.Count(halfBun), "The fifth ore makes up the bun.");
-                Assert.AreEqual(0.2f, furnace.Held(halfBun), 1e-4f);
-            }
-            finally
-            {
-                Object.DestroyImmediate(smeltByVolume);
-                Object.DestroyImmediate(halfBun);
-                Object.DestroyImmediate(copper);
-            }
+            anvil.Input.Add(bun, 3);
+            var player = new Inventory(1);
+            player.Add(bun, 2);
+            Assert.AreEqual(2, anvil.ReturnInputs(player), "Only 2 more fit on the player's 2 (stacks of 4).");
+            Assert.AreEqual(1, anvil.Input.Count(bun));
+            Assert.AreEqual(4, player.Count(bun));
         }
 
         [Test]

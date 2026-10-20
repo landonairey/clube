@@ -15,9 +15,8 @@ namespace Clube.Core
     /// part way resets the work.
     /// </summary>
     /// <remarks>
-    /// <para>Recipes by volume (GL33) make a volume of their output rather than a count; what's
-    /// short of a whole item is <see cref="Held"/> until later runs make it up, like copper
-    /// gathering in a crucible.</para>
+    /// <para>Every recipe is a fixed batch (GL61): a set count of inputs makes a set count of
+    /// outputs, and nothing is held between runs, so whatever is loaded next starts clean.</para>
     /// <para>A station that burns fuel (the furnace, GL35) only works time recipes while
     /// something burns: it takes the next item from its <see cref="Fuel"/> slot whenever the
     /// last one has burnt out and there's work to do. What's burning burns down either way.</para>
@@ -28,11 +27,7 @@ namespace Clube.Core
     {
         public const int DefaultInputSlots = 2;
 
-        // Volumes this close to a whole item count as one (sums of tenths aren't exact).
-        private const float VolumeTolerance = 1e-4f;
-
         private readonly List<Recipe> recipes = new List<Recipe>();
-        private readonly Dictionary<ItemDefinition, float> held = new Dictionary<ItemDefinition, float>();
         private float done;
 
         /// <param name="recipes">What it can make; recipes for another kind of station are left out.</param>
@@ -114,13 +109,6 @@ namespace Clube.Core
 
         public bool IsBurning => BurnLeft > 0f;
 
-        /// <summary>
-        /// The skill levels of whoever is using it, 0-1 per skill (GL33): they improve the yield of
-        /// recipes with a <see cref="Recipe.Skill"/>. Null counts every skill as 0. A placeholder
-        /// until SK1, set by the player's screen.
-        /// </summary>
-        public Func<CraftSkill, float> Skills { get; set; }
-
         /// <summary>The recipe being worked, or null when idle.</summary>
         public Recipe Active { get; private set; }
 
@@ -140,15 +128,6 @@ namespace Clube.Core
         private bool HasFuel => Fuel != null && !Fuel[0].IsEmpty;
 
         /// <summary>
-        /// Volume of an output made but short of a whole item (GL33), e.g. 0.3 of a 0.5 copper
-        /// bun, waiting for the next runs.
-        /// </summary>
-        public float Held(ItemDefinition item)
-        {
-            return item != null && held.TryGetValue(item, out float volume) ? volume : 0f;
-        }
-
-        /// <summary>
         /// Loads one of another inventory's stacks (the player's): fuel goes into the
         /// <see cref="Fuel"/> slot unless a recipe here uses it, everything else into
         /// <see cref="Input"/>. Returns how many moved.
@@ -162,6 +141,39 @@ namespace Clube.Core
             }
             bool fuel = BurnsFuel && stack.Item.IsFuel && !UsesAsInput(stack.Item);
             return from.MoveTo(slot, fuel ? Fuel : Input);
+        }
+
+        /// <summary>
+        /// True for a station that works on its own once loaded (a smelter: it has a time recipe),
+        /// so what's loaded stays when the player leaves. Worktops and anvils only work while used.
+        /// </summary>
+        public bool WorksUnattended
+        {
+            get
+            {
+                foreach (Recipe recipe in recipes)
+                {
+                    if (recipe.Work == RecipeWork.Time)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Moves what's left in the input slots into another inventory (the player's, GL60), as
+        /// much as fits; the rest stays. Returns how many items moved.
+        /// </summary>
+        public int ReturnInputs(Inventory to)
+        {
+            int moved = 0;
+            for (int slot = 0; slot < Input.SlotCount; slot++)
+            {
+                moved += Input.MoveTo(slot, to);
+            }
+            return moved;
         }
 
         /// <summary>True when one of its recipes takes the item in.</summary>
@@ -186,16 +198,44 @@ namespace Clube.Core
             // A chosen recipe is the only one that starts; others sharing its inputs wait (ML1).
             if (Chosen != null)
             {
-                return Chosen.Work == work && Chosen.IsUnlockedFor(Learner) && Chosen.HasInputs(Input) && Fits(Chosen) ? Chosen : null;
+                return Chosen.Work == work && Chosen.IsUnlockedFor(Learner) && Chosen.HasInputs(Input) && OutputFits(Chosen) ? Chosen : null;
             }
             foreach (Recipe recipe in recipes)
             {
-                if (recipe.Work == work && recipe.IsUnlockedFor(Learner) && recipe.HasInputs(Input) && Fits(recipe))
+                if (recipe.Work == work && recipe.IsUnlockedFor(Learner) && recipe.HasInputs(Input) && OutputFits(recipe))
                 {
                     return recipe;
                 }
             }
             return null;
+        }
+
+        /// <summary>
+        /// What the station is about to make (GL58): the recipe under way, else the one the player
+        /// picked, else the first unlocked one whose inputs are loaded, whether or not its result
+        /// fits yet. Null when nothing is loaded for any recipe.
+        /// </summary>
+        public Recipe Upcoming
+        {
+            get
+            {
+                if (Active != null)
+                {
+                    return Active;
+                }
+                if (Chosen != null)
+                {
+                    return Chosen.IsUnlockedFor(Learner) ? Chosen : null;
+                }
+                foreach (Recipe recipe in recipes)
+                {
+                    if (recipe.IsUnlockedFor(Learner) && recipe.HasInputs(Input))
+                    {
+                        return recipe;
+                    }
+                }
+                return null;
+            }
         }
 
         /// <summary>Lets time pass: burns fuel, and starts and works time recipes, as many as the time covers.</summary>
@@ -284,13 +324,15 @@ namespace Clube.Core
             }
         }
 
-        // The result has to fit on what's already waiting: a whole count, or one more item
-        // for a recipe by volume (it may make less, which is held).
-        private bool Fits(Recipe recipe)
+        /// <summary>
+        /// True when the recipe's result fits on what's already waiting in <see cref="Output"/>:
+        /// an empty slot, or the same item with room for the whole count. A different item there
+        /// (tin buns left in the campfire) holds the recipe back until it's taken.
+        /// </summary>
+        public bool OutputFits(Recipe recipe)
         {
             ItemStack waiting = Output[0];
-            int needed = recipe.ByVolume ? 1 : recipe.Output.Count;
-            return waiting.IsEmpty || (waiting.Item == recipe.Output.Item && waiting.Space >= needed);
+            return waiting.IsEmpty || (waiting.Item == recipe.Output.Item && waiting.Space >= recipe.Output.Count);
         }
 
         private void Work(float amount)
@@ -302,41 +344,20 @@ namespace Clube.Core
                 Recipe finished = Active;
                 Active = null;
                 done = 0f;
-                float volume = finished.ByVolume ? finished.OutputVolume(Input.ContentsOf, Skills?.Invoke(finished.Skill) ?? 0f) : 0f;
                 foreach (ItemAmount input in finished.Inputs)
                 {
                     Input.Remove(input.Item, input.Count);
                 }
-                if (finished.ByVolume)
-                {
-                    Make(finished.Output.Item, volume);
-                }
-                else
-                {
-                    Output.Add(finished.Output.Item, finished.Output.Count);
-                }
+                Output.Add(finished.Output.Item, finished.Output.Count);
                 Completed?.Invoke(finished);
             }
             Changed?.Invoke();
         }
 
-        // Adds a volume of an item to what's held and moves every whole item that fits out.
-        private void Make(ItemDefinition item, float volume)
-        {
-            float total = Held(item) + volume;
-            int whole = (int)Math.Floor((total + VolumeTolerance) / item.UnitVolume);
-            if (whole > 0)
-            {
-                int left = Output.Add(item, whole);
-                total -= (whole - left) * item.UnitVolume;
-            }
-            held[item] = Math.Max(0f, total);
-        }
-
         // Inputs taken out, or the output filled, part way through: the work starts over.
         private void OnContentsChanged()
         {
-            if (Active != null && (!Active.HasInputs(Input) || !Fits(Active)))
+            if (Active != null && (!Active.HasInputs(Input) || !OutputFits(Active)))
             {
                 Active = null;
                 done = 0f;

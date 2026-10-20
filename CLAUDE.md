@@ -258,9 +258,8 @@ materials with items, placeholder textures and icons. Branches thinner than abou
 Sixth pass (GL32–GL35, `Docs/20261009 clube-backlog.md`): volumes. One mined sample is 1 unit;
 `ItemDefinition.UnitVolume`. Mined ore carries a `Composition` (shares by volume, on
 `ItemStack.Contents`, blended when stacks merge) from its node's grade (`OreSpec.Grade`,
-`Gangue`, `ExtraContents`; `OreField.ContentsAt`). Recipes can work by volume: a `Content`'s
-share times a `Yield` (raised by a `CraftSkill`, `PlayerSkills` is a placeholder until SK1), and
-stations hold what's short of a whole item. The furnace burns fuel (`ItemDefinition.BurnSeconds`,
+`Gangue`, `ExtraContents`; `OreField.ContentsAt`). (Recipes by volume, with held remainders, were
+replaced by fixed batches in GL61.) The furnace burns fuel (`ItemDefinition.BurnSeconds`,
 a `Fuel` slot). Clay (13) deposits are surface lenses (`TerrainLayers.Clay`,
 `ChunkFillKernel.ClayDepthAt`); dropped clay dries into Brick (14) on a `GameClock`
 (`GroundDrying`, `DroppedGroundDrying`), or is fired in the furnace.
@@ -276,6 +275,14 @@ and spear unlock by Crafting level; bronze buns and ingots alloy at Smelting 3. 
 `OreKnowledge` hides chalcopyrite and malachite: the terrain shader remaps their layers to stone
 (`_LayerRemap`, set by `MaterialRegistry.ShowAs`, runtime only) and their drops are "? ore",
 identified by composition when the level is reached.
+Tenth pass (GL56-GL63, `Docs/20261019 clube-backlog.md`): recipes are fixed batches, nothing held
+between runs (`CraftingStation.OutputFits` says why one waits, `Upcoming` is the greyed preview in
+the output slot); `StationPanel` moves made tools to the inventory and, for stations that don't
+`WorksUnattended` (worktops, anvils), returns leftover inputs on close. The merchant sells part of a
+stack on a slider. Bronze pick, hatchet and shovel are hammered at the anvil (Crafting 4). The parcel
+border (`ParcelBorders`) is a fence following the generated ground (`TerrainSurface.HeightAt`,
+`WorldView.Generator`) and running down to y = 0, so it shows in holes. GL64 (a smaller inventory)
+is waiting on its spec.
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16

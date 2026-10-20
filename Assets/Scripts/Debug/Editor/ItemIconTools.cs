@@ -52,6 +52,9 @@ namespace Clube.Debug.Editor
             Write("stone pick", "Stone pick", PaintStonePick());
             Write("campfire", "Campfire", PaintCampfire());
             Write("unknown ore", "Unknown ore", PaintUnknownOre());
+            Write("bronze pick", "Bronze pick", PaintPickaxe(Bronze));
+            Write("bronze hatchet", "Bronze hatchet", PaintHatchet(Bronze, BronzeLight));
+            Write("bronze shovel", "Bronze shovel", PaintShovel(Bronze, BronzeLight));
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Wrote item icons to {Folder}.");
         }
@@ -365,7 +368,10 @@ namespace Clube.Debug.Editor
         private static readonly Color HandleLight = new Color(0.72f, 0.5f, 0.28f);
 
         // A wooden handle running up to the right, with a curved steel head across its top.
-        private static Texture2D PaintPickaxe()
+        private static Texture2D PaintPickaxe() => PaintPickaxe(Steel);
+
+        // The same shape with a head of another metal (bronze tools, GL63).
+        private static Texture2D PaintPickaxe(Color head)
         {
             Texture2D texture = Blank();
             Line(texture, new Vector2(12f, 8f), new Vector2(46f, 46f), 3.2f, Handle);
@@ -380,7 +386,7 @@ namespace Clube.Debug.Editor
                 Vector2 point = (1f - t) * (1f - t) * from + 2f * (1f - t) * t * bend + t * t * to;
                 // Thickest at the middle, tapering to a point at each end like a pick.
                 float width = 1.2f + 4.2f * Mathf.Sin(t * Mathf.PI);
-                Line(texture, previous, point, width, Steel);
+                Line(texture, previous, point, width, head);
                 previous = point;
             }
             Outline(texture, new Color(0.12f, 0.12f, 0.14f));
@@ -389,7 +395,9 @@ namespace Clube.Debug.Editor
         }
 
         // A wooden shaft with a short grip across the top and a rounded steel blade at the foot.
-        private static Texture2D PaintShovel()
+        private static Texture2D PaintShovel() => PaintShovel(Steel, SteelLight);
+
+        private static Texture2D PaintShovel(Color blade, Color bladeLight)
         {
             Texture2D texture = Blank();
             Line(texture, new Vector2(18f, 54f), new Vector2(40f, 26f), 3.2f, Handle);
@@ -410,7 +418,7 @@ namespace Clube.Debug.Editor
                     // Flatter at the shaft end, rounder at the tip.
                     if (along * along + side * side < 1f && (along > -0.7f))
                     {
-                        texture.SetPixel(x, y, side < -0.35f ? SteelLight : Steel);
+                        texture.SetPixel(x, y, side < -0.35f ? bladeLight : blade);
                     }
                 }
             }
@@ -453,7 +461,9 @@ namespace Clube.Debug.Editor
         }
 
         // A short handle with a stone blade lashed across its top.
-        private static Texture2D PaintHatchet()
+        private static Texture2D PaintHatchet() => PaintHatchet(StoneHead, StoneHeadLight);
+
+        private static Texture2D PaintHatchet(Color head, Color headLight)
         {
             Texture2D texture = Blank();
             Line(texture, new Vector2(14f, 8f), new Vector2(36f, 50f), 3.4f, Handle);
@@ -463,9 +473,9 @@ namespace Clube.Debug.Editor
             {
                 float t = i / 10f;
                 Vector2 from = Vector2.Lerp(new Vector2(30f, 50f), new Vector2(54f, 42f), t);
-                Line(texture, from, from + new Vector2(0f, Mathf.Lerp(6f, 18f, t)), 3f, StoneHead);
+                Line(texture, from, from + new Vector2(0f, Mathf.Lerp(6f, 18f, t)), 3f, head);
             }
-            Line(texture, new Vector2(50f, 44f), new Vector2(54f, 58f), 1.6f, StoneHeadLight);
+            Line(texture, new Vector2(50f, 44f), new Vector2(54f, 58f), 1.6f, headLight);
             Line(texture, new Vector2(30f, 47f), new Vector2(40f, 53f), 2f, Lashing);
             Outline(texture, new Color(0.12f, 0.12f, 0.14f));
             texture.Apply();
