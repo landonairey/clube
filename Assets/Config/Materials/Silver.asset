@@ -21,4 +21,14 @@ MonoBehaviour:
   drop: {fileID: 11400000, guid: 77d0fe700a4ca9f439cd43a5d6581c2d, type: 2}
   pileShape: 1
   reposeAngle: 40
+  pickUpPieceSize: 0
   breaksInto: {fileID: 0}
+  isWorktop: 0
+  isSoft: 0
+  driesInto: {fileID: 0}
+  dryingDays: 2
+  notes:
+    Hardness: 2.5 to 3; a copper coin scratches it
+    Luster: metallic, dulling as it tarnishes
+    Colour: silver-white, blackening where exposed
+    Feel: very heavy, bends and flattens rather than breaking

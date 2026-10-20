@@ -21,4 +21,14 @@ MonoBehaviour:
   drop: {fileID: 11400000, guid: 4273b1a1d0181c84a8fd5cdb5377de07, type: 2}
   pileShape: 1
   reposeAngle: 40
+  pickUpPieceSize: 0
   breaksInto: {fileID: 0}
+  isWorktop: 0
+  isSoft: 0
+  driesInto: {fileID: 0}
+  dryingDays: 2
+  notes:
+    Hardness: 2.5 to 3; a fingernail nearly marks it
+    Luster: metallic, never tarnishes
+    Colour: rich butter yellow
+    Feel: the heaviest thing in the hand, soft and easily dented

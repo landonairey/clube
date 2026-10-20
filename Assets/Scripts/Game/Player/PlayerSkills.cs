@@ -59,12 +59,16 @@ namespace Clube.Game
             }
         }
 
+        /// <summary>Raised for each recipe the player finishes at a station (GL73: the journal learns its uses).</summary>
+        public event System.Action<Recipe> RecipeFinished;
+
         /// <summary>Experience for a finished recipe (the station that made it calls this).</summary>
         public void Completed(Recipe recipe)
         {
             if (recipe != null)
             {
                 Skills.Award(recipe.ExperienceSkill, recipe.Experience);
+                RecipeFinished?.Invoke(recipe);
             }
         }
 

@@ -25,6 +25,9 @@ namespace Clube.Debug
         // Frames the counts keep updating after the panel last read them.
         private const int ScanWhileReadFrames = 30;
 
+        // Milliseconds a frame may spend counting chunks (GL74): a whole world at once stalled 0.6 s.
+        private const double ScanBudgetMilliseconds = 2.0;
+
         [Tooltip("Mark each ore node: a cross at its centroid.")]
         [SerializeField]
         private bool showNodes;
@@ -47,11 +50,14 @@ namespace Clube.Debug
 
         private readonly Dictionary<Vector3Int, ChunkScan> scans = new Dictionary<Vector3Int, ChunkScan>();
         private readonly HashSet<Vector3Int> dirty = new HashSet<Vector3Int>();
+        private readonly List<Vector3Int> scanned = new List<Vector3Int>();
+        private readonly System.Diagnostics.Stopwatch scanClock = new System.Diagnostics.Stopwatch();
         private readonly List<OreNode> nodes = new List<OreNode>();
         private readonly List<Vector3> vertices = new List<Vector3>();
         private readonly List<Color32> colors = new List<Color32>();
         private readonly List<int> indices = new List<int>();
         private readonly int[] loadedCounts = new int[MaterialRegistry.MaxMaterials];
+        private readonly bool[] wanted = new bool[MaterialRegistry.MaxMaterials];
 
         private WorldView worldView;
         private LabMeshObject nodeLines;
@@ -93,6 +99,9 @@ namespace Clube.Debug
 
         /// <summary>The ore nodes reaching the loaded area, as last drawn.</summary>
         public int NodeCount => nodes.Count;
+
+        /// <summary>Loaded chunks still waiting to be counted; the counts are partial until this is 0.</summary>
+        public int ChunksToCount => dirty.Count;
 
         /// <summary>Solid samples per material id in one loaded chunk, or null if it hasn't been scanned.</summary>
         public IReadOnlyList<int> CountsFor(Vector3Int coord)
@@ -163,7 +172,8 @@ namespace Clube.Debug
             if (dirty.Count > 0 && scanning)
             {
                 ScanDirtyChunks();
-                cubesChanged = true;
+                // The X-ray cubes are rebuilt once the pass is through, not every frame of it.
+                cubesChanged |= dirty.Count == 0;
             }
             // Collecting nodes walks the cells under the whole loaded area: only while they show or are counted.
             if (nodesChanged && (showNodes || scanning))
@@ -202,7 +212,11 @@ namespace Clube.Debug
 
         private void OnChunkUnloaded(Vector3Int coord)
         {
-            scans.Remove(coord);
+            if (scans.TryGetValue(coord, out ChunkScan scan))
+            {
+                AddCounts(scan, -1);
+                scans.Remove(coord);
+            }
             dirty.Remove(coord);
             nodesChanged = true;
             cubesChanged = true;
@@ -211,7 +225,7 @@ namespace Clube.Debug
         private void ScanDirtyChunks()
         {
             MaterialRegistry registry = worldView.Config.Materials;
-            var wanted = new bool[MaterialRegistry.MaxMaterials];
+            System.Array.Clear(wanted, 0, wanted.Length);
             if (registry != null)
             {
                 foreach (VoxelMaterial material in registry.Materials)
@@ -223,14 +237,27 @@ namespace Clube.Debug
                 }
             }
 
+            // A few milliseconds of chunks a frame; the totals are kept as running sums, so a
+            // rescanned chunk swaps its old counts for its new ones.
             float iso = worldView.Config.IsoLevel;
+            scanned.Clear();
+            scanClock.Restart();
             foreach (Vector3Int coord in dirty)
             {
+                if (scanClock.Elapsed.TotalMilliseconds > ScanBudgetMilliseconds)
+                {
+                    break;
+                }
+                scanned.Add(coord);
                 if (!worldView.World.TryGetChunk(coord, out Chunk chunk))
                 {
                     continue;
                 }
-                if (!scans.TryGetValue(coord, out ChunkScan scan))
+                if (scans.TryGetValue(coord, out ChunkScan scan))
+                {
+                    AddCounts(scan, -1);
+                }
+                else
                 {
                     scan = new ChunkScan();
                     scans.Add(coord, scan);
@@ -241,16 +268,20 @@ namespace Clube.Debug
                 {
                     scan.OreMaterials.Add(chunk.GetMaterial(sample));
                 }
+                AddCounts(scan, 1);
             }
-            dirty.Clear();
-
-            System.Array.Clear(loadedCounts, 0, loadedCounts.Length);
-            foreach (ChunkScan scan in scans.Values)
+            foreach (Vector3Int coord in scanned)
             {
-                for (int i = 0; i < loadedCounts.Length; i++)
-                {
-                    loadedCounts[i] += scan.Counts[i];
-                }
+                dirty.Remove(coord);
+            }
+        }
+
+        // Adds (sign 1) or takes away (-1) one chunk's counts from the loaded totals.
+        private void AddCounts(ChunkScan scan, int sign)
+        {
+            for (int i = 0; i < loadedCounts.Length; i++)
+            {
+                loadedCounts[i] += sign * scan.Counts[i];
             }
         }
 

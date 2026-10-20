@@ -14,19 +14,19 @@ OcclusionCullingSettings:
 RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
-  m_Fog: 0
-  m_FogColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  m_Fog: 1
+  m_FogColor: {r: 0.78, g: 0.66, b: 0.6, a: 1}
   m_FogMode: 3
-  m_FogDensity: 0.01
+  m_FogDensity: 0.004
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
-  m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
-  m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
+  m_AmbientSkyColor: {r: 0.52, g: 0.56, b: 0.68, a: 1}
+  m_AmbientEquatorColor: {r: 0.62, g: 0.5, b: 0.42, a: 1}
+  m_AmbientGroundColor: {r: 0.2, g: 0.18, b: 0.17, a: 1}
   m_AmbientIntensity: 1
-  m_AmbientMode: 0
+  m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: 24fcbe6d3ee30aa4fa4d0fc5f44108f0, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -217,7 +217,7 @@ Camera:
   m_GameObject: {fileID: 159121154}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 2
+  m_ClearFlags: 1
   m_BackGroundColor: {r: 0.12, g: 0.13, b: 0.16, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
@@ -369,7 +369,7 @@ Camera:
   m_GameObject: {fileID: 371098495}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 2
+  m_ClearFlags: 1
   m_BackGroundColor: {r: 0.12, g: 0.13, b: 0.16, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
@@ -572,6 +572,7 @@ GameObject:
   - component: {fileID: 1350119467}
   - component: {fileID: 1350119469}
   - component: {fileID: 1350119468}
+  - component: {fileID: 1350119470}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -668,6 +669,8 @@ MonoBehaviour:
   focus: {fileID: 0}
   renderDistance: 16
   frameBudgetMilliseconds: 3
+  loadingBudgetMilliseconds: 30
+  overlayRadius: 32
   maxJobsInFlight: 0
   chunkColliders: 1
   colliderRadius: 24
@@ -831,6 +834,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.GameClock
   dayLengthSeconds: 1200
   timeScale: 1
+--- !u!114 &1350119470
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0db3442d25a783c42b09136b04ac3fc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.GrassScatter
+  grass: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
+  material: {fileID: 2100000, guid: bebf70da50c2fd042afe43cc4a285452, type: 2}
+  radius: 28
+  density: 6
+  minUp: 0.7
+  height: {x: 0.18, y: 0.38}
+  scatterMilliseconds: 1
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -888,8 +910,8 @@ Light:
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 1
-  m_Color: {r: 1, g: 0.95686275, b: 0.8392157, a: 1}
-  m_Intensity: 1
+  m_Color: {r: 1, g: 0.74, b: 0.52, a: 1}
+  m_Intensity: 1.15
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -951,7 +973,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1429470163}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
+  m_LocalRotation: {x: 0.06914529, y: 0.6064449, z: -0.053057052, w: 0.7903344}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -992,6 +1014,8 @@ GameObject:
   - component: {fileID: 1697135583}
   - component: {fileID: 1697135586}
   - component: {fileID: 1697135585}
+  - component: {fileID: 1697135588}
+  - component: {fileID: 1697135587}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1368,6 +1392,9 @@ MonoBehaviour:
   - Label: Inventory
     Action: Inventory
     Keys: 
+  - Label: Mining journal
+    Action: Journal
+    Keys: 
   - Label: Drop (hold to pour)
     Action: Drop
     Keys: 
@@ -1398,7 +1425,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 040e6f6997d1643428f0c8e6b483ece7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSkills
-  blacksmithing: 0
   wood: 1
   leaves: 0.2
   stone: 1
@@ -1439,6 +1465,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.ParcelBorders
   material: {fileID: 2100000, guid: 7306c3d226f246045a04b0c391c5dfd0, type: 2}
   color: {r: 1, g: 0.82, b: 0.3, a: 0.18}
+  railColor: {r: 1, g: 0.82, b: 0.3, a: 0.75}
+  height: 0.75
+  step: 0.5
+  postSpacing: 2
 --- !u!114 &1697135584
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1489,17 +1519,81 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.OreKnowledge
   worldView: {fileID: 1350119460}
-  hidden:
-  - {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
-  - {fileID: 11400000, guid: 7ecc65adf73d9da42aee16f413c5acb0, type: 2}
-  - {fileID: 11400000, guid: f58c64750cb382d42b0ab8008263addc, type: 2}
-  - {fileID: 11400000, guid: 8d7e9d76247091549940794050b1d237, type: 2}
-  - {fileID: 11400000, guid: 4e672b82024c08f4387772f395f40e11, type: 2}
-  - {fileID: 11400000, guid: debe2c5e9edbed84dab39106277c66dc, type: 2}
+  groups:
+  - Name: copper ore
+    Level: 3
+    Materials:
+    - {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
+    - {fileID: 11400000, guid: 7ecc65adf73d9da42aee16f413c5acb0, type: 2}
+    - {fileID: 11400000, guid: f58c64750cb382d42b0ab8008263addc, type: 2}
+    - {fileID: 11400000, guid: 8d7e9d76247091549940794050b1d237, type: 2}
+    - {fileID: 11400000, guid: 4e672b82024c08f4387772f395f40e11, type: 2}
+    - {fileID: 11400000, guid: debe2c5e9edbed84dab39106277c66dc, type: 2}
+  - Name: silver ore
+    Level: 5
+    Materials:
+    - {fileID: 11400000, guid: 7cbb344bf40f2c04bad682cdb7df7c8b, type: 2}
+  - Name: gold ore
+    Level: 7
+    Materials:
+    - {fileID: 11400000, guid: 028349ab45517db4984a7ae07bcf9347, type: 2}
   shownAs: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
   skill: 3
-  level: 3
   unknownOre: {fileID: 11400000, guid: d2d5efa38b9222c4e8f56dd1ec3f4fcf, type: 2}
+--- !u!114 &1697135587
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1e7728b85047194f98765a21a463719, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.JournalScreen
+  toggleAction: {fileID: -8765368810939497189, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+--- !u!114 &1697135588
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8c22bbcd64e51e14c9cb6b41d23a88cc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerJournal
+  worldView: {fileID: 1350119460}
+  ores:
+  - {fileID: 11400000, guid: fcb47a3195818b0449ad72b166340337, type: 2}
+  - {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
+  - {fileID: 11400000, guid: 8d7e9d76247091549940794050b1d237, type: 2}
+  - {fileID: 11400000, guid: 7cbb344bf40f2c04bad682cdb7df7c8b, type: 2}
+  - {fileID: 11400000, guid: 028349ab45517db4984a7ae07bcf9347, type: 2}
+  recipes:
+  - {fileID: 11400000, guid: 5494c424192226542928114696f6423b, type: 2}
+  - {fileID: 11400000, guid: 2614ff98739cae048a781553184c28b6, type: 2}
+  - {fileID: 11400000, guid: a1a8b63791d70f54190b6343ce8d31c7, type: 2}
+  - {fileID: 11400000, guid: 7a96a8cb02a57304a8d2a5b1c1339e05, type: 2}
+  - {fileID: 11400000, guid: 2ea129385f04d4e4191060b48a63ffdf, type: 2}
+  - {fileID: 11400000, guid: 11bf46a8c1805cd4eac3acc2979164d7, type: 2}
+  - {fileID: 11400000, guid: 0cc14a90c9118824c9750cb5063469e9, type: 2}
+  - {fileID: 11400000, guid: 156d1364227dd3849be2085d299fe75d, type: 2}
+  - {fileID: 11400000, guid: ff5cad5b532da5a45ad24d552fdd7b14, type: 2}
+  - {fileID: 11400000, guid: d5757a95246d5f24fbf5cfc4a251f193, type: 2}
+  - {fileID: 11400000, guid: d7758b283598e0c47b61077fe954c5f2, type: 2}
+  - {fileID: 11400000, guid: 74e8bd7f43379dd4aa596695997acab2, type: 2}
+  - {fileID: 11400000, guid: 58c231621d094754888613a6d3e07203, type: 2}
+  - {fileID: 11400000, guid: 94d08de95a5f51c4dad353cc38fb0d40, type: 2}
+  - {fileID: 11400000, guid: a3738c3ced64737449f5ad3ad8cdf4cd, type: 2}
+  - {fileID: 11400000, guid: 3daad1d4d3fb0234bb8376f566d80a0d, type: 2}
+  - {fileID: 11400000, guid: ea02483da2e659341b6db2aa15139bec, type: 2}
+  - {fileID: 11400000, guid: 1d4e5938b58ac124a86f989c5f816630, type: 2}
+  - {fileID: 11400000, guid: 528fb321b82b1354ba41a95cd7208a06, type: 2}
+  - {fileID: 11400000, guid: 5deb817244217e6458d8b59c0f758ba8, type: 2}
+  - {fileID: 11400000, guid: 4718a79fc1c2a81438a065cf5434da28, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

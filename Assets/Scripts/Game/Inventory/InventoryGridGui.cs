@@ -69,6 +69,34 @@ namespace Clube.Game
             return clicked;
         }
 
+        /// <summary>
+        /// The player's slot under a point, laid out as <see cref="DrawPlayer"/> draws them from
+        /// <paramref name="topLeft"/>; -1 when the point is on no slot (GL71's drag and drop).
+        /// </summary>
+        public static int PlayerSlotAt(Vector2 topLeft, PlayerInventory player, Vector2 point)
+        {
+            Inventory items = player.Inventory;
+            int hotbar = player.HotbarSlots;
+            for (int slot = hotbar; slot < items.SlotCount; slot++)
+            {
+                int index = slot - hotbar;
+                var rect = new Rect(topLeft.x + (index % Columns) * (SlotSize + Gap), topLeft.y + (index / Columns) * (SlotSize + Gap), SlotSize, SlotSize);
+                if (rect.Contains(point))
+                {
+                    return slot;
+                }
+            }
+            float hotbarTop = topLeft.y + BackpackRows(player) * (SlotSize + Gap) - Gap + RowGap;
+            for (int slot = 0; slot < hotbar; slot++)
+            {
+                if (new Rect(topLeft.x + slot * (SlotSize + Gap), hotbarTop, SlotSize, SlotSize).Contains(point))
+                {
+                    return slot;
+                }
+            }
+            return -1;
+        }
+
         /// <summary>A row of an inventory's slots from <paramref name="topLeft"/>. Returns the slot clicked, or -1.</summary>
         public static int DrawRow(Vector2 topLeft, Inventory items, int selected = -1)
         {
@@ -122,14 +150,26 @@ namespace Clube.Game
             GUI.Label(rect, content, tooltipStyle);
         }
 
-        /// <summary>"Copper ore ×12 · 12 vol / 80% Stone, 20% Copper".</summary>
+        /// <summary>
+        /// One fact a line (GL70): "Chalcopyrite ×12", "Volume 12", then a line per component,
+        /// "80% Stone", "20% Chalcopyrite".
+        /// </summary>
         public static string Describe(ItemStack stack)
         {
             string text = stack.Count > 1 ? $"{stack.Item.DisplayName} ×{stack.Count}" : stack.Item.DisplayName;
             text += $"\nVolume {stack.Volume:0.##}";
-            if (stack.Contents != null)
+            if (stack.Item.HidesContents)
             {
-                text += $"\n{stack.Contents}";
+                // "? ore" (GL76): what it holds stays hidden until the player can tell.
+                text += "\nContents unknown";
+            }
+            else if (stack.Contents != null)
+            {
+                foreach (Content part in stack.Contents.Parts)
+                {
+                    float percent = part.Fraction * 100f;
+                    text += percent >= 1f ? $"\n{percent:0}% {part.Material.DisplayName}" : $"\n{percent:0.#}% {part.Material.DisplayName}";
+                }
             }
             if (stack.Item.IsFuel)
             {

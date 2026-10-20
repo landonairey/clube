@@ -60,6 +60,12 @@ namespace Clube.Game
         /// <summary>Raised for each sample a hit breaks and collects, with its material (GL47: experience).</summary>
         public event Action<VoxelMaterial> Mined;
 
+        /// <summary>
+        /// Raised for each sample a hit breaks and collects, with its material, where it was (world
+        /// position) and what it held (GL73: the mining journal's depth and grade).
+        /// </summary>
+        public event Action<VoxelMaterial, Vector3, Composition> Unearthed;
+
         /// <summary>Raised when a hit lands, with what it did.</summary>
         public event Action<StrikeResult> Struck;
 
@@ -186,7 +192,9 @@ namespace Clube.Game
             for (int i = 0; i < collected.Count; i++)
             {
                 Mined?.Invoke(minedFrom[i].Material);
-                var stack = new ItemStack(collected[i], 1, ContentsOf(minedFrom[i]));
+                Composition contents = ContentsOf(minedFrom[i]);
+                Unearthed?.Invoke(minedFrom[i].Material, worldView.transform.TransformPoint(worldView.World.Grid.SampleToWorld(minedFrom[i].Sample)), contents);
+                var stack = new ItemStack(collected[i], 1, contents);
                 // Ore the player can't tell yet comes out as "? ore" (GL54).
                 Collected?.Invoke(knowledge != null ? knowledge.Disguise(stack, minedFrom[i].Material) : stack);
             }

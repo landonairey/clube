@@ -33,6 +33,10 @@ namespace Clube.Core
         [SerializeField, Min(0f)]
         private float burnSeconds;
 
+        [Tooltip("What it's made of is unknown to the player (\"? ore\", GL76): its tooltip doesn't list its contents, though it still carries them.")]
+        [SerializeField]
+        private bool hidesContents;
+
         /// <summary>Makes an item in code (tests, tools); the game's items are assets.</summary>
         public static ItemDefinition Create(string id, string displayName, int maxStack = 64)
         {
@@ -73,6 +77,9 @@ namespace Clube.Core
         public float BurnSeconds => burnSeconds;
 
         public bool IsFuel => burnSeconds > 0f;
+
+        /// <summary>True when the player can't see what it's made of (GL76).</summary>
+        public bool HidesContents => hidesContents;
 
         /// <summary>Sets its volume and burn time, for items made in code (tests, tools).</summary>
         public ItemDefinition With(float unitVolume = 1f, float burnSeconds = 0f)

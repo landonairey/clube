@@ -47,12 +47,12 @@ Core/
   Config/        WorldConfig (A2), ChunkSizing (M25)
   Voxels/        Chunk, IVoxelStorage + schemes (2G), VoxelMaterials (M10), VoxelArrayPool, VoxelBox
   World/         World (loaded chunks, borders, edit paths), WorldGrid (coordinates)
-  Materials/     VoxelMaterial, MaterialRegistry (M9), TerrainLayers, MaterialCensus
+  Materials/     VoxelMaterial, MaterialRegistry (M9), TerrainLayers, MaterialCensus, MineralNotes (GL73)
   Items/         ItemDefinition (O6), ToolDefinition (GL1), Inventory + ItemStack (GL6), Composition (GL32)
   Crafting/      Recipe, CraftingStation (GL8; fixed batches GL61, fuel GL35)
   Economy/       Wallet, PriceList (GL12, GL13)
-  Skills/        SkillSet: experience and levels per skill (GL47)
-  Generation/    TerrainSettings, ITerrainGenerator, TerrainGenerators, ChunkGenerator
+  Skills/        SkillSet: experience and levels per skill (GL47), MiningJournal (GL73)
+  Generation/    TerrainSettings, ITerrainGenerator, TerrainGenerators, ChunkGenerator, TerrainSurface (GL56)
     Generators/  managed generator classes (Flat, Sine, FractalPerlin2D, Spline, Perlin3D)
     Heightmaps/  Heightmap import, HeightmapGenerator, HeightmapExport (K29)
     Noise/       PerlinNoise (struct), VoxelHash
@@ -68,7 +68,7 @@ Core/
   Queries/       SurfaceRaycast, VoxelRaycast, SurfacePoints (GL4)
   Volume/        VoxelVolume, ChunkVolume (V11, V12, K30)
   Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea
-  Rendering/     WorldView, ChunkView, ChunkRenderer(+Pool), ChunkCollider, ChunkMeshBuilder
+  Rendering/     WorldView, ChunkView, ChunkRenderer(+Pool), ChunkCollider, ChunkMeshBuilder, GrassScatter (GL67)
 ```
 
 All of it is namespace `Clube.Core`; folders are for people, not the compiler.

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
@@ -5,22 +6,36 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// Ore the player can't tell apart yet (GL54, first pass of PS6): until a skill reaches a
-    /// level, the listed materials (chalcopyrite and malachite, with their cracked and loose
-    /// stages) are drawn as the rock around them (<see cref="MaterialRegistry.ShowAs"/>), and
-    /// what the player mines of them comes out as "? ore", keeping its contents. At that level
-    /// the ore shows, and every "? ore" in the inventory turns into the ore it is, by the largest
-    /// of the listed materials in its contents.
+    /// Ore the player can't tell apart yet (GL54, GL72; first pass of PS6): each group of
+    /// materials (the copper ores at Mining 3, silver and gold higher up) stays hidden until the
+    /// skill reaches the group's level. Until then its materials are drawn as the rock around them
+    /// (<see cref="MaterialRegistry.ShowAs"/>), and what the player mines of them comes out as
+    /// "? ore", keeping its contents. At the level the group shows, and every "? ore" in the
+    /// inventory whose contents are mostly that group's turns into the ore it is.
     /// </summary>
     [RequireComponent(typeof(PlayerSkills))]
     public class OreKnowledge : MonoBehaviour
     {
+        /// <summary>Materials the player learns to see together, at one level.</summary>
+        [Serializable]
+        public class HiddenOres
+        {
+            [Tooltip("What the notice calls them when they show, e.g. \"copper ore\".")]
+            public string Name = "copper ore";
+
+            [Range(0, SkillSet.MaxLevel)]
+            public int Level = 3;
+
+            [Tooltip("The ores, with their cracked and loose stages.")]
+            public List<VoxelMaterial> Materials = new List<VoxelMaterial>();
+        }
+
         [SerializeField]
         private WorldView worldView;
 
-        [Tooltip("Materials hidden until the level below: shown as the material after.")]
+        [Tooltip("Groups of hidden ore, each shown at its own level of the skill below.")]
         [SerializeField]
-        private List<VoxelMaterial> hidden = new List<VoxelMaterial>();
+        private List<HiddenOres> groups = new List<HiddenOres>();
 
         [Tooltip("What hidden materials look like until then (the host rock).")]
         [SerializeField]
@@ -29,25 +44,42 @@ namespace Clube.Game
         [SerializeField]
         private SkillType skill = SkillType.Mining;
 
-        [SerializeField, Range(0, SkillSet.MaxLevel)]
-        private int level = 3;
-
         [Tooltip("What mining a hidden material gives until then.")]
         [SerializeField]
         private ItemDefinition unknownOre;
 
+        private readonly HashSet<HiddenOres> hiding = new HashSet<HiddenOres>();
         private PlayerSkills skills;
         private PlayerInventory inventory;
         private MaterialRegistry registry;
-        private bool hiding;
 
-        /// <summary>True once the player can tell the hidden materials apart.</summary>
-        public bool Knows => skills != null && skills.Skills.Has(skill, level);
-
-        /// <summary>The skill and level that reveal the ore, for notices.</summary>
+        /// <summary>The skill whose levels reveal the ore, for notices.</summary>
         public SkillType Skill => skill;
 
-        public int RevealLevel => level;
+        public IReadOnlyList<HiddenOres> Groups => groups;
+
+        /// <summary>True when the player can tell this material apart: it's in no group, or its group's level is reached.</summary>
+        public bool Knows(VoxelMaterial material)
+        {
+            HiddenOres group = GroupOf(material);
+            return group == null || Reached(group);
+        }
+
+        /// <summary>The names of the groups that show at a level of the skill, e.g. "copper ore".</summary>
+        public IEnumerable<string> RevealedAt(SkillType raised, int level)
+        {
+            if (raised != skill)
+            {
+                yield break;
+            }
+            foreach (HiddenOres group in groups)
+            {
+                if (group.Level == level)
+                {
+                    yield return group.Name;
+                }
+            }
+        }
 
         private void Awake()
         {
@@ -71,49 +103,90 @@ namespace Clube.Game
             if (registry == null && worldView != null && worldView.IsReady)
             {
                 registry = worldView.Config.Materials;
-                SetHidden(!Knows);
+                foreach (HiddenOres group in groups)
+                {
+                    SetHidden(group, !Reached(group));
+                }
             }
         }
 
         private void OnDestroy()
         {
             // The registry is an asset: leave it showing every material as itself.
-            SetHidden(false);
+            foreach (HiddenOres group in groups)
+            {
+                SetHidden(group, false);
+            }
         }
 
         /// <summary>A mined stack as the player gets it: "? ore" when its material is still hidden.</summary>
         public ItemStack Disguise(ItemStack stack, VoxelMaterial material)
         {
-            if (unknownOre == null || stack.IsEmpty || Knows || material == null || !hidden.Contains(material))
+            if (unknownOre == null || stack.IsEmpty || material == null || Knows(material))
             {
                 return stack;
             }
             return new ItemStack(unknownOre, stack.Count, stack.Contents);
         }
 
-        private void OnLevelReached(SkillType raised, int reached)
+        private bool Reached(HiddenOres group)
         {
-            if (raised == skill && reached >= level)
-            {
-                SetHidden(false);
-                Identify();
-            }
+            return skills != null && skills.Skills.Has(skill, group.Level);
         }
 
-        private void SetHidden(bool hide)
+        private HiddenOres GroupOf(VoxelMaterial material)
         {
-            if (registry == null || hide == hiding)
+            if (material == null)
+            {
+                return null;
+            }
+            foreach (HiddenOres group in groups)
+            {
+                if (group.Materials.Contains(material))
+                {
+                    return group;
+                }
+            }
+            return null;
+        }
+
+        private void OnLevelReached(SkillType raised, int reached)
+        {
+            if (raised != skill)
             {
                 return;
             }
-            hiding = hide;
-            foreach (VoxelMaterial material in hidden)
+            foreach (HiddenOres group in groups)
+            {
+                if (reached >= group.Level)
+                {
+                    SetHidden(group, false);
+                }
+            }
+            Identify();
+        }
+
+        private void SetHidden(HiddenOres group, bool hide)
+        {
+            if (registry == null || hide == hiding.Contains(group))
+            {
+                return;
+            }
+            if (hide)
+            {
+                hiding.Add(group);
+            }
+            else
+            {
+                hiding.Remove(group);
+            }
+            foreach (VoxelMaterial material in group.Materials)
             {
                 registry.ShowAs(material, hide ? shownAs : null);
             }
         }
 
-        // Every "? ore" stack becomes the ore its contents hold most of.
+        // Every "? ore" stack whose ore can now be told apart becomes that ore.
         private void Identify()
         {
             if (inventory == null || inventory.Inventory == null || unknownOre == null)
@@ -128,35 +201,40 @@ namespace Clube.Game
                 {
                     continue;
                 }
-                ItemDefinition ore = OreIn(stack.Contents);
-                if (ore == null)
+                VoxelMaterial ore = OreIn(stack.Contents);
+                if (ore == null || !Knows(ore))
                 {
                     continue;
                 }
                 int count = items.RemoveAt(slot, stack.Count);
-                items.Add(ore, count, stack.Contents);
+                items.Add(ore.Drop, count, stack.Contents);
             }
         }
 
-        private ItemDefinition OreIn(Composition contents)
+        // The hidden material the contents hold most of; with no contents, the first that drops anything.
+        private VoxelMaterial OreIn(Composition contents)
         {
             VoxelMaterial best = null;
+            VoxelMaterial first = null;
             float most = 0f;
-            foreach (VoxelMaterial material in hidden)
+            foreach (HiddenOres group in groups)
             {
-                float share = contents != null ? contents.FractionOf(material) : 0f;
-                if (share > most && material.Drop != null)
+                foreach (VoxelMaterial material in group.Materials)
                 {
-                    most = share;
-                    best = material;
+                    if (material == null || material.Drop == null)
+                    {
+                        continue;
+                    }
+                    first ??= material;
+                    float share = contents != null ? contents.FractionOf(material) : 0f;
+                    if (share > most)
+                    {
+                        most = share;
+                        best = material;
+                    }
                 }
             }
-            if (best == null)
-            {
-                // No contents to go by: the first hidden ore that drops anything.
-                best = hidden.Find(material => material != null && material.Drop != null);
-            }
-            return best != null ? best.Drop : null;
+            return best ?? first;
         }
     }
 }

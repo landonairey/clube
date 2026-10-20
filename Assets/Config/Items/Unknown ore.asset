@@ -18,3 +18,4 @@ MonoBehaviour:
   maxStack: 256
   unitVolume: 1
   burnSeconds: 0
+  hidesContents: 1

@@ -192,5 +192,30 @@ namespace Clube.Core.Tests
                 Object.DestroyImmediate(o);
             }
         }
+
+        // GL71: a click in the backpack sends the stack to the hotbar (slots 0-2 here), and back.
+        [Test]
+        public void MoveInto_TopsUpTheSameItemFirst_ThenTheFirstEmptySlot_AndLeavesWhatDoesntFit()
+        {
+            var inventory = new Inventory(6);
+            inventory.Add(stone, 10);
+            inventory.Add(ore, 17);
+            inventory.Move(2, 4);
+            inventory.RemoveAt(1, 1);
+
+            // Hotbar: stone 10, ore 9, empty. Backpack: empty, ore 7, empty.
+            Assert.AreEqual(7, inventory.MoveInto(4, 0, 3));
+            Assert.AreEqual(10, inventory[1].Count, "One tops up the 9 first.");
+            Assert.AreEqual(6, inventory[2].Count, "The other 6 take the first empty hotbar slot.");
+            Assert.IsTrue(inventory[4].IsEmpty);
+
+            Assert.AreEqual(10, inventory.MoveInto(0, 3, 6), "Back to the backpack: its first empty slot.");
+            Assert.AreEqual(stone, inventory[3].Item);
+
+            var full = new Inventory(2);
+            full.Add(ore, 15);
+            Assert.AreEqual(0, full.MoveInto(1, 0, 1), "No room: nothing moves.");
+            Assert.AreEqual(5, full[1].Count);
+        }
     }
 }
