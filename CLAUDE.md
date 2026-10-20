@@ -283,6 +283,13 @@ stack on a slider. Bronze pick, hatchet and shovel are hammered at the anvil (Cr
 border (`ParcelBorders`) is a fence following the generated ground (`TerrainSurface.HeightAt`,
 `WorldView.Generator`) and running down to y = 0, so it shows in holes. GL64 (a smaller inventory)
 is waiting on its spec.
+Eleventh pass (GL65-GL74, `Docs/20261019b clube-backlog.md`): the terrain shader breaks up tiling (`SampleBroken`);
+the world labs have a dawn sky (`DawnSky.mat`, sun at 10°). `GrassScatter` (Core/Rendering) puts instanced
+grass tufts (`Clube/Grass`) on upward grass triangles of the built meshes near the focus. The inventory
+screen sends a clicked stack across (backpack ↔ hotbar, `Inventory.MoveInto`) and drags to a slot.
+`OreKnowledge` has groups (copper ore Mining 3, silver 5, gold 7). Q opens the mining journal
+(`JournalScreen`, `PlayerJournal`, `MiningJournal` in Core/Skills, `OreSketch`, `VoxelMaterial.Notes`); next
+slot is X. `OreDebugView` counts ore 2 ms a frame.
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16
