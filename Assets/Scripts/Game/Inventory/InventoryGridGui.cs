@@ -122,14 +122,21 @@ namespace Clube.Game
             GUI.Label(rect, content, tooltipStyle);
         }
 
-        /// <summary>"Copper ore ×12 · 12 vol / 80% Stone, 20% Copper".</summary>
+        /// <summary>
+        /// One fact a line (GL70): "Chalcopyrite ×12", "Volume 12", then a line per component,
+        /// "80% Stone", "20% Chalcopyrite".
+        /// </summary>
         public static string Describe(ItemStack stack)
         {
             string text = stack.Count > 1 ? $"{stack.Item.DisplayName} ×{stack.Count}" : stack.Item.DisplayName;
             text += $"\nVolume {stack.Volume:0.##}";
             if (stack.Contents != null)
             {
-                text += $"\n{stack.Contents}";
+                foreach (Content part in stack.Contents.Parts)
+                {
+                    float percent = part.Fraction * 100f;
+                    text += percent >= 1f ? $"\n{percent:0}% {part.Material.DisplayName}" : $"\n{percent:0.#}% {part.Material.DisplayName}";
+                }
             }
             if (stack.Item.IsFuel)
             {

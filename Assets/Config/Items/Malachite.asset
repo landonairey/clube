@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
   id: malachite
   displayName: Malachite
-  icon: {fileID: 2800000, guid: c2d558b17edd80e4c80995748a8cf877, type: 3}
+  icon: {fileID: 2800000, guid: 949b9879a60b71142a984c365268657a, type: 3}
   maxStack: 256
   unitVolume: 1
   burnSeconds: 0
