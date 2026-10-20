@@ -297,6 +297,12 @@ sliver of 3 samples or fewer next to it (`ToolStrike`). Stations start the recip
 what's loaded, and a picked recipe loads its ingredients (`CraftingStation.LoadFor`). Nothing is built on a
 stump or on ground rising over 0.5 m across a cell, where the grid floats level. The campfire is a
 `TerrainStructure`: stone and wood samples in the terrain around an ember bed, broken by mining any of them.
+Thirteenth pass (GL86-GL89, `Docs/20261019d clube-backlog.md`): chunks can hold square samples (`Chunk.IsSquare`,
+`World.SetSquare`), meshed as sharp cubes by `SquareVoxels` in the Burst job (marching cubes treats them as
+air; the managed mesher ignores them). The Bronze chisel (`ToolDefinition.Chisels`, `ChiselStrike`) squares,
+then cuts away; a level 3 x 3 square top on stone or rock becomes Flat rock (id 20, `FlatTop`,
+`FlatRockCarver`), opened by `StumpWorktops` as `StationKind.FlatRock`. The Cheats section has a debug
+material chunk (`DebugMaterialChunk`).
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16
