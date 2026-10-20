@@ -52,7 +52,7 @@ namespace Clube.Game
 
         private void OnChiselled(VoxelReach reach, ChiselResult result)
         {
-            if (worldView == null || flatRock == null || result.Squared == 0)
+            if (worldView == null || flatRock == null || result.Carved == 0)
             {
                 return;
             }

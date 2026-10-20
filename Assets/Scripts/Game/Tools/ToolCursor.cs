@@ -12,7 +12,8 @@ namespace Clube.Game
     /// the world's densities exactly as the mesher does it (<see cref="MarchingCubes"/>, with
     /// the world's edge placement), so the shading lies on the surface. It warms from
     /// <see cref="idleColor"/> towards <see cref="damagedColor"/> with the most damaged sample
-    /// in reach, showing how close the next hits are to breaking it.
+    /// in reach, showing how close the next hits are to breaking it. The chisel instead shows its
+    /// voxel as a faint cube on the voxel grid (GL92), since it carves the whole voxel out.
     /// </summary>
     [RequireComponent(typeof(PlayerToolUser))]
     public class ToolCursor : MonoBehaviour
@@ -30,6 +31,14 @@ namespace Clube.Game
         [Tooltip("How opaque the shaded faces are; the edges use the full colour.")]
         [SerializeField, Range(0f, 1f)]
         private float faceOpacity = 0.3f;
+
+        [Tooltip("The chisel's voxel box (GL92): how opaque its faces are, faint enough to see the ground through.")]
+        [SerializeField, Range(0f, 1f)]
+        private float voxelFaceOpacity = 0.05f;
+
+        [Tooltip("How opaque the chisel's voxel box edges are.")]
+        [SerializeField, Range(0f, 1f)]
+        private float voxelEdgeOpacity = 0.5f;
 
         private readonly List<Vector3> voxelVertices = new List<Vector3>();
         private readonly List<int> voxelTriangles = new List<int>();
@@ -88,7 +97,14 @@ namespace Clube.Game
             colors.Clear();
             faces.Clear();
             edges.Clear();
-            AddReach(view.World, view.Config.MeshSettings, tools.Reach, face, edge);
+            if (tools.Current.Chisels)
+            {
+                AddVoxelBox(view.World, tools.Reach.Box, new Color(edge.r, edge.g, edge.b, edge.a * voxelFaceOpacity), new Color(edge.r, edge.g, edge.b, edge.a * voxelEdgeOpacity));
+            }
+            else
+            {
+                AddReach(view.World, view.Config.MeshSettings, tools.Reach, face, edge);
+            }
 
             // The points are in the world view's space, so the markers sit where it does.
             markers.transform.SetPositionAndRotation(view.transform.position, view.transform.rotation);
@@ -128,6 +144,49 @@ namespace Clube.Game
                         {
                             AddTriangle(voxelVertices[voxelTriangles[i]], voxelVertices[voxelTriangles[i + 1]], voxelVertices[voxelTriangles[i + 2]], face, edge);
                         }
+                    }
+                }
+            }
+        }
+
+        // The chisel's cursor (GL92): the voxels of the box as one faint cube on the voxel grid, with its
+        // twelve edges traced, showing exactly what the next hit carves out.
+        private void AddVoxelBox(World world, VoxelBox box, Color face, Color edge)
+        {
+            Vector3 min = world.Grid.SampleToWorld(box.Min);
+            Vector3 max = world.Grid.SampleToWorld(box.Max + Vector3Int.one);
+            int first = points.Count;
+            for (int corner = 0; corner < 8; corner++)
+            {
+                points.Add(new Vector3((corner & 1) != 0 ? max.x : min.x, (corner & 2) != 0 ? max.y : min.y, (corner & 4) != 0 ? max.z : min.z));
+                colors.Add(face);
+            }
+            // Corners by bits: x 1, y 2, z 4. Each face as two triangles (the material draws both sides).
+            int[] quads = { 0, 2, 3, 1, 4, 5, 7, 6, 0, 1, 5, 4, 2, 6, 7, 3, 0, 4, 6, 2, 1, 3, 7, 5 };
+            for (int i = 0; i < quads.Length; i += 4)
+            {
+                faces.Add(first + quads[i]);
+                faces.Add(first + quads[i + 1]);
+                faces.Add(first + quads[i + 2]);
+                faces.Add(first + quads[i]);
+                faces.Add(first + quads[i + 2]);
+                faces.Add(first + quads[i + 3]);
+            }
+
+            int outline = points.Count;
+            for (int corner = 0; corner < 8; corner++)
+            {
+                points.Add(points[first + corner]);
+                colors.Add(edge);
+            }
+            for (int corner = 0; corner < 8; corner++)
+            {
+                for (int bit = 1; bit < 8; bit <<= 1)
+                {
+                    if ((corner & bit) == 0)
+                    {
+                        edges.Add(outline + corner);
+                        edges.Add(outline + (corner | bit));
                     }
                 }
             }

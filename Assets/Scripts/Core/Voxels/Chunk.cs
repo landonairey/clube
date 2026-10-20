@@ -29,9 +29,9 @@ namespace Clube.Core
         private float uniformDensity;
         private bool isDirty = true;
 
-        // Square marks (GL86, MX2): 1 for a sample meshed as a cube, 0 for marching cubes. Null until
-        // the first sample is marked, so most chunks never hold any.
-        private byte[] squares;
+        // Carve flags (GL92, MX2), per sample: which of the voxels it is a corner of are carved out. Null until
+        // the first voxel is carved, so most chunks never hold any.
+        private byte[] carves;
 
         /// <summary>Creates a chunk with flat-array storage and every density at 0 (empty).</summary>
         public Chunk(Vector3Int voxelCount)
@@ -143,11 +143,6 @@ namespace Clube.Core
 
             EnsureStorage();
             storage.SetDensity(sample.x, sample.y, sample.z, density);
-            // Dug right out, a sample forgets it was square (GL86): ground put back there is marching again.
-            if (density <= 0f && squares != null)
-            {
-                squares[Index(sample)] = 0;
-            }
             SetDirty();
         }
 
@@ -156,34 +151,58 @@ namespace Clube.Core
             return materials.Get(sample.x, sample.y, sample.z);
         }
 
-        /// <summary>True when any sample is (or was) marked square, so the mesher must look (GL86).</summary>
-        public bool HasSquares => squares != null;
+        /// <summary>True when any voxel in or next to the chunk is (or was) carved, so the mesher must look (GL92).</summary>
+        public bool HasCarves => carves != null;
 
-        /// <summary>True when the sample meshes as a sharp cube rather than marching cubes (GL86, MX2).</summary>
-        public bool IsSquare(Vector3Int sample)
+        /// <summary>A sample's carve flags (<see cref="CarveFlags"/>): whether the voxel above it, and the one below it, are carved.</summary>
+        public byte GetCarveFlags(Vector3Int sample)
         {
-            return squares != null && squares[Index(sample)] != 0;
+            return carves != null ? carves[Index(sample)] : (byte)0;
         }
 
-        /// <summary>The square-mark edit path (GL86, A7): marks or clears a sample and marks the chunk dirty.</summary>
-        public void SetSquare(Vector3Int sample, bool square)
+        /// <summary>The carve edit path (GL92, A7): writes a sample's carve flags and marks the chunk dirty.</summary>
+        public void SetCarveFlags(Vector3Int sample, byte flags)
         {
-            if (IsSquare(sample) == square)
+            if (GetCarveFlags(sample) == flags)
             {
                 return;
             }
-            squares ??= new byte[SampleCount.x * SampleCount.y * SampleCount.z];
-            squares[Index(sample)] = (byte)(square ? 1 : 0);
+            carves ??= new byte[SampleCount.x * SampleCount.y * SampleCount.z];
+            carves[Index(sample)] = flags;
             SetDirty();
         }
 
-        /// <summary>Copies the square marks into an array of one byte per sample (x fastest); only when <see cref="HasSquares"/>.</summary>
-        public void CopySquares(NativeArray<byte> into)
+        /// <summary>
+        /// True when a voxel (by its lowest corner) is carved out (GL92). Voxels one step outside the
+        /// chunk can be asked about too, when they share a sample with it.
+        /// </summary>
+        public bool IsCarved(Vector3Int voxel)
         {
-            if (squares != null)
+            if (carves == null)
             {
-                into.CopyFrom(squares);
+                return false;
             }
+            if (Holds(voxel))
+            {
+                return (carves[Index(voxel)] & CarveFlags.Above) != 0;
+            }
+            Vector3Int highest = voxel + Vector3Int.one;
+            return Holds(highest) && (carves[Index(highest)] & CarveFlags.Below) != 0;
+        }
+
+        /// <summary>Copies the carve flags into an array of one byte per sample (x fastest); only when <see cref="HasCarves"/>.</summary>
+        public void CopyCarves(NativeArray<byte> into)
+        {
+            if (carves != null)
+            {
+                into.CopyFrom(carves);
+            }
+        }
+
+        private bool Holds(Vector3Int sample)
+        {
+            Vector3Int count = SampleCount;
+            return (uint)sample.x < (uint)count.x && (uint)sample.y < (uint)count.y && (uint)sample.z < (uint)count.z;
         }
 
         private int Index(Vector3Int sample)
@@ -271,7 +290,7 @@ namespace Clube.Core
             storage = null;
             uniformDensity = 0f;
             materials.SetUniform(0);
-            squares = null;
+            carves = null;
         }
 
         /// <summary>Requests a rebuild without changing densities, e.g. after the iso level changes.</summary>

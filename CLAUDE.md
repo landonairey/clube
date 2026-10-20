@@ -297,11 +297,14 @@ sliver of 3 samples or fewer next to it (`ToolStrike`). Stations start the recip
 what's loaded, and a picked recipe loads its ingredients (`CraftingStation.LoadFor`). Nothing is built on a
 stump or on ground rising over 0.5 m across a cell, where the grid floats level. The campfire is a
 `TerrainStructure`: stone and wood samples in the terrain around an ember bed, broken by mining any of them.
-Thirteenth pass (GL86-GL90, `Docs/20261019d clube-backlog.md`, `Docs/20261020 clube-backlog.md`): chunks can
-hold square samples (`Chunk.IsSquare`, `World.SetSquare`); a voxel with eight square corners is a sharp cube on
-the marching grid (`SquareVoxels` in the Burst job), so chiselling digs in half a voxel (marching cubes treats
-square samples as air except next to plain solid; the managed mesher ignores them). The Bronze chisel (`ToolDefinition.Chisels`, `ChiselStrike`) squares,
-then cuts away; a level 3 x 3 square top on stone or rock becomes Flat rock (id 20, `FlatTop`,
+Thirteenth pass (GL86-GL94, `Docs/20261019d clube-backlog.md`, `Docs/20261020*.md` backlogs): the Bronze
+chisel (`ToolDefinition.Chisels`, `ChiselStrike`) carves one voxel per hit out of the ground on the voxel grid and
+never adds any (GL92). Carved voxels are carve flags on two corners of each voxel (`CarveFlags`, `Chunk.IsCarved`,
+`World.SetCarved`; border copies tell each chunk about the voxels just outside it); marching cubes skips them
+(`SurfaceExtraction`) and `CarvedVoxels` in the Burst job walls them off with flat faces cut to the neighbour's
+cross-section; `SurfaceRaycast` sees the walls; ground put back into a carved voxel fills it in again (the managed
+mesher ignores carving). The chisel's cursor is a faint cube on its voxel (`ToolCursor`). A level 3 x 3 patch of
+carved voxels floored with stone or rock becomes Flat rock (id 20, `FlatTop`,
 `FlatRockCarver`), opened by `StumpWorktops` as `StationKind.FlatRock`. The Cheats section has a debug
 material chunk (`DebugMaterialChunk`). Hidden ore drops as a per-ore copy of "? ore" (`ItemDefinition.Variant`,
 GL90), so each stacks apart and is identified on its own. The journal shows an unknown ore as an outline,

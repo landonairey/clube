@@ -153,6 +153,12 @@ namespace Clube.Game
                 return;
             }
 
+            if (tool.Chisels)
+            {
+                AimChisel(hit);
+                return;
+            }
+
             // A tool made for one kind of ground reaches wide only on it; elsewhere it hits the aimed voxel alone.
             Vector3Int aimed = ToolStrike.AimedVoxel(worldView.World, hit);
             VoxelMaterial ground = tool.WideOn == ReachOn.Anything
@@ -162,6 +168,33 @@ namespace Clube.Game
             HasReach = true;
             ToolStrike.FindTargets(worldView.World, Reach, worldView.Config.IsoLevel, targets);
             // Locked land (GL42) is left alone: the tool digs right up to the border.
+            if (parcels != null)
+            {
+                targets.RemoveAll(sample => !parcels.CanEditSample(sample));
+            }
+        }
+
+        // The chisel reaches the one voxel on the grid the player looks into (GL92): the one just past the
+        // hit point along the view, so a sharp wall picks the voxel behind it. Its targets are its solid
+        // corners, for the cursor and so a hit needs ground to work on.
+        private void AimChisel(WorldHit hit)
+        {
+            World world = worldView.World;
+            Transform head = player.Head != null ? player.Head : transform;
+            Vector3 along = worldView.transform.InverseTransformDirection(head.forward).normalized;
+            Vector3Int voxel = world.Grid.WorldToVoxel(hit.Point + along * (world.Grid.VoxelSize * 0.05f));
+            float iso = worldView.Config.IsoLevel;
+            if (!ChiselStrike.CanCarve(world, voxel, iso))
+            {
+                voxel = ToolStrike.AimedVoxel(world, hit);
+                if (!ChiselStrike.CanCarve(world, voxel, iso))
+                {
+                    return;
+                }
+            }
+            Reach = VoxelReach.Around(voxel, 1, false);
+            HasReach = true;
+            ToolStrike.FindTargets(world, Reach, iso, targets);
             if (parcels != null)
             {
                 targets.RemoveAll(sample => !parcels.CanEditSample(sample));
@@ -190,11 +223,12 @@ namespace Clube.Game
             minedFrom.Clear();
             if (tool.Chisels)
             {
-                // A chisel squares off or cuts away what it reaches (GL87); the Flat Rock may form (GL88).
+                // A chisel carves the aimed voxel out (GL87, GL92); the Flat Rock may form (GL88).
                 ChiselResult chiselled = ChiselStrike.Hit(
-                    worldView.World, targets, worldView.Config.Materials, collected, worldView.Config.IsoLevel, minedFrom);
+                    worldView.World, Reach, worldView.Config.Materials, collected, worldView.Config.IsoLevel, minedFrom,
+                    parcels != null ? parcels.CanEditSample : null);
                 Chiselled?.Invoke(Reach, chiselled);
-                Struck?.Invoke(new StrikeResult(targets.Count, chiselled.Squared + chiselled.Cut, chiselled.Cut));
+                Struck?.Invoke(new StrikeResult(targets.Count, chiselled.Carved, chiselled.Carved));
             }
             else
             {

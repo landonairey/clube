@@ -42,6 +42,9 @@ namespace Clube.Core
         private Vector3Int loadedMax;
         private bool anyLoaded;
 
+        // True once any voxel is carved (GL92), so worlds that never are skip the checks.
+        private bool anyCarved;
+
         private readonly Func<Vector3Int, IVoxelStorage> createStorage;
         private DensityFormat? preferredFormat;
 
@@ -141,6 +144,7 @@ namespace Clube.Core
             loadedMin = anyLoaded ? Vector3Int.Min(loadedMin, coord) : coord;
             loadedMax = anyLoaded ? Vector3Int.Max(loadedMax, coord) : coord;
             anyLoaded = true;
+            anyCarved |= chunk.HasCarves;
             chunk.BecameDirty = _ => dirty.Add(coord);
             if (chunk.IsDirty)
             {
@@ -226,6 +230,7 @@ namespace Clube.Core
             loaded.Clear();
             dirty.Clear();
             anyLoaded = false;
+            anyCarved = false;
             editedUnloaded.Clear();
             edited.Clear();
         }
@@ -251,6 +256,7 @@ namespace Clube.Core
         /// </summary>
         public int SetDensity(Vector3Int sample, float density)
         {
+            float? before = anyCarved ? GetDensity(sample) : null;
             Grid.ChunksContainingSample(sample, scratchChunks);
             int changed = 0;
             foreach (Vector3Int coord in scratchChunks)
@@ -266,6 +272,10 @@ namespace Clube.Core
                     edited.Add(coord);
                     changed++;
                 }
+            }
+            if (before.HasValue && density > before.Value)
+            {
+                UncarveAround(sample);
             }
             return changed;
         }
@@ -306,22 +316,62 @@ namespace Clube.Core
             }
         }
 
-        /// <summary>True when the sample meshes as a sharp cube (GL86); false when not loaded.</summary>
-        public bool IsSquare(Vector3Int sample)
+        /// <summary>True when a voxel (by its lowest corner, a global sample) is carved out (GL92); false when not loaded.</summary>
+        public bool IsCarved(Vector3Int voxel)
         {
-            Grid.ChunksContainingSample(sample, scratchChunks);
+            if (!anyCarved)
+            {
+                return false;
+            }
+            Grid.ChunksContainingSample(voxel, scratchChunks);
             foreach (Vector3Int coord in scratchChunks)
             {
                 if (loaded.TryGetValue(coord, out Chunk chunk))
                 {
-                    return chunk.IsSquare(Grid.GlobalToLocal(sample, coord));
+                    return chunk.IsCarved(Grid.GlobalToLocal(voxel, coord));
                 }
             }
             return false;
         }
 
-        /// <summary>Marks a sample square or not in every loaded chunk that holds a copy of it (GL86, A7, like <see cref="SetMaterial"/>).</summary>
-        public void SetSquare(Vector3Int sample, bool square)
+        /// <summary>
+        /// The carve edit path (GL92, A7): carves a voxel out, or fills it back, in every loaded chunk
+        /// that holds one of its marked corners. Marching cubes leaves a carved voxel empty and its
+        /// solid neighbours show flat walls towards it. A sample with carved voxels all round it is
+        /// set to air too, so the ground's data agrees with what's drawn.
+        /// </summary>
+        public void SetCarved(Vector3Int voxel, bool carved)
+        {
+            if (carved)
+            {
+                anyCarved = true;
+            }
+            else if (!anyCarved)
+            {
+                return;
+            }
+            SetCarveFlag(voxel, CarveFlags.Above, carved);
+            SetCarveFlag(voxel + Vector3Int.one, CarveFlags.Below, carved);
+            if (!carved)
+            {
+                return;
+            }
+            for (int corner = 0; corner < 8; corner++)
+            {
+                Vector3Int sample = voxel + Corner(corner);
+                bool enclosed = true;
+                for (int other = 0; other < 8 && enclosed; other++)
+                {
+                    enclosed = IsCarved(sample - Corner(other));
+                }
+                if (enclosed)
+                {
+                    SetDensity(sample, 0f);
+                }
+            }
+        }
+
+        private void SetCarveFlag(Vector3Int sample, byte flag, bool set)
         {
             Grid.ChunksContainingSample(sample, scratchChunks);
             foreach (Vector3Int coord in scratchChunks)
@@ -331,12 +381,33 @@ namespace Clube.Core
                     continue;
                 }
                 Vector3Int local = Grid.GlobalToLocal(sample, coord);
-                if (chunk.IsSquare(local) != square)
+                byte flags = chunk.GetCarveFlags(local);
+                byte next = (byte)(set ? flags | flag : flags & ~flag);
+                if (next != flags)
                 {
-                    chunk.SetSquare(local, square);
+                    chunk.SetCarveFlags(local, next);
                     edited.Add(coord);
                 }
             }
+        }
+
+        // Ground put back into a carved voxel (a pile, a brush) fills it in again: the voxels round a
+        // sample whose density rose are no longer carved.
+        private void UncarveAround(Vector3Int sample)
+        {
+            for (int corner = 0; corner < 8; corner++)
+            {
+                Vector3Int voxel = sample - Corner(corner);
+                if (IsCarved(voxel))
+                {
+                    SetCarved(voxel, false);
+                }
+            }
+        }
+
+        private static Vector3Int Corner(int corner)
+        {
+            return new Vector3Int(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1);
         }
 
         /// <summary>
@@ -495,6 +566,10 @@ namespace Clube.Core
                                     var local = new Vector3Int(x, y, z);
                                     chunk.SetDensity(local, neighbour.GetDensity(local - shift));
                                     chunk.SetMaterial(local, neighbour.GetMaterial(local - shift));
+                                    if (neighbour.HasCarves)
+                                    {
+                                        chunk.SetCarveFlags(local, neighbour.GetCarveFlags(local - shift));
+                                    }
                                 }
                             }
                         }

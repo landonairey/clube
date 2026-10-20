@@ -566,21 +566,56 @@ namespace Clube.Debug.Editor
             return texture;
         }
 
-        // A wooden handle with a bronze ferrule and a straight bronze blade ending in a square cutting
-        // edge (GL87).
+        // A chunky wooden handle, a dark ferrule, and a broad flat bronze blade flaring out to a wide,
+        // bright cutting edge (GL87, GL93): the blade's width is what reads as a chisel, not a stick.
         private static Texture2D PaintChisel()
         {
             Texture2D texture = Blank();
-            Line(texture, new Vector2(12f, 8f), new Vector2(30f, 30f), 4.2f, Handle);
-            Line(texture, new Vector2(11f, 10f), new Vector2(29f, 32f), 1.2f, HandleLight);
-            Line(texture, new Vector2(28f, 28f), new Vector2(33f, 34f), 5f, BronzeDark);
-            Line(texture, new Vector2(32f, 33f), new Vector2(50f, 52f), 3.2f, Bronze);
-            Line(texture, new Vector2(33f, 35f), new Vector2(49f, 53f), 1f, BronzeLight);
-            // The edge: a short bar square across the blade's end.
-            Line(texture, new Vector2(47f, 55f), new Vector2(53f, 49f), 1.8f, BronzeLight);
+            var along = new Vector2(1f, 1f).normalized;
+            var across = new Vector2(-1f, 1f).normalized;
+            // Handle, rounded at the butt, with a highlight down one side.
+            Line(texture, new Vector2(9f, 9f), new Vector2(25f, 25f), 10f, Handle);
+            Line(texture, new Vector2(8f, 12f), new Vector2(23f, 27f), 2.5f, HandleLight);
+            // Ferrule.
+            Line(texture, new Vector2(25f, 25f), new Vector2(29f, 29f), 11f, BronzeDark);
+            // Blade: narrow at the ferrule, wide at the edge.
+            var neck = new Vector2(29f, 29f);
+            var tip = new Vector2(52f, 52f);
+            FillQuad(texture, neck - across * 3.5f, tip - across * 9f, tip + across * 9f, neck + across * 3.5f, Bronze);
+            // A light face along one half, and the bevel and edge at the tip.
+            FillQuad(texture, neck, tip, tip + across * 9f, neck + across * 3.5f, Color.Lerp(Bronze, BronzeLight, 0.55f));
+            FillQuad(texture, tip - along * 5f - across * 8f, tip - across * 9f, tip + across * 9f, tip - along * 5f + across * 8f, BronzeLight);
+            Line(texture, tip - across * 9f, tip + across * 9f, 1.5f, new Color(1f, 0.97f, 0.88f));
             Outline(texture, new Color(0.12f, 0.12f, 0.14f));
             texture.Apply();
             return texture;
+        }
+
+        // Fills a convex four-sided shape, its corners in order.
+        private static void FillQuad(Texture2D texture, Vector2 a, Vector2 b, Vector2 c, Vector2 d, Color color)
+        {
+            Vector2[] corners = { a, b, c, d };
+            for (int y = 0; y < Size; y++)
+            {
+                for (int x = 0; x < Size; x++)
+                {
+                    var p = new Vector2(x + 0.5f, y + 0.5f);
+                    bool positive = false;
+                    bool negative = false;
+                    for (int i = 0; i < 4; i++)
+                    {
+                        Vector2 from = corners[i];
+                        Vector2 to = corners[(i + 1) % 4];
+                        float side = (to.x - from.x) * (p.y - from.y) - (to.y - from.y) * (p.x - from.x);
+                        positive |= side > 0f;
+                        negative |= side < 0f;
+                    }
+                    if (!(positive && negative))
+                    {
+                        texture.SetPixel(x, y, color);
+                    }
+                }
+            }
         }
 
         // Ore not yet told apart (GL54, GL75): the host rock's own texture, filled to the edges like
