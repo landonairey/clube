@@ -199,6 +199,46 @@ namespace Clube.Core
             Changed?.Invoke();
         }
 
+        /// <summary>
+        /// Moves a stack into a run of slots, <paramref name="start"/> up to but not including
+        /// <paramref name="end"/> (GL71: from the backpack to the hotbar, or back): onto stacks of
+        /// the same item with room first, then into the first empty slot. What doesn't fit stays.
+        /// Returns how many moved.
+        /// </summary>
+        public int MoveInto(int from, int start, int end)
+        {
+            ItemStack stack = slots[from];
+            if (stack.IsEmpty)
+            {
+                return 0;
+            }
+            int left = stack.Count;
+            for (int slot = start; slot < end && left > 0; slot++)
+            {
+                if (slot != from && slots[slot].Item == stack.Item && slots[slot].Space > 0)
+                {
+                    int moved = Math.Min(left, slots[slot].Space);
+                    slots[slot] = TopUp(slots[slot], moved, stack.Contents);
+                    left -= moved;
+                }
+            }
+            for (int slot = start; slot < end && left > 0; slot++)
+            {
+                if (slot != from && slots[slot].IsEmpty)
+                {
+                    slots[slot] = new ItemStack(stack.Item, left, stack.Contents, stack.Wear);
+                    left = 0;
+                }
+            }
+            int total = stack.Count - left;
+            if (total > 0)
+            {
+                slots[from] = left > 0 ? stack.WithCount(left) : ItemStack.Empty;
+                Changed?.Invoke();
+            }
+            return total;
+        }
+
         // A stack with more of its item on top, the contents blended by volume (GL32).
         private static ItemStack TopUp(ItemStack stack, int added, Composition contents)
         {

@@ -69,6 +69,34 @@ namespace Clube.Game
             return clicked;
         }
 
+        /// <summary>
+        /// The player's slot under a point, laid out as <see cref="DrawPlayer"/> draws them from
+        /// <paramref name="topLeft"/>; -1 when the point is on no slot (GL71's drag and drop).
+        /// </summary>
+        public static int PlayerSlotAt(Vector2 topLeft, PlayerInventory player, Vector2 point)
+        {
+            Inventory items = player.Inventory;
+            int hotbar = player.HotbarSlots;
+            for (int slot = hotbar; slot < items.SlotCount; slot++)
+            {
+                int index = slot - hotbar;
+                var rect = new Rect(topLeft.x + (index % Columns) * (SlotSize + Gap), topLeft.y + (index / Columns) * (SlotSize + Gap), SlotSize, SlotSize);
+                if (rect.Contains(point))
+                {
+                    return slot;
+                }
+            }
+            float hotbarTop = topLeft.y + BackpackRows(player) * (SlotSize + Gap) - Gap + RowGap;
+            for (int slot = 0; slot < hotbar; slot++)
+            {
+                if (new Rect(topLeft.x + slot * (SlotSize + Gap), hotbarTop, SlotSize, SlotSize).Contains(point))
+                {
+                    return slot;
+                }
+            }
+            return -1;
+        }
+
         /// <summary>A row of an inventory's slots from <paramref name="topLeft"/>. Returns the slot clicked, or -1.</summary>
         public static int DrawRow(Vector2 topLeft, Inventory items, int selected = -1)
         {
