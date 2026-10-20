@@ -4,21 +4,20 @@ using Unity.Mathematics;
 namespace Clube.Core
 {
     /// <summary>
-    /// The square half of a chunk's mixed mesh (GL86, first pass of MX2): every solid sample
-    /// marked square is a sharp cube one voxel across, centred on the sample, with a face on each
-    /// side whose neighbour isn't a solid square sample too. Marching cubes leaves square samples
-    /// out (<see cref="ChunkMeshJob"/> meshes them as air), so its surface meets a cube at the
-    /// half-voxel plane between them, where these faces lie. Burst-compatible.
+    /// The square half of a chunk's mixed mesh (GL86, first pass of MX2): a voxel whose eight corner
+    /// samples are all solid and marked square is a sharp cube filling that voxel, on the same grid
+    /// as the marching cubes, with a face on each side whose neighbouring voxel isn't such a cube too.
+    /// So chiselling digs in: the cube faces lie on the outer samples, about half a voxel inside where
+    /// the marching surface was. <see cref="ChunkMeshJob"/> meshes square samples as air for marching
+    /// cubes, except where they touch unchiselled solid ground, so the two meet without a gap. Burst-compatible.
     /// </summary>
     /// <remarks>
-    /// A chunk draws the cubes of the samples it owns, those below its last layer on each axis;
-    /// the last layer is the next chunk's first, which draws them. Faces towards a sample outside
-    /// the chunk are always drawn (the neighbour isn't known here); they are hidden inside the
-    /// ground when it is solid.
+    /// A chunk draws the cubes of its own voxels. Faces towards a voxel outside the chunk are always
+    /// drawn (the neighbour isn't known here); they are hidden inside the ground when it is solid.
     /// </remarks>
     public static class SquareVoxels
     {
-        /// <summary>Adds the cubes' faces as their own vertices (flat-shaded), with each vertex's material.</summary>
+        /// <summary>Adds the cubes' faces as their own vertices (flat-shaded), each in the material of the voxel's lowest corner.</summary>
         public static void AddCubes(
             NativeArray<float> densities, NativeArray<byte> squares, NativeArray<byte> materials, byte uniformMaterial,
             int3 count, float isoLevel, float voxelSize,
@@ -30,21 +29,22 @@ namespace Clube.Core
                 {
                     for (int x = 0; x < count.x - 1; x++)
                     {
-                        int index = x + count.x * (y + count.y * z);
-                        if (squares[index] == 0 || densities[index] < isoLevel)
+                        var voxel = new int3(x, y, z);
+                        if (!IsCube(voxel, densities, squares, count, isoLevel))
                         {
                             continue;
                         }
+                        int index = x + count.x * (y + count.y * z);
                         byte material = materials.Length > 0 ? materials[index] : uniformMaterial;
-                        var sample = new int3(x, y, z);
+                        float3 centre = ((float3)voxel + 0.5f) * voxelSize;
                         for (int side = 0; side < 6; side++)
                         {
                             Face(side, out int3 direction, out float3 u, out float3 v);
-                            if (SolidSquare(sample + direction, densities, squares, count, isoLevel))
+                            if (IsCube(voxel + direction, densities, squares, count, isoLevel))
                             {
                                 continue;
                             }
-                            AddFace((float3)sample * voxelSize, (float3)direction, u, v, voxelSize * 0.5f, material,
+                            AddFace(centre, (float3)direction, u, v, voxelSize * 0.5f, material,
                                 ref positions, ref vertexMaterials, ref indices);
                         }
                     }
@@ -91,14 +91,23 @@ namespace Clube.Core
             }
         }
 
-        private static bool SolidSquare(int3 sample, NativeArray<float> densities, NativeArray<byte> squares, int3 count, float isoLevel)
+        // A voxel (by its lowest corner) is a cube when all eight of its corners are solid and square.
+        private static bool IsCube(int3 voxel, NativeArray<float> densities, NativeArray<byte> squares, int3 count, float isoLevel)
         {
-            if (math.any(sample < 0) || math.any(sample >= count))
+            if (math.any(voxel < 0) || math.any(voxel + 1 >= count))
             {
                 return false;
             }
-            int index = sample.x + count.x * (sample.y + count.y * sample.z);
-            return squares[index] != 0 && densities[index] >= isoLevel;
+            for (int corner = 0; corner < 8; corner++)
+            {
+                int3 sample = voxel + new int3(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1);
+                int index = sample.x + count.x * (sample.y + count.y * sample.z);
+                if (squares[index] == 0 || densities[index] < isoLevel)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private static void AddFace(

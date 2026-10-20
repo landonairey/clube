@@ -119,17 +119,56 @@ namespace Clube.Core
                 placement, ref sharing, ref positions, ref vertexMaterials, ref indices);
         }
 
+        // Marching cubes treats square samples as air, so it leaves the cubes to SquareVoxels; but a square
+        // sample touching unchiselled solid ground stays solid for it, so the ground runs up to the cubes
+        // with no gap between (its own rounding is then hidden inside them).
         private NativeArray<float> WithoutSquares(NativeArray<float> densities)
         {
             var marching = new NativeArray<float>(densities, Allocator.Temp);
-            for (int i = 0; i < marching.Length; i++)
+            int3 count = SampleCount;
+            for (int z = 0; z < count.z; z++)
             {
-                if (Squares[i] != 0)
+                for (int y = 0; y < count.y; y++)
                 {
-                    marching[i] = 0f;
+                    for (int x = 0; x < count.x; x++)
+                    {
+                        int i = x + count.x * (y + count.y * z);
+                        if (Squares[i] != 0 && !TouchesPlainSolid(new int3(x, y, z), densities))
+                        {
+                            marching[i] = 0f;
+                        }
+                    }
                 }
             }
             return marching;
+        }
+
+        // A face neighbour inside the chunk that's solid and not square.
+        private bool TouchesPlainSolid(int3 sample, NativeArray<float> densities)
+        {
+            for (int side = 0; side < 6; side++)
+            {
+                int3 step = side switch
+                {
+                    0 => new int3(1, 0, 0),
+                    1 => new int3(-1, 0, 0),
+                    2 => new int3(0, 1, 0),
+                    3 => new int3(0, -1, 0),
+                    4 => new int3(0, 0, 1),
+                    _ => new int3(0, 0, -1),
+                };
+                int3 next = sample + step;
+                if (math.any(next < 0) || math.any(next >= SampleCount))
+                {
+                    continue;
+                }
+                int i = next.x + SampleCount.x * (next.y + SampleCount.y * next.z);
+                if (Squares[i] == 0 && densities[i] >= IsoLevel)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private static NativeArray<float> ToFloats(NativeArray<byte> bytes)

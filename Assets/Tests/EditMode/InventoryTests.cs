@@ -217,5 +217,29 @@ namespace Clube.Core.Tests
             Assert.AreEqual(0, full.MoveInto(1, 0, 1), "No room: nothing moves.");
             Assert.AreEqual(5, full[1].Count);
         }
+
+        // GL90: a copy of an item under another id keeps its name but stacks apart from it.
+        [Test]
+        public void Variant_KeepsTheName_ButNeverSharesAStack()
+        {
+            ItemDefinition silver = ore.Variant("unknown-silver");
+            ItemDefinition gold = ore.Variant("unknown-gold");
+            try
+            {
+                Assert.AreEqual(ore.DisplayName, silver.DisplayName);
+                Assert.AreEqual(ore.MaxStack, gold.MaxStack);
+                var inventory = new Inventory(3);
+                inventory.Add(silver, 2);
+                inventory.Add(gold, 3);
+                Assert.AreSame(silver, inventory[0].Item);
+                Assert.AreSame(gold, inventory[1].Item, "Gold took its own slot.");
+                Assert.AreEqual(2, inventory.Count(silver));
+            }
+            finally
+            {
+                Object.DestroyImmediate(silver);
+                Object.DestroyImmediate(gold);
+            }
+        }
     }
 }

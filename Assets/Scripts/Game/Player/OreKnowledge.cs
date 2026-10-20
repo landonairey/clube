@@ -10,7 +10,7 @@ namespace Clube.Game
     /// materials (the copper ores at Mining 3, silver and gold higher up) stays hidden until the
     /// skill reaches the group's level. Until then its materials are drawn as the rock around them
     /// (<see cref="MaterialRegistry.ShowAs"/>), and what the player mines of them comes out as
-    /// "? ore", keeping its contents. At the level the group shows, and every "? ore" in the
+    /// "? ore", keeping its contents: one "? ore" item per ore (GL90), so different ores never share a stack. At the level the group shows, and every "? ore" in the
     /// inventory whose contents are mostly that group's turns into the ore it is.
     /// </summary>
     [RequireComponent(typeof(PlayerSkills))]
@@ -49,6 +49,11 @@ namespace Clube.Game
         private ItemDefinition unknownOre;
 
         private readonly HashSet<HiddenOres> hiding = new HashSet<HiddenOres>();
+
+        // One "? ore" per real ore item (GL90), made the first time it's needed, so each hidden ore stacks
+        // apart; and what each stands for: the real item and the material it was mined as.
+        private readonly Dictionary<ItemDefinition, ItemDefinition> disguises = new Dictionary<ItemDefinition, ItemDefinition>();
+        private readonly Dictionary<ItemDefinition, (ItemDefinition Item, VoxelMaterial Material)> hiddenAs = new Dictionary<ItemDefinition, (ItemDefinition, VoxelMaterial)>();
         private PlayerSkills skills;
         private PlayerInventory inventory;
         private MaterialRegistry registry;
@@ -126,7 +131,30 @@ namespace Clube.Game
             {
                 return stack;
             }
-            return new ItemStack(unknownOre, stack.Count, stack.Contents);
+            return new ItemStack(DisguiseFor(stack.Item, material), stack.Count, stack.Contents);
+        }
+
+        /// <summary>True for a "? ore" item: the generic one or one of the per-ore copies.</summary>
+        public bool IsUnknown(ItemDefinition item)
+        {
+            return item != null && (item == unknownOre || hiddenAs.ContainsKey(item));
+        }
+
+        // The "? ore" standing for one real ore item: a copy of the generic one, alike in name and icon,
+        // but its own item, so silver and gold mined unknown never share a stack.
+        private ItemDefinition DisguiseFor(ItemDefinition real, VoxelMaterial material)
+        {
+            if (real == null)
+            {
+                return unknownOre;
+            }
+            if (!disguises.TryGetValue(real, out ItemDefinition disguise))
+            {
+                disguise = unknownOre.Variant("unknown-" + real.Id);
+                disguises.Add(real, disguise);
+                hiddenAs.Add(disguise, (real, material));
+            }
+            return disguise;
         }
 
         private bool Reached(HiddenOres group)
@@ -186,7 +214,8 @@ namespace Clube.Game
             }
         }
 
-        // Every "? ore" stack whose ore can now be told apart becomes that ore.
+        // Every "? ore" stack whose ore can now be told apart becomes that ore: a per-ore copy by what it
+        // stands for (GL90), the generic one (stacks from before) by what its contents hold most of.
         private void Identify()
         {
             if (inventory == null || inventory.Inventory == null || unknownOre == null)
@@ -197,6 +226,15 @@ namespace Clube.Game
             for (int slot = 0; slot < items.SlotCount; slot++)
             {
                 ItemStack stack = items[slot];
+                if (stack.Item != null && hiddenAs.TryGetValue(stack.Item, out var real))
+                {
+                    if (Knows(real.Material))
+                    {
+                        int known = items.RemoveAt(slot, stack.Count);
+                        items.Add(real.Item, known, stack.Contents);
+                    }
+                    continue;
+                }
                 if (stack.Item != unknownOre)
                 {
                     continue;

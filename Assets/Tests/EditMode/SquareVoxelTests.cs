@@ -8,28 +8,32 @@ namespace Clube.Core.Tests
     {
         private const float Iso = 0.5f;
 
-        // GL86: one square sample alone in the air is a cube: 6 faces, 4 vertices and 2 triangles each,
-        // and marching cubes adds nothing (it meshes the square sample as air).
+        // GL86: square samples make a cube where all eight corners of a voxel are square, filling that
+        // voxel on the marching grid (6 faces, 4 vertices and 2 triangles each); a lone square sample is
+        // no cube, and marching cubes meshes it as air: chiselling digs in.
         [Test]
-        public void ASquareSample_MeshesAsACube_AndMarchingCubesLeavesItOut()
+        public void SquareSamples_MakeACubeFillingTheirVoxel_AndALoneOneDigsOut()
         {
             var chunk = new Chunk(new Vector3Int(4, 4, 4));
-            var sample = new Vector3Int(1, 1, 1);
-            chunk.SetDensity(sample, 1f);
+            var lone = new Vector3Int(1, 1, 1);
+            chunk.SetDensity(lone, 1f);
             var mesh = new UnityEngine.Mesh();
             try
             {
                 ChunkMeshJobs.BuildNow(chunk, new ChunkMeshSettings(Iso, 1f, backend: MesherBackend.Burst), mesh);
-                int marching = mesh.vertexCount;
-                Assert.Greater(marching, 0, "A lone solid sample is a marching cubes blob.");
+                Assert.Greater(mesh.vertexCount, 0, "A lone solid sample is a marching cubes blob.");
 
-                chunk.SetSquare(sample, true);
+                chunk.SetSquare(lone, true);
+                ChunkMeshJobs.BuildNow(chunk, new ChunkMeshSettings(Iso, 1f, backend: MesherBackend.Burst), mesh);
+                Assert.AreEqual(0, mesh.vertexCount, "A lone square sample is no cube: it's dug out.");
+
+                SquareBlock(chunk, new Vector3Int(1, 1, 1), new Vector3Int(2, 2, 2));
                 ChunkMeshJobs.BuildNow(chunk, new ChunkMeshSettings(Iso, 1f, backend: MesherBackend.Burst), mesh);
                 Assert.AreEqual(24, mesh.vertexCount);
                 Assert.AreEqual(36, mesh.triangles.Length);
                 Bounds bounds = GeometryBounds(mesh);
-                Assert.AreEqual(new Vector3(0.5f, 0.5f, 0.5f), bounds.min, "The cube is one voxel around its sample.");
-                Assert.AreEqual(new Vector3(1.5f, 1.5f, 1.5f), bounds.max);
+                Assert.AreEqual(new Vector3(1f, 1f, 1f), bounds.min, "The cube fills the voxel between its corner samples.");
+                Assert.AreEqual(new Vector3(2f, 2f, 2f), bounds.max);
             }
             finally
             {
@@ -37,16 +41,12 @@ namespace Clube.Core.Tests
             }
         }
 
-        // Two square samples side by side share no face: 10 faces, not 12.
+        // Two cubes side by side share no face: 10 faces, not 12.
         [Test]
         public void SquareNeighbours_HideTheFaceBetweenThem()
         {
             var chunk = new Chunk(new Vector3Int(4, 4, 4));
-            foreach (var sample in new[] { new Vector3Int(1, 1, 1), new Vector3Int(2, 1, 1) })
-            {
-                chunk.SetDensity(sample, 1f);
-                chunk.SetSquare(sample, true);
-            }
+            SquareBlock(chunk, new Vector3Int(1, 1, 1), new Vector3Int(3, 2, 2));
             var mesh = new UnityEngine.Mesh();
             try
             {
@@ -146,6 +146,22 @@ namespace Clube.Core.Tests
                 }
             }
             return world;
+        }
+
+        // Every sample from min to max, solid and square.
+        private static void SquareBlock(Chunk chunk, Vector3Int min, Vector3Int max)
+        {
+            for (int z = min.z; z <= max.z; z++)
+            {
+                for (int y = min.y; y <= max.y; y++)
+                {
+                    for (int x = min.x; x <= max.x; x++)
+                    {
+                        chunk.SetDensity(new Vector3Int(x, y, z), 1f);
+                        chunk.SetSquare(new Vector3Int(x, y, z), true);
+                    }
+                }
+            }
         }
 
         private static Bounds GeometryBounds(UnityEngine.Mesh mesh)
