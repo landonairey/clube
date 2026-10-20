@@ -91,7 +91,8 @@ namespace Clube.Debug
             {
                 return;
             }
-            frame.Line("Solid ore samples, loaded: " + Describe(registry, view.LoadedCounts));
+            string counting = view.ChunksToCount > 0 ? $" (counting, {view.ChunksToCount:N0} chunks to go)" : "";
+            frame.Line("Solid ore samples, loaded" + counting + ": " + Describe(registry, view.LoadedCounts));
             if (focus != null && focus.Focused.HasValue)
             {
                 IReadOnlyList<int> counts = view.CountsFor(focus.Focused.Value);
