@@ -50,6 +50,10 @@ namespace Clube.Game
         [SerializeField, Range(0.1f, 2f)]
         private float holdSeconds = 0.5f;
 
+        [Tooltip("Ground rising more than this across a build cell, in metres, is too steep to build on (GL84).")]
+        [SerializeField, Min(0.05f)]
+        private float maxRise = 0.5f;
+
         private readonly Collider[] overlaps = new Collider[16];
         private PlayerInventory inventory;
         private Hotbar hotbar;
@@ -183,9 +187,13 @@ namespace Clube.Game
             float yaw = Mathf.Round(Mathf.Atan2(toPlayer.x, toPlayer.z) * Mathf.Rad2Deg / 90f) * 90f + quarterTurns * 90f;
             Quaternion rotation = Quaternion.Euler(0f, yaw, 0f);
 
+            // The ground across the cell (GL83, GL84): too steep, or a stump, and nothing goes there.
+            GroundUnder(cells, cell, local.y, position, out float rise, out bool onWorktop);
+            bool steep = rise > maxRise;
+
             ShowPreview(placeable, position, rotation, out Bounds bounds);
             bool locked = parcels != null && !parcels.CanEdit(position);
-            bool blocked = locked || Blocked(bounds, rotation);
+            bool blocked = locked || steep || onWorktop || Blocked(bounds, rotation);
             properties.SetColor(BaseColorId, blocked ? blockedColor : clearColor);
             foreach (MeshRenderer part in preview.GetComponentsInChildren<MeshRenderer>())
             {
@@ -193,7 +201,16 @@ namespace Clube.Game
             }
             if (grid != null)
             {
-                grid.Show(new Vector2(cell.x, cell.y) * cells.CellSize, cells.CellSize);
+                // On a slope the grid floats level at the item's height instead of running up the ground.
+                var cellMin = new Vector2(cell.x, cell.y) * cells.CellSize;
+                if (steep)
+                {
+                    grid.ShowFloating(cellMin, cells.CellSize, position.y, false);
+                }
+                else
+                {
+                    grid.Show(cellMin, cells.CellSize);
+                }
             }
 
             aimedItem = placeable;
@@ -201,6 +218,8 @@ namespace Clube.Game
             aimedRotation = rotation;
             CanPlace = !blocked;
             hint = locked ? "You don't own this land"
+                : onWorktop ? $"A {placeable.DisplayName.ToLowerInvariant()} can't go on a stump"
+                : steep ? "Too steep to build here"
                 : blocked ? $"Something is in the way of the {placeable.DisplayName.ToLowerInvariant()}" : $"B  Place {placeable.DisplayName.ToLowerInvariant()}    R  Rotate";
             if (action != null && action.WasPressedThisFrame())
             {
@@ -241,6 +260,42 @@ namespace Clube.Game
                 return hit.collider.GetComponentInParent<PlacedObject>();
             }
             return null;
+        }
+
+        // How much the ground rises across a cell (its corners and centre, just inside the edges), and
+        // whether any of it is a worktop such as a stump, which nothing is built on.
+        private void GroundUnder(BuildGrid cells, Vector2Int cell, float aimedHeight, Vector3 centre, out float rise, out bool onWorktop)
+        {
+            float low = centre.y;
+            float high = centre.y;
+            onWorktop = IsWorktop(centre);
+            float inset = cells.CellSize * 0.1f;
+            var min = new Vector2(cell.x, cell.y) * cells.CellSize;
+            for (int corner = 0; corner < 4; corner++)
+            {
+                float x = min.x + (corner % 2 == 0 ? inset : cells.CellSize - inset);
+                float z = min.y + (corner < 2 ? inset : cells.CellSize - inset);
+                Vector3 ground = Ground(new Vector3(x, aimedHeight, z));
+                low = Mathf.Min(low, ground.y);
+                high = Mathf.Max(high, ground.y);
+                onWorktop |= IsWorktop(ground);
+            }
+            rise = high - low;
+        }
+
+        // The material just under a ground point is a worktop (GL83).
+        private bool IsWorktop(Vector3 ground)
+        {
+            World world = worldView.World;
+            MaterialRegistry materials = worldView.Config.Materials;
+            if (materials == null)
+            {
+                return false;
+            }
+            Vector3 local = worldView.transform.InverseTransformPoint(ground) - Vector3.up * (world.Grid.VoxelSize * 0.5f);
+            byte? id = world.GetMaterial(world.Grid.WorldToNearestSample(local));
+            VoxelMaterial material = id.HasValue ? materials.Get(id.Value) : null;
+            return material != null && material.IsWorktop;
         }
 
         // The terrain surface straight below (or above) a point, relative to the world origin; world space out.
