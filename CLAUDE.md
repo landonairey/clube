@@ -292,6 +292,11 @@ screen sends a clicked stack across (backpack ↔ hotbar, `Inventory.MoveInto`) 
 slot is X. `OreDebugView` counts ore 2 ms a frame.
 "? ore" shows the stone texture with a question mark and hides its contents (`ItemDefinition.HidesContents`);
 ores found before they're known get an uncoloured "Unknown ore" journal entry with their depth (GL75-GL77).
+Twelfth pass (GL78-GL85, `Docs/20261019c clube-backlog.md`): F3 hides the lab HUD box. A hit also takes any floating
+sliver of 3 samples or fewer next to it (`ToolStrike`). Stations start the recipe that uses the most of
+what's loaded, and a picked recipe loads its ingredients (`CraftingStation.LoadFor`). Nothing is built on a
+stump or on ground rising over 0.5 m across a cell, where the grid floats level. The campfire is a
+`TerrainStructure`: stone and wood samples in the terrain around an ember bed, broken by mining any of them.
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16

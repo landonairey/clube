@@ -24,6 +24,7 @@ namespace Clube.Debug.Editor
             Save("Anvil", Anvil());
             Save("Merchant Table", MerchantTable());
             Save("Campfire", Campfire());
+            Save("Campfire stamp", CampfireStamp());
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Built station models in {Folder}.");
         }
@@ -99,6 +100,26 @@ namespace Clube.Debug.Editor
             return model.Build("Campfire");
         }
 
+        // Submeshes: 0 stone, 1 wood. The campfire built from the ground (GL85) as the build preview
+        // shows it: a lump where each of its terrain samples goes (TerrainStructure's parts on the
+        // campfire prefab), at the game's 0.25 m voxels.
+        private static Mesh CampfireStamp()
+        {
+            const float voxel = 0.25f;
+            var model = new ModelBuilder(2);
+            Vector2Int[] stones = { new Vector2Int(2, 0), new Vector2Int(1, 2), new Vector2Int(-1, 2), new Vector2Int(-2, 0), new Vector2Int(-1, -2), new Vector2Int(1, -2) };
+            Vector2Int[] logs = { new Vector2Int(-1, 0), new Vector2Int(1, 0), new Vector2Int(0, 1) };
+            foreach (Vector2Int at in stones)
+            {
+                model.Lump(0, new Vector3(at.x, 0f, at.y) * voxel, 0.42f, 0.3f);
+            }
+            foreach (Vector2Int at in logs)
+            {
+                model.Lump(1, new Vector3(at.x, 0f, at.y) * voxel, 0.36f, 0.24f);
+            }
+            return model.Build("Campfire stamp");
+        }
+
         private static void Save(string name, Mesh mesh)
         {
             string path = $"{Folder}/{name}.asset";
@@ -139,6 +160,18 @@ namespace Clube.Debug.Editor
                 Hexahedron(submesh,
                     P(-1, -1, -1), P(1, -1, -1), P(1, -1, 1), P(-1, -1, 1),
                     P(-1, 1, -1), P(1, 1, -1), P(1, 1, 1), P(-1, 1, 1));
+            }
+
+            /// <summary>A squat lump standing on <paramref name="foot"/>: a square base turned 45 degrees, narrowing to a small top, like a marching-cubes sample.</summary>
+            public void Lump(int submesh, Vector3 foot, float width, float height)
+            {
+                float a = width * 0.5f;
+                float b = width * 0.18f;
+                Quaternion turn = Quaternion.Euler(0f, 45f, 0f);
+                Vector3 P(float x, float y, float z) => foot + turn * new Vector3(x, y, z);
+                Hexahedron(submesh,
+                    P(-a, 0f, -a), P(a, 0f, -a), P(a, 0f, a), P(-a, 0f, a),
+                    P(-b, height, -b), P(b, height, -b), P(b, height, b), P(-b, height, b));
             }
 
             /// <summary>A block tapering upwards: a rectangle at one height to another above it, both centred.</summary>

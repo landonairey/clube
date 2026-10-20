@@ -30,6 +30,9 @@ namespace Clube.Debug
         private float windowSeconds;
         private float framesPerSecond;
 
+        // F3 hides the box (GL78).
+        private bool shown = true;
+
         private void Awake()
         {
             chunkView = GetComponent<ChunkView>();
@@ -40,6 +43,12 @@ namespace Clube.Debug
 
         private void Update()
         {
+            UnityEngine.InputSystem.Keyboard keyboard = UnityEngine.InputSystem.Keyboard.current;
+            if (keyboard != null && keyboard.f3Key.wasPressedThisFrame)
+            {
+                shown = !shown;
+            }
+
             // Unscaled, so the counter stays honest while the game is paused (timeScale = 0).
             windowFrames++;
             windowSeconds += Time.unscaledDeltaTime;
@@ -53,6 +62,10 @@ namespace Clube.Debug
 
         private void OnGUI()
         {
+            if (!shown)
+            {
+                return;
+            }
             if (Event.current.type != EventType.Repaint || chunkView.Chunk == null)
             {
                 return;

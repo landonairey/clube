@@ -139,9 +139,8 @@ namespace Clube.Game
             float y = panel.y + Padding;
             GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   (E to close)");
             y += 24f;
-            // With several recipes, click one to make only it (ML1: sticks and stone make a spear, a
-            // hatchet or a hammer); click it again to let any start.
-            bool choosable = station.Recipes.Count > 1;
+            // Click a recipe to make only it (ML1: sticks and stone make a spear, a hatchet or a hammer)
+            // and pull one batch of its ingredients from your items (GL80); click it again to let any start.
             foreach (Recipe recipe in station.Recipes)
             {
                 var row = new Rect(x, y, width - Padding * 2f, 20f);
@@ -153,10 +152,6 @@ namespace Clube.Game
                     GUI.Label(row, $"Needs {recipe.UnlockSkill} {recipe.UnlockLevel}:  {Describe(recipe)}");
                     GUI.enabled = wasEnabled;
                 }
-                else if (!choosable)
-                {
-                    GUI.Label(row, Describe(recipe));
-                }
                 else
                 {
                     bool chosen = station.Chosen == recipe;
@@ -164,6 +159,10 @@ namespace Clube.Game
                     if (GUI.Button(row, (chosen ? "\u25B6 " : "   ") + Describe(recipe), recipeStyle))
                     {
                         station.Chosen = chosen ? null : recipe;
+                        if (!chosen)
+                        {
+                            station.LoadFor(recipe, items);
+                        }
                     }
                 }
                 y += 22f;

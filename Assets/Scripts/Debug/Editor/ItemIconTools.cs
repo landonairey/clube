@@ -514,19 +514,26 @@ namespace Clube.Debug.Editor
         }
 
         // A handle with a pointed stone head lashed across its top.
+        // A stick handle with a stone head lashed to its top, coming off the right side only and
+        // tapering to a point, like an early stone pick (GL82).
         private static Texture2D PaintStonePick()
         {
             Texture2D texture = Blank();
-            Line(texture, new Vector2(14f, 8f), new Vector2(34f, 48f), 3.4f, Handle);
-            Line(texture, new Vector2(13f, 10f), new Vector2(33f, 49f), 1.1f, HandleLight);
-            for (int i = 0; i <= 12; i++)
+            Line(texture, new Vector2(18f, 6f), new Vector2(26f, 54f), 3.4f, Handle);
+            Line(texture, new Vector2(17f, 8f), new Vector2(25f, 55f), 1.1f, HandleLight);
+            var from = new Vector2(24f, 49f);
+            var bend = new Vector2(36f, 49f);
+            var to = new Vector2(47f, 45f);
+            for (int i = 0; i <= 16; i++)
             {
-                float t = i / 12f;
-                Vector2 at = Vector2.Lerp(new Vector2(16f, 52f), new Vector2(54f, 44f), t);
-                // Thickest in the middle, a point at each end.
-                Line(texture, at, at, 1.5f + 6f * Mathf.Sin(t * Mathf.PI), t < 0.5f ? StoneHead : StoneHeadLight);
+                float t = i / 16f;
+                Vector2 at = (1f - t) * (1f - t) * from + 2f * (1f - t) * t * bend + t * t * to;
+                // Broad where it's lashed to the handle, worked down to a point.
+                Line(texture, at, at, Mathf.Lerp(9f, 3.5f, t), StoneHead);
+                Line(texture, at + new Vector2(0f, 2f), at + new Vector2(0f, 2f), Mathf.Lerp(4f, 1.2f, t), StoneHeadLight);
             }
-            Line(texture, new Vector2(30f, 44f), new Vector2(38f, 52f), 2f, Lashing);
+            Line(texture, new Vector2(21f, 44f), new Vector2(30f, 54f), 2f, Lashing);
+            Line(texture, new Vector2(21f, 50f), new Vector2(29f, 45f), 2f, Lashing);
             Outline(texture, new Color(0.12f, 0.12f, 0.14f));
             texture.Apply();
             return texture;

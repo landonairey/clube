@@ -146,6 +146,19 @@ namespace Clube.Core
         /// <summary>Seconds or strikes, by <see cref="Work"/>.</summary>
         public float Amount => amount;
 
+        /// <summary>True when the item is one of its inputs.</summary>
+        public bool Takes(ItemDefinition item)
+        {
+            foreach (ItemAmount input in inputs)
+            {
+                if (input.Item == item)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         /// <summary>True when the inventory holds every input.</summary>
         public bool HasInputs(Inventory inventory)
         {

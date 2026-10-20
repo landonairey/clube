@@ -50,12 +50,15 @@ namespace Clube.Core.Tests
             try
             {
                 station.Input.Add(bun, 2);
-                Assert.AreSame(hammer, station.Ready(RecipeWork.Strikes), "Unchosen: the first recipe whose inputs are loaded.");
+                Assert.AreSame(spearRecipe, station.Ready(RecipeWork.Strikes), "Unchosen: the recipe that uses the most of what's loaded (GL81).");
 
-                station.Chosen = spearRecipe;
-                Assert.AreSame(spearRecipe, station.Ready(RecipeWork.Strikes));
-                Assert.IsTrue(station.Strike());
-                Assert.AreEqual(spear, station.Output[0].Item);
+                station.Chosen = hammer;
+                Assert.AreSame(hammer, station.Ready(RecipeWork.Strikes));
+                for (int i = 0; i < 6; i++)
+                {
+                    Assert.IsTrue(station.Strike());
+                }
+                Assert.AreEqual(ingot, station.Output[0].Item);
 
                 station.Chosen = smelt;
                 Assert.IsNull(station.Chosen, "A recipe the station doesn't make can't be chosen.");
@@ -65,6 +68,51 @@ namespace Clube.Core.Tests
                 Object.DestroyImmediate(spearRecipe);
                 Object.DestroyImmediate(spear);
             }
+        }
+
+        // GL81: sticks and stone loaded, nothing picked: the stone pick, not the pointy stick.
+        [Test]
+        public void Unchosen_TheRecipeUsingTheMostOfWhatsLoadedStarts()
+        {
+            ItemDefinition stick = ItemDefinition.Create("stick", "Stick");
+            ItemDefinition stone = ItemDefinition.Create("stone", "Stone");
+            ItemDefinition pointy = ItemDefinition.Create("pointy", "Pointy stick", maxStack: 1);
+            ItemDefinition pick = ItemDefinition.Create("pick", "Stone pick", maxStack: 1);
+            Recipe whittle = Recipe.Create(StationKind.Worktop, new ItemAmount(pointy, 1), RecipeWork.Strikes, 1f, new ItemAmount(stick, 1));
+            Recipe makePick = Recipe.Create(StationKind.Worktop, new ItemAmount(pick, 1), RecipeWork.Strikes, 1f, new ItemAmount(stick, 1), new ItemAmount(stone, 2));
+            try
+            {
+                var stump = new CraftingStation(StationKind.Worktop, new[] { whittle, makePick });
+                stump.Input.Add(stick, 1);
+                stump.Input.Add(stone, 2);
+                Assert.AreSame(makePick, stump.Upcoming);
+                Assert.IsTrue(stump.Strike());
+                Assert.AreEqual(pick, stump.Output[0].Item);
+            }
+            finally
+            {
+                foreach (Object o in new Object[] { whittle, makePick, stick, stone, pointy, pick })
+                {
+                    Object.DestroyImmediate(o);
+                }
+            }
+        }
+
+        // GL80: picking a recipe loads one batch from the player, sending back what it doesn't take.
+        [Test]
+        public void LoadFor_TopsUpEachInputToOneBatch_AndReturnsWhatTheRecipeDoesntTake()
+        {
+            var player = new Inventory(4);
+            player.Add(ore, 20);
+            CraftingStation furnace = Furnace();
+            furnace.Input.Add(bun, 2);
+            furnace.Input.Add(ore, 3);
+
+            Assert.AreEqual(5, furnace.LoadFor(smelt, player), "Up to the recipe's 8 ore.");
+            Assert.AreEqual(8, furnace.Input.Count(ore));
+            Assert.AreEqual(0, furnace.Input.Count(bun), "The buns went back.");
+            Assert.AreEqual(2, player.Count(bun));
+            Assert.AreEqual(15, player.Count(ore));
         }
 
         [Test]

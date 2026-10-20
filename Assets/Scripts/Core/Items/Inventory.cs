@@ -200,6 +200,40 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// Moves up to <paramref name="count"/> of an item, from whichever stacks hold it, into
+        /// another inventory (GL80: a recipe's ingredients into a station), keeping each stack's
+        /// contents and wear. Returns how many moved.
+        /// </summary>
+        public int MoveItemTo(ItemDefinition item, int count, Inventory target)
+        {
+            if (item == null || target == null || target == this)
+            {
+                return 0;
+            }
+            int moved = 0;
+            for (int slot = 0; slot < slots.Length && moved < count; slot++)
+            {
+                ItemStack stack = slots[slot];
+                if (stack.Item != item)
+                {
+                    continue;
+                }
+                int take = Math.Min(count - moved, stack.Count);
+                int placed = take - target.Add(item, take, stack.Contents, stack.Wear);
+                if (placed > 0)
+                {
+                    RemoveAt(slot, placed);
+                    moved += placed;
+                }
+                if (placed < take)
+                {
+                    break;
+                }
+            }
+            return moved;
+        }
+
+        /// <summary>
         /// Moves a stack into a run of slots, <paramref name="start"/> up to but not including
         /// <paramref name="end"/> (GL71: from the backpack to the hotbar, or back): onto stacks of
         /// the same item with room first, then into the first empty slot. What doesn't fit stays.
