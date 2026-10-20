@@ -6,7 +6,8 @@ namespace Clube.Debug
 {
     /// <summary>
     /// The Cheats section of the lab panel (GL43): coins at a click, any item from the
-    /// <see cref="ItemCatalog"/> in any amount, and a command line for <see cref="CheatCommands"/>.
+    /// <see cref="ItemCatalog"/> in any amount, a test ground of every material (<see cref="DebugMaterialChunk"/>,
+    /// GL89), and a command line for <see cref="CheatCommands"/>.
     /// Works in Play mode, on the player's inventory and wallet.
     /// </summary>
     public static class CheatControls
@@ -78,6 +79,12 @@ namespace Clube.Debug
             else
             {
                 GUILayout.Label("No item catalog assigned to the lab panel.", frame.Hint);
+            }
+
+            // A test ground with a pile of every material (GL89).
+            if (frame.ButtonRow("Debug material chunk") == 0)
+            {
+                state.Result = DebugMaterialChunk.Make(Object.FindFirstObjectByType<WorldView>(), player.transform);
             }
 
             // The command line: Enter or Run.

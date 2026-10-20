@@ -69,6 +69,9 @@ namespace Clube.Game
         /// <summary>Raised when a hit lands, with what it did.</summary>
         public event Action<StrikeResult> Struck;
 
+        /// <summary>Raised after a chisel hit (GL87), with the voxels it reached and what it did.</summary>
+        public event Action<VoxelReach, ChiselResult> Chiselled;
+
         /// <summary>
         /// The tool in hand: the selected hotbar slot's, or the hand. Null with neither, and while
         /// a placeable item is selected (the hands are carrying it, GL23).
@@ -185,9 +188,20 @@ namespace Clube.Game
         {
             collected.Clear();
             minedFrom.Clear();
-            StrikeResult result = ToolStrike.Hit(
-                worldView.World, targets, tool, worldView.Config.Materials, Damage, collected, worldView.Config.IsoLevel, minedFrom, breakInStages);
-            Struck?.Invoke(result);
+            if (tool.Chisels)
+            {
+                // A chisel squares off or cuts away what it reaches (GL87); the Flat Rock may form (GL88).
+                ChiselResult chiselled = ChiselStrike.Hit(
+                    worldView.World, targets, worldView.Config.Materials, collected, worldView.Config.IsoLevel, minedFrom);
+                Chiselled?.Invoke(Reach, chiselled);
+                Struck?.Invoke(new StrikeResult(targets.Count, chiselled.Squared + chiselled.Cut, chiselled.Cut));
+            }
+            else
+            {
+                StrikeResult result = ToolStrike.Hit(
+                    worldView.World, targets, tool, worldView.Config.Materials, Damage, collected, worldView.Config.IsoLevel, minedFrom, breakInStages);
+                Struck?.Invoke(result);
+            }
             WearTool(tool);
             for (int i = 0; i < collected.Count; i++)
             {

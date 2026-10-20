@@ -29,6 +29,10 @@ namespace Clube.Core
         private float uniformDensity;
         private bool isDirty = true;
 
+        // Square marks (GL86, MX2): 1 for a sample meshed as a cube, 0 for marching cubes. Null until
+        // the first sample is marked, so most chunks never hold any.
+        private byte[] squares;
+
         /// <summary>Creates a chunk with flat-array storage and every density at 0 (empty).</summary>
         public Chunk(Vector3Int voxelCount)
             : this(new FlatVoxelStorage(voxelCount + Vector3Int.one))
@@ -139,12 +143,52 @@ namespace Clube.Core
 
             EnsureStorage();
             storage.SetDensity(sample.x, sample.y, sample.z, density);
+            // Dug right out, a sample forgets it was square (GL86): ground put back there is marching again.
+            if (density <= 0f && squares != null)
+            {
+                squares[Index(sample)] = 0;
+            }
             SetDirty();
         }
 
         public byte GetMaterial(Vector3Int sample)
         {
             return materials.Get(sample.x, sample.y, sample.z);
+        }
+
+        /// <summary>True when any sample is (or was) marked square, so the mesher must look (GL86).</summary>
+        public bool HasSquares => squares != null;
+
+        /// <summary>True when the sample meshes as a sharp cube rather than marching cubes (GL86, MX2).</summary>
+        public bool IsSquare(Vector3Int sample)
+        {
+            return squares != null && squares[Index(sample)] != 0;
+        }
+
+        /// <summary>The square-mark edit path (GL86, A7): marks or clears a sample and marks the chunk dirty.</summary>
+        public void SetSquare(Vector3Int sample, bool square)
+        {
+            if (IsSquare(sample) == square)
+            {
+                return;
+            }
+            squares ??= new byte[SampleCount.x * SampleCount.y * SampleCount.z];
+            squares[Index(sample)] = (byte)(square ? 1 : 0);
+            SetDirty();
+        }
+
+        /// <summary>Copies the square marks into an array of one byte per sample (x fastest); only when <see cref="HasSquares"/>.</summary>
+        public void CopySquares(NativeArray<byte> into)
+        {
+            if (squares != null)
+            {
+                into.CopyFrom(squares);
+            }
+        }
+
+        private int Index(Vector3Int sample)
+        {
+            return SampleGrid.FlatIndex(SampleCount, sample.x, sample.y, sample.z);
         }
 
         /// <summary>The material-edit path (M10, A7): writes the sample's material id and marks the chunk dirty.</summary>
@@ -227,6 +271,7 @@ namespace Clube.Core
             storage = null;
             uniformDensity = 0f;
             materials.SetUniform(0);
+            squares = null;
         }
 
         /// <summary>Requests a rebuild without changing densities, e.g. after the iso level changes.</summary>

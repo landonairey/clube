@@ -11,7 +11,7 @@ namespace Clube.Game
     /// a found one has a sketch (<see cref="OreSketch"/>) and notes: where it was first found, the
     /// grades mined, its hardness, luster, colour and feel (<see cref="MineralNotes"/>), and its
     /// uses once the player has made them. One found before the player can tell it apart is an
-    /// "Unknown ore" with an uncoloured sketch and only its depth (GL77). A short notice says when
+    /// "Unknown Ore": the outline of its sketch and the Mining level that tells it apart (GL77, GL91). A short notice says when
     /// a new entry is written.
     /// </summary>
     [RequireComponent(typeof(PlayerJournal))]
@@ -203,13 +203,14 @@ namespace Clube.Game
             float x = area.x + sketchWidth + 14f;
             float width = area.xMax - x;
             float y = area.y + 2f;
-            GUI.Label(new Rect(x, y, width, 26f), known ? ore.DisplayName : "Unknown ore", titleStyle);
+            GUI.Label(new Rect(x, y, width, 26f), known ? ore.DisplayName : "Unknown Ore", titleStyle);
             y += 26f;
             if (!known)
             {
-                // Found before the player can tell it apart (GL77): only where it was, no colour, grade or name.
+                // Found before the player can tell it apart (GL77, GL91): an outline, the name and how to learn more.
+                string how = journal.HowToKnow(ore);
                 GUI.Label(new Rect(x, y, width, area.yMax - y - 6f),
-                    $"First found {found.FirstDepth:0.#} m below the surface.\nSomething in the rock here, but I can't yet tell what.", textStyle);
+                    "Something in the rock I can't yet tell apart. " + (how != null ? how + " to discover it." : "More mining may tell what it is."), textStyle);
                 return;
             }
 

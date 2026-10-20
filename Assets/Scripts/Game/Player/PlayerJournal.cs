@@ -43,6 +43,13 @@ namespace Clube.Game
             return knowledge == null || knowledge.Knows(ore);
         }
 
+        /// <summary>What the player needs to tell an unknown ore apart, e.g. "Raise Mining to level 5", or null when nothing hides it.</summary>
+        public string HowToKnow(VoxelMaterial ore)
+        {
+            int level = knowledge != null ? knowledge.LevelToKnow(ore) : 0;
+            return level > 0 ? $"Raise {knowledge.Skill} to level {level}" : null;
+        }
+
         private void Awake()
         {
             tools = GetComponent<PlayerToolUser>();

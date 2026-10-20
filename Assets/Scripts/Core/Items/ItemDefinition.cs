@@ -55,6 +55,19 @@ namespace Clube.Core
         }
 
         /// <summary>Sets the volume of one, for items made in code (tests, tools).</summary>
+        /// <summary>
+        /// A copy of this item under another id (made at run time), alike in name, icon and every
+        /// setting but a different item to an inventory, so its stacks never merge with this one's:
+        /// one "? ore" per hidden ore (GL90).
+        /// </summary>
+        public ItemDefinition Variant(string variantId)
+        {
+            var variant = Instantiate(this);
+            variant.id = variantId;
+            variant.name = $"{name} ({variantId})";
+            return variant;
+        }
+
         public ItemDefinition WithUnitVolume(float volume)
         {
             unitVolume = Mathf.Max(0.0001f, volume);

@@ -55,6 +55,7 @@ namespace Clube.Debug.Editor
             Write("bronze pick", "Bronze pick", PaintPickaxe(Bronze));
             Write("bronze hatchet", "Bronze hatchet", PaintHatchet(Bronze, BronzeLight));
             Write("bronze shovel", "Bronze shovel", PaintShovel(Bronze, BronzeLight));
+            Write("bronze chisel", "Bronze chisel", PaintChisel());
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Wrote item icons to {Folder}.");
         }
@@ -560,6 +561,23 @@ namespace Clube.Debug.Editor
                 Line(texture, at, at, Mathf.Lerp(14f, 2f, t), flame);
                 Line(texture, at, at, Mathf.Lerp(7f, 0.5f, t), core);
             }
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
+        // A wooden handle with a bronze ferrule and a straight bronze blade ending in a square cutting
+        // edge (GL87).
+        private static Texture2D PaintChisel()
+        {
+            Texture2D texture = Blank();
+            Line(texture, new Vector2(12f, 8f), new Vector2(30f, 30f), 4.2f, Handle);
+            Line(texture, new Vector2(11f, 10f), new Vector2(29f, 32f), 1.2f, HandleLight);
+            Line(texture, new Vector2(28f, 28f), new Vector2(33f, 34f), 5f, BronzeDark);
+            Line(texture, new Vector2(32f, 33f), new Vector2(50f, 52f), 3.2f, Bronze);
+            Line(texture, new Vector2(33f, 35f), new Vector2(49f, 53f), 1f, BronzeLight);
+            // The edge: a short bar square across the blade's end.
+            Line(texture, new Vector2(47f, 55f), new Vector2(53f, 49f), 1.8f, BronzeLight);
             Outline(texture, new Color(0.12f, 0.12f, 0.14f));
             texture.Apply();
             return texture;

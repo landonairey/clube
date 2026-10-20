@@ -18,6 +18,9 @@ namespace Clube.Core
 
         /// <summary>An open fire of wood ringed with stone (GL52): the first smelter, before the furnace.</summary>
         Campfire,
+
+        /// <summary>A surface rock chiselled flat on top (GL88): the stone worktop between the stump and the anvil.</summary>
+        FlatRock,
     }
 
     /// <summary>How a <see cref="Recipe"/>'s work is measured.</summary>

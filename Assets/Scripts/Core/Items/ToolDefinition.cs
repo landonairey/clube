@@ -87,6 +87,10 @@ namespace Clube.Core
         [SerializeField]
         private List<MaterialHits> hitsOn = new List<MaterialHits>();
 
+        [Tooltip("A chisel (GL87): its hits square off the voxels it reaches, and cut away ones already square, instead of breaking ground.")]
+        [SerializeField]
+        private bool chisels;
+
         [Tooltip("Hits it takes to remove any material no entry above covers. 0: power against hardness, as before. Worktops (stumps) are never covered by this.")]
         [SerializeField, Min(0)]
         private int hitsOnAnything;
@@ -137,6 +141,9 @@ namespace Clube.Core
         public float Power => power;
 
         public float HitsPerSecond => hitsPerSecond;
+
+        /// <summary>True for a chisel (GL87): hits go through <see cref="ChiselStrike"/> rather than <see cref="ToolStrike"/>.</summary>
+        public bool Chisels => chisels;
 
         /// <summary>
         /// The exact hits this tool takes to remove <paramref name="material"/> whole, when a rule sets
