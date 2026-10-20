@@ -572,6 +572,7 @@ GameObject:
   - component: {fileID: 1350119467}
   - component: {fileID: 1350119469}
   - component: {fileID: 1350119468}
+  - component: {fileID: 1350119470}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -833,6 +834,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.GameClock
   dayLengthSeconds: 1200
   timeScale: 1
+--- !u!114 &1350119470
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0db3442d25a783c42b09136b04ac3fc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.GrassScatter
+  grass: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
+  material: {fileID: 2100000, guid: bebf70da50c2fd042afe43cc4a285452, type: 2}
+  radius: 28
+  density: 6
+  minUp: 0.7
+  height: {x: 0.18, y: 0.38}
+  chunksPerFrame: 8
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
