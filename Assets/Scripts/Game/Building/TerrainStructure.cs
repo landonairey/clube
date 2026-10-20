@@ -11,7 +11,8 @@ namespace Clube.Game
     /// through the world's edit path, and while they all stand it works as itself (its
     /// <see cref="StationObject"/>). Mining any of them breaks it: what's left is plain ground, and
     /// the object goes, handing what its station held to the player. Picked up whole (hold B), it
-    /// takes its samples back out of the terrain, so nothing is gained either way.
+    /// takes its samples back out of the terrain, so nothing is gained either way. Samples of one material can
+    /// glow along their inner side (a campfire's logs smouldering).
     /// </summary>
     /// <remarks>
     /// Offsets are in samples from the first air sample above the ground at the object's centre;
@@ -44,7 +45,18 @@ namespace Clube.Game
         [SerializeField]
         private GameObject placementPreview;
 
+        [Tooltip("Samples of this material glow along their inner side, facing the centre (a campfire's logs, smouldering).")]
+        [SerializeField]
+        private VoxelMaterial glowsOn;
+
+        [Tooltip("An unlit, bright material for the glowing lines (Glow).")]
+        [SerializeField]
+        private Material glowMaterial;
+
         private readonly List<Vector3Int> stamped = new List<Vector3Int>();
+        private Vector3Int origin;
+        private GameObject glow;
+        private Mesh glowMesh;
         private WorldView worldView;
         private float nextCheck;
 
@@ -57,6 +69,7 @@ namespace Clube.Game
         {
             worldView = FindFirstObjectByType<WorldView>();
             Stamp();
+            BuildGlow();
             if (placementPreview != null)
             {
                 placementPreview.SetActive(false);
@@ -102,6 +115,78 @@ namespace Clube.Game
             IsStanding = false;
         }
 
+        private void OnDestroy()
+        {
+            Destroy(glowMesh);
+        }
+
+        // Thin glowing strips on the side of each glowing sample that faces the centre, laid on its
+        // surface where a ray from the centre meets it: two along it at different heights.
+        private void BuildGlow()
+        {
+            World world = worldView != null ? worldView.World : null;
+            if (world == null || glowsOn == null || glowMaterial == null)
+            {
+                return;
+            }
+            float voxel = world.Grid.VoxelSize;
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            foreach (Vector3Int sample in stamped)
+            {
+                if (world.GetMaterial(sample) != glowsOn.Id)
+                {
+                    continue;
+                }
+                Vector3 centre = worldView.transform.TransformPoint(world.Grid.SampleToWorld(new Vector3Int(origin.x, sample.y, origin.z)));
+                Vector3 toLog = worldView.transform.TransformPoint(world.Grid.SampleToWorld(sample)) - centre;
+                if (toLog.sqrMagnitude < 1e-6f)
+                {
+                    continue;
+                }
+                // Where a ray from the centre meets the log; if it misses, about where a sample's surface sits.
+                if (!worldView.Raycast(new Ray(centre, toLog.normalized), out Vector3 surface)
+                    || (surface - centre).sqrMagnitude > toLog.sqrMagnitude)
+                {
+                    surface = centre + toLog * 0.6f;
+                }
+                Vector3 inward = transform.InverseTransformDirection(-toLog.normalized);
+                Vector3 along = Vector3.Cross(Vector3.up, inward).normalized;
+                // Just off the surface, towards the fire.
+                Vector3 face = transform.InverseTransformPoint(surface) + inward * 0.012f;
+                AddStrip(vertices, triangles, face + Vector3.down * (voxel * 0.15f), along, voxel * 0.45f, inward);
+                AddStrip(vertices, triangles, face + Vector3.up * (voxel * 0.1f), along, voxel * 0.3f, inward);
+            }
+            if (vertices.Count == 0)
+            {
+                return;
+            }
+            glowMesh = new Mesh { name = "Structure glow" };
+            glowMesh.SetVertices(vertices);
+            glowMesh.SetTriangles(triangles, 0);
+            glowMesh.RecalculateNormals();
+            glow = new GameObject("Glow lines");
+            glow.transform.SetParent(transform, false);
+            glow.AddComponent<MeshFilter>().sharedMesh = glowMesh;
+            var meshRenderer = glow.AddComponent<MeshRenderer>();
+            meshRenderer.sharedMaterial = glowMaterial;
+            meshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        // A thin flat strip centred on a point, half a length each way along a direction, facing out.
+        private static void AddStrip(List<Vector3> vertices, List<int> triangles, Vector3 centre, Vector3 along, float halfLength, Vector3 facing)
+        {
+            const float halfWidth = 0.014f;
+            Vector3 across = Vector3.Cross(along, facing).normalized * halfWidth;
+            int first = vertices.Count;
+            vertices.Add(centre - along * halfLength - across);
+            vertices.Add(centre + along * halfLength - across);
+            vertices.Add(centre + along * halfLength + across);
+            vertices.Add(centre - along * halfLength + across);
+            triangles.AddRange(new[] { first, first + 1, first + 2, first, first + 2, first + 3 });
+            triangles.AddRange(new[] { first, first + 2, first + 1, first, first + 3, first + 2 });
+        }
+
         // Writes each part into an air sample around the centre.
         private void Stamp()
         {
@@ -112,7 +197,7 @@ namespace Clube.Game
             }
             float iso = worldView.Config.IsoLevel;
             Vector3 local = worldView.transform.InverseTransformPoint(transform.position) + Vector3.up * (world.Grid.VoxelSize * 0.5f);
-            Vector3Int origin = world.Grid.WorldToNearestSample(local);
+            origin = world.Grid.WorldToNearestSample(local);
             foreach (Part part in parts)
             {
                 Vector3Int sample = Settle(world, origin + part.Offset, iso);
