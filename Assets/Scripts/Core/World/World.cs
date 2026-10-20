@@ -306,6 +306,39 @@ namespace Clube.Core
             }
         }
 
+        /// <summary>True when the sample meshes as a sharp cube (GL86); false when not loaded.</summary>
+        public bool IsSquare(Vector3Int sample)
+        {
+            Grid.ChunksContainingSample(sample, scratchChunks);
+            foreach (Vector3Int coord in scratchChunks)
+            {
+                if (loaded.TryGetValue(coord, out Chunk chunk))
+                {
+                    return chunk.IsSquare(Grid.GlobalToLocal(sample, coord));
+                }
+            }
+            return false;
+        }
+
+        /// <summary>Marks a sample square or not in every loaded chunk that holds a copy of it (GL86, A7, like <see cref="SetMaterial"/>).</summary>
+        public void SetSquare(Vector3Int sample, bool square)
+        {
+            Grid.ChunksContainingSample(sample, scratchChunks);
+            foreach (Vector3Int coord in scratchChunks)
+            {
+                if (!loaded.TryGetValue(coord, out Chunk chunk))
+                {
+                    continue;
+                }
+                Vector3Int local = Grid.GlobalToLocal(sample, coord);
+                if (chunk.IsSquare(local) != square)
+                {
+                    chunk.SetSquare(local, square);
+                    edited.Add(coord);
+                }
+            }
+        }
+
         /// <summary>
         /// Adds or removes a sphere of terrain across every loaded chunk it reaches (M5).
         /// The brush works on the world as one density field, so it sees across borders

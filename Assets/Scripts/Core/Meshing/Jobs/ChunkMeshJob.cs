@@ -31,6 +31,9 @@ namespace Clube.Core
         [ReadOnly] public NativeArray<byte> Materials;
         public byte UniformMaterial;
 
+        /// <summary>Square marks (GL86): samples meshed as sharp cubes rather than marching cubes; empty when none.</summary>
+        [ReadOnly] public NativeArray<byte> Squares;
+
         public int3 SampleCount;
         public float IsoLevel;
         public float VoxelSize;
@@ -44,6 +47,8 @@ namespace Clube.Core
         public void Execute()
         {
             NativeArray<float> densities = DensityBytes.Length > 0 ? ToFloats(DensityBytes) : Densities;
+            // Square samples are left out of marching cubes (meshed as air) and drawn as cubes after.
+            NativeArray<float> marching = Squares.Length > 0 ? WithoutSquares(densities) : densities;
             var positions = new NativeList<float3>(1024, Allocator.Temp);
             var vertexMaterials = new NativeList<byte>(1024, Allocator.Temp);
             var indices = new NativeList<int>(4096, Allocator.Temp);
@@ -54,11 +59,11 @@ namespace Clube.Core
                 var shared = new SharedVertices { ByEdge = new NativeHashMap<int, int>(1024, Allocator.Temp) };
                 if (midpoint)
                 {
-                    Extract(densities, new MidpointPlacement(), ref shared, ref positions, ref vertexMaterials, ref indices);
+                    Extract(marching, new MidpointPlacement(), ref shared, ref positions, ref vertexMaterials, ref indices);
                 }
                 else
                 {
-                    Extract(densities, new InterpolatedPlacement(), ref shared, ref positions, ref vertexMaterials, ref indices);
+                    Extract(marching, new InterpolatedPlacement(), ref shared, ref positions, ref vertexMaterials, ref indices);
                 }
             }
             else
@@ -66,12 +71,18 @@ namespace Clube.Core
                 var separate = new SeparateVertices();
                 if (midpoint)
                 {
-                    Extract(densities, new MidpointPlacement(), ref separate, ref positions, ref vertexMaterials, ref indices);
+                    Extract(marching, new MidpointPlacement(), ref separate, ref positions, ref vertexMaterials, ref indices);
                 }
                 else
                 {
-                    Extract(densities, new InterpolatedPlacement(), ref separate, ref positions, ref vertexMaterials, ref indices);
+                    Extract(marching, new InterpolatedPlacement(), ref separate, ref positions, ref vertexMaterials, ref indices);
                 }
+            }
+
+            if (Squares.Length > 0)
+            {
+                SquareVoxels.AddCubes(densities, Squares, Materials, UniformMaterial, SampleCount, IsoLevel, VoxelSize,
+                    ref positions, ref vertexMaterials, ref indices);
             }
 
             var normals = new NativeArray<float3>(positions.Length, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
@@ -106,6 +117,19 @@ namespace Clube.Core
             SurfaceExtraction.Extract(
                 densities, Materials, UniformMaterial, SampleCount, IsoLevel, VoxelSize,
                 placement, ref sharing, ref positions, ref vertexMaterials, ref indices);
+        }
+
+        private NativeArray<float> WithoutSquares(NativeArray<float> densities)
+        {
+            var marching = new NativeArray<float>(densities, Allocator.Temp);
+            for (int i = 0; i < marching.Length; i++)
+            {
+                if (Squares[i] != 0)
+                {
+                    marching[i] = 0f;
+                }
+            }
+            return marching;
         }
 
         private static NativeArray<float> ToFloats(NativeArray<byte> bytes)
