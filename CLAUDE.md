@@ -304,7 +304,8 @@ square samples as air except next to plain solid; the managed mesher ignores the
 then cuts away; a level 3 x 3 square top on stone or rock becomes Flat rock (id 20, `FlatTop`,
 `FlatRockCarver`), opened by `StumpWorktops` as `StationKind.FlatRock`. The Cheats section has a debug
 material chunk (`DebugMaterialChunk`). Hidden ore drops as a per-ore copy of "? ore" (`ItemDefinition.Variant`,
-GL90), so each stacks apart and is identified on its own.
+GL90), so each stacks apart and is identified on its own. The journal shows an unknown ore as an outline,
+"Unknown Ore" and the Mining level that discovers it (GL91).
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16

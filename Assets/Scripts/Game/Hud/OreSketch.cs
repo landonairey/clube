@@ -20,24 +20,24 @@ namespace Clube.Game
         private static readonly Dictionary<(VoxelMaterial, bool), Texture2D> Cache = new Dictionary<(VoxelMaterial, bool), Texture2D>();
 
         /// <summary>
-        /// The sketch of an ore, painted the first time it's asked for. Uncoloured (an ore not yet told
-        /// apart, GL77), its speckles are pencilled in grey instead of the ore's colour.
+        /// The sketch of an ore, painted the first time it's asked for. For an ore not yet told apart
+        /// (GL77, GL91) only its outline is drawn: no wash, speckles or hatching.
         /// </summary>
-        public static Texture2D For(VoxelMaterial ore, bool coloured = true)
+        public static Texture2D For(VoxelMaterial ore, bool known = true)
         {
             if (ore == null)
             {
                 return null;
             }
-            if (!Cache.TryGetValue((ore, coloured), out Texture2D texture) || texture == null)
+            if (!Cache.TryGetValue((ore, known), out Texture2D texture) || texture == null)
             {
-                texture = Paint(ore, coloured);
-                Cache[(ore, coloured)] = texture;
+                texture = Paint(ore, known);
+                Cache[(ore, known)] = texture;
             }
             return texture;
         }
 
-        private static Texture2D Paint(VoxelMaterial ore, bool coloured)
+        private static Texture2D Paint(VoxelMaterial ore, bool known)
         {
             var texture = new Texture2D(Width, Height, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, name = $"{ore.DisplayName} sketch" };
             var clear = new Color[Width * Height];
@@ -55,8 +55,26 @@ namespace Clube.Game
                 outline[i] = centre + new Vector2(Mathf.Cos(angle) * 60f, Mathf.Sin(angle) * 40f) * reach;
             }
 
-            // Wash and speckles inside it.
-            Color oreColour = coloured ? ore.DebugColor : new Color(0.42f, 0.42f, 0.44f);
+            if (known)
+            {
+                Shade(texture, outline, centre, ore.DebugColor, random);
+            }
+
+            // The ink outline, a little uneven, as if drawn by hand.
+            for (int i = 0; i < corners; i++)
+            {
+                Vector2 a = outline[i];
+                Vector2 b = outline[(i + 1) % corners];
+                float width = 1.1f + (float)random.NextDouble() * 0.6f;
+                Line(texture, a, b, width, Ink);
+            }
+            texture.Apply();
+            return texture;
+        }
+
+        // Fills the outline in: a grey wash, speckles of the ore's colour and hatching on the shadow side.
+        private static void Shade(Texture2D texture, Vector2[] outline, Vector2 centre, Color oreColour, System.Random random)
+        {
             for (int y = 0; y < Height; y++)
             {
                 for (int x = 0; x < Width; x++)
@@ -90,17 +108,6 @@ namespace Clube.Game
                     Line(texture, from, to, 0.6f, new Color(Ink.r, Ink.g, Ink.b, 0.55f));
                 }
             }
-
-            // The ink outline, a little uneven, as if drawn by hand.
-            for (int i = 0; i < corners; i++)
-            {
-                Vector2 a = outline[i];
-                Vector2 b = outline[(i + 1) % corners];
-                float width = 1.1f + (float)random.NextDouble() * 0.6f;
-                Line(texture, a, b, width, Ink);
-            }
-            texture.Apply();
-            return texture;
         }
 
         // Even-odd test against the outline.

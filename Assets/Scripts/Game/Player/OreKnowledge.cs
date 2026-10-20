@@ -70,6 +70,13 @@ namespace Clube.Game
             return group == null || Reached(group);
         }
 
+        /// <summary>The level of <see cref="Skill"/> at which the player can tell this material apart; 0 when it's never hidden.</summary>
+        public int LevelToKnow(VoxelMaterial material)
+        {
+            HiddenOres group = GroupOf(material);
+            return group != null ? group.Level : 0;
+        }
+
         /// <summary>The names of the groups that show at a level of the skill, e.g. "copper ore".</summary>
         public IEnumerable<string> RevealedAt(SkillType raised, int level)
         {
