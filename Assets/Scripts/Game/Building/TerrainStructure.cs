@@ -120,8 +120,8 @@ namespace Clube.Game
             Destroy(glowMesh);
         }
 
-        // Thin glowing strips on the side of each glowing sample that faces the centre, laid on its
-        // surface where a ray from the centre meets it: two along it at different heights.
+        // Two thin glowing lines on the side of each glowing sample that faces the centre, lying on
+        // its mesh face (AddSurfaceLine) at different heights.
         private void BuildGlow()
         {
             World world = worldView != null ? worldView.World : null;
@@ -150,12 +150,10 @@ namespace Clube.Game
                 {
                     surface = centre + toLog * 0.6f;
                 }
-                Vector3 inward = transform.InverseTransformDirection(-toLog.normalized);
-                Vector3 along = Vector3.Cross(Vector3.up, inward).normalized;
-                // Just off the surface, towards the fire.
-                Vector3 face = transform.InverseTransformPoint(surface) + inward * 0.012f;
-                AddStrip(vertices, triangles, face + Vector3.down * (voxel * 0.15f), along, voxel * 0.45f, inward);
-                AddStrip(vertices, triangles, face + Vector3.up * (voxel * 0.1f), along, voxel * 0.3f, inward);
+                Vector3 outward = -toLog.normalized;
+                Vector3 along = Vector3.Cross(Vector3.up, outward).normalized;
+                AddSurfaceLine(vertices, triangles, surface + Vector3.down * (voxel * 0.08f), along, voxel * 0.8f, outward, voxel * 0.4f);
+                AddSurfaceLine(vertices, triangles, surface + Vector3.up * (voxel * 0.12f), along, voxel * 0.5f, outward, voxel * 0.4f);
             }
             if (vertices.Count == 0)
             {
@@ -173,18 +171,50 @@ namespace Clube.Game
             meshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
-        // A thin flat strip centred on a point, half a length each way along a direction, facing out.
-        private static void AddStrip(List<Vector3> vertices, List<int> triangles, Vector3 centre, Vector3 along, float halfLength, Vector3 facing)
+        private static readonly List<Vector3> LinePoints = new List<Vector3>();
+
+        // A glowing line lying on the terrain's face: points along it (world space) are each cast
+        // onto the surface from the fire's side, a little way out, and joined, so the line bends with
+        // the mesh. Where a cast misses, the line breaks there.
+        private void AddSurfaceLine(List<Vector3> vertices, List<int> triangles, Vector3 middle, Vector3 along, float length, Vector3 outward, float reach)
         {
-            const float halfWidth = 0.014f;
-            Vector3 across = Vector3.Cross(along, facing).normalized * halfWidth;
-            int first = vertices.Count;
-            vertices.Add(centre - along * halfLength - across);
-            vertices.Add(centre + along * halfLength - across);
-            vertices.Add(centre + along * halfLength + across);
-            vertices.Add(centre - along * halfLength + across);
-            triangles.AddRange(new[] { first, first + 1, first + 2, first, first + 2, first + 3 });
-            triangles.AddRange(new[] { first, first + 2, first + 1, first, first + 3, first + 2 });
+            const int points = 9;
+            LinePoints.Clear();
+            for (int i = 0; i < points; i++)
+            {
+                Vector3 onLine = middle + along * (length * (i / (points - 1f) - 0.5f));
+                Vector3 from = onLine + outward * reach;
+                if (worldView.Raycast(new Ray(from, -outward), out Vector3 hit) && (hit - from).sqrMagnitude <= 4f * reach * reach)
+                {
+                    // A hair off the face, so it draws over it.
+                    LinePoints.Add(transform.InverseTransformPoint(hit + outward * 0.004f));
+                }
+                else
+                {
+                    AddPolyline(vertices, triangles, transform.InverseTransformDirection(outward));
+                    LinePoints.Clear();
+                }
+            }
+            AddPolyline(vertices, triangles, transform.InverseTransformDirection(outward));
+        }
+
+        // LinePoints joined by thin flat strips facing out, drawn from both sides.
+        private static void AddPolyline(List<Vector3> vertices, List<int> triangles, Vector3 facing)
+        {
+            const float halfWidth = 0.012f;
+            for (int i = 1; i < LinePoints.Count; i++)
+            {
+                Vector3 a = LinePoints[i - 1];
+                Vector3 b = LinePoints[i];
+                Vector3 across = Vector3.Cross(b - a, facing).normalized * halfWidth;
+                int first = vertices.Count;
+                vertices.Add(a - across);
+                vertices.Add(b - across);
+                vertices.Add(b + across);
+                vertices.Add(a + across);
+                triangles.AddRange(new[] { first, first + 1, first + 2, first, first + 2, first + 3 });
+                triangles.AddRange(new[] { first, first + 2, first + 1, first, first + 3, first + 2 });
+            }
         }
 
         // Writes each part into an air sample around the centre.
