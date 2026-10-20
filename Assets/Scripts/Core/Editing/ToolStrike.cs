@@ -170,7 +170,7 @@ namespace Clube.Core
         }
 
         // What a material gives removed whole: the drop of the last stage of its break chain, or its own.
-        private static ItemDefinition FinalDrop(VoxelMaterial material)
+        internal static ItemDefinition FinalDrop(VoxelMaterial material)
         {
             if (material == null)
             {

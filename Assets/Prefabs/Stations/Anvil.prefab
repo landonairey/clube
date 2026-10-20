@@ -135,4 +135,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d5757a95246d5f24fbf5cfc4a251f193, type: 2}
   - {fileID: 11400000, guid: ff5cad5b532da5a45ad24d552fdd7b14, type: 2}
   - {fileID: 11400000, guid: d7758b283598e0c47b61077fe954c5f2, type: 2}
+  - {fileID: 11400000, guid: 93335b56b11b0cb489c9f465423b699a, type: 2}
   burnsFuel: 0

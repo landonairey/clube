@@ -5,14 +5,24 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// Makes worktop terrain (<see cref="VoxelMaterial.IsWorktop"/>, a tree's stump, GL36) usable
-    /// like a station. The stump is only terrain data, so when <see cref="PlayerInteractor"/> aims
+    /// Makes worktop terrain (<see cref="VoxelMaterial.IsWorktop"/>: a tree's stump, GL36, or Flat Rock
+    /// chiselled from a surface rock, GL88) usable like a station. A worktop is only terrain data, so when <see cref="PlayerInteractor"/> aims
     /// at a chunk's surface this finds the worktop samples there, takes the connected piece as
     /// one stump, and hands back a <see cref="StationObject"/> made for it the first time. The
     /// station keeps what's been put on it for as long as the game runs.
     /// </summary>
     public class StumpWorktops : MonoBehaviour
     {
+        /// <summary>A worktop material other than the stump, with its own name and recipes (GL88).</summary>
+        [System.Serializable]
+        public class Kind
+        {
+            public VoxelMaterial Material;
+            public string Name = "Flat Rock";
+            public StationKind Station = StationKind.FlatRock;
+            public List<Recipe> Recipes = new List<Recipe>();
+        }
+
         // The largest stump looked at, in samples; a safety stop for the search.
         private const int MaxSamples = 4096;
 
@@ -21,6 +31,10 @@ namespace Clube.Game
         [Tooltip("What can be made at a stump.")]
         [SerializeField]
         private List<Recipe> recipes = new List<Recipe>();
+
+        [Tooltip("Other worktop materials (Flat Rock, GL88): what each is called and what can be made at it. Any other worktop is a stump.")]
+        [SerializeField]
+        private List<Kind> kinds = new List<Kind>();
 
         private readonly Dictionary<Vector3Int, StationObject> stations = new Dictionary<Vector3Int, StationObject>();
         private readonly HashSet<Vector3Int> seen = new HashSet<Vector3Int>();
@@ -77,14 +91,34 @@ namespace Clube.Game
             Vector3Int key = LowestSample(world, registry, view.Config.IsoLevel, start);
             if (!stations.TryGetValue(key, out StationObject station) || station == null)
             {
-                var made = new GameObject("Stump worktop");
+                Kind kind = KindOf(world.GetMaterial(key));
+                var made = new GameObject(kind != null ? kind.Name + " worktop" : "Stump worktop");
                 made.transform.SetParent(transform, false);
                 made.transform.position = view.transform.TransformPoint(world.Grid.SampleToWorld(key));
                 station = made.AddComponent<StationObject>();
-                station.Configure("Stump", StationKind.Worktop, recipes);
+                if (kind != null)
+                {
+                    station.Configure(kind.Name, kind.Station, kind.Recipes);
+                }
+                else
+                {
+                    station.Configure("Stump", StationKind.Worktop, recipes);
+                }
                 stations[key] = station;
             }
             return station;
+        }
+
+        private Kind KindOf(byte? material)
+        {
+            foreach (Kind kind in kinds)
+            {
+                if (kind.Material != null && material.HasValue && kind.Material.Id == material.Value)
+                {
+                    return kind;
+                }
+            }
+            return null;
         }
 
         // The connected piece of worktop samples is one stump; its lowest sample names it.
