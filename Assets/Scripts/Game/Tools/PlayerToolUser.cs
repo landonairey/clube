@@ -82,8 +82,8 @@ namespace Clube.Game
         /// a placeable item is selected (the hands are carrying it, GL23).
         /// </summary>
         public ToolDefinition Current => hotbar == null ? hand
-            : hotbar.SelectedStack.Item is ToolDefinition tool ? tool
             : hotbar.SelectedStack.Item is PlaceableDefinition ? null
+            : hotbar.ToolStack.Item is ToolDefinition tool ? tool
             : hand;
 
         /// <summary>How hits take the ground (GL96); the lab panel switches it in play.</summary>
@@ -317,7 +317,7 @@ namespace Clube.Game
         // Each swing wears the held tool (GL37); the hand never breaks.
         private void WearTool(ToolDefinition tool)
         {
-            if (hotbar == null || tool.MaxHits <= 0 || hotbar.SelectedStack.Item != tool)
+            if (hotbar == null || tool.MaxHits <= 0 || hotbar.ToolStack.Item != tool)
             {
                 return;
             }
@@ -351,8 +351,8 @@ namespace Clube.Game
                 return;
             }
             var centre = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-            string wear = tool.MaxHits > 0 && hotbar != null && hotbar.SelectedStack.Item == tool
-                ? $" ({tool.MaxHits - hotbar.SelectedStack.Wear}/{tool.MaxHits})"
+            string wear = tool.MaxHits > 0 && hotbar != null && hotbar.ToolStack.Item == tool
+                ? $" ({tool.MaxHits - hotbar.ToolStack.Wear}/{tool.MaxHits})"
                 : "";
             GUI.Label(new Rect(centre.x + 12f, centre.y + 12f, 220f, 20f), tool.DisplayName + wear);
         }

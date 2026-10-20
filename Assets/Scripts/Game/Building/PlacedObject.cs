@@ -12,6 +12,9 @@ namespace Clube.Game
         /// <summary>The item it was placed from, and turns back into.</summary>
         public PlaceableDefinition Item { get; set; }
 
+        /// <summary>What it was made of (GL100), given back with it when it's picked up; null when made of pure items.</summary>
+        public Composition Contents { get; set; }
+
         /// <summary>
         /// Puts the item, and anything a station holds, into an inventory and removes the object.
         /// False, changing nothing, when they wouldn't all fit.
@@ -38,7 +41,7 @@ namespace Clube.Game
             {
                 structure.Clear();
             }
-            inventory.Add(Item);
+            inventory.Add(Item, 1, Contents);
             Destroy(gameObject);
             return true;
         }

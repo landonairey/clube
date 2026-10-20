@@ -132,6 +132,23 @@ namespace Clube.Core
         /// </summary>
         public VoxelMaterial BreaksInto => breaksInto;
 
+        /// <summary>What it gives removed whole: the drop of the last stage of its break chain, or its own (loose stone gives stone).</summary>
+        public ItemDefinition FinalDrop
+        {
+            get
+            {
+                ItemDefinition drop = Drop;
+                for (VoxelMaterial stage = breaksInto; stage != null && stage != this; stage = stage.breaksInto)
+                {
+                    if (stage.Drop != null)
+                    {
+                        drop = stage.Drop;
+                    }
+                }
+                return drop;
+            }
+        }
+
         /// <summary>True when the player can work at it where it stands (GL36), like a stump.</summary>
         public bool IsWorktop => isWorktop;
 

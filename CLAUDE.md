@@ -316,7 +316,11 @@ mode (`CollectingSettings`: voxel hits, or an area-of-impact sphere that lowers 
 Fifteenth pass (GL97-GL105, `Docs/20261020e clube-backlog.md`): dropped stone (Loose stone) is cobbles; the furnaces are
 `TerrainStructure`s like the campfire, about 2.1 m tall (*Clube → Models → Build furnaces*, `FurnaceStructures`): Stone
 furnace of cobbles, Clay furnace hotter (`StationObject.heat` → `CraftingStation.Heat`). Structures turn with the
-placed object. GL99-GL105 (a volume inventory and mixing by volume) are next.
+placed object. The volume inventory (GL99-GL103, the default; the classic one stays switchable): a tool slot, a
+volume slot (`VolumeMix`, `MixSlotGui`) that every mined sample goes into, and 3 item slots (`PlayerInventory`; `Hotbar`
+cells map to slots). Recipes take a cut of the mix (`CraftingStation.LoadFromMix`, minimum share); what's built keeps
+its contents and works at its material's share (`MaterialRegistry.Quality`, `StationObject.MadeOf`); Drop pours from
+the mix by weighted random. Terrain materials meet in hard edges (`_HardMaterialEdges`). GL104 is part done.
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16

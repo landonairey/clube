@@ -110,12 +110,12 @@ namespace Clube.Game
             };
         }
 
-        private static Rect Inset(Rect rect, float by)
+        internal static Rect Inset(Rect rect, float by)
         {
             return new Rect(rect.x + by, rect.y + by, rect.width - by * 2f, rect.height - by * 2f);
         }
 
-        private static void Fill(Rect rect, Color color)
+        internal static void Fill(Rect rect, Color color)
         {
             Color previous = GUI.color;
             GUI.color = color;
@@ -123,7 +123,7 @@ namespace Clube.Game
             GUI.color = previous;
         }
 
-        private static void Outline(Rect rect, Color color, float width)
+        internal static void Outline(Rect rect, Color color, float width)
         {
             Fill(new Rect(rect.x, rect.y, rect.width, width), color);
             Fill(new Rect(rect.x, rect.yMax - width, rect.width, width), color);

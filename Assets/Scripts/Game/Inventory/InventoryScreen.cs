@@ -92,13 +92,21 @@ namespace Clube.Game
 
             Inventory items = inventory.Inventory;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
-            float height = Padding * 2f + 24f + InventoryGridGui.PlayerHeight(inventory);
+            float mixRow = inventory.UsesVolume ? 22f : 0f;
+            float height = Padding * 2f + 24f + mixRow + InventoryGridGui.PlayerHeight(inventory);
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
-            GUI.Label(new Rect(panel.x + Padding, panel.y + Padding, width - Padding * 2f, 20f),
-                "Inventory (Tab to close): click to send to the hotbar or back, drag to place");
+            string title = inventory.UsesVolume
+                ? "Inventory (Tab to close): tool slot, then items; click a tool to equip it, drag to place"
+                : "Inventory (Tab to close): click to send to the hotbar or back, drag to place";
+            GUI.Label(new Rect(panel.x + Padding, panel.y + Padding, width - Padding * 2f, 20f), title);
+            if (inventory.UsesVolume)
+            {
+                // The volume slot (GL99): what the mix holds.
+                GUI.Label(new Rect(panel.x + Padding, panel.y + Padding + 22f, width - Padding * 2f, 20f), MixSlotGui.Describe(inventory.Mix));
+            }
 
-            var gridTopLeft = new Vector2(panel.x + Padding, panel.y + Padding + 24f);
+            var gridTopLeft = new Vector2(panel.x + Padding, panel.y + Padding + 24f + mixRow);
             HandleMouse(items, gridTopLeft);
             InventoryGridGui.DrawPlayer(gridTopLeft, inventory, pressed);
             if (dragging && pressed >= 0 && !items[pressed].IsEmpty)
@@ -155,6 +163,18 @@ namespace Clube.Game
                         if (over >= 0)
                         {
                             items.Move(pressed, over);
+                        }
+                    }
+                    else if (over == pressed && inventory.UsesVolume)
+                    {
+                        // The volume inventory (GL99): a click equips a tool, or puts the equipped one away.
+                        if (pressed == PlayerInventory.ToolSlot)
+                        {
+                            items.MoveInto(pressed, 1, items.SlotCount);
+                        }
+                        else if (items[pressed].Item is ToolDefinition)
+                        {
+                            items.Move(pressed, PlayerInventory.ToolSlot);
                         }
                     }
                     else if (over == pressed)

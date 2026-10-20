@@ -60,6 +60,9 @@ namespace Clube.Game
         private WorldView worldView;
         private float nextCheck;
 
+        /// <summary>What it's mostly built of: its first part's material (the furnace's cobbles or clay).</summary>
+        public VoxelMaterial MainMaterial => parts.Count > 0 ? parts[0].Material : null;
+
         /// <summary>The samples it wrote into the terrain.</summary>
         public IReadOnlyList<Vector3Int> Stamped => stamped;
 

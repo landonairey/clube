@@ -43,6 +43,21 @@ namespace Clube.Game
         /// <summary>How hot it works (GL98); 1 for a stone furnace.</summary>
         public float Heat => heat;
 
+        /// <summary>How well it was built (GL100): the share of what it's made of that's its own material, 0-1; 1 when made of pure items.</summary>
+        public float Quality { get; private set; } = 1f;
+
+        /// <summary>
+        /// Sets what it was built from (GL100): a structure (a furnace) made of a mix works only as well
+        /// as the share of its own material in it, so a clay furnace of 76% clay works at 76% of its heat.
+        /// </summary>
+        public void MadeOf(Composition contents, MaterialRegistry materials)
+        {
+            var structure = GetComponent<TerrainStructure>();
+            VoxelMaterial material = structure != null ? structure.MainMaterial : null;
+            Quality = materials != null && material != null ? Mathf.Clamp01(materials.Quality(contents, material.FinalDrop)) : 1f;
+            Station.Heat = heat * Quality;
+        }
+
         public string Prompt => $"Use {displayName.ToLowerInvariant()}";
 
         private void Awake()

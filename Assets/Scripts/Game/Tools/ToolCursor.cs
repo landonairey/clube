@@ -47,6 +47,10 @@ namespace Clube.Game
         [SerializeField]
         private ToolCursorStyle style = ToolCursorStyle.Dot;
 
+        [Tooltip("Terrain materials meet in sharp edges halfway between samples instead of blending (GL102), so it's clear what a hit takes.")]
+        [SerializeField]
+        private bool hardMaterialEdges = true;
+
         [Tooltip("The voxel outline's colour (Dot and outline).")]
         [SerializeField]
         private Color outlineColor = new Color(0f, 0f, 0f, 0.85f);
@@ -72,12 +76,20 @@ namespace Clube.Game
         private GameObject markers;
         private UnityEngine.Mesh mesh;
         private Material throughGround;
+        private static readonly int HardEdgesId = Shader.PropertyToID("_HardMaterialEdges");
 
         /// <summary>How the cursor shows what a hit reaches (GL95); the lab panel switches it in play.</summary>
         public ToolCursorStyle Style
         {
             get => style;
             set => style = value;
+        }
+
+        /// <summary>Whether terrain materials meet in sharp edges (GL102); the lab panel switches it.</summary>
+        public bool HardMaterialEdges
+        {
+            get => hardMaterialEdges;
+            set => hardMaterialEdges = value;
         }
 
         /// <summary>True when the crosshair should be a small dot rather than a cross (GL95).</summary>
@@ -114,11 +126,13 @@ namespace Clube.Game
             Destroy(markers);
             Destroy(mesh);
             Destroy(throughGround);
+            Shader.SetGlobalFloat(HardEdgesId, 0f);
         }
 
         // After the tool user's Update has found this frame's reach.
         private void LateUpdate()
         {
+            Shader.SetGlobalFloat(HardEdgesId, hardMaterialEdges ? 1f : 0f);
             WorldView view = tools.WorldView;
             bool show = material != null && tools.Current != null && tools.HasReach
                 && (style != ToolCursorStyle.Dot || tools.Current.Chisels) && tools.Targets.Count > 0 && view != null && view.IsReady;

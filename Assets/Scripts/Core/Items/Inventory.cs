@@ -24,6 +24,12 @@ namespace Clube.Core
         /// <summary>Raised after any change to the contents.</summary>
         public event Action Changed;
 
+        /// <summary>
+        /// Which items a slot takes (GL99: the volume inventory's tool slot takes only tools); null, or
+        /// true for every slot and item, for an inventory any item goes anywhere in. Adding and moving keep to it.
+        /// </summary>
+        public Func<int, ItemDefinition, bool> Accepts { get; set; }
+
         public int SlotCount => slots.Length;
 
         public ItemStack this[int slot] => slots[slot];
@@ -43,7 +49,7 @@ namespace Clube.Core
             int left = count;
             for (int i = 0; i < slots.Length && left > 0; i++)
             {
-                if (slots[i].Item == item && slots[i].Space > 0)
+                if (slots[i].Item == item && slots[i].Space > 0 && Fits(i, item))
                 {
                     int moved = Math.Min(left, slots[i].Space);
                     slots[i] = TopUp(slots[i], moved, contents);
@@ -52,7 +58,7 @@ namespace Clube.Core
             }
             for (int i = 0; i < slots.Length && left > 0; i++)
             {
-                if (slots[i].IsEmpty)
+                if (slots[i].IsEmpty && Fits(i, item))
                 {
                     int moved = Math.Min(left, item.MaxStack);
                     slots[i] = new ItemStack(item, moved, contents, wear);
@@ -181,7 +187,7 @@ namespace Clube.Core
         /// </summary>
         public void Move(int from, int to)
         {
-            if (from == to || slots[from].IsEmpty)
+            if (from == to || slots[from].IsEmpty || !Fits(to, slots[from].Item))
             {
                 return;
             }
@@ -192,9 +198,13 @@ namespace Clube.Core
                 slots[to] = TopUp(slots[to], moved, slots[from].Contents);
                 slots[from] = slots[from].WithCount(slots[from].Count - moved);
             }
-            else
+            else if (Fits(from, slots[to].Item))
             {
                 (slots[from], slots[to]) = (slots[to], slots[from]);
+            }
+            else
+            {
+                return;
             }
             Changed?.Invoke();
         }
@@ -249,7 +259,7 @@ namespace Clube.Core
             int left = stack.Count;
             for (int slot = start; slot < end && left > 0; slot++)
             {
-                if (slot != from && slots[slot].Item == stack.Item && slots[slot].Space > 0)
+                if (slot != from && slots[slot].Item == stack.Item && slots[slot].Space > 0 && Fits(slot, stack.Item))
                 {
                     int moved = Math.Min(left, slots[slot].Space);
                     slots[slot] = TopUp(slots[slot], moved, stack.Contents);
@@ -258,7 +268,7 @@ namespace Clube.Core
             }
             for (int slot = start; slot < end && left > 0; slot++)
             {
-                if (slot != from && slots[slot].IsEmpty)
+                if (slot != from && slots[slot].IsEmpty && Fits(slot, stack.Item))
                 {
                     slots[slot] = new ItemStack(stack.Item, left, stack.Contents, stack.Wear);
                     left = 0;
@@ -271,6 +281,11 @@ namespace Clube.Core
                 Changed?.Invoke();
             }
             return total;
+        }
+
+        private bool Fits(int slot, ItemDefinition item)
+        {
+            return Accepts == null || item == null || Accepts(slot, item);
         }
 
         // A stack with more of its item on top, the contents blended by volume (GL32).
