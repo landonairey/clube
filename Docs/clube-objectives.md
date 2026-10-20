@@ -451,14 +451,14 @@ Looks, the inventory, and knowing the ores.
 ### Twelfth pass *(added 2026-10-19, from `Docs/20261019c clube-backlog.md` — next)*
 Keys, cleaner digging, crafting fixes, building rules, and a campfire made of the ground.
 
-- [ ] **GL78** `Lab + Game` F3 hides the lab's FPS and position box; the key sheet lists F2 (lab panel) and F3 in the labs.
-- [ ] **GL79** `Core + Game` No floating slivers *(refines GL25's pieces)*: after a hit, any small piece of solid ground left with no connection to the rest near the hit (a few samples floating in the air) is removed too and collected.
-- [ ] **GL80** `Core + Game` Click a recipe to load it: picking a recipe at a station moves one batch of its ingredients from the player's inventory into the input slots; loading by hand still works.
-- [ ] **GL81** `Core` The best-matching recipe *(fixes ML1's default)*: with nothing picked, the recipe that uses the most of what's loaded starts (sticks and stone make a stone pick, not a pointy stick).
-- [ ] **GL82** `Config` Stone pick icon: a stick handle with a stone head coming off the right side only.
-- [ ] **GL83** `Game` Stations can't be placed on a stump (or any worktop).
-- [ ] **GL84** `Game` Building on slopes: the build grid patch and preview stay level, floating at the placement height, instead of running up a wall; on ground steeper than allowed the preview turns red and can't be placed. Flat ground works as before.
-- [ ] **GL85** `Core + Game + Config` A campfire made of the ground *(first pass of PK17's built structures)*: placing a campfire stamps a ring of stone and crossed wood into the terrain, with a warm glow at its centre, and that arrangement works as the campfire. Mining any of its stone or wood breaks it back into plain ground. A campfire mined away yields less stone and wood than it cost.
+- [x] **GL78** `Lab + Game` F3 hides the lab's FPS and position box; the key sheet lists F2 (lab panel) and F3 in the labs.
+- [x] **GL79** `Core + Game` No floating slivers *(refines GL25's pieces)*: after a hit, any small piece of solid ground left with no connection to the rest near the hit (a few samples floating in the air) is removed too and collected. *(Done: `ToolStrike` checks the 26 samples around each one a hit removes; a solid piece of 3 or fewer joined to nothing else is removed and collected.)*
+- [x] **GL80** `Core + Game` Click a recipe to load it: picking a recipe at a station moves one batch of its ingredients from the player's inventory into the input slots; loading by hand still works. *(Done: `CraftingStation.LoadFor`, `Inventory.MoveItemTo`; every unlocked recipe row is a button.)*
+- [x] **GL81** `Core` The best-matching recipe *(fixes ML1's default)*: with nothing picked, the recipe that uses the most of what's loaded starts (sticks and stone make a stone pick, not a pointy stick). *(Done: most different inputs, then most items; ties go to the first listed.)*
+- [x] **GL82** `Config` Stone pick icon: a stick handle with a stone head coming off the right side only.
+- [x] **GL83** `Game` Stations can't be placed on a stump (or any worktop).
+- [x] **GL84** `Game` Building on slopes: the build grid patch and preview stay level, floating at the placement height, instead of running up a wall; on ground steeper than allowed the preview turns red and can't be placed. Flat ground works as before. *(Done: steep when the ground rises more than 0.5 m across the cell (`PlayerBuilder.maxRise`); `BuildGridDisplay.ShowFloating`.)*
+- [x] **GL85** `Core + Game + Config` A campfire made of the ground *(first pass of PK17's built structures)*: placing a campfire stamps a ring of stone and crossed wood into the terrain, with a warm glow at its centre, and that arrangement works as the campfire. Mining any of its stone or wood breaks it back into plain ground. A campfire mined away yields less stone and wood than it cost. *(Done: `TerrainStructure` writes 6 stone and 3 wood samples (density 0.8, each settled onto the ground in its column), checks they still stand 4 times a second, and hands a broken station's contents to the player; the prefab keeps the old model only for the build preview, an ember bed and a point light. The recipe is now 4 wood + 8 stone.)*
 
 
 ---
