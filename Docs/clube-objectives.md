@@ -460,6 +460,14 @@ Keys, cleaner digging, crafting fixes, building rules, and a campfire made of th
 - [x] **GL84** `Game` Building on slopes: the build grid patch and preview stay level, floating at the placement height, instead of running up a wall; on ground steeper than allowed the preview turns red and can't be placed. Flat ground works as before. *(Done: steep when the ground rises more than 0.5 m across the cell (`PlayerBuilder.maxRise`); `BuildGridDisplay.ShowFloating`.)*
 - [x] **GL85** `Core + Game + Config` A campfire made of the ground *(first pass of PK17's built structures)*: placing a campfire stamps a ring of stone and crossed wood into the terrain, with a warm glow at its centre, and that arrangement works as the campfire. Mining any of its stone or wood breaks it back into plain ground. A campfire mined away yields less stone and wood than it cost. *(Done: `TerrainStructure` writes 6 stone and 3 wood samples (density 0.8, each settled onto the ground in its column), checks they still stand 4 times a second, and hands a broken station's contents to the player; the prefab keeps the old model only for the build preview, an ember bed and a point light. The recipe is now 4 wood + 8 stone.)*
 
+### Thirteenth pass *(added 2026-10-19, from `Docs/20261019d clube-backlog.md` — next)*
+The chisel and square voxels, and the first stone worktop.
+
+- [ ] **GL86** `Core` Square voxels in the terrain *(first pass of MX2)*: a sample can be marked square; the chunk's mesh then shows it as a sharp cube of one voxel around the sample, while the rest of the chunk stays marching cubes. Marching cubes treats square samples as air, so its surface meets the cubes at the half-voxel planes between samples. Square marks are kept per chunk only once something is chiselled, copied across chunk borders like materials, and cleared when the sample is dug out.
+- [ ] **GL87** `Core + Game + Config` Bronze chisel *(first pass of TL2's chisel; SK8 later)*: made at the anvil from a bronze ingot and a stick. A hit squares the solid samples it reaches (any material); a hit on samples already square cuts them away and collects them, so a rounded lump can be carved into blocks.
+- [ ] **GL88** `Core + Game + Config` The Flat Rock *(first pass of WS1's large stone)*: chiselling a flat, level top of at least 3 × 3 square samples onto a surface rock turns that top into Flat Rock, a worktop like the stump: the player uses it where it stands, to hammer metal more slowly than at the anvil and to work stone.
+- [ ] **GL89** `Lab` Debug material chunk: a cheat that levels a square of ground at the player and pours a pile of every material item onto it, to see and test them side by side.
+
 
 ---
 
