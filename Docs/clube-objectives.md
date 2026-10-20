@@ -431,6 +431,20 @@ Fixes and comforts after playing the beginning path.
 - [x] **GL63** `Config` Bronze tools *(first pass of ML4's bronze tools, CR3)*: a bronze pick, hatchet and shovel, hammered at the anvil from bronze ingots and a stick, unlocked by crafting level; stronger and longer-lasting than stone, below the merchant's iron tools. *(Done: 2 bronze ingots + 1 stick, 8 strikes, Crafting 4. Pick: 2x2x2 on hard ground, 1 hit on stone, ore and clay, 300 swings; hatchet: 2x2x2 on wood, 300; shovel: 3x3x3 on soft ground, 200. The merchant pays 70, 70 and 60.)*
 - [ ] **GL64** `Game` A smaller inventory *(to be specified: "reduced, like what we added to the dev tracker for next steps")*.
 
+### Eleventh pass *(added 2026-10-19, from `Docs/20261019b clube-backlog.md` — next)*
+Looks, the inventory, and knowing the ores.
+
+- [ ] **GL65** `Shader` Break up the terrain's tiling: the material textures stop repeating visibly (each texture sampled twice at different scales and rotations, mixed by low-frequency noise, with a slight tint variation).
+- [ ] **GL66** `Scene` A dawn sky *(first look at PK4)*: a skybox with the sun low over the horizon, and the sun light matching it, in the world labs.
+- [ ] **GL67** `Core + Rendering` Low-poly grass *(first pass of PK7's plants)*: small 3D grass tufts stand on upward-facing grass ground near the player, scattered per chunk from the seed, and go when the grass is dug away.
+- [ ] **GL68** `Game` Instant pickup *(refines GL59)*: a made tool shows in the output slot for a single frame, then moves to the inventory.
+- [ ] **GL69** `Config` Malachite looks green: its item icon is its own, not chalcopyrite's.
+- [ ] **GL70** `Game` Ore readout: the item tooltip lists the name and count, the volume, then one line per component and its share.
+- [ ] **GL71** `Game` Moving items *(first pass of N2's drag and drop)*: in the inventory screen, clicking a backpack item moves it to the first open hotbar slot, and a hotbar item to the first open backpack slot; holding and dragging puts an item in a chosen slot, swapping with what's there, or stacking onto the same item up to a full stack and leaving the rest where it came from.
+- [ ] **GL72** `Game + Config` Silver and gold hidden *(refines GL54)*: like the copper ores, silver and gold look like stone and drop as "? ore" until higher mining levels.
+- [ ] **GL73** `Core + Game` Mining journal *(first pass of PS-style knowledge, ties to PS6)*: Q opens a field journal on graph paper, three ores to a page. An ore's entry is blank until it's discovered (mined while known); then it shows a hand sketch (black ink outline, speckles in the ore's colour) and notes: the depth it was first found at, its grade, hardness, luster, colour, feel, and its crafting uses once those recipes have been made.
+- [ ] **GL74** `Lab` Why the Ores dropdown in the lab panel opens slowly (asked 2026-10-19): find out and fix it if it's cheap.
+
 
 ---
 
