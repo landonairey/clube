@@ -1331,6 +1331,7 @@ MonoBehaviour:
   blockedColor: {r: 1, g: 0.3, b: 0.25, a: 0.35}
   reach: 6
   holdSeconds: 0.5
+  maxRise: 0.5
 --- !u!114 &1697135579
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1347,6 +1348,8 @@ MonoBehaviour:
   lineWidth: 1.5
   opacity: 0.9
   color: {r: 0.55, g: 0.95, b: 1, a: 1}
+  blockedColor: {r: 1, g: 0.3, b: 0.25, a: 1}
+  hologramMaterial: {fileID: 2100000, guid: 7306c3d226f246045a04b0c391c5dfd0, type: 2}
 --- !u!114 &1697135580
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1412,6 +1415,8 @@ MonoBehaviour:
     Keys: 
   extraLines:
   - P  Fly camera (lab)
+  - F2  Lab panel (lab)
+  - F3  FPS box (lab)
   shown: 1
 --- !u!114 &1697135581
 MonoBehaviour:

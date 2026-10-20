@@ -24,6 +24,7 @@ namespace Clube.Debug.Editor
             Save("Anvil", Anvil());
             Save("Merchant Table", MerchantTable());
             Save("Campfire", Campfire());
+            Save("Campfire embers", CampfireEmbers());
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Built station models in {Folder}.");
         }
@@ -97,6 +98,21 @@ namespace Clube.Debug.Editor
                     new Vector3(0.6f, 0.09f, 0.09f), Quaternion.Euler(0f, yaw, 32f));
             }
             return model.Build("Campfire");
+        }
+
+        // One submesh, embers: the glowing bed of a campfire built from the ground (GL85), whose
+        // stones and logs are terrain; a low mound with a few coals on it.
+        private static Mesh CampfireEmbers()
+        {
+            var model = new ModelBuilder(1);
+            model.Loft(0, 0f, new Vector2(0.5f, 0.5f), 0.07f, new Vector2(0.34f, 0.34f));
+            for (int i = 0; i < 5; i++)
+            {
+                float angle = i * Mathf.PI * 2f / 5f + 0.4f;
+                var at = new Vector3(Mathf.Cos(angle) * 0.12f, 0.09f, Mathf.Sin(angle) * 0.12f);
+                model.Box(0, at, new Vector3(0.09f, 0.05f, 0.07f), Quaternion.Euler(0f, angle * Mathf.Rad2Deg * 1.7f, 0f));
+            }
+            return model.Build("Campfire embers");
         }
 
         private static void Save(string name, Mesh mesh)

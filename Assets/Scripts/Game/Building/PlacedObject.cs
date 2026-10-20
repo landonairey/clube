@@ -32,6 +32,12 @@ namespace Clube.Game
                     MoveAll(station.Station.Fuel, inventory);
                 }
             }
+            // A structure built from the ground takes its samples back out with it (GL85).
+            var structure = GetComponent<TerrainStructure>();
+            if (structure != null)
+            {
+                structure.Clear();
+            }
             inventory.Add(Item);
             Destroy(gameObject);
             return true;
