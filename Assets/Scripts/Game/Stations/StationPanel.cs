@@ -30,12 +30,8 @@ namespace Clube.Game
         [SerializeField, Min(1f)]
         private float closeDistance = 5f;
 
-        [Tooltip("Seconds a made tool or station shows in the output slot before it moves to the inventory (GL59).")]
-        [SerializeField, Min(0f)]
-        private float collectDelay = 0.6f;
-
         private PlayerInventory inventory;
-        private float madeSince = -1f;
+        private int madeFrame = -1;
         private PlayerController player;
         private int openedFrame;
         private GUIStyle recipeStyle;
@@ -98,21 +94,21 @@ namespace Clube.Game
             {
                 return;
             }
-            // A made tool or station shows in the output slot for a moment, then moves to the
-            // inventory (GL59).
+            // A made tool or station shows in the output slot for one frame, then moves to the
+            // inventory (GL59, GL68).
             ItemStack made = Current.Station.Output[0];
             if (made.IsEmpty || made.Item.MaxStack > 1)
             {
-                madeSince = -1f;
+                madeFrame = -1;
             }
-            else if (madeSince < 0f)
+            else if (madeFrame < 0)
             {
-                madeSince = Time.unscaledTime;
+                madeFrame = Time.frameCount;
             }
-            else if (Time.unscaledTime - madeSince >= collectDelay)
+            else if (Time.frameCount > madeFrame)
             {
                 CollectUnstackable(Current.Station);
-                madeSince = -1f;
+                madeFrame = -1;
             }
             // The press that opened the panel mustn't close it in the same frame.
             bool closePressed = Time.frameCount != openedFrame && closeAction != null && closeAction.action.WasPressedThisFrame();
