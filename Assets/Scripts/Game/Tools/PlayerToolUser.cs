@@ -43,7 +43,12 @@ namespace Clube.Game
         [SerializeField, Min(0f)]
         private float reach = 4f;
 
+        [Tooltip("The collecting test (GL96): how a hit takes the ground, and the sphere modes' sizes and amounts.")]
+        [SerializeField]
+        private CollectingSettings collecting = new CollectingSettings();
+
         private readonly List<Vector3Int> targets = new List<Vector3Int>();
+        private readonly Dictionary<VoxelMaterial, float> owed = new Dictionary<VoxelMaterial, float>();
         private readonly List<ItemDefinition> collected = new List<ItemDefinition>();
         private readonly List<MinedSample> minedFrom = new List<MinedSample>();
         private PlayerController player;
@@ -81,6 +86,28 @@ namespace Clube.Game
             : hotbar.SelectedStack.Item is PlaceableDefinition ? null
             : hand;
 
+        /// <summary>How hits take the ground (GL96); the lab panel switches it in play.</summary>
+        public CollectingSettings Collecting => collecting;
+
+        /// <summary>True when this frame's reach is an area-of-impact sphere (GL96) rather than voxels.</summary>
+        public bool ReachIsSphere { get; private set; }
+
+        /// <summary>The sphere's centre (world view space) and radius in metres; valid while <see cref="ReachIsSphere"/>.</summary>
+        public Vector3 ImpactCentre { get; private set; }
+
+        public float ImpactRadius { get; private set; }
+
+        /// <summary>Whether a voxel is in this frame's reach: inside the voxel reach, or its middle inside the sphere.</summary>
+        public bool Reaches(Vector3Int voxel)
+        {
+            if (!ReachIsSphere)
+            {
+                return Reach.Contains(voxel);
+            }
+            float size = worldView.World.Grid.VoxelSize;
+            return (((Vector3)voxel + Vector3.one * 0.5f) * size - ImpactCentre).sqrMagnitude <= ImpactRadius * ImpactRadius;
+        }
+
         /// <summary>True when the held tool is aimed at ground within reach this frame.</summary>
         public bool HasReach { get; private set; }
 
@@ -113,12 +140,14 @@ namespace Clube.Game
         {
             targets.Clear();
             HasReach = false;
+            ReachIsSphere = false;
         }
 
         private void Update()
         {
             targets.Clear();
             HasReach = false;
+            ReachIsSphere = false;
             if (!player.enabled || player.IsCursorFree || worldView == null || !worldView.IsReady)
             {
                 return;
@@ -156,6 +185,11 @@ namespace Clube.Game
             if (tool.Chisels)
             {
                 AimChisel(hit);
+                return;
+            }
+            if (collecting.UsesSphere)
+            {
+                AimSphere(tool, hit);
                 return;
             }
 
@@ -201,6 +235,26 @@ namespace Clube.Game
             }
         }
 
+        // The collecting test's sphere (GL96): every sample with ground inside a sphere round the hit point,
+        // the hand's smaller than a tool's. Reach is the box of voxels round it, for the cursor.
+        private void AimSphere(ToolDefinition tool, WorldHit hit)
+        {
+            World world = worldView.World;
+            float radius = tool == hand ? collecting.HandRadius : collecting.ToolRadius;
+            ImpactCentre = hit.Point;
+            ImpactRadius = radius;
+            ReachIsSphere = true;
+            Vector3Int min = world.Grid.WorldToVoxel(hit.Point - Vector3.one * radius);
+            Vector3Int max = world.Grid.WorldToVoxel(hit.Point + Vector3.one * radius);
+            Reach = new VoxelReach(new VoxelBox(min, max), false);
+            HasReach = true;
+            SphereStrike.FindTargets(world, hit.Point, radius, targets);
+            if (parcels != null)
+            {
+                targets.RemoveAll(sample => !parcels.CanEditSample(sample));
+            }
+        }
+
         // On the press, then at the tool's rate while held.
         private bool ShouldHit(ToolDefinition tool)
         {
@@ -229,6 +283,18 @@ namespace Clube.Game
                     parcels != null ? parcels.CanEditSample : null);
                 Chiselled?.Invoke(Reach, chiselled);
                 Struck?.Invoke(new StrikeResult(targets.Count, chiselled.Carved, chiselled.Carved));
+            }
+            else if (collecting.Mode == CollectMode.SphereGradual)
+            {
+                // Each sample in the sphere gives up the impact amount; whole units become items (GL96).
+                float amount = tool == hand ? collecting.HandAmount : collecting.ToolAmount;
+                int lowered = SphereStrike.Lower(worldView.World, targets, amount, worldView.Config.Materials, owed, collected, minedFrom);
+                Struck?.Invoke(new StrikeResult(targets.Count, lowered, collected.Count));
+            }
+            else if (collecting.Mode == CollectMode.SphereWhole)
+            {
+                int taken = SphereStrike.Take(worldView.World, targets, worldView.Config.Materials, collected, worldView.Config.IsoLevel, minedFrom);
+                Struck?.Invoke(new StrikeResult(targets.Count, taken, taken));
             }
             else
             {

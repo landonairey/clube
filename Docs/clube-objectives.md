@@ -473,6 +473,12 @@ The chisel and square voxels, and the first stone worktop.
 - [x] **GL93** `Lab` A chisel icon that reads as one *(added 2026-10-20)*: a chunky handle and a broad bronze blade flaring to a bright edge. *(Done: `ItemIconTools.PaintChisel`.)*
 - [x] **GL94** `Game` The chisel's cursor *(added 2026-10-20)*: instead of shading the ground it reaches, the chisel shows the voxel it will carve as a faint cube on the voxel grid with its edges traced, see-through. *(Done: `ToolCursor.AddVoxelBox`, faces at 5% and edges at half the cursor colour.)*
 
+### Fourteenth pass *(added 2026-10-20, from `Docs/20261020d clube-backlog.md` — next)*
+Collecting mechanic testing: ways to show and to take what a hit reaches, switchable in play to compare them.
+
+- [x] **GL95** `Game + Lab` Cursor styles to test: a small dot only; a dot and a black outline of the reached voxels; today's shaded faces; soft glows at the reached corners; a translucent sphere showing the area of impact. Picked in the lab panel and the Inspector. *(Done: `ToolCursorStyle` on `ToolCursor` (the panel's Collecting section, `CollectingControls`); the dot replaces `PlayerDigTool`'s cross; the glows draw through the ground with a copy of the cursor material (`_ZTest` Always); the outline traces only voxels with a surface. The chisel keeps its voxel cube (GL94) in every style.)*
+- [x] **GL96** `Core + Game + Lab` Collection modes to test: today's binary voxel grab over several hits; an area-of-impact sphere where each hit lowers every sample inside by the tool's impact amount (the hand 0.2, a tool 1), so interpolated edges show the ground giving way gradually, with an item for each whole unit taken; an area-of-impact sphere where each hit takes every solid sample inside at once, the hand's sphere smaller than a tool's. Picked in the lab panel and the Inspector, with the radii and amounts. *(Done: `SphereStrike` (Core: `FindTargets`, `Lower` with material owed between hits, `Take`); `CollectingSettings` on `PlayerToolUser` (defaults: hand 0.3 m and 0.2, tools 0.6 m and 1). The sphere modes skip hardness, break stages, loose-piece pick-up and slivers; the chisel keeps carving voxels.)*
+
 
 ---
 

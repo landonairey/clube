@@ -71,6 +71,7 @@ namespace Clube.Debug
 
         [SerializeField]
         private bool cheatsOpen;
+        private bool collectingOpen;
 
         [SerializeField]
         private bool displayOpen;
@@ -205,6 +206,12 @@ namespace Clube.Debug
         }
 
         /// <summary>Everything the sections can change, for the Inspector to record for Undo and saving.</summary>
+        // A component on the player, or null when there's none.
+        private T PlayerPart<T>() where T : Component
+        {
+            return player != null ? player.GetComponent<T>() : null;
+        }
+
         public Object[] EditableParts()
         {
             FindParts();
@@ -212,7 +219,7 @@ namespace Clube.Debug
             foreach (Object part in new Object[]
                      {
                          Config, worldView, testFill, brush, chunkFocus, chunkVolume, selector, corners, volumeLab,
-                         stepThrough, flyCamera, playerToggle, player, labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView, oreView,
+                         stepThrough, flyCamera, playerToggle, player, PlayerPart<PlayerToolUser>(), PlayerPart<ToolCursor>(), labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView, oreView,
                      })
             {
                 if (part != null)
@@ -320,6 +327,10 @@ namespace Clube.Debug
             if (player != null && frame.Section("Player", ref playerOpen))
             {
                 PlayerControls.Draw(frame, player);
+            }
+            if (player != null && frame.Section("Collecting", ref collectingOpen))
+            {
+                CollectingControls.Draw(frame, player.GetComponent<ToolCursor>(), player.GetComponent<PlayerToolUser>());
             }
             if (player != null && frame.Section("Cheats", ref cheatsOpen))
             {
