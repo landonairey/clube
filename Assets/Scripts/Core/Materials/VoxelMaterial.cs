@@ -96,6 +96,10 @@ namespace Clube.Core
         [SerializeField, Min(0f)]
         private float dryingDays = 2f;
 
+        [Tooltip("What the mining journal says about it (GL73), for ores: how it looks and feels in the hand.")]
+        [SerializeField]
+        private MineralNotes notes = new MineralNotes();
+
         /// <summary>Makes a material in code (tests, tools); the game's materials are assets.</summary>
         public static VoxelMaterial Create(int id, string displayName, VoxelMaterialCategory category = VoxelMaterialCategory.Aggregate)
         {
@@ -139,6 +143,9 @@ namespace Clube.Core
 
         /// <summary>In-game days it takes to dry once dropped (GL34).</summary>
         public float DryingDays => dryingDays;
+
+        /// <summary>The mining journal's description of it (GL73).</summary>
+        public MineralNotes Notes => notes;
 
         /// <summary>How it piles up when dropped (GL17).</summary>
         public PileShape PileShape => pileShape;

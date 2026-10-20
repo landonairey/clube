@@ -7,7 +7,7 @@ namespace Clube.Game
     /// <summary>
     /// The hotbar (GL7, first pass of N3): the first slots of the <see cref="PlayerInventory"/>,
     /// drawn along the bottom of the screen. The number keys pick a slot, the scroll wheel and
-    /// NextSlot (Q) step through them. What the selected slot holds is what the player holds:
+    /// NextSlot (X) step through them. What the selected slot holds is what the player holds:
     /// a tool there is used by <see cref="PlayerToolUser"/>.
     /// </summary>
     [RequireComponent(typeof(PlayerInventory))]

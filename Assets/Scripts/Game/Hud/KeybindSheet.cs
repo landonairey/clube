@@ -95,6 +95,7 @@ namespace Clube.Game
                 new Row("Hotbar slot", "Hotbar", "1-9"),
                 new Row("Next slot", "NextSlot"),
                 new Row("Inventory", "Inventory"),
+                new Row("Mining journal", "Journal"),
                 new Row("Drop (hold to pour)", "Drop"),
                 new Row("Place (hold to pick up)", "Build"),
                 new Row("Rotate placement", "Rotate"),

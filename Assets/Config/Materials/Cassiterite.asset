@@ -27,3 +27,8 @@ MonoBehaviour:
   isSoft: 0
   driesInto: {fileID: 0}
   dryingDays: 2
+  notes:
+    Hardness: 6 to 7 on Mohs' scale; scratches glass
+    Luster: adamantine to greasy
+    Colour: dark brown to nearly black, streaks pale
+    Feel: heavy for its size, hard and brittle

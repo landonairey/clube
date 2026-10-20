@@ -27,3 +27,8 @@ MonoBehaviour:
   isSoft: 0
   driesInto: {fileID: 0}
   dryingDays: 2
+  notes:
+    Hardness: 3.5 to 4; a knife scratches it
+    Luster: metallic
+    Colour: brass yellow, tarnishing to peacock blues and purples
+    Feel: brittle, lighter than it looks, smells of sulphur when struck

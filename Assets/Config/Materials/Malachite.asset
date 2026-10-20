@@ -27,3 +27,8 @@ MonoBehaviour:
   isSoft: 0
   driesInto: {fileID: 0}
   dryingDays: 2
+  notes:
+    Hardness: 3.5 to 4; a knife scratches it
+    Luster: silky where banded, dull where earthy
+    Colour: bright green in bands of light and dark
+    Feel: smooth and cool, soft enough to carve
