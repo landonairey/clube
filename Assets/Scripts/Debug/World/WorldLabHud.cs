@@ -7,7 +7,7 @@ namespace Clube.Debug
     /// WorldLab's heads-up display, top left: the frame rate; where the camera (the
     /// player, for now) is, as a world position, the voxel it's in (global coordinates),
     /// that voxel's chunk (M1) and its place inside the chunk; and the brush's running
-    /// totals of volume placed and dug out. A fixed number of lines, so it never resizes.
+    /// totals of volume placed and dug out. A fixed number of lines, so it never resizes. F3 hides it (GL78).
     /// </summary>
     [RequireComponent(typeof(WorldView))]
     public class WorldLabHud : MonoBehaviour
@@ -27,6 +27,9 @@ namespace Clube.Debug
         private float windowSeconds;
         private float framesPerSecond;
 
+        // F3 hides the box (GL78).
+        private bool shown = true;
+
         private void Awake()
         {
             worldView = GetComponent<WorldView>();
@@ -35,6 +38,12 @@ namespace Clube.Debug
 
         private void Update()
         {
+            UnityEngine.InputSystem.Keyboard keyboard = UnityEngine.InputSystem.Keyboard.current;
+            if (keyboard != null && keyboard.f3Key.wasPressedThisFrame)
+            {
+                shown = !shown;
+            }
+
             // Unscaled, so the counter stays honest while the game is paused (timeScale = 0).
             windowFrames++;
             windowSeconds += Time.unscaledDeltaTime;
@@ -48,6 +57,10 @@ namespace Clube.Debug
 
         private void OnGUI()
         {
+            if (!shown)
+            {
+                return;
+            }
             Transform focus = worldView.Focus;
             if (Event.current.type != EventType.Repaint || worldView.World == null || focus == null)
             {

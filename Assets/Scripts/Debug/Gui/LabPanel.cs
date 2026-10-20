@@ -390,7 +390,7 @@ namespace Clube.Debug
             {
                 keys.Add("Scroll pull volume pieces apart");
             }
-            keys.Add("F2 hide panel");
+            keys.Add("F2 hide panel · F3 hide FPS box");
             return string.Join("\n", keys);
         }
     }
