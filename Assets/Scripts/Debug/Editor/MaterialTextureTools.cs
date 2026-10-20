@@ -56,6 +56,7 @@ namespace Clube.Debug.Editor
             Bark,
             Leaves,
             Bricks,
+            Cobbles,
         }
 
         private static readonly Color StoneBase = new Color(0.45f, 0.45f, 0.47f);
@@ -76,7 +77,7 @@ namespace Clube.Debug.Editor
                 { "chalcopyrite", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), ChalcopyriteFleck, Wear.Whole) },
                 { "malachite", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), MalachiteFleck, Wear.Whole) },
                 { "cracked stone", (StoneBase, StoneMix, null, Wear.Cracked) },
-                { "loose stone", (StoneBase, StoneMix, null, Wear.Loose) },
+                { "loose stone", (StoneBase, StoneMix, null, Wear.Cobbles) },
                 { "cracked chalcopyrite", (StoneBase, StoneMix, ChalcopyriteFleck, Wear.Cracked) },
                 { "loose chalcopyrite", (StoneBase, StoneMix, ChalcopyriteFleck, Wear.Loose) },
                 { "cracked malachite", (StoneBase, StoneMix, MalachiteFleck, Wear.Cracked) },
@@ -271,6 +272,10 @@ namespace Clube.Debug.Editor
             {
                 PaintBricks(texture, random);
             }
+            else if (wear == Wear.Cobbles)
+            {
+                PaintCobbles(texture, random);
+            }
             texture.Apply();
             return texture;
         }
@@ -447,6 +452,124 @@ namespace Clube.Debug.Editor
                     texture.SetPixel(x, y, color);
                 }
             }
+        }
+
+        // Loose cobbled stones (GL97): dropped stone and the stone furnace. Rounded stones of a few sizes and
+        // tints, each lit from the upper left like a dome and darkening into the soil packed between them.
+        // Built on the same spaced centres as the rubble, but fewer and bigger. Wraps so it tiles.
+        private static void PaintCobbles(Texture2D texture, System.Random random)
+        {
+            int size = texture.width;
+            float scale = size / (float)PlaceholderSize;
+            int wanted = Mathf.RoundToInt(5f * scale * scale);
+            float spacing = size / Mathf.Sqrt(wanted);
+            var placed = new List<Vector2>();
+            for (int attempt = 0; attempt < wanted * 40 && placed.Count < wanted; attempt++)
+            {
+                var candidate = new Vector2(random.Next(size), random.Next(size));
+                bool clear = true;
+                foreach (Vector2 other in placed)
+                {
+                    if (WrappedDistance(candidate, other, size) < spacing * 0.7f)
+                    {
+                        clear = false;
+                        break;
+                    }
+                }
+                if (clear)
+                {
+                    placed.Add(candidate);
+                }
+            }
+            int stones = placed.Count;
+            Vector2[] centres = placed.ToArray();
+            var tints = new Color[stones];
+            for (int i = 0; i < stones; i++)
+            {
+                float shade = 0.8f + 0.35f * (float)random.NextDouble();
+                float warm = ((float)random.NextDouble() - 0.5f) * 0.12f;
+                tints[i] = new Color(shade + warm, shade, shade - warm);
+            }
+
+            var soil = new Color(0.2f, 0.17f, 0.13f);
+            float gap = 1.1f * scale;
+            float bevel = spacing * 0.32f;
+            Vector2 light = new Vector2(-0.6f, 0.8f).normalized;
+            int cells = Mathf.Max(1, Mathf.RoundToInt(Mathf.Sqrt(stones) / 2f));
+            float cellSize = size / (float)cells;
+            var grid = new List<int>[cells, cells];
+            for (int i = 0; i < stones; i++)
+            {
+                int gx = Mathf.Min(cells - 1, (int)(centres[i].x / cellSize));
+                int gy = Mathf.Min(cells - 1, (int)(centres[i].y / cellSize));
+                (grid[gx, gy] ??= new List<int>()).Add(i);
+            }
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    var p = new Vector2(x, y);
+                    float nearest = float.MaxValue;
+                    float second = float.MaxValue;
+                    int stone = 0;
+                    int cx = (int)(x / cellSize);
+                    int cy = (int)(y / cellSize);
+                    for (int oy = -1; oy <= 1; oy++)
+                    {
+                        for (int ox = -1; ox <= 1; ox++)
+                        {
+                            List<int> nearby = grid[((cx + ox) % cells + cells) % cells, ((cy + oy) % cells + cells) % cells];
+                            if (nearby == null)
+                            {
+                                continue;
+                            }
+                            foreach (int i in nearby)
+                            {
+                                float distance = WrappedDistance(p, centres[i], size);
+                                if (distance < nearest)
+                                {
+                                    second = nearest;
+                                    nearest = distance;
+                                    stone = i;
+                                }
+                                else if (distance < second)
+                                {
+                                    second = distance;
+                                }
+                            }
+                        }
+                    }
+
+                    // Distance in from the stone's edge (half the gap to the next centre), as a rounded height.
+                    float inside = (second - nearest) * 0.5f - gap;
+                    Color ground = texture.GetPixel(x, y);
+                    Color color;
+                    if (inside <= 0f)
+                    {
+                        color = soil * (0.85f + 0.3f * (float)random.NextDouble());
+                    }
+                    else
+                    {
+                        float t = Mathf.Clamp01(inside / bevel);
+                        float height = Mathf.Sqrt(1f - (1f - t) * (1f - t));
+                        Vector2 away = Wrapped(p - centres[stone], size);
+                        float facing = away.sqrMagnitude > 1e-4f ? Vector2.Dot(away.normalized, light) : 0f;
+                        float lit = Mathf.Lerp(0.45f, 1f, height) + facing * 0.28f * (1f - t);
+                        color = ground * tints[stone] * lit;
+                    }
+                    color.a = 1f;
+                    texture.SetPixel(x, y, color);
+                }
+            }
+        }
+
+        // The shortest offset between two points on a tile that wraps.
+        private static Vector2 Wrapped(Vector2 offset, int size)
+        {
+            offset.x -= Mathf.Round(offset.x / size) * size;
+            offset.y -= Mathf.Round(offset.y / size) * size;
+            return offset;
         }
 
         // Bark: dark grooves running up the tile, wandering a little side to side and breaking

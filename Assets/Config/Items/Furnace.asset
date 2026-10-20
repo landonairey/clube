@@ -13,7 +13,10 @@ MonoBehaviour:
   m_Name: Furnace
   m_EditorClassIdentifier: Clube.Core::Clube.Core.PlaceableDefinition
   id: furnace
-  displayName: Furnace
+  displayName: Stone furnace
   icon: {fileID: 2800000, guid: 983fca3c358c5c64584d1dcdc9223daa, type: 3}
   maxStack: 1
+  unitVolume: 1
+  burnSeconds: 0
+  hidesContents: 0
   prefab: {fileID: 5762353483625990904, guid: 2ad44317c98e3ee4db6993561dbc9b54, type: 3}

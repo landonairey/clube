@@ -27,7 +27,7 @@ namespace Clube.Game
         public const float MaxRadius = 2f;
 
         [Tooltip("How a hit takes the ground.")]
-        public CollectMode Mode = CollectMode.VoxelHits;
+        public CollectMode Mode = CollectMode.SphereGradual;
 
         [Tooltip("Sphere modes: the hand's area of impact, radius in metres.")]
         [Range(0.05f, MaxRadius)]

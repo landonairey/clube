@@ -30,17 +30,24 @@ namespace Clube.Game
         [SerializeField]
         private bool burnsFuel;
 
+        [Tooltip("How hot it works (GL98): time recipes go this many times faster on the same fuel. Stone furnace 1, clay furnace hotter.")]
+        [SerializeField, Min(0.1f)]
+        private float heat = 1f;
+
         public string DisplayName => displayName;
 
         public CraftingStation Station { get; private set; }
 
         public IReadOnlyList<Recipe> Recipes => recipes;
 
+        /// <summary>How hot it works (GL98); 1 for a stone furnace.</summary>
+        public float Heat => heat;
+
         public string Prompt => $"Use {displayName.ToLowerInvariant()}";
 
         private void Awake()
         {
-            Station = new CraftingStation(kind, recipes, CraftingStation.DefaultInputSlots, burnsFuel);
+            Station = new CraftingStation(kind, recipes, CraftingStation.DefaultInputSlots, burnsFuel) { Heat = heat };
             ConnectToPlayer();
         }
 

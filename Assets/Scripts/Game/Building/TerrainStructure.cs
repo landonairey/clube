@@ -228,9 +228,21 @@ namespace Clube.Game
             float iso = worldView.Config.IsoLevel;
             Vector3 local = worldView.transform.InverseTransformPoint(transform.position) + Vector3.up * (world.Grid.VoxelSize * 0.5f);
             origin = world.Grid.WorldToNearestSample(local);
+            // Turned as the object was placed (R turns it a quarter, GL28), so a furnace's mouth faces its front.
+            int quarters = Mathf.RoundToInt(transform.eulerAngles.y / 90f) & 3;
+            // Each column settles on the ground under it, all before any part is written: a part higher up
+            // (a furnace's roof) stands on its column's ground, not on the hollow under it.
+            var samples = new List<Vector3Int>(parts.Count);
             foreach (Part part in parts)
             {
-                Vector3Int sample = Settle(world, origin + part.Offset, iso);
+                Vector3Int offset = Turn(part.Offset, quarters);
+                Vector3Int ground = Settle(world, origin + new Vector3Int(offset.x, 0, offset.z), iso);
+                samples.Add(ground + Vector3Int.up * offset.y);
+            }
+            for (int i = 0; i < parts.Count; i++)
+            {
+                Part part = parts[i];
+                Vector3Int sample = samples[i];
                 float? density = world.GetDensity(sample);
                 if (part.Material == null || !density.HasValue || density.Value >= iso)
                 {
@@ -241,6 +253,16 @@ namespace Clube.Game
                 stamped.Add(sample);
             }
             IsStanding = stamped.Count > 0;
+        }
+
+        // An offset turned clockwise seen from above by quarter turns, as Unity turns +Z towards +X.
+        private static Vector3Int Turn(Vector3Int offset, int quarters)
+        {
+            for (int i = 0; i < quarters; i++)
+            {
+                offset = new Vector3Int(offset.z, offset.y, -offset.x);
+            }
+            return offset;
         }
 
         // A part's sample moved up or down its column (two samples at most) to the first air sample

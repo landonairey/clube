@@ -137,7 +137,8 @@ namespace Clube.Game
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
             float y = panel.y + Padding;
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   (E to close)");
+            string heat = station.BurnsFuel && !Mathf.Approximately(station.Heat, 1f) ? $"   heat ×{station.Heat:0.#}" : "";
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}{heat}   (E to close)");
             y += 24f;
             // Click a recipe to make only it (ML1: sticks and stone make a spear, a hatchet or a hammer)
             // and pull one batch of its ingredients from your items (GL80); click it again to let any start.

@@ -45,7 +45,7 @@ namespace Clube.Game
 
         [Tooltip("How the cursor shows what a hit reaches (GL95).")]
         [SerializeField]
-        private ToolCursorStyle style = ToolCursorStyle.Faces;
+        private ToolCursorStyle style = ToolCursorStyle.Dot;
 
         [Tooltip("The voxel outline's colour (Dot and outline).")]
         [SerializeField]

@@ -98,6 +98,12 @@ namespace Clube.Core
 
         public bool BurnsFuel => Fuel != null;
 
+        /// <summary>
+        /// How hot it works (GL98): time recipes go this many times faster, on the same fuel per second, so
+        /// a hotter furnace (clay over stone) smelts quicker and on less fuel. 1 is the stone furnace.
+        /// </summary>
+        public float Heat { get; set; } = 1f;
+
         /// <summary>Seconds the fuel burning now has left; 0 when nothing burns.</summary>
         public float BurnLeft { get; private set; }
 
@@ -302,14 +308,15 @@ namespace Clube.Core
                 {
                     break;
                 }
-                float step = Math.Min(seconds, Active.Amount - done);
+                float heat = Math.Max(0.01f, Heat);
+                float step = Math.Min(seconds, (Active.Amount - done) / heat);
                 if (BurnsFuel)
                 {
                     step = Math.Min(step, BurnLeft);
                     Burn(step);
                 }
                 seconds -= step;
-                Work(step);
+                Work(step * heat);
             }
 
             // Idle (or waiting): the fire burns down all the same.
