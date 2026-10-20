@@ -13,6 +13,8 @@ Shader "Clube/Terrain Materials"
         _Textures ("Textures (array, layer = material id)", 2DArray) = "" {}
         _TextureScale ("Texture repeats per metre", Float) = 0.5
         _TriplanarSharpness ("Triplanar sharpness", Range(1, 16)) = 4
+        _Breakup ("Tiling breakup: noise cells per texture repeat", Range(0, 1)) = 0.3
+        _TintVariation ("Large-scale brightness variation", Range(0, 0.5)) = 0.12
         [Toggle] _DebugColors ("Debug colours", Float) = 0
     }
 
@@ -26,6 +28,8 @@ Shader "Clube/Terrain Materials"
         CBUFFER_START(UnityPerMaterial)
             float _TextureScale;
             float _TriplanarSharpness;
+            float _Breakup;
+            float _TintVariation;
             float _DebugColors;
         CBUFFER_END
         ENDHLSL
@@ -85,13 +89,48 @@ Shader "Clube/Terrain Materials"
                 return output;
             }
 
+            // Smooth value noise in 0-1 from a hash per lattice point; no texture needed.
+            float Hash21(float2 p)
+            {
+                p = frac(p * float2(123.34, 456.21));
+                p += dot(p, p + 45.32);
+                return frac(p.x * p.y);
+            }
+
+            float ValueNoise(float2 p)
+            {
+                float2 i = floor(p);
+                float2 f = frac(p);
+                f = f * f * (3.0 - 2.0 * f);
+                float a = Hash21(i);
+                float b = Hash21(i + float2(1, 0));
+                float c = Hash21(i + float2(0, 1));
+                float d = Hash21(i + float2(1, 1));
+                return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
+            }
+
+            // One projection with its tiling broken up (GL65): a second copy, turned and scaled,
+            // shows through in noisy patches a few repeats across, so no grid of repeats lines up.
+            half3 SampleBroken(float2 uv, float layer)
+            {
+                half3 first = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, uv, layer).rgb;
+                if (_Breakup <= 0.0)
+                {
+                    return first;
+                }
+                const float2x2 turn = float2x2(0.8, -0.6, 0.6, 0.8);
+                half3 second = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, mul(turn, uv) * 0.77 + 0.37, layer).rgb;
+                float mixing = smoothstep(0.3, 0.7, ValueNoise(uv * _Breakup));
+                return lerp(first, second, mixing);
+            }
+
             // One material's texture projected along each world axis, mixed by how much the surface faces it.
             half3 Triplanar(float3 positionWS, float3 axisWeights, float layer)
             {
                 float3 uv = positionWS * _TextureScale;
-                half3 alongX = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, uv.zy, layer).rgb;
-                half3 alongY = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, uv.xz, layer).rgb;
-                half3 alongZ = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, uv.xy, layer).rgb;
+                half3 alongX = SampleBroken(uv.zy, layer);
+                half3 alongY = SampleBroken(uv.xz, layer);
+                half3 alongZ = SampleBroken(uv.xy, layer);
                 return alongX * axisWeights.x + alongY * axisWeights.y + alongZ * axisWeights.z;
             }
 
@@ -125,6 +164,8 @@ Shader "Clube/Terrain Materials"
                     {
                         albedo += Triplanar(input.positionWS, axisWeights, ids.z) * weights.z;
                     }
+                    // Brighter and darker patches tens of metres across, so even the breakup doesn't read as a pattern.
+                    albedo *= 1.0 + _TintVariation * (ValueNoise(input.positionWS.xz * 0.04) * 2.0 - 1.0);
                 }
                 return albedo;
             }
