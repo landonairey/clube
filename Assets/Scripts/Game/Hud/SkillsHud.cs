@@ -57,9 +57,12 @@ namespace Clube.Game
                     unlocked.Add(recipe.Output.Item.DisplayName);
                 }
             }
-            if (knowledge != null && knowledge.Skill == skill && knowledge.RevealLevel == level)
+            if (knowledge != null)
             {
-                unlocked.Add("you can tell copper ore apart");
+                foreach (string ores in knowledge.RevealedAt(skill, level))
+                {
+                    unlocked.Add($"you can tell {ores} apart");
+                }
             }
             notice = $"{skill} level {level}!" + (unlocked.Count > 0 ? "  Unlocked: " + string.Join(", ", unlocked) : "");
             noticeUntil = Time.time + NoticeSeconds;

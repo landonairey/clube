@@ -668,6 +668,8 @@ MonoBehaviour:
   focus: {fileID: 0}
   renderDistance: 16
   frameBudgetMilliseconds: 3
+  loadingBudgetMilliseconds: 30
+  overlayRadius: 32
   maxJobsInFlight: 0
   chunkColliders: 1
   colliderRadius: 24
@@ -1398,7 +1400,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 040e6f6997d1643428f0c8e6b483ece7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSkills
-  blacksmithing: 0
   wood: 1
   leaves: 0.2
   stone: 1
@@ -1439,6 +1440,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.ParcelBorders
   material: {fileID: 2100000, guid: 7306c3d226f246045a04b0c391c5dfd0, type: 2}
   color: {r: 1, g: 0.82, b: 0.3, a: 0.18}
+  railColor: {r: 1, g: 0.82, b: 0.3, a: 0.75}
+  height: 0.75
+  step: 0.5
+  postSpacing: 2
 --- !u!114 &1697135584
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1489,16 +1494,26 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.OreKnowledge
   worldView: {fileID: 1350119460}
-  hidden:
-  - {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
-  - {fileID: 11400000, guid: 7ecc65adf73d9da42aee16f413c5acb0, type: 2}
-  - {fileID: 11400000, guid: f58c64750cb382d42b0ab8008263addc, type: 2}
-  - {fileID: 11400000, guid: 8d7e9d76247091549940794050b1d237, type: 2}
-  - {fileID: 11400000, guid: 4e672b82024c08f4387772f395f40e11, type: 2}
-  - {fileID: 11400000, guid: debe2c5e9edbed84dab39106277c66dc, type: 2}
+  groups:
+  - Name: copper ore
+    Level: 3
+    Materials:
+    - {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
+    - {fileID: 11400000, guid: 7ecc65adf73d9da42aee16f413c5acb0, type: 2}
+    - {fileID: 11400000, guid: f58c64750cb382d42b0ab8008263addc, type: 2}
+    - {fileID: 11400000, guid: 8d7e9d76247091549940794050b1d237, type: 2}
+    - {fileID: 11400000, guid: 4e672b82024c08f4387772f395f40e11, type: 2}
+    - {fileID: 11400000, guid: debe2c5e9edbed84dab39106277c66dc, type: 2}
+  - Name: silver ore
+    Level: 5
+    Materials:
+    - {fileID: 11400000, guid: 7cbb344bf40f2c04bad682cdb7df7c8b, type: 2}
+  - Name: gold ore
+    Level: 7
+    Materials:
+    - {fileID: 11400000, guid: 028349ab45517db4984a7ae07bcf9347, type: 2}
   shownAs: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
   skill: 3
-  level: 3
   unknownOre: {fileID: 11400000, guid: d2d5efa38b9222c4e8f56dd1ec3f4fcf, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
