@@ -250,6 +250,29 @@ namespace Clube.Core.Tests
             }
         }
 
+        // GL79: a sample left hanging by itself once the one under it goes comes away with the hit.
+        [Test]
+        public void Hit_TakesASliverLeftFloating_ButNotGroundThatStillHolds()
+        {
+            var under = new Vector3Int(2, 2, 2);
+            var above = new Vector3Int(2, 3, 2);
+            var standing = new Vector3Int(5, 2, 2);
+            world.SetDensity(under, 1f);
+            world.SetDensity(above, 1f);
+            world.SetDensity(standing, 1f);
+            var collected = new List<ItemDefinition>();
+            ToolDefinition pickaxe = Pickaxe().WithHits(stone, 1);
+
+            StrikeResult result = ToolStrike.Hit(world, new List<Vector3Int> { under }, pickaxe, registry, new StrikeDamage(), collected);
+            Assert.AreEqual(0f, world.GetDensity(under));
+            Assert.AreEqual(0f, world.GetDensity(above), "Left floating: taken too.");
+            Assert.AreEqual(1f, world.GetDensity(standing), "Still on the ground.");
+            Assert.AreEqual(1f, world.GetDensity(new Vector3Int(2, 1, 2)), "The ground under it stays.");
+            Assert.AreEqual(2, result.Removed);
+            CollectionAssert.AreEqual(new[] { stoneItem, stoneItem }, collected);
+            Object.DestroyImmediate(pickaxe);
+        }
+
         [Test]
         public void Hit_WeakToolTakesHardnessOverPowerHits()
         {

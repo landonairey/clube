@@ -77,6 +77,9 @@ namespace Clube.Core
         /// One hit of a tool on the given samples (from <see cref="FindTargets"/>). When it reaches
         /// a small loose piece of a material that's picked up whole (a stone on the grass, GL25),
         /// the hit picks that piece up instead and leaves the rest alone.
+        /// Otherwise each sample's damage adds up and it breaks or comes away; a tiny piece of ground
+        /// the hit leaves floating next to it (3 samples or fewer, joined to nothing else) comes away
+        /// too and is collected (GL79).
         /// </summary>
         /// <param name="materials">Looks up each sample's hardness and what it breaks into; null treats everything as hardness 1 with no drop.</param>
         /// <param name="damage">Damage carried between hits.</param>
@@ -101,6 +104,7 @@ namespace Clube.Core
 
             int broken = 0;
             int removed = 0;
+            RemovedThisHit.Clear();
             foreach (Vector3Int sample in targets)
             {
                 byte? id = world.GetMaterial(sample);
@@ -137,6 +141,7 @@ namespace Clube.Core
                 }
 
                 world.SetDensity(sample, 0f);
+                RemovedThisHit.Add(sample);
                 removed++;
                 // Removed whole, it gives what its last stage would (loose stone gives stone).
                 ItemDefinition drop = FinalDrop(material);
@@ -146,6 +151,7 @@ namespace Clube.Core
                     minedFrom?.Add(new MinedSample(sample, material));
                 }
             }
+            removed += ClearSlivers(world, materials, damage, collected, isoLevel, minedFrom);
             return new StrikeResult(targets.Count, broken, removed);
         }
 
@@ -192,6 +198,64 @@ namespace Clube.Core
         private static readonly HashSet<Vector3Int> Seen = new HashSet<Vector3Int>();
         private static readonly Queue<Vector3Int> Frontier = new Queue<Vector3Int>();
 
+        // Solid pieces this small left floating next to a hit are taken with it (GL79).
+        private const int SliverSize = 3;
+
+        private static readonly List<Vector3Int> RemovedThisHit = new List<Vector3Int>();
+        private static readonly HashSet<Vector3Int> SliverChecked = new HashSet<Vector3Int>();
+        private static readonly List<Vector3Int> Sliver = new List<Vector3Int>();
+
+        // After a hit removes samples, any solid piece around them of SliverSize samples or fewer
+        // that no longer joins anything bigger (a sliver left hanging in the air) is removed too and
+        // collected like the rest. Returns how many samples it removed.
+        private static int ClearSlivers(
+            World world, MaterialRegistry materials, StrikeDamage damage, List<ItemDefinition> collected, float isoLevel,
+            List<MinedSample> minedFrom)
+        {
+            SliverChecked.Clear();
+            int cleared = 0;
+            foreach (Vector3Int removed in RemovedThisHit)
+            {
+                for (int z = -1; z <= 1; z++)
+                {
+                    for (int y = -1; y <= 1; y++)
+                    {
+                        for (int x = -1; x <= 1; x++)
+                        {
+                            Vector3Int start = removed + new Vector3Int(x, y, z);
+                            if (!SliverChecked.Add(start) || !(world.GetDensity(start) >= isoLevel))
+                            {
+                                continue;
+                            }
+                            bool small = FindPiece(world, start, null, SliverSize, isoLevel);
+                            SliverChecked.UnionWith(Piece);
+                            if (!small)
+                            {
+                                continue;
+                            }
+                            Sliver.Clear();
+                            Sliver.AddRange(Piece);
+                            foreach (Vector3Int part in Sliver)
+                            {
+                                byte? id = world.GetMaterial(part);
+                                VoxelMaterial material = id.HasValue && materials != null ? materials.Get(id.Value) : null;
+                                world.SetDensity(part, 0f);
+                                damage.Forget(part);
+                                cleared++;
+                                ItemDefinition drop = FinalDrop(material);
+                                if (drop != null)
+                                {
+                                    collected?.Add(drop);
+                                    minedFrom?.Add(new MinedSample(part, material));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return cleared;
+        }
+
         // Picks up the first reached piece of a pick-up material small enough to lift whole
         // (VoxelMaterial.PickUpPieceSize): removes it and collects a drop per sample. Returns
         // how many samples it took, 0 when no reached piece qualifies.
@@ -225,9 +289,9 @@ namespace Clube.Core
             return 0;
         }
 
-        // Fills Piece with the solid samples of one material joined to a start sample; false
-        // once it grows past the limit (it's part of something bigger) or touches unloaded ground.
-        private static bool FindPiece(World world, Vector3Int start, byte material, int limit, float isoLevel)
+        // Fills Piece with the solid samples of one material (null: any) joined to a start sample;
+        // false once it grows past the limit (it's part of something bigger) or touches unloaded ground.
+        private static bool FindPiece(World world, Vector3Int start, byte? material, int limit, float isoLevel)
         {
             Piece.Clear();
             Seen.Clear();
@@ -242,7 +306,7 @@ namespace Clube.Core
                 {
                     return false;
                 }
-                if (density.Value < isoLevel || world.GetMaterial(sample) != material)
+                if (density.Value < isoLevel || (material.HasValue && world.GetMaterial(sample) != material))
                 {
                     continue;
                 }
