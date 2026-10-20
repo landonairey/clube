@@ -7,9 +7,9 @@ namespace Clube.Game
 {
     /// <summary>
     /// The player's mining journal (GL73): fills a <see cref="MiningJournal"/> as they work. An ore
-    /// is found when they mine a sample of it (or of its cracked or loose stages) while they can
-    /// tell it apart (<see cref="OreKnowledge"/>); the journal keeps how deep below the generated
-    /// surface it first was, and the grades mined since. Recipes are learned as they're finished,
+    /// is found when they mine a sample of it (or of its cracked or loose stages), even before they
+    /// can tell it apart (<see cref="OreKnowledge"/>; the screen then shows it as unknown, GL77);
+    /// the journal keeps how deep below the generated surface it first was, and the grades mined since. Recipes are learned as they're finished,
     /// and give an ore its uses. <see cref="JournalScreen"/> shows it.
     /// </summary>
     [RequireComponent(typeof(PlayerToolUser))]
@@ -33,6 +33,15 @@ namespace Clube.Game
         public MiningJournal Journal { get; } = new MiningJournal();
 
         public IReadOnlyList<VoxelMaterial> Ores => ores;
+
+        /// <summary>
+        /// True when the player can tell the ore apart (<see cref="OreKnowledge"/>). An ore found before
+        /// that has an entry, but the journal shows it as unknown (GL77).
+        /// </summary>
+        public bool Knows(VoxelMaterial ore)
+        {
+            return knowledge == null || knowledge.Knows(ore);
+        }
 
         private void Awake()
         {
@@ -157,7 +166,7 @@ namespace Clube.Game
         private void OnUnearthed(VoxelMaterial material, Vector3 position, Composition contents)
         {
             VoxelMaterial ore = OreOf(material);
-            if (ore == null || (knowledge != null && !knowledge.Knows(material)))
+            if (ore == null)
             {
                 return;
             }

@@ -558,30 +558,41 @@ namespace Clube.Debug.Editor
             return texture;
         }
 
-        // A grey lump of rock with a question mark: ore the player can't tell yet (GL54).
+        // Ore not yet told apart (GL54, GL75): the host rock's own texture, filled to the edges like
+        // the other ore icons, with a large question mark over it.
         private static Texture2D PaintUnknownOre()
         {
             Texture2D texture = Blank();
-            for (int i = 0; i < 6; i++)
+            var stone = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Terrain/stone.png");
+            for (int y = 0; y < Size; y++)
             {
-                float angle = i * Mathf.PI / 3f;
-                var at = new Vector2(32f + Mathf.Cos(angle) * 10f, 30f + Mathf.Sin(angle) * 8f);
-                Line(texture, at, at, 18f, i % 2 == 0 ? StoneHead : StoneHeadLight);
+                for (int x = 0; x < Size; x++)
+                {
+                    Color rock = stone != null && stone.isReadable ? stone.GetPixelBilinear((x + 0.5f) / Size, (y + 0.5f) / Size) : StoneHead;
+                    rock.a = 1f;
+                    texture.SetPixel(x, y, rock);
+                }
             }
-            var mark = new Color(0.14f, 0.14f, 0.16f);
-            Vector2 previous = new Vector2(25f, 42f);
-            for (int i = 1; i <= 10; i++)
-            {
-                float angle = Mathf.Lerp(Mathf.PI * 0.95f, -Mathf.PI * 0.35f, i / 10f);
-                var at = new Vector2(32f + Mathf.Cos(angle) * 7f, 40f + Mathf.Sin(angle) * 7f);
-                Line(texture, previous, at, 3.2f, mark);
-                previous = at;
-            }
-            Line(texture, previous, new Vector2(32f, 28f), 3.2f, mark);
-            Line(texture, new Vector2(32f, 21f), new Vector2(32f, 21f), 4f, mark);
-            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            // The mark twice: a pale halo so it reads on the speckled rock, then the ink over it.
+            DrawQuestionMark(texture, 7.5f, new Color(0.92f, 0.9f, 0.84f));
+            DrawQuestionMark(texture, 4.5f, new Color(0.12f, 0.12f, 0.15f));
             texture.Apply();
             return texture;
+        }
+
+        private static void DrawQuestionMark(Texture2D texture, float width, Color color)
+        {
+            var centre = new Vector2(32f, 41f);
+            Vector2 previous = centre + new Vector2(-11f, 1f);
+            for (int i = 1; i <= 14; i++)
+            {
+                float angle = Mathf.Lerp(Mathf.PI * 0.95f, -Mathf.PI * 0.4f, i / 14f);
+                var at = centre + new Vector2(Mathf.Cos(angle) * 11f, Mathf.Sin(angle) * 10f);
+                Line(texture, previous, at, width, color);
+                previous = at;
+            }
+            Line(texture, previous, new Vector2(32f, 24f), width, color);
+            Line(texture, new Vector2(32f, 13f), new Vector2(32f, 13f), width + 1.5f, color);
         }
 
         // A round-ended line from one point to the other, <width> pixels thick.

@@ -158,7 +158,12 @@ namespace Clube.Game
         {
             string text = stack.Count > 1 ? $"{stack.Item.DisplayName} ×{stack.Count}" : stack.Item.DisplayName;
             text += $"\nVolume {stack.Volume:0.##}";
-            if (stack.Contents != null)
+            if (stack.Item.HidesContents)
+            {
+                // "? ore" (GL76): what it holds stays hidden until the player can tell.
+                text += "\nContents unknown";
+            }
+            else if (stack.Contents != null)
             {
                 foreach (Content part in stack.Contents.Parts)
                 {

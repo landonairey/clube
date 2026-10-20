@@ -10,7 +10,9 @@ namespace Clube.Game
     /// side by side, three ores to a page. An ore the player hasn't found is a blank numbered entry;
     /// a found one has a sketch (<see cref="OreSketch"/>) and notes: where it was first found, the
     /// grades mined, its hardness, luster, colour and feel (<see cref="MineralNotes"/>), and its
-    /// uses once the player has made them. A short notice says when a new entry is written.
+    /// uses once the player has made them. One found before the player can tell it apart is an
+    /// "Unknown ore" with an uncoloured sketch and only its depth (GL77). A short notice says when
+    /// a new entry is written.
     /// </summary>
     [RequireComponent(typeof(PlayerJournal))]
     public class JournalScreen : MonoBehaviour
@@ -101,7 +103,7 @@ namespace Clube.Game
 
         private void OnDiscovered(MiningJournal.Entry entry)
         {
-            notice = $"New journal entry: {entry.Ore.DisplayName}  (Q)";
+            notice = $"New journal entry: {(journal.Knows(entry.Ore) ? entry.Ore.DisplayName : "an unknown ore")}  (Q)";
             noticeUntil = Time.time + NoticeSeconds;
         }
 
@@ -193,15 +195,23 @@ namespace Clube.Game
                 // Blank until it's found.
                 return;
             }
+            bool known = journal.Knows(ore);
             float sketchWidth = Mathf.Min(OreSketch.Width, area.width * 0.32f);
             float sketchHeight = sketchWidth * OreSketch.Height / OreSketch.Width;
-            GUI.DrawTexture(new Rect(area.x, area.y + 22f, sketchWidth, sketchHeight), OreSketch.For(ore), ScaleMode.ScaleToFit);
+            GUI.DrawTexture(new Rect(area.x, area.y + 22f, sketchWidth, sketchHeight), OreSketch.For(ore, known), ScaleMode.ScaleToFit);
 
             float x = area.x + sketchWidth + 14f;
             float width = area.xMax - x;
             float y = area.y + 2f;
-            GUI.Label(new Rect(x, y, width, 26f), ore.DisplayName, titleStyle);
+            GUI.Label(new Rect(x, y, width, 26f), known ? ore.DisplayName : "Unknown ore", titleStyle);
             y += 26f;
+            if (!known)
+            {
+                // Found before the player can tell it apart (GL77): only where it was, no colour, grade or name.
+                GUI.Label(new Rect(x, y, width, area.yMax - y - 6f),
+                    $"First found {found.FirstDepth:0.#} m below the surface.\nSomething in the rock here, but I can't yet tell what.", textStyle);
+                return;
+            }
 
             MineralNotes notes = ore.Notes;
             string grades = Mathf.Approximately(found.LowestGrade, found.HighestGrade)

@@ -290,6 +290,8 @@ screen sends a clicked stack across (backpack ↔ hotbar, `Inventory.MoveInto`) 
 `OreKnowledge` has groups (copper ore Mining 3, silver 5, gold 7). Q opens the mining journal
 (`JournalScreen`, `PlayerJournal`, `MiningJournal` in Core/Skills, `OreSketch`, `VoxelMaterial.Notes`); next
 slot is X. `OreDebugView` counts ore 2 ms a frame.
+"? ore" shows the stone texture with a question mark and hides its contents (`ItemDefinition.HidesContents`);
+ores found before they're known get an uncoloured "Unknown ore" journal entry with their depth (GL75-GL77).
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16

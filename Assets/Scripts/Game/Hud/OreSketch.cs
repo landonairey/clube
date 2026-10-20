@@ -17,24 +17,27 @@ namespace Clube.Game
 
         private static readonly Color Ink = new Color(0.1f, 0.1f, 0.14f, 1f);
         private static readonly Color Wash = new Color(0.45f, 0.45f, 0.48f, 0.22f);
-        private static readonly Dictionary<VoxelMaterial, Texture2D> Cache = new Dictionary<VoxelMaterial, Texture2D>();
+        private static readonly Dictionary<(VoxelMaterial, bool), Texture2D> Cache = new Dictionary<(VoxelMaterial, bool), Texture2D>();
 
-        /// <summary>The sketch of an ore, painted the first time it's asked for.</summary>
-        public static Texture2D For(VoxelMaterial ore)
+        /// <summary>
+        /// The sketch of an ore, painted the first time it's asked for. Uncoloured (an ore not yet told
+        /// apart, GL77), its speckles are pencilled in grey instead of the ore's colour.
+        /// </summary>
+        public static Texture2D For(VoxelMaterial ore, bool coloured = true)
         {
             if (ore == null)
             {
                 return null;
             }
-            if (!Cache.TryGetValue(ore, out Texture2D texture) || texture == null)
+            if (!Cache.TryGetValue((ore, coloured), out Texture2D texture) || texture == null)
             {
-                texture = Paint(ore);
-                Cache[ore] = texture;
+                texture = Paint(ore, coloured);
+                Cache[(ore, coloured)] = texture;
             }
             return texture;
         }
 
-        private static Texture2D Paint(VoxelMaterial ore)
+        private static Texture2D Paint(VoxelMaterial ore, bool coloured)
         {
             var texture = new Texture2D(Width, Height, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, name = $"{ore.DisplayName} sketch" };
             var clear = new Color[Width * Height];
@@ -53,7 +56,7 @@ namespace Clube.Game
             }
 
             // Wash and speckles inside it.
-            Color oreColour = ore.DebugColor;
+            Color oreColour = coloured ? ore.DebugColor : new Color(0.42f, 0.42f, 0.44f);
             for (int y = 0; y < Height; y++)
             {
                 for (int x = 0; x < Width; x++)
