@@ -192,6 +192,37 @@ namespace Clube.Core
             return false;
         }
 
+        /// <summary>
+        /// Loads one batch of a recipe from another inventory (the player's, GL80): whatever in the
+        /// input slots the recipe doesn't take goes back there first, then each input is topped up to
+        /// the recipe's count from what's there. Returns how many items moved in.
+        /// </summary>
+        public int LoadFor(Recipe recipe, Inventory from)
+        {
+            if (recipe == null || from == null)
+            {
+                return 0;
+            }
+            for (int slot = 0; slot < Input.SlotCount; slot++)
+            {
+                ItemDefinition item = Input[slot].Item;
+                if (item != null && !recipe.Takes(item))
+                {
+                    Input.MoveTo(slot, from);
+                }
+            }
+            int moved = 0;
+            foreach (ItemAmount input in recipe.Inputs)
+            {
+                int missing = input.Count - Input.Count(input.Item);
+                if (input.Item != null && missing > 0)
+                {
+                    moved += from.MoveItemTo(input.Item, missing, Input);
+                }
+            }
+            return moved;
+        }
+
         /// <summary>The recipe that would start next with what's loaded, or null.</summary>
         public Recipe Ready(RecipeWork work)
         {
@@ -200,19 +231,42 @@ namespace Clube.Core
             {
                 return Chosen.Work == work && Chosen.IsUnlockedFor(Learner) && Chosen.HasInputs(Input) && OutputFits(Chosen) ? Chosen : null;
             }
+            return Best(recipe => recipe.Work == work && recipe.IsUnlockedFor(Learner) && recipe.HasInputs(Input) && OutputFits(recipe));
+        }
+
+        // Of the recipes that pass, the one that uses the most of what's loaded (GL81): the most
+        // different inputs, then the most items, so sticks and stone make a stone pick, not a
+        // pointy stick. Ties go to the first listed.
+        private Recipe Best(Func<Recipe, bool> passes)
+        {
+            Recipe best = null;
+            int bestKinds = -1;
+            int bestCount = -1;
             foreach (Recipe recipe in recipes)
             {
-                if (recipe.Work == work && recipe.IsUnlockedFor(Learner) && recipe.HasInputs(Input) && OutputFits(recipe))
+                if (!passes(recipe))
                 {
-                    return recipe;
+                    continue;
+                }
+                int kinds = recipe.Inputs.Count;
+                int count = 0;
+                foreach (ItemAmount input in recipe.Inputs)
+                {
+                    count += input.Count;
+                }
+                if (kinds > bestKinds || (kinds == bestKinds && count > bestCount))
+                {
+                    best = recipe;
+                    bestKinds = kinds;
+                    bestCount = count;
                 }
             }
-            return null;
+            return best;
         }
 
         /// <summary>
         /// What the station is about to make (GL58): the recipe under way, else the one the player
-        /// picked, else the first unlocked one whose inputs are loaded, whether or not its result
+        /// picked, else the unlocked one that uses the most of what's loaded (GL81), whether or not its result
         /// fits yet. Null when nothing is loaded for any recipe.
         /// </summary>
         public Recipe Upcoming
@@ -227,14 +281,7 @@ namespace Clube.Core
                 {
                     return Chosen.IsUnlockedFor(Learner) ? Chosen : null;
                 }
-                foreach (Recipe recipe in recipes)
-                {
-                    if (recipe.IsUnlockedFor(Learner) && recipe.HasInputs(Input))
-                    {
-                        return recipe;
-                    }
-                }
-                return null;
+                return Best(recipe => recipe.IsUnlockedFor(Learner) && recipe.HasInputs(Input));
             }
         }
 

@@ -87,7 +87,7 @@ namespace Clube.Game
             var verbs = new Dictionary<ItemDefinition, string>();
             foreach (Recipe recipe in recipes)
             {
-                if (!Journal.HasMade(recipe) || !Takes(recipe, item) || recipe.Output.Item == null)
+                if (!Journal.HasMade(recipe) || !recipe.Takes(item) || recipe.Output.Item == null)
                 {
                     continue;
                 }
@@ -124,7 +124,7 @@ namespace Clube.Game
             var seen = new HashSet<ItemDefinition>();
             foreach (Recipe recipe in recipes)
             {
-                if (!Journal.HasMade(recipe) || !Takes(recipe, item) || recipe.Output.Item == null || !seen.Add(recipe.Output.Item))
+                if (!Journal.HasMade(recipe) || !recipe.Takes(item) || recipe.Output.Item == null || !seen.Add(recipe.Output.Item))
                 {
                     continue;
                 }
@@ -135,18 +135,6 @@ namespace Clube.Game
                 names.Append(recipe.Output.Item.DisplayName);
             }
             return names.Length > 0 ? names.ToString() : null;
-        }
-
-        private static bool Takes(Recipe recipe, ItemDefinition item)
-        {
-            foreach (ItemAmount input in recipe.Inputs)
-            {
-                if (input.Item == item)
-                {
-                    return true;
-                }
-            }
-            return false;
         }
 
         private static string Verb(StationKind station)
