@@ -7,8 +7,8 @@ namespace Clube.Game
 {
     /// <summary>
     /// The player's <see cref="Inventory"/> (GL6), in one of two layouts. The volume inventory (GL99, the
-    /// default): a tool slot (slot 0, tools only), a volume slot (<see cref="Mix"/>) that every mined
-    /// voxel goes into, mixed together, and a few item slots for everything else, spare tools included.
+    /// default): a tool slot (slot 0, tools only), three volume slots (<see cref="Bins"/>: rock, soil, plant, GL114) that mined
+    /// samples go into by kind, mixed within it, and a few item slots for everything else, spare tools included.
     /// The classic one, kept switchable: the first <see cref="HotbarSlots"/> slots are the hotbar
     /// (<see cref="Hotbar"/>), the rest the backpack, and mined material comes in as items. Each layout
     /// keeps its own items; switching doesn't move them. Starts with the starting items; what doesn't
@@ -27,9 +27,9 @@ namespace Clube.Game
         [SerializeField, Range(1, 8)]
         private int itemSlots = 3;
 
-        [Tooltip("Volume inventory: the least share of the mix an ingredient must be to be taken from it for a recipe (GL100).")]
+        [Tooltip("Volume inventory: the least share of a bin an ingredient must be to be taken from it for a recipe (GL100). 0 (GL110): any mix crafts, at its share's quality.")]
         [SerializeField, Range(0f, 1f)]
-        private float minimumShare = 0.5f;
+        private float minimumShare;
 
         [Tooltip("Classic inventory: slots in the hotbar, picked with the number keys.")]
         [SerializeField, Range(1, 9)]
@@ -59,8 +59,19 @@ namespace Clube.Game
         /// <summary>The slots in use: the volume inventory's tool and item slots, or the classic hotbar and backpack.</summary>
         public Inventory Inventory => volumeInventory ? volumeSlots : classic;
 
-        /// <summary>The volume slot (GL99): every mined voxel, mixed. Kept while the classic layout is on, unused.</summary>
-        public VolumeMix Mix { get; } = new VolumeMix();
+        private readonly VolumeMix[] bins = { new VolumeMix(), new VolumeMix(), new VolumeMix() };
+
+        /// <summary>
+        /// The volume slots (GL99, GL114): one bin per <see cref="MaterialKind"/> (rock, soil, plant), each
+        /// mixing what's mined of its kind. Kept while the classic layout is on, unused.
+        /// </summary>
+        public IReadOnlyList<VolumeMix> Bins => bins;
+
+        /// <summary>The bin a kind of ground goes into.</summary>
+        public VolumeMix Bin(MaterialKind kind)
+        {
+            return bins[(int)kind];
+        }
 
         /// <summary>True while the volume inventory is the one in use; the lab panel switches it.</summary>
         public bool UsesVolume
@@ -139,7 +150,10 @@ namespace Clube.Game
         {
             if (volumeInventory)
             {
-                Mix.Add(material, 1f, contents);
+                if (material != null)
+                {
+                    Bin(material.Kind).Add(material, 1f, contents);
+                }
             }
         }
 

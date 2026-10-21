@@ -51,7 +51,9 @@ namespace Clube.Debug
             if (settings.Mode == CollectMode.SphereGradual)
             {
                 settings.HandAmount = frame.Slider("Hand takes per hit", settings.HandAmount, 0.01f, 1f);
-                settings.ToolAmount = frame.Slider("Tool takes per hit", settings.ToolAmount, 0.01f, 1f);
+                settings.ToolAmount = frame.Slider("Tool takes per hit, its own kind", settings.ToolAmount, 0.01f, 1f);
+                settings.ToolOffAmount = frame.Slider("Tool takes per hit, other kinds", settings.ToolOffAmount, 0f, 1f);
+                settings.OtherMaterialFactor = frame.Slider("Off the dot's material, times", settings.OtherMaterialFactor, 0f, 1f);
             }
         }
 

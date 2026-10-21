@@ -251,6 +251,7 @@ namespace Clube.Game
                     return;
                 }
             }
+            ImpactCentre = hit.Point;
             Reach = VoxelReach.Around(voxel, 1, false);
             HasReach = true;
             if (parcels != null)
@@ -329,17 +330,9 @@ namespace Clube.Game
                 Chiselled?.Invoke(Reach, chiselled);
                 Struck?.Invoke(new StrikeResult(targets.Count, chiselled.Carved, chiselled.Carved));
             }
-            else if (collecting.Mode == CollectMode.SphereGradual)
+            else if (collecting.UsesSphere)
             {
-                // Each sample in the sphere gives up the impact amount; whole units become items (GL96).
-                float amount = tool == hand ? collecting.HandAmount : collecting.ToolAmount;
-                int lowered = SphereStrike.Lower(worldView.World, targets, amount, worldView.Config.Materials, owed, collected, minedFrom);
-                Struck?.Invoke(new StrikeResult(targets.Count, lowered, collected.Count));
-            }
-            else if (collecting.Mode == CollectMode.SphereWhole)
-            {
-                int taken = SphereStrike.Take(worldView.World, targets, worldView.Config.Materials, collected, worldView.Config.IsoLevel, minedFrom);
-                Struck?.Invoke(new StrikeResult(targets.Count, taken, taken));
+                HitArea(tool);
             }
             else
             {
@@ -357,6 +350,71 @@ namespace Clube.Game
                 // Ore the player can't tell yet comes out as "? ore" (GL54).
                 Collected?.Invoke(knowledge != null ? knowledge.Disguise(stack, minedFrom[i].Material) : stack);
             }
+        }
+
+        // A hit in the sphere modes (GL96, GL106, GL107, GL109, GL112). The bare hand picks up a loose stone
+        // under the dot whole if there is one; otherwise the samples reached give up the hit's amount
+        // (gradual) or come away whole. A tool takes the full amount from the kind of ground it's made for,
+        // little from the rest, and less again from materials other than the one under the dot. Any sliver
+        // left hanging comes away too.
+        private void HitArea(ToolDefinition tool)
+        {
+            World world = worldView.World;
+            MaterialRegistry materials = worldView.Config.Materials;
+            float iso = worldView.Config.IsoLevel;
+            bool hand = tool == this.hand;
+            if (hand && collecting.HandTakesAimedVoxel)
+            {
+                int picked = HandPickup.TakeStone(world, targets, ImpactCentre, materials, collected, iso, minedFrom);
+                if (picked > 0)
+                {
+                    ToolStrike.ClearSliversAround(world, targets, materials, Damage, collected, iso, minedFrom);
+                    Struck?.Invoke(new StrikeResult(targets.Count, picked, picked));
+                    return;
+                }
+            }
+            int done;
+            if (collecting.Mode == CollectMode.SphereGradual)
+            {
+                VoxelMaterial aimed = AimedMaterial(world, materials);
+                done = SphereStrike.Lower(world, targets, material => AmountFor(tool, hand, material, aimed), materials, owed, collected, minedFrom);
+            }
+            else
+            {
+                done = SphereStrike.Take(world, targets, materials, collected, iso, minedFrom);
+            }
+            ToolStrike.ClearSliversAround(world, targets, materials, Damage, collected, iso, minedFrom);
+            Struck?.Invoke(new StrikeResult(targets.Count, done, collected.Count));
+        }
+
+        // How much a gradual hit takes from a sample of a material (GL107).
+        private float AmountFor(ToolDefinition tool, bool hand, VoxelMaterial material, VoxelMaterial aimed)
+        {
+            if (hand)
+            {
+                return collecting.HandAmount;
+            }
+            float amount = tool.ReachesWideOn(material) ? collecting.ToolAmount : collecting.ToolOffAmount;
+            return material == aimed ? amount : amount * collecting.OtherMaterialFactor;
+        }
+
+        // The material of the target nearest where the hit lands: what's under the dot.
+        private VoxelMaterial AimedMaterial(World world, MaterialRegistry materials)
+        {
+            float voxel = world.Grid.VoxelSize;
+            float nearest = float.MaxValue;
+            VoxelMaterial aimed = null;
+            foreach (Vector3Int sample in targets)
+            {
+                float distance = ((Vector3)sample * voxel - ImpactCentre).sqrMagnitude;
+                byte? id = world.GetMaterial(sample);
+                if (distance < nearest && id.HasValue && materials != null)
+                {
+                    nearest = distance;
+                    aimed = materials.Get(id.Value);
+                }
+            }
+            return aimed;
         }
 
         // Each swing wears the held tool (GL37); the hand never breaks.

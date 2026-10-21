@@ -118,7 +118,8 @@ namespace Clube.Game
             PriceList prices = Current.Prices;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
             float offerRows = Current.Offers.Count > 0 ? Current.Offers.Count * (RowHeight + 4f) + 28f : 0f;
-            float height = Padding * 2f + 24f + 22f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + SellRowHeight + 6f + offerRows;
+            float binRows = inventory.UsesVolume ? inventory.Bins.Count * (RowHeight + 4f) + 6f : 0f;
+            float height = Padding * 2f + 24f + 22f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + SellRowHeight + 6f + offerRows + binRows;
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
@@ -182,8 +183,32 @@ namespace Clube.Game
             }
             GUI.enabled = true;
             y += SellRowHeight + 6f;
+            if (inventory.UsesVolume)
+            {
+                y = DrawBins(x, y, width - Padding * 2f, prices);
+            }
             DrawOffers(x, y, width - Padding * 2f);
             InventoryGridGui.DrawTooltip();
+        }
+
+        // The volume inventory's bins (GL111): what each holds and a button selling all of it at its value.
+        private float DrawBins(float x, float y, float width, PriceList prices)
+        {
+            for (int i = 0; i < inventory.Bins.Count; i++)
+            {
+                VolumeMix bin = inventory.Bins[i];
+                float value = prices.ValueOf(bin);
+                GUI.Label(new Rect(x, y + 3f, width - 150f, 20f), MixSlotGui.Describe(bin, (MaterialKind)i));
+                GUI.enabled = !bin.IsEmpty && value > 0f;
+                if (GUI.Button(new Rect(x + width - 140f, y, 140f, RowHeight), "Sell all  " + FormatCoins(value)))
+                {
+                    wallet.Wallet.EarnFraction(value);
+                    bin.Clear();
+                }
+                GUI.enabled = true;
+                y += RowHeight + 4f;
+            }
+            return y + 6f;
         }
 
         // Coins to two places at most: "50c", "0.1c", "0.001c".

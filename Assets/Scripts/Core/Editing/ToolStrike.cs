@@ -193,6 +193,28 @@ namespace Clube.Core
         private static readonly HashSet<Vector3Int> SliverChecked = new HashSet<Vector3Int>();
         private static readonly List<Vector3Int> Sliver = new List<Vector3Int>();
 
+        /// <summary>
+        /// Clears floating slivers after any hit (GL79, GL112): any solid piece of a few samples next to
+        /// <paramref name="changed"/> that no longer joins anything bigger is removed and collected. The
+        /// sphere and hand hits call this with the samples they emptied; voxel hits do it themselves.
+        /// Returns how many samples it removed.
+        /// </summary>
+        public static int ClearSliversAround(
+            World world, IEnumerable<Vector3Int> changed, MaterialRegistry materials, StrikeDamage damage,
+            List<ItemDefinition> collected, float isoLevel = 0.5f, List<MinedSample> minedFrom = null)
+        {
+            RemovedThisHit.Clear();
+            foreach (Vector3Int sample in changed)
+            {
+                float? density = world.GetDensity(sample);
+                if (density.HasValue && density.Value < isoLevel)
+                {
+                    RemovedThisHit.Add(sample);
+                }
+            }
+            return ClearSlivers(world, materials, damage, collected, isoLevel, minedFrom);
+        }
+
         // After a hit removes samples, any solid piece around them of SliverSize samples or fewer
         // that no longer joins anything bigger (a sliver left hanging in the air) is removed too and
         // collected like the rest. Returns how many samples it removed.

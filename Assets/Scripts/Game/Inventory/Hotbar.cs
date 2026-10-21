@@ -8,8 +8,8 @@ namespace Clube.Game
     /// The hotbar (GL7, first pass of N3), drawn along the bottom of the screen. The number keys pick a
     /// cell, the scroll wheel and NextSlot (X) step through them. In the classic inventory each cell is
     /// one of the first slots of the <see cref="PlayerInventory"/>, and a tool in the selected one is what
-    /// <see cref="PlayerToolUser"/> uses. In the volume inventory (GL99) the cells are the tool slot, the
-    /// volume slot (the mix, what Drop pours from) and the item slots; the tool in the tool slot is always
+    /// <see cref="PlayerToolUser"/> uses. In the volume inventory (GL99, GL114) the cells are the tool slot, the
+    /// three bins (rock, soil, plant: what Drop pours from) and the item slots; the tool in the tool slot is always
     /// the one in hand, and picking an item slot that holds a tool swaps it into the tool slot.
     /// </summary>
     [RequireComponent(typeof(PlayerInventory))]
@@ -19,8 +19,9 @@ namespace Clube.Game
         private const float Gap = 4f;
         private const float BottomMargin = 12f;
 
-        // The volume inventory's cell for the volume slot, between the tool slot and the item slots.
-        private const int MixCell = 1;
+        // The volume inventory's cells for the bins, between the tool slot and the item slots.
+        private const int FirstBinCell = 1;
+        private const int BinCells = 3;
 
         [Tooltip("Picks a slot: bound to the number keys 1-9.")]
         [SerializeField]
@@ -40,10 +41,13 @@ namespace Clube.Game
         /// <summary>The selected cell, 0-based.</summary>
         public int Selected { get; private set; }
 
-        /// <summary>True when the volume slot is selected (GL99): Drop pours from the mix.</summary>
-        public bool MixSelected => inventory.UsesVolume && Selected == MixCell;
+        /// <summary>The selected bin (GL114), what Drop pours from; null when an item cell is selected.</summary>
+        public VolumeMix SelectedBin => BinOf(Selected);
 
-        /// <summary>The inventory slot of the selected cell; -1 for the volume slot.</summary>
+        /// <summary>True when a bin is selected (GL99): Drop pours from it.</summary>
+        public bool MixSelected => SelectedBin != null;
+
+        /// <summary>The inventory slot of the selected cell; -1 for a bin.</summary>
         public int SelectedSlot => SlotOf(Selected);
 
         /// <summary>What the selected slot holds; empty for an empty slot or the volume slot.</summary>
@@ -69,8 +73,8 @@ namespace Clube.Game
             }
         }
 
-        /// <summary>Cells along the bar: the slots, plus the volume slot in the volume inventory.</summary>
-        public int CellCount => inventory.UsesVolume ? inventory.HotbarSlots + 1 : inventory.HotbarSlots;
+        /// <summary>Cells along the bar: the slots, plus the bins in the volume inventory.</summary>
+        public int CellCount => inventory.UsesVolume ? inventory.HotbarSlots + BinCells : inventory.HotbarSlots;
 
         /// <summary>Wears the tool in hand by one hit (GL37); true when it broke and its slot emptied.</summary>
         public bool WearSelected(int maxHits)
@@ -98,14 +102,21 @@ namespace Clube.Game
             }
         }
 
-        // A cell's inventory slot: the same in the classic inventory; past the volume slot, one less.
+        // A cell's inventory slot: the same in the classic inventory; past the bins, that many fewer.
         private int SlotOf(int cell)
         {
             if (!inventory.UsesVolume)
             {
                 return cell;
             }
-            return cell == MixCell ? -1 : cell < MixCell ? cell : cell - 1;
+            return cell < FirstBinCell ? cell : cell < FirstBinCell + BinCells ? -1 : cell - BinCells;
+        }
+
+        // A cell's bin, or null for a slot.
+        private VolumeMix BinOf(int cell)
+        {
+            int bin = cell - FirstBinCell;
+            return inventory.UsesVolume && bin >= 0 && bin < BinCells ? inventory.Bins[bin] : null;
         }
 
         private void Awake()
@@ -175,15 +186,16 @@ namespace Clube.Game
             {
                 var rect = new Rect(x + cell * (SlotSize + Gap), y, SlotSize, SlotSize);
                 string label = (cell + 1).ToString();
-                if (inventory.UsesVolume && cell == MixCell)
+                VolumeMix bin = BinOf(cell);
+                if (bin != null)
                 {
-                    MixSlotGui.Draw(rect, inventory.Mix, cell == Selected, label);
+                    MixSlotGui.Draw(rect, bin, cell == Selected, label, (MaterialKind)(cell - FirstBinCell));
                     continue;
                 }
                 ItemSlotGui.Draw(rect, inventory.Inventory[SlotOf(cell)], cell == Selected, label);
             }
 
-            string name = MixSelected ? MixSlotGui.Describe(inventory.Mix)
+            string name = MixSelected ? MixSlotGui.Describe(SelectedBin, (MaterialKind)(Selected - FirstBinCell))
                 : !SelectedStack.IsEmpty ? SelectedStack.Item.DisplayName
                 : inventory.UsesVolume && Selected == 0 ? "Tool slot (empty: bare hands)" : null;
             if (name != null)

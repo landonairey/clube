@@ -230,16 +230,17 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Loads a recipe's material ingredients from a volume slot (GL99, GL100): for each one the mix can
-        /// give (stone from mined stone, clay from mined clay), a cut of the whole mix as big as what's
-        /// missing, so the loaded items carry the mix's contents and what's made from them its quality. An
-        /// ingredient the mix is less than <paramref name="minimumShare"/> of isn't taken. Returns how many
+        /// Loads a recipe's material ingredients from the volume slots (GL99, GL100, GL110, GL114): for each
+        /// one a bin can give (stone from mined stone, clay from mined clay), a cut of that bin as big as
+        /// what's missing, from the bin holding the largest share of it, so the loaded items carry the bin's
+        /// contents and what's made from them its quality. An ingredient a bin is less than
+        /// <paramref name="minimumShare"/> of isn't taken (0: any share crafts, worse). Returns how many
         /// items went in; <paramref name="refusal"/> says why one didn't, or is null.
         /// </summary>
-        public int LoadFromMix(Recipe recipe, VolumeMix mix, MaterialRegistry materials, float minimumShare, out string refusal)
+        public int LoadFromMix(Recipe recipe, IReadOnlyList<VolumeMix> bins, MaterialRegistry materials, float minimumShare, out string refusal)
         {
             refusal = null;
-            if (recipe == null || mix == null || materials == null)
+            if (recipe == null || bins == null || materials == null)
             {
                 return 0;
             }
@@ -247,19 +248,29 @@ namespace Clube.Core
             foreach (ItemAmount input in recipe.Inputs)
             {
                 int missing = input.Count - Input.Count(input.Item);
-                float share = materials.ShareOf(mix, input.Item);
-                if (input.Item == null || missing <= 0 || share <= 0f)
+                VolumeMix mix = null;
+                float share = 0f;
+                foreach (VolumeMix bin in bins)
+                {
+                    float binShare = materials.ShareOf(bin, input.Item);
+                    if (binShare > share)
+                    {
+                        share = binShare;
+                        mix = bin;
+                    }
+                }
+                if (input.Item == null || missing <= 0 || mix == null)
                 {
                     continue;
                 }
                 if (share < minimumShare)
                 {
-                    refusal = $"The mix is only {share * 100f:0}% {input.Item.DisplayName}; it takes {minimumShare * 100f:0}% or more.";
+                    refusal = $"That bin is only {share * 100f:0}% {input.Item.DisplayName}; it takes {minimumShare * 100f:0}% or more.";
                     continue;
                 }
                 if (mix.Total < missing - 1e-3f)
                 {
-                    refusal = $"The mix holds {mix.Total:0.#}; {input.Item.DisplayName} needs {missing}.";
+                    refusal = $"The bin holds {mix.Total:0.#}; {input.Item.DisplayName} needs {missing}.";
                     continue;
                 }
                 VolumeMix taken = mix.Take(missing);

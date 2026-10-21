@@ -15,6 +15,7 @@ namespace Clube.Game
     public class InventoryScreen : MonoBehaviour
     {
         private const float Padding = 12f;
+        private const float BinRow = 44f;
 
         // Pixels the mouse moves with the button held before a press becomes a drag.
         private const float DragDistance = 6f;
@@ -92,7 +93,8 @@ namespace Clube.Game
 
             Inventory items = inventory.Inventory;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
-            float mixRow = inventory.UsesVolume ? 22f : 0f;
+            // The bins (GL113): a slot and what it holds, a row each.
+            float mixRow = inventory.UsesVolume ? inventory.Bins.Count * (BinRow + 4f) + 6f : 0f;
             float height = Padding * 2f + 24f + mixRow + InventoryGridGui.PlayerHeight(inventory);
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
@@ -102,8 +104,16 @@ namespace Clube.Game
             GUI.Label(new Rect(panel.x + Padding, panel.y + Padding, width - Padding * 2f, 20f), title);
             if (inventory.UsesVolume)
             {
-                // The volume slot (GL99): what the mix holds.
-                GUI.Label(new Rect(panel.x + Padding, panel.y + Padding + 22f, width - Padding * 2f, 20f), MixSlotGui.Describe(inventory.Mix));
+                // The bins (GL113, GL114): each one's slot, and what it holds by share.
+                float rowY = panel.y + Padding + 24f;
+                for (int i = 0; i < inventory.Bins.Count; i++)
+                {
+                    var kind = (MaterialKind)i;
+                    MixSlotGui.Draw(new Rect(panel.x + Padding, rowY, BinRow, BinRow), inventory.Bins[i], false, null, kind);
+                    GUI.Label(new Rect(panel.x + Padding + BinRow + 8f, rowY + BinRow * 0.5f - 10f, width - Padding * 2f - BinRow - 8f, 20f),
+                        MixSlotGui.Describe(inventory.Bins[i], kind));
+                    rowY += BinRow + 4f;
+                }
             }
 
             var gridTopLeft = new Vector2(panel.x + Padding, panel.y + Padding + 24f + mixRow);

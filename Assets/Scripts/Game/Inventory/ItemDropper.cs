@@ -168,9 +168,9 @@ namespace Clube.Game
         // it was; the grade it held isn't kept in the ground, which takes it from the vein when mined again.
         private int DropFromMix(int count, ref PilePour into)
         {
-            VolumeMix mix = inventory.Mix;
+            VolumeMix mix = hotbar.SelectedBin;
             MaterialRegistry materials = worldView.Config.Materials;
-            if (mix.IsEmpty || materials == null)
+            if (mix == null || mix.IsEmpty || materials == null)
             {
                 return 0;
             }

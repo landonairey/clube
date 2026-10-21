@@ -174,7 +174,7 @@ namespace Clube.Game
                             // The volume inventory's material comes from the mix, at its purity (GL100).
                             if (inventory.UsesVolume && worldView != null)
                             {
-                                station.LoadFromMix(recipe, inventory.Mix, worldView.Config.Materials, inventory.MinimumShare, out mixRefusal);
+                                station.LoadFromMix(recipe, inventory.Bins, worldView.Config.Materials, inventory.MinimumShare, out mixRefusal);
                                 mixRefusalUntil = Time.time + 5f;
                             }
                         }
@@ -225,7 +225,7 @@ namespace Clube.Game
             if (inventory.UsesVolume)
             {
                 string note = mixRefusal != null && Time.time < mixRefusalUntil ? "   " + mixRefusal : "";
-                GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), MixSlotGui.Describe(inventory.Mix) + note);
+                GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), MixSlotGui.Summary(inventory.Bins) + note);
                 y += 22f;
             }
             GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Your items: click a stack to load it");

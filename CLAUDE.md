@@ -321,7 +321,14 @@ volume slot (`VolumeMix`, `MixSlotGui`) that every mined sample goes into, and 3
 cells map to slots). Recipes take a cut of the mix (`CraftingStation.LoadFromMix`, minimum share); what's built keeps
 its contents and works at its material's share (`MaterialRegistry.Quality`, `StationObject.MadeOf`); Drop pours from
 the mix by weighted random. Terrain materials meet in hard edges (`_HardMaterialEdges`). GL104 is part done. The
-bare hand takes only the voxel under the dot (GL106); tools by material (GL107) are next.
+bare hand takes only the voxel under the dot (GL106).
+Sixteenth pass (GL107-GL114, `Docs/20261020g clube-backlog.md`): the volume slot is three bins by `MaterialKind`
+(Rock, Soil, Plant; `VoxelMaterial.Kind`, `PlayerInventory.Bins`), shown in the hotbar, on Tab and at the merchant
+(`PriceList.ValueOf(VolumeMix)`); recipes take from the bin with the most of an ingredient, no minimum by default. In
+the gradual sphere a tool takes its full amount from the kind it reaches wide on and 0.2 from the rest, halved off the
+material under the dot (GL107). The bare hand picks up a loose surface stone whole with up to 2 neighbours
+(`HandPickup`); every sphere and hand hit clears floating slivers (`ToolStrike.ClearSliversAround`). `GrassScatter`
+looks only at chunks within its radius (it stalled in streamed worlds).
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16
