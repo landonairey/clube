@@ -1199,6 +1199,7 @@ MonoBehaviour:
   reach: 4
   collecting:
     Mode: 1
+    SortByTarget: 1
     HandTakesAimedVoxel: 1
     HandRadius: 0.3
     ToolRadius: 0.6
@@ -1246,9 +1247,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5064bb5edc23d304188801140f04f78c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerInventory
-  volumeInventory: 1
+  toolSlotLayout: 0
   itemSlots: 3
-  minimumShare: 0
   hotbarSlots: 9
   backpackSlots: 18
   startingItems:

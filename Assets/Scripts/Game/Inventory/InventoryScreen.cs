@@ -15,7 +15,6 @@ namespace Clube.Game
     public class InventoryScreen : MonoBehaviour
     {
         private const float Padding = 12f;
-        private const float BinRow = 44f;
 
         // Pixels the mouse moves with the button held before a press becomes a drag.
         private const float DragDistance = 6f;
@@ -93,30 +92,15 @@ namespace Clube.Game
 
             Inventory items = inventory.Inventory;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
-            // The bins (GL113): a slot and what it holds, a row each.
-            float mixRow = inventory.UsesVolume ? inventory.Bins.Count * (BinRow + 4f) + 6f : 0f;
-            float height = Padding * 2f + 24f + mixRow + InventoryGridGui.PlayerHeight(inventory);
+            float height = Padding * 2f + 24f + InventoryGridGui.PlayerHeight(inventory);
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
-            string title = inventory.UsesVolume
+            string title = inventory.UsesToolSlot
                 ? "Inventory (Tab to close): tool slot, then items; click a tool to equip it, drag to place"
                 : "Inventory (Tab to close): click to send to the hotbar or back, drag to place";
             GUI.Label(new Rect(panel.x + Padding, panel.y + Padding, width - Padding * 2f, 20f), title);
-            if (inventory.UsesVolume)
-            {
-                // The bins (GL113, GL114): each one's slot, and what it holds by share.
-                float rowY = panel.y + Padding + 24f;
-                for (int i = 0; i < inventory.Bins.Count; i++)
-                {
-                    var kind = (MaterialKind)i;
-                    MixSlotGui.Draw(new Rect(panel.x + Padding, rowY, BinRow, BinRow), inventory.Bins[i], false, null, kind);
-                    GUI.Label(new Rect(panel.x + Padding + BinRow + 8f, rowY + BinRow * 0.5f - 10f, width - Padding * 2f - BinRow - 8f, 20f),
-                        MixSlotGui.Describe(inventory.Bins[i], kind));
-                    rowY += BinRow + 4f;
-                }
-            }
 
-            var gridTopLeft = new Vector2(panel.x + Padding, panel.y + Padding + 24f + mixRow);
+            var gridTopLeft = new Vector2(panel.x + Padding, panel.y + Padding + 24f);
             HandleMouse(items, gridTopLeft);
             InventoryGridGui.DrawPlayer(gridTopLeft, inventory, pressed);
             if (dragging && pressed >= 0 && !items[pressed].IsEmpty)
@@ -175,9 +159,9 @@ namespace Clube.Game
                             items.Move(pressed, over);
                         }
                     }
-                    else if (over == pressed && inventory.UsesVolume)
+                    else if (over == pressed && inventory.UsesToolSlot)
                     {
-                        // The volume inventory (GL99): a click equips a tool, or puts the equipped one away.
+                        // The tool-slot inventory (GL99): a click equips a tool, or puts the equipped one away.
                         if (pressed == PlayerInventory.ToolSlot)
                         {
                             items.MoveInto(pressed, 1, items.SlotCount);

@@ -49,6 +49,10 @@ namespace Clube.Game
 
         private readonly List<Vector3Int> targets = new List<Vector3Int>();
         private readonly Dictionary<VoxelMaterial, float> owed = new Dictionary<VoxelMaterial, float>();
+        private readonly Dictionary<VoxelMaterial, float> minedOwed = new Dictionary<VoxelMaterial, float>();
+        private readonly Gathering gathering = new Gathering();
+        private readonly List<GatheredStack> gathered = new List<GatheredStack>();
+        private VoxelMaterial aimedTarget;
         private readonly List<ItemDefinition> collected = new List<ItemDefinition>();
         private readonly List<MinedSample> minedFrom = new List<MinedSample>();
         private PlayerController player;
@@ -181,6 +185,8 @@ namespace Clube.Game
             {
                 return;
             }
+            // Where the hit lands: what's under the dot is what it's aimed at (GL120).
+            ImpactCentre = hit.Point;
 
             if (tool.Chisels)
             {
@@ -321,6 +327,8 @@ namespace Clube.Game
         {
             collected.Clear();
             minedFrom.Clear();
+            // What the hit is aimed at, before it changes anything: what it gathers goes to that stack (GL120).
+            aimedTarget = AimedMaterial(worldView.World, worldView.Config.Materials);
             if (tool.Chisels)
             {
                 // A chisel carves the aimed voxel out (GL87, GL92); the Flat Rock may form (GL88).
@@ -343,13 +351,58 @@ namespace Clube.Game
             WearTool(tool);
             for (int i = 0; i < collected.Count; i++)
             {
-                Mined?.Invoke(minedFrom[i].Material);
                 Composition contents = ContentsOf(minedFrom[i]);
-                Unearthed?.Invoke(minedFrom[i].Material, worldView.transform.TransformPoint(worldView.World.Grid.SampleToWorld(minedFrom[i].Sample)), contents);
+                RaiseMined(minedFrom[i].Material, minedFrom[i].Sample, contents);
+                if (collecting.SortByTarget)
+                {
+                    gathering.Add(aimedTarget ?? minedFrom[i].Material, minedFrom[i].Material, 1f, contents);
+                    continue;
+                }
                 var stack = new ItemStack(collected[i], 1, contents);
                 // Ore the player can't tell yet comes out as "? ore" (GL54).
                 Collected?.Invoke(knowledge != null ? knowledge.Disguise(stack, minedFrom[i].Material) : stack);
             }
+            HandOverGathered();
+        }
+
+        // A sample mined (whole, or a whole one's worth taken gradually): experience and the journal.
+        private void RaiseMined(VoxelMaterial material, Vector3Int sample, Composition contents)
+        {
+            Mined?.Invoke(material);
+            Unearthed?.Invoke(material, worldView.transform.TransformPoint(worldView.World.Grid.SampleToWorld(sample)), contents);
+        }
+
+        // Whole items gathered toward a target go to the player as a stack of that material, with the mix it
+        // gathered as its contents and its share of the target as its quality (GL118, GL120).
+        private void HandOverGathered()
+        {
+            gathered.Clear();
+            gathering.TakeWhole(worldView.Config.Materials, gathered);
+            foreach (GatheredStack made in gathered)
+            {
+                var stack = new ItemStack(made.Item, made.Count, made.Contents, 0, made.Quality);
+                Collected?.Invoke(knowledge != null ? knowledge.Disguise(stack, made.Target) : stack);
+            }
+        }
+
+        // A gradual hit's share of one sample (GL120): to the aimed-at stack, and a whole sample's worth of a
+        // material counts as mined (experience, journal) as it builds up.
+        private void Gather(Vector3Int sample, VoxelMaterial material, float amount)
+        {
+            if (material == null)
+            {
+                return;
+            }
+            Composition contents = ContentsOf(new MinedSample(sample, material));
+            gathering.Add(aimedTarget ?? material, material, amount, contents);
+            minedOwed.TryGetValue(material, out float total);
+            total += amount;
+            while (total >= 1f - 1e-4f)
+            {
+                total -= 1f;
+                RaiseMined(material, sample, contents);
+            }
+            minedOwed[material] = total;
         }
 
         // A hit in the sphere modes (GL96, GL106, GL107, GL109, GL112). The bare hand picks up a loose stone
@@ -377,10 +430,17 @@ namespace Clube.Game
             if (collecting.Mode == CollectMode.SphereGradual)
             {
                 VoxelMaterial aimed = AimedMaterial(world, materials);
-                done = SphereStrike.Lower(world, targets, material => AmountFor(tool, hand, material, aimed), materials, owed, collected, minedFrom);
+                done = collecting.SortByTarget
+                    ? SphereStrike.LowerInto(world, targets, material => AmountFor(tool, hand, material, aimed), materials, Gather)
+                    : SphereStrike.Lower(world, targets, material => AmountFor(tool, hand, material, aimed), materials, owed, collected, minedFrom);
             }
             else
             {
+                // Hands don't take hard ground (GL119).
+                if (hand)
+                {
+                    targets.RemoveAll(sample => world.GetMaterial(sample) is byte id && materials != null && materials.Get(id) is VoxelMaterial m && m.Kind == MaterialKind.Rock);
+                }
                 done = SphereStrike.Take(world, targets, materials, collected, iso, minedFrom);
             }
             ToolStrike.ClearSliversAround(world, targets, materials, Damage, collected, iso, minedFrom);
@@ -392,7 +452,8 @@ namespace Clube.Game
         {
             if (hand)
             {
-                return collecting.HandAmount;
+                // Hands take soft ground only (GL119); a loose stone is picked up whole instead (GL109).
+                return material != null && material.Kind == MaterialKind.Rock ? 0f : collecting.HandAmount;
             }
             float amount = tool.ReachesWideOn(material) ? collecting.ToolAmount : collecting.ToolOffAmount;
             return material == aimed ? amount : amount * collecting.OtherMaterialFactor;

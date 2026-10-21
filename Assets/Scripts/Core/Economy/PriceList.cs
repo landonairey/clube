@@ -129,29 +129,6 @@ namespace Clube.Core
             return value;
         }
 
-        /// <summary>
-        /// What a bin of mixed material is worth in coins, not rounded (GL111): each material's volume at the
-        /// price of what it gives (mined stone at the price of stone), spread over the lot. Material nothing
-        /// is paid for is worth nothing.
-        /// </summary>
-        public float ValueOf(VolumeMix mix)
-        {
-            float value = 0f;
-            if (mix == null)
-            {
-                return value;
-            }
-            foreach (VolumeMix.Entry entry in mix.Entries)
-            {
-                ItemDefinition item = entry.Material != null ? entry.Material.FinalDrop : null;
-                if (item != null && TryGetLot(item, out int coins, out int lot))
-                {
-                    value += entry.Volume * coins / lot;
-                }
-            }
-            return value;
-        }
-
         /// <summary>The most that can be sold of <paramref name="available"/> items: whole lots only (GL38).</summary>
         public int Sellable(ItemDefinition item, int available)
         {

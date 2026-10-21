@@ -35,9 +35,6 @@ namespace Clube.Game
         private PlayerController player;
         private int openedFrame;
         private GUIStyle recipeStyle;
-        private WorldView worldView;
-        private string mixRefusal;
-        private float mixRefusalUntil;
 
         /// <summary>The station being used, or null when closed.</summary>
         public StationObject Current { get; private set; }
@@ -48,7 +45,6 @@ namespace Clube.Game
         {
             inventory = GetComponent<PlayerInventory>();
             player = GetComponent<PlayerController>();
-            worldView = FindFirstObjectByType<WorldView>();
         }
 
         private void OnEnable()
@@ -136,7 +132,7 @@ namespace Clube.Game
             float gap = InventoryGridGui.Gap;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
             float fuelRow = station.BurnsFuel ? slot + gap * 2f : 0f;
-            float height = Padding * 2f + 24f + 22f * station.Recipes.Count + slot + fuelRow + 30f + 22f + (inventory.UsesVolume ? 22f : 0f) + InventoryGridGui.PlayerHeight(inventory);
+            float height = Padding * 2f + 24f + 22f * station.Recipes.Count + slot + fuelRow + 30f + 22f + InventoryGridGui.PlayerHeight(inventory);
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
@@ -171,12 +167,6 @@ namespace Clube.Game
                         if (!chosen)
                         {
                             station.LoadFor(recipe, items);
-                            // The volume inventory's material comes from the mix, at its purity (GL100).
-                            if (inventory.UsesVolume && worldView != null)
-                            {
-                                station.LoadFromMix(recipe, inventory.Bins, worldView.Config.Materials, inventory.MinimumShare, out mixRefusal);
-                                mixRefusalUntil = Time.time + 5f;
-                            }
                         }
                     }
                 }
@@ -222,12 +212,6 @@ namespace Clube.Game
             }
             y += slot + 30f;
 
-            if (inventory.UsesVolume)
-            {
-                string note = mixRefusal != null && Time.time < mixRefusalUntil ? "   " + mixRefusal : "";
-                GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), MixSlotGui.Summary(inventory.Bins) + note);
-                y += 22f;
-            }
             GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Your items: click a stack to load it");
             y += 22f;
             int mine = InventoryGridGui.DrawPlayer(new Vector2(x, y), inventory, -1);

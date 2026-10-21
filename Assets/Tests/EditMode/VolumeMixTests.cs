@@ -79,22 +79,30 @@ namespace Clube.Core.Tests
             Assert.AreEqual(1f, mix.ShareOf(clay), 1e-4f);
         }
 
-        // GL100: what's built from a mix keeps it, and works as well as its own material's share.
+        // GL120: what hits aimed at clay gather goes to a clay stack, mixed with the stone that came with
+        // it, at clay's share as its quality; and what's built from it keeps that.
         [Test]
-        public void CraftingFromAMix_GivesAPlaceableItsQuality()
+        public void Gathering_SortsByTarget_AndCraftsAtItsShare()
         {
             PlaceableDefinition furnace = PlaceableDefinition.Create("clay-furnace", "Clay furnace");
             Recipe build = Recipe.Create(StationKind.Worktop, new ItemAmount(furnace, 1), RecipeWork.Time, 1f, new ItemAmount(clayItem, 10));
             try
             {
+                var gathering = new Gathering();
+                gathering.Add(clay, clay, 7.6f);
+                gathering.Add(clay, stone, 2.4f);
+                gathering.Add(stone, stone, 0.5f);
+                var ready = new List<GatheredStack>();
+                gathering.TakeWhole(registry, ready);
+                Assert.AreEqual(1, ready.Count, "Stone aimed at hasn't made a whole item yet.");
+                Assert.AreEqual(clayItem, ready[0].Item);
+                Assert.AreEqual(10, ready[0].Count);
+                Assert.AreEqual(0.76f, ready[0].Quality, 1e-3f);
+                Assert.AreEqual(0.5f, gathering.PendingFor(stone), 1e-4f);
+                Assert.AreEqual(0f, gathering.PendingFor(clay), 1e-4f);
+
                 var station = new CraftingStation(StationKind.Worktop, new[] { build });
-                var mix = new VolumeMix();
-                mix.Add(clay, 7.6f);
-                mix.Add(stone, 2.4f);
-                mix.Add(clay, 7.6f);
-                mix.Add(stone, 2.4f);
-                Assert.AreEqual(10, station.LoadFromMix(build, new[] { mix }, registry, 0.5f, out string refusal));
-                StringAssert.Contains("76% pure", refusal);
+                station.Input.Add(ready[0].Item, ready[0].Count, ready[0].Contents, 0, ready[0].Quality);
                 station.Tick(2f);
                 ItemStack made = station.Output[0];
                 Assert.AreEqual(furnace, made.Item);
@@ -107,26 +115,20 @@ namespace Clube.Core.Tests
             }
         }
 
+        // A part of a sample waits for the next hit, aimed at the same material.
         [Test]
-        public void CraftingFromAMix_RefusesTooLittleOfTheMaterial()
+        public void Gathering_KeepsWhatsShortOfAWholeItem()
         {
-            PlaceableDefinition furnace = PlaceableDefinition.Create("clay-furnace", "Clay furnace");
-            Recipe build = Recipe.Create(StationKind.Worktop, new ItemAmount(furnace, 1), RecipeWork.Time, 1f, new ItemAmount(clayItem, 10));
-            try
-            {
-                var station = new CraftingStation(StationKind.Worktop, new[] { build });
-                var mix = new VolumeMix();
-                mix.Add(clay, 4f);
-                mix.Add(stone, 16f);
-                Assert.AreEqual(0, station.LoadFromMix(build, new[] { mix }, registry, 0.5f, out string refusal));
-                StringAssert.Contains("20%", refusal);
-                Assert.AreEqual(20f, mix.Total, 1e-4f, "Nothing taken.");
-            }
-            finally
-            {
-                Object.DestroyImmediate(build);
-                Object.DestroyImmediate(furnace);
-            }
+            var gathering = new Gathering();
+            var ready = new List<GatheredStack>();
+            gathering.Add(clay, clay, 0.6f);
+            gathering.TakeWhole(registry, ready);
+            Assert.AreEqual(0, ready.Count);
+            gathering.Add(clay, clay, 0.6f);
+            gathering.TakeWhole(registry, ready);
+            Assert.AreEqual(1, ready.Count);
+            Assert.AreEqual(1, ready[0].Count);
+            Assert.AreEqual(0.2f, gathering.PendingFor(clay), 1e-4f);
         }
 
         // Stone mined whole and its loose stage both count as stone.

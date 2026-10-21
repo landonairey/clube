@@ -115,10 +115,6 @@ namespace Clube.Game
         /// </summary>
         public int Drop(int count, ref PilePour into)
         {
-            if (hotbar.MixSelected)
-            {
-                return DropFromMix(count, ref into);
-            }
             int slot = hotbar.SelectedSlot;
             if (slot < 0)
             {
@@ -149,75 +145,78 @@ namespace Clube.Game
                 Refused?.Invoke(stack.Item);
                 return 0;
             }
-            PileSettings pile = PileSettings.For(material, new BuildGrid(worldView.Config.BuildCellSize));
-            int placed = TerrainPile.Pour(worldView.World, ref into, point, material.Id, Mathf.Min(count, stack.Count), worldView.Config.IsoLevel, pile);
+            var grid = new BuildGrid(worldView.Config.BuildCellSize);
+            int wanted = Mathf.Min(count, stack.Count);
+            int placed;
+            if (IsMixed(stack, material))
+            {
+                placed = PourMixed(stack.Contents, materials, material, grid, ref into, point, wanted);
+            }
+            else
+            {
+                placed = TerrainPile.Pour(worldView.World, ref into, point, material.Id, wanted, worldView.Config.IsoLevel, PileSettings.For(material, grid));
+                if (placed > 0)
+                {
+                    Piled?.Invoke(material, TerrainPile.LastFilled);
+                }
+            }
             if (placed == 0)
             {
                 return 0;
             }
             inventory.Inventory.RemoveAt(slot, placed);
             Dropped?.Invoke(stack.Item, placed);
-            Piled?.Invoke(material, TerrainPile.LastFilled);
             // A pile at the feet, or a big one spreading under them, can bury the player.
             LiftOutOfGround();
             return placed;
         }
 
-        // The volume slot (GL101): each sample poured is a material picked at random, weighted by the mix,
-        // put down as that material is when dropped (mined stone as loose stone). Ore goes back as the ore
-        // it was; the grade it held isn't kept in the ground, which takes it from the vein when mined again.
-        private int DropFromMix(int count, ref PilePour into)
+        // A gathered stack holding more than its own material (GL120: grass with some dirt). Ore keeps
+        // its grade in its contents, not other ground, so it always goes down as the ore.
+        private static bool IsMixed(ItemStack stack, VoxelMaterial material)
         {
-            VolumeMix mix = hotbar.SelectedBin;
-            MaterialRegistry materials = worldView.Config.Materials;
-            if (mix == null || mix.IsEmpty || materials == null)
-            {
-                return 0;
-            }
-            Vector3 point = into.Point;
-            if (!into.Started)
-            {
-                AimPoint(out point);
-            }
-            if (parcels != null && !parcels.CanEdit(worldView.transform.TransformPoint(point)))
-            {
-                return 0;
-            }
-            var grid = new BuildGrid(worldView.Config.BuildCellSize);
+            return material.Category != VoxelMaterialCategory.Ore && stack.Contents != null && stack.Contents.Parts.Count > 1;
+        }
+
+        // A mixed stack goes down as its mix: each sample a material picked at random by its share, put
+        // down as that material is when dropped (mined stone as loose stone).
+        private int PourMixed(Composition contents, MaterialRegistry materials, VoxelMaterial fallback, BuildGrid grid, ref PilePour into, Vector3 point, int count)
+        {
             int placed = 0;
-            for (int i = 0; i < count && !mix.IsEmpty; i++)
+            for (int i = 0; i < count; i++)
             {
-                float roll = UnityEngine.Random.value;
-                VolumeMix.Entry next = Pick(mix, roll);
-                VoxelMaterial material = materials.PlacedFrom(next.Material.FinalDrop) ?? next.Material;
+                VoxelMaterial part = Pick(contents, UnityEngine.Random.value) ?? fallback;
+                VoxelMaterial material = materials.PlacedFrom(part.FinalDrop) ?? part;
                 if (TerrainPile.Pour(worldView.World, ref into, point, material.Id, 1, worldView.Config.IsoLevel, PileSettings.For(material, grid)) == 0)
                 {
                     break;
                 }
-                mix.TakeOne(roll, out _, out _);
                 placed++;
                 Piled?.Invoke(material, TerrainPile.LastFilled);
-            }
-            if (placed > 0)
-            {
-                LiftOutOfGround();
             }
             return placed;
         }
 
-        // The entry a roll lands on, as VolumeMix.TakeOne picks it.
-        private static VolumeMix.Entry Pick(VolumeMix mix, float roll)
+        // The part of the contents a roll in [0, 1) lands on, by fraction.
+        private static VoxelMaterial Pick(Composition contents, float roll)
         {
-            float at = Mathf.Clamp(roll, 0f, 0.99999f) * mix.Total;
-            foreach (VolumeMix.Entry entry in mix.Entries)
+            float total = 0f;
+            foreach (Content part in contents.Parts)
             {
-                if (at < entry.Volume)
-                {
-                    return entry;
-                }
-                at -= entry.Volume;
+                total += part.Fraction;
             }
-            return mix.Entries[mix.Entries.Count - 1];
+            float at = roll * total;
+            VoxelMaterial last = null;
+            foreach (Content part in contents.Parts)
+            {
+                last = part.Material;
+                if (at < part.Fraction)
+                {
+                    return part.Material;
+                }
+                at -= part.Fraction;
+            }
+            return last;
         }
 
         // Where to pile, relative to the world origin: half a voxel in front of the surface

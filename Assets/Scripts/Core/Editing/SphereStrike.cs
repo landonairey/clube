@@ -69,25 +69,11 @@ namespace Clube.Core
             World world, IReadOnlyList<Vector3Int> targets, Func<VoxelMaterial, float> amountFor, MaterialRegistry materials,
             Dictionary<VoxelMaterial, float> owed, List<ItemDefinition> collected, List<MinedSample> minedFrom = null)
         {
-            int lowered = 0;
-            foreach (Vector3Int sample in targets)
+            return LowerInto(world, targets, amountFor, materials, (sample, material, taken) =>
             {
-                float? density = world.GetDensity(sample);
-                if (!density.HasValue || density.Value <= 0f)
-                {
-                    continue;
-                }
-                VoxelMaterial material = MaterialAt(world, sample, materials);
-                float taken = Mathf.Min(density.Value, Mathf.Max(0f, amountFor(material)));
-                if (taken <= 0f)
-                {
-                    continue;
-                }
-                world.SetDensity(sample, density.Value - taken);
-                lowered++;
                 if (material == null)
                 {
-                    continue;
+                    return;
                 }
                 owed.TryGetValue(material, out float total);
                 total += taken;
@@ -102,6 +88,35 @@ namespace Clube.Core
                     }
                 }
                 owed[material] = Mathf.Max(0f, total);
+            });
+        }
+
+        /// <summary>
+        /// Lowers every target by what <paramref name="amountFor"/> gives for its material (to no less than 0)
+        /// and tells <paramref name="taken"/> how much each gave (its sample, material and amount), for the
+        /// caller to collect as it likes (GL120: sorted by what was aimed at). Returns how many it lowered.
+        /// </summary>
+        public static int LowerInto(
+            World world, IReadOnlyList<Vector3Int> targets, Func<VoxelMaterial, float> amountFor, MaterialRegistry materials,
+            Action<Vector3Int, VoxelMaterial, float> taken)
+        {
+            int lowered = 0;
+            foreach (Vector3Int sample in targets)
+            {
+                float? density = world.GetDensity(sample);
+                if (!density.HasValue || density.Value <= 0f)
+                {
+                    continue;
+                }
+                VoxelMaterial material = MaterialAt(world, sample, materials);
+                float amount = Mathf.Min(density.Value, Mathf.Max(0f, amountFor(material)));
+                if (amount <= 0f)
+                {
+                    continue;
+                }
+                world.SetDensity(sample, density.Value - amount);
+                lowered++;
+                taken?.Invoke(sample, material, amount);
             }
             return lowered;
         }

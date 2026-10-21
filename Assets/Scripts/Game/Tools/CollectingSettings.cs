@@ -29,6 +29,9 @@ namespace Clube.Game
         [Tooltip("How a hit takes the ground.")]
         public CollectMode Mode = CollectMode.SphereGradual;
 
+        [Tooltip("What a hit gathers goes to a stack of the material under the dot, mixed, at that material's share as its quality (GL120). Off: each material to its own stack.")]
+        public bool SortByTarget = true;
+
         [Tooltip("Sphere modes: the hand takes only the voxel under the dot (GL106), not a sphere.")]
         public bool HandTakesAimedVoxel = true;
 
