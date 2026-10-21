@@ -510,14 +510,14 @@ Bins by kind, tools by material, and the mix usable everywhere.
 - [x] **GL117** `Game` *(added 2026-10-20)* A spare tool works from an item slot: a tool in the selected slot is the one in hand and wears there (scrolling onto it doesn't swap it in), and when the tool slot's tool breaks the next of the same tool from the item slots takes its place. *(Done: `Hotbar.ToolSlot`, `Hotbar.WearSelected`.)*
 - [x] **GL118** `Core + Game` *(added 2026-10-20, from `Docs/20261020i clube-backlog.md`)* Quality carries through crafting: material taken from a bin is as good as it is pure, whatever's made from it is as good as its inputs (weighted by count), and a tool lasts its quality's share of its hits, so sticks of 60% wood make a pointy stick that lasts 36 of 60 hits. *(Done: `ItemStack.Quality` (blended when stacks merge) and `ItemStack.MaxHits`; `CraftingStation` sets input quality from bins and output quality from inputs; `Inventory.Wear` breaks at the stack's hits; the slot shows a quality badge and a shorter wear bar; tool prices count hits left of a full tool's; built stations take the placed item's quality.)*
 
-### Eighteenth pass *(added 2026-10-21, from `Docs/20261021b clube-backlog.md` — next)*
+### Eighteenth pass *(added 2026-10-21, from `Docs/20261021b clube-backlog.md` — done)*
 Tools by material, smelting yield, blacksmithing.
 
-- [ ] **GL126** `Game` In the gradual sphere a tool lowers the kind it's made for by 1 and every other kind by 0.1 (both still halved off the material under the dot, GL107): the pick takes stone and ore, the shovel soil, the hatchet plants. Less soil in ore stacks.
-- [ ] **GL127** `Core + Game` A furnace's quality sets its speed (GL100) and its yield: a 50% furnace makes half as many buns from the same ore. Part outputs carry over to the next run.
-- [ ] **GL128** `Core + Config` Ore concentration sets smelting yield: a smelt recipe names the mineral it extracts and a typical grade; ore richer than that yields more buns, leaner ore fewer. Smelted metal comes out pure (quality 1): impurity costs yield, not quality.
-- [ ] **GL129** `Core + Game` A Blacksmithing skill: anvil and flat-rock recipes give Blacksmithing experience, and what they make is no better than the smith (50% at level 0 up to 100% at level 10), nor than what went in. Ingots and tools carry it as their quality.
-- [ ] **GL130** `Core` Quality sets sell prices: an item sells at its quality's share of the listed price (a tool already did, through its hits).
+- [x] **GL126** `Game` In the gradual sphere a tool lowers the kind it's made for by 1 and every other kind by 0.1 (both still halved off the material under the dot, GL107): the pick takes stone and ore, the shovel soil, the hatchet plants. Less soil in ore stacks. *(Done 2026-10-21.)*
+- [x] **GL127** `Core + Game` A furnace's quality sets its speed (GL100) and its yield: a 50% furnace makes half as many buns from the same ore. Part outputs carry over to the next run. *(Done 2026-10-21.)*
+- [x] **GL128** `Core + Config` Ore concentration sets smelting yield: a smelt recipe names the mineral it extracts and a typical grade; ore richer than that yields more buns, leaner ore fewer. Smelted metal comes out pure (quality 1): impurity costs yield, not quality. *(Done 2026-10-21.)*
+- [x] **GL129** `Core + Game` A Blacksmithing skill: anvil and flat-rock recipes give Blacksmithing experience, and what they make is no better than the smith (50% at level 0 up to 100% at level 10), nor than what went in. Ingots and tools carry it as their quality. *(Done 2026-10-21.)*
+- [x] **GL130** `Core` Quality sets sell prices: an item sells at its quality's share of the listed price (a tool already did, through its hits). *(Done 2026-10-21.)*
 
 ### Seventeenth pass *(added 2026-10-21, from `Docs/20261021 clube-backlog.md` — done)*
 Sorted stacks instead of bins, hands for soft ground, grass as fuel.

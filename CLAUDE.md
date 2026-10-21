@@ -338,6 +338,12 @@ material's share; a hit that can't take what it's aimed at (hands on rock) sends
 stack drops as its mix (`ItemDropper`). The classic hotbar (9) and backpack (18) is the default again; the tool-slot layout
 stays switchable (`PlayerInventory.UsesToolSlot`). Hands take soft ground only, plus loose stones whole. Hard-material piles
 finish their build cell first (`TerrainPile.HoldsPile`). Grass is one voxel thick and a fuel; fuel burns for its quality's share.
+Eighteenth pass (GL126-GL130, `Docs/20261021b clube-backlog.md`): off-kind tool hits take 0.1 (`ToolOffAmount`). A station's
+`Quality` (set with its heat by `StationObject.MadeOf`) is a share of every recipe's yield; smelt recipes name the mineral they
+extract (`Recipe.Extracts`, `TypicalGrade`) and yield by the ore's concentration against it (up to 2x), the metal coming out
+pure; part items carry to the next run (`CraftingStation.YieldOf`, `Carried`; the station panel shows the yield). Anvil and
+flat-rock recipes train `SkillType.Blacksmithing` and make nothing better than the smith (`SmithingQuality`: 50% at level 0 to
+100% at 10). Items sell at their quality's share (`PriceList`).
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16
