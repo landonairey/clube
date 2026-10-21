@@ -23,7 +23,9 @@ MonoBehaviour:
     Count: 1
   work: 1
   amount: 6
-  experienceSkill: 1
+  experienceSkill: 5
   experience: 15
   unlockSkill: 1
   unlockLevel: 4
+  extracts: {fileID: 0}
+  typicalGrade: 0.2

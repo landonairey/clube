@@ -194,7 +194,8 @@ namespace Clube.Game
                 ItemSlotGui.Ghost(new Rect(outputAt.x, outputAt.y, slot, slot), upcoming.Output.Item, upcoming.Output.Count);
             }
             // Why a loaded recipe waits: a different result sits in the output slot (GL61).
-            string blocked = Blocked(station);
+            // Why a loaded recipe waits, or else what it yields (GL127, GL128).
+            string blocked = Blocked(station) ?? YieldNote(station);
             if (blocked != null)
             {
                 GUI.Label(new Rect(workX, y + slot + 4f, width - (workX - panel.x) - Padding, 20f), blocked);
@@ -265,6 +266,25 @@ namespace Clube.Game
             }
             ItemStack waiting = station.Output[0];
             return waiting.Item == next.Output.Item ? "Output full: take it out" : $"Take the {waiting.Item.DisplayName} out first";
+        }
+
+        // How much the next run yields, when that isn't simply the recipe's count (GL127, GL128), and any part
+        // item carried from the last run.
+        private static string YieldNote(CraftingStation station)
+        {
+            Recipe next = station.Chosen ?? station.Upcoming;
+            if (next == null)
+            {
+                return null;
+            }
+            float yield = station.YieldOf(next);
+            float carried = station.Carried(next.Output.Item);
+            if (Mathf.Abs(yield - 1f) < 0.005f && carried < 0.005f)
+            {
+                return null;
+            }
+            string note = $"Yield {yield * 100f:0}%: {next.Output.Count * yield:0.##} {next.Output.Item.DisplayName} a run";
+            return carried >= 0.005f ? note + $", {carried:0.##} carried" : note;
         }
 
         // The fuel burning now as a bar that empties (GL35).

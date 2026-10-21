@@ -25,3 +25,5 @@ MonoBehaviour:
   experience: 9
   unlockSkill: 0
   unlockLevel: 0
+  extracts: {fileID: 11400000, guid: 8d7e9d76247091549940794050b1d237, type: 2}
+  typicalGrade: 0.42

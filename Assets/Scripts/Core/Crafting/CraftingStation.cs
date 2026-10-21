@@ -16,7 +16,9 @@ namespace Clube.Core
     /// </summary>
     /// <remarks>
     /// <para>Every recipe is a fixed batch (GL61): a set count of inputs makes a set count of
-    /// outputs, and nothing is held between runs, so whatever is loaded next starts clean.</para>
+    /// outputs, and no inputs are held between runs, so whatever is loaded next starts clean. The
+    /// count is scaled by the station's yield (GL127, GL128); a part item left over is carried to the
+    /// next run of the same output.</para>
     /// <para>A station that burns fuel (the furnace, GL35) only works time recipes while
     /// something burns: it takes the next item from its <see cref="Fuel"/> slot whenever the
     /// last one has burnt out and there's work to do. What's burning burns down either way.</para>
@@ -27,7 +29,11 @@ namespace Clube.Core
     {
         public const int DefaultInputSlots = 2;
 
+        /// <summary>The most a smelt yields of its count from ore richer than typical (GL128).</summary>
+        public const float MaxGradeYield = 2f;
+
         private readonly List<Recipe> recipes = new List<Recipe>();
+        private readonly Dictionary<ItemDefinition, float> carried = new Dictionary<ItemDefinition, float>();
         private float done;
 
         /// <param name="recipes">What it can make; recipes for another kind of station are left out.</param>
@@ -103,6 +109,12 @@ namespace Clube.Core
         /// a hotter furnace (clay over stone) smelts quicker and on less fuel. 1 is the stone furnace.
         /// </summary>
         public float Heat { get; set; } = 1f;
+
+        /// <summary>
+        /// How well the station is built, 0-1 (GL127): a share of every recipe's yield, so a 50% furnace makes
+        /// half as many buns from the same ore. Set with its <see cref="Heat"/> when it's placed.
+        /// </summary>
+        public float Quality { get; set; } = 1f;
 
         /// <summary>Seconds the fuel burning now has left; 0 when nothing burns.</summary>
         public float BurnLeft { get; private set; }
@@ -387,7 +399,82 @@ namespace Clube.Core
         public bool OutputFits(Recipe recipe)
         {
             ItemStack waiting = Output[0];
-            return waiting.IsEmpty || (waiting.Item == recipe.Output.Item && waiting.Space >= recipe.Output.Count);
+            return waiting.IsEmpty || (waiting.Item == recipe.Output.Item && waiting.Space >= YieldCount(recipe));
+        }
+
+        /// <summary>
+        /// What a run of the recipe yields of its output count with what's loaded now (GL127, GL128): the station's
+        /// <see cref="Quality"/>, times, for a smelt, how rich the ore is against its typical grade (up to
+        /// <see cref="MaxGradeYield"/>). 1 for a plain recipe at a station of full quality.
+        /// </summary>
+        public float YieldOf(Recipe recipe)
+        {
+            float yield = Math.Max(0f, Quality);
+            if (recipe != null && recipe.Extracts != null)
+            {
+                yield *= Math.Min(MaxGradeYield, Concentration(recipe) / recipe.TypicalGrade);
+            }
+            return yield;
+        }
+
+        /// <summary>A part output put by for the next run of the same output (GL127): 0.4 of a bun waits for the next 0.6.</summary>
+        public float Carried(ItemDefinition item)
+        {
+            return item != null && carried.TryGetValue(item, out float part) ? part : 0f;
+        }
+
+        /// <summary>How good a Blacksmithing recipe's result can be at a level (GL129): 50% at level 0 up to 100% at level 10.</summary>
+        public static float SmithingQuality(int level)
+        {
+            return 0.5f + 0.05f * Math.Min(10, Math.Max(0, level));
+        }
+
+        // Whole items the next run of the recipe gives: what's carried plus its count at the current yield.
+        private int YieldCount(Recipe recipe)
+        {
+            return (int)Math.Floor(Carried(recipe.Output.Item) + recipe.Output.Count * YieldOf(recipe) + 1e-4f);
+        }
+
+        // Gives a finished run its yield: the whole items, with the part left over carried to the next run.
+        private int TakeYield(Recipe recipe)
+        {
+            float total = Carried(recipe.Output.Item) + recipe.Output.Count * YieldOf(recipe);
+            int whole = (int)Math.Floor(total + 1e-4f);
+            carried[recipe.Output.Item] = Math.Max(0f, total - whole);
+            return whole;
+        }
+
+        // The extracted mineral's share of what's loaded for the recipe, by count (GL128); an input with no
+        // contents counts as typical ore.
+        private float Concentration(Recipe recipe)
+        {
+            float total = 0f;
+            int count = 0;
+            foreach (ItemAmount input in recipe.Inputs)
+            {
+                Composition contents = Input.ContentsOf(input.Item);
+                float share = contents != null ? contents.FractionOf(recipe.Extracts) : recipe.TypicalGrade;
+                total += share * input.Count;
+                count += input.Count;
+            }
+            return count > 0 ? total / count : recipe.TypicalGrade;
+        }
+
+        // How good the result is: smelted metal comes out pure (GL128), a smith's work is no better than the
+        // smith (GL129) nor its inputs, and anything else is as good as its inputs (GL118).
+        private float OutputQuality(Recipe recipe)
+        {
+            if (recipe.Extracts != null)
+            {
+                return 1f;
+            }
+            float quality = InputQuality(recipe);
+            if (recipe.ExperienceSkill == SkillType.Blacksmithing)
+            {
+                int level = Learner != null ? Learner.Level(SkillType.Blacksmithing) : 0;
+                quality = Math.Min(quality, SmithingQuality(level));
+            }
+            return quality;
         }
 
         private void Work(float amount)
@@ -402,12 +489,16 @@ namespace Clube.Core
                 // Something built (a furnace) keeps what it was made of, so a mix of 76% clay makes one
                 // that works at 76% (GL100, MaterialRegistry.Quality).
                 Composition madeOf = finished.Output.Item is PlaceableDefinition ? InputContents(finished) : null;
-                float quality = InputQuality(finished);
+                float quality = OutputQuality(finished);
+                int count = TakeYield(finished);
                 foreach (ItemAmount input in finished.Inputs)
                 {
                     Input.Remove(input.Item, input.Count);
                 }
-                Output.Add(finished.Output.Item, finished.Output.Count, madeOf, 0, quality);
+                if (count > 0)
+                {
+                    Output.Add(finished.Output.Item, count, madeOf, 0, quality);
+                }
                 Completed?.Invoke(finished);
             }
             Changed?.Invoke();

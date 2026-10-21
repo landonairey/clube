@@ -48,12 +48,13 @@ namespace Clube.Game
 
         /// <summary>
         /// Sets how well it was built (GL100, GL118): the quality of the item it was placed from, which a mix
-        /// gives it, so a clay furnace of 76% clay works at 76% of its heat.
+        /// gives it, so a clay furnace of 76% clay works at 76% of its heat and yields 76% (GL127).
         /// </summary>
         public void MadeOf(float quality)
         {
             Quality = Mathf.Clamp01(quality);
             Station.Heat = heat * Quality;
+            Station.Quality = Quality;
         }
 
         public string Prompt => $"Use {displayName.ToLowerInvariant()}";

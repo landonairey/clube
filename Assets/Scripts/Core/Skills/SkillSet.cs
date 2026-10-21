@@ -11,6 +11,7 @@ namespace Clube.Core
         Woodcutting,
         Mining,
         Smelting,
+        Blacksmithing,
     }
 
     /// <summary>

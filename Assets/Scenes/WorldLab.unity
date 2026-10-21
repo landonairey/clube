@@ -1205,7 +1205,7 @@ MonoBehaviour:
     ToolRadius: 0.6
     HandAmount: 0.2
     ToolAmount: 1
-    ToolOffAmount: 0.2
+    ToolOffAmount: 0.1
     OtherMaterialFactor: 0.5
 --- !u!114 &1697135570
 MonoBehaviour:
