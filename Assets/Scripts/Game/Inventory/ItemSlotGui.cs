@@ -22,15 +22,16 @@ namespace Clube.Game
         /// <summary>The terrain materials, for how pure a stack is (GL115); set by whoever has them, null shows no purity.</summary>
         public static MaterialRegistry Materials { get; set; }
 
-        // A material stack that isn't all its own material (wood taken from a bin with leaves in it, ore of
-        // a grade) shows how much of it is, in the upper right (GL115).
+        // A stack made less than perfectly shows how well, in the upper right: its quality (GL118: sticks
+        // of 60% wood), or for mined material that isn't all its own material, how much of it is (GL115: ore
+        // of a grade).
         private static void DrawPurity(Rect rect, ItemStack stack)
         {
-            if (Materials == null || stack.Contents == null || stack.Item.HidesContents || !Materials.IsMaterialItem(stack.Item))
+            float purity = stack.Quality;
+            if (purity >= 0.995f && Materials != null && stack.Contents != null && !stack.Item.HidesContents && Materials.IsMaterialItem(stack.Item))
             {
-                return;
+                purity = Materials.Quality(stack.Contents, stack.Item);
             }
-            float purity = Materials.Quality(stack.Contents, stack.Item);
             if (purity >= 0.995f)
             {
                 return;
@@ -62,10 +63,11 @@ namespace Clube.Game
                     GUI.Label(Inset(rect, 3f), stack.Count.ToString(), countStyle);
                 }
                 DrawPurity(rect, stack);
-                if (stack.Item is ToolDefinition worn && worn.MaxHits > 0 && stack.Wear > 0)
+                if (stack.MaxHits > 0 && (stack.Wear > 0 || stack.Quality < 0.995f))
                 {
                     // Wear bar along the bottom: green when fresh, red when nearly gone.
-                    float left = Mathf.Clamp01(1f - (float)stack.Wear / worn.MaxHits);
+                    // Against its full hits, so a tool of 60% quality starts with 60% of the bar (GL118).
+                    float left = Mathf.Clamp01((float)(stack.MaxHits - stack.Wear) / ((ToolDefinition)stack.Item).MaxHits);
                     var bar = new Rect(rect.x + 4f, rect.yMax - 8f, (rect.width - 8f) * left, 4f);
                     Fill(bar, Color.Lerp(new Color(0.85f, 0.2f, 0.15f), new Color(0.35f, 0.8f, 0.25f), left));
                 }

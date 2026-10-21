@@ -103,7 +103,8 @@ namespace Clube.Core
             float value = Math.Min(count, stack.Count) / lot * coins;
             if (stack.Item is ToolDefinition tool && tool.MaxHits > 0)
             {
-                value *= Math.Max(0f, 1f - (float)stack.Wear / tool.MaxHits);
+                // What hits it has left of a full tool's (GL37, GL118).
+                value *= Math.Max(0f, (float)(stack.MaxHits - stack.Wear) / tool.MaxHits);
             }
             return (int)Math.Round(value, MidpointRounding.AwayFromZero);
         }
@@ -122,7 +123,8 @@ namespace Clube.Core
             float value = (float)Math.Min(count, stack.Count) * coins / lot;
             if (stack.Item is ToolDefinition tool && tool.MaxHits > 0)
             {
-                value *= Math.Max(0f, 1f - (float)stack.Wear / tool.MaxHits);
+                // What hits it has left of a full tool's (GL37, GL118).
+                value *= Math.Max(0f, (float)(stack.MaxHits - stack.Wear) / tool.MaxHits);
             }
             return value;
         }

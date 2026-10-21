@@ -455,7 +455,7 @@ namespace Clube.Game
             }
             var centre = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
             string wear = tool.MaxHits > 0 && hotbar != null && hotbar.ToolStack.Item == tool
-                ? $" ({tool.MaxHits - hotbar.ToolStack.Wear}/{tool.MaxHits})"
+                ? $" ({hotbar.ToolStack.MaxHits - hotbar.ToolStack.Wear}/{hotbar.ToolStack.MaxHits})"
                 : "";
             GUI.Label(new Rect(centre.x + 12f, centre.y + 12f, 220f, 20f), tool.DisplayName + wear);
         }

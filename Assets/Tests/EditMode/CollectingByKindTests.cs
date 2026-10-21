@@ -103,6 +103,55 @@ namespace Clube.Core.Tests
             }
         }
 
+        // GL118: purity carries through crafting: wood from a 60/40 bin makes 60% sticks, which make a 60%
+        // pointy stick that lasts 60% of its hits.
+        [Test]
+        public void Quality_CarriesFromBinToTool()
+        {
+            ItemDefinition woodItem = ItemDefinition.Create("wood", "Wood");
+            ItemDefinition leafItem = ItemDefinition.Create("leaves", "Leaves");
+            ItemDefinition sticks = ItemDefinition.Create("sticks", "Sticks");
+            ToolDefinition pointy = ToolDefinition.Create("pointy-stick", "Pointy stick", 1, 1f).WithDurability(60);
+            VoxelMaterial wood = VoxelMaterial.Create(11, "Wood", VoxelMaterialCategory.Plant).WithBreaking(1f, woodItem);
+            VoxelMaterial leaves = VoxelMaterial.Create(12, "Leaves", VoxelMaterialCategory.Plant).WithBreaking(1f, leafItem);
+            MaterialRegistry plants = MaterialRegistry.Create(wood, leaves);
+            Recipe whittle = Recipe.Create(StationKind.Worktop, new ItemAmount(sticks, 2), RecipeWork.Time, 1f, new ItemAmount(woodItem, 1));
+            Recipe sharpen = Recipe.Create(StationKind.Worktop, new ItemAmount(pointy, 1), RecipeWork.Time, 1f, new ItemAmount(sticks, 2));
+            try
+            {
+                var bin = new VolumeMix();
+                bin.Add(wood, 6f);
+                bin.Add(leaves, 4f);
+                var stump = new CraftingStation(StationKind.Worktop, new[] { whittle });
+                Assert.AreEqual(1, stump.LoadFromMix(whittle, new[] { bin }, plants, 0f, out _));
+                stump.Tick(2f);
+                Assert.AreEqual(0.6f, stump.Output[0].Quality, 1e-3f, "Sticks as good as the wood was pure.");
+
+                var bench = new CraftingStation(StationKind.Worktop, new[] { sharpen });
+                stump.Output.MoveTo(0, bench.Input);
+                bench.Tick(2f);
+                ItemStack made = bench.Output[0];
+                Assert.AreEqual(pointy, made.Item);
+                Assert.AreEqual(0.6f, made.Quality, 1e-3f);
+                Assert.AreEqual(36, made.MaxHits, "60% of 60 hits.");
+
+                var hands = new Inventory(1);
+                hands.Add(made.Item, 1, made.Contents, 0, made.Quality);
+                for (int hit = 1; hit < 36; hit++)
+                {
+                    Assert.IsFalse(hands.Wear(0, pointy.MaxHits));
+                }
+                Assert.IsTrue(hands.Wear(0, pointy.MaxHits), "Breaks at its 36th hit.");
+            }
+            finally
+            {
+                foreach (Object made in new Object[] { whittle, sharpen, plants, wood, leaves, woodItem, leafItem, sticks, pointy })
+                {
+                    Object.DestroyImmediate(made);
+                }
+            }
+        }
+
         // One 4-voxel chunk of dirt up to y = 1, air above.
         private World SlabWorld()
         {

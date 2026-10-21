@@ -329,7 +329,8 @@ the gradual sphere a tool takes its full amount from the kind it reaches wide on
 material under the dot (GL107). The bare hand picks up a loose surface stone whole with up to 2 neighbours
 (`HandPickup`); every sphere and hand hit clears floating slivers (`ToolStrike.ClearSliversAround`). `GrassScatter`
 looks only at chunks within its radius (it stalled in streamed worlds). Material stacks show their purity (GL115); there is no
-Rock material, surface rocks are stone (GL116); a selected spare tool works and replaces a broken one (GL117).
+Rock material, surface rocks are stone (GL116); a selected spare tool works and replaces a broken one (GL117). Stacks carry a quality
+(`ItemStack.Quality`, GL118) from bin purity through recipes; a tool lasts its quality's share of its hits.
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16

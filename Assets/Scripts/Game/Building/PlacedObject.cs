@@ -15,6 +15,9 @@ namespace Clube.Game
         /// <summary>What it was made of (GL100), given back with it when it's picked up; null when made of pure items.</summary>
         public Composition Contents { get; set; }
 
+        /// <summary>How well it was made (GL118), given back with it when it's picked up.</summary>
+        public float Quality { get; set; } = 1f;
+
         /// <summary>
         /// Puts the item, and anything a station holds, into an inventory and removes the object.
         /// False, changing nothing, when they wouldn't all fit.
@@ -41,7 +44,7 @@ namespace Clube.Game
             {
                 structure.Clear();
             }
-            inventory.Add(Item, 1, Contents);
+            inventory.Add(Item, 1, Contents, 0, Quality);
             Destroy(gameObject);
             return true;
         }

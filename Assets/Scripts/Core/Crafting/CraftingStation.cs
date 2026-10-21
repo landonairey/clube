@@ -274,7 +274,7 @@ namespace Clube.Core
                     continue;
                 }
                 VolumeMix taken = mix.Take(missing);
-                int left = Input.Add(input.Item, missing, taken.Contents());
+                int left = Input.Add(input.Item, missing, taken.Contents(), 0, share);
                 // Say what went in: a cut of the whole bin, not just the wanted material (GL115).
                 refusal = "Took " + missing + " " + input.Item.DisplayName + " as " + taken + ", " + (share * 100f).ToString("0") + "% pure";
                 loaded += missing - left;
@@ -462,14 +462,29 @@ namespace Clube.Core
                 // Something built (a furnace) keeps what it was made of, so a mix of 76% clay makes one
                 // that works at 76% (GL100, MaterialRegistry.Quality).
                 Composition madeOf = finished.Output.Item is PlaceableDefinition ? InputContents(finished) : null;
+                float quality = InputQuality(finished);
                 foreach (ItemAmount input in finished.Inputs)
                 {
                     Input.Remove(input.Item, input.Count);
                 }
-                Output.Add(finished.Output.Item, finished.Output.Count, madeOf);
+                Output.Add(finished.Output.Item, finished.Output.Count, madeOf, 0, quality);
                 Completed?.Invoke(finished);
             }
             Changed?.Invoke();
+        }
+
+        // How well a recipe's result is made (GL118): its inputs' quality, weighted by how many of each it takes,
+        // so a pointy stick from sticks of 60% wood is a 60% stick.
+        private float InputQuality(Recipe recipe)
+        {
+            float total = 0f;
+            int count = 0;
+            foreach (ItemAmount input in recipe.Inputs)
+            {
+                total += Input.QualityOf(input.Item) * input.Count;
+                count += input.Count;
+            }
+            return count > 0 ? total / count : 1f;
         }
 
         // What a recipe's inputs are made of, blended by count; null when none carries contents.
