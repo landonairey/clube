@@ -103,6 +103,19 @@ namespace Clube.Core
             return material != null && item != null && material.FinalDrop == item;
         }
 
+        /// <summary>True when mining some material gives this item (stone, clay, an ore): it has a purity (GL115).</summary>
+        public bool IsMaterialItem(ItemDefinition item)
+        {
+            foreach (VoxelMaterial material in materials)
+            {
+                if (IsSourceOf(material, item))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         /// <summary>The share of a mix mined as materials that give the item, 0-1 (GL100: how much of it is clay).</summary>
         public float ShareOf(VolumeMix mix, ItemDefinition item)
         {

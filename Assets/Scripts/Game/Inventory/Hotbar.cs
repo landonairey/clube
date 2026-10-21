@@ -60,8 +60,12 @@ namespace Clube.Game
             }
         }
 
-        /// <summary>Where the tool in hand is: the tool slot in the volume inventory, else the selected slot.</summary>
-        public int ToolSlot => inventory.UsesVolume ? PlayerInventory.ToolSlot : SelectedSlot;
+        /// <summary>
+        /// Where the tool in hand is: the selected slot in the classic inventory. In the volume inventory, the
+        /// selected slot when it holds a tool (scrolled onto, not swapped in), which then wears there, else
+        /// the tool slot.
+        /// </summary>
+        public int ToolSlot => !inventory.UsesVolume || SelectedStack.Item is ToolDefinition ? SelectedSlot : PlayerInventory.ToolSlot;
 
         /// <summary>The tool in hand's stack (see <see cref="ToolSlot"/>).</summary>
         public ItemStack ToolStack
@@ -80,7 +84,28 @@ namespace Clube.Game
         public bool WearSelected(int maxHits)
         {
             int slot = ToolSlot;
-            return inventory.Inventory != null && slot >= 0 && inventory.Inventory.Wear(slot, maxHits);
+            if (inventory.Inventory == null || slot < 0)
+            {
+                return false;
+            }
+            ItemDefinition tool = inventory.Inventory[slot].Item;
+            if (!inventory.Inventory.Wear(slot, maxHits))
+            {
+                return false;
+            }
+            // Broken in the tool slot: the next of the same tool from the item slots takes its place.
+            if (inventory.UsesVolume && slot == PlayerInventory.ToolSlot)
+            {
+                for (int spare = 1; spare < inventory.Inventory.SlotCount; spare++)
+                {
+                    if (inventory.Inventory[spare].Item == tool)
+                    {
+                        inventory.Inventory.Move(spare, PlayerInventory.ToolSlot);
+                        break;
+                    }
+                }
+            }
+            return true;
         }
 
         /// <summary>
@@ -124,6 +149,16 @@ namespace Clube.Game
             inventory = GetComponent<PlayerInventory>();
             player = GetComponent<PlayerController>();
             MixSlotGui.Knowledge = GetComponent<OreKnowledge>();
+        }
+
+        private void Start()
+        {
+            // Stacks show how pure they are (GL115) once the world's materials are known.
+            WorldView world = FindFirstObjectByType<WorldView>();
+            if (world != null && world.Config != null)
+            {
+                ItemSlotGui.Materials = world.Config.Materials;
+            }
         }
 
         private void OnEnable()

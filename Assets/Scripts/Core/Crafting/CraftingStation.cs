@@ -235,7 +235,7 @@ namespace Clube.Core
         /// what's missing, from the bin holding the largest share of it, so the loaded items carry the bin's
         /// contents and what's made from them its quality. An ingredient a bin is less than
         /// <paramref name="minimumShare"/> of isn't taken (0: any share crafts, worse). Returns how many
-        /// items went in; <paramref name="refusal"/> says why one didn't, or is null.
+        /// items went in; <paramref name="refusal"/> says why one didn't, or what was taken (a cut of the bin, GL115).
         /// </summary>
         public int LoadFromMix(Recipe recipe, IReadOnlyList<VolumeMix> bins, MaterialRegistry materials, float minimumShare, out string refusal)
         {
@@ -275,6 +275,8 @@ namespace Clube.Core
                 }
                 VolumeMix taken = mix.Take(missing);
                 int left = Input.Add(input.Item, missing, taken.Contents());
+                // Say what went in: a cut of the whole bin, not just the wanted material (GL115).
+                refusal = "Took " + missing + " " + input.Item.DisplayName + " as " + taken + ", " + (share * 100f).ToString("0") + "% pure";
                 loaded += missing - left;
                 if (left > 0)
                 {

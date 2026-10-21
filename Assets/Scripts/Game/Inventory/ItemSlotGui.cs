@@ -17,6 +17,27 @@ namespace Clube.Game
 
         private static GUIStyle nameStyle;
         private static GUIStyle countStyle;
+        private static GUIStyle purityStyle;
+
+        /// <summary>The terrain materials, for how pure a stack is (GL115); set by whoever has them, null shows no purity.</summary>
+        public static MaterialRegistry Materials { get; set; }
+
+        // A material stack that isn't all its own material (wood taken from a bin with leaves in it, ore of
+        // a grade) shows how much of it is, in the upper right (GL115).
+        private static void DrawPurity(Rect rect, ItemStack stack)
+        {
+            if (Materials == null || stack.Contents == null || stack.Item.HidesContents || !Materials.IsMaterialItem(stack.Item))
+            {
+                return;
+            }
+            float purity = Materials.Quality(stack.Contents, stack.Item);
+            if (purity >= 0.995f)
+            {
+                return;
+            }
+            purityStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = 10, fontStyle = FontStyle.Bold, normal = { textColor = new Color(1f, 0.8f, 0.35f) } };
+            GUI.Label(new Rect(rect.x, rect.y + 1f, rect.width - 3f, 14f), (purity * 100f).ToString("0") + "%", purityStyle);
+        }
 
         /// <param name="corner">Small text for the lower left, e.g. a merchant's price; null for none.</param>
         public static void Draw(Rect rect, ItemStack stack, bool selected, string key = null, string corner = null)
@@ -40,6 +61,7 @@ namespace Clube.Game
                 {
                     GUI.Label(Inset(rect, 3f), stack.Count.ToString(), countStyle);
                 }
+                DrawPurity(rect, stack);
                 if (stack.Item is ToolDefinition worn && worn.MaxHits > 0 && stack.Wear > 0)
                 {
                     // Wear bar along the bottom: green when fresh, red when nearly gone.

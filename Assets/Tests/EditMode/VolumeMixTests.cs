@@ -94,7 +94,7 @@ namespace Clube.Core.Tests
                 mix.Add(clay, 7.6f);
                 mix.Add(stone, 2.4f);
                 Assert.AreEqual(10, station.LoadFromMix(build, new[] { mix }, registry, 0.5f, out string refusal));
-                Assert.IsNull(refusal);
+                StringAssert.Contains("76% pure", refusal);
                 station.Tick(2f);
                 ItemStack made = station.Output[0];
                 Assert.AreEqual(furnace, made.Item);
