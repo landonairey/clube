@@ -123,43 +123,47 @@ namespace Clube.Debug.Editor
 
         /// <summary>
         /// The furnace built from the ground (GL98): its terrain samples, as offsets from the first air
-        /// sample above the ground at its centre (TerrainStructure's parts), as tall as the furnace model
-        /// (about 2.1 m at 0.25 m voxels) and solid like it, so marching cubes gives thick walls rather than
-        /// single-sample ridges. The body: four courses 7 samples across, hollow inside (a fire chamber 3
-        /// across and 3 high) with a mouth 3 wide and 2 high through the front (+Z). The dome: courses 5
-        /// and 3 across. The chimney: three courses of a small cross. 206 samples.
+        /// sample above the ground at its centre (TerrainStructure's parts). A primitive shaft furnace, like
+        /// the first bloomeries: a round, thick-walled stack about 1.25 m across at the foot tapering to a
+        /// narrow open top about 1.75 m up, with a small fire chamber at the bottom, a flue up the middle,
+        /// and a low arched mouth at the front (+Z). Each sample's density places the surface between samples
+        /// where the taper wants it, so the stack slopes smoothly rather than stepping course by course.
         /// </summary>
-        internal static List<Vector3Int> FurnaceParts()
+        internal static List<(Vector3Int Offset, float Density)> FurnaceParts()
         {
-            var parts = new List<Vector3Int>();
-            for (int y = 0; y < 4; y++)
+            const int courses = 7;
+            var parts = new List<(Vector3Int, float)>();
+            for (int y = 0; y < courses; y++)
             {
-                AddSquare(parts, y, 3, (x, z) =>
-                    (y < 3 && Mathf.Abs(x) <= 1 && Mathf.Abs(z) <= 1)           // the chamber
-                    || (y < 2 && Mathf.Abs(x) <= 1 && z >= 2));                // the mouth
-            }
-            AddSquare(parts, 4, 2, (x, z) => false);
-            AddSquare(parts, 5, 1, (x, z) => false);
-            for (int y = 6; y < 9; y++)
-            {
-                AddSquare(parts, y, 1, (x, z) => x != 0 && z != 0);
+                float t = y / (courses - 1f);
+                float outside = Mathf.Lerp(2.7f, 1.45f, t);
+                // The fire chamber at the bottom, narrowing into the flue.
+                float inside = Mathf.Lerp(1.25f, 0.6f, Mathf.Clamp01(y / 3f));
+                for (int z = -3; z <= 3; z++)
+                {
+                    for (int x = -3; x <= 3; x++)
+                    {
+                        float distance = Mathf.Sqrt(x * x + z * z);
+                        bool mouth = x == 0 && z >= 2 && y == 0;
+                        if (mouth || distance > outside + 0.05f || distance < inside - 0.05f)
+                        {
+                            continue;
+                        }
+                        float density = Mathf.Min(SurfaceDensity(outside - distance), SurfaceDensity(distance - inside));
+                        parts.Add((new Vector3Int(x, y, z), density));
+                    }
+                }
             }
             return parts;
         }
 
-        // Every sample of a square at a height, a radius out from the centre, less those left open.
-        private static void AddSquare(List<Vector3Int> parts, int y, int radius, System.Func<int, int, bool> open)
+        // The density that puts the surface this far (in samples) beyond a solid sample, towards air: at iso
+        // 0.5 a sample of density d meets an empty neighbour 1 - 0.5 / d of the way across, so 0.55 puts it
+        // close (0.09) and 0.95 nearly halfway (0.47).
+        private static float SurfaceDensity(float beyond)
         {
-            for (int z = -radius; z <= radius; z++)
-            {
-                for (int x = -radius; x <= radius; x++)
-                {
-                    if (!open(x, z))
-                    {
-                        parts.Add(new Vector3Int(x, y, z));
-                    }
-                }
-            }
+            float across = Mathf.Clamp(beyond, 0.09f, 0.47f);
+            return Mathf.Clamp(0.5f / (1f - across), 0.55f, 0.95f);
         }
 
         /// <summary>Builds and saves the furnace's build-preview mesh (for <see cref="FurnaceStructures"/>).</summary>
@@ -175,7 +179,7 @@ namespace Clube.Debug.Editor
         {
             const float voxel = 0.25f;
             var model = new ModelBuilder(1);
-            foreach (Vector3Int part in FurnaceParts())
+            foreach ((Vector3Int part, float _) in FurnaceParts())
             {
                 model.Lump(0, new Vector3(part.x, part.y, part.z) * voxel, 0.4f, 0.32f);
             }

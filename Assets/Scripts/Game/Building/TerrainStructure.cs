@@ -29,6 +29,10 @@ namespace Clube.Game
         {
             public Vector3Int Offset;
             public VoxelMaterial Material;
+
+            [Tooltip("Its density; 0 takes the structure's sample density. Shaping densities let marching cubes round a structure off between samples (the furnace's taper).")]
+            [Range(0f, 1f)]
+            public float Density;
         }
 
         // Seconds between checks that the structure still stands.
@@ -251,7 +255,7 @@ namespace Clube.Game
                 {
                     continue;
                 }
-                world.SetDensity(sample, sampleDensity);
+                world.SetDensity(sample, part.Density > 0f ? Mathf.Max(part.Density, iso + 0.02f) : sampleDensity);
                 world.SetMaterial(sample, part.Material.Id);
                 stamped.Add(sample);
             }

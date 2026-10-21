@@ -26,7 +26,7 @@ Transform:
   m_GameObject: {fileID: 4145145593450276413}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.35, z: 0}
+  m_LocalPosition: {x: 0, y: 0.2, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -153,8 +153,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.75, y: 0.7, z: 0.3}
-  m_Center: {x: 0, y: 0.35, z: 0.75}
+  m_Size: {x: 0.45, y: 0.45, z: 0.3}
+  m_Center: {x: 0, y: 0.2, z: 0.5}
 --- !u!114 &4903786179241846693
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -203,418 +203,279 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.TerrainStructure
   parts:
-  - Offset: {x: -3, y: 0, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 0, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -1, y: 0, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 0, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 1, y: 0, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 0, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 0, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 0, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 0, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
   - Offset: {x: -1, y: 0, z: -2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.93271756
   - Offset: {x: 0, y: 0, z: -2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.9433962
   - Offset: {x: 1, y: 0, z: -2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 0, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 0, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 0, z: -1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.93271756
   - Offset: {x: -2, y: 0, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.93271756
+  - Offset: {x: -1, y: 0, z: -1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.59823895
+  - Offset: {x: 1, y: 0, z: -1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.59823895
   - Offset: {x: 2, y: 0, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 0, z: -1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 0, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.93271756
   - Offset: {x: -2, y: 0, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.9433962
   - Offset: {x: 2, y: 0, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 0, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 0, z: 1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.9433962
   - Offset: {x: -2, y: 0, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.93271756
+  - Offset: {x: -1, y: 0, z: 1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.59823895
+  - Offset: {x: 1, y: 0, z: 1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.59823895
   - Offset: {x: 2, y: 0, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 0, z: 1}
+    Density: 0.93271756
+  - Offset: {x: -1, y: 0, z: 2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 0, z: 2}
+    Density: 0.93271756
+  - Offset: {x: 1, y: 0, z: 2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 0, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 0, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 0, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 0, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 0, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 0, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 0, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 1, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 1, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -1, y: 1, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 1, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 1, y: 1, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 1, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 1, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 1, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 1, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.93271756
   - Offset: {x: -1, y: 1, z: -2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.6716808
   - Offset: {x: 0, y: 1, z: -2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.9433962
   - Offset: {x: 1, y: 1, z: -2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 1, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 1, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 1, z: -1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.6716808
   - Offset: {x: -2, y: 1, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.6716808
+  - Offset: {x: -1, y: 1, z: -1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8075982
+  - Offset: {x: 0, y: 1, z: -1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
+  - Offset: {x: 1, y: 1, z: -1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8075982
   - Offset: {x: 2, y: 1, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 1, z: -1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 1, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.6716808
   - Offset: {x: -2, y: 1, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.9433962
+  - Offset: {x: -1, y: 1, z: 0}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
+  - Offset: {x: 1, y: 1, z: 0}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   - Offset: {x: 2, y: 1, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 1, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 1, z: 1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.9433962
   - Offset: {x: -2, y: 1, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.6716808
+  - Offset: {x: -1, y: 1, z: 1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8075982
+  - Offset: {x: 0, y: 1, z: 1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
+  - Offset: {x: 1, y: 1, z: 1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8075982
   - Offset: {x: 2, y: 1, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 1, z: 1}
+    Density: 0.6716808
+  - Offset: {x: -1, y: 1, z: 2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 1, z: 2}
+    Density: 0.6716808
+  - Offset: {x: 0, y: 1, z: 2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 1, z: 2}
+    Density: 0.9433962
+  - Offset: {x: 1, y: 1, z: 2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 1, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 1, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 1, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 1, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 1, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 1, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 2, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 2, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -1, y: 2, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 2, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 1, y: 2, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 2, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 2, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 2, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 2, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.6716808
   - Offset: {x: -1, y: 2, z: -2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   - Offset: {x: 0, y: 2, z: -2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.6976744
   - Offset: {x: 1, y: 2, z: -2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 2, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 2, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 2, z: -1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   - Offset: {x: -2, y: 2, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
+  - Offset: {x: -1, y: 2, z: -1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.9433962
+  - Offset: {x: 0, y: 2, z: -1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.6122449
+  - Offset: {x: 1, y: 2, z: -1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.9433962
   - Offset: {x: 2, y: 2, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 2, z: -1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 2, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   - Offset: {x: -2, y: 2, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.6976744
+  - Offset: {x: -1, y: 2, z: 0}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.6122449
+  - Offset: {x: 1, y: 2, z: 0}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.6122449
   - Offset: {x: 2, y: 2, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 2, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 2, z: 1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.6976744
   - Offset: {x: -2, y: 2, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
+  - Offset: {x: -1, y: 2, z: 1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.9433962
+  - Offset: {x: 0, y: 2, z: 1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.6122449
+  - Offset: {x: 1, y: 2, z: 1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.9433962
   - Offset: {x: 2, y: 2, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 2, z: 1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 2, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 2, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   - Offset: {x: -1, y: 2, z: 2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   - Offset: {x: 0, y: 2, z: 2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.6976744
   - Offset: {x: 1, y: 2, z: 2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 2, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 2, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 2, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 2, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -1, y: 2, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 2, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 1, y: 2, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 2, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 2, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 3, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 3, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -1, y: 3, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 3, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 1, y: 3, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 3, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 3, z: -3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 3, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 3, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -1, y: 3, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   - Offset: {x: 0, y: 3, z: -2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 1, y: 3, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 3, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 3, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 3, z: -1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 3, z: -1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   - Offset: {x: -1, y: 3, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.9433962
   - Offset: {x: 0, y: 3, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
   - Offset: {x: 1, y: 3, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 3, z: -1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 3, z: -1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 3, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.9433962
   - Offset: {x: -2, y: 3, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   - Offset: {x: -1, y: 3, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 3, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
   - Offset: {x: 1, y: 3, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
   - Offset: {x: 2, y: 3, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 3, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 3, z: 1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 3, z: 1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   - Offset: {x: -1, y: 3, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.9433962
   - Offset: {x: 0, y: 3, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
   - Offset: {x: 1, y: 3, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 3, z: 1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 3, z: 1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 3, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 3, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -1, y: 3, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.9433962
   - Offset: {x: 0, y: 3, z: 2}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 1, y: 3, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 3, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 3, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -3, y: 3, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 3, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -1, y: 3, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 3, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 1, y: 3, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 3, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 3, y: 3, z: 3}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 4, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -1, y: 4, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 4, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 1, y: 4, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 4, z: -2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 4, z: -1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   - Offset: {x: -1, y: 4, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.91316384
   - Offset: {x: 0, y: 4, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
   - Offset: {x: 1, y: 4, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 4, z: -1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 4, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.91316384
   - Offset: {x: -1, y: 4, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 4, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
   - Offset: {x: 1, y: 4, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 4, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 4, z: 1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
   - Offset: {x: -1, y: 4, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.91316384
   - Offset: {x: 0, y: 4, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
   - Offset: {x: 1, y: 4, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 4, z: 1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -2, y: 4, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -1, y: 4, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 4, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 1, y: 4, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 2, y: 4, z: 2}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.91316384
   - Offset: {x: -1, y: 5, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.66148055
   - Offset: {x: 0, y: 5, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
   - Offset: {x: 1, y: 5, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.66148055
   - Offset: {x: -1, y: 5, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 5, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
   - Offset: {x: 1, y: 5, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
   - Offset: {x: -1, y: 5, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.66148055
   - Offset: {x: 0, y: 5, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
   - Offset: {x: 1, y: 5, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.66148055
+  - Offset: {x: -1, y: 6, z: -1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   - Offset: {x: 0, y: 6, z: -1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
+  - Offset: {x: 1, y: 6, z: -1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   - Offset: {x: -1, y: 6, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 6, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
   - Offset: {x: 1, y: 6, z: 0}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.8333333
+  - Offset: {x: -1, y: 6, z: 1}
+    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   - Offset: {x: 0, y: 6, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 7, z: -1}
+    Density: 0.8333333
+  - Offset: {x: 1, y: 6, z: 1}
     Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -1, y: 7, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 7, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 1, y: 7, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 7, z: 1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 8, z: -1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: -1, y: 8, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 8, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 1, y: 8, z: 0}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
-  - Offset: {x: 0, y: 8, z: 1}
-    Material: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+    Density: 0.55
   sampleDensity: 0.85
   placementPreview: {fileID: 7791455706736034627}
   glowsOn: {fileID: 0}

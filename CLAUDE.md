@@ -314,7 +314,7 @@ the cursor style (`ToolCursorStyle`: dot, dot and voxel outline, faces, corner g
 mode (`CollectingSettings`: voxel hits, or an area-of-impact sphere that lowers samples gradually or takes them whole,
 `SphereStrike`). The dot and the gradual sphere are the defaults.
 Fifteenth pass (GL97-GL105, `Docs/20261020e clube-backlog.md`): dropped stone (Loose stone) is cobbles; the furnaces are
-`TerrainStructure`s like the campfire, about 2.1 m tall (*Clube → Models → Build furnaces*, `FurnaceStructures`): Stone
+`TerrainStructure`s like the campfire, primitive tapered shaft furnaces (parts carry their own densities) (*Clube → Models → Build furnaces*, `FurnaceStructures`): Stone
 furnace of cobbles, Clay furnace hotter (`StationObject.heat` → `CraftingStation.Heat`). Structures turn with the
 placed object. The volume inventory (GL99-GL103, the default; the classic one stays switchable): a tool slot, a
 volume slot (`VolumeMix`, `MixSlotGui`) that every mined sample goes into, and 3 item slots (`PlayerInventory`; `Hotbar`
