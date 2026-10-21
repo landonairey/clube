@@ -90,10 +90,19 @@ namespace Clube.Game
             {
                 return false;
             }
+            ItemStack held = hotbar.SelectedStack;
             GameObject placed = Instantiate(aimedItem.Prefab, aimedPosition, aimedRotation);
             placed.name = aimedItem.DisplayName;
-            placed.AddComponent<PlacedObject>().Item = aimedItem;
-            inventory.Inventory.RemoveAt(hotbar.Selected, 1);
+            // A structure's prefab carries its own (TerrainStructure needs one).
+            PlacedObject placedObject = placed.TryGetComponent(out PlacedObject own) ? own : placed.AddComponent<PlacedObject>();
+            placedObject.Item = aimedItem;
+            placedObject.Contents = held.Contents;
+            // Built from a mix, a station works as well as the share of what it's made of (GL100).
+            if (placed.TryGetComponent(out StationObject station))
+            {
+                station.MadeOf(held.Contents, worldView.Config.Materials);
+            }
+            inventory.Inventory.RemoveAt(hotbar.SelectedSlot, 1);
             CanPlace = false;
             return true;
         }

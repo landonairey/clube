@@ -229,6 +229,54 @@ namespace Clube.Core
             return moved;
         }
 
+        /// <summary>
+        /// Loads a recipe's material ingredients from a volume slot (GL99, GL100): for each one the mix can
+        /// give (stone from mined stone, clay from mined clay), a cut of the whole mix as big as what's
+        /// missing, so the loaded items carry the mix's contents and what's made from them its quality. An
+        /// ingredient the mix is less than <paramref name="minimumShare"/> of isn't taken. Returns how many
+        /// items went in; <paramref name="refusal"/> says why one didn't, or is null.
+        /// </summary>
+        public int LoadFromMix(Recipe recipe, VolumeMix mix, MaterialRegistry materials, float minimumShare, out string refusal)
+        {
+            refusal = null;
+            if (recipe == null || mix == null || materials == null)
+            {
+                return 0;
+            }
+            int loaded = 0;
+            foreach (ItemAmount input in recipe.Inputs)
+            {
+                int missing = input.Count - Input.Count(input.Item);
+                float share = materials.ShareOf(mix, input.Item);
+                if (input.Item == null || missing <= 0 || share <= 0f)
+                {
+                    continue;
+                }
+                if (share < minimumShare)
+                {
+                    refusal = $"The mix is only {share * 100f:0}% {input.Item.DisplayName}; it takes {minimumShare * 100f:0}% or more.";
+                    continue;
+                }
+                if (mix.Total < missing - 1e-3f)
+                {
+                    refusal = $"The mix holds {mix.Total:0.#}; {input.Item.DisplayName} needs {missing}.";
+                    continue;
+                }
+                VolumeMix taken = mix.Take(missing);
+                int left = Input.Add(input.Item, missing, taken.Contents());
+                loaded += missing - left;
+                if (left > 0)
+                {
+                    // No room for all of it: what didn't fit goes back into the mix.
+                    foreach (VolumeMix.Entry entry in taken.Entries)
+                    {
+                        mix.Add(entry.Material, entry.Volume * left / missing, entry.Contents);
+                    }
+                }
+            }
+            return loaded;
+        }
+
         /// <summary>The recipe that would start next with what's loaded, or null.</summary>
         public Recipe Ready(RecipeWork work)
         {
@@ -398,14 +446,34 @@ namespace Clube.Core
                 Recipe finished = Active;
                 Active = null;
                 done = 0f;
+                // Something built (a furnace) keeps what it was made of, so a mix of 76% clay makes one
+                // that works at 76% (GL100, MaterialRegistry.Quality).
+                Composition madeOf = finished.Output.Item is PlaceableDefinition ? InputContents(finished) : null;
                 foreach (ItemAmount input in finished.Inputs)
                 {
                     Input.Remove(input.Item, input.Count);
                 }
-                Output.Add(finished.Output.Item, finished.Output.Count);
+                Output.Add(finished.Output.Item, finished.Output.Count, madeOf);
                 Completed?.Invoke(finished);
             }
             Changed?.Invoke();
+        }
+
+        // What a recipe's inputs are made of, blended by count; null when none carries contents.
+        private Composition InputContents(Recipe recipe)
+        {
+            Composition blended = null;
+            float volume = 0f;
+            foreach (ItemAmount input in recipe.Inputs)
+            {
+                Composition contents = Input.ContentsOf(input.Item);
+                if (contents != null)
+                {
+                    blended = Composition.Blend(blended, volume, contents, input.Count);
+                    volume += input.Count;
+                }
+            }
+            return blended;
         }
 
         // Inputs taken out, or the output filled, part way through: the work starts over.

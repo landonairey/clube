@@ -82,8 +82,8 @@ namespace Clube.Game
         /// a placeable item is selected (the hands are carrying it, GL23).
         /// </summary>
         public ToolDefinition Current => hotbar == null ? hand
-            : hotbar.SelectedStack.Item is ToolDefinition tool ? tool
             : hotbar.SelectedStack.Item is PlaceableDefinition ? null
+            : hotbar.ToolStack.Item is ToolDefinition tool ? tool
             : hand;
 
         /// <summary>How hits take the ground (GL96); the lab panel switches it in play.</summary>
@@ -235,10 +235,55 @@ namespace Clube.Game
             }
         }
 
+        // The hand in the sphere modes (GL106): only the voxel under the dot, the one just past the hit point
+        // along the view; its corners holding any ground are what a hit lowers or takes.
+        private void AimHandVoxel(WorldHit hit)
+        {
+            World world = worldView.World;
+            Transform head = player.Head != null ? player.Head : transform;
+            Vector3 along = worldView.transform.InverseTransformDirection(head.forward).normalized;
+            Vector3Int voxel = world.Grid.WorldToVoxel(hit.Point + along * (world.Grid.VoxelSize * 0.05f));
+            if (!CornersWithGround(world, voxel))
+            {
+                voxel = ToolStrike.AimedVoxel(world, hit);
+                if (!CornersWithGround(world, voxel))
+                {
+                    return;
+                }
+            }
+            Reach = VoxelReach.Around(voxel, 1, false);
+            HasReach = true;
+            if (parcels != null)
+            {
+                targets.RemoveAll(sample => !parcels.CanEditSample(sample));
+            }
+        }
+
+        // Fills the targets with a voxel's corners that hold any ground; false when none do.
+        private bool CornersWithGround(World world, Vector3Int voxel)
+        {
+            targets.Clear();
+            for (int corner = 0; corner < 8; corner++)
+            {
+                Vector3Int sample = voxel + new Vector3Int(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1);
+                float? density = world.GetDensity(sample);
+                if (density.HasValue && density.Value > 0f)
+                {
+                    targets.Add(sample);
+                }
+            }
+            return targets.Count > 0;
+        }
+
         // The collecting test's sphere (GL96): every sample with ground inside a sphere round the hit point,
         // the hand's smaller than a tool's. Reach is the box of voxels round it, for the cursor.
         private void AimSphere(ToolDefinition tool, WorldHit hit)
         {
+            if (tool == hand && collecting.HandTakesAimedVoxel)
+            {
+                AimHandVoxel(hit);
+                return;
+            }
             World world = worldView.World;
             float radius = tool == hand ? collecting.HandRadius : collecting.ToolRadius;
             ImpactCentre = hit.Point;
@@ -317,7 +362,7 @@ namespace Clube.Game
         // Each swing wears the held tool (GL37); the hand never breaks.
         private void WearTool(ToolDefinition tool)
         {
-            if (hotbar == null || tool.MaxHits <= 0 || hotbar.SelectedStack.Item != tool)
+            if (hotbar == null || tool.MaxHits <= 0 || hotbar.ToolStack.Item != tool)
             {
                 return;
             }
@@ -351,8 +396,8 @@ namespace Clube.Game
                 return;
             }
             var centre = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-            string wear = tool.MaxHits > 0 && hotbar != null && hotbar.SelectedStack.Item == tool
-                ? $" ({tool.MaxHits - hotbar.SelectedStack.Wear}/{tool.MaxHits})"
+            string wear = tool.MaxHits > 0 && hotbar != null && hotbar.ToolStack.Item == tool
+                ? $" ({tool.MaxHits - hotbar.ToolStack.Wear}/{tool.MaxHits})"
                 : "";
             GUI.Label(new Rect(centre.x + 12f, centre.y + 12f, 220f, 20f), tool.DisplayName + wear);
         }

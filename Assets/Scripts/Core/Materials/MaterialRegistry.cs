@@ -94,6 +94,53 @@ namespace Clube.Core
             return any;
         }
 
+        /// <summary>
+        /// Whether a material is where an item comes from (GL100): mining it, or any stage of its break
+        /// chain, gives the item (stone, cracked stone and loose stone all give stone).
+        /// </summary>
+        public bool IsSourceOf(VoxelMaterial material, ItemDefinition item)
+        {
+            return material != null && item != null && material.FinalDrop == item;
+        }
+
+        /// <summary>The share of a mix mined as materials that give the item, 0-1 (GL100: how much of it is clay).</summary>
+        public float ShareOf(VolumeMix mix, ItemDefinition item)
+        {
+            float share = 0f;
+            if (mix != null)
+            {
+                foreach (VolumeMix.Entry entry in mix.Entries)
+                {
+                    if (IsSourceOf(entry.Material, item))
+                    {
+                        share += mix.ShareOf(entry.Material);
+                    }
+                }
+            }
+            return share;
+        }
+
+        /// <summary>
+        /// How good something made of these contents is as the item (GL100): the share of materials that
+        /// give it, so a clay furnace of 76% clay works at 76%. 1 with no contents (made from pure items).
+        /// </summary>
+        public float Quality(Composition contents, ItemDefinition item)
+        {
+            if (contents == null)
+            {
+                return 1f;
+            }
+            float share = 0f;
+            foreach (Content part in contents.Parts)
+            {
+                if (IsSourceOf(part.Material, item))
+                {
+                    share += part.Fraction;
+                }
+            }
+            return share;
+        }
+
         /// <summary>The material with this display name (ignoring case), or null.</summary>
         public VoxelMaterial Find(string displayName)
         {

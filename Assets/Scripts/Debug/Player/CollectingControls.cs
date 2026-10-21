@@ -4,7 +4,8 @@ using UnityEngine;
 namespace Clube.Debug
 {
     /// <summary>
-    /// The collecting test section of the lab panel (GL95, GL96): which cursor style shows what a hit
+    /// The collecting test section of the lab panel (GL95, GL96, GL99, GL102): the volume inventory and
+    /// the least share of the mix a recipe takes, whether terrain materials meet in hard edges, which cursor style shows what a hit
     /// reaches, and which collect mode takes the ground, with the sphere modes' radii (hand and tool)
     /// and the gradual mode's amounts, so they can be swapped and compared while playing.
     /// </summary>
@@ -13,10 +14,20 @@ namespace Clube.Debug
         private static readonly string[] StyleNames = { "Dot", "Outline", "Faces", "Glow", "Sphere" };
         private static readonly string[] ModeNames = { "Voxels", "Gradual", "Whole" };
 
-        public static void Draw(LabPanelFrame frame, ToolCursor cursor, PlayerToolUser tools)
+        public static void Draw(LabPanelFrame frame, ToolCursor cursor, PlayerToolUser tools, PlayerInventory inventory)
         {
+            if (inventory != null)
+            {
+                // The volume inventory test (GL99, GL100); off brings back the classic hotbar and backpack.
+                inventory.UsesVolume = frame.ToggleField("Volume inventory (tool, mix, 3 items)", inventory.UsesVolume);
+                if (inventory.UsesVolume)
+                {
+                    inventory.MinimumShare = frame.Slider("Least share of the mix a recipe takes", inventory.MinimumShare, 0f, 1f);
+                }
+            }
             if (cursor != null)
             {
+                cursor.HardMaterialEdges = frame.ToggleField("Hard material edges (no blending)", cursor.HardMaterialEdges);
                 cursor.Style = (ToolCursorStyle)frame.Toolbar("Cursor", (int)cursor.Style, StyleNames);
                 GUILayout.Label(StyleHint(cursor.Style), frame.Hint);
             }
@@ -31,7 +42,11 @@ namespace Clube.Debug
             {
                 return;
             }
-            settings.HandRadius = frame.Slider("Hand sphere radius (m)", settings.HandRadius, 0.05f, CollectingSettings.MaxRadius);
+            settings.HandTakesAimedVoxel = frame.ToggleField("Hand takes only the voxel under the dot", settings.HandTakesAimedVoxel);
+            if (!settings.HandTakesAimedVoxel)
+            {
+                settings.HandRadius = frame.Slider("Hand sphere radius (m)", settings.HandRadius, 0.05f, CollectingSettings.MaxRadius);
+            }
             settings.ToolRadius = frame.Slider("Tool sphere radius (m)", settings.ToolRadius, 0.05f, CollectingSettings.MaxRadius);
             if (settings.Mode == CollectMode.SphereGradual)
             {

@@ -29,6 +29,10 @@ namespace Clube.Game
         {
             public Vector3Int Offset;
             public VoxelMaterial Material;
+
+            [Tooltip("Its density; 0 takes the structure's sample density. Shaping densities let marching cubes round a structure off between samples (the furnace's taper).")]
+            [Range(0f, 1f)]
+            public float Density;
         }
 
         // Seconds between checks that the structure still stands.
@@ -59,6 +63,9 @@ namespace Clube.Game
         private Mesh glowMesh;
         private WorldView worldView;
         private float nextCheck;
+
+        /// <summary>What it's mostly built of: its first part's material (the furnace's cobbles or clay).</summary>
+        public VoxelMaterial MainMaterial => parts.Count > 0 ? parts[0].Material : null;
 
         /// <summary>The samples it wrote into the terrain.</summary>
         public IReadOnlyList<Vector3Int> Stamped => stamped;
@@ -248,7 +255,7 @@ namespace Clube.Game
                 {
                     continue;
                 }
-                world.SetDensity(sample, sampleDensity);
+                world.SetDensity(sample, part.Density > 0f ? Mathf.Max(part.Density, iso + 0.02f) : sampleDensity);
                 world.SetMaterial(sample, part.Material.Id);
                 stamped.Add(sample);
             }

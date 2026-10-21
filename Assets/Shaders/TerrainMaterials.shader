@@ -6,6 +6,8 @@
 // (triplanar), so steep faces don't stretch and the mesh needs no UVs. With Debug colours
 // on, each material is a flat colour from _MaterialColors instead (M15).
 // MaterialRegistry sets _Textures and _MaterialColors before the material is used.
+// _HardMaterialEdges (a global, set by the tool cursor, GL102): each point shows only the material it
+// leans to most, so materials meet in a sharp edge halfway between samples rather than blending.
 Shader "Clube/Terrain Materials"
 {
     Properties
@@ -32,6 +34,9 @@ Shader "Clube/Terrain Materials"
             float _TintVariation;
             float _DebugColors;
         CBUFFER_END
+
+        // Global (GL102), not per material.
+        float _HardMaterialEdges;
         ENDHLSL
 
         Pass
@@ -137,6 +142,12 @@ Shader "Clube/Terrain Materials"
             half3 Albedo(Varyings input, float3 normalWS)
             {
                 float3 weights = input.materialWeights / max(dot(input.materialWeights, 1.0), 1e-5);
+                if (_HardMaterialEdges > 0.5)
+                {
+                    // Only the strongest: an abrupt edge where two materials weigh the same.
+                    weights = weights.x >= weights.y && weights.x >= weights.z ? float3(1, 0, 0)
+                        : weights.y >= weights.z ? float3(0, 1, 0) : float3(0, 0, 1);
+                }
                 int3 ids = (int3)round(input.materialIds);
                 ids = int3((int)_LayerRemap[ids.x], (int)_LayerRemap[ids.y], (int)_LayerRemap[ids.z]);
                 half3 albedo = 0;

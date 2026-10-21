@@ -15,5 +15,11 @@ namespace Clube.Core
         private GameObject prefab;
 
         public GameObject Prefab => prefab;
+
+        /// <summary>Makes a placeable in code (tests); the game's are assets.</summary>
+        public static PlaceableDefinition Create(string id, string displayName)
+        {
+            return Create<PlaceableDefinition>(id, displayName, 1);
+        }
     }
 }

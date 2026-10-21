@@ -115,7 +115,15 @@ namespace Clube.Game
         /// </summary>
         public int Drop(int count, ref PilePour into)
         {
-            int slot = hotbar.Selected;
+            if (hotbar.MixSelected)
+            {
+                return DropFromMix(count, ref into);
+            }
+            int slot = hotbar.SelectedSlot;
+            if (slot < 0)
+            {
+                return 0;
+            }
             ItemStack stack = inventory.Inventory[slot];
             if (stack.IsEmpty)
             {
@@ -153,6 +161,63 @@ namespace Clube.Game
             // A pile at the feet, or a big one spreading under them, can bury the player.
             LiftOutOfGround();
             return placed;
+        }
+
+        // The volume slot (GL101): each sample poured is a material picked at random, weighted by the mix,
+        // put down as that material is when dropped (mined stone as loose stone). Ore goes back as the ore
+        // it was; the grade it held isn't kept in the ground, which takes it from the vein when mined again.
+        private int DropFromMix(int count, ref PilePour into)
+        {
+            VolumeMix mix = inventory.Mix;
+            MaterialRegistry materials = worldView.Config.Materials;
+            if (mix.IsEmpty || materials == null)
+            {
+                return 0;
+            }
+            Vector3 point = into.Point;
+            if (!into.Started)
+            {
+                AimPoint(out point);
+            }
+            if (parcels != null && !parcels.CanEdit(worldView.transform.TransformPoint(point)))
+            {
+                return 0;
+            }
+            var grid = new BuildGrid(worldView.Config.BuildCellSize);
+            int placed = 0;
+            for (int i = 0; i < count && !mix.IsEmpty; i++)
+            {
+                float roll = UnityEngine.Random.value;
+                VolumeMix.Entry next = Pick(mix, roll);
+                VoxelMaterial material = materials.PlacedFrom(next.Material.FinalDrop) ?? next.Material;
+                if (TerrainPile.Pour(worldView.World, ref into, point, material.Id, 1, worldView.Config.IsoLevel, PileSettings.For(material, grid)) == 0)
+                {
+                    break;
+                }
+                mix.TakeOne(roll, out _, out _);
+                placed++;
+                Piled?.Invoke(material, TerrainPile.LastFilled);
+            }
+            if (placed > 0)
+            {
+                LiftOutOfGround();
+            }
+            return placed;
+        }
+
+        // The entry a roll lands on, as VolumeMix.TakeOne picks it.
+        private static VolumeMix.Entry Pick(VolumeMix mix, float roll)
+        {
+            float at = Mathf.Clamp(roll, 0f, 0.99999f) * mix.Total;
+            foreach (VolumeMix.Entry entry in mix.Entries)
+            {
+                if (at < entry.Volume)
+                {
+                    return entry;
+                }
+                at -= entry.Volume;
+            }
+            return mix.Entries[mix.Entries.Count - 1];
         }
 
         // Where to pile, relative to the world origin: half a voxel in front of the surface

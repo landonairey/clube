@@ -219,7 +219,7 @@ namespace Clube.Debug
             foreach (Object part in new Object[]
                      {
                          Config, worldView, testFill, brush, chunkFocus, chunkVolume, selector, corners, volumeLab,
-                         stepThrough, flyCamera, playerToggle, player, PlayerPart<PlayerToolUser>(), PlayerPart<ToolCursor>(), labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView, oreView,
+                         stepThrough, flyCamera, playerToggle, player, PlayerPart<PlayerToolUser>(), PlayerPart<ToolCursor>(), PlayerPart<PlayerInventory>(), labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView, oreView,
                      })
             {
                 if (part != null)
@@ -330,7 +330,7 @@ namespace Clube.Debug
             }
             if (player != null && frame.Section("Collecting", ref collectingOpen))
             {
-                CollectingControls.Draw(frame, player.GetComponent<ToolCursor>(), player.GetComponent<PlayerToolUser>());
+                CollectingControls.Draw(frame, player.GetComponent<ToolCursor>(), player.GetComponent<PlayerToolUser>(), player.GetComponent<PlayerInventory>());
             }
             if (player != null && frame.Section("Cheats", ref cheatsOpen))
             {

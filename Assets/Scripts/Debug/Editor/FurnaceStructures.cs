@@ -27,8 +27,6 @@ namespace Clube.Debug.Editor
         private const string StoneLook = "Assets/Materials/Stations/Furnace.mat";
         private const string ClayLook = "Assets/Materials/Stations/Clay.mat";
 
-        // What each costs, a little over what it gives back when mined away (206 samples).
-        private const int Cost = 210;
         private const float ClayHeat = 1.5f;
         private const int ClayUnlockLevel = 5;
 
@@ -36,6 +34,8 @@ namespace Clube.Debug.Editor
         public static void Build()
         {
             LowPolyModels.BuildFurnaceStamp();
+            // What each costs: a little over what it gives back when mined away, rounded up to a 5.
+            int cost = (LowPolyModels.FurnaceParts().Count + 4) / 5 * 5 + 5;
             var stamp = AssetDatabase.LoadAssetAtPath<UnityEngine.Mesh>("Assets/Models/Furnace stamp.asset");
             var looseStone = AssetDatabase.LoadAssetAtPath<VoxelMaterial>("Assets/Config/Materials/Loose stone.asset");
             var clay = AssetDatabase.LoadAssetAtPath<VoxelMaterial>("Assets/Config/Materials/Clay.asset");
@@ -44,7 +44,7 @@ namespace Clube.Debug.Editor
 
             Configure(StonePrefab, "Stone furnace", 1f, looseStone, AssetDatabase.LoadAssetAtPath<Material>(StoneLook), stamp);
             Rename(StoneItem, "Stone furnace");
-            SetCost(StoneRecipe, null, Cost, -1);
+            SetCost(StoneRecipe, null, cost, -1);
 
             if (!File.Exists(ClayPrefab))
             {
@@ -53,9 +53,9 @@ namespace Clube.Debug.Editor
             Configure(ClayPrefab, "Clay furnace", ClayHeat, clay, ClayMaterial(), stamp);
             ItemDefinition clayFurnace = ClayFurnaceItem();
             ClayFurnaceRecipe();
-            SetCost(ClayRecipe, clayItem, Cost, ClayUnlockLevel, clayFurnace);
+            SetCost(ClayRecipe, clayItem, cost, ClayUnlockLevel, clayFurnace);
             AssetDatabase.SaveAssets();
-            UnityEngine.Debug.Log($"Built the stone and clay furnaces ({LowPolyModels.FurnaceParts().Count} samples each).");
+            UnityEngine.Debug.Log($"Built the stone and clay furnaces ({LowPolyModels.FurnaceParts().Count} samples each, built for {cost}).");
         }
 
         // The prefab as a structure of one material: no model of its own (the preview child shows where
@@ -69,8 +69,8 @@ namespace Clube.Debug.Editor
                 Object.DestroyImmediate(root.GetComponent<MeshFilter>());
 
                 var box = Get<BoxCollider>(root);
-                box.center = new Vector3(0f, 0.35f, 0.75f);
-                box.size = new Vector3(0.75f, 0.7f, 0.3f);
+                box.center = new Vector3(0f, 0.2f, 0.5f);
+                box.size = new Vector3(0.45f, 0.45f, 0.3f);
 
                 var station = new SerializedObject(root.GetComponent<StationObject>());
                 station.FindProperty("displayName").stringValue = name;
@@ -83,7 +83,7 @@ namespace Clube.Debug.Editor
                 previewRenderer.sharedMaterial = look;
 
                 Transform glow = Child(root, "Glow");
-                glow.localPosition = new Vector3(0f, 0.35f, 0f);
+                glow.localPosition = new Vector3(0f, 0.2f, 0f);
                 var light = Get<Light>(glow.gameObject);
                 light.type = LightType.Point;
                 light.color = new Color(1f, 0.42f, 0.14f);
@@ -93,12 +93,13 @@ namespace Clube.Debug.Editor
                 var structure = Get<TerrainStructure>(root);
                 var serialized = new SerializedObject(structure);
                 SerializedProperty parts = serialized.FindProperty("parts");
-                List<Vector3Int> offsets = LowPolyModels.FurnaceParts();
+                List<(Vector3Int Offset, float Density)> offsets = LowPolyModels.FurnaceParts();
                 parts.arraySize = offsets.Count;
                 for (int i = 0; i < offsets.Count; i++)
                 {
                     SerializedProperty part = parts.GetArrayElementAtIndex(i);
-                    part.FindPropertyRelative("Offset").vector3IntValue = offsets[i];
+                    part.FindPropertyRelative("Offset").vector3IntValue = offsets[i].Offset;
+                    part.FindPropertyRelative("Density").floatValue = offsets[i].Density;
                     part.FindPropertyRelative("Material").objectReferenceValue = material;
                 }
                 serialized.FindProperty("sampleDensity").floatValue = 0.85f;
