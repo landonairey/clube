@@ -309,6 +309,14 @@ carved voxels floored with stone or rock becomes Flat rock (id 20, `FlatTop`,
 material chunk (`DebugMaterialChunk`). Hidden ore drops as a per-ore copy of "? ore" (`ItemDefinition.Variant`,
 GL90), so each stacks apart and is identified on its own. The journal shows an unknown ore as an outline,
 "Unknown Ore" and the Mining level that discovers it (GL91).
+Fourteenth pass (GL95, GL96, `Docs/20261020d clube-backlog.md`): a collecting test. The lab panel's Collecting section picks
+the cursor style (`ToolCursorStyle`: dot, dot and voxel outline, faces, corner glows, impact sphere) and the collect
+mode (`CollectingSettings`: voxel hits, or an area-of-impact sphere that lowers samples gradually or takes them whole,
+`SphereStrike`). The dot and the gradual sphere are the defaults.
+Fifteenth pass (GL97-GL105, `Docs/20261020e clube-backlog.md`): dropped stone (Loose stone) is cobbles; the furnaces are
+`TerrainStructure`s like the campfire, about 2.1 m tall (*Clube → Models → Build furnaces*, `FurnaceStructures`): Stone
+furnace of cobbles, Clay furnace hotter (`StationObject.heat` → `CraftingStation.Heat`). Structures turn with the
+placed object. GL99-GL105 (a volume inventory and mixing by volume) are next.
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16

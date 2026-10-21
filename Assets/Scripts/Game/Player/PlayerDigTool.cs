@@ -55,6 +55,8 @@ namespace Clube.Game
         private float repeatRate = 5f;
 
         private PlayerController player;
+        private ToolCursor cursor;
+        private Texture2D dot;
         private PlayerParcels parcels;
         private PlayerToolUser tools;
         private float nextApplyTime;
@@ -80,6 +82,7 @@ namespace Clube.Game
         private void Awake()
         {
             player = GetComponent<PlayerController>();
+            cursor = GetComponent<ToolCursor>();
             parcels = GetComponent<PlayerParcels>();
             tools = GetComponent<PlayerToolUser>();
         }
@@ -181,6 +184,25 @@ namespace Clube.Game
             return (centre - closest).sqrMagnitude < reachOut * reachOut;
         }
 
+        // An 8-pixel round dot: white, with a soft dark rim so it reads on bright ground.
+        private static Texture2D MakeDot()
+        {
+            const int size = 8;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, name = "Dot cursor" };
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float distance = new Vector2(x + 0.5f - size * 0.5f, y + 0.5f - size * 0.5f).magnitude;
+                    Color color = distance < 2.2f ? Color.white : new Color(0f, 0f, 0f, 0.6f);
+                    color.a *= Mathf.Clamp01(size * 0.5f - distance);
+                    texture.SetPixel(x, y, color);
+                }
+            }
+            texture.Apply();
+            return texture;
+        }
+
         private static bool WasPressed(InputActionReference reference)
         {
             return reference != null && reference.action.WasPressedThisFrame();
@@ -193,8 +215,17 @@ namespace Clube.Game
                 return;
             }
             var centre = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-            GUI.DrawTexture(new Rect(centre.x - CrosshairSize, centre.y - 1f, CrosshairSize * 2f, 2f), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(centre.x - 1f, centre.y - CrosshairSize, 2f, CrosshairSize * 2f), Texture2D.whiteTexture);
+            if (cursor != null && cursor.WantsDot)
+            {
+                // The collecting test's dot cursor (GL95): a small round dot with a dark rim.
+                dot ??= MakeDot();
+                GUI.DrawTexture(new Rect(centre.x - 4f, centre.y - 4f, 8f, 8f), dot);
+            }
+            else
+            {
+                GUI.DrawTexture(new Rect(centre.x - CrosshairSize, centre.y - 1f, CrosshairSize * 2f, 2f), Texture2D.whiteTexture);
+                GUI.DrawTexture(new Rect(centre.x - 1f, centre.y - CrosshairSize, 2f, CrosshairSize * 2f), Texture2D.whiteTexture);
+            }
             if (!ToolHeld)
             {
                 GUI.Label(new Rect(centre.x + 12f, centre.y + 12f, 160f, 20f), $"Brush {Radius:0.0} m");

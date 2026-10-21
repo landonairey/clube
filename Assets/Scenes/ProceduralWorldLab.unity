@@ -1172,6 +1172,12 @@ MonoBehaviour:
   idleColor: {r: 1, g: 0.95, b: 0.7, a: 0.9}
   damagedColor: {r: 1, g: 0.4, b: 0.05, a: 1}
   faceOpacity: 0.3
+  voxelFaceOpacity: 0.05
+  voxelEdgeOpacity: 0.5
+  style: 0
+  outlineColor: {r: 0, g: 0, b: 0, a: 0.85}
+  glowSize: 0.22
+  sphereOpacity: 0.06
 --- !u!114 &1697135569
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1190,6 +1196,12 @@ MonoBehaviour:
   hand: {fileID: 11400000, guid: 0cd0e3994cf57324687ce5035ec165d3, type: 2}
   breakInStages: 0
   reach: 4
+  collecting:
+    Mode: 1
+    HandRadius: 0.3
+    ToolRadius: 0.6
+    HandAmount: 0.2
+    ToolAmount: 1
 --- !u!114 &1697135570
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1457,6 +1469,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 94d08de95a5f51c4dad353cc38fb0d40, type: 2}
   - {fileID: 11400000, guid: 7a96a8cb02a57304a8d2a5b1c1339e05, type: 2}
   - {fileID: 11400000, guid: 58c231621d094754888613a6d3e07203, type: 2}
+  - {fileID: 11400000, guid: 2fff207b048f70b40bffdcec6a35579b, type: 2}
   kinds:
   - Material: {fileID: 11400000, guid: a7a179311785ad14bab47c68162a300f, type: 2}
     Name: Flat Rock
@@ -1612,6 +1625,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2e4b59e39e3200042bdfda28a6dc7fce, type: 2}
   - {fileID: 11400000, guid: e1005fbe86fefc3488507154692716c8, type: 2}
   - {fileID: 11400000, guid: 93335b56b11b0cb489c9f465423b699a, type: 2}
+  - {fileID: 11400000, guid: 2fff207b048f70b40bffdcec6a35579b, type: 2}
 --- !u!114 &1697135589
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -25,6 +25,7 @@ namespace Clube.Debug.Editor
             Save("Merchant Table", MerchantTable());
             Save("Campfire", Campfire());
             Save("Campfire stamp", CampfireStamp());
+            Save("Furnace stamp", FurnaceStamp());
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Built station models in {Folder}.");
         }
@@ -118,6 +119,67 @@ namespace Clube.Debug.Editor
                 model.Lump(1, new Vector3(at.x, 0f, at.y) * voxel, 0.36f, 0.24f);
             }
             return model.Build("Campfire stamp");
+        }
+
+        /// <summary>
+        /// The furnace built from the ground (GL98): its terrain samples, as offsets from the first air
+        /// sample above the ground at its centre (TerrainStructure's parts), as tall as the furnace model
+        /// (about 2.1 m at 0.25 m voxels) and solid like it, so marching cubes gives thick walls rather than
+        /// single-sample ridges. The body: four courses 7 samples across, hollow inside (a fire chamber 3
+        /// across and 3 high) with a mouth 3 wide and 2 high through the front (+Z). The dome: courses 5
+        /// and 3 across. The chimney: three courses of a small cross. 206 samples.
+        /// </summary>
+        internal static List<Vector3Int> FurnaceParts()
+        {
+            var parts = new List<Vector3Int>();
+            for (int y = 0; y < 4; y++)
+            {
+                AddSquare(parts, y, 3, (x, z) =>
+                    (y < 3 && Mathf.Abs(x) <= 1 && Mathf.Abs(z) <= 1)           // the chamber
+                    || (y < 2 && Mathf.Abs(x) <= 1 && z >= 2));                // the mouth
+            }
+            AddSquare(parts, 4, 2, (x, z) => false);
+            AddSquare(parts, 5, 1, (x, z) => false);
+            for (int y = 6; y < 9; y++)
+            {
+                AddSquare(parts, y, 1, (x, z) => x != 0 && z != 0);
+            }
+            return parts;
+        }
+
+        // Every sample of a square at a height, a radius out from the centre, less those left open.
+        private static void AddSquare(List<Vector3Int> parts, int y, int radius, System.Func<int, int, bool> open)
+        {
+            for (int z = -radius; z <= radius; z++)
+            {
+                for (int x = -radius; x <= radius; x++)
+                {
+                    if (!open(x, z))
+                    {
+                        parts.Add(new Vector3Int(x, y, z));
+                    }
+                }
+            }
+        }
+
+        /// <summary>Builds and saves the furnace's build-preview mesh (for <see cref="FurnaceStructures"/>).</summary>
+        internal static void BuildFurnaceStamp()
+        {
+            Directory.CreateDirectory(Folder);
+            Save("Furnace stamp", FurnaceStamp());
+        }
+
+        // Submesh 0: the furnace built from the ground (GL98) as the build preview shows it, a lump where
+        // each of its samples goes, at the game's 0.25 m voxels.
+        private static Mesh FurnaceStamp()
+        {
+            const float voxel = 0.25f;
+            var model = new ModelBuilder(1);
+            foreach (Vector3Int part in FurnaceParts())
+            {
+                model.Lump(0, new Vector3(part.x, part.y, part.z) * voxel, 0.4f, 0.32f);
+            }
+            return model.Build("Furnace stamp");
         }
 
         private static void Save(string name, Mesh mesh)

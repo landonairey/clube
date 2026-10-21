@@ -473,6 +473,26 @@ The chisel and square voxels, and the first stone worktop.
 - [x] **GL93** `Lab` A chisel icon that reads as one *(added 2026-10-20)*: a chunky handle and a broad bronze blade flaring to a bright edge. *(Done: `ItemIconTools.PaintChisel`.)*
 - [x] **GL94** `Game` The chisel's cursor *(added 2026-10-20)*: instead of shading the ground it reaches, the chisel shows the voxel it will carve as a faint cube on the voxel grid with its edges traced, see-through. *(Done: `ToolCursor.AddVoxelBox`, faces at 5% and edges at half the cursor colour.)*
 
+### Fourteenth pass *(added 2026-10-20, from `Docs/20261020d clube-backlog.md` — next)*
+Collecting mechanic testing: ways to show and to take what a hit reaches, switchable in play to compare them.
+
+- [x] **GL95** `Game + Lab` Cursor styles to test: a small dot only; a dot and a black outline of the reached voxels; today's shaded faces; soft glows at the reached corners; a translucent sphere showing the area of impact. Picked in the lab panel and the Inspector. *(Done: `ToolCursorStyle` on `ToolCursor` (the panel's Collecting section, `CollectingControls`); the dot replaces `PlayerDigTool`'s cross; the glows draw through the ground with a copy of the cursor material (`_ZTest` Always); the outline traces only voxels with a surface. The chisel keeps its voxel cube (GL94) in every style.)*
+- [x] **GL96** `Core + Game + Lab` Collection modes to test: today's binary voxel grab over several hits; an area-of-impact sphere where each hit lowers every sample inside by the tool's impact amount (the hand 0.2, a tool 1), so interpolated edges show the ground giving way gradually, with an item for each whole unit taken; an area-of-impact sphere where each hit takes every solid sample inside at once, the hand's sphere smaller than a tool's. Picked in the lab panel and the Inspector, with the radii and amounts. *(Done: `SphereStrike` (Core: `FindTargets`, `Lower` with material owed between hits, `Take`); `CollectingSettings` on `PlayerToolUser` (defaults: hand 0.3 m and 0.2, tools 0.6 m and 1). The sphere modes skip hardness, break stages, loose-piece pick-up and slivers; the chisel keeps carving voxels.)*
+*(2026-10-20, `Docs/20261020e clube-backlog.md`: going with the dot and the gradual sphere for now, the defaults; the other styles and modes stay switchable.)*
+
+### Fifteenth pass *(added 2026-10-20, from `Docs/20261020e clube-backlog.md` — next)*
+Furnaces from the ground, then a volume inventory test and what mixing material by volume means.
+
+- [x] **GL97** `Config` Dropped stone looks like loose cobbles: the Loose stone material (what stone items become when dropped, and the stone furnace) gets a cobblestone texture. *(Done: `MaterialTextureTools.PaintCobbles`: rounded, lit stones of a few tints with soil between.)*
+- [x] **GL98** `Game + Config` Furnaces built from the ground, like the campfire (GL85), as tall as the old furnace model (about 2.1 m): the Stone furnace (cobbles) first, then the Clay furnace, hotter. Mining any of its samples breaks it. *(Done: *Clube → Models → Build furnaces* (`FurnaceStructures`, shape `LowPolyModels.FurnaceParts`: a 1.75 m body round a fire chamber with a front mouth, a dome and a chimney, 206 samples, built for 210 stone or clay); `TerrainStructure` now turns its parts with the placed object and settles each column on its ground; `StationObject.heat` → `CraftingStation.Heat` (time recipes go that many times faster on the same fuel; the clay furnace is ×1.5, unlocked at Crafting 5).)*
+- [ ] **GL99** `Game + Lab` Volume inventory test: a single tool slot and 4 material slots, where material slots are volume slots or item slots; to start, one volume slot that mixes every mined voxel together. Switchable, like the collecting test.
+- [ ] **GL100** `Core + Game` Crafting from a mix: a quality multiplier from the share of the wanted material, e.g. a clay furnace from 76% clay, 15% dirt and 9% stone works at 76%.
+- [ ] **GL101** `Core + Game` Dropping from a mix: each sample put back into the ground is a material picked at random, weighted by the mix.
+- [ ] **GL102** `Lab` Hard material transitions: a terrain display that switches abruptly from one sample's material to the next, so it's clear what a hit will take.
+- [ ] **GL103** `Core` Collecting from shared corners: a hit on one voxel lowers corners its neighbours share. Work out whether materials per sample (as now) settle it, or what else does.
+- [ ] **GL104** `Core + Game` Low-grade ore in a mix: ore keeps its composition (90% stone, 10% cassiterite) inside the mix and when dropped again; smelting works it at a yield debuff.
+- [ ] **GL105** `Core + Game` *(later)* Crude separation: crushing ore with rocks to split ore from host rock.
+
 
 ---
 

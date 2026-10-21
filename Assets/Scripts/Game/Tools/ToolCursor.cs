@@ -13,7 +13,10 @@ namespace Clube.Game
     /// the world's edge placement), so the shading lies on the surface. It warms from
     /// <see cref="idleColor"/> towards <see cref="damagedColor"/> with the most damaged sample
     /// in reach, showing how close the next hits are to breaking it. The chisel instead shows its
-    /// voxel as a faint cube on the voxel grid (GL92), since it carves the whole voxel out.
+    /// voxel as a faint cube on the voxel grid (GL92), since it carves the whole voxel out. For the
+    /// collecting test (GL95) the other tools' cursor has several <see cref="ToolCursorStyle"/>s:
+    /// a dot only, a dot and a black outline of the reached voxels, the shaded faces, soft glows on
+    /// the solid corners in reach (drawn through the ground), or a translucent impact sphere.
     /// </summary>
     [RequireComponent(typeof(PlayerToolUser))]
     public class ToolCursor : MonoBehaviour
@@ -40,27 +43,59 @@ namespace Clube.Game
         [SerializeField, Range(0f, 1f)]
         private float voxelEdgeOpacity = 0.5f;
 
+        [Tooltip("How the cursor shows what a hit reaches (GL95).")]
+        [SerializeField]
+        private ToolCursorStyle style = ToolCursorStyle.Dot;
+
+        [Tooltip("The voxel outline's colour (Dot and outline).")]
+        [SerializeField]
+        private Color outlineColor = new Color(0f, 0f, 0f, 0.85f);
+
+        [Tooltip("Corner glows: how wide each is, in voxels.")]
+        [SerializeField, Range(0.1f, 1f)]
+        private float glowSize = 0.22f;
+
+        [Tooltip("The impact sphere's opacity.")]
+        [SerializeField, Range(0f, 1f)]
+        private float sphereOpacity = 0.06f;
+
         private readonly List<Vector3> voxelVertices = new List<Vector3>();
         private readonly List<int> voxelTriangles = new List<int>();
         private readonly List<Vector3> points = new List<Vector3>();
         private readonly List<Color> colors = new List<Color>();
         private readonly List<int> faces = new List<int>();
         private readonly List<int> edges = new List<int>();
+        private readonly List<int> glows = new List<int>();
+        private readonly HashSet<(Vector3Int, int)> outlined = new HashSet<(Vector3Int, int)>();
         private readonly float[] corners = new float[MarchingCubes.CornerCount];
         private PlayerToolUser tools;
         private GameObject markers;
         private UnityEngine.Mesh mesh;
+        private Material throughGround;
+
+        /// <summary>How the cursor shows what a hit reaches (GL95); the lab panel switches it in play.</summary>
+        public ToolCursorStyle Style
+        {
+            get => style;
+            set => style = value;
+        }
+
+        /// <summary>True when the crosshair should be a small dot rather than a cross (GL95).</summary>
+        public bool WantsDot => style == ToolCursorStyle.Dot || style == ToolCursorStyle.DotOutline;
 
         private void Awake()
         {
             tools = GetComponent<PlayerToolUser>();
-            mesh = new UnityEngine.Mesh { name = "Tool Cursor", subMeshCount = 2 };
+            mesh = new UnityEngine.Mesh { name = "Tool Cursor", subMeshCount = 3 };
             mesh.MarkDynamic();
 
             markers = new GameObject("Tool Cursor");
             markers.AddComponent<MeshFilter>().sharedMesh = mesh;
             var markerRenderer = markers.AddComponent<MeshRenderer>();
-            markerRenderer.sharedMaterials = new[] { material, material };
+            // A copy that draws through the ground, for the corner glows.
+            throughGround = material != null ? new Material(material) { name = "Tool Cursor (through ground)" } : null;
+            throughGround?.SetFloat("_ZTest", (float)CompareFunction.Always);
+            markerRenderer.sharedMaterials = new[] { material, material, throughGround };
             markerRenderer.shadowCastingMode = ShadowCastingMode.Off;
             markerRenderer.receiveShadows = false;
             markers.SetActive(false);
@@ -78,13 +113,15 @@ namespace Clube.Game
         {
             Destroy(markers);
             Destroy(mesh);
+            Destroy(throughGround);
         }
 
         // After the tool user's Update has found this frame's reach.
         private void LateUpdate()
         {
             WorldView view = tools.WorldView;
-            bool show = material != null && tools.Current != null && tools.HasReach && tools.Targets.Count > 0 && view != null && view.IsReady;
+            bool show = material != null && tools.Current != null && tools.HasReach
+                && (style != ToolCursorStyle.Dot || tools.Current.Chisels) && tools.Targets.Count > 0 && view != null && view.IsReady;
             markers.SetActive(show);
             if (!show)
             {
@@ -97,24 +134,40 @@ namespace Clube.Game
             colors.Clear();
             faces.Clear();
             edges.Clear();
+            glows.Clear();
             if (tools.Current.Chisels)
             {
                 AddVoxelBox(view.World, tools.Reach.Box, new Color(edge.r, edge.g, edge.b, edge.a * voxelFaceOpacity), new Color(edge.r, edge.g, edge.b, edge.a * voxelEdgeOpacity));
             }
             else
             {
-                AddReach(view.World, view.Config.MeshSettings, tools.Reach, face, edge);
+                switch (style)
+                {
+                    case ToolCursorStyle.DotOutline:
+                        AddOutline(view.World, tools.Reach.Box, outlineColor, view.Config.IsoLevel);
+                        break;
+                    case ToolCursorStyle.GlowCorners:
+                        AddGlows(view, edge);
+                        break;
+                    case ToolCursorStyle.ImpactSphere:
+                        AddSphere(view.World, new Color(edge.r, edge.g, edge.b, edge.a * sphereOpacity));
+                        break;
+                    default:
+                        AddReach(view.World, view.Config.MeshSettings, tools.Reach, face, edge);
+                        break;
+                }
             }
 
             // The points are in the world view's space, so the markers sit where it does.
             markers.transform.SetPositionAndRotation(view.transform.position, view.transform.rotation);
             markers.transform.localScale = view.transform.lossyScale;
             mesh.Clear();
-            mesh.subMeshCount = 2;
+            mesh.subMeshCount = 3;
             mesh.SetVertices(points);
             mesh.SetColors(colors);
             mesh.SetIndices(faces, MeshTopology.Triangles, 0);
             mesh.SetIndices(edges, MeshTopology.Lines, 1);
+            mesh.SetIndices(glows, MeshTopology.Triangles, 2);
         }
 
         // Every reached voxel's surface triangles: each corner twice, a face colour for the
@@ -132,7 +185,7 @@ namespace Clube.Game
                     for (int x = box.Min.x; x <= box.Max.x; x++)
                     {
                         var voxel = new Vector3Int(x, y, z);
-                        if (!reach.Contains(voxel) || !ReadCorners(world, voxel))
+                        if (!tools.Reaches(voxel) || !ReadCorners(world, voxel))
                         {
                             continue;
                         }
@@ -147,6 +200,147 @@ namespace Clube.Game
                     }
                 }
             }
+        }
+
+        // Dot and outline (GL95): every edge of every reached voxel, each drawn once.
+        private void AddOutline(World world, VoxelBox box, Color color, float isoLevel)
+        {
+            outlined.Clear();
+            for (int z = box.Min.z; z <= box.Max.z; z++)
+            {
+                for (int y = box.Min.y; y <= box.Max.y; y++)
+                {
+                    for (int x = box.Min.x; x <= box.Max.x; x++)
+                    {
+                        var voxel = new Vector3Int(x, y, z);
+                        if (!tools.Reaches(voxel) || !HasSurface(world, voxel, isoLevel))
+                        {
+                            continue;
+                        }
+                        for (int corner = 0; corner < 8; corner++)
+                        {
+                            var from = voxel + new Vector3Int(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1);
+                            for (int axis = 0; axis < 3; axis++)
+                            {
+                                if ((corner >> axis & 1) != 0 || !outlined.Add((from, axis)))
+                                {
+                                    continue;
+                                }
+                                Vector3Int to = from;
+                                to[axis]++;
+                                edges.Add(points.Count);
+                                points.Add(world.Grid.SampleToWorld(from));
+                                colors.Add(color);
+                                edges.Add(points.Count);
+                                points.Add(world.Grid.SampleToWorld(to));
+                                colors.Add(color);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Corner glows (GL95): a soft disc facing the camera on each solid corner in reach, bright in the
+        // middle and fading to nothing at its rim, drawn through the ground so buried corners show.
+        private void AddGlows(WorldView view, Color color)
+        {
+            Camera camera = Camera.main;
+            if (camera == null)
+            {
+                return;
+            }
+            const int segments = 12;
+            float radius = view.World.Grid.VoxelSize * glowSize;
+            Vector3 right = view.transform.InverseTransformDirection(camera.transform.right) * radius;
+            Vector3 up = view.transform.InverseTransformDirection(camera.transform.up) * radius;
+            var middle = new Color(color.r, color.g, color.b, color.a * 0.6f);
+            var rim = new Color(color.r, color.g, color.b, 0f);
+            foreach (Vector3Int sample in tools.Targets)
+            {
+                Vector3 centre = view.World.Grid.SampleToWorld(sample);
+                int first = points.Count;
+                points.Add(centre);
+                colors.Add(middle);
+                for (int i = 0; i < segments; i++)
+                {
+                    float angle = i * Mathf.PI * 2f / segments;
+                    points.Add(centre + right * Mathf.Cos(angle) + up * Mathf.Sin(angle));
+                    colors.Add(rim);
+                }
+                for (int i = 0; i < segments; i++)
+                {
+                    glows.Add(first);
+                    glows.Add(first + 1 + i);
+                    glows.Add(first + 1 + (i + 1) % segments);
+                }
+            }
+        }
+
+        // Impact sphere (GL95): the area a hit reaches, as a translucent ball. In the sphere collect
+        // modes it's that sphere; otherwise a ball round the reached voxels.
+        private void AddSphere(World world, Color color)
+        {
+            Vector3 centre;
+            float radius;
+            if (tools.ReachIsSphere)
+            {
+                centre = tools.ImpactCentre;
+                radius = tools.ImpactRadius;
+            }
+            else
+            {
+                VoxelBox box = tools.Reach.Box;
+                Vector3 min = world.Grid.SampleToWorld(box.Min);
+                Vector3 max = world.Grid.SampleToWorld(box.Max + Vector3Int.one);
+                centre = (min + max) * 0.5f;
+                Vector3 size = max - min;
+                radius = Mathf.Max(size.x, Mathf.Max(size.y, size.z)) * (tools.Reach.Rounded ? 0.5f : 0.6f);
+            }
+            const int rings = 12;
+            const int segments = 24;
+            int first = points.Count;
+            for (int ring = 0; ring <= rings; ring++)
+            {
+                float polar = ring * Mathf.PI / rings;
+                for (int i = 0; i <= segments; i++)
+                {
+                    float azimuth = i * Mathf.PI * 2f / segments;
+                    points.Add(centre + radius * new Vector3(Mathf.Sin(polar) * Mathf.Cos(azimuth), Mathf.Cos(polar), Mathf.Sin(polar) * Mathf.Sin(azimuth)));
+                    colors.Add(color);
+                }
+            }
+            for (int ring = 0; ring < rings; ring++)
+            {
+                for (int i = 0; i < segments; i++)
+                {
+                    int a = first + ring * (segments + 1) + i;
+                    int b = a + segments + 1;
+                    faces.Add(a);
+                    faces.Add(b);
+                    faces.Add(a + 1);
+                    faces.Add(a + 1);
+                    faces.Add(b);
+                    faces.Add(b + 1);
+                }
+            }
+        }
+
+        // Whether a voxel has both solid and empty corners: a piece of surface, so worth outlining.
+        private bool HasSurface(World world, Vector3Int voxel, float isoLevel)
+        {
+            if (!ReadCorners(world, voxel))
+            {
+                return false;
+            }
+            bool solid = false;
+            bool empty = false;
+            foreach (float density in corners)
+            {
+                solid |= density >= isoLevel;
+                empty |= density < isoLevel;
+            }
+            return solid && empty;
         }
 
         // The chisel's cursor (GL92): the voxels of the box as one faint cube on the voxel grid, with its
