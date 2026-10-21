@@ -61,7 +61,7 @@ namespace Clube.Game
             for (int slot = 0; slot < hotbar; slot++)
             {
                 var position = new Vector2(topLeft.x + slot * (SlotSize + Gap), hotbarTop);
-                if (Slot(position, items[slot], slot == selected, (slot + 1).ToString(), corner))
+                if (Slot(position, items[slot], slot == selected, null, corner))
                 {
                     clicked = slot;
                 }

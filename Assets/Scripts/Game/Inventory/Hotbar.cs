@@ -69,16 +69,13 @@ namespace Clube.Game
             {
                 return false;
             }
-            // Broken in the tool slot: the next of the same tool from the item slots takes its place.
-            if (inventory.UsesToolSlot && slot == PlayerInventory.ToolSlot)
+            // Broken: the next of the same tool from the other slots takes its place, so the player keeps working.
+            for (int spare = 0; spare < inventory.Inventory.SlotCount; spare++)
             {
-                for (int spare = 1; spare < inventory.Inventory.SlotCount; spare++)
+                if (spare != slot && inventory.Inventory[spare].Item == tool)
                 {
-                    if (inventory.Inventory[spare].Item == tool)
-                    {
-                        inventory.Inventory.Move(spare, PlayerInventory.ToolSlot);
-                        break;
-                    }
+                    inventory.Inventory.Move(spare, slot);
+                    break;
                 }
             }
             return true;
@@ -182,7 +179,7 @@ namespace Clube.Game
             for (int slot = 0; slot < count; slot++)
             {
                 var rect = new Rect(x + slot * (SlotSize + Gap), y, SlotSize, SlotSize);
-                ItemSlotGui.Draw(rect, inventory.Inventory[slot], slot == Selected, (slot + 1).ToString());
+                ItemSlotGui.Draw(rect, inventory.Inventory[slot], slot == Selected, null);
             }
 
             string name = !SelectedStack.IsEmpty ? SelectedStack.Item.DisplayName

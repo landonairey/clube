@@ -519,7 +519,7 @@ Sorted stacks instead of bins, hands for soft ground, grass as fuel.
 - [x] **GL122** `Game` Items with no volume of their own (tools, sticks) don't show one. *(Done 2026-10-21.)*
 - [x] **GL123** `Config` Grass is one voxel thick over dirt, and a fuel for the campfire and furnace, burning about as long as leaves. *(Done 2026-10-21.)*
 - [x] **GL124** `Core` Mixed fuel burns worse: a fuel stack burns for its quality's share of its time (grass with dirt in it). *(Done 2026-10-21.)*
-- [x] **GL125** `Game` The inventory is the classic hotbar and backpack again, any item in any slot; the tool-slot layout (GL99) stays switchable in the lab panel, off by default. *(Done 2026-10-21.)*
+- [x] **GL125** `Game` The inventory is the classic hotbar and backpack again, any item in any slot; the tool-slot layout (GL99) stays switchable in the lab panel, off by default. *(Done 2026-10-21. The slots no longer show numbers, and a broken tool is replaced by a spare of the same tool in either layout.)*
 
 
 ---
