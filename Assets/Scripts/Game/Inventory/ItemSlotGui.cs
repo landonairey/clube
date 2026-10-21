@@ -17,6 +17,28 @@ namespace Clube.Game
 
         private static GUIStyle nameStyle;
         private static GUIStyle countStyle;
+        private static GUIStyle purityStyle;
+
+        /// <summary>The terrain materials, for how pure a stack is (GL115); set by whoever has them, null shows no purity.</summary>
+        public static MaterialRegistry Materials { get; set; }
+
+        // A stack made less than perfectly shows how well, in the upper right: its quality (GL118: sticks
+        // of 60% wood), or for mined material that isn't all its own material, how much of it is (GL115: ore
+        // of a grade).
+        private static void DrawPurity(Rect rect, ItemStack stack)
+        {
+            float purity = stack.Quality;
+            if (purity >= 0.995f && Materials != null && stack.Contents != null && !stack.Item.HidesContents && Materials.IsMaterialItem(stack.Item))
+            {
+                purity = Materials.Quality(stack.Contents, stack.Item);
+            }
+            if (purity >= 0.995f)
+            {
+                return;
+            }
+            purityStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = 10, fontStyle = FontStyle.Bold, normal = { textColor = new Color(1f, 0.8f, 0.35f) } };
+            GUI.Label(new Rect(rect.x, rect.y + 1f, rect.width - 3f, 14f), (purity * 100f).ToString("0") + "%", purityStyle);
+        }
 
         /// <param name="corner">Small text for the lower left, e.g. a merchant's price; null for none.</param>
         public static void Draw(Rect rect, ItemStack stack, bool selected, string key = null, string corner = null)
@@ -40,10 +62,12 @@ namespace Clube.Game
                 {
                     GUI.Label(Inset(rect, 3f), stack.Count.ToString(), countStyle);
                 }
-                if (stack.Item is ToolDefinition worn && worn.MaxHits > 0 && stack.Wear > 0)
+                DrawPurity(rect, stack);
+                if (stack.MaxHits > 0 && (stack.Wear > 0 || stack.Quality < 0.995f))
                 {
                     // Wear bar along the bottom: green when fresh, red when nearly gone.
-                    float left = Mathf.Clamp01(1f - (float)stack.Wear / worn.MaxHits);
+                    // Against its full hits, so a tool of 60% quality starts with 60% of the bar (GL118).
+                    float left = Mathf.Clamp01((float)(stack.MaxHits - stack.Wear) / ((ToolDefinition)stack.Item).MaxHits);
                     var bar = new Rect(rect.x + 4f, rect.yMax - 8f, (rect.width - 8f) * left, 4f);
                     Fill(bar, Color.Lerp(new Color(0.85f, 0.2f, 0.15f), new Color(0.35f, 0.8f, 0.25f), left));
                 }

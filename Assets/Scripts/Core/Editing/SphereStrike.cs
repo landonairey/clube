@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -56,6 +57,18 @@ namespace Clube.Core
             World world, IReadOnlyList<Vector3Int> targets, float amount, MaterialRegistry materials,
             Dictionary<VoxelMaterial, float> owed, List<ItemDefinition> collected, List<MinedSample> minedFrom = null)
         {
+            return Lower(world, targets, _ => amount, materials, owed, collected, minedFrom);
+        }
+
+        /// <summary>
+        /// As <see cref="Lower(World, IReadOnlyList{Vector3Int}, float, MaterialRegistry, Dictionary{VoxelMaterial, float}, List{ItemDefinition}, List{MinedSample})"/>,
+        /// with how much is taken from each sample depending on its material (GL107: a shovel takes dirt
+        /// at 1 but stone at 0.2).
+        /// </summary>
+        public static int Lower(
+            World world, IReadOnlyList<Vector3Int> targets, Func<VoxelMaterial, float> amountFor, MaterialRegistry materials,
+            Dictionary<VoxelMaterial, float> owed, List<ItemDefinition> collected, List<MinedSample> minedFrom = null)
+        {
             int lowered = 0;
             foreach (Vector3Int sample in targets)
             {
@@ -64,11 +77,14 @@ namespace Clube.Core
                 {
                     continue;
                 }
-                float taken = Mathf.Min(density.Value, amount);
+                VoxelMaterial material = MaterialAt(world, sample, materials);
+                float taken = Mathf.Min(density.Value, Mathf.Max(0f, amountFor(material)));
+                if (taken <= 0f)
+                {
+                    continue;
+                }
                 world.SetDensity(sample, density.Value - taken);
                 lowered++;
-
-                VoxelMaterial material = MaterialAt(world, sample, materials);
                 if (material == null)
                 {
                     continue;

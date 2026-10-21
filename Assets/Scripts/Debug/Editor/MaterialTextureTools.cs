@@ -82,6 +82,7 @@ namespace Clube.Debug.Editor
                 { "loose chalcopyrite", (StoneBase, StoneMix, ChalcopyriteFleck, Wear.Loose) },
                 { "cracked malachite", (StoneBase, StoneMix, MalachiteFleck, Wear.Cracked) },
                 { "loose malachite", (StoneBase, StoneMix, MalachiteFleck, Wear.Loose) },
+                // Rock (id 10) is no longer a material (surface rocks are stone, 2026-10-20); kept so the entries after it keep their seeds.
                 { "rock", (new Color(0.38f, 0.37f, 0.36f), new Color(0.55f, 0.53f, 0.5f), null, Wear.Whole) },
                 { "wood", (new Color(0.36f, 0.25f, 0.16f), new Color(0.48f, 0.35f, 0.23f), null, Wear.Bark) },
                 { "leaves", (new Color(0.16f, 0.33f, 0.12f), new Color(0.30f, 0.50f, 0.18f), null, Wear.Leaves) },

@@ -44,9 +44,17 @@ namespace Clube.Game
         [Range(0.01f, 1f)]
         public float HandAmount = 0.2f;
 
-        [Tooltip("Gradual sphere: how much density a tool hit takes from each sample.")]
+        [Tooltip("Gradual sphere: how much density a tool hit takes from each sample of the kind it's made for (GL107: a shovel's soil, a pickaxe's rock).")]
         [Range(0.01f, 1f)]
         public float ToolAmount = 1f;
+
+        [Tooltip("Gradual sphere: how much a tool hit takes from a sample of a kind it isn't made for (GL107: a shovel on stone).")]
+        [Range(0f, 1f)]
+        public float ToolOffAmount = 0.2f;
+
+        [Tooltip("Gradual sphere: what a tool takes from materials other than the one under the dot is scaled by this (GL107), so it takes mostly what it's aimed at.")]
+        [Range(0f, 1f)]
+        public float OtherMaterialFactor = 0.5f;
 
         public bool UsesSphere => Mode != CollectMode.VoxelHits;
     }

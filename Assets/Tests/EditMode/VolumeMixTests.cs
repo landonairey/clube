@@ -93,8 +93,8 @@ namespace Clube.Core.Tests
                 mix.Add(stone, 2.4f);
                 mix.Add(clay, 7.6f);
                 mix.Add(stone, 2.4f);
-                Assert.AreEqual(10, station.LoadFromMix(build, mix, registry, 0.5f, out string refusal));
-                Assert.IsNull(refusal);
+                Assert.AreEqual(10, station.LoadFromMix(build, new[] { mix }, registry, 0.5f, out string refusal));
+                StringAssert.Contains("76% pure", refusal);
                 station.Tick(2f);
                 ItemStack made = station.Output[0];
                 Assert.AreEqual(furnace, made.Item);
@@ -118,7 +118,7 @@ namespace Clube.Core.Tests
                 var mix = new VolumeMix();
                 mix.Add(clay, 4f);
                 mix.Add(stone, 16f);
-                Assert.AreEqual(0, station.LoadFromMix(build, mix, registry, 0.5f, out string refusal));
+                Assert.AreEqual(0, station.LoadFromMix(build, new[] { mix }, registry, 0.5f, out string refusal));
                 StringAssert.Contains("20%", refusal);
                 Assert.AreEqual(20f, mix.Total, 1e-4f, "Nothing taken.");
             }

@@ -1175,6 +1175,7 @@ MonoBehaviour:
   voxelFaceOpacity: 0.05
   voxelEdgeOpacity: 0.5
   style: 0
+  hardMaterialEdges: 1
   outlineColor: {r: 0, g: 0, b: 0, a: 0.85}
   glowSize: 0.22
   sphereOpacity: 0.06
@@ -1198,10 +1199,13 @@ MonoBehaviour:
   reach: 4
   collecting:
     Mode: 1
+    HandTakesAimedVoxel: 1
     HandRadius: 0.3
     ToolRadius: 0.6
     HandAmount: 0.2
     ToolAmount: 1
+    ToolOffAmount: 0.2
+    OtherMaterialFactor: 0.5
 --- !u!114 &1697135570
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1242,6 +1246,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5064bb5edc23d304188801140f04f78c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerInventory
+  volumeInventory: 1
+  itemSlots: 3
+  minimumShare: 0
   hotbarSlots: 9
   backpackSlots: 18
   startingItems:
@@ -1640,7 +1647,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.FlatRockCarver
   worldView: {fileID: 1350119460}
   hosts:
-  - {fileID: 11400000, guid: 0973106d156e276488793d7f6a916724, type: 2}
   - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
   flatRock: {fileID: 11400000, guid: a7a179311785ad14bab47c68162a300f, type: 2}
 --- !u!1660057539 &9223372036854775807

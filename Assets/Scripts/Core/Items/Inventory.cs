@@ -39,7 +39,7 @@ namespace Clube.Core
         /// Returns how many didn't fit (0 when all of them did).
         /// </summary>
         /// <param name="contents">What the items are made of (mixed ore, GL32); a stack topped up with them blends its contents by volume.</param>
-        public int Add(ItemDefinition item, int count = 1, Composition contents = null, int wear = 0)
+        public int Add(ItemDefinition item, int count = 1, Composition contents = null, int wear = 0, float quality = 1f)
         {
             if (item == null || count <= 0)
             {
@@ -52,7 +52,7 @@ namespace Clube.Core
                 if (slots[i].Item == item && slots[i].Space > 0 && Fits(i, item))
                 {
                     int moved = Math.Min(left, slots[i].Space);
-                    slots[i] = TopUp(slots[i], moved, contents);
+                    slots[i] = TopUp(slots[i], moved, contents, quality);
                     left -= moved;
                 }
             }
@@ -61,7 +61,7 @@ namespace Clube.Core
                 if (slots[i].IsEmpty && Fits(i, item))
                 {
                     int moved = Math.Min(left, item.MaxStack);
-                    slots[i] = new ItemStack(item, moved, contents, wear);
+                    slots[i] = new ItemStack(item, moved, contents, wear, quality);
                     left -= moved;
                 }
             }
@@ -98,7 +98,7 @@ namespace Clube.Core
             {
                 return 0;
             }
-            int moved = stack.Count - target.Add(stack.Item, stack.Count, stack.Contents, stack.Wear);
+            int moved = stack.Count - target.Add(stack.Item, stack.Count, stack.Contents, stack.Wear, stack.Quality);
             return RemoveAt(slot, moved);
         }
 
@@ -121,6 +121,22 @@ namespace Clube.Core
             return contents;
         }
 
+        /// <summary>How well an item held here is made (GL118), blended by count across its stacks; 1 when it isn't here.</summary>
+        public float QualityOf(ItemDefinition item)
+        {
+            float total = 0f;
+            int count = 0;
+            foreach (ItemStack stack in slots)
+            {
+                if (stack.Item == item)
+                {
+                    total += stack.Quality * stack.Count;
+                    count += stack.Count;
+                }
+            }
+            return count > 0 ? total / count : 1f;
+        }
+
         /// <summary>
         /// Wears the tool in a slot by one hit (GL37). It breaks, leaving the slot empty, once it has
         /// taken <paramref name="maxHits"/>; returns true then. Does nothing for an empty slot.
@@ -133,8 +149,9 @@ namespace Clube.Core
                 return false;
             }
             int wear = stack.Wear + 1;
-            bool broke = wear >= maxHits;
-            slots[slot] = broke ? ItemStack.Empty : new ItemStack(stack.Item, stack.Count, stack.Contents, wear);
+            // A tool lasts its quality's share of its hits (GL118).
+            bool broke = wear >= (stack.MaxHits > 0 ? stack.MaxHits : maxHits);
+            slots[slot] = broke ? ItemStack.Empty : new ItemStack(stack.Item, stack.Count, stack.Contents, wear, stack.Quality);
             Changed?.Invoke();
             return broke;
         }
@@ -195,7 +212,7 @@ namespace Clube.Core
             if (slots[to].Item == slots[from].Item && slots[to].Space > 0)
             {
                 int moved = Math.Min(slots[from].Count, slots[to].Space);
-                slots[to] = TopUp(slots[to], moved, slots[from].Contents);
+                slots[to] = TopUp(slots[to], moved, slots[from].Contents, slots[from].Quality);
                 slots[from] = slots[from].WithCount(slots[from].Count - moved);
             }
             else if (Fits(from, slots[to].Item))
@@ -229,7 +246,7 @@ namespace Clube.Core
                     continue;
                 }
                 int take = Math.Min(count - moved, stack.Count);
-                int placed = take - target.Add(item, take, stack.Contents, stack.Wear);
+                int placed = take - target.Add(item, take, stack.Contents, stack.Wear, stack.Quality);
                 if (placed > 0)
                 {
                     RemoveAt(slot, placed);
@@ -262,7 +279,7 @@ namespace Clube.Core
                 if (slot != from && slots[slot].Item == stack.Item && slots[slot].Space > 0 && Fits(slot, stack.Item))
                 {
                     int moved = Math.Min(left, slots[slot].Space);
-                    slots[slot] = TopUp(slots[slot], moved, stack.Contents);
+                    slots[slot] = TopUp(slots[slot], moved, stack.Contents, stack.Quality);
                     left -= moved;
                 }
             }
@@ -270,7 +287,7 @@ namespace Clube.Core
             {
                 if (slot != from && slots[slot].IsEmpty && Fits(slot, stack.Item))
                 {
-                    slots[slot] = new ItemStack(stack.Item, left, stack.Contents, stack.Wear);
+                    slots[slot] = new ItemStack(stack.Item, left, stack.Contents, stack.Wear, stack.Quality);
                     left = 0;
                 }
             }
@@ -289,10 +306,12 @@ namespace Clube.Core
         }
 
         // A stack with more of its item on top, the contents blended by volume (GL32).
-        private static ItemStack TopUp(ItemStack stack, int added, Composition contents)
+        private static ItemStack TopUp(ItemStack stack, int added, Composition contents, float quality)
         {
             Composition blended = Composition.Blend(stack.Contents, stack.Count, contents, added);
-            return new ItemStack(stack.Item, stack.Count + added, blended);
+            // Quality blends by count too (GL118).
+            float mixed = (stack.Quality * stack.Count + quality * added) / (stack.Count + added);
+            return new ItemStack(stack.Item, stack.Count + added, blended, 0, mixed);
         }
     }
 }

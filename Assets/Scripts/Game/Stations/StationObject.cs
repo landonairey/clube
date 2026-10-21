@@ -47,14 +47,12 @@ namespace Clube.Game
         public float Quality { get; private set; } = 1f;
 
         /// <summary>
-        /// Sets what it was built from (GL100): a structure (a furnace) made of a mix works only as well
-        /// as the share of its own material in it, so a clay furnace of 76% clay works at 76% of its heat.
+        /// Sets how well it was built (GL100, GL118): the quality of the item it was placed from, which a mix
+        /// gives it, so a clay furnace of 76% clay works at 76% of its heat.
         /// </summary>
-        public void MadeOf(Composition contents, MaterialRegistry materials)
+        public void MadeOf(float quality)
         {
-            var structure = GetComponent<TerrainStructure>();
-            VoxelMaterial material = structure != null ? structure.MainMaterial : null;
-            Quality = materials != null && material != null ? Mathf.Clamp01(materials.Quality(contents, material.FinalDrop)) : 1f;
+            Quality = Mathf.Clamp01(quality);
             Station.Heat = heat * Quality;
         }
 

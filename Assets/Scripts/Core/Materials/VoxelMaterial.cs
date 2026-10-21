@@ -26,6 +26,22 @@ namespace Clube.Core
     }
 
     /// <summary>
+    /// The three kinds of ground a player keeps apart (GL114): what tools are made for (the pickaxe rock,
+    /// the shovel soil, the hatchet plants) and which bin of the volume inventory mined material goes to.
+    /// </summary>
+    public enum MaterialKind
+    {
+        /// <summary>Stone, rock and ore.</summary>
+        Rock,
+
+        /// <summary>Soft ground: grass, dirt, clay.</summary>
+        Soil,
+
+        /// <summary>Wood and leaves.</summary>
+        Plant,
+    }
+
+    /// <summary>
     /// One terrain material (M9): grass, dirt, stone, an ore. An asset, so new materials are
     /// added without code changes: make one, give it an unused <see cref="Id"/> and add it
     /// to the <see cref="MaterialRegistry"/>. Voxels store only the id (M10).
@@ -154,6 +170,9 @@ namespace Clube.Core
 
         /// <summary>True for soft ground (GL39): tools made for hard material only hit one voxel of it.</summary>
         public bool IsSoft => isSoft;
+
+        /// <summary>Which kind of ground it is (GL114): plants by category, soil when soft, otherwise rock.</summary>
+        public MaterialKind Kind => category == VoxelMaterialCategory.Plant ? MaterialKind.Plant : isSoft ? MaterialKind.Soil : MaterialKind.Rock;
 
         /// <summary>What it turns into left out on the ground (GL34), or null when it never changes.</summary>
         public VoxelMaterial DriesInto => driesInto;

@@ -6,9 +6,10 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// Draws the volume slot (GL99) with IMGUI, beside the item slots and sized like them: a bar of the
-    /// mix's materials, each in its colour and as tall as its share, and how much there is in all. Ore the
-    /// player can't tell apart yet (<see cref="OreKnowledge"/>) is drawn and named as "? ore".
+    /// Draws a volume slot, a bin (GL99, GL114), with IMGUI, beside the item slots and sized like them: its
+    /// kind's name, a bar of the bin's materials, each in its colour and as tall as its share, and how much
+    /// there is in all. Ore the player can't tell apart yet (<see cref="OreKnowledge"/>) is drawn and named
+    /// as "? ore".
     /// </summary>
     public static class MixSlotGui
     {
@@ -18,13 +19,15 @@ namespace Clube.Game
         private static readonly Color Unknown = new Color(0.5f, 0.5f, 0.52f);
 
         private static GUIStyle countStyle;
+        private static GUIStyle kindStyle;
 
         /// <summary>The player's ore knowledge, for naming hidden ore; set by whoever has it, null names everything.</summary>
         public static OreKnowledge Knowledge { get; set; }
 
-        public static void Draw(Rect rect, VolumeMix mix, bool selected, string key = null)
+        public static void Draw(Rect rect, VolumeMix mix, bool selected, string key, MaterialKind kind)
         {
             countStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.LowerRight, fontStyle = FontStyle.Bold };
+            kindStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = 10 };
             ItemSlotGui.Fill(rect, Background);
             Rect bar = ItemSlotGui.Inset(rect, 8f);
             if (mix != null && !mix.IsEmpty)
@@ -39,20 +42,36 @@ namespace Clube.Game
                 GUI.Label(ItemSlotGui.Inset(rect, 3f), Mathf.FloorToInt(mix.Total).ToString(), countStyle);
             }
             ItemSlotGui.Outline(rect, selected ? SelectedBorder : Border, selected ? 2f : 1f);
+            GUI.Label(new Rect(rect.x, rect.y + 1f, rect.width - 3f, 14f), kind.ToString(), kindStyle);
             if (key != null)
             {
                 GUI.Label(new Rect(rect.x + 3f, rect.y + 1f, 20f, 16f), key);
             }
         }
 
-        /// <summary>"Mix: 76% Clay, 15% Dirt, 9% Stone (42)", or that it's empty.</summary>
-        public static string Describe(VolumeMix mix)
+        /// <summary>"Rock 120  ·  Soil 40  ·  Plant 0": how much each bin holds.</summary>
+        public static string Summary(IReadOnlyList<VolumeMix> bins)
+        {
+            var text = new StringBuilder();
+            for (int i = 0; i < bins.Count; i++)
+            {
+                if (i > 0)
+                {
+                    text.Append("  ·  ");
+                }
+                text.Append((MaterialKind)i).Append(' ').Append(bins[i].Total.ToString("0.#"));
+            }
+            return text.ToString();
+        }
+
+        /// <summary>"Soil: 76% Clay, 15% Dirt, 9% Grass (42)", or that it's empty.</summary>
+        public static string Describe(VolumeMix mix, MaterialKind kind)
         {
             if (mix == null || mix.IsEmpty)
             {
-                return "Mix: empty (what you mine goes here)";
+                return kind + ": empty (mined " + kind.ToString().ToLowerInvariant() + " goes here)";
             }
-            var text = new StringBuilder("Mix: ");
+            var text = new StringBuilder(kind + ": ");
             var shares = new List<(string Name, float Share)>();
             foreach (VolumeMix.Entry entry in mix.Entries)
             {

@@ -168,22 +168,39 @@ namespace Clube.Core
                 batchesDirty = true;
             }
 
-            // And grows on a few chunks in reach that have none yet, or a new mesh.
+            // And grows on a few chunks in reach that have none yet, or a new mesh. Only the chunks round the
+            // focus are looked at (GL108): walking every loaded renderer ran out of time on the old, far
+            // ones in a streamed world before reaching the new ones by the player, so those never grew any.
             clock.Restart();
-            foreach (KeyValuePair<Vector3Int, ChunkRenderer> entry in worldView.Renderers)
+            World world = worldView.World;
+            Vector3Int centre = world.Grid.WorldToChunk(worldView.transform.InverseTransformPoint(focus));
+            Vector3 size = world.Grid.ChunkWorldSize;
+            Vector3Int reach = new Vector3Int(
+                Mathf.CeilToInt(radius / size.x), Mathf.CeilToInt(radius / size.y), Mathf.CeilToInt(radius / size.z));
+            for (int dy = -reach.y; dy <= reach.y; dy++)
             {
-                if (clock.Elapsed.TotalMilliseconds > scatterMilliseconds)
+                for (int dz = -reach.z; dz <= reach.z; dz++)
                 {
-                    scanPending = true;
-                    break;
+                    for (int dx = -reach.x; dx <= reach.x; dx++)
+                    {
+                        var coord = new Vector3Int(centre.x + dx, centre.y + dy, centre.z + dz);
+                        if ((tufts.ContainsKey(coord) && !stale.Contains(coord))
+                            || !worldView.Renderers.TryGetValue(coord, out ChunkRenderer chunkRenderer)
+                            || Distance(chunkRenderer, focus) > near)
+                        {
+                            continue;
+                        }
+                        // At least one chunk a frame, then as many as the time allows.
+                        if (clock.Elapsed.TotalMilliseconds > scatterMilliseconds)
+                        {
+                            scanPending = true;
+                            return;
+                        }
+                        Scatter(coord, chunkRenderer);
+                        stale.Remove(coord);
+                        batchesDirty = true;
+                    }
                 }
-                if ((tufts.ContainsKey(entry.Key) && !stale.Contains(entry.Key)) || Distance(entry.Value, focus) > near)
-                {
-                    continue;
-                }
-                Scatter(entry.Key, entry.Value);
-                stale.Remove(entry.Key);
-                batchesDirty = true;
             }
         }
 
