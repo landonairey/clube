@@ -320,7 +320,8 @@ placed object. The volume inventory (GL99-GL103, the default; the classic one st
 volume slot (`VolumeMix`, `MixSlotGui`) that every mined sample goes into, and 3 item slots (`PlayerInventory`; `Hotbar`
 cells map to slots). Recipes take a cut of the mix (`CraftingStation.LoadFromMix`, minimum share); what's built keeps
 its contents and works at its material's share (`MaterialRegistry.Quality`, `StationObject.MadeOf`); Drop pours from
-the mix by weighted random. Terrain materials meet in hard edges (`_HardMaterialEdges`). GL104 is part done.
+the mix by weighted random. Terrain materials meet in hard edges (`_HardMaterialEdges`). GL104 is part done. The
+bare hand takes only the voxel under the dot (GL106); tools by material (GL107) are next.
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16

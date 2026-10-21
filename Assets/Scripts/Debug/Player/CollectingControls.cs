@@ -42,7 +42,11 @@ namespace Clube.Debug
             {
                 return;
             }
-            settings.HandRadius = frame.Slider("Hand sphere radius (m)", settings.HandRadius, 0.05f, CollectingSettings.MaxRadius);
+            settings.HandTakesAimedVoxel = frame.ToggleField("Hand takes only the voxel under the dot", settings.HandTakesAimedVoxel);
+            if (!settings.HandTakesAimedVoxel)
+            {
+                settings.HandRadius = frame.Slider("Hand sphere radius (m)", settings.HandRadius, 0.05f, CollectingSettings.MaxRadius);
+            }
             settings.ToolRadius = frame.Slider("Tool sphere radius (m)", settings.ToolRadius, 0.05f, CollectingSettings.MaxRadius);
             if (settings.Mode == CollectMode.SphereGradual)
             {

@@ -29,6 +29,9 @@ namespace Clube.Game
         [Tooltip("How a hit takes the ground.")]
         public CollectMode Mode = CollectMode.SphereGradual;
 
+        [Tooltip("Sphere modes: the hand takes only the voxel under the dot (GL106), not a sphere.")]
+        public bool HandTakesAimedVoxel = true;
+
         [Tooltip("Sphere modes: the hand's area of impact, radius in metres.")]
         [Range(0.05f, MaxRadius)]
         public float HandRadius = 0.3f;
