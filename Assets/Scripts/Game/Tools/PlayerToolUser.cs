@@ -430,6 +430,11 @@ namespace Clube.Game
             if (collecting.Mode == CollectMode.SphereGradual)
             {
                 VoxelMaterial aimed = AimedMaterial(world, materials);
+                if (AmountFor(tool, hand, aimed, aimed) <= 0f)
+                {
+                    // The hit can't take what it's aimed at (hands on rock): what it does take goes to its own stacks.
+                    aimedTarget = null;
+                }
                 done = collecting.SortByTarget
                     ? SphereStrike.LowerInto(world, targets, material => AmountFor(tool, hand, material, aimed), materials, Gather)
                     : SphereStrike.Lower(world, targets, material => AmountFor(tool, hand, material, aimed), materials, owed, collected, minedFrom);
@@ -439,6 +444,10 @@ namespace Clube.Game
                 // Hands don't take hard ground (GL119).
                 if (hand)
                 {
+                    if (aimedTarget != null && aimedTarget.Kind == MaterialKind.Rock)
+                    {
+                        aimedTarget = null;
+                    }
                     targets.RemoveAll(sample => world.GetMaterial(sample) is byte id && materials != null && materials.Get(id) is VoxelMaterial m && m.Kind == MaterialKind.Rock);
                 }
                 done = SphereStrike.Take(world, targets, materials, collected, iso, minedFrom);

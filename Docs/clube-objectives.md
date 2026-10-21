@@ -510,6 +510,17 @@ Bins by kind, tools by material, and the mix usable everywhere.
 - [x] **GL117** `Game` *(added 2026-10-20)* A spare tool works from an item slot: a tool in the selected slot is the one in hand and wears there (scrolling onto it doesn't swap it in), and when the tool slot's tool breaks the next of the same tool from the item slots takes its place. *(Done: `Hotbar.ToolSlot`, `Hotbar.WearSelected`.)*
 - [x] **GL118** `Core + Game` *(added 2026-10-20, from `Docs/20261020i clube-backlog.md`)* Quality carries through crafting: material taken from a bin is as good as it is pure, whatever's made from it is as good as its inputs (weighted by count), and a tool lasts its quality's share of its hits, so sticks of 60% wood make a pointy stick that lasts 36 of 60 hits. *(Done: `ItemStack.Quality` (blended when stacks merge) and `ItemStack.MaxHits`; `CraftingStation` sets input quality from bins and output quality from inputs; `Inventory.Wear` breaks at the stack's hits; the slot shows a quality badge and a shorter wear bar; tool prices count hits left of a full tool's; built stations take the placed item's quality.)*
 
+### Seventeenth pass *(added 2026-10-21, from `Docs/20261021 clube-backlog.md` — done)*
+Sorted stacks instead of bins, hands for soft ground, grass as fuel.
+
+- [x] **GL119** `Game` Bare hands take soft ground only (soil, plants) and pick up loose surface stones whole; a hit on hard ground otherwise does nothing. Tools stay best at their own kind (hatchet plants, shovel soil, pick rock). *(Done 2026-10-21.)*
+- [x] **GL120** `Core + Game` Sorted stacks: what a hit gathers goes to a stack of the material under the dot, mixing in whatever else came with it (grass with a little dirt is a grass stack of that mix, at that purity); looking at dirt fills a dirt stack. Replaces the bins (GL114); purity still feeds quality (GL118). *(Done 2026-10-21.)*
+- [x] **GL121** `Core` A pile of hard material (stone, ore) fills one build cell before starting the next. *(Done 2026-10-21.)*
+- [x] **GL122** `Game` Items with no volume of their own (tools, sticks) don't show one. *(Done 2026-10-21.)*
+- [x] **GL123** `Config` Grass is one voxel thick over dirt, and a fuel for the campfire and furnace, burning about as long as leaves. *(Done 2026-10-21.)*
+- [x] **GL124** `Core` Mixed fuel burns worse: a fuel stack burns for its quality's share of its time (grass with dirt in it). *(Done 2026-10-21.)*
+- [x] **GL125** `Game` The inventory is the classic hotbar and backpack again, any item in any slot; the tool-slot layout (GL99) stays switchable in the lab panel, off by default. *(Done 2026-10-21.)*
+
 
 ---
 
