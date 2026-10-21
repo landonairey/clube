@@ -495,6 +495,17 @@ Furnaces from the ground, then a volume inventory test and what mixing material 
 - [x] **GL106** `Game` *(added 2026-10-20, from `Docs/20261020f clube-backlog.md`)* The hand takes only the voxel under the dot: in the sphere modes a bare-hand hit lowers (or takes) just the corners of the voxel the player looks at, not a sphere. *(Done: `CollectingSettings.HandTakesAimedVoxel`, on by default, switchable in the Collecting section; `PlayerToolUser.AimHandVoxel`. Each hit still lowers by the hand's amount, 0.2.)*
 - [ ] **GL107** `Core + Game + Config` *(added 2026-10-20, planned)* Tools by material: a tool reaches a bigger area than the hand, and how much a hit lowers each sample there depends on the sample's material and the tool. A shovel takes dirt at 1 but stone at only 0.2; a pickaxe the other way round. First pass of the mixing fix: what a tool's made for comes away, the rest mostly stays.
 
+### Sixteenth pass *(added 2026-10-20, from `Docs/20261020g clube-backlog.md` — next)*
+Bins by kind, tools by material, and the mix usable everywhere.
+
+- [x] **GL108** `Core` Grass keeps growing round the player wherever they walk (it stopped after a distance). *(Done: `GrassScatter` scanned every loaded renderer in load order within a 1 ms budget, so in a streamed world it ran out of time on old far chunks before reaching the new ones by the player; it now looks only at the chunk coordinates within its radius of the focus.)*
+- [ ] **GL109** `Core + Game` The bare hand picks up a loose surface stone whole: one click takes the stone sample under the dot and up to 2 neighbouring stone samples.
+- [ ] **GL110** `Core + Game` Crafting with mixed material: no minimum share; what's made from a mix works at its share (quality), so an impure mix still crafts, just worse.
+- [ ] **GL111** `Game` The merchant buys mixed material: a bin sells for the value of what's in it, by volume.
+- [ ] **GL112** `Core` No floating slivers in the sphere and hand modes either: a hit takes any tiny piece left hanging next to it (as GL79 does for voxel hits).
+- [ ] **GL113** `Game` The inventory screen (Tab) shows the volume slots and what each holds, by share.
+- [ ] **GL114** `Core + Game + Config` Bins by kind: the volume slot becomes three, Rock (stone, ores), Soil (dirt, grass, clay) and Plant (wood, leaves), each mined sample going to its kind's bin, so purity matters only within a kind (ore grade, clay purity).
+
 
 ---
 
