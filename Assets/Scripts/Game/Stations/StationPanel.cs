@@ -137,12 +137,9 @@ namespace Clube.Game
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
             float y = panel.y + Padding;
-            string heat = station.BurnsFuel && !Mathf.Approximately(station.Heat, 1f) ? $"   heat ×{station.Heat:0.##}" : "";
-            if (Current.Quality < 0.995f)
-            {
-                heat += $"   built {Current.Quality * 100f:0}% pure";
-            }
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}{heat}   (E to close)");
+            // How well it was built and what that works on (GL135): a furnace's heat and yield.
+            string works = station.BurnsFuel ? "Heat/Yield" : "Yield";
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   Efficiency {Current.Quality * 100f:0}%  {works}   (E to close)");
             y += 24f;
             // Click a recipe to make only it (ML1: sticks and stone make a spear, a hatchet or a hammer)
             // and pull one batch of its ingredients from your items (GL80); click it again to let any start.
@@ -268,8 +265,7 @@ namespace Clube.Game
             return waiting.Item == next.Output.Item ? "Output full: take it out" : $"Take the {waiting.Item.DisplayName} out first";
         }
 
-        // How much the next run yields, when that isn't simply the recipe's count (GL127, GL128), and any part
-        // item carried from the last run.
+        // How much the next run yields, when that isn't simply the recipe's count (GL127, GL128).
         private static string YieldNote(CraftingStation station)
         {
             Recipe next = station.Chosen ?? station.Upcoming;
@@ -278,13 +274,11 @@ namespace Clube.Game
                 return null;
             }
             float yield = station.YieldOf(next);
-            float carried = station.Carried(next.Output.Item);
-            if (Mathf.Abs(yield - 1f) < 0.005f && carried < 0.005f)
+            if (Mathf.Abs(yield - 1f) < 0.005f)
             {
                 return null;
             }
-            string note = $"Yield {yield * 100f:0}%: {next.Output.Count * yield:0.##} {next.Output.Item.DisplayName} a run";
-            return carried >= 0.005f ? note + $", {carried:0.##} carried" : note;
+            return $"Yield {yield * 100f:0}%: {next.Output.Count * yield:0.##} {next.Output.Item.DisplayName} a run";
         }
 
         // The fuel burning now as a bar that empties (GL35).

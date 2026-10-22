@@ -22,8 +22,14 @@ MonoBehaviour:
   pileShape: 1
   reposeAngle: 40
   pickUpPieceSize: 0
+  pickedFromPiles: 1
   breaksInto: {fileID: 0}
   isWorktop: 0
   isSoft: 0
   driesInto: {fileID: 0}
   dryingDays: 2
+  notes:
+    Hardness: 
+    Luster: 
+    Colour: 
+    Feel: 

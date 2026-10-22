@@ -363,19 +363,19 @@ namespace Clube.Core.Tests
         }
 
 
-        // GL127: a half-quality furnace makes a bun every second run; the half is carried between runs.
+        // GL127, GL136: a half-quality furnace makes half a bun a run, which adds up in the output.
         [Test]
-        public void Yield_FollowsTheStationsQuality_AndCarriesParts()
+        public void Yield_FollowsTheStationsQuality_AsAPartItem()
         {
             var furnace = new CraftingStation(StationKind.Furnace, new[] { smelt }) { Quality = 0.5f };
             furnace.Input.Add(ore, 16);
             Assert.AreEqual(0.5f, furnace.YieldOf(smelt), 1e-4f);
             furnace.Tick(6f);
-            Assert.AreEqual(0, furnace.Output.Count(bun), "Half a bun so far.");
-            Assert.AreEqual(0.5f, furnace.Carried(bun), 1e-4f);
+            Assert.AreEqual(0, furnace.Output.Count(bun), "No whole bun yet.");
+            Assert.AreEqual(0.5f, furnace.Output[0].Amount, 1e-4f, "Half a bun.");
             furnace.Tick(6f);
             Assert.AreEqual(1, furnace.Output.Count(bun));
-            Assert.AreEqual(0f, furnace.Carried(bun), 1e-4f);
+            Assert.AreEqual(0f, furnace.Output[0].Part, 1e-4f);
         }
 
         // GL128: ore twice as rich as typical yields two buns; smelted metal is pure whatever the ore's purity.

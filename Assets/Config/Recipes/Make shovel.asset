@@ -10,20 +10,22 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: eb68c50b39e0a91499017be61cd90094, type: 3}
-  m_Name: Alloy bronze ingots
+  m_Name: Make shovel
   m_EditorClassIdentifier: Clube.Core::Clube.Core.Recipe
-  station: 0
+  station: 2
   inputs:
-  - Item: {fileID: 11400000, guid: f222312d73ba0ba46989e52f953c6890, type: 2}
+  - Item: {fileID: 11400000, guid: 4f717f7cc0f3ec743b5f84c88baea32c, type: 2}
     Count: 1
-  - Item: {fileID: 11400000, guid: 33028a6509cc10f4f8906fcc55fabb01, type: 2}
-    Count: 3
+  - Item: {fileID: 11400000, guid: ce1c9585acf5fc14f848a8b43eddc45d, type: 2}
+    Count: 2
   output:
-    Item: {fileID: 11400000, guid: 6942444238c904f45ae591e148df29a1, type: 2}
-    Count: 4
-  work: 0
-  amount: 3
-  experienceSkill: 4
+    Item: {fileID: 11400000, guid: 491e33a691a865b42bde1489ab967008, type: 2}
+    Count: 1
+  work: 1
+  amount: 4
+  experienceSkill: 1
   experience: 10
-  unlockSkill: 4
-  unlockLevel: 3
+  unlockSkill: 1
+  unlockLevel: 2
+  extracts: {fileID: 0}
+  typicalGrade: 0.2

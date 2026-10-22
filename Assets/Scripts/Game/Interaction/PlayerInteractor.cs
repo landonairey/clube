@@ -29,6 +29,12 @@ namespace Clube.Game
         /// <summary>What's under the crosshair and within reach this frame, or null.</summary>
         public IInteractable Target { get; private set; }
 
+        /// <summary>
+        /// True when the target is built into the ground (a furnace or campfire, a <see cref="TerrainStructure"/>,
+        /// GL141): tools still work on it, since mining its body is how it's broken.
+        /// </summary>
+        public bool TargetIsGround => Target is Component component && component.GetComponentInParent<TerrainStructure>() != null;
+
         public float Reach => reach;
 
         private void Awake()

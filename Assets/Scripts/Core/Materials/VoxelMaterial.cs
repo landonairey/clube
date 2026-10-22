@@ -92,6 +92,10 @@ namespace Clube.Core
         [SerializeField, Range(0, 32)]
         private int pickUpPieceSize;
 
+        [Tooltip("Bare hands take it from a pile of any size (GL133): dropped stone and ore, the loose stages.")]
+        [SerializeField]
+        private bool pickedFromPiles;
+
         [Tooltip("What a tool turns it into once broken (MF5, GL3), e.g. stone → cracked stone → loose stone. None: breaking it removes it and gives its drop.")]
         [SerializeField]
         private VoxelMaterial breaksInto;
@@ -195,6 +199,9 @@ namespace Clube.Core
         /// </summary>
         public int PickUpPieceSize => pickUpPieceSize;
 
+        /// <summary>True when bare hands take it from a pile of any size (GL133: dropped cobbles).</summary>
+        public bool PickedFromPiles => pickedFromPiles;
+
         /// <summary>Sets how it piles, for materials made in code (tests, tools).</summary>
         public VoxelMaterial WithPile(PileShape shape, float angle = 40f)
         {
@@ -207,6 +214,13 @@ namespace Clube.Core
         public VoxelMaterial WithPickUp(int pieceSize)
         {
             pickUpPieceSize = Mathf.Clamp(pieceSize, 0, 32);
+            return this;
+        }
+
+        /// <summary>Lets hands take it from any pile (GL133), for materials made in code (tests).</summary>
+        public VoxelMaterial WithPickedFromPiles()
+        {
+            pickedFromPiles = true;
             return this;
         }
 

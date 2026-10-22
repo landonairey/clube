@@ -17,8 +17,8 @@ namespace Clube.Core
     /// <remarks>
     /// <para>Every recipe is a fixed batch (GL61): a set count of inputs makes a set count of
     /// outputs, and no inputs are held between runs, so whatever is loaded next starts clean. The
-    /// count is scaled by the station's yield (GL127, GL128); a part item left over is carried to the
-    /// next run of the same output.</para>
+    /// count is scaled by the station's yield (GL127, GL128), which can come out as a decimal amount
+    /// (GL136: 0.48 of a tin bun).</para>
     /// <para>A station that burns fuel (the furnace, GL35) only works time recipes while
     /// something burns: it takes the next item from its <see cref="Fuel"/> slot whenever the
     /// last one has burnt out and there's work to do. What's burning burns down either way.</para>
@@ -33,7 +33,6 @@ namespace Clube.Core
         public const float MaxGradeYield = 2f;
 
         private readonly List<Recipe> recipes = new List<Recipe>();
-        private readonly Dictionary<ItemDefinition, float> carried = new Dictionary<ItemDefinition, float>();
         private float done;
 
         /// <param name="recipes">What it can make; recipes for another kind of station are left out.</param>
@@ -211,9 +210,10 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Loads one batch of a recipe from another inventory (the player's, GL80): whatever in the
-        /// input slots the recipe doesn't take goes back there first, then each input is topped up to
-        /// the recipe's count from what's there. Returns how many items moved in.
+        /// Loads a recipe from another inventory (the player's, GL80, GL140): whatever in the input slots
+        /// the recipe doesn't take goes back there first, then each input gets one batch, and then each
+        /// is topped up to a full stack from what's there, onto the stacks already loaded. Returns how many
+        /// items moved in.
         /// </summary>
         public int LoadFor(Recipe recipe, Inventory from)
         {
@@ -236,6 +236,24 @@ namespace Clube.Core
                 if (input.Item != null && missing > 0)
                 {
                     moved += from.MoveItemTo(input.Item, missing, Input);
+                }
+            }
+            // A full stack of each (GL140), onto what each input already holds so every input keeps its slot.
+            foreach (ItemAmount input in recipe.Inputs)
+            {
+                if (input.Item == null)
+                {
+                    continue;
+                }
+                for (int slot = 0; slot < from.SlotCount; slot++)
+                {
+                    ItemStack stack = from[slot];
+                    if (stack.Item != input.Item || stack.Count == 0)
+                    {
+                        continue;
+                    }
+                    int placed = stack.Count - Input.AddToStacks(stack.Item, stack.Count, stack.Contents, stack.Quality);
+                    moved += from.RemoveAt(slot, placed);
                 }
             }
             return moved;
@@ -399,7 +417,7 @@ namespace Clube.Core
         public bool OutputFits(Recipe recipe)
         {
             ItemStack waiting = Output[0];
-            return waiting.IsEmpty || (waiting.Item == recipe.Output.Item && waiting.Space >= YieldCount(recipe));
+            return waiting.IsEmpty || (waiting.Item == recipe.Output.Item && waiting.Space >= (int)Math.Ceiling(recipe.Output.Count * YieldOf(recipe) - 1e-4f));
         }
 
         /// <summary>
@@ -417,31 +435,16 @@ namespace Clube.Core
             return yield;
         }
 
-        /// <summary>A part output put by for the next run of the same output (GL127): 0.4 of a bun waits for the next 0.6.</summary>
-        public float Carried(ItemDefinition item)
-        {
-            return item != null && carried.TryGetValue(item, out float part) ? part : 0f;
-        }
-
         /// <summary>How good a Blacksmithing recipe's result can be at a level (GL129): 50% at level 0 up to 100% at level 10.</summary>
         public static float SmithingQuality(int level)
         {
             return 0.5f + 0.05f * Math.Min(10, Math.Max(0, level));
         }
 
-        // Whole items the next run of the recipe gives: what's carried plus its count at the current yield.
-        private int YieldCount(Recipe recipe)
+        // What a finished run gives (GL136): its count at the current yield, as a decimal amount.
+        private float TakeYield(Recipe recipe)
         {
-            return (int)Math.Floor(Carried(recipe.Output.Item) + recipe.Output.Count * YieldOf(recipe) + 1e-4f);
-        }
-
-        // Gives a finished run its yield: the whole items, with the part left over carried to the next run.
-        private int TakeYield(Recipe recipe)
-        {
-            float total = Carried(recipe.Output.Item) + recipe.Output.Count * YieldOf(recipe);
-            int whole = (int)Math.Floor(total + 1e-4f);
-            carried[recipe.Output.Item] = Math.Max(0f, total - whole);
-            return whole;
+            return recipe.Output.Count * YieldOf(recipe);
         }
 
         // The extracted mineral's share of what's loaded for the recipe, by count (GL128); an input with no
@@ -490,15 +493,13 @@ namespace Clube.Core
                 // that works at 76% (GL100, MaterialRegistry.Quality).
                 Composition madeOf = finished.Output.Item is PlaceableDefinition ? InputContents(finished) : null;
                 float quality = OutputQuality(finished);
-                int count = TakeYield(finished);
+                float made = TakeYield(finished);
                 foreach (ItemAmount input in finished.Inputs)
                 {
                     Input.Remove(input.Item, input.Count);
                 }
-                if (count > 0)
-                {
-                    Output.Add(finished.Output.Item, count, madeOf, 0, quality);
-                }
+                int whole = (int)Math.Floor(made + 1e-4f);
+                Output.Add(finished.Output.Item, whole, madeOf, 0, quality, made - whole);
                 Completed?.Invoke(finished);
             }
             Changed?.Invoke();
@@ -538,12 +539,42 @@ namespace Clube.Core
         // Inputs taken out, or the output filled, part way through: the work starts over.
         private void OnContentsChanged()
         {
+            // Other inputs swapped in for the picked recipe's (chalcopyrite for cassiterite, GL142): let what's
+            // loaded pick the recipe again.
+            if (chosen != null && !HoldsAnyOf(chosen) && HoldsAnything())
+            {
+                chosen = null;
+            }
             if (Active != null && (!Active.HasInputs(Input) || !OutputFits(Active)))
             {
                 Active = null;
                 done = 0f;
             }
             Changed?.Invoke();
+        }
+
+        private bool HoldsAnyOf(Recipe recipe)
+        {
+            foreach (ItemAmount input in recipe.Inputs)
+            {
+                if (input.Item != null && Input.Count(input.Item) > 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool HoldsAnything()
+        {
+            for (int slot = 0; slot < Input.SlotCount; slot++)
+            {
+                if (!Input[slot].IsEmpty)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void OnFuelChanged()

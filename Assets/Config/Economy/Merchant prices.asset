@@ -42,7 +42,7 @@ MonoBehaviour:
     Units: 1
     ByVolume: 0
   - Item: {fileID: 11400000, guid: 33028a6509cc10f4f8906fcc55fabb01, type: 2}
-    Coins: 20
+    Coins: 30
     Units: 1
     ByVolume: 0
   - Item: {fileID: 11400000, guid: 179964f0b2d8da240bec3bbab8d94203, type: 2}
@@ -82,7 +82,7 @@ MonoBehaviour:
     Units: 1
     ByVolume: 0
   - Item: {fileID: 11400000, guid: f222312d73ba0ba46989e52f953c6890, type: 2}
-    Coins: 18
+    Coins: 26
     Units: 1
     ByVolume: 0
   - Item: {fileID: 11400000, guid: 56075ba9caed56344878c38cc65cceba, type: 2}
@@ -90,7 +90,7 @@ MonoBehaviour:
     Units: 1
     ByVolume: 0
   - Item: {fileID: 11400000, guid: 6942444238c904f45ae591e148df29a1, type: 2}
-    Coins: 26
+    Coins: 38
     Units: 1
     ByVolume: 0
   - Item: {fileID: 11400000, guid: 75884212da9ef2040ac6fa7449e6da69, type: 2}
