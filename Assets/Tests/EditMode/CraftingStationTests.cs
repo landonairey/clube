@@ -98,9 +98,10 @@ namespace Clube.Core.Tests
             }
         }
 
-        // GL80: picking a recipe loads one batch from the player, sending back what it doesn't take.
+        // GL80, GL140: picking a recipe loads its inputs from the player, a full stack of each, sending back
+        // what it doesn't take.
         [Test]
-        public void LoadFor_TopsUpEachInputToOneBatch_AndReturnsWhatTheRecipeDoesntTake()
+        public void LoadFor_LoadsEachInput_AndReturnsWhatTheRecipeDoesntTake()
         {
             var player = new Inventory(4);
             player.Add(ore, 20);
@@ -108,11 +109,11 @@ namespace Clube.Core.Tests
             furnace.Input.Add(bun, 2);
             furnace.Input.Add(ore, 3);
 
-            Assert.AreEqual(5, furnace.LoadFor(smelt, player), "Up to the recipe's 8 ore.");
-            Assert.AreEqual(8, furnace.Input.Count(ore));
+            Assert.AreEqual(20, furnace.LoadFor(smelt, player), "All 20 ore, onto the 3 loaded.");
+            Assert.AreEqual(23, furnace.Input.Count(ore));
             Assert.AreEqual(0, furnace.Input.Count(bun), "The buns went back.");
             Assert.AreEqual(2, player.Count(bun));
-            Assert.AreEqual(15, player.Count(ore));
+            Assert.AreEqual(0, player.Count(ore));
         }
 
         [Test]

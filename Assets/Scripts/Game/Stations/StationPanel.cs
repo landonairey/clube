@@ -139,7 +139,9 @@ namespace Clube.Game
             float y = panel.y + Padding;
             // How well it was built and what that works on (GL135): a furnace's heat and yield.
             string works = station.BurnsFuel ? "Heat/Yield" : "Yield";
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   Efficiency {Current.Quality * 100f:0}%  {works}   (E to close)");
+            // And what the loaded ore yields (GL127, GL128), in the header so it never covers the fuel row.
+            string yield = YieldNote(station);
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   Efficiency {Current.Quality * 100f:0}%  {works}" + (yield != null ? "   " + yield : "") + "   (E to close)");
             y += 24f;
             // Click a recipe to make only it (ML1: sticks and stone make a spear, a hatchet or a hammer)
             // and pull one batch of its ingredients from your items (GL80); click it again to let any start.
@@ -191,8 +193,8 @@ namespace Clube.Game
                 ItemSlotGui.Ghost(new Rect(outputAt.x, outputAt.y, slot, slot), upcoming.Output.Item, upcoming.Output.Count);
             }
             // Why a loaded recipe waits: a different result sits in the output slot (GL61).
-            // Why a loaded recipe waits, or else what it yields (GL127, GL128).
-            string blocked = Blocked(station) ?? YieldNote(station);
+            // Why a loaded recipe waits.
+            string blocked = Blocked(station);
             if (blocked != null)
             {
                 GUI.Label(new Rect(workX, y + slot + 4f, width - (workX - panel.x) - Padding, 20f), blocked);
@@ -278,7 +280,7 @@ namespace Clube.Game
             {
                 return null;
             }
-            return $"Yield {yield * 100f:0}%: {next.Output.Count * yield:0.##} {next.Output.Item.DisplayName} a run";
+            return $"Yield {yield * 100f:0}%: {next.Output.Count * yield:0.##} a run";
         }
 
         // The fuel burning now as a bar that empties (GL35).

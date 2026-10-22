@@ -89,6 +89,12 @@ namespace Clube.Game
             }
         }
 
+        /// <summary>Turns to the spread holding a page (0-based), e.g. the start of a chapter.</summary>
+        public void ShowPage(int page)
+        {
+            spread = Mathf.Max(0, page) / 2;
+        }
+
         /// <summary>The pages as last written: a heading and up to three entries each.</summary>
         public IReadOnlyList<Page> Pages => pages;
 
@@ -140,7 +146,7 @@ namespace Clube.Game
             IReadOnlyList<Recipe> recipes = journal.Recipes;
 
             var crafting = recipes.Where(r => r != null && !IsSmelting(r.Station))
-                .OrderBy(r => r.UnlockLevel).ThenBy(r => r.Station).ToList();
+                .OrderBy(r => StationOrder(r.Station)).ThenBy(r => r.UnlockLevel).ToList();
             AddChapter("Chapter one: Crafting", "Crafting (cont.)", crafting.Select(r => RecipeEntry(r, skills)));
 
             AddChapter("Chapter two: Mining", "Mining (cont.)", MiningEntries(skills));
@@ -148,7 +154,8 @@ namespace Clube.Game
             var furnaces = recipes.Where(r => r != null && r.Output.Item is PlaceableDefinition placeable && Smelter(placeable) != null)
                 .OrderBy(r => Smelter((PlaceableDefinition)r.Output.Item).Heat).Select(r => FurnaceEntry(r, skills));
             var smelting = recipes.Where(r => r != null && IsSmelting(r.Station))
-                .OrderBy(r => r.UnlockLevel).ThenBy(r => r.Station == StationKind.Campfire ? 0 : 1).Select(r => RecipeEntry(r, skills));
+                .OrderBy(r => r.Station == StationKind.Campfire ? 0 : 1).ThenBy(r => r.UnlockLevel).ThenBy(r => r.Extracts != null ? 0 : 1)
+                .Select(r => RecipeEntry(r, skills));
             AddChapter("Chapter three: Smelting", "Smelting (cont.)", furnaces.Concat(smelting));
         }
 
@@ -249,6 +256,22 @@ namespace Clube.Game
         private static StationObject Smelter(PlaceableDefinition placeable)
         {
             return placeable.Prefab != null && placeable.Prefab.TryGetComponent(out StationObject station) && station.BurnsFuel ? station : null;
+        }
+
+        // The order a player meets the crafting stations: the stump, then the flat rock, then the anvil.
+        private static int StationOrder(StationKind kind)
+        {
+            switch (kind)
+            {
+                case StationKind.Worktop:
+                    return 0;
+                case StationKind.FlatRock:
+                    return 1;
+                case StationKind.Anvil:
+                    return 2;
+                default:
+                    return 3;
+            }
         }
 
         private static bool IsSmelting(StationKind kind)
