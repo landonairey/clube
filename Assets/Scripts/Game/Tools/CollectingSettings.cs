@@ -51,9 +51,9 @@ namespace Clube.Game
         [Range(0.01f, 1f)]
         public float ToolAmount = 1f;
 
-        [Tooltip("Gradual sphere: how much a tool hit takes from a sample of a kind it isn't made for (GL107: a shovel on stone).")]
+        [Tooltip("Gradual sphere: how much a tool hit takes from a sample of a kind it isn't made for (GL107, GL126: a pick on dirt, a shovel on stone).")]
         [Range(0f, 1f)]
-        public float ToolOffAmount = 0.2f;
+        public float ToolOffAmount = 0.1f;
 
         [Tooltip("Gradual sphere: what a tool takes from materials other than the one under the dot is scaled by this (GL107), so it takes mostly what it's aimed at.")]
         [Range(0f, 1f)]

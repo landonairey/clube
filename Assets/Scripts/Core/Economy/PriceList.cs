@@ -91,7 +91,8 @@ namespace Clube.Core
 
         /// <summary>
         /// What <paramref name="count"/> of a stack's items fetch (GL40): whole lots at the listed price,
-        /// and for a tool that wears out, less as it wears: a tool with half its hits left is worth half.
+        /// and for a tool that wears out, less as it wears: a tool with half its hits left is worth half
+        /// (its quality is in its hits, GL118). Anything else sells at its quality's share (GL130).
         /// 0 when the item isn't bought.
         /// </summary>
         public int ValueOf(ItemStack stack, int count)
@@ -105,6 +106,11 @@ namespace Clube.Core
             {
                 // What hits it has left of a full tool's (GL37, GL118).
                 value *= Math.Max(0f, (float)(stack.MaxHits - stack.Wear) / tool.MaxHits);
+            }
+            else
+            {
+                // Anything else sells at its quality's share (GL130): a 70% ingot for 70% of the price.
+                value *= Math.Max(0f, stack.Quality);
             }
             return (int)Math.Round(value, MidpointRounding.AwayFromZero);
         }
@@ -125,6 +131,11 @@ namespace Clube.Core
             {
                 // What hits it has left of a full tool's (GL37, GL118).
                 value *= Math.Max(0f, (float)(stack.MaxHits - stack.Wear) / tool.MaxHits);
+            }
+            else
+            {
+                // Anything else sells at its quality's share (GL130): a 70% ingot for 70% of the price.
+                value *= Math.Max(0f, stack.Quality);
             }
             return value;
         }
@@ -148,11 +159,13 @@ namespace Clube.Core
             }
             // Whole lots only: 999 dirt is worth nothing at 1 coin per 1000.
             int sold = Math.Min(count, from.Count(item)) / lot * lot;
+            // At its quality (GL130); a tool's is in its hits, priced by ValueOf.
+            float quality = item is ToolDefinition ? 1f : from.QualityOf(item);
             if (sold == 0 || !from.Remove(item, sold))
             {
                 return 0;
             }
-            to.Earn(sold / lot * coins);
+            to.EarnFraction(sold / lot * coins * quality);
             return sold;
         }
     }

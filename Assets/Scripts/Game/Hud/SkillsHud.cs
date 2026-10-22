@@ -13,10 +13,10 @@ namespace Clube.Game
     public class SkillsHud : MonoBehaviour
     {
         private const float NoticeSeconds = 5f;
-        private const float Width = 210f;
+        private const float Width = 230f;
         private const float RowHeight = 22f;
 
-        private static readonly SkillType[] Shown = { SkillType.Crafting, SkillType.Woodcutting, SkillType.Mining, SkillType.Smelting };
+        private static readonly SkillType[] Shown = { SkillType.Crafting, SkillType.Woodcutting, SkillType.Mining, SkillType.Smelting, SkillType.Blacksmithing };
 
         [Tooltip("Recipes to name when the level they need is reached.")]
         [SerializeField]
@@ -90,8 +90,8 @@ namespace Clube.Game
                 float to = SkillSet.ExperienceFor(level + 1);
                 float xp = skills.Skills.Experience(skill);
                 float progress = to > from ? Mathf.Clamp01((xp - from) / (to - from)) : 1f;
-                GUI.Label(new Rect(x, y, 120f, RowHeight), $"{skill} {level}", label);
-                var bar = new Rect(x + 110f, y + 7f, Width - 110f, 8f);
+                GUI.Label(new Rect(x, y, 130f, RowHeight), $"{skill} {level}", label);
+                var bar = new Rect(x + 130f, y + 7f, Width - 130f, 8f);
                 GUI.Box(bar, GUIContent.none);
                 Color previous = GUI.color;
                 GUI.color = new Color(0.45f, 0.85f, 0.4f);

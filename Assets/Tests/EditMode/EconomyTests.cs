@@ -126,6 +126,31 @@ namespace Clube.Core.Tests
             Object.DestroyImmediate(bar);
         }
 
+        // GL130: an item sells at its quality's share; a tool's quality is in its hits.
+        [Test]
+        public void Price_FollowsQuality()
+        {
+            ItemDefinition ingot = ItemDefinition.Create("ingot", "Ingot");
+            ToolDefinition pick = ToolDefinition.Create("pick", "Pick", 4, 1.5f).WithDurability(100);
+            using var temp = new TempList(out PriceList list, new ItemPrice(ingot, 10), new ItemPrice(pick, 50));
+            try
+            {
+                Assert.AreEqual(7f, list.PriceOf(new ItemStack(ingot, 1, null, 0, 0.7f), 1), 1e-4f);
+                Assert.AreEqual(35, list.ValueOf(new ItemStack(pick, 1, null, 0, 0.7f), 1), "70% of a full tool's hits.");
+
+                var bag = new Inventory(1);
+                bag.Add(ingot, 2, null, 0, 0.5f);
+                var wallet = new Wallet();
+                Assert.AreEqual(2, list.Sell(ingot, 2, bag, wallet));
+                Assert.AreEqual(10, wallet.Coins);
+            }
+            finally
+            {
+                Object.DestroyImmediate(ingot);
+                Object.DestroyImmediate(pick);
+            }
+        }
+
         private sealed class TempList : System.IDisposable
         {
             private readonly PriceList list;

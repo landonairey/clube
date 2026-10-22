@@ -92,6 +92,14 @@ namespace Clube.Core
         [SerializeField, Range(0, SkillSet.MaxLevel)]
         private int unlockLevel;
 
+        [Tooltip("Smelting (GL128): the mineral this recipe extracts. Its share of the ore's contents against the typical grade sets how much comes out, and the metal comes out pure. None: the inputs' quality carries over.")]
+        [SerializeField]
+        private VoxelMaterial extracts;
+
+        [Tooltip("Smelting (GL128): the mineral's share of typical ore, 0-1. Ore this rich yields the recipe's count; twice as rich, twice as much.")]
+        [SerializeField, Range(0.01f, 1f)]
+        private float typicalGrade = 0.2f;
+
         /// <summary>Makes a recipe in code (tests); the game's recipes are assets.</summary>
         public static Recipe Create(StationKind station, ItemAmount output, RecipeWork work, float amount, params ItemAmount[] inputs)
         {
@@ -113,6 +121,14 @@ namespace Clube.Core
             return this;
         }
 
+        /// <summary>Sets the mineral it extracts and its typical grade (GL128), for recipes made in code (tests).</summary>
+        public Recipe WithExtraction(VoxelMaterial mineral, float grade)
+        {
+            extracts = mineral;
+            typicalGrade = Mathf.Clamp(grade, 0.01f, 1f);
+            return this;
+        }
+
         /// <summary>Sets the level it needs, for recipes made in code (tests).</summary>
         public Recipe WithUnlock(SkillType skillType, int level)
         {
@@ -122,6 +138,12 @@ namespace Clube.Core
         }
 
         public StationKind Station => station;
+
+        /// <summary>The mineral a smelting recipe extracts (GL128), or null.</summary>
+        public VoxelMaterial Extracts => extracts;
+
+        /// <summary>The extracted mineral's share of typical ore (GL128).</summary>
+        public float TypicalGrade => typicalGrade;
 
         /// <summary>The skill finishing it trains (GL47); <see cref="SkillType.None"/> for none.</summary>
         public SkillType ExperienceSkill => experienceSkill;

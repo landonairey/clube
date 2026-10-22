@@ -78,9 +78,9 @@ namespace Clube.Debug
             SkillType one = SkillType.None;
             if (!all && (!System.Enum.TryParse(words[1], true, out one) || one == SkillType.None))
             {
-                return $"No skill called \"{words[1]}\" (crafting, woodcutting, mining, smelting)";
+                return $"No skill called \"{words[1]}\" (crafting, woodcutting, mining, smelting, blacksmithing)";
             }
-            foreach (SkillType skill in new[] { SkillType.Crafting, SkillType.Woodcutting, SkillType.Mining, SkillType.Smelting })
+            foreach (SkillType skill in new[] { SkillType.Crafting, SkillType.Woodcutting, SkillType.Mining, SkillType.Smelting, SkillType.Blacksmithing })
             {
                 if (!all && skill != one)
                 {

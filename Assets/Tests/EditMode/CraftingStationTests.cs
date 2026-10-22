@@ -362,6 +362,75 @@ namespace Clube.Core.Tests
             }
         }
 
+
+        // GL127: a half-quality furnace makes a bun every second run; the half is carried between runs.
+        [Test]
+        public void Yield_FollowsTheStationsQuality_AndCarriesParts()
+        {
+            var furnace = new CraftingStation(StationKind.Furnace, new[] { smelt }) { Quality = 0.5f };
+            furnace.Input.Add(ore, 16);
+            Assert.AreEqual(0.5f, furnace.YieldOf(smelt), 1e-4f);
+            furnace.Tick(6f);
+            Assert.AreEqual(0, furnace.Output.Count(bun), "Half a bun so far.");
+            Assert.AreEqual(0.5f, furnace.Carried(bun), 1e-4f);
+            furnace.Tick(6f);
+            Assert.AreEqual(1, furnace.Output.Count(bun));
+            Assert.AreEqual(0f, furnace.Carried(bun), 1e-4f);
+        }
+
+        // GL128: ore twice as rich as typical yields two buns; smelted metal is pure whatever the ore's purity.
+        [Test]
+        public void Yield_FollowsOreConcentration_AndSmeltedMetalIsPure()
+        {
+            VoxelMaterial mineral = VoxelMaterial.Create(3, "Chalcopyrite", VoxelMaterialCategory.Ore);
+            VoxelMaterial rock = VoxelMaterial.Create(0, "Stone");
+            smelt.WithExtraction(mineral, 0.2f);
+            try
+            {
+                var furnace = new CraftingStation(StationKind.Furnace, new[] { smelt });
+                Composition rich = Composition.From(new Content(mineral, 0.4f), new Content(rock, 0.6f));
+                furnace.Input.Add(ore, 8, rich, 0, 0.6f);
+                Assert.AreEqual(2f, furnace.YieldOf(smelt), 1e-4f);
+                furnace.Tick(6f);
+                Assert.AreEqual(2, furnace.Output.Count(bun));
+                Assert.AreEqual(1f, furnace.Output[0].Quality, 1e-4f, "Impurity costs yield, not quality.");
+
+                Composition lean = Composition.From(new Content(mineral, 0.1f), new Content(rock, 0.9f));
+                furnace.Input.Add(ore, 8, lean);
+                Assert.AreEqual(0.5f, furnace.YieldOf(smelt), 1e-4f);
+            }
+            finally
+            {
+                Object.DestroyImmediate(mineral);
+                Object.DestroyImmediate(rock);
+            }
+        }
+
+        // GL129: smithing is no better than the smith (50% at level 0, 100% at 10) nor than its inputs.
+        [Test]
+        public void Smithing_QualityIsCappedByTheSmithsLevel()
+        {
+            hammer.WithExperience(SkillType.Blacksmithing, 3f);
+            var skills = new SkillSet();
+            var anvil = new CraftingStation(StationKind.Anvil, new[] { hammer }) { Learner = skills };
+            anvil.Input.Add(bun, 1, null, 0, 0.9f);
+            for (int i = 0; i < 6; i++)
+            {
+                anvil.Strike();
+            }
+            Assert.AreEqual(0.5f, anvil.Output[0].Quality, 1e-4f, "A new smith makes 50% ingots.");
+
+            anvil.Output.RemoveAt(0, 1);
+            skills.RaiseTo(SkillType.Blacksmithing, 10);
+            anvil.Input.Add(bun, 1, null, 0, 0.9f);
+            for (int i = 0; i < 6; i++)
+            {
+                anvil.Strike();
+            }
+            Assert.AreEqual(0.9f, anvil.Output[0].Quality, 1e-4f, "A master smith keeps the bun's quality.");
+            Assert.AreEqual(0.75f, CraftingStation.SmithingQuality(5), 1e-4f);
+        }
+
         // GL124: grass gathered half and half with dirt burns half as long.
         [Test]
         public void Fuel_BurnsForItsQualitysShare()
