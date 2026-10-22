@@ -40,6 +40,12 @@ namespace Clube.Game
 
         public IReadOnlyList<Recipe> Recipes => recipes;
 
+        /// <summary>What kind of station it is (GL137: the crafting journal lists the furnaces).</summary>
+        public StationKind Kind => kind;
+
+        /// <summary>True for a station that burns fuel to work (GL35).</summary>
+        public bool BurnsFuel => burnsFuel;
+
         /// <summary>How hot it works (GL98); 1 for a stone furnace.</summary>
         public float Heat => heat;
 

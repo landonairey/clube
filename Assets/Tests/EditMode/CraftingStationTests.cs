@@ -449,5 +449,43 @@ namespace Clube.Core.Tests
                 Object.DestroyImmediate(grass);
             }
         }
+        // GL140: picking a recipe loads a full stack of its input, not one batch.
+        [Test]
+        public void LoadFor_TakesAFullStack()
+        {
+            var furnace = new CraftingStation(StationKind.Furnace, new[] { smelt });
+            var bag = new Inventory(2);
+            bag.Add(ore, 40);
+            furnace.LoadFor(smelt, bag);
+            Assert.AreEqual(ore.MaxStack >= 40 ? 40 : ore.MaxStack, furnace.Input.Count(ore));
+        }
+
+        // GL142: other inputs swapped in for the picked recipe's start their own recipe.
+        [Test]
+        public void SwappingInputs_SwitchesThePickedRecipe()
+        {
+            ItemDefinition tinOre = ItemDefinition.Create("tin-ore", "Tin ore");
+            ItemDefinition tinBun = ItemDefinition.Create("tin-bun", "Tin bun");
+            Recipe smeltTin = Recipe.Create(StationKind.Furnace, new ItemAmount(tinBun, 1), RecipeWork.Time, 3f, new ItemAmount(tinOre, 3));
+            try
+            {
+                var furnace = new CraftingStation(StationKind.Furnace, new[] { smeltTin, smelt });
+                furnace.Chosen = smeltTin;
+                furnace.Input.Add(tinOre, 3);
+                furnace.Tick(3f);
+                Assert.AreEqual(1, furnace.Output.Count(tinBun));
+                furnace.Output.RemoveAt(0, 1);
+                furnace.Input.Add(ore, 8);
+                Assert.IsNull(furnace.Chosen, "The tin recipe lets go.");
+                furnace.Tick(6f);
+                Assert.AreEqual(1, furnace.Output.Count(bun), "And copper smelts.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(smeltTin);
+                Object.DestroyImmediate(tinOre);
+                Object.DestroyImmediate(tinBun);
+            }
+        }
     }
 }

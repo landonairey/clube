@@ -28,6 +28,7 @@ namespace Clube.Game
         private StationPanel stationPanel;
         private MerchantPanel merchantPanel;
         private JournalScreen journalScreen;
+        private CraftingJournalScreen craftingJournal;
         private int pressed = -1;
         private Vector2 pressedAt;
         private bool dragging;
@@ -41,6 +42,7 @@ namespace Clube.Game
             stationPanel = GetComponent<StationPanel>();
             merchantPanel = GetComponent<MerchantPanel>();
             journalScreen = GetComponent<JournalScreen>();
+            craftingJournal = GetComponent<CraftingJournalScreen>();
         }
 
         private void OnEnable()
@@ -65,7 +67,8 @@ namespace Clube.Game
 
             // One screen at a time: not over a station's or a merchant's panel.
             bool otherOpen = (stationPanel != null && stationPanel.IsOpen) || (merchantPanel != null && merchantPanel.IsOpen)
-                || (journalScreen != null && journalScreen.IsOpen);
+                || (journalScreen != null && journalScreen.IsOpen)
+                || (craftingJournal != null && craftingJournal.IsOpen);
             if (toggleAction != null && toggleAction.action.WasPressedThisFrame() && !otherOpen)
             {
                 SetOpen(!IsOpen);

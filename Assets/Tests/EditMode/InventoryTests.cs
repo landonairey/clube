@@ -241,5 +241,49 @@ namespace Clube.Core.Tests
                 Object.DestroyImmediate(gold);
             }
         }
+        // GL131: crafted items of another quality make their own stack; gathered mixes still blend.
+        [Test]
+        public void Add_KeepsDifferentQualitiesApart_ButBlendsMixes()
+        {
+            var bag = new Inventory(3);
+            bag.Add(stone, 2, null, 0, 0.97f);
+            bag.Add(stone, 2, null, 0, 0.98f);
+            Assert.AreEqual(2, bag[0].Count);
+            Assert.AreEqual(2, bag[1].Count, "98% sticks stay apart from 97%.");
+            bag.Add(stone, 1, null, 0, 0.97f);
+            Assert.AreEqual(3, bag[0].Count, "The same quality still stacks.");
+
+            var mixes = new Inventory(2);
+            VoxelMaterial rock = VoxelMaterial.Create(0, "Stone");
+            try
+            {
+                mixes.Add(ore, 2, Composition.From(new Content(rock, 1f)), 0, 0.5f);
+                mixes.Add(ore, 2, Composition.From(new Content(rock, 1f)), 0, 0.7f);
+                Assert.AreEqual(4, mixes[0].Count, "Gathered ore blends.");
+                Assert.AreEqual(0.6f, mixes[0].Quality, 1e-4f);
+            }
+            finally
+            {
+                Object.DestroyImmediate(rock);
+            }
+        }
+
+        // GL136: part items add up into whole ones; recipes and counts see whole items only.
+        [Test]
+        public void PartItems_AddUp()
+        {
+            var bag = new Inventory(2);
+            bag.Add(ore, 0, null, 0, 1f, 0.6f);
+            Assert.AreEqual(0, bag.Count(ore));
+            Assert.AreEqual(0.6f, bag[0].Amount, 1e-4f);
+            bag.Add(ore, 1, null, 0, 1f, 0.6f);
+            Assert.AreEqual(2, bag.Count(ore), "0.6 + 1.6 = 2.2");
+            Assert.AreEqual(0.2f, bag[0].Part, 1e-4f);
+
+            var other = new Inventory(1);
+            Assert.AreEqual(2, bag.MoveTo(0, other));
+            Assert.AreEqual(2.2f, other[0].Amount, 1e-4f, "The part goes with the stack.");
+            Assert.IsTrue(bag[0].IsEmpty);
+        }
     }
 }

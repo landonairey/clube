@@ -1017,6 +1017,7 @@ GameObject:
   - component: {fileID: 1697135588}
   - component: {fileID: 1697135587}
   - component: {fileID: 1697135589}
+  - component: {fileID: 1697135590}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1653,6 +1654,19 @@ MonoBehaviour:
   hosts:
   - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
   flatRock: {fileID: 11400000, guid: a7a179311785ad14bab47c68162a300f, type: 2}
+--- !u!114 &1697135590
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 755cd4a879214da4fb358ab4a47ac34d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.CraftingJournalScreen
+  toggleAction: {fileID: -833899942069987867, guid: 052faaac586de48259a63d0c4782560b, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

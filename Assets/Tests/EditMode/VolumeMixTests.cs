@@ -131,6 +131,20 @@ namespace Clube.Core.Tests
             Assert.AreEqual(0.2f, gathering.PendingFor(clay), 1e-4f);
         }
 
+        // GL132: gathered ore is as good as its share of the ore itself: half the samples ore at a 40%
+        // grade is 20%, not 50%.
+        [Test]
+        public void Gathering_OreQualityIsItsShareOfTheOre()
+        {
+            var gathering = new Gathering();
+            gathering.Add(ore, ore, 1f, Composition.From(new Content(ore, 0.4f), new Content(stone, 0.6f)));
+            gathering.Add(ore, stone, 1f);
+            var ready = new List<GatheredStack>();
+            gathering.TakeWhole(registry, ready);
+            Assert.AreEqual(oreItem, ready[0].Item);
+            Assert.AreEqual(0.2f, ready[0].Quality, 1e-4f);
+        }
+
         // Stone mined whole and its loose stage both count as stone.
         [Test]
         public void ShareOfAnItem_CountsEveryStageThatGivesIt()

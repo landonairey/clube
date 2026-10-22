@@ -37,19 +37,21 @@ namespace Clube.Core.Tests
         public void HandPickup_TakesTheStoneAndTwoNeighbours()
         {
             World world = SlabWorld();
-            // A stone of four samples in a row on the dirt surface (y = 2).
-            for (int x = 1; x <= 4; x++)
+            // A stone of four samples on the dirt surface (y = 2), clear of the loaded chunk's edge (the
+            // small-piece check, GL133, counts unloaded ground as part of something bigger): a row of three
+            // and one behind the middle.
+            foreach (Vector3Int sample in new[] { new Vector3Int(1, 2, 2), new Vector3Int(2, 2, 2), new Vector3Int(3, 2, 2), new Vector3Int(2, 2, 3) })
             {
-                world.SetDensity(new Vector3Int(x, 2, 2), 1f);
-                world.SetMaterial(new Vector3Int(x, 2, 2), stone.Id);
+                world.SetDensity(sample, 1f);
+                world.SetMaterial(sample, stone.Id);
             }
             var collected = new List<ItemDefinition>();
             var targets = new List<Vector3Int> { new Vector3Int(2, 2, 2), new Vector3Int(2, 1, 2) };
-            int taken = HandPickup.TakeStone(world, targets, new Vector3(2f, 2.4f, 2f), registry, collected);
+            int taken = HandPickup.TakeStone(world, targets, new Vector3(1.8f, 2.4f, 2f), registry, collected);
             Assert.AreEqual(3, taken);
             CollectionAssert.AreEqual(new[] { stoneItem, stoneItem, stoneItem }, collected);
             Assert.AreEqual(0f, world.GetDensity(new Vector3Int(2, 2, 2)));
-            Assert.AreEqual(1f, world.GetDensity(new Vector3Int(4, 2, 2)), "Only two neighbours come with it.");
+            Assert.AreEqual(1f, world.GetDensity(new Vector3Int(3, 2, 2)), "Only the two nearest neighbours come with it.");
             Assert.AreEqual(1f, world.GetDensity(new Vector3Int(2, 1, 2)), "The dirt under it stays.");
             Assert.AreEqual(0, HandPickup.TakeStone(world, new List<Vector3Int> { new Vector3Int(2, 1, 2) }, Vector3.zero, registry, collected), "Dirt isn't a stone.");
         }
@@ -144,6 +146,70 @@ namespace Clube.Core.Tests
         }
 
         // One 4-voxel chunk of dirt up to y = 1, air above.
+        // GL133: a rock face is too big to be a loose stone; hands leave it alone.
+        [Test]
+        public void HandPickup_LeavesARockFaceAlone()
+        {
+            World world = SlabWorld();
+            FillBlock(world, stone.Id);
+            var collected = new List<ItemDefinition>();
+            var targets = new List<Vector3Int> { new Vector3Int(1, 3, 1) };
+            Assert.AreEqual(0, HandPickup.TakeStone(world, targets, new Vector3(1f, 3.4f, 1f), registry, collected));
+            Assert.AreEqual(1f, world.GetDensity(new Vector3Int(1, 3, 1)));
+        }
+
+        // GL133: dropped loose stone comes from a pile of any size.
+        [Test]
+        public void HandPickup_TakesFromAPileOfLooseStone()
+        {
+            VoxelMaterial loose = VoxelMaterial.Create(7, "Loose stone").WithBreaking(1f, stoneItem).WithPickedFromPiles();
+            MaterialRegistry withLoose = MaterialRegistry.Create(stone, dirt, loose);
+            try
+            {
+                World world = SlabWorld();
+                FillBlock(world, loose.Id);
+                var collected = new List<ItemDefinition>();
+                var targets = new List<Vector3Int> { new Vector3Int(1, 3, 1) };
+                Assert.AreEqual(3, HandPickup.TakeStone(world, targets, new Vector3(1f, 3.4f, 1f), withLoose, collected));
+            }
+            finally
+            {
+                Object.DestroyImmediate(withLoose);
+                Object.DestroyImmediate(loose);
+            }
+        }
+
+        // GL133: digging dirt by hand leaves a hanging bit of stone where it is.
+        [Test]
+        public void ClearSliversAround_LeavesWhatTheHitCantTake()
+        {
+            World world = SlabWorld();
+            var floating = new Vector3Int(2, 3, 2);
+            world.SetDensity(floating, 1f);
+            world.SetMaterial(floating, stone.Id);
+            var collected = new List<ItemDefinition>();
+            int cleared = ToolStrike.ClearSliversAround(world, new[] { new Vector3Int(2, 2, 2) }, registry, new StrikeDamage(), collected,
+                canTake: material => material == null || material.Kind != MaterialKind.Rock);
+            Assert.AreEqual(0, cleared);
+            Assert.AreEqual(1f, world.GetDensity(floating));
+        }
+
+        // A block of one material on the slab: 4 x 2 x 2 samples, its top at y = 3 with air above.
+        private static void FillBlock(World world, byte material)
+        {
+            for (int z = 0; z <= 1; z++)
+            {
+                for (int y = 2; y <= 3; y++)
+                {
+                    for (int x = 0; x <= 3; x++)
+                    {
+                        world.SetDensity(new Vector3Int(x, y, z), 1f);
+                        world.SetMaterial(new Vector3Int(x, y, z), material);
+                    }
+                }
+            }
+        }
+
         private World SlabWorld()
         {
             var world = new World(new Vector3Int(4, 4, 4), 1f);
