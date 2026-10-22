@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -199,9 +200,12 @@ namespace Clube.Core
         /// sphere and hand hits call this with the samples they emptied; voxel hits do it themselves.
         /// Returns how many samples it removed.
         /// </summary>
+        /// <param name="canTake">Which materials the hit may take (GL133: bare hands leave hard ground alone); a piece
+        /// holding any other stays. Null: any.</param>
         public static int ClearSliversAround(
             World world, IEnumerable<Vector3Int> changed, MaterialRegistry materials, StrikeDamage damage,
-            List<ItemDefinition> collected, float isoLevel = 0.5f, List<MinedSample> minedFrom = null)
+            List<ItemDefinition> collected, float isoLevel = 0.5f, List<MinedSample> minedFrom = null,
+            Func<VoxelMaterial, bool> canTake = null)
         {
             RemovedThisHit.Clear();
             foreach (Vector3Int sample in changed)
@@ -212,7 +216,16 @@ namespace Clube.Core
                     RemovedThisHit.Add(sample);
                 }
             }
-            return ClearSlivers(world, materials, damage, collected, isoLevel, minedFrom);
+            return ClearSlivers(world, materials, damage, collected, isoLevel, minedFrom, canTake);
+        }
+
+        /// <summary>
+        /// True when the solid samples of one material joined to <paramref name="sample"/> number
+        /// <paramref name="limit"/> or fewer (GL25, GL133): a stone lying loose, not part of the rock.
+        /// </summary>
+        public static bool IsSmallPiece(World world, Vector3Int sample, byte material, int limit, float isoLevel)
+        {
+            return limit > 0 && FindPiece(world, sample, material, limit, isoLevel);
         }
 
         // After a hit removes samples, any solid piece around them of SliverSize samples or fewer
@@ -220,7 +233,7 @@ namespace Clube.Core
         // collected like the rest. Returns how many samples it removed.
         private static int ClearSlivers(
             World world, MaterialRegistry materials, StrikeDamage damage, List<ItemDefinition> collected, float isoLevel,
-            List<MinedSample> minedFrom)
+            List<MinedSample> minedFrom, Func<VoxelMaterial, bool> canTake = null)
         {
             SliverChecked.Clear();
             int cleared = 0;
@@ -245,6 +258,10 @@ namespace Clube.Core
                             }
                             Sliver.Clear();
                             Sliver.AddRange(Piece);
+                            if (canTake != null && !CanTakeAll(world, materials, canTake))
+                            {
+                                continue;
+                            }
                             foreach (Vector3Int part in Sliver)
                             {
                                 byte? id = world.GetMaterial(part);
@@ -264,6 +281,20 @@ namespace Clube.Core
                 }
             }
             return cleared;
+        }
+
+        // True when every sample of the sliver is a material the hit may take.
+        private static bool CanTakeAll(World world, MaterialRegistry materials, Func<VoxelMaterial, bool> canTake)
+        {
+            foreach (Vector3Int part in Sliver)
+            {
+                byte? id = world.GetMaterial(part);
+                if (!canTake(id.HasValue && materials != null ? materials.Get(id.Value) : null))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         // Picks up the first reached piece of a pick-up material small enough to lift whole

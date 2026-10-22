@@ -98,9 +98,10 @@ namespace Clube.Core.Tests
             }
         }
 
-        // GL80: picking a recipe loads one batch from the player, sending back what it doesn't take.
+        // GL80, GL140: picking a recipe loads its inputs from the player, a full stack of each, sending back
+        // what it doesn't take.
         [Test]
-        public void LoadFor_TopsUpEachInputToOneBatch_AndReturnsWhatTheRecipeDoesntTake()
+        public void LoadFor_LoadsEachInput_AndReturnsWhatTheRecipeDoesntTake()
         {
             var player = new Inventory(4);
             player.Add(ore, 20);
@@ -108,11 +109,11 @@ namespace Clube.Core.Tests
             furnace.Input.Add(bun, 2);
             furnace.Input.Add(ore, 3);
 
-            Assert.AreEqual(5, furnace.LoadFor(smelt, player), "Up to the recipe's 8 ore.");
-            Assert.AreEqual(8, furnace.Input.Count(ore));
+            Assert.AreEqual(20, furnace.LoadFor(smelt, player), "All 20 ore, onto the 3 loaded.");
+            Assert.AreEqual(23, furnace.Input.Count(ore));
             Assert.AreEqual(0, furnace.Input.Count(bun), "The buns went back.");
             Assert.AreEqual(2, player.Count(bun));
-            Assert.AreEqual(15, player.Count(ore));
+            Assert.AreEqual(0, player.Count(ore));
         }
 
         [Test]
@@ -363,19 +364,19 @@ namespace Clube.Core.Tests
         }
 
 
-        // GL127: a half-quality furnace makes a bun every second run; the half is carried between runs.
+        // GL127, GL136: a half-quality furnace makes half a bun a run, which adds up in the output.
         [Test]
-        public void Yield_FollowsTheStationsQuality_AndCarriesParts()
+        public void Yield_FollowsTheStationsQuality_AsAPartItem()
         {
             var furnace = new CraftingStation(StationKind.Furnace, new[] { smelt }) { Quality = 0.5f };
             furnace.Input.Add(ore, 16);
             Assert.AreEqual(0.5f, furnace.YieldOf(smelt), 1e-4f);
             furnace.Tick(6f);
-            Assert.AreEqual(0, furnace.Output.Count(bun), "Half a bun so far.");
-            Assert.AreEqual(0.5f, furnace.Carried(bun), 1e-4f);
+            Assert.AreEqual(0, furnace.Output.Count(bun), "No whole bun yet.");
+            Assert.AreEqual(0.5f, furnace.Output[0].Amount, 1e-4f, "Half a bun.");
             furnace.Tick(6f);
             Assert.AreEqual(1, furnace.Output.Count(bun));
-            Assert.AreEqual(0f, furnace.Carried(bun), 1e-4f);
+            Assert.AreEqual(0f, furnace.Output[0].Part, 1e-4f);
         }
 
         // GL128: ore twice as rich as typical yields two buns; smelted metal is pure whatever the ore's purity.
@@ -447,6 +448,44 @@ namespace Clube.Core.Tests
             finally
             {
                 Object.DestroyImmediate(grass);
+            }
+        }
+        // GL140: picking a recipe loads a full stack of its input, not one batch.
+        [Test]
+        public void LoadFor_TakesAFullStack()
+        {
+            var furnace = new CraftingStation(StationKind.Furnace, new[] { smelt });
+            var bag = new Inventory(2);
+            bag.Add(ore, 40);
+            furnace.LoadFor(smelt, bag);
+            Assert.AreEqual(ore.MaxStack >= 40 ? 40 : ore.MaxStack, furnace.Input.Count(ore));
+        }
+
+        // GL142: other inputs swapped in for the picked recipe's start their own recipe.
+        [Test]
+        public void SwappingInputs_SwitchesThePickedRecipe()
+        {
+            ItemDefinition tinOre = ItemDefinition.Create("tin-ore", "Tin ore");
+            ItemDefinition tinBun = ItemDefinition.Create("tin-bun", "Tin bun");
+            Recipe smeltTin = Recipe.Create(StationKind.Furnace, new ItemAmount(tinBun, 1), RecipeWork.Time, 3f, new ItemAmount(tinOre, 3));
+            try
+            {
+                var furnace = new CraftingStation(StationKind.Furnace, new[] { smeltTin, smelt });
+                furnace.Chosen = smeltTin;
+                furnace.Input.Add(tinOre, 3);
+                furnace.Tick(3f);
+                Assert.AreEqual(1, furnace.Output.Count(tinBun));
+                furnace.Output.RemoveAt(0, 1);
+                furnace.Input.Add(ore, 8);
+                Assert.IsNull(furnace.Chosen, "The tin recipe lets go.");
+                furnace.Tick(6f);
+                Assert.AreEqual(1, furnace.Output.Count(bun), "And copper smelts.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(smeltTin);
+                Object.DestroyImmediate(tinOre);
+                Object.DestroyImmediate(tinBun);
             }
         }
     }

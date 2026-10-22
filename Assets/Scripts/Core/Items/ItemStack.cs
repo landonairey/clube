@@ -3,20 +3,25 @@ namespace Clube.Core
     /// <summary>
     /// What one inventory slot holds (GL6): an item and how many, or nothing, with what the
     /// items are made of when that varies (mixed ore, GL32), and how well they were made (GL118).
-    /// Every item in a stack has the same <see cref="Contents"/> and <see cref="Quality"/>: adding
-    /// ore of another grade, or sticks of another quality, blends them.
+    /// Every item in a stack has the same <see cref="Contents"/> and <see cref="Quality"/>: gathered
+    /// material of another mix blends in (GL120), but crafted items of another quality make their own
+    /// stack (GL131). A stack can hold a part item on top of its whole ones (GL136: 0.48 of a tin bun).
     /// </summary>
     public readonly struct ItemStack
     {
         public static readonly ItemStack Empty = default;
 
+        /// <summary>Parts smaller than this count as nothing.</summary>
+        public const float PartEpsilon = 1e-3f;
+
         // Stored as 1 - quality, so the default (an empty or ordinary stack) is quality 1.
         private readonly float flaw;
 
-        public ItemStack(ItemDefinition item, int count, Composition contents = null, int wear = 0, float quality = 1f)
+        public ItemStack(ItemDefinition item, int count, Composition contents = null, int wear = 0, float quality = 1f, float part = 0f)
         {
-            Item = count > 0 ? item : null;
-            Count = item != null && count > 0 ? count : 0;
+            Item = count > 0 || part > PartEpsilon ? item : null;
+            Count = Item != null && count > 0 ? count : 0;
+            Part = Item != null && part > PartEpsilon ? System.Math.Min(part, 1f - PartEpsilon) : 0f;
             Contents = Item != null ? contents : null;
             Wear = Item != null ? System.Math.Max(0, wear) : 0;
             flaw = Item != null ? 1f - System.Math.Max(0f, System.Math.Min(1f, quality)) : 0f;
@@ -26,6 +31,12 @@ namespace Clube.Core
         public ItemDefinition Item { get; }
 
         public int Count { get; }
+
+        /// <summary>A part item on top of the whole ones, 0-1 (GL136: a smelt's yield); recipes use whole items only.</summary>
+        public float Part { get; }
+
+        /// <summary>Whole and part items together: 2.48 tin buns.</summary>
+        public float Amount => Count + Part;
 
         /// <summary>What each item is made of by volume (GL32), or null for items that are just themselves.</summary>
         public Composition Contents { get; }
@@ -45,7 +56,7 @@ namespace Clube.Core
         public int Space => IsEmpty ? 0 : Item.MaxStack - Count;
 
         /// <summary>The whole stack's volume (GL33): count × the item's unit volume.</summary>
-        public float Volume => IsEmpty ? 0f : Count * Item.UnitVolume;
+        public float Volume => IsEmpty ? 0f : Amount * Item.UnitVolume;
 
         /// <summary>The hits a tool of this stack lasts (GL118): the tool's hits at its quality, at least 1; 0 when it never wears out.</summary>
         public int MaxHits => Item is ToolDefinition tool && tool.MaxHits > 0
@@ -54,7 +65,7 @@ namespace Clube.Core
 
         public ItemStack WithCount(int count)
         {
-            return new ItemStack(Item, count, Contents, Wear, Quality);
+            return new ItemStack(Item, count, Contents, Wear, Quality, Part);
         }
     }
 }

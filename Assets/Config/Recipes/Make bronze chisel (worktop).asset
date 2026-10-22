@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb68c50b39e0a91499017be61cd90094, type: 3}
+  m_Name: Make bronze chisel (worktop)
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.Recipe
+  station: 2
+  inputs:
+  - Item: {fileID: 11400000, guid: 56075ba9caed56344878c38cc65cceba, type: 2}
+    Count: 1
+  - Item: {fileID: 11400000, guid: 4f717f7cc0f3ec743b5f84c88baea32c, type: 2}
+    Count: 1
+  output:
+    Item: {fileID: 11400000, guid: 4d73f7764f9054f489c276538d90d6d6, type: 2}
+    Count: 1
+  work: 1
+  amount: 6
+  experienceSkill: 1
+  experience: 15
+  unlockSkill: 1
+  unlockLevel: 4
+  extracts: {fileID: 0}
+  typicalGrade: 0.2

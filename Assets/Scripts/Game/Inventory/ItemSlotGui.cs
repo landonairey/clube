@@ -58,7 +58,12 @@ namespace Clube.Game
                 {
                     GUI.Label(inner, stack.Item.DisplayName, nameStyle);
                 }
-                if (stack.Count > 1)
+                if (stack.Part > 0f)
+                {
+                    // A part item (GL136): 0.48 of a tin bun.
+                    GUI.Label(Inset(rect, 3f), stack.Amount.ToString("0.##"), countStyle);
+                }
+                else if (stack.Count > 1)
                 {
                     GUI.Label(Inset(rect, 3f), stack.Count.ToString(), countStyle);
                 }

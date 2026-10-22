@@ -158,8 +158,8 @@ namespace Clube.Game
             }
 
             // Looking at a station or another usable thing: Interact is for it, and the
-            // ground behind it is left alone.
-            if (interactor != null && interactor.Target != null)
+            // ground behind it is left alone. A furnace or campfire is ground itself: tools still break it (GL141).
+            if (interactor != null && interactor.Target != null && !interactor.TargetIsGround)
             {
                 return;
             }
@@ -421,7 +421,7 @@ namespace Clube.Game
                 int picked = HandPickup.TakeStone(world, targets, ImpactCentre, materials, collected, iso, minedFrom);
                 if (picked > 0)
                 {
-                    ToolStrike.ClearSliversAround(world, targets, materials, Damage, collected, iso, minedFrom);
+                    ToolStrike.ClearSliversAround(world, targets, materials, Damage, collected, iso, minedFrom, hand ? HandCanTake : null);
                     Struck?.Invoke(new StrikeResult(targets.Count, picked, picked));
                     return;
                 }
@@ -452,8 +452,14 @@ namespace Clube.Game
                 }
                 done = SphereStrike.Take(world, targets, materials, collected, iso, minedFrom);
             }
-            ToolStrike.ClearSliversAround(world, targets, materials, Damage, collected, iso, minedFrom);
+            ToolStrike.ClearSliversAround(world, targets, materials, Damage, collected, iso, minedFrom, hand ? HandCanTake : null);
             Struck?.Invoke(new StrikeResult(targets.Count, done, collected.Count));
+        }
+
+        // What bare hands may take (GL133): soft ground and plants, and loose stone from a pile; never hard ground.
+        private static bool HandCanTake(VoxelMaterial material)
+        {
+            return material == null || material.Kind != MaterialKind.Rock || material.PickedFromPiles;
         }
 
         // How much a gradual hit takes from a sample of a material (GL107).

@@ -4,8 +4,10 @@ using UnityEngine;
 namespace Clube.Core
 {
     /// <summary>
-    /// Picking up a loose stone by hand (GL109): a bare-hand hit on a stone lying at the surface (a
-    /// material that can be picked up, <see cref="VoxelMaterial.PickUpPieceSize"/>, with air above it)
+    /// Picking up a loose stone by hand (GL109, GL133): a bare-hand hit on a stone lying at the surface,
+    /// with air above it: a small piece of a material picked up whole (<see cref="VoxelMaterial.PickUpPieceSize"/>,
+    /// a surface rock, never the rock face it might be part of), or a pile of loose stone or ore
+    /// (<see cref="VoxelMaterial.PickedFromPiles"/>, dropped cobbles),
     /// takes that sample whole, and up to <see cref="Neighbours"/> touching samples of the same stone
     /// with it, nearest the hit first. Through the world's edit paths (A7).
     /// </summary>
@@ -97,8 +99,13 @@ namespace Clube.Core
             float? above = world.GetDensity(sample + Vector3Int.up);
             byte? id = world.GetMaterial(sample);
             VoxelMaterial material = id.HasValue ? materials.Get(id.Value) : null;
-            return density.HasValue && density.Value >= isoLevel && above.HasValue && above.Value < isoLevel
-                && material != null && material.PickUpPieceSize > 0;
+            if (!density.HasValue || density.Value < isoLevel || !above.HasValue || above.Value >= isoLevel || material == null)
+            {
+                return false;
+            }
+            // A pile of dropped stone at any size; otherwise only a piece small enough to be lying loose (GL133).
+            return material.PickedFromPiles
+                || (material.PickUpPieceSize > 0 && ToolStrike.IsSmallPiece(world, sample, id.Value, material.PickUpPieceSize, isoLevel));
         }
     }
 }

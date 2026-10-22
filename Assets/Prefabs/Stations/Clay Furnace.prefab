@@ -153,8 +153,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.45, y: 0.45, z: 0.3}
-  m_Center: {x: 0, y: 0.2, z: 0.5}
+  m_Size: {x: 1.3, y: 1.7, z: 1.3}
+  m_Center: {x: 0, y: 0.85, z: 0}
 --- !u!114 &4903786179241846693
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -170,11 +170,10 @@ MonoBehaviour:
   displayName: Clay furnace
   kind: 0
   recipes:
+  - {fileID: 11400000, guid: 1d4e5938b58ac124a86f989c5f816630, type: 2}
   - {fileID: 11400000, guid: 528fb321b82b1354ba41a95cd7208a06, type: 2}
   - {fileID: 11400000, guid: 5deb817244217e6458d8b59c0f758ba8, type: 2}
-  - {fileID: 11400000, guid: 1d4e5938b58ac124a86f989c5f816630, type: 2}
   - {fileID: 11400000, guid: 5494c424192226542928114696f6423b, type: 2}
-  - {fileID: 11400000, guid: 2614ff98739cae048a781553184c28b6, type: 2}
   - {fileID: 11400000, guid: 2ea129385f04d4e4191060b48a63ffdf, type: 2}
   burnsFuel: 1
   heat: 1.5

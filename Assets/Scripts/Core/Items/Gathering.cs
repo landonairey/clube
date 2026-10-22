@@ -6,7 +6,8 @@ namespace Clube.Core
     /// What a player's hits gather, sorted by what they were aimed at (GL120): everything one hit takes
     /// goes to the stack of the material under the dot, mixed (grass with the little dirt that came with
     /// it), and comes out as whole items of that material once a whole sample's worth has built up. Each
-    /// item carries the mix as its contents and the aimed material's share as its quality (GL118), so
+    /// item carries the mix as its contents and the aimed material's share of that mix as its quality (GL118,
+    /// GL132: for ore, its share of the ore itself), so
     /// purity still matters for crafting while stacks stay sorted by what the player meant to take.
     /// Plain data.
     /// </summary>
@@ -60,8 +61,11 @@ namespace Clube.Core
                 {
                     continue;
                 }
-                float quality = materials != null ? materials.ShareOf(taken, item) : 1f;
-                into.Add(new GatheredStack(target, item, count, taken.Contents(), quality));
+                // How much of it is what was aimed at (GL132): for ore, its share of the ore itself, grade and all
+                // (18% cassiterite), not of the samples mined as ore.
+                Composition contents = taken.Contents();
+                float quality = materials != null ? materials.Quality(contents, item) : 1f;
+                into.Add(new GatheredStack(target, item, count, contents, quality));
             }
         }
     }

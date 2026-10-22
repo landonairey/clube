@@ -34,6 +34,15 @@ namespace Clube.Game
 
         public IReadOnlyList<VoxelMaterial> Ores => ores;
 
+        /// <summary>Every recipe in the game, for the crafting journal (GL137).</summary>
+        public IReadOnlyList<Recipe> Recipes => recipes;
+
+        /// <summary>The player's skills, or null.</summary>
+        public SkillSet Skills => skills != null ? skills.Skills : null;
+
+        /// <summary>Which ores the player can tell apart, and at what level the rest show; null when nothing is hidden.</summary>
+        public OreKnowledge Knowledge => knowledge;
+
         /// <summary>
         /// True when the player can tell the ore apart (<see cref="OreKnowledge"/>). An ore found before
         /// that has an entry, but the journal shows it as unknown (GL77).

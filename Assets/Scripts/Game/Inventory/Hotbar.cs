@@ -64,21 +64,8 @@ namespace Clube.Game
             {
                 return false;
             }
-            ItemDefinition tool = inventory.Inventory[slot].Item;
-            if (!inventory.Inventory.Wear(slot, maxHits))
-            {
-                return false;
-            }
-            // Broken: the next of the same tool from the other slots takes its place, so the player keeps working.
-            for (int spare = 0; spare < inventory.Inventory.SlotCount; spare++)
-            {
-                if (spare != slot && inventory.Inventory[spare].Item == tool)
-                {
-                    inventory.Inventory.Move(spare, slot);
-                    break;
-                }
-            }
-            return true;
+            // A broken tool leaves its slot empty; swapping in a spare is up to the player (GL138).
+            return inventory.Inventory.Wear(slot, maxHits);
         }
 
         /// <summary>
