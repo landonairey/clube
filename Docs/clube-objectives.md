@@ -510,23 +510,23 @@ Bins by kind, tools by material, and the mix usable everywhere.
 - [x] **GL117** `Game` *(added 2026-10-20)* A spare tool works from an item slot: a tool in the selected slot is the one in hand and wears there (scrolling onto it doesn't swap it in), and when the tool slot's tool breaks the next of the same tool from the item slots takes its place. *(Done: `Hotbar.ToolSlot`, `Hotbar.WearSelected`.)*
 - [x] **GL118** `Core + Game` *(added 2026-10-20, from `Docs/20261020i clube-backlog.md`)* Quality carries through crafting: material taken from a bin is as good as it is pure, whatever's made from it is as good as its inputs (weighted by count), and a tool lasts its quality's share of its hits, so sticks of 60% wood make a pointy stick that lasts 36 of 60 hits. *(Done: `ItemStack.Quality` (blended when stacks merge) and `ItemStack.MaxHits`; `CraftingStation` sets input quality from bins and output quality from inputs; `Inventory.Wear` breaks at the stack's hits; the slot shows a quality badge and a shorter wear bar; tool prices count hits left of a full tool's; built stations take the placed item's quality.)*
 
-### Nineteenth pass *(added 2026-10-21, from `Docs/20261021c clube-backlog.md` — next)*
+### Nineteenth pass *(added 2026-10-21, from `Docs/20261021c clube-backlog.md` — done)*
 Playtest fixes, decimal yields, the crafting journal.
 
-- [ ] **GL131** `Core` Crafted items of different quality don't stack (97% sticks stay apart from 98%). Gathered material, which carries its mix as contents, still blends into one stack (GL120).
-- [ ] **GL132** `Core` A gathered ore's quality is its share of the target ore itself (18% cassiterite), not the share of ore samples in it.
-- [ ] **GL133** `Core + Game` Bare hands never take hard materials: not by digging, not as slivers next to dug soil. They pick up only loose stones: a small surface rock whole, or from a pile of dropped stone or ore.
-- [ ] **GL134** `Config` A shovel recipe at the worktop.
-- [ ] **GL135** `Game` Station screens show "Efficiency xx%" at the top and what it works on (Heat and yield for the campfire and furnaces), not quality.
-- [ ] **GL136** `Core + Game` Yield comes out as a decimal amount of the item (0.48 tin bun), not as a part carried in the station. Part items add up when stacked; recipes use whole ones.
-- [ ] **GL137** `Game` A second journal, the crafting journal: chapter one Crafting (each recipe, 3 to a page, sketched like the ore journal), chapter two Mining (what ore each level lets you see), chapter three Smelting (the smelting recipes and their unlocks, and the kinds of furnace).
-- [ ] **GL138** `Game` A broken tool is not replaced from the inventory; the player swaps in a spare.
-- [ ] **GL139** `Config` The furnaces list the tin bun first, then copper; the bronze ingot alloy is off the furnace (ingots are hammered on the Flat Rock or the anvil).
-- [ ] **GL140** `Core` Picking a recipe loads a full stack of each input, not one batch.
-- [ ] **GL141** `Game` E works looking at a furnace's (or campfire's) body, not only near its base.
-- [ ] **GL142** `Core` A station with a picked recipe moves on to another recipe when that one's inputs are swapped in (chalcopyrite after cassiterite).
-- [ ] **GL143** `Config` A bronze chisel from a bronze bun and a stick at the worktop: the way to the Flat Rock without an anvil.
-- [ ] **GL144** `Config` Ingots sell for more than their buns at any Blacksmithing level.
+- [x] **GL131** `Core` Crafted items of different quality don't stack (97% sticks stay apart from 98%). Gathered material, which carries its mix as contents, still blends into one stack (GL120). *(Done 2026-10-21.)*
+- [x] **GL132** `Core` A gathered ore's quality is its share of the target ore itself (18% cassiterite), not the share of ore samples in it. *(Done 2026-10-21.)*
+- [x] **GL133** `Core + Game` Bare hands never take hard materials: not by digging, not as slivers next to dug soil. They pick up only loose stones: a small surface rock whole, or from a pile of dropped stone or ore. *(Done 2026-10-21.)*
+- [x] **GL134** `Config` A shovel recipe at the worktop. *(Done 2026-10-21.)*
+- [x] **GL135** `Game` Station screens show "Efficiency xx%" at the top and what it works on (Heat and yield for the campfire and furnaces), not quality. *(Done 2026-10-21.)*
+- [x] **GL136** `Core + Game` Yield comes out as a decimal amount of the item (0.48 tin bun), not as a part carried in the station. Part items add up when stacked; recipes use whole ones. *(Done 2026-10-21.)*
+- [x] **GL137** `Game` A second journal, the crafting journal: chapter one Crafting (each recipe, 3 to a page, sketched like the ore journal), chapter two Mining (what ore each level lets you see), chapter three Smelting (the smelting recipes and their unlocks, and the kinds of furnace). *(Done 2026-10-21.)*
+- [x] **GL138** `Game` A broken tool is not replaced from the inventory; the player swaps in a spare. *(Done 2026-10-21.)*
+- [x] **GL139** `Config` The furnaces list the tin bun first, then copper; the bronze ingot alloy is off the furnace (ingots are hammered on the Flat Rock or the anvil). *(Done 2026-10-21.)*
+- [x] **GL140** `Core` Picking a recipe loads a full stack of each input, not one batch. *(Done 2026-10-21.)*
+- [x] **GL141** `Game` E works looking at a furnace's (or campfire's) body, not only near its base. *(Done 2026-10-21.)*
+- [x] **GL142** `Core` A station with a picked recipe moves on to another recipe when that one's inputs are swapped in (chalcopyrite after cassiterite). *(Done 2026-10-21.)*
+- [x] **GL143** `Config` A bronze chisel from a bronze bun and a stick at the worktop: the way to the Flat Rock without an anvil. *(Done 2026-10-21.)*
+- [x] **GL144** `Config` Ingots sell for more than their buns at any Blacksmithing level. *(Done 2026-10-21.)*
 
 ### Eighteenth pass *(added 2026-10-21, from `Docs/20261021b clube-backlog.md` — done)*
 Tools by material, smelting yield, blacksmithing.

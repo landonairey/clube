@@ -344,6 +344,17 @@ extract (`Recipe.Extracts`, `TypicalGrade`) and yield by the ore's concentration
 pure; part items carry to the next run (`CraftingStation.YieldOf`, `Carried`; the station panel shows the yield). Anvil and
 flat-rock recipes train `SkillType.Blacksmithing` and make nothing better than the smith (`SmithingQuality`: 50% at level 0 to
 100% at 10). Items sell at their quality's share (`PriceList`).
+Nineteenth pass (GL131-GL144, `Docs/20261021c clube-backlog.md`): crafted items of different quality don't stack
+(`Inventory.Stacks`; stacks with contents, i.e. gathered mixes, still blend). A stack can hold a part item
+(`ItemStack.Part`/`Amount`, GL136): a station's yield comes out as a decimal amount, parts add up on stacking, recipes use
+whole items. A gathered stack's quality is `MaterialRegistry.Quality` of its contents (an ore's share of the ore itself).
+Bare hands take only loose stones (`HandPickup`: a small piece, `ToolStrike.IsSmallPiece`, or a material with
+`VoxelMaterial.PickedFromPiles`, the loose stages) and leave hard slivers (`ClearSliversAround` `canTake`). Broken tools
+aren't replaced. Station screens head with "Efficiency xx%" and what it works on. `LoadFor` loads a full stack of each input
+(`Inventory.AddToStacks`); swapping in another recipe's inputs drops the picked one. Furnace colliders cover the body and
+`PlayerInteractor.TargetIsGround` lets tools still break it. J opens the crafting journal (`CraftingJournalScreen`: Crafting,
+Mining, Smelting chapters; `ItemSketch` inks item icons; both journals draw through `JournalBook`). New worktop recipes: shovel,
+bronze chisel from a bronze bun and a stick; ingots sell for 30/26/38.
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16
