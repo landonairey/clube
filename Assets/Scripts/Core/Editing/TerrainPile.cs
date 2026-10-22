@@ -234,6 +234,12 @@ namespace Clube.Core
                         continue;
                     }
                     float score = (floor - start.y) / (float)cellSamples + Vector2Int.Distance(cell, first);
+                    // A cell already part way up a cube of this material finishes it before another starts (GL121):
+                    // otherwise a lower cell beside it, down a slope, scores better and the pile spreads half-built.
+                    if (((floor % cellSamples) + cellSamples) % cellSamples != 0 && HoldsPile(world, grid, cell, floor, material, isoLevel))
+                    {
+                        score -= 1000f;
+                    }
                     if (score < bestScore - 1e-4f || (score < bestScore + 1e-4f && floor < bestFloor))
                     {
                         best = cell;
@@ -257,6 +263,16 @@ namespace Clube.Core
                 filled += placed;
             }
             return filled;
+        }
+
+        // True when the ground just under a cell's floor is the material being piled: the cell is a pile part
+        // built already (looked at in its middle column).
+        private static bool HoldsPile(World world, BuildGrid grid, Vector2Int cell, int floor, byte material, float isoLevel)
+        {
+            grid.SampleColumns(cell, world.Grid.VoxelSize, out Vector2Int min, out Vector2Int max);
+            var under = new Vector3Int((min.x + max.x) / 2, floor - 1, (min.y + max.y) / 2);
+            float? density = world.GetDensity(under);
+            return density.HasValue && density.Value >= isoLevel && world.GetMaterial(under) == material;
         }
 
         // A cell's lowest supported air (over its columns), searched down from a height.

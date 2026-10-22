@@ -61,7 +61,7 @@ namespace Clube.Game
             for (int slot = 0; slot < hotbar; slot++)
             {
                 var position = new Vector2(topLeft.x + slot * (SlotSize + Gap), hotbarTop);
-                if (Slot(position, items[slot], slot == selected, (slot + 1).ToString(), corner))
+                if (Slot(position, items[slot], slot == selected, null, corner))
                 {
                     clicked = slot;
                 }
@@ -157,7 +157,18 @@ namespace Clube.Game
         public static string Describe(ItemStack stack)
         {
             string text = stack.Count > 1 ? $"{stack.Item.DisplayName} ×{stack.Count}" : stack.Item.DisplayName;
-            text += $"\nVolume {stack.Volume:0.##}";
+            // Volume only for what has one (GL122): mined material, or a product with a set unit volume (a bun);
+            // not tools or sticks.
+            bool hasVolume = !(stack.Item is ToolDefinition) && !(stack.Item is PlaceableDefinition)
+                && ((ItemSlotGui.Materials != null && ItemSlotGui.Materials.IsMaterialItem(stack.Item)) || !Mathf.Approximately(stack.Item.UnitVolume, 1f));
+            if (hasVolume)
+            {
+                text += $"\nVolume {stack.Volume:0.##}";
+            }
+            if (stack.Quality < 0.995f)
+            {
+                text += $"\nQuality {stack.Quality * 100f:0}%";
+            }
             if (stack.Item.HidesContents)
             {
                 // "? ore" (GL76): what it holds stays hidden until the player can tell.
@@ -173,7 +184,7 @@ namespace Clube.Game
             }
             if (stack.Item.IsFuel)
             {
-                text += $"\nFuel: burns {stack.Item.BurnSeconds:0.#} s each";
+                text += $"\nFuel: burns {stack.Item.BurnSeconds * stack.Quality:0.#} s each";
             }
             return text;
         }

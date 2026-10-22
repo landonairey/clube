@@ -361,5 +361,24 @@ namespace Clube.Core.Tests
                 Object.DestroyImmediate(leaves);
             }
         }
+
+        // GL124: grass gathered half and half with dirt burns half as long.
+        [Test]
+        public void Fuel_BurnsForItsQualitysShare()
+        {
+            ItemDefinition grass = ItemDefinition.Create("grass", "Grass").With(burnSeconds: 2f);
+            try
+            {
+                var furnace = new CraftingStation(StationKind.Furnace, new[] { smelt }, burnsFuel: true);
+                furnace.Input.Add(ore, 16);
+                furnace.Fuel.Add(grass, 1, null, 0, 0.5f);
+                furnace.Tick(0.1f);
+                Assert.AreEqual(1f - 0.1f, furnace.BurnLeft, 1e-4f);
+            }
+            finally
+            {
+                Object.DestroyImmediate(grass);
+            }
+        }
     }
 }

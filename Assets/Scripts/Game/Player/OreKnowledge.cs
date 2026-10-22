@@ -138,7 +138,7 @@ namespace Clube.Game
             {
                 return stack;
             }
-            return new ItemStack(DisguiseFor(stack.Item, material), stack.Count, stack.Contents);
+            return new ItemStack(DisguiseFor(stack.Item, material), stack.Count, stack.Contents, 0, stack.Quality);
         }
 
         /// <summary>True for a "? ore" item: the generic one or one of the per-ore copies.</summary>
@@ -238,7 +238,7 @@ namespace Clube.Game
                     if (Knows(real.Material))
                     {
                         int known = items.RemoveAt(slot, stack.Count);
-                        items.Add(real.Item, known, stack.Contents);
+                        items.Add(real.Item, known, stack.Contents, 0, stack.Quality);
                     }
                     continue;
                 }
@@ -252,7 +252,7 @@ namespace Clube.Game
                     continue;
                 }
                 int count = items.RemoveAt(slot, stack.Count);
-                items.Add(ore.Drop, count, stack.Contents);
+                items.Add(ore.Drop, count, stack.Contents, 0, stack.Quality);
             }
         }
 

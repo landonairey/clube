@@ -316,7 +316,7 @@ mode (`CollectingSettings`: voxel hits, or an area-of-impact sphere that lowers 
 Fifteenth pass (GL97-GL105, `Docs/20261020e clube-backlog.md`): dropped stone (Loose stone) is cobbles; the furnaces are
 `TerrainStructure`s like the campfire, primitive tapered shaft furnaces (parts carry their own densities) (*Clube → Models → Build furnaces*, `FurnaceStructures`): Stone
 furnace of cobbles, Clay furnace hotter (`StationObject.heat` → `CraftingStation.Heat`). Structures turn with the
-placed object. The volume inventory (GL99-GL103, the default; the classic one stays switchable): a tool slot, a
+placed object. The volume inventory (GL99-GL103; replaced in GL120): a tool slot, a
 volume slot (`VolumeMix`, `MixSlotGui`) that every mined sample goes into, and 3 item slots (`PlayerInventory`; `Hotbar`
 cells map to slots). Recipes take a cut of the mix (`CraftingStation.LoadFromMix`, minimum share); what's built keeps
 its contents and works at its material's share (`MaterialRegistry.Quality`, `StationObject.MadeOf`); Drop pours from
@@ -331,6 +331,13 @@ material under the dot (GL107). The bare hand picks up a loose surface stone who
 looks only at chunks within its radius (it stalled in streamed worlds). Material stacks show their purity (GL115); there is no
 Rock material, surface rocks are stone (GL116); a selected spare tool works and replaces a broken one (GL117). Stacks carry a quality
 (`ItemStack.Quality`, GL118) from bin purity through recipes; a tool lasts its quality's share of its hits.
+Seventeenth pass (GL119-GL125, `Docs/20261021 clube-backlog.md`): the bins are gone (with `MixSlotGui`, `LoadFromMix` and
+`PriceList.ValueOf(VolumeMix)`). What a hit gathers goes to a stack of the material under the dot, mixed with what came
+along (`Gathering` in Core/Items, `CollectingSettings.SortByTarget`): the stack's contents are the mix, its quality the aimed
+material's share; a hit that can't take what it's aimed at (hands on rock) sends each material to its own stack. A mixed
+stack drops as its mix (`ItemDropper`). The classic hotbar (9) and backpack (18) is the default again; the tool-slot layout
+stays switchable (`PlayerInventory.UsesToolSlot`). Hands take soft ground only, plus loose stones whole. Hard-material piles
+finish their build cell first (`TerrainPile.HoldsPile`). Grass is one voxel thick and a fuel; fuel burns for its quality's share.
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16

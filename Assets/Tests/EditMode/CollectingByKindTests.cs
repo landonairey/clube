@@ -83,30 +83,18 @@ namespace Clube.Core.Tests
             Assert.AreEqual(0f, world.GetDensity(new Vector3Int(2, 1, 1)).Value, 0.01f, "Dirt gives up all of it.");
         }
 
-        // GL114: materials sort into kinds; GL111: a bin sells for its contents.
+        // GL114: materials sort into the kinds tools are made for.
         [Test]
-        public void Kinds_AndABinsValue()
+        public void Kinds_ByMaterial()
         {
             Assert.AreEqual(MaterialKind.Rock, stone.Kind);
             Assert.AreEqual(MaterialKind.Soil, dirt.Kind);
-            PriceList prices = PriceList.Create(new ItemPrice(stoneItem, 2), new ItemPrice(dirtItem, 1, 10));
-            try
-            {
-                var bin = new VolumeMix();
-                bin.Add(stone, 5f);
-                bin.Add(dirt, 20f);
-                Assert.AreEqual(5f * 2f + 20f * 0.1f, prices.ValueOf(bin), 1e-4f);
-            }
-            finally
-            {
-                Object.DestroyImmediate(prices);
-            }
         }
 
-        // GL118: purity carries through crafting: wood from a 60/40 bin makes 60% sticks, which make a 60%
+        // GL118: purity carries through crafting: wood gathered 60/40 with leaves makes 60% sticks, which make a 60%
         // pointy stick that lasts 60% of its hits.
         [Test]
-        public void Quality_CarriesFromBinToTool()
+        public void Quality_CarriesFromGatheredWoodToTool()
         {
             ItemDefinition woodItem = ItemDefinition.Create("wood", "Wood");
             ItemDefinition leafItem = ItemDefinition.Create("leaves", "Leaves");
@@ -119,11 +107,14 @@ namespace Clube.Core.Tests
             Recipe sharpen = Recipe.Create(StationKind.Worktop, new ItemAmount(pointy, 1), RecipeWork.Time, 1f, new ItemAmount(sticks, 2));
             try
             {
-                var bin = new VolumeMix();
-                bin.Add(wood, 6f);
-                bin.Add(leaves, 4f);
+                var gathering = new Gathering();
+                gathering.Add(wood, wood, 0.6f);
+                gathering.Add(wood, leaves, 0.4f);
+                var ready = new List<GatheredStack>();
+                gathering.TakeWhole(plants, ready);
+                Assert.AreEqual(woodItem, ready[0].Item, "Aimed at wood: a wood stack.");
                 var stump = new CraftingStation(StationKind.Worktop, new[] { whittle });
-                Assert.AreEqual(1, stump.LoadFromMix(whittle, new[] { bin }, plants, 0f, out _));
+                stump.Input.Add(ready[0].Item, ready[0].Count, ready[0].Contents, 0, ready[0].Quality);
                 stump.Tick(2f);
                 Assert.AreEqual(0.6f, stump.Output[0].Quality, 1e-3f, "Sticks as good as the wood was pure.");
 
