@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Wood
   m_EditorClassIdentifier: Clube.Core::Clube.Core.VoxelMaterial
   id: 11
-  displayName: Wood
+  displayName: Birch wood
   category: 2
   albedo: {fileID: 2800000, guid: 82017dcceed2a954b96385bd6d01237e, type: 3}
   debugColor: {r: 0.45, g: 0.3, b: 0.18, a: 1}
@@ -22,4 +22,17 @@ MonoBehaviour:
   pileShape: 1
   reposeAngle: 40
   pickUpPieceSize: 0
+  pickedFromPiles: 0
+  toolTier: 1
+  requiredSkill: 0
+  requiredLevel: 0
   breaksInto: {fileID: 0}
+  isWorktop: 0
+  isSoft: 0
+  driesInto: {fileID: 0}
+  dryingDays: 2
+  notes:
+    Hardness: 
+    Luster: 
+    Colour: 
+    Feel: 

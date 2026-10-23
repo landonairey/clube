@@ -28,11 +28,11 @@ namespace Clube.Game
         private static void DrawPurity(Rect rect, ItemStack stack)
         {
             float purity = stack.Quality;
-            if (purity >= 0.995f && Materials != null && stack.Contents != null && !stack.Item.HidesContents && Materials.IsMaterialItem(stack.Item))
+            if (purity >= 0.995f && purity <= 1.005f && Materials != null && stack.Contents != null && !stack.Item.HidesContents && Materials.IsMaterialItem(stack.Item))
             {
                 purity = Materials.Quality(stack.Contents, stack.Item);
             }
-            if (purity >= 0.995f)
+            if (purity >= 0.995f && purity <= 1.005f)
             {
                 return;
             }

@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb68c50b39e0a91499017be61cd90094, type: 3}
+  m_Name: Smelt crushed cassiterite
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.Recipe
+  station: 0
+  inputs:
+  - Item: {fileID: 11400000, guid: ed8c8b48636509843aaf87e527e02009, type: 2}
+    Count: 3
+  output:
+    Item: {fileID: 11400000, guid: e49cea8103fd9d94682cdecb145df7f8, type: 2}
+    Count: 1
+  work: 0
+  amount: 3
+  experienceSkill: 4
+  experience: 9
+  unlockSkill: 0
+  unlockLevel: 0
+  qualityFactor: 1
+  extracts: {fileID: 11400000, guid: fcb47a3195818b0449ad72b166340337, type: 2}
+  typicalGrade: 0.4

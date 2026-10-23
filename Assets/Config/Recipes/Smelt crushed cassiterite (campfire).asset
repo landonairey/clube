@@ -10,18 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: eb68c50b39e0a91499017be61cd90094, type: 3}
-  m_Name: Make pointy stick
+  m_Name: Smelt crushed cassiterite (campfire)
   m_EditorClassIdentifier: Clube.Core::Clube.Core.Recipe
-  station: 2
+  station: 3
   inputs:
-  - Item: {fileID: 11400000, guid: 4f717f7cc0f3ec743b5f84c88baea32c, type: 2}
-    Count: 1
+  - Item: {fileID: 11400000, guid: ed8c8b48636509843aaf87e527e02009, type: 2}
+    Count: 4
   output:
-    Item: {fileID: 11400000, guid: f41296c3e76a73b4399ba57ecd7c3510, type: 2}
+    Item: {fileID: 11400000, guid: e49cea8103fd9d94682cdecb145df7f8, type: 2}
     Count: 1
-  work: 1
-  amount: 2
-  experienceSkill: 1
-  experience: 5
+  work: 0
+  amount: 6
+  experienceSkill: 4
+  experience: 12
   unlockSkill: 0
   unlockLevel: 0
+  qualityFactor: 1
+  extracts: {fileID: 11400000, guid: fcb47a3195818b0449ad72b166340337, type: 2}
+  typicalGrade: 0.4

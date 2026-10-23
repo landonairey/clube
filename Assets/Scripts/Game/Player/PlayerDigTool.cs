@@ -55,6 +55,7 @@ namespace Clube.Game
         private float repeatRate = 5f;
 
         private PlayerController player;
+        private BoulderBashing bashing;
         private ToolCursor cursor;
         private Texture2D dot;
         private PlayerParcels parcels;
@@ -82,6 +83,7 @@ namespace Clube.Game
         private void Awake()
         {
             player = GetComponent<PlayerController>();
+            bashing = GetComponent<BoulderBashing>();
             cursor = GetComponent<ToolCursor>();
             parcels = GetComponent<PlayerParcels>();
             tools = GetComponent<PlayerToolUser>();
@@ -118,13 +120,15 @@ namespace Clube.Game
 
             FindTarget();
             bool digging = !ToolHeld;
-            HeldOperation = digging && IsHeld(digAction) ? BrushOperation.Remove : IsHeld(placeAction) ? BrushOperation.Add : (BrushOperation?)null;
+            // Place bashes a stone or ore on a boulder instead, when it can (GL146, GL148).
+            bool placing = bashing == null || !bashing.CanBash;
+            HeldOperation = digging && IsHeld(digAction) ? BrushOperation.Remove : placing && IsHeld(placeAction) ? BrushOperation.Add : (BrushOperation?)null;
 
             if (digging && ShouldApply(digAction))
             {
                 Apply(BrushOperation.Remove);
             }
-            else if (ShouldApply(placeAction))
+            else if (placing && ShouldApply(placeAction))
             {
                 Apply(BrushOperation.Add);
             }

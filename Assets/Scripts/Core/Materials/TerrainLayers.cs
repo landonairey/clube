@@ -49,6 +49,10 @@ namespace Clube.Core
         [SerializeField, Range(0f, 0.05f)]
         private float rockChance = 0.004f;
 
+        [Tooltip("Chance that a sample of the band (dirt) holds a buried stone of 1-3 samples, of the rock material (GL149): loose stones a bare hand can dig out.")]
+        [SerializeField, Range(0f, 0.02f)]
+        private float buriedStoneChance = 0.002f;
+
         [Tooltip("Clay deposits at the surface (GL34): flush with the ground, reaching a little way down, deepest at the middle. None for no clay.")]
         [SerializeField]
         private VoxelMaterial clay;
@@ -124,6 +128,13 @@ namespace Clube.Core
         {
             get => rockChance;
             set => rockChance = Mathf.Clamp(value, 0f, 0.05f);
+        }
+
+        /// <summary>Chance that a sample of the dirt band holds a buried stone (GL149).</summary>
+        public float BuriedStoneChance
+        {
+            get => buriedStoneChance;
+            set => buriedStoneChance = Mathf.Clamp(value, 0f, 0.02f);
         }
 
         /// <summary>The material of the surface clay deposits (GL34), or null for none.</summary>

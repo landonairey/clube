@@ -272,7 +272,7 @@ namespace Clube.Core
 
         // Of the recipes that pass, the one that uses the most of what's loaded (GL81): the most
         // different inputs, then the most items, so sticks and stone make a stone pick, not a
-        // pointy stick. Ties go to the first listed.
+        // spear. Ties go to the first listed.
         private Recipe Best(Func<Recipe, bool> passes)
         {
             Recipe best = null;
@@ -471,7 +471,7 @@ namespace Clube.Core
             {
                 return 1f;
             }
-            float quality = InputQuality(recipe);
+            float quality = InputQuality(recipe) * recipe.QualityFactor;
             if (recipe.ExperienceSkill == SkillType.Blacksmithing)
             {
                 int level = Learner != null ? Learner.Level(SkillType.Blacksmithing) : 0;
@@ -506,7 +506,7 @@ namespace Clube.Core
         }
 
         // How well a recipe's result is made (GL118): its inputs' quality, weighted by how many of each it takes,
-        // so a pointy stick from sticks of 60% wood is a 60% stick.
+        // so a spear from sticks of 60% wood is a 60% spear.
         private float InputQuality(Recipe recipe)
         {
             float total = 0f;

@@ -6,7 +6,8 @@ namespace Clube.Core
     /// <summary>
     /// Where trees grow and what they look like (GL30, first pass of PK7): at most one tree per
     /// square cell of the world, on ground flat enough, shaped by <see cref="TreeShape"/> from the
-    /// seed. Part of <see cref="TerrainSettings"/>; trees need a wood and a leaves material.
+    /// seed. Part of <see cref="TerrainSettings"/>; trees need a wood and a leaves material. Two kinds
+    /// grow (GL150): birch (the wood and leaves) and maple (its own), picked per tree.
     /// </summary>
     [Serializable]
     public class TreeGeneration
@@ -48,6 +49,18 @@ namespace Clube.Core
 
         [SerializeField]
         private VoxelMaterial leaves;
+
+        [Tooltip("The second kind of tree (GL150): maple, with its own wood and leaves. None: every tree is the first kind (birch).")]
+        [SerializeField]
+        private VoxelMaterial mapleWood;
+
+        [Tooltip("Maple's leaves. None: maples have the first kind's leaves.")]
+        [SerializeField]
+        private VoxelMaterial mapleLeaves;
+
+        [Tooltip("Share of trees that are maple (GL150), picked per tree from the seed.")]
+        [SerializeField, Range(0f, 1f)]
+        private float mapleShare = 0.35f;
 
         [Tooltip("The tree's base, left standing when the trunk is cut: much harder than wood, and a worktop (GL36). None: the base is wood.")]
         [SerializeField]
@@ -118,6 +131,27 @@ namespace Clube.Core
         {
             get => leaves;
             set => leaves = value;
+        }
+
+        /// <summary>Maple's wood (GL150), or null when every tree is birch.</summary>
+        public VoxelMaterial MapleWood
+        {
+            get => mapleWood;
+            set => mapleWood = value;
+        }
+
+        /// <summary>Maple's leaves: its own, or the first kind's.</summary>
+        public VoxelMaterial MapleLeaves
+        {
+            get => mapleLeaves != null ? mapleLeaves : leaves;
+            set => mapleLeaves = value;
+        }
+
+        /// <summary>Share of trees that are maple, 0-1.</summary>
+        public float MapleShare
+        {
+            get => mapleWood != null ? mapleShare : 0f;
+            set => mapleShare = Mathf.Clamp01(value);
         }
 
         public float StumpHeight

@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b52a02d234816184ab26033bd6eb47c4, type: 3}
+  m_Name: Crushed cassiterite
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
+  id: crushed-cassiterite
+  displayName: Crushed cassiterite
+  icon: {fileID: 2800000, guid: e6aafaec7d3c33c48b37f56e92dbd002, type: 3}
+  maxStack: 256
+  unitVolume: 1
+  burnSeconds: 0
+  hidesContents: 0

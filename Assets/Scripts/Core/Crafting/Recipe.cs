@@ -92,6 +92,10 @@ namespace Clube.Core
         [SerializeField, Range(0, SkillSet.MaxLevel)]
         private int unlockLevel;
 
+        [Tooltip("Times the quality of what it makes (GL151: maple whittles into sticks at 1.4). 1: as good as its inputs.")]
+        [SerializeField, Range(0.1f, 2f)]
+        private float qualityFactor = 1f;
+
         [Tooltip("Smelting (GL128): the mineral this recipe extracts. Its share of the ore's contents against the typical grade sets how much comes out, and the metal comes out pure. None: the inputs' quality carries over.")]
         [SerializeField]
         private VoxelMaterial extracts;
@@ -138,6 +142,16 @@ namespace Clube.Core
         }
 
         public StationKind Station => station;
+
+        /// <summary>Times the quality of what it makes (GL151).</summary>
+        public float QualityFactor => qualityFactor;
+
+        /// <summary>Sets <see cref="QualityFactor"/>, for recipes made in code (tests).</summary>
+        public Recipe WithQualityFactor(float factor)
+        {
+            qualityFactor = Mathf.Clamp(factor, 0.1f, 2f);
+            return this;
+        }
 
         /// <summary>The mineral a smelting recipe extracts (GL128), or null.</summary>
         public VoxelMaterial Extracts => extracts;
