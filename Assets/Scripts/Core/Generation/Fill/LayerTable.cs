@@ -31,6 +31,9 @@ namespace Clube.Core
         /// <summary>Chance that a surface column starts a rock cluster; 0 for no rocks.</summary>
         public float RockChance;
 
+        /// <summary>Chance that a sample of the band (dirt) starts a buried stone of 1-3 samples (GL149); 0 for none.</summary>
+        public float BuriedStoneChance;
+
         /// <summary>Material id of the surface clay deposits (GL34).</summary>
         public byte Clay;
 
@@ -98,6 +101,7 @@ namespace Clube.Core
                 SteepMinHeight = layers.SteepMinHeight,
                 Rock = layers.Rock != null ? layers.Rock.Id : (byte)0,
                 RockChance = layers.Rock != null ? layers.RockChance : 0f,
+                BuriedStoneChance = layers.Rock != null ? layers.BuriedStoneChance : 0f,
                 Clay = layers.Clay != null ? layers.Clay.Id : (byte)0,
                 ClayChance = layers.Clay != null && layers.ClayDepth > 0f ? layers.ClayChance : 0f,
                 ClayCellSize = layers.ClayCellSize,

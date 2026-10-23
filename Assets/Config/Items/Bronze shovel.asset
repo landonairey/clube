@@ -18,6 +18,7 @@ MonoBehaviour:
   maxStack: 1
   unitVolume: 1
   burnSeconds: 0
+  hidesContents: 0
   impactSize: 3
   impactShape: 0
   wideOn: 1
@@ -25,4 +26,7 @@ MonoBehaviour:
   maxHits: 200
   hitsPerSecond: 2.5
   hitsOn: []
+  chisels: 0
   hitsOnAnything: 0
+  tier: 3
+  efficiency: 1

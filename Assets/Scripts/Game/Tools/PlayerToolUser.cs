@@ -59,12 +59,16 @@ namespace Clube.Game
         private PlayerInteractor interactor;
         private PlayerParcels parcels;
         private OreKnowledge knowledge;
+        private PlayerSkills skills;
         private float nextHitTime;
         private string brokenName;
         private float brokenUntil;
 
         /// <summary>Raised for each item a hit collects, one at a time, with its contents (mixed ore, GL32).</summary>
         public event Action<ItemStack> Collected;
+
+        /// <summary>Raised when a hit takes nothing of what it's aimed at, with why (GL152: "Maple wood needs a bronze tool").</summary>
+        public event Action<string> Blocked;
 
         /// <summary>Raised for each sample a hit breaks and collects, with its material (GL47: experience).</summary>
         public event Action<VoxelMaterial> Mined;
@@ -133,6 +137,7 @@ namespace Clube.Game
             interactor = GetComponent<PlayerInteractor>();
             parcels = GetComponent<PlayerParcels>();
             knowledge = GetComponent<OreKnowledge>();
+            skills = GetComponent<PlayerSkills>();
         }
 
         private void OnEnable()
@@ -421,7 +426,7 @@ namespace Clube.Game
                 int picked = HandPickup.TakeStone(world, targets, ImpactCentre, materials, collected, iso, minedFrom);
                 if (picked > 0)
                 {
-                    ToolStrike.ClearSliversAround(world, targets, materials, Damage, collected, iso, minedFrom, hand ? HandCanTake : null);
+                    ToolStrike.ClearSliversAround(world, targets, materials, Damage, collected, iso, minedFrom, material => CanTake(tool, material));
                     Struck?.Invoke(new StrikeResult(targets.Count, picked, picked));
                     return;
                 }
@@ -432,8 +437,10 @@ namespace Clube.Game
                 VoxelMaterial aimed = AimedMaterial(world, materials);
                 if (AmountFor(tool, hand, aimed, aimed) <= 0f)
                 {
-                    // The hit can't take what it's aimed at (hands on rock): what it does take goes to its own stacks.
+                    // The hit can't take what it's aimed at (hands on rock, a hand axe on maple): what it does take goes
+                    // to its own stacks, and the player is told why (GL152).
                     aimedTarget = null;
+                    TellWhyNot(tool, aimed);
                 }
                 done = collecting.SortByTarget
                     ? SphereStrike.LowerInto(world, targets, material => AmountFor(tool, hand, material, aimed), materials, Gather)
@@ -441,36 +448,77 @@ namespace Clube.Game
             }
             else
             {
-                // Hands don't take hard ground (GL119).
-                if (hand)
+                // Nothing the tool can't work comes away (GL145, GL152).
+                if (aimedTarget != null && !CanTake(tool, aimedTarget))
                 {
-                    if (aimedTarget != null && aimedTarget.Kind == MaterialKind.Rock)
-                    {
-                        aimedTarget = null;
-                    }
-                    targets.RemoveAll(sample => world.GetMaterial(sample) is byte id && materials != null && materials.Get(id) is VoxelMaterial m && m.Kind == MaterialKind.Rock);
+                    TellWhyNot(tool, aimedTarget);
+                    aimedTarget = null;
                 }
+                targets.RemoveAll(sample => world.GetMaterial(sample) is byte id && materials != null && !CanTake(tool, materials.Get(id)));
                 done = SphereStrike.Take(world, targets, materials, collected, iso, minedFrom);
             }
-            ToolStrike.ClearSliversAround(world, targets, materials, Damage, collected, iso, minedFrom, hand ? HandCanTake : null);
+            ToolStrike.ClearSliversAround(world, targets, materials, Damage, collected, iso, minedFrom, material => CanTake(tool, material));
             Struck?.Invoke(new StrikeResult(targets.Count, done, collected.Count));
         }
 
-        // What bare hands may take (GL133): soft ground and plants, and loose stone from a pile; never hard ground.
-        private static bool HandCanTake(VoxelMaterial material)
+        // True when the tool can work the material (GL145, GL152): its tier is enough and the player has any level it
+        // takes. Bare hands also lift loose stone from a pile (GL133).
+        private bool CanTake(ToolDefinition tool, VoxelMaterial material)
         {
-            return material == null || material.Kind != MaterialKind.Rock || material.PickedFromPiles;
+            if (material == null)
+            {
+                return true;
+            }
+            if (!tool.CanWork(material) && !(tool == hand && material.PickedFromPiles))
+            {
+                return false;
+            }
+            return material.RequiredSkill == SkillType.None || skills == null || skills.Skills.Has(material.RequiredSkill, material.RequiredLevel);
+        }
+
+        // Says why a hit took nothing of what it was aimed at (GL152): the tool, or the level, isn't enough.
+        private void TellWhyNot(ToolDefinition tool, VoxelMaterial material)
+        {
+            if (material == null)
+            {
+                return;
+            }
+            string reason = !tool.CanWork(material)
+                ? (tool == hand
+                    ? $"Bare hands can't take {material.DisplayName.ToLowerInvariant()}: bash a stone on a boulder for a hand axe"
+                    : $"{material.DisplayName} needs {TierName(material.ToolTier)}")
+                : $"{material.DisplayName} needs {material.RequiredSkill} {material.RequiredLevel}";
+            Blocked?.Invoke(reason);
+        }
+
+        private static string TierName(int tier)
+        {
+            switch (tier)
+            {
+                case 1:
+                    return "a hand axe";
+                case 2:
+                    return "a stone tool";
+                case 3:
+                    return "a bronze tool";
+                default:
+                    return $"a tier {tier} tool";
+            }
         }
 
         // How much a gradual hit takes from a sample of a material (GL107).
         private float AmountFor(ToolDefinition tool, bool hand, VoxelMaterial material, VoxelMaterial aimed)
         {
+            if (!CanTake(tool, material))
+            {
+                // Beyond the tool or the player (GL145, GL152); hands lift loose stones whole instead (GL109).
+                return 0f;
+            }
             if (hand)
             {
-                // Hands take soft ground only (GL119); a loose stone is picked up whole instead (GL109).
-                return material != null && material.Kind == MaterialKind.Rock ? 0f : collecting.HandAmount;
+                return collecting.HandAmount;
             }
-            float amount = tool.ReachesWideOn(material) ? collecting.ToolAmount : collecting.ToolOffAmount;
+            float amount = (tool.ReachesWideOn(material) ? collecting.ToolAmount : collecting.ToolOffAmount) * tool.Efficiency;
             return material == aimed ? amount : amount * collecting.OtherMaterialFactor;
         }
 

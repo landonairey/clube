@@ -510,6 +510,18 @@ Bins by kind, tools by material, and the mix usable everywhere.
 - [x] **GL117** `Game` *(added 2026-10-20)* A spare tool works from an item slot: a tool in the selected slot is the one in hand and wears there (scrolling onto it doesn't swap it in), and when the tool slot's tool breaks the next of the same tool from the item slots takes its place. *(Done: `Hotbar.ToolSlot`, `Hotbar.WearSelected`.)*
 - [x] **GL118** `Core + Game` *(added 2026-10-20, from `Docs/20261020i clube-backlog.md`)* Quality carries through crafting: material taken from a bin is as good as it is pure, whatever's made from it is as good as its inputs (weighted by count), and a tool lasts its quality's share of its hits, so sticks of 60% wood make a pointy stick that lasts 36 of 60 hits. *(Done: `ItemStack.Quality` (blended when stacks merge) and `ItemStack.MaxHits`; `CraftingStation` sets input quality from bins and output quality from inputs; `Inventory.Wear` breaks at the stack's hits; the slot shows a quality badge and a shorter wear bar; tool prices count hits left of a full tool's; built stations take the placed item's quality.)*
 
+### Twentieth pass *(added 2026-10-22, from `Docs/20261022 clube-backlog.md` — done)*
+The tool path: hands, the hand axe, crushing ore; loose stones in the dirt; birch and maple.
+
+- [x] **GL145** `Core + Config` Each material has a tool tier it needs (`VoxelMaterial.ToolTier`): dirt, grass, clay and leaves need none, so bare hands take them; wood, stone and ore need at least a hand axe. Hands still pick up loose stones (GL133). *(Done 2026-10-23.)*
+- [x] **GL146** `Game` Bashing (right click) a stone on a boulder or rock face makes a Hand axe from 1 stone, for a little Crafting experience. The hand axe takes wood, stone and ore, slowly (`ToolDefinition.Efficiency`). *(Done 2026-10-23.)*
+- [x] **GL147** `Config` The pointy stick is gone; the hand axe is the first tool. *(Done 2026-10-23.)*
+- [x] **GL148** `Core + Game + Config` At Mining 2, bashing ore on a boulder crushes it: crushed ore with half the stone it held, at a better quality, and crushed stone as a byproduct (part items). Crushed ore sells for more and smelts with a better yield. *(Done 2026-10-23.)*
+- [x] **GL149** `Core` Small stones (1 to 3 samples) lie in the dirt layer. Bare hands take a stone of 3 samples or fewer when everything around it is soil or air; a stone touching ore or rock stays. *(Done 2026-10-23.)*
+- [x] **GL150** `Core + Config` Two kinds of tree: birch and maple, picked per tree. Maple wood (with its own leaves) sells for more. *(Done 2026-10-23.)*
+- [x] **GL151** `Core + Config` Maple sticks are stronger: whittled at 140% quality, so tools made with them last longer. Quality can go above 100%. *(Done 2026-10-23.)*
+- [x] **GL152** `Core + Game` Maple needs a bronze hatchet and Woodcutting 3 (`VoxelMaterial.ToolTier`, `RequiredLevel`); birch falls to a hand axe. A tool that can't take what it's aimed at says why. *(Done 2026-10-23.)*
+
 ### Nineteenth pass *(added 2026-10-21, from `Docs/20261021c clube-backlog.md` — done)*
 Playtest fixes, decimal yields, the crafting journal.
 

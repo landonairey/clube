@@ -28,3 +28,5 @@ MonoBehaviour:
   hitsOn: []
   chisels: 1
   hitsOnAnything: 0
+  tier: 3
+  efficiency: 1

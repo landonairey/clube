@@ -97,6 +97,7 @@ MonoBehaviour:
       steepMinHeight: 24
       rock: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
       rockChance: 0.004
+      buriedStoneChance: 0.002
       clay: {fileID: 11400000, guid: b167c5abf07b4be419155d7e54a546e6, type: 2}
       clayCellSize: 24
       clayChance: 0.3
@@ -184,6 +185,9 @@ MonoBehaviour:
       leafRadius: {x: 0.55, y: 0.9}
       wood: {fileID: 11400000, guid: cf152efb35813624a9fcb26da0602f3f, type: 2}
       leaves: {fileID: 11400000, guid: c3a9464decc6a0d4386f7028c5aa4060, type: 2}
+      mapleWood: {fileID: 11400000, guid: f2efc1bf44f8e3f48bb3f4a5e2c6d017, type: 2}
+      mapleLeaves: {fileID: 11400000, guid: 6a6becb24902ad048ae804ce275d0102, type: 2}
+      mapleShare: 0.35
       stump: {fileID: 11400000, guid: 952ddae6481d48843915df3131af25ce, type: 2}
       stumpHeight: 0.75
     startArea:

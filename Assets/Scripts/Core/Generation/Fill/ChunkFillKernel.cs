@@ -41,6 +41,10 @@ namespace Clube.Core
             {
                 StampOres(depths, grid, settings.Seed, ores, output.Materials);
             }
+            if (settings.Layers.BuriedStoneChance > 0f)
+            {
+                StampBuriedStones(depths, grid, settings.Seed, settings.Layers, output.Materials);
+            }
             if (settings.Layers.RockChance > 0f && StampRocks(depths, steepColumns, grid, settings, ref output))
             {
                 ChunkFillSummary withRocks = output.Summary[0];
@@ -264,6 +268,48 @@ namespace Clube.Core
                 }
             }
             return deepest;
+        }
+
+        // Loose stones in the dirt (GL149): a sample of the band starts one by a hash of its global position,
+        // and a start also takes the sample at +x and the one at +y half the time each, so a stone is 1-3
+        // samples. Only band (dirt) samples turn to stone; only the material changes, so the ground stays
+        // flush. Depends only on global positions, so chunks sharing a border agree.
+        private static void StampBuriedStones(NativeArray<float> depths, in ChunkSampleGrid grid, int seed, in LayerTable layers, NativeArray<byte> materials)
+        {
+            int3 count = grid.SampleCount;
+            for (int z = 0; z < count.z; z++)
+            {
+                for (int y = 0; y < count.y; y++)
+                {
+                    for (int x = 0; x < count.x; x++)
+                    {
+                        int i = grid.Index(x, y, z);
+                        if (depths[i] <= 0f || materials[i] != layers.Band)
+                        {
+                            continue;
+                        }
+                        if (IsBuriedStone(seed, grid.FirstSample + new int3(x, y, z), layers.BuriedStoneChance))
+                        {
+                            materials[i] = layers.Rock;
+                        }
+                    }
+                }
+            }
+        }
+
+        private const int BuriedSalt = 0x42555259;
+
+        /// <summary>True when a global sample is part of a buried stone (GL149), if it lies in the dirt band.</summary>
+        public static bool IsBuriedStone(int seed, int3 sample, float chance)
+        {
+            return StartsStone(seed, sample, chance)
+                || (StartsStone(seed, sample - new int3(1, 0, 0), chance) && VoxelHash.Uniform(seed, sample.x - 1, sample.y, sample.z, BuriedSalt + 1) < 0.5f)
+                || (StartsStone(seed, sample - new int3(0, 1, 0), chance) && VoxelHash.Uniform(seed, sample.x, sample.y - 1, sample.z, BuriedSalt + 2) < 0.5f);
+        }
+
+        private static bool StartsStone(int seed, int3 sample, float chance)
+        {
+            return VoxelHash.Uniform(seed, sample.x, sample.y, sample.z, BuriedSalt) < chance;
         }
 
         // Salts keep the rock hashes apart from the ore rolls'.

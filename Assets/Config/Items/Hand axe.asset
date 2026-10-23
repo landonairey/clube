@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ecb6323010a92224e80cbf8eb67bfd7b, type: 3}
+  m_Name: Hand axe
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.ToolDefinition
+  id: hand-axe
+  displayName: Hand axe
+  icon: {fileID: 2800000, guid: 576365534e52d1849a7abdab595fd872, type: 3}
+  maxStack: 1
+  unitVolume: 1
+  burnSeconds: 0
+  hidesContents: 0
+  impactSize: 1
+  impactShape: 0
+  wideOn: 0
+  power: 1.2
+  maxHits: 80
+  hitsPerSecond: 2
+  hitsOn: []
+  chisels: 0
+  hitsOnAnything: 0
+  tier: 1
+  efficiency: 0.3

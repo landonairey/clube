@@ -4,10 +4,10 @@ using UnityEngine;
 namespace Clube.Core
 {
     /// <summary>
-    /// Picking up a loose stone by hand (GL109, GL133): a bare-hand hit on a stone lying at the surface,
-    /// with air above it: a small piece of a material picked up whole (<see cref="VoxelMaterial.PickUpPieceSize"/>,
-    /// a surface rock, never the rock face it might be part of), or a pile of loose stone or ore
-    /// (<see cref="VoxelMaterial.PickedFromPiles"/>, dropped cobbles),
+    /// Picking up a loose stone by hand (GL109, GL133, GL149): a bare-hand hit on a small piece of a material
+    /// picked up whole (<see cref="VoxelMaterial.PickUpPieceSize"/>: a surface rock, or a stone in the dirt) with
+    /// only air and soft ground around it, never the rock face or ore it might be part of; or on the top of a
+    /// pile of loose stone or ore (<see cref="VoxelMaterial.PickedFromPiles"/>, dropped cobbles),
     /// takes that sample whole, and up to <see cref="Neighbours"/> touching samples of the same stone
     /// with it, nearest the hit first. Through the world's edit paths (A7).
     /// </summary>
@@ -92,20 +92,43 @@ namespace Clube.Core
             return Taken.Count;
         }
 
-        // A solid sample of a material picked up whole, with air straight above it: a stone on the ground.
+        // A solid sample a bare hand lifts whole: a loose stone, or the top of a pile of them.
         private static bool IsLooseStone(World world, Vector3Int sample, MaterialRegistry materials, float isoLevel)
         {
             float? density = world.GetDensity(sample);
             float? above = world.GetDensity(sample + Vector3Int.up);
             byte? id = world.GetMaterial(sample);
             VoxelMaterial material = id.HasValue ? materials.Get(id.Value) : null;
-            if (!density.HasValue || density.Value < isoLevel || !above.HasValue || above.Value >= isoLevel || material == null)
+            if (!density.HasValue || density.Value < isoLevel || material == null)
             {
                 return false;
             }
-            // A pile of dropped stone at any size; otherwise only a piece small enough to be lying loose (GL133).
-            return material.PickedFromPiles
-                || (material.PickUpPieceSize > 0 && ToolStrike.IsSmallPiece(world, sample, id.Value, material.PickUpPieceSize, isoLevel));
+            // A pile of dropped stone at any size, from its top (GL133).
+            if (material.PickedFromPiles)
+            {
+                return above.HasValue && above.Value < isoLevel;
+            }
+            // Otherwise a piece small enough to be loose, on the surface or in the dirt (GL149), with nothing but air
+            // and soft ground around it: a stone against ore or rock is part of them.
+            return material.PickUpPieceSize > 0 && ToolStrike.IsLoosePiece(world, sample, id.Value, material.PickUpPieceSize, isoLevel,
+                next => IsBedding(world, next, materials, isoLevel));
+        }
+
+        // What a loose stone may lie in or against: air, or ground bare hands can dig (dirt, grass, clay, leaves; GL145).
+        private static bool IsBedding(World world, Vector3Int sample, MaterialRegistry materials, float isoLevel)
+        {
+            float? density = world.GetDensity(sample);
+            if (!density.HasValue)
+            {
+                return false;
+            }
+            if (density.Value < isoLevel)
+            {
+                return true;
+            }
+            byte? id = world.GetMaterial(sample);
+            VoxelMaterial material = id.HasValue ? materials.Get(id.Value) : null;
+            return material != null && material.ToolTier == 0;
         }
     }
 }

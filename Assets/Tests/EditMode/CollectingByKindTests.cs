@@ -94,14 +94,14 @@ namespace Clube.Core.Tests
         }
 
         // GL118: purity carries through crafting: wood gathered 60/40 with leaves makes 60% sticks, which make a 60%
-        // pointy stick that lasts 60% of its hits.
+        // spear that lasts 60% of its hits.
         [Test]
         public void Quality_CarriesFromGatheredWoodToTool()
         {
             ItemDefinition woodItem = ItemDefinition.Create("wood", "Wood");
             ItemDefinition leafItem = ItemDefinition.Create("leaves", "Leaves");
             ItemDefinition sticks = ItemDefinition.Create("sticks", "Sticks");
-            ToolDefinition pointy = ToolDefinition.Create("pointy-stick", "Pointy stick", 1, 1f).WithDurability(60);
+            ToolDefinition pointy = ToolDefinition.Create("spear", "Spear", 1, 1f).WithDurability(60);
             VoxelMaterial wood = VoxelMaterial.Create(11, "Wood", VoxelMaterialCategory.Plant).WithBreaking(1f, woodItem);
             VoxelMaterial leaves = VoxelMaterial.Create(12, "Leaves", VoxelMaterialCategory.Plant).WithBreaking(1f, leafItem);
             MaterialRegistry plants = MaterialRegistry.Create(wood, leaves);

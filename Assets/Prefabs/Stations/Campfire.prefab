@@ -262,7 +262,9 @@ MonoBehaviour:
   kind: 3
   recipes:
   - {fileID: 11400000, guid: ea02483da2e659341b6db2aa15139bec, type: 2}
+  - {fileID: 11400000, guid: c902d9e5741101b4cbaf625578a16691, type: 2}
   burnsFuel: 1
+  heat: 1
 --- !u!114 &423415346032570738
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -290,22 +292,31 @@ MonoBehaviour:
   parts:
   - Offset: {x: 2, y: 0, z: 0}
     Material: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+    Density: 0
   - Offset: {x: 1, y: 0, z: 2}
     Material: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+    Density: 0
   - Offset: {x: -1, y: 0, z: 2}
     Material: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+    Density: 0
   - Offset: {x: -2, y: 0, z: 0}
     Material: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+    Density: 0
   - Offset: {x: -1, y: 0, z: -2}
     Material: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+    Density: 0
   - Offset: {x: 1, y: 0, z: -2}
     Material: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+    Density: 0
   - Offset: {x: -1, y: 0, z: 0}
     Material: {fileID: 11400000, guid: cf152efb35813624a9fcb26da0602f3f, type: 2}
+    Density: 0
   - Offset: {x: 1, y: 0, z: 0}
     Material: {fileID: 11400000, guid: cf152efb35813624a9fcb26da0602f3f, type: 2}
+    Density: 0
   - Offset: {x: 0, y: 0, z: 1}
     Material: {fileID: 11400000, guid: cf152efb35813624a9fcb26da0602f3f, type: 2}
+    Density: 0
   sampleDensity: 0.8
   placementPreview: {fileID: 290408104078311090}
   glowsOn: {fileID: 11400000, guid: cf152efb35813624a9fcb26da0602f3f, type: 2}

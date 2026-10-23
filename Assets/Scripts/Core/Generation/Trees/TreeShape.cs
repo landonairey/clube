@@ -24,6 +24,8 @@ namespace Clube.Core
         // How deep the trunk's flared foot reaches into the ground, in metres, so no gap shows on a slope.
         private const float FootDepth = 0.6f;
 
+        private const int SpeciesSalt = 0x4D41504C;
+
         // Branches spread around the trunk by the golden angle, so none line up.
         private const float GoldenAngle = 2.39996f;
 
@@ -39,8 +41,10 @@ namespace Clube.Core
         public static void Build(int seed, Vector2Int cell, float3 root, TreeGeneration settings, List<TreePart> parts)
         {
             var dice = new Dice(seed, cell);
-            byte wood = settings.Wood.Id;
-            byte leaves = settings.Leaves.Id;
+            // Birch or maple (GL150), by its own roll so the shape's numbers stay as they were.
+            bool maple = VoxelHash.Uniform(seed, cell.x, SpeciesSalt, cell.y) < settings.MapleShare;
+            byte wood = maple ? settings.MapleWood.Id : settings.Wood.Id;
+            byte leaves = maple ? settings.MapleLeaves.Id : settings.Leaves.Id;
             byte stump = settings.Stump.Id;
             float minRadius = settings.MinBranchRadius;
             float height = dice.Range(settings.Height.x, settings.Height.y);

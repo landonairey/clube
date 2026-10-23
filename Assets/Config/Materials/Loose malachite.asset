@@ -23,6 +23,9 @@ MonoBehaviour:
   reposeAngle: 40
   pickUpPieceSize: 0
   pickedFromPiles: 1
+  toolTier: 1
+  requiredSkill: 0
+  requiredLevel: 0
   breaksInto: {fileID: 0}
   isWorktop: 0
   isSoft: 0
