@@ -96,6 +96,17 @@ namespace Clube.Core
         [SerializeField]
         private bool pickedFromPiles;
 
+        [Tooltip("The tool tier it takes to work it (GL145): 0 bare hands (dirt, grass, clay, leaves), 1 a hand axe (wood, stone, ore), 2 stone tools, 3 bronze (maple).")]
+        [SerializeField, Range(0, 5)]
+        private int toolTier;
+
+        [Tooltip("A skill level it also takes (GL152: maple needs Woodcutting 3). None: no level.")]
+        [SerializeField]
+        private SkillType requiredSkill;
+
+        [SerializeField, Range(0, SkillSet.MaxLevel)]
+        private int requiredLevel;
+
         [Tooltip("What a tool turns it into once broken (MF5, GL3), e.g. stone → cracked stone → loose stone. None: breaking it removes it and gives its drop.")]
         [SerializeField]
         private VoxelMaterial breaksInto;
@@ -201,6 +212,24 @@ namespace Clube.Core
 
         /// <summary>True when bare hands take it from a pile of any size (GL133: dropped cobbles).</summary>
         public bool PickedFromPiles => pickedFromPiles;
+
+        /// <summary>The tool tier it takes to work it (GL145): 0 for bare hands.</summary>
+        public int ToolTier => toolTier;
+
+        /// <summary>A skill it also takes (GL152), or <see cref="SkillType.None"/>.</summary>
+        public SkillType RequiredSkill => requiredSkill;
+
+        /// <summary>The level of <see cref="RequiredSkill"/> it takes.</summary>
+        public int RequiredLevel => requiredLevel;
+
+        /// <summary>Sets what it takes to work it (GL145, GL152), for materials made in code (tests).</summary>
+        public VoxelMaterial WithToolTier(int tier, SkillType skill = SkillType.None, int level = 0)
+        {
+            toolTier = Mathf.Clamp(tier, 0, 5);
+            requiredSkill = skill;
+            requiredLevel = Mathf.Clamp(level, 0, SkillSet.MaxLevel);
+            return this;
+        }
 
         /// <summary>Sets how it piles, for materials made in code (tests, tools).</summary>
         public VoxelMaterial WithPile(PileShape shape, float angle = 40f)

@@ -45,7 +45,7 @@ namespace Clube.Game
 
         [Tooltip("Gradual sphere: how much density a hand hit takes from each sample (a whole sample is 1).")]
         [Range(0.01f, 1f)]
-        public float HandAmount = 0.2f;
+        public float HandAmount = 0.1f;
 
         [Tooltip("Gradual sphere: how much density a tool hit takes from each sample of the kind it's made for (GL107: a shovel's soil, a pickaxe's rock).")]
         [Range(0.01f, 1f)]

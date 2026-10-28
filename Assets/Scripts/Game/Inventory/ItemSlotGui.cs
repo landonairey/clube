@@ -22,19 +22,15 @@ namespace Clube.Game
         /// <summary>The terrain materials, for how pure a stack is (GL115); set by whoever has them, null shows no purity.</summary>
         public static MaterialRegistry Materials { get; set; }
 
-        // A stack made less than perfectly shows how well, in the upper right: its quality (GL118: sticks
-        // of 60% wood), or for mined material that isn't all its own material, how much of it is (GL115: ore
-        // of a grade).
+        // Every stack shows how well it was made, in the upper right, 100% included (GL158): its quality
+        // (GL118: sticks of 60% wood), or for mined material that isn't all its own material, how much of it
+        // is (GL115: ore of a grade).
         private static void DrawPurity(Rect rect, ItemStack stack)
         {
             float purity = stack.Quality;
-            if (purity >= 0.995f && Materials != null && stack.Contents != null && !stack.Item.HidesContents && Materials.IsMaterialItem(stack.Item))
+            if (purity >= 0.995f && purity <= 1.005f && Materials != null && stack.Contents != null && !stack.Item.HidesContents && Materials.IsMaterialItem(stack.Item))
             {
                 purity = Materials.Quality(stack.Contents, stack.Item);
-            }
-            if (purity >= 0.995f)
-            {
-                return;
             }
             purityStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = 10, fontStyle = FontStyle.Bold, normal = { textColor = new Color(1f, 0.8f, 0.35f) } };
             GUI.Label(new Rect(rect.x, rect.y + 1f, rect.width - 3f, 14f), (purity * 100f).ToString("0") + "%", purityStyle);

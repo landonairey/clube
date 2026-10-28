@@ -38,7 +38,14 @@ namespace Clube.Debug.Editor
             Write("tin ingot", "Tin ingot", PaintIngot(Tin, TinLight, TinDark));
             Write("bronze bun", "Bronze bun", PaintBun(Bronze, BronzeLight, BronzeDark));
             Write("bronze ingot", "Bronze ingot", PaintIngot(Bronze, BronzeLight, BronzeDark));
-            Write("wood", "Wood", PaintLog());
+            // Birch (GL150): pale bark with dark marks.
+            Write("wood", "Wood", PaintLog(new Color(0.86f, 0.84f, 0.78f), new Color(0.32f, 0.3f, 0.28f), new Color(0.9f, 0.82f, 0.62f), new Color(0.76f, 0.64f, 0.44f)));
+            Write("maple wood", "Maple wood", PaintLog(new Color(0.36f, 0.24f, 0.14f), new Color(0.22f, 0.14f, 0.08f), new Color(0.85f, 0.7f, 0.48f), new Color(0.62f, 0.42f, 0.24f)));
+            Write("hand axe", "Hand axe", PaintHandAxe());
+            Write("crushed stone", "Crushed stone", PaintGravel(new Color(0.55f, 0.55f, 0.57f), null));
+            Write("crushed cassiterite", "Crushed cassiterite", PaintGravel(new Color(0.5f, 0.5f, 0.52f), new Color(0.22f, 0.15f, 0.1f)));
+            Write("crushed chalcopyrite", "Crushed chalcopyrite", PaintGravel(new Color(0.5f, 0.5f, 0.52f), new Color(0.86f, 0.72f, 0.22f)));
+            Write("crushed malachite", "Crushed malachite", PaintGravel(new Color(0.5f, 0.5f, 0.52f), new Color(0.48f, 0.66f, 0.3f)));
             Write("leaves", "Leaves", PaintLeaf());
             Write("clay", "Clay", PaintClay());
             Write("brick", "Brick", PaintBrick());
@@ -48,7 +55,6 @@ namespace Clube.Debug.Editor
             Write("spear", "Spear", PaintSpear());
             Write("stone hatchet", "Stone hatchet", PaintHatchet());
             Write("stone hammer", "Stone hammer", PaintHammer());
-            Write("pointy stick", "Pointy stick", PaintPointyStick());
             Write("stone pick", "Stone pick", PaintStonePick());
             Write("campfire", "Campfire", PaintCampfire());
             Write("unknown ore", "Unknown ore", PaintUnknownOre());
@@ -262,14 +268,10 @@ namespace Clube.Debug.Editor
 
         // A short log lying across the icon: a bark-brown side, and its cut end facing the viewer
         // with growth rings around a dark heart.
-        private static Texture2D PaintLog()
+        private static Texture2D PaintLog(Color bark, Color barkDark, Color sapwood, Color heart)
         {
             Texture2D texture = Blank();
             var random = new System.Random(23);
-            var bark = new Color(0.36f, 0.24f, 0.14f);
-            var barkDark = new Color(0.22f, 0.14f, 0.08f);
-            var sapwood = new Color(0.85f, 0.70f, 0.48f);
-            var heart = new Color(0.62f, 0.42f, 0.24f);
             var end = new Vector2(Size * 0.3f, Size * 0.5f);
             float radius = Size * 0.24f;
             float right = Size * 0.86f;
@@ -497,17 +499,59 @@ namespace Clube.Debug.Editor
             return texture;
         }
 
-        // A short stick whittled to a point at the top right.
-        private static Texture2D PaintPointyStick()
+        // A hand axe (GL146): a teardrop of grey stone, flaked to an edge, with darker flake scars.
+        private static Texture2D PaintHandAxe()
         {
             Texture2D texture = Blank();
-            Line(texture, new Vector2(12f, 10f), new Vector2(44f, 42f), 3.4f, Handle);
-            Line(texture, new Vector2(12f, 12f), new Vector2(43f, 43f), 1.1f, HandleLight);
-            for (int i = 0; i < 8; i++)
+            var random = new System.Random(31);
+            var centre = new Vector2(Size * 0.5f, Size * 0.46f);
+            for (int y = 0; y < Size; y++)
             {
-                float t = i / 7f;
-                Vector2 at = Vector2.Lerp(new Vector2(42f, 40f), new Vector2(54f, 52f), t);
-                Line(texture, at, at, Mathf.Lerp(4f, 1f, t), new Color(0.86f, 0.74f, 0.52f));
+                for (int x = 0; x < Size; x++)
+                {
+                    // Wide and round at the butt (bottom), narrowing to a point at the top.
+                    float t = Mathf.InverseLerp(Size * 0.1f, Size * 0.9f, y);
+                    float half = Size * 0.3f * Mathf.Sqrt(Mathf.Clamp01(1f - t)) * Mathf.Lerp(0.85f, 1f, Mathf.Sin(t * Mathf.PI));
+                    float dx = x - centre.x;
+                    if (t <= 0f || t >= 1f || Mathf.Abs(dx) > half)
+                    {
+                        continue;
+                    }
+                    float facet = Mathf.Repeat((x * 0.7f + y * 1.1f) / 9f + (float)random.NextDouble() * 0.15f, 1f);
+                    Color stone = Color.Lerp(StoneHead, StoneHeadLight, 0.35f + 0.5f * (1f - Mathf.Abs(dx) / Mathf.Max(1f, half)));
+                    if (facet < 0.18f)
+                    {
+                        stone *= 0.78f;
+                    }
+                    stone.a = 1f;
+                    texture.SetPixel(x, y, stone);
+                }
+            }
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
+        // A little heap of gravel (GL148): grey grit, flecked with ore when there is some.
+        private static Texture2D PaintGravel(Color grit, Color? ore)
+        {
+            Texture2D texture = Blank();
+            var random = new System.Random(37);
+            for (int i = 0; i < 70; i++)
+            {
+                // Pebbles piled in a low mound: more of them low and in the middle.
+                float u = (float)random.NextDouble() * 2f - 1f;
+                float x = Size * 0.5f + u * Size * 0.4f;
+                float top = Size * 0.18f + Size * 0.42f * (1f - u * u);
+                float y = Size * 0.16f + (float)random.NextDouble() * (top - Size * 0.16f);
+                float radius = 2.5f + (float)random.NextDouble() * 3f;
+                Color pebble = grit * (0.75f + 0.4f * (float)random.NextDouble());
+                if (ore.HasValue && random.NextDouble() < 0.3)
+                {
+                    pebble = ore.Value * (0.85f + 0.3f * (float)random.NextDouble());
+                }
+                pebble.a = 1f;
+                Line(texture, new Vector2(x, y), new Vector2(x, y), radius, pebble);
             }
             Outline(texture, new Color(0.12f, 0.12f, 0.14f));
             texture.Apply();

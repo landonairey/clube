@@ -84,12 +84,16 @@ namespace Clube.Debug.Editor
                 { "loose malachite", (StoneBase, StoneMix, MalachiteFleck, Wear.Loose) },
                 // Rock (id 10) is no longer a material (surface rocks are stone, 2026-10-20); kept so the entries after it keep their seeds.
                 { "rock", (new Color(0.38f, 0.37f, 0.36f), new Color(0.55f, 0.53f, 0.5f), null, Wear.Whole) },
-                { "wood", (new Color(0.36f, 0.25f, 0.16f), new Color(0.48f, 0.35f, 0.23f), null, Wear.Bark) },
-                { "leaves", (new Color(0.16f, 0.33f, 0.12f), new Color(0.30f, 0.50f, 0.18f), null, Wear.Leaves) },
+                // Birch (GL150): pale bark.
+                { "wood", (new Color(0.82f, 0.80f, 0.74f), new Color(0.66f, 0.63f, 0.57f), null, Wear.Bark) },
+                { "leaves", (new Color(0.22f, 0.32f, 0.2f), new Color(0.37f, 0.47f, 0.31f), null, Wear.Leaves) },
                 { "clay", (new Color(0.62f, 0.45f, 0.33f), new Color(0.70f, 0.55f, 0.42f), null, Wear.Whole) },
                 { "brick", (new Color(0.62f, 0.28f, 0.18f), new Color(0.70f, 0.36f, 0.24f), null, Wear.Bricks) },
                 // Added last, so the entries above keep their seeds and textures.
                 { "cassiterite", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), new Color(0.22f, 0.15f, 0.10f), Wear.Whole) },
+                // Maple (GL150): the old brown bark, and autumn leaves, red with a hint of brown.
+                { "maple wood", (new Color(0.36f, 0.25f, 0.16f), new Color(0.48f, 0.35f, 0.23f), null, Wear.Bark) },
+                { "maple leaves", (new Color(0.5f, 0.23f, 0.12f), new Color(0.66f, 0.37f, 0.19f), null, Wear.Leaves) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]

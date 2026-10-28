@@ -171,8 +171,11 @@ MonoBehaviour:
   kind: 0
   recipes:
   - {fileID: 11400000, guid: 1d4e5938b58ac124a86f989c5f816630, type: 2}
+  - {fileID: 11400000, guid: 50ce999b3654ec14a8e74e6522c03fba, type: 2}
   - {fileID: 11400000, guid: 528fb321b82b1354ba41a95cd7208a06, type: 2}
+  - {fileID: 11400000, guid: b41c6e81fd9d1964287e10b24e4537bc, type: 2}
   - {fileID: 11400000, guid: 5deb817244217e6458d8b59c0f758ba8, type: 2}
+  - {fileID: 11400000, guid: ab01fde72466eb541a3a9790e3f6770d, type: 2}
   - {fileID: 11400000, guid: 5494c424192226542928114696f6423b, type: 2}
   - {fileID: 11400000, guid: 2ea129385f04d4e4191060b48a63ffdf, type: 2}
   burnsFuel: 1

@@ -1018,6 +1018,8 @@ GameObject:
   - component: {fileID: 1697135587}
   - component: {fileID: 1697135589}
   - component: {fileID: 1697135590}
+  - component: {fileID: 1697135592}
+  - component: {fileID: 1697135591}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1204,7 +1206,7 @@ MonoBehaviour:
     HandTakesAimedVoxel: 1
     HandRadius: 0.3
     ToolRadius: 0.6
-    HandAmount: 0.2
+    HandAmount: 0.1
     ToolAmount: 1
     ToolOffAmount: 0.1
     OtherMaterialFactor: 0.5
@@ -1419,6 +1421,9 @@ MonoBehaviour:
   - Label: Mining journal
     Action: Journal
     Keys: 
+  - Label: Crafting journal
+    Action: CraftingJournal
+    Keys: 
   - Label: Drop (hold to pour)
     Action: Drop
     Keys: 
@@ -1470,7 +1475,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.StumpWorktops
   recipes:
   - {fileID: 11400000, guid: 4718a79fc1c2a81438a065cf5434da28, type: 2}
-  - {fileID: 11400000, guid: 74e8bd7f43379dd4aa596695997acab2, type: 2}
   - {fileID: 11400000, guid: a1a8b63791d70f54190b6343ce8d31c7, type: 2}
   - {fileID: 11400000, guid: 3daad1d4d3fb0234bb8376f566d80a0d, type: 2}
   - {fileID: 11400000, guid: a3738c3ced64737449f5ad3ad8cdf4cd, type: 2}
@@ -1480,6 +1484,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2fff207b048f70b40bffdcec6a35579b, type: 2}
   - {fileID: 11400000, guid: 4b6b35cb8a9260e42b8d0c25a6bc295b, type: 2}
   - {fileID: 11400000, guid: 3f9e228f10fb98e44a8816bc33a794c1, type: 2}
+  - {fileID: 11400000, guid: ce272991d7e38a645a6a4134ffda0a02, type: 2}
   kinds:
   - Material: {fileID: 11400000, guid: a7a179311785ad14bab47c68162a300f, type: 2}
     Name: Flat Rock
@@ -1621,7 +1626,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ff5cad5b532da5a45ad24d552fdd7b14, type: 2}
   - {fileID: 11400000, guid: d5757a95246d5f24fbf5cfc4a251f193, type: 2}
   - {fileID: 11400000, guid: d7758b283598e0c47b61077fe954c5f2, type: 2}
-  - {fileID: 11400000, guid: 74e8bd7f43379dd4aa596695997acab2, type: 2}
   - {fileID: 11400000, guid: 58c231621d094754888613a6d3e07203, type: 2}
   - {fileID: 11400000, guid: 94d08de95a5f51c4dad353cc38fb0d40, type: 2}
   - {fileID: 11400000, guid: a3738c3ced64737449f5ad3ad8cdf4cd, type: 2}
@@ -1638,6 +1642,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2fff207b048f70b40bffdcec6a35579b, type: 2}
   - {fileID: 11400000, guid: 4b6b35cb8a9260e42b8d0c25a6bc295b, type: 2}
   - {fileID: 11400000, guid: 3f9e228f10fb98e44a8816bc33a794c1, type: 2}
+  - {fileID: 11400000, guid: ce272991d7e38a645a6a4134ffda0a02, type: 2}
+  - {fileID: 11400000, guid: 50ce999b3654ec14a8e74e6522c03fba, type: 2}
+  - {fileID: 11400000, guid: c902d9e5741101b4cbaf625578a16691, type: 2}
+  - {fileID: 11400000, guid: b41c6e81fd9d1964287e10b24e4537bc, type: 2}
+  - {fileID: 11400000, guid: ab01fde72466eb541a3a9790e3f6770d, type: 2}
 --- !u!114 &1697135589
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1667,6 +1676,54 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.CraftingJournalScreen
   toggleAction: {fileID: -833899942069987867, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+--- !u!114 &1697135591
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5c277b674fb82640aca174c471271ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.ToolHint
+  tools: {fileID: 1697135569}
+  bashing: {fileID: 1697135592}
+--- !u!114 &1697135592
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6cef4815777706345b581a8b399edf33, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.BoulderBashing
+  worldView: {fileID: 1350119460}
+  placeAction: {fileID: 9082728051176153063, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  hotbar: {fileID: 1697135571}
+  reach: 3
+  boulderMaterials:
+  - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+  - {fileID: 11400000, guid: 5004c68df5599dd4fa11f8a4d8b920fd, type: 2}
+  loosePieceSize: 3
+  stone: {fileID: 11400000, guid: 2c26c5c4f4a60ca449a71671d88094ad, type: 2}
+  handAxe: {fileID: 11400000, guid: a56a1ea3071fb444faf3aa4d3fba77a8, type: 2}
+  handAxeExperience: 5
+  crushes:
+  - Raw: {fileID: 11400000, guid: abc86bcbe8361da41bd3f644418bc0a3, type: 2}
+    Crushed: {fileID: 11400000, guid: ed8c8b48636509843aaf87e527e02009, type: 2}
+  - Raw: {fileID: 11400000, guid: 9feabda89ca47d5479fc62960a078576, type: 2}
+    Crushed: {fileID: 11400000, guid: 5a86064ddd2bb7e4f8f439df059c404a, type: 2}
+  - Raw: {fileID: 11400000, guid: 1e3311289ece4ce428134389e92a4e43, type: 2}
+    Crushed: {fileID: 11400000, guid: 0009a74da2fcc9c418d567adad1cc958, type: 2}
+  crushedStone: {fileID: 11400000, guid: e6ec90f8b46ea6747b89bbc179234604, type: 2}
+  crushSkill: 3
+  crushLevel: 2
+  crushExperience: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

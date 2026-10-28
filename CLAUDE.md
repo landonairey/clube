@@ -355,6 +355,19 @@ aren't replaced. Station screens head with "Efficiency xx%" and what it works on
 `PlayerInteractor.TargetIsGround` lets tools still break it. J opens the crafting journal (`CraftingJournalScreen`: Crafting,
 Mining, Smelting chapters; `ItemSketch` inks item icons; both journals draw through `JournalBook`). New worktop recipes: shovel,
 bronze chisel from a bronze bun and a stick; ingots sell for 30/26/38.
+Twentieth pass (GL145-GL152, `Docs/20261022 clube-backlog.md`): materials need a tool tier (`VoxelMaterial.ToolTier`, and
+`RequiredSkill`/`RequiredLevel`; dirt, grass, clay, leaves 0; wood, stone, ore 1; maple 3 and Woodcutting 3); tools have a
+`ToolDefinition.Tier` (hand 0, hand axe 1, stone 2, bronze 3) and `Efficiency` (hand axe 0.3). `PlayerToolUser.Blocked` says why a
+hit took nothing, shown by `ToolHint`. `BoulderBashing` (Place, right click, on boulder stone too big to be loose): a stone becomes
+a Hand axe; from Mining 2, ore is crushed (`Crushing`: half the rock off) into crushed ore plus crushed stone as a part item; crushed
+ore has its own smelt recipes and sells for 1.5x. The pointy stick is gone. `ChunkFillKernel.IsBuriedStone` puts 1-3 sample stones
+in the dirt band (`TerrainLayers.BuriedStoneChance`); `HandPickup` takes a stone piece of 3 or fewer bedded only in air or tier-0
+ground (`ToolStrike.IsLoosePiece`). Trees are birch (the old Wood, pale bark) or maple (`TreeGeneration.MapleWood/MapleLeaves/
+MapleShare`, ids 21, 22); maple wood sells for 2x and whittles into 140% sticks (`Recipe.QualityFactor`; quality goes up to
+`ItemStack.MaxQuality` 2). After pulling, the fill jobs' `LayerTable` changed: restart Unity if generation looks wrong (Burst gotcha).
+Twenty-first pass (GL153-GL159, `Docs/20261027 clube-backlog.md`): inventory drops land on the nearest slot
+(`InventoryGridGui.PlayerSlotNear`). The hand (0.1 a hit) and the hand axe (`ToolDefinition.AimedOnly`, 0.2) take only the
+ground sample under the dot. Stumps need tier 3. Every stack shows its quality, 100% included. GL157 (tunnel speckles) is open.
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16

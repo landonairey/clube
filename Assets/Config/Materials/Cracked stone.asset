@@ -21,4 +21,18 @@ MonoBehaviour:
   drop: {fileID: 11400000, guid: 2c26c5c4f4a60ca449a71671d88094ad, type: 2}
   pileShape: 1
   reposeAngle: 40
+  pickUpPieceSize: 0
+  pickedFromPiles: 0
+  toolTier: 1
+  requiredSkill: 0
+  requiredLevel: 0
   breaksInto: {fileID: 11400000, guid: 5940f62774f47a6418f401c613313f3a, type: 2}
+  isWorktop: 0
+  isSoft: 0
+  driesInto: {fileID: 0}
+  dryingDays: 2
+  notes:
+    Hardness: 
+    Luster: 
+    Colour: 
+    Feel: 

@@ -14,6 +14,9 @@ namespace Clube.Core
         /// <summary>Parts smaller than this count as nothing.</summary>
         public const float PartEpsilon = 1e-3f;
 
+        /// <summary>The best quality a stack can have (GL151): 1 is ordinary, more is better than ordinary.</summary>
+        public const float MaxQuality = 2f;
+
         // Stored as 1 - quality, so the default (an empty or ordinary stack) is quality 1.
         private readonly float flaw;
 
@@ -24,7 +27,8 @@ namespace Clube.Core
             Part = Item != null && part > PartEpsilon ? System.Math.Min(part, 1f - PartEpsilon) : 0f;
             Contents = Item != null ? contents : null;
             Wear = Item != null ? System.Math.Max(0, wear) : 0;
-            flaw = Item != null ? 1f - System.Math.Max(0f, System.Math.Min(1f, quality)) : 0f;
+            // Up to MaxQuality: maple sticks make tools better than the ordinary (GL151).
+            flaw = Item != null ? 1f - System.Math.Max(0f, System.Math.Min(MaxQuality, quality)) : 0f;
         }
 
         /// <summary>The item, or null for an empty slot.</summary>
@@ -45,8 +49,9 @@ namespace Clube.Core
         public int Wear { get; }
 
         /// <summary>
-        /// How well it was made, 0-1 (GL118): material taken from a bin is as good as it is pure, and what's
-        /// crafted is as good as what it was made from. A tool lasts its quality's share of its hits.
+        /// How well it was made (GL118): 1 is ordinary, less for impure material, more (up to <see cref="MaxQuality"/>)
+        /// for finer stuff (GL151: maple sticks). What's crafted is as good as what it was made from, and a tool
+        /// lasts its quality times its hits.
         /// </summary>
         public float Quality => 1f - flaw;
 

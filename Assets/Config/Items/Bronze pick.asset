@@ -18,6 +18,7 @@ MonoBehaviour:
   maxStack: 1
   unitVolume: 1
   burnSeconds: 0
+  hidesContents: 0
   impactSize: 2
   impactShape: 0
   wideOn: 2
@@ -34,4 +35,7 @@ MonoBehaviour:
   - Material: {fileID: 11400000, guid: b167c5abf07b4be419155d7e54a546e6, type: 2}
     WholeCategory: 0
     Hits: 1
+  chisels: 0
   hitsOnAnything: 0
+  tier: 3
+  efficiency: 1

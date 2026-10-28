@@ -228,6 +228,31 @@ namespace Clube.Core
             return limit > 0 && FindPiece(world, sample, material, limit, isoLevel);
         }
 
+        /// <summary>
+        /// True when <paramref name="sample"/> belongs to a small piece of its material (see <see cref="IsSmallPiece"/>)
+        /// and every sample touching the piece passes <paramref name="bedding"/> (GL149: a stone lying in soil, not one
+        /// against ore or rock).
+        /// </summary>
+        public static bool IsLoosePiece(World world, Vector3Int sample, byte material, int limit, float isoLevel, Func<Vector3Int, bool> bedding)
+        {
+            if (!IsSmallPiece(world, sample, material, limit, isoLevel))
+            {
+                return false;
+            }
+            foreach (Vector3Int part in Piece)
+            {
+                foreach (Vector3Int face in Faces)
+                {
+                    Vector3Int next = part + face;
+                    if (!Piece.Contains(next) && !bedding(next))
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
         // After a hit removes samples, any solid piece around them of SliverSize samples or fewer
         // that no longer joins anything bigger (a sliver left hanging in the air) is removed too and
         // collected like the rest. Returns how many samples it removed.

@@ -95,6 +95,18 @@ namespace Clube.Core
         [SerializeField, Min(0)]
         private int hitsOnAnything;
 
+        [Tooltip("Its tier (GL145): what it can work. 0 bare hands, 1 hand axe, 2 stone tools, 3 bronze. A material needing a higher tier gives it nothing.")]
+        [SerializeField, Range(0, 5)]
+        private int tier = 1;
+
+        [Tooltip("How much of a full hit it takes, 0-1 (GL146: a hand axe takes everything, slowly). Scales what the gradual sphere takes.")]
+        [SerializeField, Range(0.05f, 1f)]
+        private float efficiency = 1f;
+
+        [Tooltip("Sphere modes: each hit takes only from the ground sample under the dot, like the bare hand (GL155: the hand axe), not a sphere.")]
+        [SerializeField]
+        private bool aimedOnly;
+
         /// <summary>Makes a tool in code (tests); the game's tools are assets.</summary>
         public static ToolDefinition Create(
             string id, string displayName, int impactSize, float power, float hitsPerSecond = 2f, ImpactShape shape = ImpactShape.Cube)
@@ -132,6 +144,29 @@ namespace Clube.Core
         }
 
         /// <summary>Limits the whole reach to one kind of ground, for tools made in code (tests, tools).</summary>
+        /// <summary>Its tier (GL145): a material needing a higher one gives it nothing.</summary>
+        public int Tier => tier;
+
+        /// <summary>How much of a full hit it takes, 0-1 (GL146).</summary>
+        public float Efficiency => efficiency;
+
+        /// <summary>True when a sphere-mode hit takes only the ground sample under the dot (GL155).</summary>
+        public bool AimedOnly => aimedOnly;
+
+        /// <summary>True when it can work the material at all (GL145): its tier is high enough.</summary>
+        public bool CanWork(VoxelMaterial material)
+        {
+            return material == null || material.ToolTier <= tier;
+        }
+
+        /// <summary>Sets its tier and efficiency (GL145, GL146), for tools made in code (tests).</summary>
+        public ToolDefinition WithTier(int value, float hitEfficiency = 1f)
+        {
+            tier = Mathf.Clamp(value, 0, 5);
+            efficiency = Mathf.Clamp(hitEfficiency, 0.05f, 1f);
+            return this;
+        }
+
         public ToolDefinition WithWideOn(ReachOn ground)
         {
             wideOn = ground;
