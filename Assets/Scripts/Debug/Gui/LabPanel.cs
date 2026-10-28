@@ -85,6 +85,11 @@ namespace Clube.Debug
         [SerializeField]
         private bool oresOpen;
 
+        [SerializeField]
+        private bool farTerrainOpen;
+        private bool coarseTerrainOpen;
+        private bool distantTreesOpen;
+
         [Tooltip("Every item, for the Cheats section's item picker and give command (GL43).")]
         [SerializeField]
         private ItemCatalog items;
@@ -115,6 +120,9 @@ namespace Clube.Debug
         private LabChunkTarget chunkTarget;
         private StorageView storageView;
         private OreDebugView oreView;
+        private FarTerrainView farTerrain;
+        private TerrainLodView coarseTerrain;
+        private DistantTreeView distantTrees;
 
         private bool partsFound;
         private LabPanelFrame frame;
@@ -169,6 +177,9 @@ namespace Clube.Debug
             chunkTarget = FindFirstObjectByType<LabChunkTarget>();
             storageView = FindFirstObjectByType<StorageView>();
             oreView = FindFirstObjectByType<OreDebugView>();
+            farTerrain = FindFirstObjectByType<FarTerrainView>();
+            coarseTerrain = FindFirstObjectByType<TerrainLodView>();
+            distantTrees = FindFirstObjectByType<DistantTreeView>();
         }
 
         private void OnDisable()
@@ -219,7 +230,7 @@ namespace Clube.Debug
             foreach (Object part in new Object[]
                      {
                          Config, worldView, testFill, brush, chunkFocus, chunkVolume, selector, corners, volumeLab,
-                         stepThrough, flyCamera, playerToggle, player, PlayerPart<PlayerToolUser>(), PlayerPart<ToolCursor>(), PlayerPart<PlayerInventory>(), labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView, oreView,
+                         stepThrough, flyCamera, playerToggle, player, PlayerPart<PlayerToolUser>(), PlayerPart<ToolCursor>(), PlayerPart<PlayerInventory>(), labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView, oreView, coarseTerrain, distantTrees, farTerrain,
                      })
             {
                 if (part != null)
@@ -274,6 +285,18 @@ namespace Clube.Debug
             if (worldView != null && frame.Section("Ores", ref oresOpen))
             {
                 OreControls.Draw(frame, config, oreView, chunkFocus);
+            }
+            if (coarseTerrain != null && frame.Section("Coarse terrain", ref coarseTerrainOpen))
+            {
+                TerrainLodControls.Draw(frame, coarseTerrain);
+            }
+            if (distantTrees != null && frame.Section("Distant trees", ref distantTreesOpen))
+            {
+                DistantTreeControls.Draw(frame, distantTrees);
+            }
+            if (farTerrain != null && frame.Section("Far terrain", ref farTerrainOpen))
+            {
+                FarTerrainControls.Draw(frame, farTerrain);
             }
             if (chunkFocus != null && frame.Section("Focused chunk", ref chunkOpen))
             {

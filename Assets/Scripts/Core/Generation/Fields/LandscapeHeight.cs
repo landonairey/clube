@@ -14,6 +14,9 @@ namespace Clube.Core
     /// mountains, and softer <b>hills</b> where the mask is between the two;</item>
     /// <item>low <b>plains</b> noise, a few metres, so flat land isn't a table top.</item>
     /// </list>
+    /// Optionally, <see cref="DistantRanges"/> (P7): great ridged ranges, kilometres tall and wide,
+    /// that rise only beyond a distance from the origin, so they stand on the horizon of the far
+    /// terrain while the land the player works keeps the world's height.
     /// </summary>
     public struct LandscapeHeight : IHeightField
     {
@@ -25,16 +28,19 @@ namespace Clube.Core
         private int octaves;
         private float lacunarity;
         private float persistence;
+        private DistantRanges distant;
 
         /// <param name="level">Height of the plains, in metres.</param>
         /// <param name="mountainHeight">Tallest the mountains rise above the plains, in metres.</param>
         /// <param name="featureSize">Width of a mountain, in metres; ranges and plains are several times wider.</param>
         /// <param name="coverage">Share of the land that is mountains, 0-1.</param>
         /// <param name="octaves">Detail on the ridges.</param>
+        /// <param name="distant">Great ranges far from the origin; the default has none.</param>
         public LandscapeHeight(
             int seed, float level, float mountainHeight, float featureSize, float coverage,
-            int octaves = 5, float lacunarity = 2f, float persistence = 0.5f)
+            int octaves = 5, float lacunarity = 2f, float persistence = 0.5f, DistantRanges distant = default)
         {
+            this.distant = distant;
             noise = new PerlinNoise(seed);
             this.level = level;
             this.mountainHeight = math.max(0f, mountainHeight);
@@ -62,7 +68,7 @@ namespace Clube.Core
             float hills = math.smoothstep(threshold - 0.2f, threshold + 0.05f, mask);
 
             float ridgeScale = 1f / featureSize;
-            float ridges = Ridged(wx * ridgeScale + 71.3f, wz * ridgeScale + 47.9f);
+            float ridges = Ridged(wx * ridgeScale + 71.3f, wz * ridgeScale + 47.9f, octaves);
             // Peaks vary across a range: some summits stand well above their neighbours.
             float massifScale = 1f / (featureSize * 2.5f);
             float massif = 0.45f + 0.55f * math.saturate(Fractal(wx * massifScale + 57.1f, wz * massifScale + 21.4f, 2, 2f, 0.5f) + 0.5f);
@@ -73,7 +79,32 @@ namespace Clube.Core
             return level
                 + plains * math.min(3f, mountainHeight * 0.03f)
                 + hills * (rolling * 0.5f + 0.5f) * mountainHeight * 0.12f
-                + mountains * massif * ridges * mountainHeight;
+                + mountains * massif * ridges * mountainHeight
+                + DistantHeight(x, z);
+        }
+
+        // The great ranges (P7): nothing within Start of the origin, rising to full height by twice
+        // that, where a mask at three range widths picks which land carries them.
+        private float DistantHeight(float x, float z)
+        {
+            if (distant.Height <= 0f)
+            {
+                return 0f;
+            }
+            float distance = math.sqrt(x * x + z * z);
+            float rise = math.smoothstep(distant.Start, distant.Start * 2f, distance);
+            if (rise <= 0f)
+            {
+                return 0f;
+            }
+            float scale = 1f / distant.Width;
+            float mask = math.smoothstep(-0.1f, 0.25f, Fractal(x * scale / 3f + 401.3f, z * scale / 3f + 173.9f, 2, 2f, 0.5f));
+            if (mask <= 0f)
+            {
+                return 0f;
+            }
+            float ridges = Ridged(x * scale + 211.7f, z * scale + 389.1f, 4);
+            return rise * mask * ridges * distant.Height;
         }
 
         // Plain fractal noise, about -1 to 1.
@@ -96,14 +127,14 @@ namespace Clube.Core
         // Ridged fractal noise, 0-1: each octave folds the noise into sharp crests (1 - |n|),
         // squared to narrow them, and later octaves are weighted by the ones before, so detail
         // gathers on the ridges and the valleys stay smooth.
-        private float Ridged(float x, float z)
+        private float Ridged(float x, float z, int count)
         {
             float sum = 0f;
             float total = 0f;
             float frequency = 1f;
             float weight = 1f;
             float previous = 1f;
-            for (int octave = 0; octave < octaves; octave++)
+            for (int octave = 0; octave < count; octave++)
             {
                 float ridge = 1f - math.abs(noise.Sample(x * frequency + octave * 23.3f, z * frequency + octave * 23.3f));
                 ridge *= ridge;
@@ -115,6 +146,25 @@ namespace Clube.Core
             }
             // Drop the floor so valleys cut down between the crests.
             return math.saturate((sum / total - 0.15f) / 0.7f);
+        }
+    }
+
+    /// <summary>
+    /// Great ranges on the horizon of a <see cref="LandscapeHeight"/> (P7): ridged mountains
+    /// <see cref="Height"/> tall and <see cref="Width"/> wide that start rising <see cref="Start"/>
+    /// from the origin and stand at full height from twice that. A height of 0 means none.
+    /// </summary>
+    public struct DistantRanges
+    {
+        public float Height;
+        public float Width;
+        public float Start;
+
+        public DistantRanges(float height, float width, float start)
+        {
+            Height = math.max(0f, height);
+            Width = math.max(100f, width);
+            Start = math.max(0f, start);
         }
     }
 }

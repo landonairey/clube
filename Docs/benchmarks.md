@@ -652,3 +652,30 @@ What was slow, and what changed:
 | Streamer, idle frame at 200 m | | 0.44 ms |
 
 Rendering the whole 200 m world (untextured, warmed up): 20–25 ms with the terrain material only, 25–28 ms with the overlay on every chunk. (A first render that also uploads the meshes takes ~750 ms; an earlier comparison mistook that for the overlay's cost.) At 400 m that's ~80–100 ms a frame for rendering alone: what's left is too many objects and triangles, which needs LOD (P7) and merging chunks into larger render meshes.
+
+## Far terrain (P7a, 2026-10-27)
+
+WorldLab's Landscape with the great ranges, nine levels of 128 quads from 2 m (33 km), 150,000 vertices in all. Editor with **Burst off** (its compilation was switched off in that session), 20 cores; with Burst the worker times should drop several times.
+
+| | Worker time (wall, waiting) | Main thread |
+|---|--:|--:|
+| One level's heights, one job | 80 ms | |
+| Full rebuild, all nine levels, one job per level's heights | 130 ms | |
+| Full rebuild, heights spread over the workers by row (`ColumnHeightRowsJob`) | 74 ms | |
+| A 4 m step (3.5 levels on average) | 29 ms | |
+| Swapping in a finished batch (all nine meshes) | | 0.21 ms |
+
+The main thread only applies finished mesh data, so moving costs nothing visible; the far terrain lags the focus by the batch time, which the 256 m finest level hides.
+
+## Coarse terrain (P7c, 2026-10-28)
+
+WorldLab (fixed 104 m area, render distance 16), Landscape with the great ranges, eight coarse levels of 16 × 16 chunks (0.5 m to 64 m voxels, to 8 km), plus two far terrain levels past them. Editor with **Burst off**, 20 cores. Frames pumped by hand (`Update` + `LateUpdate` on the World object), so the times are the World object's scripts, not rendering.
+
+| | Value |
+|---|--:|
+| Coarse chunks drawn when settled | ~2,550 (250-410 a level) |
+| From start to every level shown | under 25 s (all levels together, nearest first) |
+| Main-thread time of `TerrainLodView` a frame, moving 1.5 m a frame | 1.0 ms average, 3.1 ms worst |
+| The World object's frame, moving 1.5 m a frame, with / without the coarse terrain | 5.8 / 6.3 ms average; 32 / 21 ms worst |
+
+The worst frames are not the coarse terrain's (it is at most 3.1 ms in them); they are the world's own streaming and the Editor's garbage collections. Clipping a level used to go through property blocks on every renderer (~2,500 calls whenever the focus crossed a chunk, and no SRP batching); a copy of the material per level makes it eight material updates.

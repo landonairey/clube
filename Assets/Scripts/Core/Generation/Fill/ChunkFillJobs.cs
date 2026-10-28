@@ -12,6 +12,16 @@ using Unity.Mathematics;
 [assembly: RegisterGenericJobType(typeof(ColumnHeightsJob<SplineHeight>))]
 [assembly: RegisterGenericJobType(typeof(ColumnHeightsJob<HeightmapHeight>))]
 [assembly: RegisterGenericJobType(typeof(ColumnHeightsJob<LandscapeHeight>))]
+[assembly: RegisterGenericJobType(typeof(ColumnHeightRowsJob<FlatHeight>))]
+[assembly: RegisterGenericJobType(typeof(ColumnHeightRowsJob<SineHeight>))]
+[assembly: RegisterGenericJobType(typeof(ColumnHeightRowsJob<FractalNoiseHeight>))]
+[assembly: RegisterGenericJobType(typeof(ColumnHeightRowsJob<SplineHeight>))]
+[assembly: RegisterGenericJobType(typeof(ColumnHeightRowsJob<LandscapeHeight>))]
+[assembly: RegisterGenericJobType(typeof(PointHeightsJob<FlatHeight>))]
+[assembly: RegisterGenericJobType(typeof(PointHeightsJob<SineHeight>))]
+[assembly: RegisterGenericJobType(typeof(PointHeightsJob<FractalNoiseHeight>))]
+[assembly: RegisterGenericJobType(typeof(PointHeightsJob<SplineHeight>))]
+[assembly: RegisterGenericJobType(typeof(PointHeightsJob<LandscapeHeight>))]
 [assembly: RegisterGenericJobType(typeof(VolumeFillJob<Perlin3DVolume>))]
 
 namespace Clube.Core
@@ -53,6 +63,47 @@ namespace Clube.Core
     }
 
     /// <summary>
+    /// <see cref="ColumnHeightsJob{THeight}"/> one row of the block per index, so a big block
+    /// (a far-terrain level, P7) spreads over the workers. No range: nothing that uses it needs one.
+    /// </summary>
+    [BurstCompile]
+    public struct ColumnHeightRowsJob<THeight> : IJobFor where THeight : struct, IHeightField
+    {
+        public THeight Field;
+        public ColumnBlock Block;
+
+        [WriteOnly, NativeDisableParallelForRestriction] public NativeArray<float> Heights;
+
+        public void Execute(int z)
+        {
+            for (int x = 0; x < Block.Count.x; x++)
+            {
+                float2 position = Block.Position(x, z);
+                Heights[Block.Index(x, z)] = Field.Height(position.x, position.y);
+            }
+        }
+    }
+
+    /// <summary>
+    /// A heightfield's height at scattered points (x, z), spread over the workers: where the
+    /// distant trees stand (GL162), which aren't on any column grid.
+    /// </summary>
+    [BurstCompile]
+    public struct PointHeightsJob<THeight> : IJobFor where THeight : struct, IHeightField
+    {
+        public THeight Field;
+
+        [ReadOnly] public NativeArray<float2> Points;
+
+        [WriteOnly] public NativeArray<float> Heights;
+
+        public void Execute(int i)
+        {
+            Heights[i] = Field.Height(Points[i].x, Points[i].y);
+        }
+    }
+
+    /// <summary>
     /// Fills one chunk of a heightfield terrain from its column heights (K35): each sample's
     /// depth is its column's height minus its own, and each column's slope (from its
     /// neighbours' heights) says whether it is bare rock (GL21); then
@@ -74,12 +125,14 @@ namespace Clube.Core
 
         public void Execute()
         {
-            if (Trees.Length == 0 && Grid.Bottom >= HeightRange[0].y + TerrainDensity.RampHalfWidth)
+            if (Trees.Length == 0 && Grid.Bottom >= HeightRange[0].y + Settings.RampReach)
             {
                 Output.Summary[0] = ChunkFillKernel.AllAir(Settings.Layers);
                 return;
             }
 
+            // Depth in the world's own voxels' metres: LOD chunks (P7c) scale it down.
+            float depthScale = Settings.DepthScale;
             var depths = new NativeArray<float>(Grid.Length, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
             int3 count = Grid.SampleCount;
             int stride = count.x + 2;
@@ -92,7 +145,7 @@ namespace Clube.Core
                     int column = stride * (z + 1) + 1;
                     for (int x = 0; x < count.x; x++)
                     {
-                        depths[row + x] = Heights[column + x] - height;
+                        depths[row + x] = (Heights[column + x] - height) * depthScale;
                     }
                 }
             }

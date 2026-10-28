@@ -189,6 +189,7 @@ MonoBehaviour:
       mapleLeaves: {fileID: 11400000, guid: 6a6becb24902ad048ae804ce275d0102, type: 2}
       mapleShare: 0.35
       stump: {fileID: 11400000, guid: 952ddae6481d48843915df3131af25ce, type: 2}
+      mapleStump: {fileID: 11400000, guid: d570f35c2c56a2c48a23a8e185f47289, type: 2}
       stumpHeight: 0.75
     startArea:
       enabled: 1
@@ -198,6 +199,9 @@ MonoBehaviour:
       clay: 1
     featureSize: 250
     mountainCoverage: 0.35
+    distantRangeHeight: 1500
+    distantRangeWidth: 5000
+    distantRangeStart: 2500
     heightCurve:
       serializedVersion: 2
       m_Curve:

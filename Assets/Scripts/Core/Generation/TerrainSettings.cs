@@ -79,6 +79,18 @@ namespace Clube.Core
         [SerializeField, Range(0f, 1f)]
         private float mountainCoverage = 0.35f;
 
+        [Tooltip("Landscape (P7): height of the great ranges on the far horizon, in metres. 0: none. They rise only beyond Distant range start, so the land near the origin keeps the world's height; the voxel world still cuts them off at its top.")]
+        [SerializeField, Min(0f)]
+        private float distantRangeHeight;
+
+        [Tooltip("Landscape: width of one great mountain, in metres.")]
+        [SerializeField, Min(100f)]
+        private float distantRangeWidth = 5000f;
+
+        [Tooltip("Landscape: distance from the origin, in metres, where the great ranges begin to rise; they reach full height at twice it.")]
+        [SerializeField, Min(0f)]
+        private float distantRangeStart = 2500f;
+
         [Header("Spline")]
         [Tooltip("Remaps the fractal noise (0-1 along the bottom) to a height (0 = level - amplitude, " +
                  "1 = level + amplitude). Flat stretches make plateaus, steep ones cliffs.")]
@@ -255,6 +267,27 @@ namespace Clube.Core
         {
             get => mountainCoverage;
             set => mountainCoverage = Mathf.Clamp01(value);
+        }
+
+        /// <summary>Landscape (P7): height of the great ranges on the far horizon, in metres; 0 for none.</summary>
+        public float DistantRangeHeight
+        {
+            get => distantRangeHeight;
+            set => distantRangeHeight = Mathf.Max(0f, value);
+        }
+
+        /// <summary>Landscape: width of one great mountain, in metres.</summary>
+        public float DistantRangeWidth
+        {
+            get => distantRangeWidth;
+            set => distantRangeWidth = Mathf.Max(100f, value);
+        }
+
+        /// <summary>Landscape: where the great ranges begin to rise, in metres from the origin.</summary>
+        public float DistantRangeStart
+        {
+            get => distantRangeStart;
+            set => distantRangeStart = Mathf.Max(0f, value);
         }
 
         /// <summary>Settable so lab controls can reseed at runtime; call <see cref="WorldConfig.NotifyChanged"/> after.</summary>

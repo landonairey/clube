@@ -368,6 +368,25 @@ MapleShare`, ids 21, 22); maple wood sells for 2x and whittles into 140% sticks 
 Twenty-first pass (GL153-GL159, `Docs/20261027 clube-backlog.md`): inventory drops land on the nearest slot
 (`InventoryGridGui.PlayerSlotNear`). The hand (0.1 a hit) and the hand axe (`ToolDefinition.AimedOnly`, 0.2) take only the
 ground sample under the dot. Stumps need tier 3. Every stack shows its quality, 100% included. GL157 (tunnel speckles) is open.
+P7a (2026-10-27, branch `p7/far-terrain-lod`): far terrain to 10-50 km. `FarTerrainView` (on the world labs' World,
+Rendering) draws a geometry clipmap of the generator's heightfield: `FarTerrainBuilder` (Streaming) rebuilds the levels a
+move shifts as one batch (`FarTerrainGrid`, `FarTerrainMeshJob` in `Meshing/Far`, heights via
+`HeightfieldGenerator.ScheduleColumnHeightsParallel`), and the `Clube/Far Terrain` shader leaves out the chunk columns the
+voxel world draws in full (`ChunkCoverageMask`). The panel's Far terrain section sets reach, spacing and level tints.
+P7b: Landscape's `DistantRanges` (great ranges beyond 2.5 km; the world labs' fog is now 0.00003).
+P7c (2026-10-28): coarse voxel terrain in between. `TerrainLodView` (Rendering, on World) runs `TerrainLodBuilder`
+(Streaming): eight rings (`TerrainLodRing`) of 16 x 16 chunks, level l with voxels 2^l times the world's, each a
+`ChunkPipeline` on its own `WorldGrid` (fill `ChunkFillSettings.ForLod` widens the ramp and layer bands; layers from
+`ChunkPipeline.TryGetColumnRange`), drawn in the world's surface material, a copy per level clipped per pixel (`ClipLod` in
+`Clube/Terrain Materials`: the covered chunk columns and the finer level's square). The far terrain starts past it. The
+panel's Coarse terrain section sets levels and tints. Edits don't reach coarse levels; P16 is still open.
+GL160: maples stand on Maple stump (id 23). GL161: `GrassScatter` drops a rebuilt chunk's tufts at once and regrows
+rebuilt chunks nearest first.
+GL162: past the chunks, trees are instanced meshes out to 3 km (`DistantTreeView`, `DistantTreeBuilder`: the voxel trees'
+own placement, `TreeField.TryGetSpot`/`IsFlatEnough`, heights from `HeightfieldGenerator.SchedulePointHeights`); the coarse
+levels stamp no voxel trees. Don't pump `LateUpdate` by hand for long with instanced draws: each draw's GPU buffers are
+freed only when a real frame ends (draw once per `Time.frameCount`; a 50 s pump once ran the GPU out of memory).
+
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16

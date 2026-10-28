@@ -18,6 +18,13 @@ Shader "Clube/Terrain Materials"
         _Breakup ("Tiling breakup: noise cells per texture repeat", Range(0, 1)) = 0.3
         _TintVariation ("Large-scale brightness variation", Range(0, 0.5)) = 0.12
         [Toggle] _DebugColors ("Debug colours", Float) = 0
+        // Coarse terrain LOD (P7c): set by TerrainLodView on its per-level copies; 0 (off) on the world's chunks.
+        [HideInInspector] _LodClip ("LOD clip", Float) = 0
+        [HideInInspector] _LodHole ("LOD hole", Vector) = (0, 0, 0, 0)
+        [HideInInspector] _LodHoleMargin ("LOD margin", Float) = 0
+        [HideInInspector] _LodCoverage ("LOD coverage", Vector) = (0, 0, 1, 0)
+        [HideInInspector] _LodTint ("LOD tint", Color) = (1, 1, 1, 1)
+        [HideInInspector] _LodCoverageMask ("LOD coverage mask", 2D) = "black" {}
     }
 
     SubShader
@@ -33,10 +40,48 @@ Shader "Clube/Terrain Materials"
             float _Breakup;
             float _TintVariation;
             float _DebugColors;
+            float _LodClip;
+            float4 _LodHole;
+            float _LodHoleMargin;
+            float4 _LodCoverage;
+            float4 _LodTint;
         CBUFFER_END
 
         // Global (GL102), not per material.
         float _HardMaterialEdges;
+
+        // Coarse terrain LOD (P7c, TerrainLodView), set on a copy of the material per level; 0 on the
+        // world's own chunks. _LodClip 2: leave out the columns the world's chunks draw in
+        // full (_LodCoverageMask, one texel per column; _LodCoverage: x, z of texel 0, column width,
+        // size), except within _LodHoleMargin metres of a column they don't, so the level runs on a
+        // little under their edge and no gap shows there. 3: that, and leave out _LodHole (x, z min,
+        // x, z max in world metres), where the next finer level draws. _LodTint tints a level, to see the rings.
+        TEXTURE2D(_LodCoverageMask);
+
+        float LodCovered(float2 xz)
+        {
+            int2 texel = (int2)floor((xz - _LodCoverage.xy) / _LodCoverage.z);
+            int size = (int)_LodCoverage.w;
+            bool inside = all(texel >= 0) && all(texel < size);
+            return inside ? LOAD_TEXTURE2D(_LodCoverageMask, texel).r : 0.0;
+        }
+
+        void ClipLod(float3 positionWS)
+        {
+            if (_LodClip < 0.5)
+            {
+                return;
+            }
+            float2 xz = positionWS.xz;
+            if (_LodClip > 2.5)
+            {
+                clip(all(xz > _LodHole.xy) && all(xz < _LodHole.zw) ? -1.0 : 1.0);
+            }
+            float margin = _LodHoleMargin;
+            float covered = LodCovered(xz) * LodCovered(xz + float2(margin, 0)) * LodCovered(xz - float2(margin, 0))
+                          * LodCovered(xz + float2(0, margin)) * LodCovered(xz - float2(0, margin));
+            clip(covered > 0.5 ? -1.0 : 1.0);
+        }
         ENDHLSL
 
         Pass
@@ -183,8 +228,13 @@ Shader "Clube/Terrain Materials"
 
             half4 Fragment(Varyings input) : SV_Target
             {
+                ClipLod(input.positionWS);
                 float3 normalWS = normalize(input.normalWS);
                 half3 albedo = Albedo(input, normalWS);
+                if (_LodClip > 0.5)
+                {
+                    albedo *= _LodTint.rgb;
+                }
 
                 Light mainLight = GetMainLight(TransformWorldToShadowCoord(input.positionWS));
                 half3 direct = mainLight.color * saturate(dot(normalWS, mainLight.direction))
@@ -260,13 +310,23 @@ Shader "Clube/Terrain Materials"
             #pragma vertex DepthVertex
             #pragma fragment DepthFragment
 
-            float4 DepthVertex(float4 positionOS : POSITION) : SV_POSITION
+            struct DepthVaryings
             {
-                return TransformObjectToHClip(positionOS.xyz);
+                float4 positionCS : SV_POSITION;
+                float3 positionWS : TEXCOORD0;
+            };
+
+            DepthVaryings DepthVertex(float4 positionOS : POSITION)
+            {
+                DepthVaryings output;
+                output.positionWS = TransformObjectToWorld(positionOS.xyz);
+                output.positionCS = TransformWorldToHClip(output.positionWS);
+                return output;
             }
 
-            half DepthFragment() : SV_Target
+            half DepthFragment(DepthVaryings input) : SV_Target
             {
+                ClipLod(input.positionWS);
                 return 0;
             }
             ENDHLSL
@@ -294,18 +354,21 @@ Shader "Clube/Terrain Materials"
             {
                 float4 positionCS : SV_POSITION;
                 float3 normalWS : TEXCOORD0;
+                float3 positionWS : TEXCOORD1;
             };
 
             Varyings NormalsVertex(Attributes input)
             {
                 Varyings output;
-                output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+                output.positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                output.positionCS = TransformWorldToHClip(output.positionWS);
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 return output;
             }
 
             half4 NormalsFragment(Varyings input) : SV_Target
             {
+                ClipLod(input.positionWS);
                 float3 normalWS = normalize(input.normalWS);
             #if defined(_GBUFFER_NORMALS_OCT)
                 float2 octahedral = PackNormalOctQuadEncode(normalWS);

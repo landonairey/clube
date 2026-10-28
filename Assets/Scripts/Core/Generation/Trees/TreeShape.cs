@@ -36,16 +36,29 @@ namespace Clube.Core
         // The crown's leaf balls are this much bigger, and spread this much further.
         private const float CrownScale = 1.3f;
 
+        /// <summary>True when the cell's tree is a maple (GL150), the same roll <see cref="Build"/> makes.</summary>
+        public static bool IsMaple(int seed, Vector2Int cell, TreeGeneration settings)
+        {
+            return VoxelHash.Uniform(seed, cell.x, SpeciesSalt, cell.y) < settings.MapleShare;
+        }
+
+        /// <summary>The cell's tree's height in metres, the same roll <see cref="Build"/> makes first.</summary>
+        public static float HeightOf(int seed, Vector2Int cell, TreeGeneration settings)
+        {
+            var dice = new Dice(seed, cell);
+            return dice.Range(settings.Height.x, settings.Height.y);
+        }
+
         /// <summary>Adds the parts of the tree rooted at <paramref name="root"/> (on the ground) to <paramref name="parts"/>.</summary>
         /// <param name="cell">The tree's cell: with the seed, it picks every number.</param>
         public static void Build(int seed, Vector2Int cell, float3 root, TreeGeneration settings, List<TreePart> parts)
         {
             var dice = new Dice(seed, cell);
             // Birch or maple (GL150), by its own roll so the shape's numbers stay as they were.
-            bool maple = VoxelHash.Uniform(seed, cell.x, SpeciesSalt, cell.y) < settings.MapleShare;
+            bool maple = IsMaple(seed, cell, settings);
             byte wood = maple ? settings.MapleWood.Id : settings.Wood.Id;
             byte leaves = maple ? settings.MapleLeaves.Id : settings.Leaves.Id;
-            byte stump = settings.Stump.Id;
+            byte stump = maple ? settings.MapleStump.Id : settings.Stump.Id;
             float minRadius = settings.MinBranchRadius;
             float height = dice.Range(settings.Height.x, settings.Height.y);
             float radius = math.max(minRadius, settings.TrunkRadius * dice.Range(0.85f, 1.15f));

@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d59954c0fdd2f5d4c9594a66c55f0fc1, type: 3}
+  m_Name: Maple stump
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.VoxelMaterial
+  id: 23
+  displayName: Maple stump
+  category: 2
+  albedo: {fileID: 2800000, guid: 92032cbdcd3390d4c95f46f7ab11e79c, type: 3}
+  debugColor: {r: 0.4, g: 0.22, b: 0.12, a: 1}
+  hardness: 100000
+  drop: {fileID: 11400000, guid: 8864539802b2d884296933ec2cccedf1, type: 2}
+  pileShape: 1
+  reposeAngle: 40
+  pickUpPieceSize: 0
+  pickedFromPiles: 0
+  toolTier: 3
+  requiredSkill: 0
+  requiredLevel: 0
+  breaksInto: {fileID: 0}
+  isWorktop: 1
+  isSoft: 0
+  driesInto: {fileID: 0}
+  dryingDays: 2
+  notes:
+    Hardness: 
+    Luster: 
+    Colour: 
+    Feel: 

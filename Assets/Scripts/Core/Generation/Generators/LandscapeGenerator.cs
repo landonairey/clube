@@ -5,8 +5,8 @@ namespace Clube.Core
     {
         public LandscapeGenerator(
             int seed, float level, float mountainHeight, float featureSize, float coverage,
-            int octaves = 5, float lacunarity = 2f, float persistence = 0.5f)
-            : base(new LandscapeHeight(seed, level, mountainHeight, featureSize, coverage, octaves, lacunarity, persistence))
+            int octaves = 5, float lacunarity = 2f, float persistence = 0.5f, DistantRanges distant = default)
+            : base(new LandscapeHeight(seed, level, mountainHeight, featureSize, coverage, octaves, lacunarity, persistence, distant))
         {
         }
     }

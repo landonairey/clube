@@ -113,6 +113,51 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Maples_StandOnMapleStumps_AndBirchesOnTheirOwn()
+        {
+            VoxelMaterial stump = VoxelMaterial.Create(15, "Stump", VoxelMaterialCategory.Plant);
+            VoxelMaterial mapleWood = VoxelMaterial.Create(21, "Maple wood", VoxelMaterialCategory.Plant);
+            VoxelMaterial mapleStump = VoxelMaterial.Create(23, "Maple stump", VoxelMaterialCategory.Plant);
+            try
+            {
+                TreeGeneration settings = Settings();
+                settings.Stump = stump;
+                settings.MapleWood = mapleWood;
+                settings.MapleStump = mapleStump;
+                settings.MapleShare = 0.5f;
+                int maples = 0;
+                int birches = 0;
+                var parts = new List<TreePart>();
+                for (int cell = 0; cell < 40; cell++)
+                {
+                    parts.Clear();
+                    TreeShape.Build(Seed, new Vector2Int(cell, 1), new float3(0f, Ground, 0f), settings, parts);
+                    bool maple = parts.Exists(p => p.Material == mapleWood.Id);
+                    byte expected = maple ? mapleStump.Id : stump.Id;
+                    Assert.That(parts.FindAll(p => p.Material == stump.Id || p.Material == mapleStump.Id).TrueForAll(p => p.Material == expected),
+                        $"cell {cell}: a {(maple ? "maple" : "birch")} has only its own stump");
+                    Assert.That(parts.Exists(p => p.Material == expected), $"cell {cell} has a stump");
+                    if (maple)
+                    {
+                        maples++;
+                    }
+                    else
+                    {
+                        birches++;
+                    }
+                }
+                Assert.That(maples, Is.GreaterThan(0));
+                Assert.That(birches, Is.GreaterThan(0));
+            }
+            finally
+            {
+                Object.DestroyImmediate(stump);
+                Object.DestroyImmediate(mapleWood);
+                Object.DestroyImmediate(mapleStump);
+            }
+        }
+
+        [Test]
         public void Field_GrowsTreesOnFlatGround_NotOnSlopes()
         {
             var flat = new TreeField(Settings(), Seed, new FlatGenerator(Ground));

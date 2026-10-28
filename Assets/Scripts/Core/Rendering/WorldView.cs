@@ -154,6 +154,9 @@ namespace Clube.Core
         /// <summary>The terrain as generated, before edits; null when it couldn't be made (see <see cref="Problem"/>).</summary>
         public ITerrainGenerator Generator => generator;
 
+        /// <summary>The material chunk surfaces draw with (the registry's, when the config shows materials).</summary>
+        public Material SurfaceMaterial { get; private set; }
+
         /// <summary>The chunk under the focus point.</summary>
         public Vector3Int FocusChunk => World.Grid.WorldToChunk(transform.InverseTransformPoint(Focus.position));
 
@@ -221,7 +224,7 @@ namespace Clube.Core
 
             runtimeConfig = Instantiate(config);
             runtimeConfig.name = $"{config.name} (Play mode copy)";
-            renderers = new ChunkRendererPool(transform, chunkColliders, TerrainRenderMaterials.For(chunkMaterials, Config));
+            renderers = new ChunkRendererPool(transform, chunkColliders, RenderMaterials());
             StartWorld();
         }
 
@@ -263,14 +266,14 @@ namespace Clube.Core
             {
                 regenerateRequested = false;
                 remeshRequested = false;
-                renderers.SetMaterials(TerrainRenderMaterials.For(chunkMaterials, Config));
+                renderers.SetMaterials(RenderMaterials());
                 StopWorld();
                 StartWorld();
             }
             else if (remeshRequested)
             {
                 remeshRequested = false;
-                renderers.SetMaterials(TerrainRenderMaterials.For(chunkMaterials, Config));
+                renderers.SetMaterials(RenderMaterials());
                 streamer.SealEdges = Config.SealEdges;
                 streamer.RemeshAll();
             }
@@ -288,6 +291,14 @@ namespace Clube.Core
         }
 
         private Vector3 FocusLocal => transform.InverseTransformPoint(Focus.position);
+
+        // The chunk materials for the config, remembering the surface one for the coarse terrain (P7c).
+        private Material[] RenderMaterials()
+        {
+            Material[] materials = TerrainRenderMaterials.For(chunkMaterials, Config);
+            SurfaceMaterial = materials != null && materials.Length > 0 ? materials[0] : null;
+            return materials;
+        }
 
         private void StartWorld()
         {

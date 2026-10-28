@@ -35,7 +35,8 @@ namespace Clube.Core
                 case TerrainGeneratorType.Landscape:
                     return new LandscapeGenerator(
                         settings.Seed, settings.SurfaceLevel, settings.Amplitude, settings.FeatureSize, settings.MountainCoverage,
-                        settings.Octaves, settings.Lacunarity, settings.Persistence);
+                        settings.Octaves, settings.Lacunarity, settings.Persistence,
+                        new DistantRanges(settings.DistantRangeHeight, settings.DistantRangeWidth, settings.DistantRangeStart));
                 default:
                     throw new ArgumentOutOfRangeException(nameof(settings.Generator), settings.Generator, null);
             }

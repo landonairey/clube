@@ -14,7 +14,8 @@ namespace Clube.Core
     /// <remarks>
     /// Reads the meshes the pipeline built (positions, normals, and the material ids and weights
     /// in UV channels 2 and 3), so it costs nothing in generation or meshing. A millisecond or so of
-    /// chunks is scattered a frame; the radius is small, so their order doesn't matter. The tufts
+    /// chunks is scattered a frame, rebuilt ones nearest the focus first; a rebuilt chunk loses its
+    /// old tufts at once, so dug ground never keeps floating grass while it waits. The tufts
     /// shrink into the ground over the last metres of the radius.
     /// </remarks>
     [RequireComponent(typeof(WorldView))]
@@ -58,6 +59,7 @@ namespace Clube.Core
         private readonly HashSet<Vector3Int> stale = new HashSet<Vector3Int>();
         private readonly Stack<List<Matrix4x4>> spareLists = new Stack<List<Matrix4x4>>();
         private readonly List<Vector3Int> dropped = new List<Vector3Int>();
+        private readonly List<Vector3Int> staleInReach = new List<Vector3Int>();
         private readonly List<Matrix4x4[]> batches = new List<Matrix4x4[]>();
         private readonly List<int> batchCounts = new List<int>();
         private readonly List<Vector3> vertices = new List<Vector3>();
@@ -116,6 +118,14 @@ namespace Clube.Core
         {
             stale.Add(coord);
             scanPending = true;
+
+            // Its grass stood on the old mesh (an edit dug it away): drop it now, so none is left
+            // floating while the chunk waits its turn to grow again.
+            if (tufts.TryGetValue(coord, out List<Matrix4x4> list) && list.Count > 0)
+            {
+                list.Clear();
+                batchesDirty = true;
+            }
         }
 
         private void OnChunkUnloaded(Vector3Int coord)
@@ -173,6 +183,43 @@ namespace Clube.Core
             // ones in a streamed world before reaching the new ones by the player, so those never grew any.
             clock.Restart();
             World world = worldView.World;
+
+            // Rebuilt chunks in reach first, nearest first (GL160): an edit by the player is what they
+            // look at, and in a streamed world newly loaded chunks would otherwise take the time.
+            staleInReach.Clear();
+            dropped.Clear();
+            foreach (Vector3Int coord in stale)
+            {
+                if (!worldView.Renderers.TryGetValue(coord, out ChunkRenderer chunkRenderer))
+                {
+                    // No surface, so no grass; a later mesh marks it again.
+                    dropped.Add(coord);
+                }
+                else if (Distance(chunkRenderer, focus) <= near)
+                {
+                    staleInReach.Add(coord);
+                }
+            }
+            foreach (Vector3Int coord in dropped)
+            {
+                stale.Remove(coord);
+            }
+            if (staleInReach.Count > 1)
+            {
+                staleInReach.Sort((a, b) => Distance(worldView.Renderers[a], focus).CompareTo(Distance(worldView.Renderers[b], focus)));
+            }
+            for (int i = 0; i < staleInReach.Count; i++)
+            {
+                if (i > 0 && clock.Elapsed.TotalMilliseconds > scatterMilliseconds)
+                {
+                    scanPending = true;
+                    return;
+                }
+                Scatter(staleInReach[i], worldView.Renderers[staleInReach[i]]);
+                stale.Remove(staleInReach[i]);
+                batchesDirty = true;
+            }
+
             Vector3Int centre = world.Grid.WorldToChunk(worldView.transform.InverseTransformPoint(focus));
             Vector3 size = world.Grid.ChunkWorldSize;
             Vector3Int reach = new Vector3Int(

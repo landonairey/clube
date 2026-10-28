@@ -26,6 +26,21 @@ namespace Clube.Core
         /// </summary>
         public abstract JobHandle ScheduleColumnHeights(
             ColumnBlock block, NativeArray<float> heights, NativeArray<float2> range, JobHandle dependsOn = default);
+
+        /// <summary>
+        /// Like <see cref="ScheduleColumnHeights"/>, without the range, with the rows spread over the
+        /// workers: for one big block at a time (P7's far terrain), where one job per block would
+        /// leave the other workers idle. Falls back to the single job where a generator has no rows job.
+        /// </summary>
+        public virtual JobHandle ScheduleColumnHeightsParallel(ColumnBlock block, NativeArray<float> heights, JobHandle dependsOn = default)
+        {
+            var range = new NativeArray<float2>(1, Allocator.TempJob);
+            JobHandle job = ScheduleColumnHeights(block, heights, range, dependsOn);
+            return range.Dispose(job);
+        }
+
+        /// <summary>The ground's height at each of <paramref name="points"/> (x, z), spread over the workers.</summary>
+        public abstract JobHandle SchedulePointHeights(NativeArray<float2> points, NativeArray<float> heights, JobHandle dependsOn = default);
     }
 
     /// <summary>
@@ -51,6 +66,16 @@ namespace Clube.Core
             ColumnBlock block, NativeArray<float> heights, NativeArray<float2> range, JobHandle dependsOn = default)
         {
             return new ColumnHeightsJob<TField> { Field = field, Block = block, Heights = heights, Range = range }.Schedule(dependsOn);
+        }
+
+        public override JobHandle ScheduleColumnHeightsParallel(ColumnBlock block, NativeArray<float> heights, JobHandle dependsOn = default)
+        {
+            return new ColumnHeightRowsJob<TField> { Field = field, Block = block, Heights = heights }.ScheduleParallel(block.Count.y, 4, dependsOn);
+        }
+
+        public override JobHandle SchedulePointHeights(NativeArray<float2> points, NativeArray<float> heights, JobHandle dependsOn = default)
+        {
+            return new PointHeightsJob<TField> { Field = field, Points = points, Heights = heights }.ScheduleParallel(points.Length, 64, dependsOn);
         }
     }
 

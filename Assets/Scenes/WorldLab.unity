@@ -17,7 +17,7 @@ RenderSettings:
   m_Fog: 1
   m_FogColor: {r: 0.78, g: 0.66, b: 0.6, a: 1}
   m_FogMode: 3
-  m_FogDensity: 0.004
+  m_FogDensity: 0.00003
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
   m_AmbientSkyColor: {r: 0.52, g: 0.56, b: 0.68, a: 1}
@@ -573,6 +573,9 @@ GameObject:
   - component: {fileID: 1350119469}
   - component: {fileID: 1350119468}
   - component: {fileID: 1350119470}
+  - component: {fileID: 1350119471}
+  - component: {fileID: 1350119472}
+  - component: {fileID: 1350119473}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -734,6 +737,7 @@ MonoBehaviour:
   buildGridOpen: 1
   storageOpen: 0
   oresOpen: 0
+  farTerrainOpen: 0
   items: {fileID: 11400000, guid: 529535e765d597b47b63cf6a57402d86, type: 2}
 --- !u!114 &1350119464
 MonoBehaviour:
@@ -853,6 +857,68 @@ MonoBehaviour:
   minUp: 0.7
   height: {x: 0.18, y: 0.38}
   scatterMilliseconds: 1
+--- !u!114 &1350119471
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b025b9bd23d64c747b9bea7b46330576, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.FarTerrainView
+  worldView: {fileID: 1350119460}
+  coarseTerrain: {fileID: 0}
+  material: {fileID: 2100000, guid: aa975b15ad7e8ad48a4b24e16548109d, type: 2}
+  show: 1
+  range: 30000
+  baseSpacing: 2
+  quads: 128
+  sink: 0.3
+  tintLevels: 0
+  extendCameraFarPlane: 1
+--- !u!114 &1350119472
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff8babc857d9544498f276f9e19c2b4e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.TerrainLodView
+  worldView: {fileID: 0}
+  show: 1
+  levels: 8
+  halfChunks: 8
+  sink: 0.15
+  underlap: 0.6
+  tintLevels: 0
+--- !u!114 &1350119473
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ac9a66b0fa545648bca55f96efbdac7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.DistantTreeView
+  worldView: {fileID: 1350119460}
+  material: {fileID: 2100000, guid: 5b7150ee6f9d759419b90967e177ee79, type: 2}
+  show: 1
+  range: 3000
+  detailDistance: 400
+  birchBark: {r: 0.66, g: 0.65, b: 0.63, a: 1}
+  birchLeaves: {r: 0.27, g: 0.36, b: 0.19, a: 1}
+  mapleBark: {r: 0.33, g: 0.22, b: 0.14, a: 1}
+  mapleLeaves: {r: 0.6, g: 0.26, b: 0.1, a: 1}
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0

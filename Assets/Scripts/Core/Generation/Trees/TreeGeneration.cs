@@ -66,6 +66,10 @@ namespace Clube.Core
         [SerializeField]
         private VoxelMaterial stump;
 
+        [Tooltip("A maple's base (GL160): a stump of maple wood. None: maples have the first kind's stump.")]
+        [SerializeField]
+        private VoxelMaterial mapleStump;
+
         [Tooltip("How far the stump stands above the ground, in metres: 0.75 is 3 voxels at 4 per metre.")]
         [SerializeField, Range(0.25f, 2f)]
         private float stumpHeight = 0.75f;
@@ -165,6 +169,13 @@ namespace Clube.Core
         {
             get => stump != null ? stump : wood;
             set => stump = value;
+        }
+
+        /// <summary>What a maple's base is made of: its own stump, or the first kind's.</summary>
+        public VoxelMaterial MapleStump
+        {
+            get => mapleStump != null ? mapleStump : Stump;
+            set => mapleStump = value;
         }
 
         /// <summary>True when trees can grow: some chance, and both materials set.</summary>

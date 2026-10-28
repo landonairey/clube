@@ -63,12 +63,15 @@ Core/
   Meshing/       MarchingCubes + tables, ChunkMeshSettings, variants (A6)
     Managed/     ChunkMesher and its strategies, the managed material pass: labs, step-through (A11)
     Jobs/        ChunkMeshJob: the Burst mesh build the world runs; CarvedVoxels: walls round chiselled voxels (GL92)
+    Far/         FarTerrainGrid (one clipmap level), FarTerrainMeshJob (its mesh): the far terrain (P7a)
     Recording/   MeshingRecorder (A11)
   Editing/       TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5; slivers GL79), TerrainPile (I4), GroundDrying (GL34), ChiselStrike + FlatTop (GL87, GL88), IDensityField, IEditableTerrain
   Queries/       SurfaceRaycast, VoxelRaycast, SurfacePoints (GL4)
   Volume/        VoxelVolume, ChunkVolume (V11, V12, K30)
-  Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea
-  Rendering/     WorldView, ChunkView, ChunkRenderer(+Pool), ChunkCollider, ChunkMeshBuilder, GrassScatter (GL67)
+  Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea, FarTerrainBuilder (far terrain levels),
+                 TerrainLodRing + TerrainLodBuilder (coarse terrain levels, P7c), DistantTreeBuilder (GL162)
+  Rendering/     WorldView, ChunkView, ChunkRenderer(+Pool), ChunkCollider, ChunkMeshBuilder, GrassScatter (GL67),
+                 FarTerrainView + ChunkCoverageMask (P7a), TerrainLodView (P7c), DistantTreeView + DistantTreeMeshes (GL162)
 ```
 
 All of it is namespace `Clube.Core`; folders are for people, not the compiler.
@@ -299,6 +302,100 @@ stateDiagram-v2
     Collidable --> [*]: leaves the area
 ```
 
+### The far terrain (P7a)
+
+Chunks are 4 m wide, so voxels can't reach the horizon: 30 km would be ~7,500 chunks each
+way. Beyond the chunks the world is drawn as a **geometry clipmap** of the generator's
+heightfield instead, the same function sampled coarser:
+
+```mermaid
+flowchart LR
+    FV["FarTerrainView (Rendering)<br/>a renderer per level, camera far plane"] --> FB
+    FV --> CM["ChunkCoverageMask<br/>a texel per chunk column the chunks draw in full"]
+    FB["FarTerrainBuilder (Streaming)<br/>which levels moved; one batch"] -. "ColumnHeightRowsJob → FarTerrainMeshJob" .-> Workers((worker threads))
+    WV[WorldView] -- "Generator, ChunkMeshed, ChunkUnloaded" --> FV
+```
+
+- **Levels** (`FarTerrainGrid`): level *l* is a square of 128 × 128 quads, 2·2^*l* m apart, so
+  each level is twice as wide as the one inside it; nine reach 33 km. A level is centred on a
+  multiple of twice its spacing, which puts the finer level's edges exactly on its grid lines:
+  it leaves a hole for the finer level (`Hole`), and on the finer level's outer edge every odd
+  vertex takes the mean of its neighbours, so it lies on the coarser edge and the rings close
+  (`FarTerrainTests`). Spacings are powers of two, so shared vertices sample identical
+  positions.
+- **Rebuilds**: a level is rebuilt when its centre moves (every two of its spacings) or the
+  finer level moves (that shifts its hole). Every level a move touches is built as one batch
+  and swapped in together, so rings never gap while they catch up. Heights are spread over the
+  workers by row (`HeightfieldGenerator.ScheduleColumnHeightsParallel`); the main thread only
+  applies finished `Mesh.MeshData` (~0.2 ms for all nine).
+- **Where chunks draw** the shader (`Clube/Far Terrain`) discards the far terrain in every pass:
+  `ChunkCoverageMask` counts the meshed layers of each column (from `ChunkMeshed` /
+  `ChunkUnloaded`) and marks a column once all of them are meshed. So caves and edits show as
+  the chunks have them, and anywhere chunks are still streaming the far terrain fills the gap.
+  It sits 0.3 m low, casts and receives no shadows, and takes the scene's fog as its haze.
+- **Limits**: heightfield generators only (a 3D generator has no single height); edits never
+  reach the far terrain. With the coarse terrain (below) in the scene it starts past that
+  instead: only the clipmap levels wider than the coarse terrain's reach are built, they are
+  clipped to its outer square (`_NearRect`) and sunk half a coarse voxel.
+
+### The coarse terrain (P7c)
+
+Between the world's chunks and the far terrain, the land is **voxel chunks again, coarser
+with distance**, so it keeps its look (the same material and textures; its trees are meshes, below)
+and only its detail steps down:
+
+```mermaid
+flowchart LR
+    LV["TerrainLodView (Rendering)<br/>renderers, a material copy per level"] --> LB
+    LB["TerrainLodBuilder (Streaming)<br/>rings, swap when built"] --> P1["ChunkPipeline per level<br/>WorldGrid at 2^l × the voxel"]
+    P1 -. "column heights → fill (ForLod) → Burst mesh" .-> Workers((worker threads))
+    LV --> CM["ChunkCoverageMask"]
+    FV["FarTerrainView"] -- "outer square, reach" --> LV
+```
+
+- **Levels** (`TerrainLodRing`): level *l* (1-8) has voxels 2^*l* times the world's and the same
+  16³ chunks, so its chunks are 2^*l* times as wide; it covers 16 × 16 of them round the focus,
+  64 m to 8 km, centred on every second chunk. It leaves out its four middle columns, which the
+  finer level always covers however the two centres fall (`TerrainLodTests`).
+- **Building**: each level is a plain `ChunkPipeline` on its own `WorldGrid`. A column's height
+  range (`TryGetColumnRange`) says which layers hold its surface, so there is no world top. The
+  fill divides depths by the scale (`ChunkFillSettings.LodScale`): the density ramp and the layer
+  bands widen with the voxels, so a 64 m voxel still puts the surface on the height and grass on
+  top. Chunk samples go back to the pool as soon as the mesh job has its snapshot; only meshes
+  are kept. A level keeps showing its old square until every chunk of the new one is built, then
+  swaps in one frame.
+- **Where each level draws** is decided per pixel in `Clube/Terrain Materials` (`ClipLod`), on
+  a copy of the surface material per level, so the SRP batcher still batches and a move costs
+  eight material updates: every level leaves out the chunk columns the world covers in full
+  (running 0.6 m on under their edge), and each level past the first also the square of the level
+  inside it, less one of that level's voxels. Each level sits 0.15 of its voxel low, so where two
+  draw the finer wins and no gap shows at its edge.
+- **Limits**: heightfield generators only; edits don't reach the coarse levels (the world's
+  chunks draw over them, and a dug pit shows because the mask clips the coarse ground there);
+  swaps pop (no geomorphing); one draw call per coarse chunk (~2,500).
+
+### Distant trees (GL162)
+
+Past the world's chunks, trees aren't voxels: `DistantTreeView` (Rendering) draws every tree the
+voxel world would grow, out to 3 km, as instanced low-poly meshes (`DistantTreeMeshes`: birch or
+maple colours, a detailed mesh within 400 m and a plain one beyond).
+
+- **Placement** (`DistantTreeBuilder`, Streaming) is the voxel trees' own: 128 m tiles round the
+  focus, nearest first; each tile's candidate spots come from `TreeField.TryGetSpot` (the cell's
+  roll and spot), the root and four flatness probes are heighted in one job
+  (`HeightfieldGenerator.SchedulePointHeights`), and `TreeField.IsFlatEnough` keeps the trees
+  the voxel world would grow (`DistantTreeTests` checks they match cell for cell). Height and kind
+  are `TreeShape.HeightOf` and `IsMaple`, the same rolls `TreeShape.Build` makes.
+- **Drawing**: one `RenderMeshInstanced` call per 1,023 trees, once a frame. The `Clube/Distant
+  Trees` shader drops a tree in the vertex stage when its root stands on a chunk column the world
+  draws in full (`ChunkCoverageMask`), where the voxel tree is. Trunks run on below the ground, so
+  none floats over the coarse terrain, which sits a little low. Crowns are sized like the voxel
+  trees' (about 0.4 of the height either side, up to 1.15 of it). Vertex colours reach the shader
+  unconverted, so the view passes them in linear (else they wash out pale).
+- **Limits**: heightfield generators only; a tree cut down in the world still shows far off
+  (nothing is stored); the start area's extra trees (`StartArea.MinTrees`) are near the origin,
+  inside the world, so they aren't placed here.
+
 ---
 
 ## 6. Labs and the game (A13)
@@ -347,7 +444,7 @@ Notes for upcoming chapters, so new code lands in the right layer.
 
 | Upcoming | Where it goes | Hooks that exist already |
 |---|---|---|
-| **M25 voxel size → LOD (P7).** At 8 voxels/m a chunk is 4 m wide, so render distance 10 is only 40 m. Seeing further needs coarser chunks far away. | `Streaming/` (which LOD a chunk column gets) + the existing jobs | Generation is a pure function of position and `ChunkSampleGrid` carries the voxel size, so a coarse chunk is the same jobs on a bigger voxel. Coarse chunks need no data kept and no colliders; seams between levels need skirts or Transvoxel. Render distance should become metres (or per-LOD rings) rather than chunks. |
+| **Edits and seams in the coarse terrain (rest of P7).** The coarse levels (§5, P7c) are generated, never edited, and overlap per pixel rather than stitching. | `TerrainLodBuilder` (rebuild a coarse chunk an edit reaches, from `World` data where it exists) and `ClipLod` | Big edits (a quarry) vanish once you walk away from them; downsampling the world's edited chunks into the coarse level would keep them. Transvoxel would replace the per-pixel overlap and the sink. Render distance should become metres (P16) rather than chunks. |
 | **P5 caves, P12 multi-noise terrain** | new `IVolumeField` / `IHeightField` structs in `Fields/` | `LandscapeHeight` (GL26) is P12's first pass: a mask, ridged and plains noise in one height field. Growing it means more fields and editable splines in the same struct. A height field plus a 3D modifier can be one volume field that samples the column height; see "Adding a generator". |
 | **P6 / S1–S6 save and load** | a new `Core/Persistence/` (format, versioning), called by `World` | `World.KeptChunks` and `IsEdited` say what to save; `VoxelStorages.Write/Read` serialize any scheme; run-length is the compact saved form (K26). Do file I/O in a job or a thread (S5). |
 | **I5 mining → inventory, PK1 mixed ore** | `Editing/` (what was removed, per material) → `Game` (inventory) | Tools already collect: `ToolStrike.Hit` adds one drop per removed sample and `PlayerToolUser.Collected` reports it (GL5), so the inventory (GL6) subscribes there. For the brush, `BrushResult` would need removed volume per material id (the brush already reads each sample's material). |
