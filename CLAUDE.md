@@ -365,6 +365,9 @@ in the dirt band (`TerrainLayers.BuriedStoneChance`); `HandPickup` takes a stone
 ground (`ToolStrike.IsLoosePiece`). Trees are birch (the old Wood, pale bark) or maple (`TreeGeneration.MapleWood/MapleLeaves/
 MapleShare`, ids 21, 22); maple wood sells for 2x and whittles into 140% sticks (`Recipe.QualityFactor`; quality goes up to
 `ItemStack.MaxQuality` 2). After pulling, the fill jobs' `LayerTable` changed: restart Unity if generation looks wrong (Burst gotcha).
+Twenty-first pass (GL153-GL159, `Docs/20261027 clube-backlog.md`): inventory drops land on the nearest slot
+(`InventoryGridGui.PlayerSlotNear`). The hand (0.1 a hit) and the hand axe (`ToolDefinition.AimedOnly`, 0.2) take only the
+ground sample under the dot. Stumps need tier 3. Every stack shows its quality, 100% included. GL157 (tunnel speckles) is open.
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16

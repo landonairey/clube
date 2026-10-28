@@ -1206,7 +1206,7 @@ MonoBehaviour:
     HandTakesAimedVoxel: 1
     HandRadius: 0.3
     ToolRadius: 0.6
-    HandAmount: 0.2
+    HandAmount: 0.1
     ToolAmount: 1
     ToolOffAmount: 0.1
     OtherMaterialFactor: 0.5
@@ -1420,6 +1420,9 @@ MonoBehaviour:
     Keys: 
   - Label: Mining journal
     Action: Journal
+    Keys: 
+  - Label: Crafting journal
+    Action: CraftingJournal
     Keys: 
   - Label: Drop (hold to pour)
     Action: Drop

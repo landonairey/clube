@@ -155,11 +155,14 @@ namespace Clube.Game
                     {
                         break;
                     }
-                    if (dragging)
+                    // A release over another slot is a drop even when no drag event came in between
+                    // (a quick flick), and a release in the gap between slots lands on the nearer one.
+                    int target = InventoryGridGui.PlayerSlotNear(gridTopLeft, inventory, current.mousePosition, InventoryGridGui.RowGap * 0.5f);
+                    if (dragging || (target >= 0 && target != pressed))
                     {
-                        if (over >= 0)
+                        if (target >= 0 && target != pressed)
                         {
-                            items.Move(pressed, over);
+                            items.Move(pressed, target);
                         }
                     }
                     else if (over == pressed && inventory.UsesToolSlot)

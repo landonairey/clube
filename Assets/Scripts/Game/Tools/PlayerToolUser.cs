@@ -48,6 +48,10 @@ namespace Clube.Game
         private CollectingSettings collecting = new CollectingSettings();
 
         private readonly List<Vector3Int> targets = new List<Vector3Int>();
+
+        // The aimed voxel's corners holding ground, when a hit takes only the sample under the dot (GL154,
+        // GL155): the hand looks among them for a loose stone to lift whole.
+        private readonly List<Vector3Int> aimedCorners = new List<Vector3Int>();
         private readonly Dictionary<VoxelMaterial, float> owed = new Dictionary<VoxelMaterial, float>();
         private readonly Dictionary<VoxelMaterial, float> minedOwed = new Dictionary<VoxelMaterial, float>();
         private readonly Gathering gathering = new Gathering();
@@ -246,9 +250,39 @@ namespace Clube.Game
             }
         }
 
-        // The hand in the sphere modes (GL106): only the voxel under the dot, the one just past the hit point
-        // along the view; its corners holding any ground are what a hit lowers or takes.
-        private void AimHandVoxel(WorldHit hit)
+        // The hand and the hand axe in the sphere modes (GL106, GL154, GL155): only the voxel under the dot, the
+        // one just past the hit point along the view, and of its corners only the ground sample nearest the hit
+        // point is what a hit lowers or takes; a sphere, or even the voxel's 8 corners, dents several voxels at once.
+        private void AimSample(WorldHit hit)
+        {
+            AimVoxel(hit);
+            aimedCorners.Clear();
+            aimedCorners.AddRange(targets);
+            if (targets.Count <= 1)
+            {
+                return;
+            }
+            // Solid samples first, so every hit makes headway on the surface it's aimed at.
+            World world = worldView.World;
+            float iso = worldView.Config.IsoLevel;
+            float voxel = world.Grid.VoxelSize;
+            Vector3Int nearest = targets[0];
+            float nearestScore = float.MaxValue;
+            foreach (Vector3Int sample in targets)
+            {
+                bool solid = (world.GetDensity(sample) ?? 0f) >= iso;
+                float score = ((Vector3)sample * voxel - ImpactCentre).sqrMagnitude + (solid ? 0f : 1e6f);
+                if (score < nearestScore)
+                {
+                    nearestScore = score;
+                    nearest = sample;
+                }
+            }
+            targets.Clear();
+            targets.Add(nearest);
+        }
+
+        private void AimVoxel(WorldHit hit)
         {
             World world = worldView.World;
             Transform head = player.Head != null ? player.Head : transform;
@@ -291,9 +325,9 @@ namespace Clube.Game
         // the hand's smaller than a tool's. Reach is the box of voxels round it, for the cursor.
         private void AimSphere(ToolDefinition tool, WorldHit hit)
         {
-            if (tool == hand && collecting.HandTakesAimedVoxel)
+            if (TakesAimedSample(tool))
             {
-                AimHandVoxel(hit);
+                AimSample(hit);
                 return;
             }
             World world = worldView.World;
@@ -310,6 +344,12 @@ namespace Clube.Game
             {
                 targets.RemoveAll(sample => !parcels.CanEditSample(sample));
             }
+        }
+
+        // The hand (GL106, GL154) and tools like the hand axe (GL155) take only the sample under the dot.
+        private bool TakesAimedSample(ToolDefinition tool)
+        {
+            return tool == hand ? collecting.HandTakesAimedVoxel : tool.AimedOnly;
         }
 
         // On the press, then at the tool's rate while held.
@@ -423,7 +463,7 @@ namespace Clube.Game
             bool hand = tool == this.hand;
             if (hand && collecting.HandTakesAimedVoxel)
             {
-                int picked = HandPickup.TakeStone(world, targets, ImpactCentre, materials, collected, iso, minedFrom);
+                int picked = HandPickup.TakeStone(world, aimedCorners, ImpactCentre, materials, collected, iso, minedFrom);
                 if (picked > 0)
                 {
                     ToolStrike.ClearSliversAround(world, targets, materials, Damage, collected, iso, minedFrom, material => CanTake(tool, material));

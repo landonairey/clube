@@ -23,7 +23,7 @@ MonoBehaviour:
   reposeAngle: 40
   pickUpPieceSize: 0
   pickedFromPiles: 0
-  toolTier: 1
+  toolTier: 3
   requiredSkill: 0
   requiredLevel: 0
   breaksInto: {fileID: 0}

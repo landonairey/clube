@@ -29,4 +29,5 @@ MonoBehaviour:
   chisels: 0
   hitsOnAnything: 0
   tier: 1
-  efficiency: 0.3
+  efficiency: 0.2
+  aimedOnly: 1

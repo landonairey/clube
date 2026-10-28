@@ -75,26 +75,43 @@ namespace Clube.Game
         /// </summary>
         public static int PlayerSlotAt(Vector2 topLeft, PlayerInventory player, Vector2 point)
         {
+            return PlayerSlotNear(topLeft, player, point, 0f);
+        }
+
+        /// <summary>
+        /// The player's slot nearest a point, when the point is on it or within
+        /// <paramref name="reach"/> pixels of it; -1 otherwise. A drop in the gap between two slots
+        /// still lands on the closer one.
+        /// </summary>
+        public static int PlayerSlotNear(Vector2 topLeft, PlayerInventory player, Vector2 point, float reach)
+        {
             Inventory items = player.Inventory;
             int hotbar = player.HotbarSlots;
-            for (int slot = hotbar; slot < items.SlotCount; slot++)
-            {
-                int index = slot - hotbar;
-                var rect = new Rect(topLeft.x + (index % Columns) * (SlotSize + Gap), topLeft.y + (index / Columns) * (SlotSize + Gap), SlotSize, SlotSize);
-                if (rect.Contains(point))
-                {
-                    return slot;
-                }
-            }
             float hotbarTop = topLeft.y + BackpackRows(player) * (SlotSize + Gap) - Gap + RowGap;
-            for (int slot = 0; slot < hotbar; slot++)
+            int nearest = -1;
+            float nearestDistance = float.MaxValue;
+            for (int slot = 0; slot < items.SlotCount; slot++)
             {
-                if (new Rect(topLeft.x + slot * (SlotSize + Gap), hotbarTop, SlotSize, SlotSize).Contains(point))
+                Rect rect;
+                if (slot < hotbar)
                 {
-                    return slot;
+                    rect = new Rect(topLeft.x + slot * (SlotSize + Gap), hotbarTop, SlotSize, SlotSize);
+                }
+                else
+                {
+                    int index = slot - hotbar;
+                    rect = new Rect(topLeft.x + (index % Columns) * (SlotSize + Gap), topLeft.y + (index / Columns) * (SlotSize + Gap), SlotSize, SlotSize);
+                }
+                float dx = Mathf.Max(rect.xMin - point.x, 0f, point.x - rect.xMax);
+                float dy = Mathf.Max(rect.yMin - point.y, 0f, point.y - rect.yMax);
+                float distance = dx * dx + dy * dy;
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearest = slot;
                 }
             }
-            return -1;
+            return nearestDistance <= reach * reach ? nearest : -1;
         }
 
         /// <summary>A row of an inventory's slots from <paramref name="topLeft"/>. Returns the slot clicked, or -1.</summary>
@@ -165,10 +182,8 @@ namespace Clube.Game
             {
                 text += $"\nVolume {stack.Volume:0.##}";
             }
-            if (stack.Quality < 0.995f)
-            {
-                text += $"\nQuality {stack.Quality * 100f:0}%";
-            }
+            // Always, 100% included (GL158).
+            text += $"\nQuality {stack.Quality * 100f:0}%";
             if (stack.Item.HidesContents)
             {
                 // "? ore" (GL76): what it holds stays hidden until the player can tell.

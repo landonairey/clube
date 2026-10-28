@@ -103,6 +103,10 @@ namespace Clube.Core
         [SerializeField, Range(0.05f, 1f)]
         private float efficiency = 1f;
 
+        [Tooltip("Sphere modes: each hit takes only from the ground sample under the dot, like the bare hand (GL155: the hand axe), not a sphere.")]
+        [SerializeField]
+        private bool aimedOnly;
+
         /// <summary>Makes a tool in code (tests); the game's tools are assets.</summary>
         public static ToolDefinition Create(
             string id, string displayName, int impactSize, float power, float hitsPerSecond = 2f, ImpactShape shape = ImpactShape.Cube)
@@ -145,6 +149,9 @@ namespace Clube.Core
 
         /// <summary>How much of a full hit it takes, 0-1 (GL146).</summary>
         public float Efficiency => efficiency;
+
+        /// <summary>True when a sphere-mode hit takes only the ground sample under the dot (GL155).</summary>
+        public bool AimedOnly => aimedOnly;
 
         /// <summary>True when it can work the material at all (GL145): its tier is high enough.</summary>
         public bool CanWork(VoxelMaterial material)
