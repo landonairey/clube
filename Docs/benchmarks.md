@@ -679,3 +679,18 @@ WorldLab (fixed 104 m area, render distance 16), Landscape with the great ranges
 | The World object's frame, moving 1.5 m a frame, with / without the coarse terrain | 5.8 / 6.3 ms average; 32 / 21 ms worst |
 
 The worst frames are not the coarse terrain's (it is at most 3.1 ms in them); they are the world's own streaming and the Editor's garbage collections. Clipping a level used to go through property blocks on every renderer (~2,500 calls whenever the focus crossed a chunk, and no SRP batching); a copy of the material per level makes it eight material updates.
+
+## Streaming at long render distances (P17, 2026-10-28)
+
+ProceduralWorldLab, Landscape, render distance 64 (the maximum: 514,120 wanted chunks), coarse terrain, far terrain and distant trees on. Editor, Burst on. The fly camera moved 1.5 m a frame (and 0.5 m sideways) for 300 frames, pumped by hand (`Update` + `LateUpdate` on the World object), so the times are the World object's scripts, not rendering.
+
+| Main-thread ms a frame, average / worst | Before (per-chunk area) | After (per-column area) |
+|---|---|---|
+| The World object's scripts | 185 / 574 | 19 / 48 |
+| `WorldView` streaming | 177 / 563 | 12 / 35 |
+| of which the area step | 240 / 882 | 4 / 30 |
+| Coarse terrain (`TerrainLodView`) | 1.0 / 2.9 | 0.5 / 3.4 |
+| Far terrain | 0.01 / 0.03 | 0.01 / 0.04 |
+| Distant trees | 0.7 / 21 | 0.5 / 4.9 |
+
+Before, every chunk-border crossing re-collected and re-hashed all 514,120 wanted chunks, recounted the loaded ones, scanned every loaded chunk for unloading and put the load cursor back to the start; moving a chunk a frame, the cursor never reached the new edge (340,000 chunks pending). The coarse terrain now builds 6 levels instead of 8 at this distance (the first two sat under the world's chunks). Distant trees draw about a quarter of the 84,000 placed (the tiles in view). Still: at distance 64 loading can't keep up with fast movement (478,000 pending after the flight), and standing still the 7,700 world chunk renderers cost about 11 ms of a 27 ms render in the Editor, so with the coarse terrain beyond, 16-24 is the sensible distance.

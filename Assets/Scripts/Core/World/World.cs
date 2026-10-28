@@ -29,6 +29,9 @@ namespace Clube.Core
     public sealed class World : IDensityField
     {
         private readonly Dictionary<Vector3Int, Chunk> loaded = new Dictionary<Vector3Int, Chunk>();
+
+        // Loaded layers per column (x, z), kept with `loaded`, so streaming can work in columns.
+        private readonly Dictionary<Vector2Int, int> loadedColumns = new Dictionary<Vector2Int, int>();
         private readonly Dictionary<Vector3Int, Chunk> editedUnloaded = new Dictionary<Vector3Int, Chunk>();
         private readonly HashSet<Vector3Int> edited = new HashSet<Vector3Int>();
 
@@ -61,6 +64,15 @@ namespace Clube.Core
         public IReadOnlyDictionary<Vector3Int, Chunk> Chunks => loaded;
 
         public int LoadedCount => loaded.Count;
+
+        /// <summary>How many layers each column with any loaded chunk has loaded, by column (x, z).</summary>
+        public IReadOnlyDictionary<Vector2Int, int> LoadedColumns => loadedColumns;
+
+        /// <summary>Loaded layers in the column (x, z).</summary>
+        public int LoadedLayersIn(Vector2Int column)
+        {
+            return loadedColumns.TryGetValue(column, out int layers) ? layers : 0;
+        }
 
         /// <summary>Chunks touched by any edit, loaded or kept in memory.</summary>
         public int EditedCount => edited.Count;
@@ -141,6 +153,8 @@ namespace Clube.Core
         public void Add(Vector3Int coord, Chunk chunk)
         {
             loaded.Add(coord, chunk);
+            var column = new Vector2Int(coord.x, coord.z);
+            loadedColumns[column] = LoadedLayersIn(column) + 1;
             loadedMin = anyLoaded ? Vector3Int.Min(loadedMin, coord) : coord;
             loadedMax = anyLoaded ? Vector3Int.Max(loadedMax, coord) : coord;
             anyLoaded = true;
@@ -204,6 +218,16 @@ namespace Clube.Core
                 return;
             }
             loaded.Remove(coord);
+            var column = new Vector2Int(coord.x, coord.z);
+            int layers = LoadedLayersIn(column) - 1;
+            if (layers > 0)
+            {
+                loadedColumns[column] = layers;
+            }
+            else
+            {
+                loadedColumns.Remove(column);
+            }
             dirty.Remove(coord);
             chunk.BecameDirty = null;
             if (edited.Contains(coord))
@@ -228,6 +252,7 @@ namespace Clube.Core
                 chunk.Release();
             }
             loaded.Clear();
+            loadedColumns.Clear();
             dirty.Clear();
             anyLoaded = false;
             anyCarved = false;

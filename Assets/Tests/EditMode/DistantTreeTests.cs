@@ -34,7 +34,12 @@ namespace Clube.Core.Tests
         {
             // Hilly enough that some spots are too steep for a tree.
             var generator = new FractalPerlin2DGenerator(11, 30f, 12f, 0.015f, octaves: 3);
-            var settings = new TreeGeneration { Chance = 0.6f, CellSize = 10f, Wood = wood, Leaves = leaves };
+            // Forests and ages on (GL164, GL165): both sides must read them the same way.
+            var settings = new TreeGeneration
+            {
+                Chance = 0.6f, CellSize = 10f, Wood = wood, Leaves = leaves,
+                ForestCover = 0.5f, ForestScale = 80f, FieldChance = 0.05f, YoungestSize = 0.5f,
+            };
             var field = new TreeField(settings, Seed, generator);
             using (var builder = new DistantTreeBuilder(generator, field, 300f))
             {
@@ -76,7 +81,7 @@ namespace Clube.Core.Tests
                         }
                     }
                 }
-                Assert.That(grown, Is.GreaterThan(50));
+                Assert.That(grown, Is.GreaterThan(40));
                 Assert.That(refused, Is.GreaterThan(0), "some spots are too steep, and both agree on them");
             }
         }

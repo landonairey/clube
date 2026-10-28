@@ -158,6 +158,45 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void EachKind_GrowsToItsOwnHeight_WithItsOwnTrunk()
+        {
+            VoxelMaterial mapleWood = VoxelMaterial.Create(21, "Maple wood", VoxelMaterialCategory.Plant);
+            try
+            {
+                TreeGeneration settings = Settings();
+                settings.MapleWood = mapleWood;
+                settings.MapleShare = 0.5f;
+                settings.MinBranchRadius = 0.05f;
+                settings.Height = new Vector2(11f, 16f);
+                settings.TrunkRadius = 0.25f;
+                settings.MapleHeight = new Vector2(18f, 22f);
+                settings.MapleTrunkRadius = 0.6f;
+                var parts = new List<TreePart>();
+                int maples = 0;
+                for (int cell = 0; cell < 60; cell++)
+                {
+                    var at = new Vector2Int(cell, 2);
+                    bool maple = TreeShape.IsMaple(Seed, at, settings);
+                    maples += maple ? 1 : 0;
+                    Vector2 range = maple ? settings.MapleHeight : settings.Height;
+                    Assert.That(TreeShape.HeightOf(Seed, at, settings), Is.InRange(range.x, range.y), $"cell {cell}: full-grown height");
+
+                    // The first trunk segment starts at the root with the trunk's radius (±15%).
+                    parts.Clear();
+                    TreeShape.Build(Seed, at, new float3(0f, Ground, 0f), settings, parts);
+                    float trunk = maple ? 0.6f : 0.25f;
+                    Assert.That(parts[1].FromRadius, Is.InRange(trunk * 0.85f, trunk * 1.15f), $"cell {cell}: trunk radius");
+                }
+                Assert.That(maples, Is.InRange(10, 50));
+                Assert.That(settings.TallestHeight, Is.EqualTo(22f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(mapleWood);
+            }
+        }
+
+        [Test]
         public void Field_GrowsTreesOnFlatGround_NotOnSlopes()
         {
             var flat = new TreeField(Settings(), Seed, new FlatGenerator(Ground));

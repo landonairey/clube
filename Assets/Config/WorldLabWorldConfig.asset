@@ -176,10 +176,16 @@ MonoBehaviour:
         extraContents: []
     trees:
       cellSize: 10
-      chance: 0.35
+      chance: 0.75
+      forestCover: 0.45
+      forestScale: 300
+      fieldChance: 0.03
+      youngestSize: 0.45
       maxSlope: 12
-      height: {x: 7, y: 10}
-      trunkRadius: 0.4
+      height: {x: 11, y: 16}
+      trunkRadius: 0.25
+      mapleHeight: {x: 14, y: 20}
+      mapleTrunkRadius: 0.4
       branches: {x: 3, y: 5}
       minBranchRadius: 0.22
       leafRadius: {x: 0.55, y: 0.9}

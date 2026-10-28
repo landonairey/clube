@@ -150,6 +150,38 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void CrossingABorderEveryFrame_StillSettles_WithTheColumnCountsRight()
+        {
+            // The area is redone at every crossing (per column, P17): moving a chunk a frame mustn't lose track.
+            for (int i = 0; i <= 12; i++)
+            {
+                streamer.Update(new Vector3(i * Size + 1f, 0f, i * 0.5f * Size));
+            }
+            Vector3 end = new Vector3(12 * Size + 1f, 0f, 6 * Size);
+            Settle(end);
+
+            StreamingStats stats = streamer.Stats;
+            Assert.That(stats.Pending, Is.Zero);
+            Assert.That(stats.Wanted, Is.EqualTo(13 * Layers), "the 13 columns within distance 2, every layer");
+            Vector3Int centre = world.Grid.WorldToChunk(end);
+            int total = 0;
+            foreach (var column in world.LoadedColumns)
+            {
+                int dx = column.Key.x - centre.x;
+                int dz = column.Key.y - centre.z;
+                Assert.That(dx * dx + dz * dz, Is.LessThanOrEqualTo(3 * 3), $"{column.Key} is within the area or its one-chunk slack");
+                int layers = 0;
+                for (int y = 0; y < Layers; y++)
+                {
+                    layers += world.IsLoaded(new Vector3Int(column.Key.x, y, column.Key.y)) ? 1 : 0;
+                }
+                Assert.That(column.Value, Is.EqualTo(layers), $"{column.Key}'s count matches its chunks");
+                total += column.Value;
+            }
+            Assert.That(total, Is.EqualTo(world.LoadedCount));
+        }
+
+        [Test]
         public void LeavingAndComingBack_BeforeJobsFinish_StillShowsEverything()
         {
             // Start loading, leave at once (jobs cancelled mid-flight), come straight back.

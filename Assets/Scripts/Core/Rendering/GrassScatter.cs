@@ -14,7 +14,7 @@ namespace Clube.Core
     /// <remarks>
     /// Reads the meshes the pipeline built (positions, normals, and the material ids and weights
     /// in UV channels 2 and 3), so it costs nothing in generation or meshing. A millisecond or so of
-    /// chunks is scattered a frame, rebuilt ones nearest the focus first; a rebuilt chunk loses its
+    /// chunks is scattered a frame, rebuilt ones first, each kind nearest the focus first; a rebuilt chunk loses its
     /// old tufts at once, so dug ground never keeps floating grass while it waits. The tufts
     /// shrink into the ground over the last metres of the radius.
     /// </remarks>
@@ -75,6 +75,9 @@ namespace Clube.Core
         private bool batchesDirty;
         private bool scanPending = true;
         private Vector3 scannedFrom;
+        private Vector3Int[] reachOffsets;
+        private float reachOffsetsRadius;
+        private Vector3 reachOffsetsChunk;
 
         /// <summary>Tufts drawn last frame, for the lab readouts.</summary>
         public int TuftCount { get; private set; }
@@ -220,35 +223,54 @@ namespace Clube.Core
                 batchesDirty = true;
             }
 
+            // Then the chunks round the focus without grass, nearest first (GL163): walking the box from a
+            // corner left the ground by the player for last, which at a low frame rate took a minute.
             Vector3Int centre = world.Grid.WorldToChunk(worldView.transform.InverseTransformPoint(focus));
-            Vector3 size = world.Grid.ChunkWorldSize;
-            Vector3Int reach = new Vector3Int(
-                Mathf.CeilToInt(radius / size.x), Mathf.CeilToInt(radius / size.y), Mathf.CeilToInt(radius / size.z));
+            foreach (Vector3Int offset in ReachOffsets(world.Grid.ChunkWorldSize))
+            {
+                Vector3Int coord = centre + offset;
+                if ((tufts.ContainsKey(coord) && !stale.Contains(coord))
+                    || !worldView.Renderers.TryGetValue(coord, out ChunkRenderer chunkRenderer)
+                    || Distance(chunkRenderer, focus) > near)
+                {
+                    continue;
+                }
+                if (clock.Elapsed.TotalMilliseconds > scatterMilliseconds)
+                {
+                    scanPending = true;
+                    return;
+                }
+                Scatter(coord, chunkRenderer);
+                stale.Remove(coord);
+                batchesDirty = true;
+            }
+        }
+
+        // The chunk offsets within the radius, nearest first, kept until the radius or chunk size changes.
+        private Vector3Int[] ReachOffsets(Vector3 chunkSize)
+        {
+            if (reachOffsets != null && reachOffsetsRadius == radius && reachOffsetsChunk == chunkSize)
+            {
+                return reachOffsets;
+            }
+            var reach = new Vector3Int(
+                Mathf.CeilToInt(radius / chunkSize.x), Mathf.CeilToInt(radius / chunkSize.y), Mathf.CeilToInt(radius / chunkSize.z));
+            var offsets = new List<Vector3Int>();
             for (int dy = -reach.y; dy <= reach.y; dy++)
             {
                 for (int dz = -reach.z; dz <= reach.z; dz++)
                 {
                     for (int dx = -reach.x; dx <= reach.x; dx++)
                     {
-                        var coord = new Vector3Int(centre.x + dx, centre.y + dy, centre.z + dz);
-                        if ((tufts.ContainsKey(coord) && !stale.Contains(coord))
-                            || !worldView.Renderers.TryGetValue(coord, out ChunkRenderer chunkRenderer)
-                            || Distance(chunkRenderer, focus) > near)
-                        {
-                            continue;
-                        }
-                        // At least one chunk a frame, then as many as the time allows.
-                        if (clock.Elapsed.TotalMilliseconds > scatterMilliseconds)
-                        {
-                            scanPending = true;
-                            return;
-                        }
-                        Scatter(coord, chunkRenderer);
-                        stale.Remove(coord);
-                        batchesDirty = true;
+                        offsets.Add(new Vector3Int(dx, dy, dz));
                     }
                 }
             }
+            offsets.Sort((a, b) => Vector3.Scale(a, chunkSize).sqrMagnitude.CompareTo(Vector3.Scale(b, chunkSize).sqrMagnitude));
+            reachOffsets = offsets.ToArray();
+            reachOffsetsRadius = radius;
+            reachOffsetsChunk = chunkSize;
+            return reachOffsets;
         }
 
         // Squared distance from the focus to the chunk's centre.

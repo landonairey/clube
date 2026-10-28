@@ -50,7 +50,7 @@ namespace Clube.Debug
             else if (far.LevelCount > 0)
             {
                 frame.Line($"{far.LevelCount} levels to {far.Reach / 1000f:0.#} km · {far.VertexCount:N0} vertices");
-                frame.Line($"Last rebuild: {far.LastBuildLevels} levels, {far.LastBuildMilliseconds:0.0} ms on the workers");
+                frame.Line($"Last rebuild: {far.LastBuildLevels} levels, {far.LastBuildMilliseconds:0.0} ms on the workers · {far.LastUpdateMilliseconds:0.00} ms a frame");
             }
         }
     }

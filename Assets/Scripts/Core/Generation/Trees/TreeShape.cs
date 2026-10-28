@@ -19,6 +19,12 @@ namespace Clube.Core
         /// <summary>Furthest a leaf ball's centre sits from the branch end it grows on, in metres (before the crown's scale).</summary>
         public const float ClusterScatter = 0.8f;
 
+        /// <summary>
+        /// The height the leaf sizes are set for (GL166): a taller tree's leaf balls, and how far they
+        /// scatter, grow with it, so every tree keeps the proportions of one this tall.
+        /// </summary>
+        public const float LeafReferenceHeight = 8.5f;
+
         private const int TrunkSegments = 4;
 
         // How deep the trunk's flared foot reaches into the ground, in metres, so no gap shows on a slope.
@@ -42,11 +48,12 @@ namespace Clube.Core
             return VoxelHash.Uniform(seed, cell.x, SpeciesSalt, cell.y) < settings.MapleShare;
         }
 
-        /// <summary>The cell's tree's height in metres, the same roll <see cref="Build"/> makes first.</summary>
+        /// <summary>The cell's tree's height in metres, the same rolls <see cref="Build"/> makes (its first, scaled by its age).</summary>
         public static float HeightOf(int seed, Vector2Int cell, TreeGeneration settings)
         {
             var dice = new Dice(seed, cell);
-            return dice.Range(settings.Height.x, settings.Height.y);
+            Vector2 range = settings.HeightFor(IsMaple(seed, cell, settings));
+            return dice.Range(range.x, range.y) * TreeForests.SizeOf(seed, cell, settings);
         }
 
         /// <summary>Adds the parts of the tree rooted at <paramref name="root"/> (on the ground) to <paramref name="parts"/>.</summary>
@@ -60,8 +67,13 @@ namespace Clube.Core
             byte leaves = maple ? settings.MapleLeaves.Id : settings.Leaves.Id;
             byte stump = maple ? settings.MapleStump.Id : settings.Stump.Id;
             float minRadius = settings.MinBranchRadius;
-            float height = dice.Range(settings.Height.x, settings.Height.y);
-            float radius = math.max(minRadius, settings.TrunkRadius * dice.Range(0.85f, 1.15f));
+            // Its age scales the whole tree (GL165), by its own roll so the shape's numbers stay as they were.
+            float size = TreeForests.SizeOf(seed, cell, settings);
+            // Each kind has its own full-grown height and trunk (GL166).
+            Vector2 range = settings.HeightFor(maple);
+            float height = dice.Range(range.x, range.y) * size;
+            float radius = math.max(minRadius, settings.TrunkRadiusFor(maple) * dice.Range(0.85f, 1.15f) * size);
+            float leafScale = height / LeafReferenceHeight;
             var up = new float3(0f, 1f, 0f);
 
             // The trunk: leans up to 8% of its height, wobbles in the middle, ends at a third of its radius.
@@ -116,12 +128,12 @@ namespace Clube.Core
                     float3 direction = Direction(azimuth + side * math.radians(dice.Range(30f, 70f)), math.radians(dice.Range(15f, 50f)));
                     float3 to = from + direction * (length * dice.Range(0.28f, 0.42f));
                     parts.Add(TreePart.Segment(from, to, fromRadius, minRadius, wood));
-                    LeafCluster(ref dice, to, settings, leaves, 3, 5, 1f, parts);
+                    LeafCluster(ref dice, to, settings, leaves, 3, 5, leafScale, parts);
                 }
-                LeafCluster(ref dice, end, settings, leaves, 3, 5, 1f, parts);
+                LeafCluster(ref dice, end, settings, leaves, 3, 5, leafScale, parts);
             }
 
-            LeafCluster(ref dice, trunk[TrunkSegments] + up * 0.3f, settings, leaves, 4, 6, CrownScale, parts);
+            LeafCluster(ref dice, trunk[TrunkSegments] + up * (0.3f * leafScale), settings, leaves, 4, 6, CrownScale * leafScale, parts);
         }
 
         // A few leaf balls scattered around a branch end, mostly above and beside it.

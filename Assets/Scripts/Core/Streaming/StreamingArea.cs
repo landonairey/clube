@@ -18,6 +18,8 @@ namespace Clube.Core
         private static readonly Dictionary<(int Distance, int Layers), Vector3Int[]> Offsets =
             new Dictionary<(int, int), Vector3Int[]>();
 
+        private static readonly Dictionary<int, Vector2Int[]> ColumnOffsets = new Dictionary<int, Vector2Int[]>();
+
         /// <summary>Replaces the contents of <paramref name="coords"/> with the wanted chunks, nearest first.</summary>
         public static void Collect(Vector3Int centre, int renderDistance, int heightInChunks, List<Vector3Int> coords)
         {
@@ -85,11 +87,55 @@ namespace Clube.Core
             return seal;
         }
 
+        /// <summary>
+        /// Replaces the contents of <paramref name="columns"/> with the wanted columns (x, z) round
+        /// <paramref name="centre"/>, nearest first: the circle of <see cref="Collect"/>, one entry per
+        /// column rather than per chunk (a column holds every layer).
+        /// </summary>
+        public static void CollectColumns(Vector2Int centre, int renderDistance, List<Vector2Int> columns)
+        {
+            Vector2Int[] offsets = ColumnOffsetsFor(renderDistance);
+            columns.Clear();
+            if (columns.Capacity < offsets.Length)
+            {
+                columns.Capacity = offsets.Length;
+            }
+            foreach (Vector2Int offset in offsets)
+            {
+                columns.Add(offset + centre);
+            }
+        }
+
+        /// <summary>True when the column (x, z) is within the render distance of the centre column: the circle's test.</summary>
+        public static bool IsColumnInRange(Vector2Int column, Vector2Int centre, int renderDistance)
+        {
+            int dx = column.x - centre.x;
+            int dz = column.y - centre.y;
+            return dx * dx + dz * dz <= renderDistance * renderDistance;
+        }
+
         public static int HorizontalDistanceSquared(Vector3Int coord, Vector3Int centre)
         {
             int dx = coord.x - centre.x;
             int dz = coord.z - centre.z;
             return dx * dx + dz * dz;
+        }
+
+        // Every (dx, dz) in the circle, nearest first, in the same order as OffsetsFor's columns.
+        private static Vector2Int[] ColumnOffsetsFor(int renderDistance)
+        {
+            if (ColumnOffsets.TryGetValue(renderDistance, out Vector2Int[] offsets))
+            {
+                return offsets;
+            }
+            Vector3Int[] chunks = OffsetsFor(renderDistance, 1);
+            offsets = new Vector2Int[chunks.Length];
+            for (int i = 0; i < chunks.Length; i++)
+            {
+                offsets[i] = new Vector2Int(chunks[i].x, chunks[i].z);
+            }
+            ColumnOffsets.Add(renderDistance, offsets);
+            return offsets;
         }
 
         // Every (dx, layer, dz) in the circle, nearest column first; within a column, bottom layer first.

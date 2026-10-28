@@ -36,7 +36,7 @@ namespace Clube.Debug
             }
             else
             {
-                frame.Line(trees.PendingTiles > 0 ? $"{trees.TreeCount:N0} trees, {trees.PendingTiles} tiles to place" : $"{trees.TreeCount:N0} trees");
+                frame.Line($"{trees.TreeCount:N0} trees, {trees.DrawnCount:N0} in view · {trees.LastUpdateMilliseconds:0.00} ms a frame" + (trees.PendingTiles > 0 ? $" · {trees.PendingTiles} tiles to place" : ""));
             }
         }
     }

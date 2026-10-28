@@ -65,7 +65,7 @@ namespace Clube.Core
 
         private FarTerrainBuilder builder;
         private ITerrainGenerator builtFor;
-        private string builtSettings;
+        private int builtSettings;
         private Mesh[] meshes;
         private MeshRenderer[] renderers;
         private Material runtimeMaterial;
@@ -119,6 +119,9 @@ namespace Clube.Core
         /// <summary>Why nothing is drawn, or null.</summary>
         public string Problem { get; private set; }
 
+        /// <summary>Main-thread time of the last frame's update.</summary>
+        public float LastUpdateMilliseconds { get; private set; }
+
         private void Awake()
         {
             if (worldView == null)
@@ -169,7 +172,7 @@ namespace Clube.Core
             float coarseReach = coarseTerrain != null ? coarseTerrain.PlannedReach : 0f;
             int firstLevel = coarseReach > 0f ? FirstLevelBeyond(coarseReach * 1.25f) : 0;
             float levelSink = coarseReach > 0f ? Mathf.Max(sink, coarseReach / (coarseTerrain.HalfChunks * worldView.Config.ChunkSize.x) * 0.5f) : sink;
-            string settings = $"{range}|{baseSpacing}|{quads}|{levelSink}|{firstLevel}";
+            int settings = System.HashCode.Combine(range, baseSpacing, quads, levelSink, firstLevel);
             if (builder == null || builtFor != worldView.Generator || builtSettings != settings)
             {
                 DropBuilder();
@@ -179,10 +182,12 @@ namespace Clube.Core
                 CreateLevels(builder.LevelCount);
             }
 
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
             Vector3 focus = worldView.transform.InverseTransformPoint(worldView.Focus.position);
             builder.Update(focus, meshes);
             UpdateLevels();
             UpdateNearArea();
+            LastUpdateMilliseconds = (System.Diagnostics.Stopwatch.GetTimestamp() - started) * 1000f / System.Diagnostics.Stopwatch.Frequency;
             if (extendCameraFarPlane && Camera.main != null)
             {
                 float far = builder.Reach * 1.1f;

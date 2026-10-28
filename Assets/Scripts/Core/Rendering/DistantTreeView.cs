@@ -62,15 +62,28 @@ namespace Clube.Core
         private Material runtimeMaterial;
         private ChunkCoverageMask coverage;
         private Mesh[] meshes;
-        private string builtColors;
-        private int gatheredVersion = -1;
-        private Vector3 gatheredAt;
-        private int nextGatherFrame;
+        private (Color, Color, Color, Color) builtColors;
+        private (float, float) builtTrunks;
+        private int syncedVersion = -1;
         private int drawnFrame = -1;
 
-        // Per mesh (birch near, birch far, maple near, maple far): the trees to draw.
-        private readonly List<Matrix4x4>[] instances = { new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>() };
-        private Matrix4x4[][] arrays = new Matrix4x4[4][];
+        // Each ready tile's trees as world matrices, made once when the tile arrives: a frame only
+        // copies the tiles in view into the draw arrays.
+        private readonly Dictionary<DistantTreeBuilder.Tile, TileDraw> tileDraws = new Dictionary<DistantTreeBuilder.Tile, TileDraw>();
+        private readonly HashSet<DistantTreeBuilder.Tile> liveTiles = new HashSet<DistantTreeBuilder.Tile>();
+        private readonly List<DistantTreeBuilder.Tile> goneTiles = new List<DistantTreeBuilder.Tile>();
+        private readonly Plane[] frustum = new Plane[6];
+
+        // Per mesh (birch near, birch far, maple near, maple far): this frame's trees, and how many.
+        private readonly Matrix4x4[][] arrays = new Matrix4x4[4][];
+        private readonly int[] counts = new int[4];
+
+        private sealed class TileDraw
+        {
+            public Matrix4x4[] Birch;
+            public Matrix4x4[] Maple;
+            public Bounds Bounds;
+        }
 
         public bool Show
         {
@@ -90,14 +103,20 @@ namespace Clube.Core
             set => detailDistance = Mathf.Clamp(value, 50f, 2000f);
         }
 
-        /// <summary>Trees drawn (before the shader drops the ones the world grows itself).</summary>
+        /// <summary>Trees placed in reach, in view or not.</summary>
         public int TreeCount { get; private set; }
+
+        /// <summary>Trees drawn last frame: those in the camera's view (before the shader drops the ones the world grows itself).</summary>
+        public int DrawnCount { get; private set; }
 
         /// <summary>Tiles still waiting for their trees.</summary>
         public int PendingTiles => builder?.Pending ?? 0;
 
         /// <summary>Why nothing is drawn, or null.</summary>
         public string Problem { get; private set; }
+
+        /// <summary>Main-thread time of the last frame's update, drawing included.</summary>
+        public float LastUpdateMilliseconds { get; private set; }
 
         private void Awake()
         {
@@ -152,6 +171,7 @@ namespace Clube.Core
                 return;
             }
             Problem = null;
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
 
             if (builder == null || builtFor != worldView.Generator || builtRange != range)
             {
@@ -163,61 +183,138 @@ namespace Clube.Core
             EnsureMeshes();
             runtimeMaterial ??= new Material(material) { name = material.name + " (runtime)", enableInstancing = true };
 
-            Vector3 focus = worldView.transform.InverseTransformPoint(worldView.Focus.position);
-            builder.Update(focus);
-            // While tiles keep arriving, gather every few frames rather than every one.
-            bool moved = (focus - gatheredAt).sqrMagnitude > detailDistance * detailDistance * 0.0625f;
-            if (moved || (builder.Version != gatheredVersion && Time.frameCount >= nextGatherFrame))
+            builder.Update(worldView.transform.InverseTransformPoint(worldView.Focus.position));
+            if (builder.Version != syncedVersion)
             {
-                Gather(focus);
+                SyncTiles();
             }
             UpdateCoverage();
             Draw();
+            LastUpdateMilliseconds = (System.Diagnostics.Stopwatch.GetTimestamp() - started) * 1000f / System.Diagnostics.Stopwatch.Frequency;
         }
 
-        // Every ready tile's trees, sorted into the four meshes by kind and distance.
-        private void Gather(Vector3 focus)
+        // Matrices for the tiles that arrived, and none for the tiles that went.
+        private void SyncTiles()
         {
-            gatheredVersion = builder.Version;
-            gatheredAt = focus;
-            nextGatherFrame = Time.frameCount + 10;
-            foreach (List<Matrix4x4> list in instances)
-            {
-                list.Clear();
-            }
-            Matrix4x4 toWorld = worldView.transform.localToWorldMatrix;
-            float detail = detailDistance * detailDistance;
-            float reach = range * range;
+            syncedVersion = builder.Version;
+            liveTiles.Clear();
             foreach (DistantTreeBuilder.Tile tile in builder.Tiles)
             {
                 if (!tile.Ready)
                 {
                     continue;
                 }
-                foreach (DistantTree tree in tile.Trees)
+                liveTiles.Add(tile);
+                if (!tileDraws.ContainsKey(tile))
                 {
-                    float distance = new Vector2(tree.Root.x - focus.x, tree.Root.z - focus.z).sqrMagnitude;
-                    if (distance > reach)
-                    {
-                        continue;
-                    }
-                    int list = (tree.Maple ? 2 : 0) + (distance <= detail ? 0 : 1);
-                    float width = Mathf.Lerp(0.85f, 1.2f, tree.Variation);
-                    float yaw = tree.Variation * 2520f;
-                    instances[list].Add(toWorld * Matrix4x4.TRS(
-                        tree.Root, Quaternion.Euler(0f, yaw, 0f), new Vector3(tree.Height * width, tree.Height, tree.Height * width)));
+                    tileDraws.Add(tile, Build(tile));
                 }
+            }
+            goneTiles.Clear();
+            foreach (DistantTreeBuilder.Tile tile in tileDraws.Keys)
+            {
+                if (!liveTiles.Contains(tile))
+                {
+                    goneTiles.Add(tile);
+                }
+            }
+            foreach (DistantTreeBuilder.Tile tile in goneTiles)
+            {
+                tileDraws.Remove(tile);
             }
             TreeCount = 0;
-            for (int i = 0; i < instances.Length; i++)
+            foreach (TileDraw draw in tileDraws.Values)
             {
-                if (arrays[i] == null || arrays[i].Length < instances[i].Count)
-                {
-                    arrays[i] = new Matrix4x4[Mathf.NextPowerOfTwo(Mathf.Max(64, instances[i].Count))];
-                }
-                instances[i].CopyTo(arrays[i]);
-                TreeCount += instances[i].Count;
+                TreeCount += draw.Birch.Length + draw.Maple.Length;
             }
+        }
+
+        // A tile's trees as world matrices by kind, and the box round them for culling.
+        private TileDraw Build(DistantTreeBuilder.Tile tile)
+        {
+            Matrix4x4 toWorld = worldView.transform.localToWorldMatrix;
+            int maples = 0;
+            foreach (DistantTree tree in tile.Trees)
+            {
+                maples += tree.Maple ? 1 : 0;
+            }
+            var draw = new TileDraw { Birch = new Matrix4x4[tile.Trees.Count - maples], Maple = new Matrix4x4[maples] };
+            int birch = 0, maple = 0;
+            Vector3 min = Vector3.positiveInfinity, max = Vector3.negativeInfinity;
+            foreach (DistantTree tree in tile.Trees)
+            {
+                float width = Mathf.Lerp(0.85f, 1.2f, tree.Variation);
+                float yaw = tree.Variation * 2520f;
+                Matrix4x4 matrix = toWorld * Matrix4x4.TRS(
+                    tree.Root, Quaternion.Euler(0f, yaw, 0f), new Vector3(tree.Height * width, tree.Height, tree.Height * width));
+                if (tree.Maple)
+                {
+                    draw.Maple[maple++] = matrix;
+                }
+                else
+                {
+                    draw.Birch[birch++] = matrix;
+                }
+                // The crown spreads about half the height either side and tops out a little over it.
+                Vector3 root = matrix.GetColumn(3);
+                Vector3 reach = new Vector3(tree.Height * 0.6f, 0f, tree.Height * 0.6f);
+                min = Vector3.Min(min, root - reach - Vector3.up * (tree.Height * 0.3f));
+                max = Vector3.Max(max, root + reach + Vector3.up * (tree.Height * 1.2f));
+            }
+            draw.Bounds = tile.Trees.Count > 0 ? new Bounds((min + max) * 0.5f, max - min) : default;
+            return draw;
+        }
+
+        // This frame's trees: the tiles in the camera's view, near or far mesh by the tile's distance.
+        private void Collect()
+        {
+            Camera camera = Camera.main;
+            bool cull = camera != null;
+            if (cull)
+            {
+                GeometryUtility.CalculateFrustumPlanes(camera, frustum);
+            }
+            Vector3 focus = worldView.Focus.position;
+            float detail = detailDistance * detailDistance;
+            float reach = range * range;
+            System.Array.Clear(counts, 0, counts.Length);
+            foreach (TileDraw draw in tileDraws.Values)
+            {
+                if (draw.Birch.Length + draw.Maple.Length == 0)
+                {
+                    continue;
+                }
+                Vector3 centre = draw.Bounds.center;
+                float distance = new Vector2(centre.x - focus.x, centre.z - focus.z).sqrMagnitude;
+                if (distance > reach || (cull && !GeometryUtility.TestPlanesAABB(frustum, draw.Bounds)))
+                {
+                    continue;
+                }
+                int far = distance <= detail ? 0 : 1;
+                Append(far, draw.Birch);
+                Append(2 + far, draw.Maple);
+            }
+            DrawnCount = counts[0] + counts[1] + counts[2] + counts[3];
+        }
+
+        private void Append(int list, Matrix4x4[] trees)
+        {
+            if (trees.Length == 0)
+            {
+                return;
+            }
+            int needed = counts[list] + trees.Length;
+            if (arrays[list] == null || arrays[list].Length < needed)
+            {
+                var grown = new Matrix4x4[Mathf.NextPowerOfTwo(Mathf.Max(1024, needed))];
+                if (arrays[list] != null)
+                {
+                    System.Array.Copy(arrays[list], grown, counts[list]);
+                }
+                arrays[list] = grown;
+            }
+            System.Array.Copy(trees, 0, arrays[list], counts[list], trees.Length);
+            counts[list] = needed;
         }
 
         private void UpdateCoverage()
@@ -242,15 +339,16 @@ namespace Clube.Core
                 return;
             }
             drawnFrame = Time.frameCount;
+            Collect();
             var parameters = new RenderParams(runtimeMaterial)
             {
                 shadowCastingMode = ShadowCastingMode.Off,
                 receiveShadows = false,
                 worldBounds = new Bounds(worldView.Focus.position, Vector3.one * (range * 2.2f)),
             };
-            for (int i = 0; i < instances.Length; i++)
+            for (int i = 0; i < counts.Length; i++)
             {
-                int count = instances[i].Count;
+                int count = counts[i];
                 for (int start = 0; start < count; start += BatchSize)
                 {
                     Graphics.RenderMeshInstanced(parameters, meshes[i], 0, arrays[i], Mathf.Min(BatchSize, count - start), start);
@@ -260,23 +358,34 @@ namespace Clube.Core
 
         private void EnsureMeshes()
         {
-            string colors = $"{birchBark}{birchLeaves}{mapleBark}{mapleLeaves}";
-            if (meshes != null && colors == builtColors)
+            // Each kind's trunk against its height, as the voxel trees have it (GL166): the mesh is scaled by the tree's height.
+            TreeGeneration trees = worldView.Trees.Settings;
+            float birchTrunk = TrunkShare(trees, false);
+            float mapleTrunk = TrunkShare(trees, true);
+            if (meshes != null && builtColors == (birchBark, birchLeaves, mapleBark, mapleLeaves) && builtTrunks == (birchTrunk, mapleTrunk))
             {
                 return;
             }
             DestroyMeshes();
-            builtColors = colors;
+            builtColors = (birchBark, birchLeaves, mapleBark, mapleLeaves);
+            builtTrunks = (birchTrunk, mapleTrunk);
             // Vertex colours reach the shader as they are, so in a linear project they go in linear.
             bool linear = QualitySettings.activeColorSpace == ColorSpace.Linear;
             Color Convert(Color color) => linear ? color.linear : color;
             meshes = new[]
             {
-                DistantTreeMeshes.Build(true, Convert(birchBark), Convert(birchLeaves)),
-                DistantTreeMeshes.Build(false, Convert(birchBark), Convert(birchLeaves)),
-                DistantTreeMeshes.Build(true, Convert(mapleBark), Convert(mapleLeaves)),
-                DistantTreeMeshes.Build(false, Convert(mapleBark), Convert(mapleLeaves)),
+                DistantTreeMeshes.Build(true, Convert(birchBark), Convert(birchLeaves), birchTrunk),
+                DistantTreeMeshes.Build(false, Convert(birchBark), Convert(birchLeaves), birchTrunk),
+                DistantTreeMeshes.Build(true, Convert(mapleBark), Convert(mapleLeaves), mapleTrunk),
+                DistantTreeMeshes.Build(false, Convert(mapleBark), Convert(mapleLeaves), mapleTrunk),
             };
+        }
+
+        // The full-grown trunk radius over the middle full-grown height; age scales both alike.
+        private static float TrunkShare(TreeGeneration trees, bool maple)
+        {
+            Vector2 height = trees.HeightFor(maple);
+            return trees.TrunkRadiusFor(maple) / ((height.x + height.y) * 0.5f);
         }
 
         private void DestroyMeshes()
@@ -297,12 +406,11 @@ namespace Clube.Core
             builder?.Dispose();
             builder = null;
             builtFor = null;
-            gatheredVersion = -1;
-            foreach (List<Matrix4x4> list in instances)
-            {
-                list.Clear();
-            }
+            syncedVersion = -1;
+            tileDraws.Clear();
+            System.Array.Clear(counts, 0, counts.Length);
             TreeCount = 0;
+            DrawnCount = 0;
         }
     }
 }

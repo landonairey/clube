@@ -58,7 +58,7 @@ namespace Clube.Core
 
         private TerrainLodBuilder builder;
         private ITerrainGenerator builtFor;
-        private string builtSettings;
+        private int builtSettings;
         private ChunkCoverageMask coverage;
         private Transform[] levelRoots;
         private Material[] levelMaterials;
@@ -197,11 +197,12 @@ namespace Clube.Core
             Problem = null;
 
             WorldConfig config = worldView.Config;
-            string settings = $"{levels}|{halfChunks}|{config.ChunkSize}|{config.VoxelSize}|{config.MeshSettings.MaterialDisplay}";
+            int firstLevel = FirstLevelPast(worldView.RenderDistance);
+            int settings = System.HashCode.Combine(levels, halfChunks, config.ChunkSize, config.VoxelSize, config.MeshSettings.MaterialDisplay, firstLevel);
             if (builder == null || builtFor != worldView.Generator || builtSettings != settings)
             {
                 DropBuilder();
-                CreateBuilder(heightfield, config);
+                CreateBuilder(heightfield, config, firstLevel);
                 builtFor = worldView.Generator;
                 builtSettings = settings;
             }
@@ -235,14 +236,27 @@ namespace Clube.Core
             }
         }
 
-        private void CreateBuilder(HeightfieldGenerator heightfield, WorldConfig config)
+        // The finest level whose square reaches the world's render distance: a nearer one would be
+        // built only to be hidden under the world's own chunks. The coarsest level stays `levels`, so
+        // the reach doesn't change with the render distance.
+        private int FirstLevelPast(int renderDistance)
+        {
+            int first = 1;
+            while (first < levels && halfChunks * TerrainLodRing.ScaleOf(first) < renderDistance)
+            {
+                first++;
+            }
+            return first;
+        }
+
+        private void CreateBuilder(HeightfieldGenerator heightfield, WorldConfig config, int firstLevel)
         {
             World world = worldView.World;
             ChunkFillSettings fill = ChunkGenerator.SettingsFor(config.Terrain.Layers, worldView.Ores, world.PreferredFormat, config.Terrain.StartArea);
             // No voxel trees in the coarse levels: past the world's chunks trees are meshes (DistantTreeView, GL162).
             builder = new TerrainLodBuilder(
                 heightfield, world.Grid, fill, config.MeshSettings, world.StorageFactory,
-                1, levels, halfChunks, this);
+                firstLevel, levels - firstLevel + 1, halfChunks, this);
 
             levelRoots = new Transform[builder.LevelCount];
             lastClips = new ClipState[builder.LevelCount];

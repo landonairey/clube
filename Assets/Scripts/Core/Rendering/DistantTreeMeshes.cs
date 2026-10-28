@@ -13,18 +13,19 @@ namespace Clube.Core
     /// </summary>
     public static class DistantTreeMeshes
     {
-        private const float TrunkRadius = 0.045f;
+        /// <summary>The trunk's radius at the ground against the tree's height when none is given.</summary>
+        public const float DefaultTrunkRadius = 0.045f;
         private const float TrunkBottom = -0.3f;
         private const float TrunkTop = 0.75f;
 
-        public static Mesh Build(bool near, Color bark, Color leaves)
+        public static Mesh Build(bool near, Color bark, Color leaves, float trunkRadius = DefaultTrunkRadius)
         {
             var vertices = new List<Vector3>();
             var normals = new List<Vector3>();
             var colors = new List<Color>();
             var triangles = new List<int>();
 
-            Trunk(near ? 6 : 3, bark, vertices, normals, colors, triangles);
+            Trunk(near ? 6 : 3, trunkRadius, bark, vertices, normals, colors, triangles);
             // The voxel trees' crowns spread about 0.4 of the height either side and reach a little over the
             // top (branches from 0.45 to 0.82 up, angled upwards, with leaf clusters at their ends).
             if (near)
@@ -51,7 +52,7 @@ namespace Clube.Core
             return mesh;
         }
 
-        private static void Trunk(int sides, Color bark, List<Vector3> vertices, List<Vector3> normals, List<Color> colors, List<int> triangles)
+        private static void Trunk(int sides, float trunkRadius, Color bark, List<Vector3> vertices, List<Vector3> normals, List<Color> colors, List<int> triangles)
         {
             for (int i = 0; i < sides; i++)
             {
@@ -59,10 +60,10 @@ namespace Clube.Core
                 float a1 = (i + 1) * Mathf.PI * 2f / sides;
                 var d0 = new Vector3(Mathf.Cos(a0), 0f, Mathf.Sin(a0));
                 var d1 = new Vector3(Mathf.Cos(a1), 0f, Mathf.Sin(a1));
-                Vector3 b0 = d0 * TrunkRadius + Vector3.up * TrunkBottom;
-                Vector3 b1 = d1 * TrunkRadius + Vector3.up * TrunkBottom;
-                Vector3 t0 = d0 * (TrunkRadius * 0.4f) + Vector3.up * TrunkTop;
-                Vector3 t1 = d1 * (TrunkRadius * 0.4f) + Vector3.up * TrunkTop;
+                Vector3 b0 = d0 * trunkRadius + Vector3.up * TrunkBottom;
+                Vector3 b1 = d1 * trunkRadius + Vector3.up * TrunkBottom;
+                Vector3 t0 = d0 * (trunkRadius * 0.4f) + Vector3.up * TrunkTop;
+                Vector3 t1 = d1 * (trunkRadius * 0.4f) + Vector3.up * TrunkTop;
                 Quad(b0, t0, t1, b1, new Vector3(0f, (b0.y + t0.y) * 0.5f, 0f), bark, vertices, normals, colors, triangles);
             }
         }

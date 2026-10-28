@@ -222,7 +222,8 @@ namespace Clube.Core
         public bool TryGetSpot(Vector2Int cell, out Vector2 spot)
         {
             spot = default;
-            if (VoxelHash.Uniform(seed, cell.x, 0, cell.y, CellSalt) >= settings.Chance)
+            // Forests have the full chance, open fields a small one (GL164).
+            if (VoxelHash.Uniform(seed, cell.x, 0, cell.y, CellSalt) >= TreeForests.ChanceIn(seed, cell, settings))
             {
                 return false;
             }

@@ -24,6 +24,10 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - _LodCoverageMask:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _Textures:
         m_Texture: {fileID: 18700000, guid: 2cdac732b1b7ddf46b38cce6e3459565, type: 2}
         m_Scale: {x: 1, y: 1}
@@ -32,9 +36,14 @@ Material:
     m_Floats:
     - _Breakup: 0.3
     - _DebugColors: 1
+    - _LodClip: 0
+    - _LodHoleMargin: 0
     - _TextureScale: 0.5
     - _TintVariation: 0.12
     - _TriplanarSharpness: 4
-    m_Colors: []
+    m_Colors:
+    - _LodCoverage: {r: 0, g: 0, b: 1, a: 0}
+    - _LodHole: {r: 0, g: 0, b: 0, a: 0}
+    - _LodTint: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

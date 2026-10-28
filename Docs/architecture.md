@@ -170,6 +170,15 @@ flowchart LR
   (`TreeStamp`): each sample takes the part it is deepest inside, then keeps
   whichever density is higher, the ground's or the tree's, with its material. A
   chunk wholly above the ground is only skipped when no tree reaches it.
+- **Forests and ages** (GL164, GL165): `TreeForests` splits the land into forest and
+  open field with a smooth value noise (a cell's chance is `Chance` in forest,
+  `FieldChance` in the open), and gives each tree an age that scales its whole
+  shape (`SizeOf`, from `YoungestSize` to 1; deep forest leans old). Both are pure
+  functions of the seed and the cell, read by `TreeField`, `TreeShape` and the
+  distant trees alike.
+  Each kind has its own full-grown height and trunk (GL166: birch 11-16 m, maple 14-20 m in the
+  world labs); leaf balls grow with the height (`TreeShape.LeafReferenceHeight`), so a tall
+  tree is a bigger copy of a short one.
 - **Determinism** (P4, O4): every value is a pure function of position and seed,
   and positions come from integer global sample indices, so border copies agree
   exactly. Burst's float rounding differs from Mono by a few ULPs (heights
@@ -233,9 +242,12 @@ there, so walls show the underground while the chunk's data stays as generated.
 `WorldView.Update` → `WorldStreamer.Update(focus)`:
 
 1. **Poll**: finished jobs move to ready queues (cheap; nothing copied yet).
-2. **Area**: rebuild the wanted list when the focus crosses a chunk border or the
-   render distance changes (precomputed offsets, no sort); only then unload what left it (renderers back to the
-   pool, unedited chunks' memory back to `VoxelArrayPool`).
+2. **Area**: rebuild the wanted columns when the focus crosses a chunk border or the
+   render distance changes (precomputed offsets, no sort); only then unload the loaded columns that left it
+   (renderers back to the pool, unedited chunks' memory back to `VoxelArrayPool`). The area is kept per
+   column, never per chunk (P17): a chunk is wanted by a distance test (`IsWanted`), `World` counts the
+   loaded layers of each column (`LoadedColumns`), and the load cursor passes a full column in one step.
+   At render distance 64 that is 13,000 columns against 514,000 chunks, every crossing.
 3. **Apply meshes** (up to half the frame budget): hand finished mesh data to
    renderers; a chunk's first surface takes a renderer from the pool.
 4. **Add chunks** (rest of the budget): copy finished generation results into
@@ -353,7 +365,7 @@ flowchart LR
     FV["FarTerrainView"] -- "outer square, reach" --> LV
 ```
 
-- **Levels** (`TerrainLodRing`): level *l* (1-8) has voxels 2^*l* times the world's and the same
+- **Levels** (`TerrainLodRing`): level *l* (from the first past the render distance, `FirstLevelPast`, to 8) has voxels 2^*l* times the world's and the same
   16³ chunks, so its chunks are 2^*l* times as wide; it covers 16 × 16 of them round the focus,
   64 m to 8 km, centred on every second chunk. It leaves out its four middle columns, which the
   finer level always covers however the two centres fall (`TerrainLodTests`).
@@ -386,7 +398,9 @@ maple colours, a detailed mesh within 400 m and a plain one beyond).
   (`HeightfieldGenerator.SchedulePointHeights`), and `TreeField.IsFlatEnough` keeps the trees
   the voxel world would grow (`DistantTreeTests` checks they match cell for cell). Height and kind
   are `TreeShape.HeightOf` and `IsMaple`, the same rolls `TreeShape.Build` makes.
-- **Drawing**: one `RenderMeshInstanced` call per 1,023 trees, once a frame. The `Clube/Distant
+- **Drawing**: a tile's matrices are made once, when it arrives; each frame copies only the tiles
+  in the main camera's view into the draw arrays (near or far mesh by the tile's distance, P17),
+  then one `RenderMeshInstanced` call per 1,023 trees. The `Clube/Distant
   Trees` shader drops a tree in the vertex stage when its root stands on a chunk column the world
   draws in full (`ChunkCoverageMask`), where the voxel tree is. Trunks run on below the ground, so
   none floats over the coarse terrain, which sits a little low. Crowns are sized like the voxel
