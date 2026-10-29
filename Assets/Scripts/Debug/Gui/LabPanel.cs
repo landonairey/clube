@@ -72,6 +72,7 @@ namespace Clube.Debug
         [SerializeField]
         private bool cheatsOpen;
         private bool collectingOpen;
+        private bool soundOpen;
 
         [SerializeField]
         private bool displayOpen;
@@ -217,6 +218,9 @@ namespace Clube.Debug
         }
 
         /// <summary>Everything the sections can change, for the Inspector to record for Undo and saving.</summary>
+        // The player's sound settings asset, or null when it has none.
+        private PlayerSounds Sounds => PlayerPart<PlayerActionSounds>() is PlayerActionSounds actions ? actions.Sounds : null;
+
         // A component on the player, or null when there's none.
         private T PlayerPart<T>() where T : Component
         {
@@ -230,7 +234,7 @@ namespace Clube.Debug
             foreach (Object part in new Object[]
                      {
                          Config, worldView, testFill, brush, chunkFocus, chunkVolume, selector, corners, volumeLab,
-                         stepThrough, flyCamera, playerToggle, player, PlayerPart<PlayerToolUser>(), PlayerPart<ToolCursor>(), PlayerPart<PlayerInventory>(), labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView, oreView, coarseTerrain, distantTrees, farTerrain,
+                         stepThrough, flyCamera, playerToggle, player, PlayerPart<PlayerToolUser>(), PlayerPart<ToolCursor>(), PlayerPart<PlayerInventory>(), Sounds, labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView, oreView, coarseTerrain, distantTrees, farTerrain,
                      })
             {
                 if (part != null)
@@ -354,6 +358,10 @@ namespace Clube.Debug
             if (player != null && frame.Section("Collecting", ref collectingOpen))
             {
                 CollectingControls.Draw(frame, player.GetComponent<ToolCursor>(), player.GetComponent<PlayerToolUser>(), player.GetComponent<PlayerInventory>());
+            }
+            if (Sounds != null && frame.Section("Sound", ref soundOpen))
+            {
+                SoundControls.Draw(frame, Sounds);
             }
             if (player != null && frame.Section("Cheats", ref cheatsOpen))
             {

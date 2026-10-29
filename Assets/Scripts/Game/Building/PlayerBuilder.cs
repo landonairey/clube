@@ -77,6 +77,9 @@ namespace Clube.Game
         /// <summary>The placed object aimed at within reach, while nothing placeable is selected.</summary>
         public PlacedObject Target { get; private set; }
 
+        /// <summary>Raised after an object is placed, with it.</summary>
+        public event System.Action<PlacedObject> Placed;
+
         /// <summary>Turns what's being placed a quarter turn, on top of facing the player (what R does, GL28).</summary>
         public void Rotate()
         {
@@ -105,6 +108,7 @@ namespace Clube.Game
             }
             inventory.Inventory.RemoveAt(hotbar.SelectedSlot, 1);
             CanPlace = false;
+            Placed?.Invoke(placedObject);
             return true;
         }
 

@@ -402,6 +402,14 @@ over part items at once (`Gathering.TakeAll`, GL169); hand and hand axe hits mix
 (`CollectingSettings.AimedMixFactor`, GL172). The inventory screen has a trash slot and Sort (`Inventory.Sort`); Shift-click
 loads half a stack into a station, Ctrl-click one (GL176). Holding Place on a boulder with a mixed stack picks it over
 (`Refining`, `BoulderBashing`, GL177). Stations have a recovery (campfire 0.5, stone furnace 0.75, clay 1; GL178).
+Sound effects (2026-10-28): `PlayerSounds` (`Assets/Config/Audio/`) holds `SoundSet`s (random clip and pitch) for
+footsteps by material (stone, dirt, grass, clay; others by `MaterialKind`), a hit per tool (hand, hand axe, stone pick,
+stone hatchet, chisels, other tools; any hit on soft ground or leaves sounds like the material, `PlayerToolUser.HitMaterial`)
+and actions (a finished recipe by the skill it trains: crafting, smelting, smithing). The player's `PlayerFootsteps`,
+`PlayerToolSounds` (`PlayerToolUser.Struck`) and `PlayerActionSounds` (`PlayerSkills.RecipeFinished`, `MerchantPanel.Sold`,
+`PlayerBuilder.Placed`, `PlayerParcels.Bought`) play them on one 2D AudioSource. `PlayerSounds.EffectsOn` (lab panel, Sound
+section, `SoundControls`) switches all of it, and is off until the clips are picked properly. Clips are Kenney CC0 in
+`Assets/Audio/`; sources in `Docs/audio-credits.md`.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
