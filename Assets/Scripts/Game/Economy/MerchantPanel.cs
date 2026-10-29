@@ -41,6 +41,9 @@ namespace Clube.Game
 
         public bool IsOpen => Current != null;
 
+        /// <summary>Raised after a sale, with how many items went.</summary>
+        public event System.Action<int> Sold;
+
         private void Awake()
         {
             inventory = GetComponent<PlayerInventory>();
@@ -89,7 +92,12 @@ namespace Clube.Game
             {
                 return 0;
             }
-            return Current.Prices.Sell(item, count, inventory.Inventory, wallet.Wallet);
+            int sold = Current.Prices.Sell(item, count, inventory.Inventory, wallet.Wallet);
+            if (sold > 0)
+            {
+                Sold?.Invoke(sold);
+            }
+            return sold;
         }
 
         private void Update()
@@ -244,6 +252,10 @@ namespace Clube.Game
             float earned = Current.Prices.PriceOf(stack, sold);
             items.RemoveAt(slot, sold);
             wallet.Wallet.EarnFraction(earned);
+            if (sold > 0)
+            {
+                Sold?.Invoke(sold);
+            }
             if (items[slot].IsEmpty)
             {
                 selected = -1;

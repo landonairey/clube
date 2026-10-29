@@ -392,6 +392,11 @@ age (`YoungestSize`); GL166 gives birch and maple their own heights and trunks (
 render distance 64 cost 240 ms every chunk-border crossing. Coarse terrain starts past the render distance; distant trees draw
 only the tiles in view. To time a system, the far terrain, coarse terrain and distant tree views have `LastUpdateMilliseconds`
 and `WorldView.Stats.Phases` splits streaming; `FrameTimingManager` reads real frames in Play mode (its GPU time reads ~0 here).
+Sound effects (2026-10-28): `PlayerSounds` (`Assets/Config/Audio/`) holds `SoundSet`s (random clip and pitch) for
+footsteps by material (stone, dirt, grass, clay; others by `MaterialKind`), a hit per tool (hand, hand axe, stone pick,
+stone hatchet, chisels, other tools) and actions. The player's `PlayerFootsteps`, `PlayerToolSounds` (`PlayerToolUser.Struck`)
+and `PlayerActionSounds` (`PlayerSkills.RecipeFinished`, `MerchantPanel.Sold`, `PlayerBuilder.Placed`, `PlayerParcels.Bought`)
+play them on one 2D AudioSource. Clips are Kenney CC0 in `Assets/Audio/`; sources in `Docs/audio-credits.md`.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

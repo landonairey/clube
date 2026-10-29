@@ -1,0 +1,160 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad5d835b9fc4b1347861cfe2f7db222b, type: 3}
+  m_Name: PlayerSounds
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSounds
+  stoneSteps:
+    clips:
+    - {fileID: 8300000, guid: 27ec82fc9ed3d35438804e8d951e6aa3, type: 3}
+    - {fileID: 8300000, guid: ecf7b0fe8598acb49879c868af628bc0, type: 3}
+    - {fileID: 8300000, guid: 7eec74d8d059f314d951a8a9fd7bed42, type: 3}
+    - {fileID: 8300000, guid: c5f25fd62ddfe114cae64e45a9a563c5, type: 3}
+    - {fileID: 8300000, guid: 2eb163397324e154c8d827e05abfc5e6, type: 3}
+    volume: 0.35
+    pitchJitter: 0.08
+    playAll: 0
+  dirtSteps:
+    clips:
+    - {fileID: 8300000, guid: 69ca065f460f40e4f9de311706d2d5bc, type: 3}
+    - {fileID: 8300000, guid: b495bf9e5c72141448fbefd572236977, type: 3}
+    - {fileID: 8300000, guid: 86544fba571c8b340b1ecae270c65b22, type: 3}
+    - {fileID: 8300000, guid: 3f0d9346ed8fcea49b1c86079bfee5b4, type: 3}
+    - {fileID: 8300000, guid: 9e2cd3ea84aa554419cb1b6af42fa674, type: 3}
+    - {fileID: 8300000, guid: 65f66dd16e474e4469d2fb34b0b806cd, type: 3}
+    - {fileID: 8300000, guid: 609d88af00c8311429817b8b7d052cf5, type: 3}
+    - {fileID: 8300000, guid: 1368e4d7b6ce18841a62a8cd496458ae, type: 3}
+    - {fileID: 8300000, guid: d8a3236bd5b85d743b117925cbc0c60b, type: 3}
+    - {fileID: 8300000, guid: 79017d994865c7341a6bd9359e092560, type: 3}
+    volume: 0.35
+    pitchJitter: 0.08
+    playAll: 0
+  grassSteps:
+    clips:
+    - {fileID: 8300000, guid: ab87cbbb0a7fe384d945dc692ebc0ca3, type: 3}
+    - {fileID: 8300000, guid: 7596ab8b3e3b88c4988031de9dc48d69, type: 3}
+    - {fileID: 8300000, guid: 210a81ca6e1925f4ebed8aa94a059256, type: 3}
+    - {fileID: 8300000, guid: c5ba734072723654b9d37530427ebdb7, type: 3}
+    - {fileID: 8300000, guid: 5ee14065883db4c4abd4f1ffc161a937, type: 3}
+    volume: 0.35
+    pitchJitter: 0.08
+    playAll: 0
+  claySteps:
+    clips:
+    - {fileID: 8300000, guid: b3316f7cc5103e045bb170ab364ed024, type: 3}
+    - {fileID: 8300000, guid: 05f5ea2d9114f1a42a0d9df7b23da68b, type: 3}
+    - {fileID: 8300000, guid: 23428b4ccd38b1d4eb55ebce1ec60061, type: 3}
+    - {fileID: 8300000, guid: 18e3c7aed6e687e428cd6a4571fd15ae, type: 3}
+    - {fileID: 8300000, guid: 1ae0a23700e8f794e929590802e2a836, type: 3}
+    volume: 0.35
+    pitchJitter: 0.08
+    playAll: 0
+  dirt: {fileID: 11400000, guid: 0554987880d556d4cafb280d1242eb09, type: 2}
+  grass: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
+  clay: {fileID: 11400000, guid: b167c5abf07b4be419155d7e54a546e6, type: 2}
+  toolHits:
+  - tool: {fileID: 11400000, guid: 0cd0e3994cf57324687ce5035ec165d3, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: de17aadeafbee044084d079788e2dd16, type: 3}
+      - {fileID: 8300000, guid: 84541ad9570fea947b63c3f0479cd68c, type: 3}
+      - {fileID: 8300000, guid: 087bf31e9c101644c9a1aba1c095e2fb, type: 3}
+      - {fileID: 8300000, guid: ff0552085fcd0ee42ae1ae83e902287b, type: 3}
+      - {fileID: 8300000, guid: 62c63d3792f73904d87530d223250ee0, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  - tool: {fileID: 11400000, guid: a56a1ea3071fb444faf3aa4d3fba77a8, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: e563117c47cc69041af29d315dd90cb7, type: 3}
+      - {fileID: 8300000, guid: cdc98152cdded1045a3e4d69cb8ee410, type: 3}
+      - {fileID: 8300000, guid: b196cdb4d4156bd45b41790e2713280f, type: 3}
+      - {fileID: 8300000, guid: c49d4941d2b39e7429759d6900603b46, type: 3}
+      - {fileID: 8300000, guid: 282f57a5f85068541b1c307ee2cd2438, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  - tool: {fileID: 11400000, guid: 950dfde7ea687974caddd2269cd51cd5, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: de6426b6ea3dce04eae702b5972cd5df, type: 3}
+      - {fileID: 8300000, guid: ea19faeb9ecc9aa4f8cec050490b12c3, type: 3}
+      - {fileID: 8300000, guid: 6b521c279d3b5d7469b3f7f99f89bceb, type: 3}
+      - {fileID: 8300000, guid: 67a39b86856391947b773b18d00c5534, type: 3}
+      - {fileID: 8300000, guid: 5af80680a2058ea45918b9a9a1964da6, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  - tool: {fileID: 11400000, guid: ec342cbb09055dd4ea2cce0b53812e2c, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: 4ebd294065bd9004aa8d3723a499c480, type: 3}
+      - {fileID: 8300000, guid: e7f89b5afcc9acb4e8eb7a7a32bcf8d6, type: 3}
+      - {fileID: 8300000, guid: b1a752c73b790194ab87336de08417bd, type: 3}
+      - {fileID: 8300000, guid: 7a491c87e2a58e54287a81c9fd870546, type: 3}
+      - {fileID: 8300000, guid: f802d33301cef60499122c19bd820312, type: 3}
+      - {fileID: 8300000, guid: e84c03a87dcfc73488557c3d41d79089, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  otherToolHits:
+    clips:
+    - {fileID: 8300000, guid: 1e33382fcbdebcd488e78f53b5c7747d, type: 3}
+    - {fileID: 8300000, guid: 9a96d3692de43e84083ac6acf2671b90, type: 3}
+    - {fileID: 8300000, guid: d7660ed396a204b49be58078c0dfdfb5, type: 3}
+    - {fileID: 8300000, guid: c1da868dc1ab9e147a27908ce1bdc0ff, type: 3}
+    - {fileID: 8300000, guid: 1f0e4dd10407ffa47aadc316e699078a, type: 3}
+    volume: 0.55
+    pitchJitter: 0.1
+    playAll: 0
+  chiselHits:
+    clips:
+    - {fileID: 8300000, guid: 8d12f6df6a75932408afa137558a2085, type: 3}
+    - {fileID: 8300000, guid: 7b54d7da23dd7114aa259f4d28f90423, type: 3}
+    - {fileID: 8300000, guid: 6299d9a4adca6204887047e469a398c3, type: 3}
+    - {fileID: 8300000, guid: cf1de0ec9ba8adf45a618662b3156bb1, type: 3}
+    - {fileID: 8300000, guid: 3826f5e86f060394bb54f6bef8529a66, type: 3}
+    volume: 0.5
+    pitchJitter: 0.1
+    playAll: 0
+  crafted:
+    clips:
+    - {fileID: 8300000, guid: fdfaebc0201150a4f95b9ec2a1ab052a, type: 3}
+    - {fileID: 8300000, guid: 917b6d9790c57da4781fa185fb6dee46, type: 3}
+    - {fileID: 8300000, guid: 4bb3cbb151150f04696ae4acaaff4099, type: 3}
+    volume: 0.6
+    pitchJitter: 0.05
+    playAll: 0
+  sold:
+    clips:
+    - {fileID: 8300000, guid: c94c1e5c3b7f81e46963e4d057657ca5, type: 3}
+    - {fileID: 8300000, guid: 97acc3a5b6d95b54fac9fbe934ad4416, type: 3}
+    volume: 0.7
+    pitchJitter: 0.05
+    playAll: 0
+  placed:
+    clips:
+    - {fileID: 8300000, guid: 9e1846897f83a994db58c831a79c5039, type: 3}
+    - {fileID: 8300000, guid: c3e06f242f7a2f847a7286e5a1c44283, type: 3}
+    - {fileID: 8300000, guid: e853a796546e2f743931ccfd5ff2dd04, type: 3}
+    - {fileID: 8300000, guid: 7a07bb19ca01d9b439befc634e7091c8, type: 3}
+    - {fileID: 8300000, guid: 6da475ab65e98944ab4dbf4c7356890d, type: 3}
+    volume: 0.7
+    pitchJitter: 0.05
+    playAll: 0
+  parcelBought:
+    clips:
+    - {fileID: 8300000, guid: 71c3e02a0e43480479dc79800d0be74f, type: 3}
+    - {fileID: 8300000, guid: d92facf75ac4a504489e31631369dbe3, type: 3}
+    volume: 0.7
+    pitchJitter: 0
+    playAll: 1

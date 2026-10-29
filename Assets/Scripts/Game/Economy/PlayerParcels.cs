@@ -37,6 +37,9 @@ namespace Clube.Game
 
         public WorldView WorldView => worldView;
 
+        /// <summary>Raised when the player buys a parcel, with it.</summary>
+        public event System.Action<Vector2Int> Bought;
+
         private void Awake()
         {
             wallet = GetComponent<PlayerWallet>();
@@ -116,7 +119,10 @@ namespace Clube.Game
 
             public void Interact(PlayerInteractor by)
             {
-                owner.Parcels.TryBuy(Parcel, owner.wallet.Wallet);
+                if (owner.Parcels.TryBuy(Parcel, owner.wallet.Wallet))
+                {
+                    owner.Bought?.Invoke(Parcel);
+                }
             }
         }
     }
