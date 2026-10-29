@@ -52,6 +52,8 @@ namespace Clube.Game
         // The aimed voxel's corners holding ground, when a hit takes only the sample under the dot (GL154,
         // GL155): the hand looks among them for a loose stone to lift whole.
         private readonly List<Vector3Int> aimedCorners = new List<Vector3Int>();
+        // The voxel's other corners a hand or hand axe hit mixes in (GL172).
+        private readonly List<Vector3Int> mixTargets = new List<Vector3Int>();
         private readonly Dictionary<VoxelMaterial, float> owed = new Dictionary<VoxelMaterial, float>();
         private readonly Dictionary<VoxelMaterial, float> minedOwed = new Dictionary<VoxelMaterial, float>();
         private readonly Gathering gathering = new Gathering();
@@ -417,15 +419,16 @@ namespace Clube.Game
             Unearthed?.Invoke(material, worldView.transform.TransformPoint(worldView.World.Grid.SampleToWorld(sample)), contents);
         }
 
-        // Whole items gathered toward a target go to the player as a stack of that material, with the mix it
-        // gathered as its contents and its share of the target as its quality (GL118, GL120).
+        // What a hit gathered toward a target goes to the player as a stack of that material, part of an item
+        // included (GL169), with the mix it gathered as its contents and its share of the target as its quality
+        // (GL118, GL120).
         private void HandOverGathered()
         {
             gathered.Clear();
-            gathering.TakeWhole(worldView.Config.Materials, gathered);
+            gathering.TakeAll(worldView.Config.Materials, gathered);
             foreach (GatheredStack made in gathered)
             {
-                var stack = new ItemStack(made.Item, made.Count, made.Contents, 0, made.Quality);
+                var stack = new ItemStack(made.Item, made.Count, made.Contents, 0, made.Quality, made.Part);
                 Collected?.Invoke(knowledge != null ? knowledge.Disguise(stack, made.Target) : stack);
             }
         }
@@ -485,6 +488,10 @@ namespace Clube.Game
                 done = collecting.SortByTarget
                     ? SphereStrike.LowerInto(world, targets, material => AmountFor(tool, hand, material, aimed), materials, Gather)
                     : SphereStrike.Lower(world, targets, material => AmountFor(tool, hand, material, aimed), materials, owed, collected, minedFrom);
+                if (collecting.SortByTarget && TakesAimedSample(tool) && done > 0)
+                {
+                    MixInFromVoxel(tool, hand, aimed, materials);
+                }
             }
             else
             {
@@ -499,6 +506,43 @@ namespace Clube.Game
             }
             ToolStrike.ClearSliversAround(world, targets, materials, Damage, collected, iso, minedFrom, material => CanTake(tool, material));
             Struck?.Invoke(new StrikeResult(targets.Count, done, collected.Count));
+        }
+
+        // A hand or hand axe hit takes the one sample under the dot (GL154, GL155), so on its own it never mixes. The
+        // voxel's other ground corners of another material the tool can take give up, between them, up to
+        // AimedMixFactor of what the hit took, by how many of the voxel's other ground corners they are (GL172):
+        // dirt dug next to grass comes up with grass in it, wood by leaves with leaves.
+        private void MixInFromVoxel(ToolDefinition tool, bool hand, VoxelMaterial aimed, MaterialRegistry materials)
+        {
+            if (collecting.AimedMixFactor <= 0f || aimed == null || targets.Count == 0)
+            {
+                return;
+            }
+            World world = worldView.World;
+            Vector3Int aimedSample = targets[0];
+            mixTargets.Clear();
+            int others = 0;
+            foreach (Vector3Int corner in aimedCorners)
+            {
+                if (corner == aimedSample || !((world.GetDensity(corner) ?? 0f) > 0f))
+                {
+                    continue;
+                }
+                others++;
+                byte? id = world.GetMaterial(corner);
+                VoxelMaterial material = id.HasValue && materials != null ? materials.Get(id.Value) : null;
+                if (material != null && material != aimed && CanTake(tool, material))
+                {
+                    mixTargets.Add(corner);
+                }
+            }
+            if (mixTargets.Count == 0)
+            {
+                return;
+            }
+            // Each mixed-in corner gives the same: the share split over all the voxel's other ground corners.
+            float each = AmountFor(tool, hand, aimed, aimed) * collecting.AimedMixFactor / others;
+            SphereStrike.LowerInto(world, mixTargets, material => each, materials, Gather);
         }
 
         // True when the tool can work the material (GL145, GL152): its tier is enough and the player has any level it

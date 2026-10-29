@@ -197,7 +197,7 @@ namespace Clube.Core
             Problem = null;
 
             WorldConfig config = worldView.Config;
-            int firstLevel = FirstLevelPast(worldView.RenderDistance);
+            int firstLevel = FirstLevelFor(WorldReach(), levels, halfChunks);
             int settings = System.HashCode.Combine(levels, halfChunks, config.ChunkSize, config.VoxelSize, config.MeshSettings.MaterialDisplay, firstLevel);
             if (builder == null || builtFor != worldView.Generator || builtSettings != settings)
             {
@@ -210,6 +210,8 @@ namespace Clube.Core
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
             builder.Update(worldView.transform.InverseTransformPoint(worldView.Focus.position));
             UpdateClips();
+            // The world hides its chunks past the detail distance only once this draws the ground there (P18).
+            worldView.CoarseTerrainReady = builder.TryGetShown(0, out _);
             LastUpdateMilliseconds = (System.Diagnostics.Stopwatch.GetTimestamp() - started) * 1000f / System.Diagnostics.Stopwatch.Frequency;
         }
 
@@ -236,17 +238,43 @@ namespace Clube.Core
             }
         }
 
-        // The finest level whose square reaches the world's render distance: a nearer one would be
-        // built only to be hidden under the world's own chunks. The coarsest level stays `levels`, so
-        // the reach doesn't change with the render distance.
-        private int FirstLevelPast(int renderDistance)
+        // How far, in chunks, the world draws its own chunks round the focus for sure: the render distance
+        // when it streams, or the detail distance within it (P18); nothing to count on in a fixed area,
+        // where the focus can be anywhere up to its edge or past it (P19).
+        private int WorldReach()
+        {
+            if (worldView.Config.FixedColumns.HasValue)
+            {
+                return 0;
+            }
+            int detail = worldView.DetailDistance;
+            return detail > 0 ? Mathf.Min(detail, worldView.RenderDistance) : worldView.RenderDistance;
+        }
+
+        /// <summary>
+        /// The finest coarse level worth building round a world whose chunks reach <paramref name="reach"/> chunks (P17, P19).
+        /// </summary>
+        // The finest level worth building. A level whose square lies within the world's reach would be
+        // built only to be hidden under the world's chunks (P17). But the first level leaves out its four
+        // middle columns, so it may start only where that middle is sure to lie within the world's reach,
+        // or the ground between the world's edge and the middle has nothing on it (P19). The coarsest
+        // level stays `levels`, so the reach doesn't change with the render distance.
+        public static int FirstLevelFor(int reach, int levels, int halfChunks)
         {
             int first = 1;
-            while (first < levels && halfChunks * TerrainLodRing.ScaleOf(first) < renderDistance)
+            while (first < levels && halfChunks * TerrainLodRing.ScaleOf(first) < reach && MiddleReach(first + 1) <= reach)
             {
                 first++;
             }
             return first;
+        }
+
+        // How far from the focus, in world chunks, a level's unbuilt middle can reach: one of its chunks each
+        // way from its centre, which snaps to every second chunk (so up to one more), on the diagonal, plus
+        // the focus's own chunk.
+        private static float MiddleReach(int level)
+        {
+            return 2f * TerrainLodRing.ScaleOf(level) * 1.4143f + 1f;
         }
 
         private void CreateBuilder(HeightfieldGenerator heightfield, WorldConfig config, int firstLevel)
@@ -361,6 +389,10 @@ namespace Clube.Core
 
         private void DropBuilder()
         {
+            if (worldView != null)
+            {
+                worldView.CoarseTerrainReady = false;
+            }
             builder?.Dispose();
             builder = null;
             builtFor = null;

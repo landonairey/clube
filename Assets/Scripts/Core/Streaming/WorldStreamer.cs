@@ -52,6 +52,13 @@ namespace Clube.Core
         /// material after the first, like the build grid). 0 or less: every chunk.
         /// </summary>
         public float OverlayRadius;
+
+        /// <summary>
+        /// Radius in chunks, horizontally, within which loaded chunks are drawn (P18); past it they stay
+        /// loaded (for edits, colliders, the player) but hidden, and something coarser draws the ground
+        /// there. Columns holding an edited chunk are always drawn. 0: every loaded chunk is drawn.
+        /// </summary>
+        public int DetailDistance;
     }
 
     /// <summary>Live counts from a <see cref="WorldStreamer"/>, for readouts.</summary>
@@ -154,6 +161,12 @@ namespace Clube.Core
         private StreamingStats stats;
         private double lapStart;
 
+        // The column the detail distance is measured from (P18), and a number that changes whenever
+        // which columns are drawn could have, unique across streamers.
+        private Vector2Int drawCentre;
+        private bool hasDrawCentre;
+        private static int drawVersions;
+
         public WorldStreamer(
             World world, ChunkPipeline pipeline, ChunkRendererPool renderers, Func<ChunkMeshSettings> meshSettings,
             StreamingSettings settings)
@@ -163,6 +176,8 @@ namespace Clube.Core
             this.renderers = renderers;
             this.meshSettings = meshSettings;
             this.settings = settings;
+            DrawVersion = ++drawVersions;
+            renderers.SetDrawRule(IsColumnDrawn);
         }
 
         /// <summary>Raised when a chunk's data is added to the world.</summary>
@@ -234,6 +249,7 @@ namespace Clube.Core
             }
             float chunkWidth = world.Grid.ChunkWorldSize.x;
             renderers.SetOverlayFocus(centre, settings.OverlayRadius > 0f ? Mathf.CeilToInt(settings.OverlayRadius / chunkWidth) : -1);
+            UpdateDrawCentre(new Vector2Int(centre.x, centre.z));
             phases.Area = Lap();
 
             // Meshes first, with half the budget: they change what's on screen. Each stage takes at
@@ -635,6 +651,11 @@ namespace Clube.Core
             chunkRenderer.ApplyMesh(result);
             stats.Vertices += chunkRenderer.LastBuildStats.VertexCount;
             stats.Triangles += chunkRenderer.LastBuildStats.TriangleCount;
+            if (settings.DetailDistance > 0 && world.IsEdited(coord))
+            {
+                // An edited column is drawn whole at any distance: its other layers too.
+                renderers.RefreshColumn(new Vector2Int(coord.x, coord.z), settings.HeightInChunks);
+            }
             ChunkMeshed?.Invoke(coord, chunkRenderer);
         }
 
@@ -717,6 +738,85 @@ namespace Clube.Core
                             continue;
                         }
                         pipeline.StartBake(coord, chunkRenderer.Mesh, chunkRenderer.MeshVersion, chunkCollider.CookingOptions);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Radius in chunks within which loaded chunks are drawn (P18, see
+        /// <see cref="StreamingSettings.DetailDistance"/>); 0 draws every one.
+        /// </summary>
+        public int DetailDistance
+        {
+            get => settings.DetailDistance;
+            set
+            {
+                value = Mathf.Max(0, value);
+                if (value == settings.DetailDistance)
+                {
+                    return;
+                }
+                settings.DetailDistance = value;
+                DrawVersion = ++drawVersions;
+                renderers.RefreshDrawn();
+            }
+        }
+
+        /// <summary>Changes whenever which columns are drawn may have (<see cref="IsColumnDrawn"/>); never repeats.</summary>
+        public int DrawVersion { get; private set; }
+
+        /// <summary>
+        /// True when the world draws the column's chunks (x, z): every column with no detail distance,
+        /// otherwise those within it of the focus column, and any column holding an edited chunk.
+        /// </summary>
+        public bool IsColumnDrawn(Vector2Int column)
+        {
+            int distance = settings.DetailDistance;
+            return distance <= 0 || !hasDrawCentre || IsWithin(column, drawCentre, distance) || world.HasEditsIn(column);
+        }
+
+        private static bool IsWithin(Vector2Int column, Vector2Int centre, int distance)
+        {
+            int dx = column.x - centre.x;
+            int dz = column.y - centre.y;
+            return dx * dx + dz * dz <= distance * distance;
+        }
+
+        // The focus column moved: switch the renderers of the columns that crossed the detail distance.
+        private void UpdateDrawCentre(Vector2Int column)
+        {
+            if (hasDrawCentre && column == drawCentre)
+            {
+                return;
+            }
+            Vector2Int old = drawCentre;
+            bool hadCentre = hasDrawCentre;
+            drawCentre = column;
+            hasDrawCentre = true;
+            int distance = settings.DetailDistance;
+            if (distance <= 0)
+            {
+                return;
+            }
+            DrawVersion = ++drawVersions;
+
+            // Only columns near the edge of the old or the new circle can change; a long jump redoes them all.
+            int minX = Mathf.Min(old.x, column.x) - distance - 1, maxX = Mathf.Max(old.x, column.x) + distance + 1;
+            int minZ = Mathf.Min(old.y, column.y) - distance - 1, maxZ = Mathf.Max(old.y, column.y) + distance + 1;
+            if (!hadCentre || (long)(maxX - minX + 1) * (maxZ - minZ + 1) > 4L * (2 * distance + 3) * (2 * distance + 3))
+            {
+                renderers.RefreshDrawn();
+                return;
+            }
+            for (int z = minZ; z <= maxZ; z++)
+            {
+                for (int x = minX; x <= maxX; x++)
+                {
+                    var candidate = new Vector2Int(x, z);
+                    if (IsWithin(candidate, old, distance) != IsWithin(candidate, column, distance) && !world.HasEditsIn(candidate))
+                    {
+                        renderers.RefreshColumn(candidate, settings.HeightInChunks);
                     }
                 }
             }

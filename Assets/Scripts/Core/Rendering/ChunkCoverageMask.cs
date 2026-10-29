@@ -5,10 +5,11 @@ namespace Clube.Core
 {
     /// <summary>
     /// Which chunk columns around the focus the voxel world draws in full (P7): every layer of the
-    /// column loaded and meshed. Kept as a small single-channel texture, one texel per column
-    /// (255 = drawn), so the far terrain's shader can leave out exactly those columns and fill in
-    /// everywhere the chunks haven't streamed in yet. Follows <see cref="WorldView.ChunkMeshed"/>
-    /// and <see cref="WorldView.ChunkUnloaded"/>.
+    /// column loaded and meshed, and drawn (within the detail distance, or edited, P18). Kept as a
+    /// small single-channel texture, one texel per column (255 = drawn), so the far terrain's shader
+    /// can leave out exactly those columns and fill in everywhere the chunks haven't streamed in yet
+    /// or aren't drawn. Follows <see cref="WorldView.ChunkMeshed"/>, <see cref="WorldView.ChunkUnloaded"/>
+    /// and <see cref="WorldView.DrawVersion"/>.
     /// </summary>
     public sealed class ChunkCoverageMask : System.IDisposable
     {
@@ -20,6 +21,7 @@ namespace Clube.Core
         private Vector2Int origin;
         private bool hasOrigin;
         private bool dirty;
+        private int drawVersion;
 
         /// <param name="radius">Columns covered each way from the focus column (the largest render distance).</param>
         public ChunkCoverageMask(WorldView view, int radius)
@@ -60,10 +62,11 @@ namespace Clube.Core
         public void Update(Vector2Int focusColumn)
         {
             Vector2Int wantedOrigin = focusColumn - new Vector2Int(size / 2, size / 2);
-            if (!hasOrigin || wantedOrigin != origin)
+            if (!hasOrigin || wantedOrigin != origin || drawVersion != view.DrawVersion)
             {
                 origin = wantedOrigin;
                 hasOrigin = true;
+                drawVersion = view.DrawVersion;
                 Refill();
             }
             if (dirty)
@@ -112,7 +115,7 @@ namespace Clube.Core
 
         private bool IsCovered(Vector2Int column)
         {
-            return layersMeshed.TryGetValue(column, out int count) && count >= view.Config.WorldHeightInChunks;
+            return layersMeshed.TryGetValue(column, out int count) && count >= view.Config.WorldHeightInChunks && view.IsColumnDrawn(column);
         }
 
         private void SetTexel(Vector2Int column)

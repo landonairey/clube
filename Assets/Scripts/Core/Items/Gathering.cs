@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Clube.Core
 {
@@ -68,16 +69,49 @@ namespace Clube.Core
                 into.Add(new GatheredStack(target, item, count, contents, quality));
             }
         }
+
+        /// <summary>
+        /// Hands over everything gathered (GL169): whole items and the part of one as a part item, so every hit
+        /// shows in the inventory at once instead of after a whole sample's worth (ten hand hits).
+        /// </summary>
+        public void TakeAll(MaterialRegistry materials, List<GatheredStack> into)
+        {
+            ready.Clear();
+            foreach (KeyValuePair<VoxelMaterial, VolumeMix> entry in pending)
+            {
+                if (entry.Value.Total > ItemStack.PartEpsilon)
+                {
+                    ready.Add(entry.Key);
+                }
+            }
+            foreach (VoxelMaterial target in ready)
+            {
+                VolumeMix mix = pending[target];
+                float total = mix.Total;
+                VolumeMix taken = mix.Take(total);
+                ItemDefinition item = target.FinalDrop;
+                if (item == null)
+                {
+                    continue;
+                }
+                int count = (int)(total + 1e-4f);
+                float part = Mathf.Max(0f, total - count);
+                Composition contents = taken.Contents();
+                float quality = materials != null ? materials.Quality(contents, item) : 1f;
+                into.Add(new GatheredStack(target, item, count, contents, quality, part));
+            }
+        }
     }
 
     /// <summary>Whole items a <see cref="Gathering"/> has ready: of what, how many, made of what, how pure.</summary>
     public readonly struct GatheredStack
     {
-        public GatheredStack(VoxelMaterial target, ItemDefinition item, int count, Composition contents, float quality)
+        public GatheredStack(VoxelMaterial target, ItemDefinition item, int count, Composition contents, float quality, float part = 0f)
         {
             Target = target;
             Item = item;
             Count = count;
+            Part = part;
             Contents = contents;
             Quality = quality;
         }
@@ -88,6 +122,9 @@ namespace Clube.Core
         public ItemDefinition Item { get; }
 
         public int Count { get; }
+
+        /// <summary>A part of one more item (0-1), when everything was handed over (<see cref="Gathering.TakeAll"/>).</summary>
+        public float Part { get; }
 
         public Composition Contents { get; }
 

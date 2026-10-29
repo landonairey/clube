@@ -9,7 +9,7 @@ namespace Clube.Game
     /// The screen for a <see cref="StationObject"/> the player is using (GL10, GL11, GL19, GL20),
     /// in slots like the hotbar: the station's input slots, then the work (a smelting bar, or a
     /// Strike button on the anvil, which supplies the hammer), then its output slot, and the
-    /// player's inventory below. Click one of your stacks to load it, an input stack to take it
+    /// player's inventory below. Click one of your stacks to load it (Shift half of it, Ctrl one, GL176), an input stack to take it
     /// back, the output to collect it. The empty output slot shows what's about to be made,
     /// greyed out (GL58); a made tool moves to the inventory by itself (GL59). The furnace keeps
     /// working through what's loaded with the screen closed; a worktop or anvil hands its
@@ -141,7 +141,7 @@ namespace Clube.Game
             string works = station.BurnsFuel ? "Heat/Yield" : "Yield";
             // And what the loaded ore yields (GL127, GL128), in the header so it never covers the fuel row.
             string yield = YieldNote(station);
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   Efficiency {Current.Quality * 100f:0}%  {works}" + (yield != null ? "   " + yield : "") + "   (E to close)");
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   Efficiency {Current.Station.Quality * 100f:0}%  {works}" + (yield != null ? "   " + yield : "") + "   (E to close)");
             y += 24f;
             // Click a recipe to make only it (ML1: sticks and stone make a spear, a hatchet or a hammer)
             // and pull one batch of its ingredients from your items (GL80); click it again to let any start.
@@ -212,14 +212,27 @@ namespace Clube.Game
             }
             y += slot + 30f;
 
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Your items: click a stack to load it");
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Your items: click a stack to load it, Shift-click half of it, Ctrl-click one");
             y += 22f;
             int mine = InventoryGridGui.DrawPlayer(new Vector2(x, y), inventory, -1);
             if (mine >= 0)
             {
-                station.Load(items, mine);
+                station.Load(items, mine, LoadCount(items[mine]));
             }
             InventoryGridGui.DrawTooltip();
+        }
+
+        // How much of a clicked stack to load (GL176): all of it, half with Shift (rounded up), one with Ctrl.
+        private static int LoadCount(ItemStack stack)
+        {
+            Keyboard keyboard = Keyboard.current;
+            bool shift = Event.current.shift || (keyboard != null && keyboard.shiftKey.isPressed);
+            bool control = Event.current.control || (keyboard != null && keyboard.ctrlKey.isPressed);
+            if (control)
+            {
+                return 1;
+            }
+            return shift ? Mathf.Max(1, (stack.Count + 1) / 2) : int.MaxValue;
         }
 
         // The smelting bar, or the anvil's Strike button, between input and output.

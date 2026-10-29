@@ -35,6 +35,9 @@ namespace Clube.Core
         private readonly Dictionary<Vector3Int, Chunk> editedUnloaded = new Dictionary<Vector3Int, Chunk>();
         private readonly HashSet<Vector3Int> edited = new HashSet<Vector3Int>();
 
+        // Columns (x, z) holding an edited chunk: the world draws them in full at any distance (P18).
+        private readonly HashSet<Vector2Int> editedColumns = new HashSet<Vector2Int>();
+
         // Loaded chunks that became dirty since they were last collected (CollectDirty); a chunk may
         // have been cleaned since, so readers check.
         private readonly HashSet<Vector3Int> dirty = new HashSet<Vector3Int>();
@@ -94,6 +97,20 @@ namespace Clube.Core
         public bool IsEdited(Vector3Int coord)
         {
             return edited.Contains(coord);
+        }
+
+        /// <summary>True once any edit has touched a chunk of the column (x, z).</summary>
+        public bool HasEditsIn(Vector2Int column)
+        {
+            return editedColumns.Contains(column);
+        }
+
+        private void MarkEdited(Vector3Int coord)
+        {
+            if (edited.Add(coord))
+            {
+                editedColumns.Add(new Vector2Int(coord.x, coord.z));
+            }
         }
 
         /// <summary>Makes each new chunk's density storage from its sample count (2G).</summary>
@@ -258,6 +275,7 @@ namespace Clube.Core
             anyCarved = false;
             editedUnloaded.Clear();
             edited.Clear();
+            editedColumns.Clear();
         }
 
         /// <summary>The density at a global sample, or null when no loaded chunk holds it.</summary>
@@ -294,7 +312,7 @@ namespace Clube.Core
                 if (chunk.GetDensity(local) != density)
                 {
                     chunk.SetDensity(local, density);
-                    edited.Add(coord);
+                    MarkEdited(coord);
                     changed++;
                 }
             }
@@ -336,7 +354,7 @@ namespace Clube.Core
                 if (chunk.GetMaterial(local) != material)
                 {
                     chunk.SetMaterial(local, material);
-                    edited.Add(coord);
+                    MarkEdited(coord);
                 }
             }
         }
@@ -411,7 +429,7 @@ namespace Clube.Core
                 if (next != flags)
                 {
                     chunk.SetCarveFlags(local, next);
-                    edited.Add(coord);
+                    MarkEdited(coord);
                 }
             }
         }

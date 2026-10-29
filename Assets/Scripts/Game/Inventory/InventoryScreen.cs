@@ -9,7 +9,8 @@ namespace Clube.Game
     /// slot, backpack above the hotbar row, and frees the cursor. Clicking a stack sends it to the
     /// first open hotbar slot, or from the hotbar to the backpack (GL71); pressing and dragging
     /// drops it on a chosen slot (<see cref="Inventory.Move"/>: the same item stacks, the rest
-    /// staying behind; anything else swaps). Splitting stacks comes with N2.
+    /// staying behind; anything else swaps). Dropped on the trash slot, a stack is gone for good (GL173);
+    /// Sort tidies the backpack (GL174, <see cref="Inventory.Sort"/>). Splitting stacks comes with N2.
     /// </summary>
     [RequireComponent(typeof(PlayerInventory))]
     public class InventoryScreen : MonoBehaviour
@@ -32,6 +33,7 @@ namespace Clube.Game
         private int pressed = -1;
         private Vector2 pressedAt;
         private bool dragging;
+        private Rect trashSlot;
 
         public bool IsOpen { get; private set; }
 
@@ -95,7 +97,7 @@ namespace Clube.Game
 
             Inventory items = inventory.Inventory;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
-            float height = Padding * 2f + 24f + InventoryGridGui.PlayerHeight(inventory);
+            float height = Padding * 2f + 24f + InventoryGridGui.PlayerHeight(inventory) + InventoryGridGui.RowGap + InventoryGridGui.SlotSize;
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
             string title = inventory.UsesToolSlot
@@ -104,6 +106,9 @@ namespace Clube.Game
             GUI.Label(new Rect(panel.x + Padding, panel.y + Padding, width - Padding * 2f, 20f), title);
 
             var gridTopLeft = new Vector2(panel.x + Padding, panel.y + Padding + 24f);
+            float bottom = gridTopLeft.y + InventoryGridGui.PlayerHeight(inventory) + InventoryGridGui.RowGap;
+            trashSlot = new Rect(panel.xMax - Padding - InventoryGridGui.SlotSize, bottom, InventoryGridGui.SlotSize, InventoryGridGui.SlotSize);
+            DrawSortAndTrash(items, new Rect(gridTopLeft.x, bottom + (InventoryGridGui.SlotSize - 28f) * 0.5f, 120f, 28f));
             HandleMouse(items, gridTopLeft);
             InventoryGridGui.DrawPlayer(gridTopLeft, inventory, pressed);
             if (dragging && pressed >= 0 && !items[pressed].IsEmpty)
@@ -120,6 +125,23 @@ namespace Clube.Game
             {
                 InventoryGridGui.DrawTooltip();
             }
+        }
+
+        // Sort (GL174) tidies the backpack, or every item slot past the tool slot; the hotbar stays as the player
+        // set it. The trash slot (GL173) destroys what's dropped on it.
+        private void DrawSortAndTrash(Inventory items, Rect sortButton)
+        {
+            int sortFrom = inventory.UsesToolSlot ? PlayerInventory.ToolSlot + 1 : inventory.HotbarSlots;
+            if (GUI.Button(sortButton, inventory.UsesToolSlot ? "Sort items" : "Sort backpack"))
+            {
+                items.Sort(sortFrom, items.SlotCount);
+            }
+            bool over = dragging && trashSlot.Contains(Event.current.mousePosition);
+            ItemSlotGui.Draw(trashSlot, ItemStack.Empty, over);
+            var centred = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+            GUI.Label(trashSlot, "Trash", centred);
+            var right = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleRight };
+            GUI.Label(new Rect(trashSlot.x - 228f, trashSlot.y, 220f, trashSlot.height), "Drop a stack here to destroy it", right);
         }
 
         // GL71: a click sends a stack across (backpack to hotbar, hotbar to backpack); pressing and
@@ -158,7 +180,12 @@ namespace Clube.Game
                     // A release over another slot is a drop even when no drag event came in between
                     // (a quick flick), and a release in the gap between slots lands on the nearer one.
                     int target = InventoryGridGui.PlayerSlotNear(gridTopLeft, inventory, current.mousePosition, InventoryGridGui.RowGap * 0.5f);
-                    if (dragging || (target >= 0 && target != pressed))
+                    if (dragging && trashSlot.Contains(current.mousePosition))
+                    {
+                        // Gone for good (GL173).
+                        items.TakeAll(pressed);
+                    }
+                    else if (dragging || (target >= 0 && target != pressed))
                     {
                         if (target >= 0 && target != pressed)
                         {

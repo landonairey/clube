@@ -16,6 +16,16 @@ namespace Clube.Debug
             worldView.RenderDistance = Mathf.RoundToInt(
                 frame.Slider("Render distance (chunks)", worldView.RenderDistance, WorldView.MinRenderDistance, WorldView.MaxRenderDistance, "0"));
 
+            // Past the detail distance the chunks stay loaded but the coarse terrain draws the ground (P18).
+            int detail = Mathf.RoundToInt(frame.Slider("Detail distance (chunks, 0 = all)", worldView.DetailDistance, 0, WorldView.MaxRenderDistance, "0"));
+            worldView.DetailDistance = detail;
+            int effective = worldView.EffectiveDetailDistance;
+            frame.Line(effective > 0
+                ? $"Chunks drawn within {effective} ({effective * worldView.Config.ChunkSize.x * worldView.VoxelSize:0} m); coarse terrain past it"
+                : worldView.DetailDistance > 0 && worldView.DetailDistance < worldView.RenderDistance
+                    ? "Every loaded chunk drawn (until the coarse terrain is ready)"
+                    : "Every loaded chunk drawn");
+
             // A fixed area only streams within its square, so past the distance to its farthest
             // corner more distance changes nothing; say where that is, from where the focus stands.
             RectInt? area = worldView.Config.FixedColumns;

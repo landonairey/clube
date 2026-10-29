@@ -138,7 +138,7 @@ namespace Clube.Game
             {
                 return stack;
             }
-            return new ItemStack(DisguiseFor(stack.Item, material), stack.Count, stack.Contents, 0, stack.Quality);
+            return new ItemStack(DisguiseFor(stack.Item, material), stack.Count, stack.Contents, 0, stack.Quality, stack.Part);
         }
 
         /// <summary>True for a "? ore" item: the generic one or one of the per-ore copies.</summary>

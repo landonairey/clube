@@ -365,10 +365,14 @@ flowchart LR
     FV["FarTerrainView"] -- "outer square, reach" --> LV
 ```
 
-- **Levels** (`TerrainLodRing`): level *l* (from the first past the render distance, `FirstLevelPast`, to 8) has voxels 2^*l* times the world's and the same
+- **Levels** (`TerrainLodRing`): level *l* (from the first worth building, `TerrainLodView.FirstLevelFor`, to 8) has voxels 2^*l* times the world's and the same
   16³ chunks, so its chunks are 2^*l* times as wide; it covers 16 × 16 of them round the focus,
   64 m to 8 km, centred on every second chunk. It leaves out its four middle columns, which the
   finer level always covers however the two centres fall (`TerrainLodTests`).
+- **The first level** is the finest whose square would show past the world's own chunks (P17), but
+  never one whose unbuilt middle could reach past them, or the ground in between is left empty
+  (P19): the world's sure reach is its detail distance (below) within the render distance when it
+  streams, and nothing in a fixed area, where the focus can be anywhere up to its edge (level 1).
 - **Building**: each level is a plain `ChunkPipeline` on its own `WorldGrid`. A column's height
   range (`TryGetColumnRange`) says which layers hold its surface, so there is no world top. The
   fill divides depths by the scale (`ChunkFillSettings.LodScale`): the density ramp and the layer
@@ -385,6 +389,26 @@ flowchart LR
 - **Limits**: heightfield generators only; edits don't reach the coarse levels (the world's
   chunks draw over them, and a dug pit shows because the mask clips the coarse ground there);
   swaps pop (no geomorphing); one draw call per coarse chunk (~2,500).
+
+### Detail distance (P18)
+
+The world loads chunks out to the render distance (for edits, colliders and the player), but draws
+them only within the **detail distance** (`WorldView.DetailDistance`, 24 chunks = 96 m in the labs,
+a player setting): past it each chunk keeps its renderer, switched off (`forceRenderingOff`), and the
+coarse terrain and the distant trees draw the ground and the trees there. At render distance 64 over
+a 400 m area that is 5,600 of 35,000 chunk renderers, and about a sixth of the 57 million vertices.
+
+- **Who decides**: `WorldStreamer.IsColumnDrawn` (within the detail distance of the focus column,
+  or holding an edited chunk: `World.HasEditsIn`, so a dug pit still shows from far away). The
+  renderer pool applies it to every renderer it shows (`ChunkRendererPool.SetDrawRule`); when the
+  focus column moves only the columns that cross the edge are switched (`UpdateDrawCentre`).
+- **The coverage mask follows it**: a column counts as covered only while drawn, and the mask refills
+  whenever `WorldView.DrawVersion` changes, so the coarse levels and the distant trees fill in exactly
+  where the world stops drawing.
+- **Only once the coarse terrain is there**: `TerrainLodView` sets `WorldView.CoarseTerrainReady`
+  when its first level is shown; until then (and for generators the coarse terrain can't build)
+  every loaded chunk draws (`EffectiveDetailDistance` is 0). It is at least 8 chunks
+  (`MinDetailDistance`), past the first coarse level's unbuilt middle.
 
 ### Distant trees (GL162)
 

@@ -694,3 +694,15 @@ ProceduralWorldLab, Landscape, render distance 64 (the maximum: 514,120 wanted c
 | Distant trees | 0.7 / 21 | 0.5 / 4.9 |
 
 Before, every chunk-border crossing re-collected and re-hashed all 514,120 wanted chunks, recounted the loaded ones, scanned every loaded chunk for unloading and put the load cursor back to the start; moving a chunk a frame, the cursor never reached the new edge (340,000 chunks pending). The coarse terrain now builds 6 levels instead of 8 at this distance (the first two sat under the world's chunks). Distant trees draw about a quarter of the 84,000 placed (the tiles in view). Still: at distance 64 loading can't keep up with fast movement (478,000 pending after the flight), and standing still the 7,700 world chunk renderers cost about 11 ms of a 27 ms render in the Editor, so with the coarse terrain beyond, 16-24 is the sensible distance.
+
+## Detail distance (P18, 2026-10-28)
+
+WorldLab with a 400 m fixed area at render distance 64, everything loaded (35,099 chunks with a surface, 58 million vertices), coarse terrain and distant trees on. Editor, Burst on. Times are a manual `Camera.Render` into a 1280 × 720 texture (the CPU's side of a frame's rendering, averaged over 4 renders); the GPU's share can't be measured in the Editor.
+
+| | Detail distance 0 (every chunk drawn) | Detail distance 24 (96 m) |
+|---|--:|--:|
+| Chunk renderers drawn | 35,099 | 5,568 |
+| Render, eye level looking west | 8.9 ms | 2.9 ms |
+| Render, from 140 m up | 5.5 ms | 1.3 ms |
+
+The 20 fps seen standing still is most likely the 19 million triangles drawn every frame, shadows too (streaming was idle); not confirmed on the GPU. Past 96 m the coarse terrain's 1 m voxels and the distant tree meshes stand in for the hidden chunks.
