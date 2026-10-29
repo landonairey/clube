@@ -13,6 +13,10 @@ namespace Clube.Game
     [CreateAssetMenu(menuName = "Clube/Player Sounds", fileName = "PlayerSounds")]
     public class PlayerSounds : ScriptableObject
     {
+        [Tooltip("Plays the sound effects. Off for now: the clips are placeholders still being picked (lab panel, Sound section).")]
+        [SerializeField]
+        private bool effectsOn;
+
         [Header("Footsteps")]
         [Tooltip("Rock and ore, and anything of kind Rock not listed below.")]
         [SerializeField]
@@ -50,9 +54,26 @@ namespace Clube.Game
         [SerializeField]
         private SoundSet chiselHits = new SoundSet();
 
+        [Tooltip("Any tool's hit on soft ground (dirt, grass, clay), in place of the tool's own sound.")]
+        [SerializeField]
+        private SoundSet soilHits = new SoundSet();
+
+        [Tooltip("Any tool's hit on soft plants (leaves), in place of the tool's own sound.")]
+        [SerializeField]
+        private SoundSet leafHits = new SoundSet();
+
         [Header("Actions")]
+        [Tooltip("A finished recipe that trains Crafting (worktops: sticks, tools), or no skill.")]
         [SerializeField]
         private SoundSet crafted = new SoundSet();
+
+        [Tooltip("A finished recipe that trains Smelting (campfire, furnaces: buns, ingots).")]
+        [SerializeField]
+        private SoundSet smelted = new SoundSet();
+
+        [Tooltip("A finished recipe that trains Blacksmithing (anvil, flat rock).")]
+        [SerializeField]
+        private SoundSet smithed = new SoundSet();
 
         [SerializeField]
         private SoundSet sold = new SoundSet();
@@ -63,7 +84,35 @@ namespace Clube.Game
         [SerializeField]
         private SoundSet parcelBought = new SoundSet();
 
-        public SoundSet Crafted => crafted;
+        /// <summary>Whether any sound effect plays (the lab panel's Sound section).</summary>
+        public bool EffectsOn
+        {
+            get => effectsOn;
+            set => effectsOn = value;
+        }
+
+        /// <summary>Plays a sound on a source, unless sound effects are off.</summary>
+        public void Play(SoundSet sound, AudioSource source, float volumeScale = 1f)
+        {
+            if (effectsOn && sound != null)
+            {
+                sound.Play(source, volumeScale);
+            }
+        }
+
+        /// <summary>The sound of a finished recipe, by the skill it trains.</summary>
+        public SoundSet Finished(Recipe recipe)
+        {
+            switch (recipe != null ? recipe.ExperienceSkill : SkillType.None)
+            {
+                case SkillType.Smelting:
+                    return smelted;
+                case SkillType.Blacksmithing:
+                    return smithed;
+                default:
+                    return crafted;
+            }
+        }
 
         public SoundSet Sold => sold;
 
@@ -101,12 +150,19 @@ namespace Clube.Game
             }
         }
 
-        /// <summary>The sound of a hit with a tool.</summary>
-        public SoundSet HitWith(ToolDefinition tool)
+        /// <summary>
+        /// The sound of a hit with a tool on a material: chisels always chisel; soft ground and
+        /// leaves sound like themselves whatever hits them; otherwise the tool's own sound.
+        /// </summary>
+        public SoundSet HitWith(ToolDefinition tool, VoxelMaterial material = null)
         {
             if (tool != null && tool.Chisels)
             {
                 return chiselHits;
+            }
+            if (material != null && material.IsSoft)
+            {
+                return material.Kind == MaterialKind.Plant ? leafHits : soilHits;
             }
             foreach (ToolSound entry in toolHits)
             {

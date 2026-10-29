@@ -4,8 +4,8 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// The sound of each tool hit: picked by the tool in hand (<see cref="PlayerSounds.HitWith"/>),
-    /// quieter when the hit took nothing.
+    /// The sound of each tool hit: picked by the tool in hand and the material under the dot
+    /// (<see cref="PlayerSounds.HitWith"/>), quieter when the hit took nothing.
     /// </summary>
     [RequireComponent(typeof(PlayerToolUser))]
     public class PlayerToolSounds : MonoBehaviour
@@ -41,7 +41,7 @@ namespace Clube.Game
         {
             if (sounds != null)
             {
-                sounds.HitWith(tools.Current).Play(source, result.Broken > 0 ? 1f : missVolume);
+                sounds.Play(sounds.HitWith(tools.Current, tools.HitMaterial), source, result.Broken > 0 ? 1f : missVolume);
             }
         }
     }

@@ -79,7 +79,10 @@ namespace Clube.Game
 
         private void Step()
         {
-            sounds.StepsOn(GroundMaterial()).Play(source);
+            if (sounds.EffectsOn)
+            {
+                sounds.Play(sounds.StepsOn(GroundMaterial()), source);
+            }
         }
 
         // The material of the solid ground just under the feet, or null when it can't be found.

@@ -69,17 +69,39 @@ namespace Clube.Game
             }
         }
 
-        private void OnCrafted(Recipe recipe) => Play(sounds != null ? sounds.Crafted : null);
+        /// <summary>The sound settings, for the lab panel's on/off switch.</summary>
+        public PlayerSounds Sounds => sounds;
 
-        private void OnSold(int count) => Play(sounds != null ? sounds.Sold : null);
-
-        private void OnPlaced(PlacedObject placed) => Play(sounds != null ? sounds.Placed : null);
-
-        private void OnParcelBought(Vector2Int parcel) => Play(sounds != null ? sounds.ParcelBought : null);
-
-        private void Play(SoundSet sound)
+        private void OnCrafted(Recipe recipe)
         {
-            sound?.Play(source);
+            if (sounds != null)
+            {
+                sounds.Play(sounds.Finished(recipe), source);
+            }
+        }
+
+        private void OnSold(int count)
+        {
+            if (sounds != null)
+            {
+                sounds.Play(sounds.Sold, source);
+            }
+        }
+
+        private void OnPlaced(PlacedObject placed)
+        {
+            if (sounds != null)
+            {
+                sounds.Play(sounds.Placed, source);
+            }
+        }
+
+        private void OnParcelBought(Vector2Int parcel)
+        {
+            if (sounds != null)
+            {
+                sounds.Play(sounds.ParcelBought, source);
+            }
         }
     }
 }

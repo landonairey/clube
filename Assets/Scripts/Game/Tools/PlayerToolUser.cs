@@ -100,6 +100,9 @@ namespace Clube.Game
             : hotbar.ToolStack.Item is ToolDefinition tool ? tool
             : hand;
 
+        /// <summary>The material under the dot when the last hit landed, or null (for its sound).</summary>
+        public VoxelMaterial HitMaterial { get; private set; }
+
         /// <summary>How hits take the ground (GL96); the lab panel switches it in play.</summary>
         public CollectingSettings Collecting => collecting;
 
@@ -376,6 +379,7 @@ namespace Clube.Game
             minedFrom.Clear();
             // What the hit is aimed at, before it changes anything: what it gathers goes to that stack (GL120).
             aimedTarget = AimedMaterial(worldView.World, worldView.Config.Materials);
+            HitMaterial = aimedTarget;
             if (tool.Chisels)
             {
                 // A chisel carves the aimed voxel out (GL87, GL92); the Flat Rock may form (GL88).
