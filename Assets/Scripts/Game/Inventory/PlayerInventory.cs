@@ -102,12 +102,13 @@ namespace Clube.Game
         private void OnCollected(ItemStack collected)
         {
             ItemDefinition item = collected.Item;
-            if (Inventory.Add(item, collected.Count, collected.Contents, 0, collected.Quality) > 0)
+            if (Inventory.Add(item, collected.Count, collected.Contents, 0, collected.Quality, collected.Part) > 0)
             {
                 Rejected?.Invoke(item);
             }
-            else
+            else if (collected.Count > 0)
             {
+                // A part of an item (a hand hit, GL169) shows in its stack, without a notice each hit.
                 Added?.Invoke(item);
             }
         }

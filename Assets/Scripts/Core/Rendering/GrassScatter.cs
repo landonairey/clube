@@ -7,21 +7,27 @@ namespace Clube.Core
     /// <summary>
     /// Low-poly grass on the terrain (GL67): small tufts of blades stand on the upward-facing
     /// triangles of a chunk's mesh that show grass, in the chunks near the world's focus, drawn
-    /// instanced. Where a tuft goes is hashed from the triangle's position, so the same ground
-    /// always grows the same grass; a rebuilt mesh (an edit) scatters again, so dug-away grass
-    /// goes with its ground.
+    /// instanced. Tufts stand on a fixed grid across the world (one per cell, jittered by a hash of
+    /// the cell), each at the height of the triangle under it, so the same ground always grows the
+    /// same grass and a rebuilt mesh keeps every tuft whose ground is still there (GL171).
     /// </summary>
     /// <remarks>
     /// Reads the meshes the pipeline built (positions, normals, and the material ids and weights
     /// in UV channels 2 and 3), so it costs nothing in generation or meshing. A millisecond or so of
-    /// chunks is scattered a frame; the radius is small, so their order doesn't matter. The tufts
-    /// shrink into the ground over the last metres of the radius.
+    /// chunks is scattered a frame, nearest the focus first. A rebuilt chunk that has grass scatters
+    /// again at once, so an edit never leaves a frame without grass or grass floating (GL161, GL171).
+    /// A chunk's tufts are kept while the focus is within a few radii of it across the ground, at any
+    /// height, and drawn only within the radius, so switching cameras or flying up and back finds the
+    /// grass still there (GL167). The tufts shrink into the ground over the last metres of the radius.
     /// </remarks>
     [RequireComponent(typeof(WorldView))]
     public class GrassScatter : MonoBehaviour
     {
         // Instances per draw call: the most RenderMeshInstanced takes from an array.
         private const int BatchSize = 1023;
+
+        // Scattered chunks are kept while the focus is within this many radii of them across the ground.
+        private const float KeepRadii = 3f;
 
         private static readonly int FadeStart = Shader.PropertyToID("_FadeStart");
         private static readonly int FadeEnd = Shader.PropertyToID("_FadeEnd");
@@ -54,8 +60,8 @@ namespace Clube.Core
         [SerializeField, Min(0.1f)]
         private float scatterMilliseconds = 1f;
 
-        private readonly Dictionary<Vector3Int, List<Matrix4x4>> tufts = new Dictionary<Vector3Int, List<Matrix4x4>>();
-        private readonly HashSet<Vector3Int> stale = new HashSet<Vector3Int>();
+        // Each scattered chunk's tufts, and whether they're in the drawn batches.
+        private readonly Dictionary<Vector3Int, Scattered> tufts = new Dictionary<Vector3Int, Scattered>();
         private readonly Stack<List<Matrix4x4>> spareLists = new Stack<List<Matrix4x4>>();
         private readonly List<Vector3Int> dropped = new List<Vector3Int>();
         private readonly List<Matrix4x4[]> batches = new List<Matrix4x4[]>();
@@ -73,9 +79,21 @@ namespace Clube.Core
         private bool batchesDirty;
         private bool scanPending = true;
         private Vector3 scannedFrom;
+        private Vector3Int[] reachOffsets;
+        private float reachOffsetsRadius;
+        private Vector3 reachOffsetsChunk;
+
+        private sealed class Scattered
+        {
+            public List<Matrix4x4> Tufts;
+            public bool Drawn;
+        }
 
         /// <summary>Tufts drawn last frame, for the lab readouts.</summary>
         public int TuftCount { get; private set; }
+
+        /// <summary>Chunks whose tufts are kept, drawn or not.</summary>
+        public int KeptChunkCount => tufts.Count;
 
         private void Awake()
         {
@@ -94,12 +112,11 @@ namespace Clube.Core
         {
             worldView.ChunkMeshed -= OnChunkMeshed;
             worldView.ChunkUnloaded -= OnChunkUnloaded;
-            foreach (List<Matrix4x4> list in tufts.Values)
+            foreach (Scattered scattered in tufts.Values)
             {
-                Recycle(list);
+                Recycle(scattered.Tufts);
             }
             tufts.Clear();
-            stale.Clear();
             batchesDirty = true;
             scanPending = true;
         }
@@ -114,19 +131,29 @@ namespace Clube.Core
 
         private void OnChunkMeshed(Vector3Int coord, ChunkRenderer chunkRenderer)
         {
-            stale.Add(coord);
             scanPending = true;
+            if (!tufts.TryGetValue(coord, out Scattered scattered))
+            {
+                // Not scattered yet: the scan grows it once it's in reach.
+                return;
+            }
+
+            // Its grass stood on the old mesh (an edit changed it). Grow it again now, so there's no frame
+            // without grass and none left floating; the grid keeps the tufts on unchanged ground in place.
+            if (scattered.Drawn && chunkRenderer != null)
+            {
+                Scatter(chunkRenderer, scattered.Tufts);
+                batchesDirty = true;
+            }
+            else
+            {
+                Drop(coord);
+            }
         }
 
         private void OnChunkUnloaded(Vector3Int coord)
         {
-            stale.Remove(coord);
-            if (tufts.TryGetValue(coord, out List<Matrix4x4> list))
-            {
-                Recycle(list);
-                tufts.Remove(coord);
-                batchesDirty = true;
-            }
+            Drop(coord);
         }
 
         private void LateUpdate()
@@ -151,57 +178,92 @@ namespace Clube.Core
             scanPending = false;
             float near = radius * radius;
             float far = (radius + 8f) * (radius + 8f);
+            float keep = radius * KeepRadii * radius * KeepRadii;
 
-            // Grass leaves the chunks that have gone out of reach.
+            // Kept chunks far across the ground (or without a surface now) let their grass go; the rest are
+            // drawn while they're within the radius.
             dropped.Clear();
-            foreach (Vector3Int coord in tufts.Keys)
+            foreach (KeyValuePair<Vector3Int, Scattered> pair in tufts)
             {
-                if (!worldView.Renderers.TryGetValue(coord, out ChunkRenderer chunkRenderer) || Distance(chunkRenderer, focus) > far)
+                if (!worldView.Renderers.TryGetValue(pair.Key, out ChunkRenderer chunkRenderer) || GroundDistance(chunkRenderer, focus) > keep)
                 {
-                    dropped.Add(coord);
+                    dropped.Add(pair.Key);
+                    continue;
+                }
+                bool drawn = Distance(chunkRenderer, focus) <= far;
+                if (drawn != pair.Value.Drawn)
+                {
+                    pair.Value.Drawn = drawn;
+                    batchesDirty = true;
                 }
             }
             foreach (Vector3Int coord in dropped)
             {
-                Recycle(tufts[coord]);
-                tufts.Remove(coord);
-                batchesDirty = true;
+                Drop(coord);
             }
 
-            // And grows on a few chunks in reach that have none yet, or a new mesh. Only the chunks round the
-            // focus are looked at (GL108): walking every loaded renderer ran out of time on the old, far
-            // ones in a streamed world before reaching the new ones by the player, so those never grew any.
+            // And grows on the chunks round the focus that have none yet, nearest first (GL163). Only the
+            // chunks round the focus are looked at (GL108): walking every loaded renderer ran out of time on
+            // the old, far ones in a streamed world before reaching the new ones by the player.
             clock.Restart();
             World world = worldView.World;
             Vector3Int centre = world.Grid.WorldToChunk(worldView.transform.InverseTransformPoint(focus));
-            Vector3 size = world.Grid.ChunkWorldSize;
-            Vector3Int reach = new Vector3Int(
-                Mathf.CeilToInt(radius / size.x), Mathf.CeilToInt(radius / size.y), Mathf.CeilToInt(radius / size.z));
+            foreach (Vector3Int offset in ReachOffsets(world.Grid.ChunkWorldSize))
+            {
+                Vector3Int coord = centre + offset;
+                if (tufts.ContainsKey(coord)
+                    || !worldView.Renderers.TryGetValue(coord, out ChunkRenderer chunkRenderer)
+                    || Distance(chunkRenderer, focus) > near)
+                {
+                    continue;
+                }
+                if (clock.Elapsed.TotalMilliseconds > scatterMilliseconds)
+                {
+                    scanPending = true;
+                    return;
+                }
+                List<Matrix4x4> list = spareLists.Count > 0 ? spareLists.Pop() : new List<Matrix4x4>();
+                Scatter(chunkRenderer, list);
+                tufts.Add(coord, new Scattered { Tufts = list, Drawn = true });
+                batchesDirty = true;
+            }
+        }
+
+        private void Drop(Vector3Int coord)
+        {
+            if (tufts.TryGetValue(coord, out Scattered scattered))
+            {
+                Recycle(scattered.Tufts);
+                tufts.Remove(coord);
+                batchesDirty |= scattered.Drawn;
+            }
+        }
+
+        // The chunk offsets within the radius, nearest first, kept until the radius or chunk size changes.
+        private Vector3Int[] ReachOffsets(Vector3 chunkSize)
+        {
+            if (reachOffsets != null && reachOffsetsRadius == radius && reachOffsetsChunk == chunkSize)
+            {
+                return reachOffsets;
+            }
+            var reach = new Vector3Int(
+                Mathf.CeilToInt(radius / chunkSize.x), Mathf.CeilToInt(radius / chunkSize.y), Mathf.CeilToInt(radius / chunkSize.z));
+            var offsets = new List<Vector3Int>();
             for (int dy = -reach.y; dy <= reach.y; dy++)
             {
                 for (int dz = -reach.z; dz <= reach.z; dz++)
                 {
                     for (int dx = -reach.x; dx <= reach.x; dx++)
                     {
-                        var coord = new Vector3Int(centre.x + dx, centre.y + dy, centre.z + dz);
-                        if ((tufts.ContainsKey(coord) && !stale.Contains(coord))
-                            || !worldView.Renderers.TryGetValue(coord, out ChunkRenderer chunkRenderer)
-                            || Distance(chunkRenderer, focus) > near)
-                        {
-                            continue;
-                        }
-                        // At least one chunk a frame, then as many as the time allows.
-                        if (clock.Elapsed.TotalMilliseconds > scatterMilliseconds)
-                        {
-                            scanPending = true;
-                            return;
-                        }
-                        Scatter(coord, chunkRenderer);
-                        stale.Remove(coord);
-                        batchesDirty = true;
+                        offsets.Add(new Vector3Int(dx, dy, dz));
                     }
                 }
             }
+            offsets.Sort((a, b) => Vector3.Scale(a, chunkSize).sqrMagnitude.CompareTo(Vector3.Scale(b, chunkSize).sqrMagnitude));
+            reachOffsets = offsets.ToArray();
+            reachOffsetsRadius = radius;
+            reachOffsetsChunk = chunkSize;
+            return reachOffsets;
         }
 
         // Squared distance from the focus to the chunk's centre.
@@ -211,16 +273,21 @@ namespace Clube.Core
             return (centre - focus).sqrMagnitude;
         }
 
-        private void Scatter(Vector3Int coord, ChunkRenderer chunkRenderer)
+        // The same across the ground only (x and z).
+        private float GroundDistance(ChunkRenderer chunkRenderer, Vector3 focus)
         {
-            if (!tufts.TryGetValue(coord, out List<Matrix4x4> list))
-            {
-                list = spareLists.Count > 0 ? spareLists.Pop() : new List<Matrix4x4>();
-                tufts.Add(coord, list);
-            }
+            Vector3 centre = chunkRenderer.Transform.position + worldView.World.Grid.ChunkWorldSize * 0.5f;
+            float dx = centre.x - focus.x, dz = centre.z - focus.z;
+            return dx * dx + dz * dz;
+        }
+
+        // Fills the list with the chunk's tufts: one per grid cell whose point lies, seen from above, on an
+        // upward, grassy triangle, at that triangle's height there.
+        private void Scatter(ChunkRenderer chunkRenderer, List<Matrix4x4> list)
+        {
             list.Clear();
             Mesh mesh = chunkRenderer.Mesh;
-            if (mesh == null || mesh.vertexCount == 0)
+            if (mesh == null || mesh.vertexCount == 0 || density <= 0f)
             {
                 return;
             }
@@ -236,6 +303,7 @@ namespace Clube.Core
 
             Transform chunkTransform = chunkRenderer.Transform;
             float grassId = grass.Id;
+            float cell = 1f / Mathf.Sqrt(density);
             for (int t = 0; t < triangles.Count; t += 3)
             {
                 int a = triangles[t], b = triangles[t + 1], c = triangles[t + 2];
@@ -247,28 +315,38 @@ namespace Clube.Core
                 Vector3 pa = chunkTransform.TransformPoint(vertices[a]);
                 Vector3 pb = chunkTransform.TransformPoint(vertices[b]);
                 Vector3 pc = chunkTransform.TransformPoint(vertices[c]);
-                float area = Vector3.Cross(pb - pa, pc - pa).magnitude * 0.5f;
 
-                // Tufts for this triangle: its share of the density, the fraction settled by a hash of where it is.
-                Vector3 centre = (pa + pb + pc) / 3f;
-                int hx = Mathf.FloorToInt(centre.x * 16f), hy = Mathf.FloorToInt(centre.y * 16f), hz = Mathf.FloorToInt(centre.z * 16f);
-                float wanted = area * density;
-                int count = (int)wanted + (VoxelHash.Uniform(0, hx, hy, hz, 1) < wanted - (int)wanted ? 1 : 0);
-                for (int i = 0; i < count; i++)
+                // The triangle seen from above, as barycentric weights over x and z.
+                float denominator = (pb.z - pc.z) * (pa.x - pc.x) + (pc.x - pb.x) * (pa.z - pc.z);
+                if (Mathf.Abs(denominator) < 1e-9f)
                 {
-                    // A point inside the triangle, folded into it when it lands outside.
-                    float u = VoxelHash.Uniform(0, hx, hy, hz, 10 + i * 4);
-                    float v = VoxelHash.Uniform(0, hx, hy, hz, 11 + i * 4);
-                    if (u + v > 1f)
+                    continue;
+                }
+                float inverse = 1f / denominator;
+                int x0 = Mathf.FloorToInt(Mathf.Min(pa.x, Mathf.Min(pb.x, pc.x)) / cell);
+                int x1 = Mathf.FloorToInt(Mathf.Max(pa.x, Mathf.Max(pb.x, pc.x)) / cell);
+                int z0 = Mathf.FloorToInt(Mathf.Min(pa.z, Mathf.Min(pb.z, pc.z)) / cell);
+                int z1 = Mathf.FloorToInt(Mathf.Max(pa.z, Mathf.Max(pb.z, pc.z)) / cell);
+                for (int iz = z0; iz <= z1; iz++)
+                {
+                    for (int ix = x0; ix <= x1; ix++)
                     {
-                        u = 1f - u;
-                        v = 1f - v;
+                        // The cell's point, kept when it lies on this triangle.
+                        float px = (ix + VoxelHash.Uniform(0, ix, 0, iz, 1)) * cell;
+                        float pz = (iz + VoxelHash.Uniform(0, ix, 0, iz, 2)) * cell;
+                        float wa = ((pb.z - pc.z) * (px - pc.x) + (pc.x - pb.x) * (pz - pc.z)) * inverse;
+                        float wb = ((pc.z - pa.z) * (px - pc.x) + (pa.x - pc.x) * (pz - pc.z)) * inverse;
+                        float wc = 1f - wa - wb;
+                        if (wa < 0f || wb < 0f || wc < 0f)
+                        {
+                            continue;
+                        }
+                        var position = new Vector3(px, pa.y * wa + pb.y * wb + pc.y * wc, pz);
+                        float yaw = VoxelHash.Uniform(0, ix, 0, iz, 3) * 360f;
+                        float size = Mathf.Lerp(height.x, height.y, VoxelHash.Uniform(0, ix, 0, iz, 4));
+                        Quaternion rotation = Quaternion.FromToRotation(Vector3.up, Vector3.Lerp(Vector3.up, normal, 0.5f)) * Quaternion.Euler(0f, yaw, 0f);
+                        list.Add(Matrix4x4.TRS(position, rotation, new Vector3(size, size, size)));
                     }
-                    Vector3 position = pa + (pb - pa) * u + (pc - pa) * v;
-                    float yaw = VoxelHash.Uniform(0, hx, hy, hz, 12 + i * 4) * 360f;
-                    float size = Mathf.Lerp(height.x, height.y, VoxelHash.Uniform(0, hx, hy, hz, 13 + i * 4));
-                    Quaternion rotation = Quaternion.FromToRotation(Vector3.up, Vector3.Lerp(Vector3.up, normal, 0.5f)) * Quaternion.Euler(0f, yaw, 0f);
-                    list.Add(Matrix4x4.TRS(position, rotation, new Vector3(size, size, size)));
                 }
             }
 
@@ -318,8 +396,13 @@ namespace Clube.Core
             batchCounts.Clear();
             int filled = 0;
             int total = 0;
-            foreach (List<Matrix4x4> list in tufts.Values)
+            foreach (Scattered scattered in tufts.Values)
             {
+                if (!scattered.Drawn)
+                {
+                    continue;
+                }
+                List<Matrix4x4> list = scattered.Tufts;
                 for (int i = 0; i < list.Count; i++)
                 {
                     if (filled == 0)

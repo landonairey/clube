@@ -34,6 +34,11 @@ namespace Clube.Game
         [SerializeField, Min(0.1f)]
         private float heat = 1f;
 
+        [Tooltip("How much of what a run makes comes out at full build quality (GL178): campfire 0.5, stone furnace 0.75, clay furnace 1, " +
+                 "so each furnace up the path gets more metal from the same ore. Times the build quality, it is the efficiency the station screen shows.")]
+        [SerializeField, Range(0.05f, 1f)]
+        private float recovery = 1f;
+
         public string DisplayName => displayName;
 
         public CraftingStation Station { get; private set; }
@@ -49,25 +54,28 @@ namespace Clube.Game
         /// <summary>How hot it works (GL98); 1 for a stone furnace.</summary>
         public float Heat => heat;
 
+        /// <summary>How much of what a run makes comes out at full build quality (GL178).</summary>
+        public float Recovery => recovery;
+
         /// <summary>How well it was built (GL100): the share of what it's made of that's its own material, 0-1; 1 when made of pure items.</summary>
         public float Quality { get; private set; } = 1f;
 
         /// <summary>
         /// Sets how well it was built (GL100, GL118): the quality of the item it was placed from, which a mix
-        /// gives it, so a clay furnace of 76% clay works at 76% of its heat and yields 76% (GL127).
+        /// gives it, so a clay furnace of 76% clay works at 76% of its heat and yields 76% (GL127) of its recovery (GL178).
         /// </summary>
         public void MadeOf(float quality)
         {
             Quality = Mathf.Clamp01(quality);
             Station.Heat = heat * Quality;
-            Station.Quality = Quality;
+            Station.Quality = Quality * recovery;
         }
 
         public string Prompt => $"Use {displayName.ToLowerInvariant()}";
 
         private void Awake()
         {
-            Station = new CraftingStation(kind, recipes, CraftingStation.DefaultInputSlots, burnsFuel) { Heat = heat };
+            Station = new CraftingStation(kind, recipes, CraftingStation.DefaultInputSlots, burnsFuel) { Heat = heat, Quality = recovery };
             ConnectToPlayer();
         }
 

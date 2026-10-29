@@ -652,3 +652,57 @@ What was slow, and what changed:
 | Streamer, idle frame at 200 m | | 0.44 ms |
 
 Rendering the whole 200 m world (untextured, warmed up): 20–25 ms with the terrain material only, 25–28 ms with the overlay on every chunk. (A first render that also uploads the meshes takes ~750 ms; an earlier comparison mistook that for the overlay's cost.) At 400 m that's ~80–100 ms a frame for rendering alone: what's left is too many objects and triangles, which needs LOD (P7) and merging chunks into larger render meshes.
+
+## Far terrain (P7a, 2026-10-27)
+
+WorldLab's Landscape with the great ranges, nine levels of 128 quads from 2 m (33 km), 150,000 vertices in all. Editor with **Burst off** (its compilation was switched off in that session), 20 cores; with Burst the worker times should drop several times.
+
+| | Worker time (wall, waiting) | Main thread |
+|---|--:|--:|
+| One level's heights, one job | 80 ms | |
+| Full rebuild, all nine levels, one job per level's heights | 130 ms | |
+| Full rebuild, heights spread over the workers by row (`ColumnHeightRowsJob`) | 74 ms | |
+| A 4 m step (3.5 levels on average) | 29 ms | |
+| Swapping in a finished batch (all nine meshes) | | 0.21 ms |
+
+The main thread only applies finished mesh data, so moving costs nothing visible; the far terrain lags the focus by the batch time, which the 256 m finest level hides.
+
+## Coarse terrain (P7c, 2026-10-28)
+
+WorldLab (fixed 104 m area, render distance 16), Landscape with the great ranges, eight coarse levels of 16 × 16 chunks (0.5 m to 64 m voxels, to 8 km), plus two far terrain levels past them. Editor with **Burst off**, 20 cores. Frames pumped by hand (`Update` + `LateUpdate` on the World object), so the times are the World object's scripts, not rendering.
+
+| | Value |
+|---|--:|
+| Coarse chunks drawn when settled | ~2,550 (250-410 a level) |
+| From start to every level shown | under 25 s (all levels together, nearest first) |
+| Main-thread time of `TerrainLodView` a frame, moving 1.5 m a frame | 1.0 ms average, 3.1 ms worst |
+| The World object's frame, moving 1.5 m a frame, with / without the coarse terrain | 5.8 / 6.3 ms average; 32 / 21 ms worst |
+
+The worst frames are not the coarse terrain's (it is at most 3.1 ms in them); they are the world's own streaming and the Editor's garbage collections. Clipping a level used to go through property blocks on every renderer (~2,500 calls whenever the focus crossed a chunk, and no SRP batching); a copy of the material per level makes it eight material updates.
+
+## Streaming at long render distances (P17, 2026-10-28)
+
+ProceduralWorldLab, Landscape, render distance 64 (the maximum: 514,120 wanted chunks), coarse terrain, far terrain and distant trees on. Editor, Burst on. The fly camera moved 1.5 m a frame (and 0.5 m sideways) for 300 frames, pumped by hand (`Update` + `LateUpdate` on the World object), so the times are the World object's scripts, not rendering.
+
+| Main-thread ms a frame, average / worst | Before (per-chunk area) | After (per-column area) |
+|---|---|---|
+| The World object's scripts | 185 / 574 | 19 / 48 |
+| `WorldView` streaming | 177 / 563 | 12 / 35 |
+| of which the area step | 240 / 882 | 4 / 30 |
+| Coarse terrain (`TerrainLodView`) | 1.0 / 2.9 | 0.5 / 3.4 |
+| Far terrain | 0.01 / 0.03 | 0.01 / 0.04 |
+| Distant trees | 0.7 / 21 | 0.5 / 4.9 |
+
+Before, every chunk-border crossing re-collected and re-hashed all 514,120 wanted chunks, recounted the loaded ones, scanned every loaded chunk for unloading and put the load cursor back to the start; moving a chunk a frame, the cursor never reached the new edge (340,000 chunks pending). The coarse terrain now builds 6 levels instead of 8 at this distance (the first two sat under the world's chunks). Distant trees draw about a quarter of the 84,000 placed (the tiles in view). Still: at distance 64 loading can't keep up with fast movement (478,000 pending after the flight), and standing still the 7,700 world chunk renderers cost about 11 ms of a 27 ms render in the Editor, so with the coarse terrain beyond, 16-24 is the sensible distance.
+
+## Detail distance (P18, 2026-10-28)
+
+WorldLab with a 400 m fixed area at render distance 64, everything loaded (35,099 chunks with a surface, 58 million vertices), coarse terrain and distant trees on. Editor, Burst on. Times are a manual `Camera.Render` into a 1280 × 720 texture (the CPU's side of a frame's rendering, averaged over 4 renders); the GPU's share can't be measured in the Editor.
+
+| | Detail distance 0 (every chunk drawn) | Detail distance 24 (96 m) |
+|---|--:|--:|
+| Chunk renderers drawn | 35,099 | 5,568 |
+| Render, eye level looking west | 8.9 ms | 2.9 ms |
+| Render, from 140 m up | 5.5 ms | 1.3 ms |
+
+The 20 fps seen standing still is most likely the 19 million triangles drawn every frame, shadows too (streaming was idle); not confirmed on the GPU. Past 96 m the coarse terrain's 1 m voxels and the distant tree meshes stand in for the hidden chunks.

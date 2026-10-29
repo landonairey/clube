@@ -149,7 +149,7 @@ namespace Clube.Core
         /// <see cref="Fuel"/> slot unless a recipe here uses it, everything else into
         /// <see cref="Input"/>. Returns how many moved.
         /// </summary>
-        public int Load(Inventory from, int slot)
+        public int Load(Inventory from, int slot, int count = int.MaxValue)
         {
             ItemStack stack = from[slot];
             if (stack.IsEmpty)
@@ -157,7 +157,8 @@ namespace Clube.Core
                 return 0;
             }
             bool fuel = BurnsFuel && stack.Item.IsFuel && !UsesAsInput(stack.Item);
-            return from.MoveTo(slot, fuel ? Fuel : Input);
+            // Part of a stack when asked (GL176), else all of it.
+            return from.MoveTo(slot, fuel ? Fuel : Input, count);
         }
 
         /// <summary>

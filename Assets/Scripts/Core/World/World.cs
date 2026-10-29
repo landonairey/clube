@@ -29,8 +29,14 @@ namespace Clube.Core
     public sealed class World : IDensityField
     {
         private readonly Dictionary<Vector3Int, Chunk> loaded = new Dictionary<Vector3Int, Chunk>();
+
+        // Loaded layers per column (x, z), kept with `loaded`, so streaming can work in columns.
+        private readonly Dictionary<Vector2Int, int> loadedColumns = new Dictionary<Vector2Int, int>();
         private readonly Dictionary<Vector3Int, Chunk> editedUnloaded = new Dictionary<Vector3Int, Chunk>();
         private readonly HashSet<Vector3Int> edited = new HashSet<Vector3Int>();
+
+        // Columns (x, z) holding an edited chunk: the world draws them in full at any distance (P18).
+        private readonly HashSet<Vector2Int> editedColumns = new HashSet<Vector2Int>();
 
         // Loaded chunks that became dirty since they were last collected (CollectDirty); a chunk may
         // have been cleaned since, so readers check.
@@ -62,6 +68,15 @@ namespace Clube.Core
 
         public int LoadedCount => loaded.Count;
 
+        /// <summary>How many layers each column with any loaded chunk has loaded, by column (x, z).</summary>
+        public IReadOnlyDictionary<Vector2Int, int> LoadedColumns => loadedColumns;
+
+        /// <summary>Loaded layers in the column (x, z).</summary>
+        public int LoadedLayersIn(Vector2Int column)
+        {
+            return loadedColumns.TryGetValue(column, out int layers) ? layers : 0;
+        }
+
         /// <summary>Chunks touched by any edit, loaded or kept in memory.</summary>
         public int EditedCount => edited.Count;
 
@@ -82,6 +97,20 @@ namespace Clube.Core
         public bool IsEdited(Vector3Int coord)
         {
             return edited.Contains(coord);
+        }
+
+        /// <summary>True once any edit has touched a chunk of the column (x, z).</summary>
+        public bool HasEditsIn(Vector2Int column)
+        {
+            return editedColumns.Contains(column);
+        }
+
+        private void MarkEdited(Vector3Int coord)
+        {
+            if (edited.Add(coord))
+            {
+                editedColumns.Add(new Vector2Int(coord.x, coord.z));
+            }
         }
 
         /// <summary>Makes each new chunk's density storage from its sample count (2G).</summary>
@@ -141,6 +170,8 @@ namespace Clube.Core
         public void Add(Vector3Int coord, Chunk chunk)
         {
             loaded.Add(coord, chunk);
+            var column = new Vector2Int(coord.x, coord.z);
+            loadedColumns[column] = LoadedLayersIn(column) + 1;
             loadedMin = anyLoaded ? Vector3Int.Min(loadedMin, coord) : coord;
             loadedMax = anyLoaded ? Vector3Int.Max(loadedMax, coord) : coord;
             anyLoaded = true;
@@ -204,6 +235,16 @@ namespace Clube.Core
                 return;
             }
             loaded.Remove(coord);
+            var column = new Vector2Int(coord.x, coord.z);
+            int layers = LoadedLayersIn(column) - 1;
+            if (layers > 0)
+            {
+                loadedColumns[column] = layers;
+            }
+            else
+            {
+                loadedColumns.Remove(column);
+            }
             dirty.Remove(coord);
             chunk.BecameDirty = null;
             if (edited.Contains(coord))
@@ -228,11 +269,13 @@ namespace Clube.Core
                 chunk.Release();
             }
             loaded.Clear();
+            loadedColumns.Clear();
             dirty.Clear();
             anyLoaded = false;
             anyCarved = false;
             editedUnloaded.Clear();
             edited.Clear();
+            editedColumns.Clear();
         }
 
         /// <summary>The density at a global sample, or null when no loaded chunk holds it.</summary>
@@ -269,7 +312,7 @@ namespace Clube.Core
                 if (chunk.GetDensity(local) != density)
                 {
                     chunk.SetDensity(local, density);
-                    edited.Add(coord);
+                    MarkEdited(coord);
                     changed++;
                 }
             }
@@ -311,7 +354,7 @@ namespace Clube.Core
                 if (chunk.GetMaterial(local) != material)
                 {
                     chunk.SetMaterial(local, material);
-                    edited.Add(coord);
+                    MarkEdited(coord);
                 }
             }
         }
@@ -386,7 +429,7 @@ namespace Clube.Core
                 if (next != flags)
                 {
                     chunk.SetCarveFlags(local, next);
-                    edited.Add(coord);
+                    MarkEdited(coord);
                 }
             }
         }

@@ -52,6 +52,13 @@ namespace Clube.Core
         /// material after the first, like the build grid). 0 or less: every chunk.
         /// </summary>
         public float OverlayRadius;
+
+        /// <summary>
+        /// Radius in chunks, horizontally, within which loaded chunks are drawn (P18); past it they stay
+        /// loaded (for edits, colliders, the player) but hidden, and something coarser draws the ground
+        /// there. Columns holding an edited chunk are always drawn. 0: every loaded chunk is drawn.
+        /// </summary>
+        public int DetailDistance;
     }
 
     /// <summary>Live counts from a <see cref="WorldStreamer"/>, for readouts.</summary>
@@ -125,20 +132,25 @@ namespace Clube.Core
         private readonly Func<ChunkMeshSettings> meshSettings;
         private StreamingSettings settings;
 
-        private readonly List<Vector3Int> wanted = new List<Vector3Int>();
+        // The wanted columns (x, z), nearest first; every layer of each is wanted. Kept per column, not
+        // per chunk: at long render distances the chunks run to hundreds of thousands, and the area
+        // is redone every time the focus crosses a chunk border.
+        private readonly List<Vector2Int> wantedColumns = new List<Vector2Int>();
+        private readonly List<Vector2Int> columnScratch = new List<Vector2Int>();
 
         // The world's dirty chunks, collected each frame (World.CollectDirty).
         private readonly List<Vector3Int> dirtyScratch = new List<Vector3Int>();
 
         // Wanted chunks that came up before their column's heights were ready (ChunkPipeline.StartGeneration).
         private readonly List<Vector3Int> waitingForColumns = new List<Vector3Int>();
-        private readonly HashSet<Vector3Int> wantedSet = new HashSet<Vector3Int>();
         private readonly HashSet<Vector3Int> meshedOnce = new HashSet<Vector3Int>();
         private readonly List<Vector3Int> scratch = new List<Vector3Int>();
         private readonly Stopwatch frameClock = new Stopwatch();
         private Vector3Int? wantedCentre;
         private int wantedDistance;
+        // The next wanted column to start, and the next layer in it.
         private int loadCursor;
+        private int loadLayer;
         // Wanted chunks that are loaded, kept up to date so PendingCount needn't scan the area.
         private int wantedLoaded;
         // Whether the area is loading in bulk (LoadingBudgetMilliseconds applies), and this frame's budget.
@@ -149,6 +161,12 @@ namespace Clube.Core
         private StreamingStats stats;
         private double lapStart;
 
+        // The column the detail distance is measured from (P18), and a number that changes whenever
+        // which columns are drawn could have, unique across streamers.
+        private Vector2Int drawCentre;
+        private bool hasDrawCentre;
+        private static int drawVersions;
+
         public WorldStreamer(
             World world, ChunkPipeline pipeline, ChunkRendererPool renderers, Func<ChunkMeshSettings> meshSettings,
             StreamingSettings settings)
@@ -158,6 +176,8 @@ namespace Clube.Core
             this.renderers = renderers;
             this.meshSettings = meshSettings;
             this.settings = settings;
+            DrawVersion = ++drawVersions;
+            renderers.SetDrawRule(IsColumnDrawn);
         }
 
         /// <summary>Raised when a chunk's data is added to the world.</summary>
@@ -174,7 +194,7 @@ namespace Clube.Core
             get
             {
                 StreamingStats current = stats;
-                current.Wanted = wanted.Count;
+                current.Wanted = WantedCount;
                 current.Pending = PendingCount;
                 current.Generating = pipeline.GeneratingCount;
                 current.Meshing = pipeline.MeshingCount;
@@ -198,7 +218,9 @@ namespace Clube.Core
         }
 
         /// <summary>Wanted chunks not loaded yet.</summary>
-        public int PendingCount => wanted.Count - wantedLoaded;
+        public int PendingCount => WantedCount - wantedLoaded;
+
+        private int WantedCount => wantedColumns.Count * settings.HeightInChunks;
 
         /// <summary>True while the area loads in bulk, with the larger loading budget (see <see cref="StreamingSettings.LoadingBudgetMilliseconds"/>).</summary>
         public bool IsLoading => bulkLoading;
@@ -227,6 +249,7 @@ namespace Clube.Core
             }
             float chunkWidth = world.Grid.ChunkWorldSize.x;
             renderers.SetOverlayFocus(centre, settings.OverlayRadius > 0f ? Mathf.CeilToInt(settings.OverlayRadius / chunkWidth) : -1);
+            UpdateDrawCentre(new Vector2Int(centre.x, centre.z));
             phases.Area = Lap();
 
             // Meshes first, with half the budget: they change what's on screen. Each stage takes at
@@ -243,7 +266,7 @@ namespace Clube.Core
             phases.Colliders = Lap();
 
             // The bulk load is over once everything wanted has been started, loaded and meshed.
-            if (bulkLoading && loadCursor >= wanted.Count && waitingForColumns.Count == 0 && PendingCount == 0
+            if (bulkLoading && loadCursor >= wantedColumns.Count && waitingForColumns.Count == 0 && PendingCount == 0
                 && pipeline.GeneratingCount == 0 && pipeline.MeshingCount == 0 && dirtyScratch.Count == 0)
             {
                 bulkLoading = false;
@@ -393,47 +416,68 @@ namespace Clube.Core
             }
             wantedCentre = centre;
             wantedDistance = settings.RenderDistance;
-            StreamingArea.Collect(centre, settings.RenderDistance, settings.HeightInChunks, wanted);
+            StreamingArea.CollectColumns(new Vector2Int(centre.x, centre.z), settings.RenderDistance, wantedColumns);
             if (settings.FixedColumns.HasValue)
             {
                 // A fixed area is the same circle around the focus, cut to its square of columns.
                 RectInt area = settings.FixedColumns.Value;
-                wanted.RemoveAll(coord => !area.Contains(new Vector2Int(coord.x, coord.z)));
+                wantedColumns.RemoveAll(column => !area.Contains(column));
             }
-            wantedSet.Clear();
-            wantedSet.UnionWith(wanted);
             loadCursor = 0;
+            loadLayer = 0;
             wantedLoaded = 0;
-            foreach (Vector3Int coord in wanted)
+            int layers = settings.HeightInChunks;
+            foreach (Vector2Int column in wantedColumns)
             {
-                if (world.IsLoaded(coord))
-                {
-                    wantedLoaded++;
-                }
+                wantedLoaded += Mathf.Min(layers, world.LoadedLayersIn(column));
             }
             return true;
         }
 
+        // Whether the chunk is in the wanted area: a column in the circle (and the fixed area), any layer.
+        private bool IsWanted(Vector3Int coord)
+        {
+            if (!wantedCentre.HasValue || coord.y < 0 || coord.y >= settings.HeightInChunks)
+            {
+                return false;
+            }
+            var column = new Vector2Int(coord.x, coord.z);
+            Vector3Int centre = wantedCentre.Value;
+            return StreamingArea.IsColumnInRange(column, new Vector2Int(centre.x, centre.z), wantedDistance)
+                   && (!settings.FixedColumns.HasValue || settings.FixedColumns.Value.Contains(column));
+        }
+
         // Chunks just outside the wanted area are kept (one chunk of slack), so walking back
-        // and forth across a chunk border doesn't load and unload the same chunks.
+        // and forth across a chunk border doesn't load and unload the same chunks. Looks over the
+        // loaded columns, not every loaded chunk.
         private void UnloadUnwanted(Vector3Int centre)
         {
             int keep = (settings.RenderDistance + 1) * (settings.RenderDistance + 1);
-            scratch.Clear();
-            foreach (Vector3Int coord in world.Chunks.Keys)
+            columnScratch.Clear();
+            foreach (Vector2Int column in world.LoadedColumns.Keys)
             {
-                if (!wantedSet.Contains(coord) && StreamingArea.HorizontalDistanceSquared(coord, centre) > keep)
+                int dx = column.x - centre.x;
+                int dz = column.y - centre.z;
+                if (dx * dx + dz * dz > keep)
                 {
-                    scratch.Add(coord);
+                    columnScratch.Add(column);
                 }
             }
-            foreach (Vector3Int coord in scratch)
+            foreach (Vector2Int column in columnScratch)
             {
-                pipeline.CancelMesh(coord);
-                Release(coord);
-                meshedOnce.Remove(coord);
-                world.Unload(coord);
-                ChunkUnloaded?.Invoke(coord);
+                for (int y = 0; y < settings.HeightInChunks && world.LoadedLayersIn(column) > 0; y++)
+                {
+                    var coord = new Vector3Int(column.x, y, column.y);
+                    if (!world.IsLoaded(coord))
+                    {
+                        continue;
+                    }
+                    pipeline.CancelMesh(coord);
+                    Release(coord);
+                    meshedOnce.Remove(coord);
+                    world.Unload(coord);
+                    ChunkUnloaded?.Invoke(coord);
+                }
             }
         }
 
@@ -445,15 +489,15 @@ namespace Clube.Core
             while ((first || Before(untilMilliseconds)) && pipeline.TryTakeGenerated(out Vector3Int coord, out Chunk chunk))
             {
                 first = false;
-                bool stillWanted = wantedSet.Contains(coord)
-                                   || StreamingArea.HorizontalDistanceSquared(coord, wantedCentre.Value) <= keep;
+                bool wanted = IsWanted(coord);
+                bool stillWanted = wanted || StreamingArea.HorizontalDistanceSquared(coord, wantedCentre.Value) <= keep;
                 if (world.IsLoaded(coord) || !stillWanted)
                 {
                     chunk.Release();
                     continue;
                 }
                 world.Add(coord, chunk);
-                if (wantedSet.Contains(coord))
+                if (wanted)
                 {
                     wantedLoaded++;
                 }
@@ -472,7 +516,7 @@ namespace Clube.Core
                             && (i < limit || Before(budget));)
             {
                 Vector3Int waiting = waitingForColumns[i];
-                if (!wantedSet.Contains(waiting) || world.IsLoaded(waiting) || pipeline.StartGeneration(waiting))
+                if (!IsWanted(waiting) || world.IsLoaded(waiting) || pipeline.StartGeneration(waiting))
                 {
                     waitingForColumns.RemoveAt(i);
                 }
@@ -482,13 +526,26 @@ namespace Clube.Core
                 }
             }
             // At least a job limit's worth of starts a frame, as before; more while the budget lasts.
+            // A column with every layer loaded is passed over in one step, so moving the area (which puts
+            // the cursor back to the nearest column) costs a look per column, not per chunk.
             int started = 0;
-            while (loadCursor < wanted.Count && pipeline.GenerationJobsRunning < limit
+            int layers = settings.HeightInChunks;
+            while (loadCursor < wantedColumns.Count && pipeline.GenerationJobsRunning < limit
                    && (started < limit || Before(budget)))
             {
+                Vector2Int column = wantedColumns[loadCursor];
+                if (loadLayer == 0 && world.LoadedLayersIn(column) >= layers)
+                {
+                    loadCursor++;
+                    continue;
+                }
+                var coord = new Vector3Int(column.x, loadLayer, column.y);
+                if (++loadLayer >= layers)
+                {
+                    loadLayer = 0;
+                    loadCursor++;
+                }
                 started++;
-                Vector3Int coord = wanted[loadCursor];
-                loadCursor++;
                 if (world.IsLoaded(coord) || pipeline.IsGenerating(coord))
                 {
                     continue;
@@ -533,7 +590,7 @@ namespace Clube.Core
 
             // The world's dirty chunks in the wanted area, nearest first.
             world.CollectDirty(dirtyScratch);
-            dirtyScratch.RemoveAll(coord => !wantedSet.Contains(coord) || pipeline.IsMeshing(coord));
+            dirtyScratch.RemoveAll(coord => !IsWanted(coord) || pipeline.IsMeshing(coord));
             if (wantedCentre.HasValue)
             {
                 Vector3Int centre = wantedCentre.Value;
@@ -594,6 +651,11 @@ namespace Clube.Core
             chunkRenderer.ApplyMesh(result);
             stats.Vertices += chunkRenderer.LastBuildStats.VertexCount;
             stats.Triangles += chunkRenderer.LastBuildStats.TriangleCount;
+            if (settings.DetailDistance > 0 && world.IsEdited(coord))
+            {
+                // An edited column is drawn whole at any distance: its other layers too.
+                renderers.RefreshColumn(new Vector2Int(coord.x, coord.z), settings.HeightInChunks);
+            }
             ChunkMeshed?.Invoke(coord, chunkRenderer);
         }
 
@@ -676,6 +738,85 @@ namespace Clube.Core
                             continue;
                         }
                         pipeline.StartBake(coord, chunkRenderer.Mesh, chunkRenderer.MeshVersion, chunkCollider.CookingOptions);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Radius in chunks within which loaded chunks are drawn (P18, see
+        /// <see cref="StreamingSettings.DetailDistance"/>); 0 draws every one.
+        /// </summary>
+        public int DetailDistance
+        {
+            get => settings.DetailDistance;
+            set
+            {
+                value = Mathf.Max(0, value);
+                if (value == settings.DetailDistance)
+                {
+                    return;
+                }
+                settings.DetailDistance = value;
+                DrawVersion = ++drawVersions;
+                renderers.RefreshDrawn();
+            }
+        }
+
+        /// <summary>Changes whenever which columns are drawn may have (<see cref="IsColumnDrawn"/>); never repeats.</summary>
+        public int DrawVersion { get; private set; }
+
+        /// <summary>
+        /// True when the world draws the column's chunks (x, z): every column with no detail distance,
+        /// otherwise those within it of the focus column, and any column holding an edited chunk.
+        /// </summary>
+        public bool IsColumnDrawn(Vector2Int column)
+        {
+            int distance = settings.DetailDistance;
+            return distance <= 0 || !hasDrawCentre || IsWithin(column, drawCentre, distance) || world.HasEditsIn(column);
+        }
+
+        private static bool IsWithin(Vector2Int column, Vector2Int centre, int distance)
+        {
+            int dx = column.x - centre.x;
+            int dz = column.y - centre.y;
+            return dx * dx + dz * dz <= distance * distance;
+        }
+
+        // The focus column moved: switch the renderers of the columns that crossed the detail distance.
+        private void UpdateDrawCentre(Vector2Int column)
+        {
+            if (hasDrawCentre && column == drawCentre)
+            {
+                return;
+            }
+            Vector2Int old = drawCentre;
+            bool hadCentre = hasDrawCentre;
+            drawCentre = column;
+            hasDrawCentre = true;
+            int distance = settings.DetailDistance;
+            if (distance <= 0)
+            {
+                return;
+            }
+            DrawVersion = ++drawVersions;
+
+            // Only columns near the edge of the old or the new circle can change; a long jump redoes them all.
+            int minX = Mathf.Min(old.x, column.x) - distance - 1, maxX = Mathf.Max(old.x, column.x) + distance + 1;
+            int minZ = Mathf.Min(old.y, column.y) - distance - 1, maxZ = Mathf.Max(old.y, column.y) + distance + 1;
+            if (!hadCentre || (long)(maxX - minX + 1) * (maxZ - minZ + 1) > 4L * (2 * distance + 3) * (2 * distance + 3))
+            {
+                renderers.RefreshDrawn();
+                return;
+            }
+            for (int z = minZ; z <= maxZ; z++)
+            {
+                for (int x = minX; x <= maxX; x++)
+                {
+                    var candidate = new Vector2Int(x, z);
+                    if (IsWithin(candidate, old, distance) != IsWithin(candidate, column, distance) && !world.HasEditsIn(candidate))
+                    {
+                        renderers.RefreshColumn(candidate, settings.HeightInChunks);
                     }
                 }
             }

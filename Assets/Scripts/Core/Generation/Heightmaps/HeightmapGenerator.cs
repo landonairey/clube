@@ -52,5 +52,16 @@ namespace Clube.Core
                 .Schedule(dependsOn);
             return pixels.Dispose(job);
         }
+
+        // Rare (a heightmap world is small), so on the main thread: nothing to copy into a job.
+        public override JobHandle SchedulePointHeights(NativeArray<float2> points, NativeArray<float> heights, JobHandle dependsOn = default)
+        {
+            dependsOn.Complete();
+            for (int i = 0; i < points.Length; i++)
+            {
+                heights[i] = Height(points[i].x, points[i].y);
+            }
+            return default;
+        }
     }
 }

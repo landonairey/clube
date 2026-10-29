@@ -24,11 +24,39 @@ namespace Clube.Core
 
         public DensityFormat Format;
 
-        public ChunkFillSettings(LayerTable layers, int seed, DensityFormat format)
+        /// <summary>
+        /// Coarse terrain LOD (P7c): how many times the world's voxel size this chunk's voxels are.
+        /// Heightfield depths are divided by it before the density and the layers, so the density ramp
+        /// and every layer band are that much wider and stay the same in voxels: a coarse surface is as
+        /// smooth as a fine one and still green on top. 1 (or 0, unset) for the world's own chunks.
+        /// </summary>
+        public float LodScale;
+
+        public ChunkFillSettings(LayerTable layers, int seed, DensityFormat format, float lodScale = 1f)
         {
             Layers = layers;
             Seed = seed;
             Format = format;
+            LodScale = lodScale;
+        }
+
+        /// <summary>What a depth is multiplied by before the density and layers: 1 / <see cref="LodScale"/>.</summary>
+        public float DepthScale => LodScale > 0f ? 1f / LodScale : 1f;
+
+        /// <summary>How far above the surface, in metres, the density ramp reaches.</summary>
+        public float RampReach => TerrainDensity.RampHalfWidth * (LodScale > 0f ? LodScale : 1f);
+
+        /// <summary>
+        /// These settings for an LOD level <paramref name="scale"/> times coarser: the bands widen with
+        /// it, and the small details (surface rocks, buried stones) that a coarse voxel can't show are off.
+        /// </summary>
+        public ChunkFillSettings ForLod(float scale)
+        {
+            ChunkFillSettings lod = this;
+            lod.LodScale = scale;
+            lod.Layers.RockChance = 0f;
+            lod.Layers.BuriedStoneChance = 0f;
+            return lod;
         }
     }
 

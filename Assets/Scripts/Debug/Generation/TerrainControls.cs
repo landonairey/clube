@@ -149,6 +149,20 @@ namespace Clube.Debug
                     config.NotifyChanged();
                 }
                 GUILayout.Label("Surface level is the plains' height; Frequency isn't used. Mountains taller than the world are cut off: raise World height.", frame.Hint);
+
+                // P7: the far terrain's horizon.
+                float distantHeight = frame.Slider("Distant ranges height (m)", terrain.DistantRangeHeight, 0f, 4000f, "0");
+                float distantWidth = frame.Slider("Distant ranges width (m)", terrain.DistantRangeWidth, 500f, 20000f, "0");
+                float distantStart = frame.Slider("Distant ranges start (m)", terrain.DistantRangeStart, 0f, 20000f, "0");
+                if (!Mathf.Approximately(distantHeight, terrain.DistantRangeHeight) || !Mathf.Approximately(distantWidth, terrain.DistantRangeWidth)
+                    || !Mathf.Approximately(distantStart, terrain.DistantRangeStart))
+                {
+                    terrain.DistantRangeHeight = distantHeight;
+                    terrain.DistantRangeWidth = distantWidth;
+                    terrain.DistantRangeStart = distantStart;
+                    config.NotifyChanged();
+                }
+                GUILayout.Label("Great ranges for the far terrain's horizon: none within Start of the origin, full height from twice it. 0 m: none.", frame.Hint);
             }
 
             if (terrain.Generator == TerrainGeneratorType.Spline)

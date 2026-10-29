@@ -131,6 +131,46 @@ namespace Clube.Core.Tests
             Assert.AreEqual(0.2f, gathering.PendingFor(clay), 1e-4f);
         }
 
+        // GL169: handing over everything gives the part of an item at once, mixed, so a hand hit shows.
+        [Test]
+        public void Gathering_TakeAll_HandsOverThePartToo()
+        {
+            var gathering = new Gathering();
+            var ready = new List<GatheredStack>();
+            gathering.Add(clay, clay, 0.1f);
+            gathering.Add(clay, stone, 0.025f);
+            gathering.TakeAll(registry, ready);
+            Assert.AreEqual(1, ready.Count);
+            Assert.AreEqual(0, ready[0].Count);
+            Assert.AreEqual(0.125f, ready[0].Part, 1e-4f);
+            Assert.AreEqual(0.8f, ready[0].Quality, 1e-3f, "a fifth of it stone");
+            Assert.AreEqual(0f, gathering.PendingFor(clay), 1e-5f);
+        }
+
+        // GL177: a pass on the boulder takes a share of the impurities out, and hands them back.
+        [Test]
+        public void Refining_TakesOutAShareOfTheImpurities()
+        {
+            var stack = new ItemStack(clayItem, 10, Composition.From(new Content(clay, 0.6f), new Content(stone, 0.4f)), 0, 0.6f);
+            var removed = new List<Content>();
+            ItemStack refined = Refining.Pass(stack, registry, 0.5f, removed);
+
+            Assert.AreEqual(8f, refined.Amount, 1e-3f, "6 clay and 2 of the 4 stone left");
+            Assert.AreEqual(0.75f, refined.Quality, 1e-3f);
+            Assert.AreEqual(1, removed.Count);
+            Assert.AreEqual(stone, removed[0].Material);
+            Assert.AreEqual(2f, removed[0].Fraction, 1e-3f, "2 items' worth of stone out");
+
+            for (int pass = 0; pass < 20 && Refining.CanRefine(refined, registry); pass++)
+            {
+                refined = Refining.Pass(refined, registry, 0.5f, removed);
+            }
+            Assert.AreEqual(1f, refined.Quality, 1e-4f, "passes end at pure clay");
+            Assert.AreEqual(6f, refined.Amount, 1e-3f, "all the clay is kept");
+            Assert.IsFalse(Refining.CanRefine(refined, registry));
+            Assert.IsFalse(Refining.CanRefine(new ItemStack(clayItem, 3), registry), "no mix to pick over");
+        }
+
         // GL132: gathered ore is as good as its share of the ore itself: half the samples ore at a 40%
         // grade is 20%, not 50%.
         [Test]

@@ -203,20 +203,54 @@ namespace Clube.Core
             {
                 return GrowForced(cell);
             }
-            if (VoxelHash.Uniform(seed, cell.x, 0, cell.y, CellSalt) >= settings.Chance)
+            if (!TryGetSpot(cell, out Vector2 spot))
             {
                 return default;
             }
-
-            float size = CellSize;
-            float x = (cell.x + Mathf.Lerp(CellMargin, 1f - CellMargin, VoxelHash.Uniform(seed, cell.x, 0, cell.y, CellSalt + 1))) * size;
-            float z = (cell.y + Mathf.Lerp(CellMargin, 1f - CellMargin, VoxelHash.Uniform(seed, cell.x, 0, cell.y, CellSalt + 2))) * size;
-            if (!TryFindGround(x, z, out float ground) || !IsFlat(x, ground, z))
+            if (!TryFindGround(spot.x, spot.y, out float ground) || !IsFlat(spot.x, ground, spot.y))
             {
                 return default;
             }
-            return Build(cell, new Vector3(x, ground, z));
+            return Build(cell, new Vector3(spot.x, ground, spot.y));
         }
+
+        /// <summary>
+        /// Where in the cell a tree would stand (x, z), if the cell's roll gives it one; whether
+        /// the ground there is flat enough is <see cref="IsFlatEnough"/>. The start area's extra
+        /// trees aren't included. For drawing trees far off without building them (GL162).
+        /// </summary>
+        public bool TryGetSpot(Vector2Int cell, out Vector2 spot)
+        {
+            spot = default;
+            // Forests have the full chance, open fields a small one (GL164).
+            if (VoxelHash.Uniform(seed, cell.x, 0, cell.y, CellSalt) >= TreeForests.ChanceIn(seed, cell, settings))
+            {
+                return false;
+            }
+            float size = CellSize;
+            spot = new Vector2(
+                (cell.x + Mathf.Lerp(CellMargin, 1f - CellMargin, VoxelHash.Uniform(seed, cell.x, 0, cell.y, CellSalt + 1))) * size,
+                (cell.y + Mathf.Lerp(CellMargin, 1f - CellMargin, VoxelHash.Uniform(seed, cell.x, 0, cell.y, CellSalt + 2))) * size);
+            return true;
+        }
+
+        /// <summary>How far the probes round a root sit, in metres (x and z, both ways).</summary>
+        public static float FlatnessProbe => SlopeProbe;
+
+        /// <summary>
+        /// True when the ground <see cref="FlatnessProbe"/> metres either way of a root, along x and z,
+        /// is within the steepest allowed slope of the root's: the rule trees grow by.
+        /// </summary>
+        public bool IsFlatEnough(float ground, float east, float west, float north, float south)
+        {
+            float limit = maxGradient * SlopeProbe;
+            return Mathf.Abs(east - ground) <= limit && Mathf.Abs(west - ground) <= limit
+                   && Mathf.Abs(north - ground) <= limit && Mathf.Abs(south - ground) <= limit;
+        }
+
+        public int Seed => seed;
+
+        public TreeGeneration Settings => settings;
 
         // A tree the start area needs: hashed spots in the part of the cell inside the area, the
         // first on flat ground; none when the cell has no flat spot.

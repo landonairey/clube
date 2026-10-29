@@ -30,6 +30,9 @@ namespace Clube.Core
         public const int MinRenderDistance = 1;
         public const int MaxRenderDistance = 64;
 
+        /// <summary>The smallest detail distance in use (P18): the finest coarse level leaves out its middle that far from the focus.</summary>
+        public const int MinDetailDistance = 8;
+
         [SerializeField]
         private WorldConfig config;
 
@@ -59,6 +62,12 @@ namespace Clube.Core
                  "Each overlay is a second pass over every triangle, so far chunks skip it. 0: every chunk.")]
         [SerializeField, Min(0f)]
         private float overlayRadius = 32f;
+
+        [Tooltip("Radius in chunks, horizontally, within which loaded chunks are drawn (P18). Past it they stay loaded but " +
+                 "hidden, and the coarse terrain draws the ground there, once it is built (TerrainLodView); columns holding an " +
+                 "edited chunk are always drawn. 0: every loaded chunk. Set by the player setting at runtime.")]
+        [SerializeField, Range(0, MaxRenderDistance)]
+        private int detailDistance = 24;
 
         [Tooltip("Jobs of each kind (generation, meshing, colliders) running at once. 0: two per worker thread.")]
         [SerializeField, Min(0)]
@@ -105,11 +114,41 @@ namespace Clube.Core
         private void OnValidate()
         {
             renderDistance = Mathf.Clamp(renderDistance, MinRenderDistance, MaxRenderDistance);
+            DetailDistance = detailDistance;
             if (streamer != null)
             {
                 streamer.RenderDistance = renderDistance;
             }
         }
+
+        /// <summary>
+        /// Radius in chunks within which loaded chunks are drawn (P18); 0 draws every loaded chunk. Anything
+        /// from 1 is at least <see cref="MinDetailDistance"/>. It applies only while
+        /// <see cref="CoarseTerrainReady"/>, so the ground past it is never left empty.
+        /// </summary>
+        public int DetailDistance
+        {
+            get => detailDistance;
+            set => detailDistance = value <= 0 ? 0 : Mathf.Clamp(value, MinDetailDistance, MaxRenderDistance);
+        }
+
+        /// <summary>
+        /// Set by whatever draws the ground past the detail distance (the coarse terrain, P7c) while it's
+        /// built and shown; until then every loaded chunk is drawn.
+        /// </summary>
+        public bool CoarseTerrainReady { get; set; }
+
+        /// <summary>The detail distance in use now: 0 (every chunk drawn) until the coarse terrain is ready.</summary>
+        public int EffectiveDetailDistance => CoarseTerrainReady && detailDistance > 0 && detailDistance < renderDistance ? detailDistance : 0;
+
+        /// <summary>True when the world draws the column's chunks (x, z); see <see cref="WorldStreamer.IsColumnDrawn"/>.</summary>
+        public bool IsColumnDrawn(Vector2Int column)
+        {
+            return streamer == null || streamer.IsColumnDrawn(column);
+        }
+
+        /// <summary>Changes whenever which columns are drawn may have; never repeats.</summary>
+        public int DrawVersion => streamer?.DrawVersion ?? 0;
 
         /// <summary>Radius in chunks of the loaded area, horizontally (M3).</summary>
         public int RenderDistance
@@ -153,6 +192,9 @@ namespace Clube.Core
 
         /// <summary>The terrain as generated, before edits; null when it couldn't be made (see <see cref="Problem"/>).</summary>
         public ITerrainGenerator Generator => generator;
+
+        /// <summary>The material chunk surfaces draw with (the registry's, when the config shows materials).</summary>
+        public Material SurfaceMaterial { get; private set; }
 
         /// <summary>The chunk under the focus point.</summary>
         public Vector3Int FocusChunk => World.Grid.WorldToChunk(transform.InverseTransformPoint(Focus.position));
@@ -221,7 +263,7 @@ namespace Clube.Core
 
             runtimeConfig = Instantiate(config);
             runtimeConfig.name = $"{config.name} (Play mode copy)";
-            renderers = new ChunkRendererPool(transform, chunkColliders, TerrainRenderMaterials.For(chunkMaterials, Config));
+            renderers = new ChunkRendererPool(transform, chunkColliders, RenderMaterials());
             StartWorld();
         }
 
@@ -263,18 +305,19 @@ namespace Clube.Core
             {
                 regenerateRequested = false;
                 remeshRequested = false;
-                renderers.SetMaterials(TerrainRenderMaterials.For(chunkMaterials, Config));
+                renderers.SetMaterials(RenderMaterials());
                 StopWorld();
                 StartWorld();
             }
             else if (remeshRequested)
             {
                 remeshRequested = false;
-                renderers.SetMaterials(TerrainRenderMaterials.For(chunkMaterials, Config));
+                renderers.SetMaterials(RenderMaterials());
                 streamer.SealEdges = Config.SealEdges;
                 streamer.RemeshAll();
             }
 
+            streamer.DetailDistance = EffectiveDetailDistance;
             streamer.Update(FocusLocal);
         }
 
@@ -288,6 +331,14 @@ namespace Clube.Core
         }
 
         private Vector3 FocusLocal => transform.InverseTransformPoint(Focus.position);
+
+        // The chunk materials for the config, remembering the surface one for the coarse terrain (P7c).
+        private Material[] RenderMaterials()
+        {
+            Material[] materials = TerrainRenderMaterials.For(chunkMaterials, Config);
+            SurfaceMaterial = materials != null && materials.Length > 0 ? materials[0] : null;
+            return materials;
+        }
 
         private void StartWorld()
         {

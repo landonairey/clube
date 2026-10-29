@@ -368,6 +368,41 @@ MapleShare`, ids 21, 22); maple wood sells for 2x and whittles into 140% sticks 
 Twenty-first pass (GL153-GL159, `Docs/20261027 clube-backlog.md`): inventory drops land on the nearest slot
 (`InventoryGridGui.PlayerSlotNear`). The hand (0.1 a hit) and the hand axe (`ToolDefinition.AimedOnly`, 0.2) take only the
 ground sample under the dot. Stumps need tier 3. Every stack shows its quality, 100% included. GL157 (tunnel speckles) is open.
+P7a (2026-10-27, branch `p7/far-terrain-lod`): far terrain to 10-50 km. `FarTerrainView` (on the world labs' World,
+Rendering) draws a geometry clipmap of the generator's heightfield: `FarTerrainBuilder` (Streaming) rebuilds the levels a
+move shifts as one batch (`FarTerrainGrid`, `FarTerrainMeshJob` in `Meshing/Far`, heights via
+`HeightfieldGenerator.ScheduleColumnHeightsParallel`), and the `Clube/Far Terrain` shader leaves out the chunk columns the
+voxel world draws in full (`ChunkCoverageMask`). The panel's Far terrain section sets reach, spacing and level tints.
+P7b: Landscape's `DistantRanges` (great ranges beyond 2.5 km; the world labs' fog is now 0.00003).
+P7c (2026-10-28): coarse voxel terrain in between. `TerrainLodView` (Rendering, on World) runs `TerrainLodBuilder`
+(Streaming): eight rings (`TerrainLodRing`) of 16 x 16 chunks, level l with voxels 2^l times the world's, each a
+`ChunkPipeline` on its own `WorldGrid` (fill `ChunkFillSettings.ForLod` widens the ramp and layer bands; layers from
+`ChunkPipeline.TryGetColumnRange`), drawn in the world's surface material, a copy per level clipped per pixel (`ClipLod` in
+`Clube/Terrain Materials`: the covered chunk columns and the finer level's square). The far terrain starts past it. The
+panel's Coarse terrain section sets levels and tints. Edits don't reach coarse levels; P16 is still open.
+GL160: maples stand on Maple stump (id 23). GL161: `GrassScatter` drops a rebuilt chunk's tufts at once and regrows
+rebuilt chunks nearest first.
+GL162: past the chunks, trees are instanced meshes out to 3 km (`DistantTreeView`, `DistantTreeBuilder`: the voxel trees'
+own placement, `TreeField.TryGetSpot`/`IsFlatEnough`, heights from `HeightfieldGenerator.SchedulePointHeights`); the coarse
+levels stamp no voxel trees. Don't pump `LateUpdate` by hand for long with instanced draws: each draw's GPU buffers are
+freed only when a real frame ends (draw once per `Time.frameCount`; a 50 s pump once ran the GPU out of memory).
+GL163-GL165, P17 (`Docs/20261028c clube-backlog.md`): grass regrows nearest the focus first. `TreeForests` splits the land into
+forests (`TreeGeneration.Chance`) and open fields (`FieldChance`; `ForestCover`, `ForestScale`) and scales each tree by a hashed
+age (`YoungestSize`); GL166 gives birch and maple their own heights and trunks (`MapleHeight`, `MapleTrunkRadius`). The streamer keeps its wanted area per column (`World.LoadedColumns`, `WorldStreamer.IsWanted`): per chunk,
+render distance 64 cost 240 ms every chunk-border crossing. Distant trees draw
+only the tiles in view. To time a system, the far terrain, coarse terrain and distant tree views have `LastUpdateMilliseconds`
+and `WorldView.Stats.Phases` splits streaming; `FrameTimingManager` reads real frames in Play mode (its GPU time reads ~0 here).
+GL167-GL178, P18, P19 (`Docs/20261028e clube-backlog.md`): the world draws its chunks only within `WorldView.DetailDistance`
+(a player setting, 24 chunks; P18): past it they stay loaded with their renderers switched off (`ChunkRendererPool.SetDrawRule`,
+`WorldStreamer.IsColumnDrawn`; edited columns always draw, `World.HasEditsIn`) and the coarse terrain and distant trees draw
+there, once `TerrainLodView` sets `CoarseTerrainReady`; the coverage mask counts only drawn columns (`WorldView.DrawVersion`).
+The first coarse level is `TerrainLodView.FirstLevelFor` (level 1 in a fixed area, P19). Grass stands on a fixed world grid,
+rescatters a rebuilt chunk in the same frame and keeps tufts within three radii across the ground (GL167, GL171). Hits hand
+over part items at once (`Gathering.TakeAll`, GL169); hand and hand axe hits mix in the aimed voxel's other materials
+(`CollectingSettings.AimedMixFactor`, GL172). The inventory screen has a trash slot and Sort (`Inventory.Sort`); Shift-click
+loads half a stack into a station, Ctrl-click one (GL176). Holding Place on a boulder with a mixed stack picks it over
+(`Refining`, `BoulderBashing`, GL177). Stations have a recovery (campfire 0.5, stone furnace 0.75, clay 1; GL178).
+
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16

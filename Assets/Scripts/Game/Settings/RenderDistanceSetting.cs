@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// Applies the player's render distance (<see cref="PlayerSettings"/>, A3) to the
+    /// Applies the player's render and detail distances (<see cref="PlayerSettings"/>, A3) to the
     /// world's chunk manager (M3): when the scene starts, and whenever the setting changes.
     /// The core stays unaware of player settings; this is the only link.
     /// </summary>
@@ -44,15 +44,24 @@ namespace Clube.Game
         // the setting so it stays the one source of truth and isn't re-applied over the change.
         private void Update()
         {
-            if (settings != null && worldView.RenderDistance != settings.RenderDistance)
+            if (settings == null)
+            {
+                return;
+            }
+            if (worldView.RenderDistance != settings.RenderDistance)
             {
                 settings.RenderDistance = worldView.RenderDistance;
+            }
+            if (worldView.DetailDistance != settings.DetailDistance)
+            {
+                settings.DetailDistance = worldView.DetailDistance;
             }
         }
 
         private void Apply()
         {
             worldView.RenderDistance = settings.RenderDistance;
+            worldView.DetailDistance = settings.DetailDistance;
         }
     }
 }

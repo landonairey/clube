@@ -66,6 +66,47 @@ namespace Clube.Core
             fillSettings = ChunkGenerator.SettingsFor(layers, ores, format, start);
         }
 
+        /// <summary>
+        /// A pipeline with its fill settings given, e.g. a coarse LOD level's (P7c,
+        /// <see cref="ChunkFillSettings.ForLod"/>): <paramref name="grid"/> then has that level's voxel size.
+        /// </summary>
+        public ChunkPipeline(
+            WorldGrid grid, ITerrainGenerator generator, ChunkFillSettings fillSettings, OreField ores,
+            Func<Vector3Int, IVoxelStorage> createStorage, TreeField trees = null)
+        {
+            this.grid = grid;
+            this.generator = generator;
+            this.ores = ores;
+            this.trees = trees;
+            this.createStorage = createStorage;
+            this.fillSettings = fillSettings;
+        }
+
+        public WorldGrid Grid => grid;
+
+        /// <summary>
+        /// The lowest and highest ground under a heightfield chunk column (and its one-sample
+        /// border), once known: the first call starts computing it. False until then, and always
+        /// for a 3D generator.
+        /// </summary>
+        public bool TryGetColumnRange(Vector2Int column, out float lowest, out float highest)
+        {
+            lowest = highest = 0f;
+            if (!(generator is HeightfieldGenerator heightfield))
+            {
+                return false;
+            }
+            ColumnBlock block = ChunkSampleGrid.ForChunk(grid, new Vector3Int(column.x, 0, column.y)).BorderedColumns;
+            ColumnHeights heights = ColumnFor(column, block, heightfield);
+            if (!heights.Job.IsCompleted)
+            {
+                return false;
+            }
+            lowest = heights.Lowest;
+            highest = heights.Highest;
+            return true;
+        }
+
         /// <summary>Chunks generating now, or generated and waiting to be taken.</summary>
         public int GeneratingCount => generating.Count + generated.Count;
 
@@ -496,7 +537,7 @@ namespace Clube.Core
         // A chunk above the highest surface its terrain can have there: known without sampling.
         private bool IsAboveSurface(Vector3Int coord, ChunkSampleGrid chunkGrid)
         {
-            float clearance = TerrainDensity.RampHalfWidth;
+            float clearance = fillSettings.RampReach;
             switch (generator)
             {
                 case VolumeGenerator volume:
@@ -517,7 +558,7 @@ namespace Clube.Core
         private bool IsBuried(ChunkSampleGrid chunkGrid, ColumnHeights column)
         {
             LayerTable layers = fillSettings.Layers;
-            float surfaceLayers = Mathf.Max(TerrainDensity.RampHalfWidth, Mathf.Max(layers.BandEnd, layers.ClayDepth));
+            float surfaceLayers = Mathf.Max(fillSettings.RampReach, Mathf.Max(layers.BandEnd, layers.ClayDepth) * Mathf.Max(1f, fillSettings.LodScale));
             return chunkGrid.Top <= column.Lowest - surfaceLayers;
         }
 

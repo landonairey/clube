@@ -150,6 +150,38 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void CrossingABorderEveryFrame_StillSettles_WithTheColumnCountsRight()
+        {
+            // The area is redone at every crossing (per column, P17): moving a chunk a frame mustn't lose track.
+            for (int i = 0; i <= 12; i++)
+            {
+                streamer.Update(new Vector3(i * Size + 1f, 0f, i * 0.5f * Size));
+            }
+            Vector3 end = new Vector3(12 * Size + 1f, 0f, 6 * Size);
+            Settle(end);
+
+            StreamingStats stats = streamer.Stats;
+            Assert.That(stats.Pending, Is.Zero);
+            Assert.That(stats.Wanted, Is.EqualTo(13 * Layers), "the 13 columns within distance 2, every layer");
+            Vector3Int centre = world.Grid.WorldToChunk(end);
+            int total = 0;
+            foreach (var column in world.LoadedColumns)
+            {
+                int dx = column.Key.x - centre.x;
+                int dz = column.Key.y - centre.z;
+                Assert.That(dx * dx + dz * dz, Is.LessThanOrEqualTo(3 * 3), $"{column.Key} is within the area or its one-chunk slack");
+                int layers = 0;
+                for (int y = 0; y < Layers; y++)
+                {
+                    layers += world.IsLoaded(new Vector3Int(column.Key.x, y, column.Key.y)) ? 1 : 0;
+                }
+                Assert.That(column.Value, Is.EqualTo(layers), $"{column.Key}'s count matches its chunks");
+                total += column.Value;
+            }
+            Assert.That(total, Is.EqualTo(world.LoadedCount));
+        }
+
+        [Test]
         public void LeavingAndComingBack_BeforeJobsFinish_StillShowsEverything()
         {
             // Start loading, leave at once (jobs cancelled mid-flight), come straight back.
@@ -171,6 +203,69 @@ namespace Clube.Core.Tests
         }
 
         // Runs frames until nothing is pending or running.
+        [Test]
+        public void PastTheDetailDistance_ChunksStayLoadedButHidden_ExceptEditedColumns()
+        {
+            // P18: within the detail distance chunks draw; past it they're loaded but switched off, and the
+            // edge follows the focus. An edited column draws whole at any distance.
+            streamer.RenderDistance = 4;
+            streamer.DetailDistance = 1;
+            Settle(Vector3.zero);
+            AssertDrawnWithin(Vector3.zero, 1);
+
+            var moved = new Vector3(Size + 1f, 0f, 0f);
+            Settle(moved);
+            AssertDrawnWithin(moved, 1);
+
+            Vector3Int far = default;
+            bool found = false;
+            foreach (var entry in pool.Active)
+            {
+                if (entry.Value.Renderer.forceRenderingOff)
+                {
+                    far = entry.Key;
+                    found = true;
+                    break;
+                }
+            }
+            Assert.That(found, "some chunks are hidden");
+            Vector3Int sample = world.Grid.ChunkFirstSample(far) + Vector3Int.one;
+            world.SetDensity(sample, 1f - (world.GetDensity(sample) ?? 0f));
+            Settle(moved);
+            Assert.That(streamer.IsColumnDrawn(new Vector2Int(far.x, far.z)), "the edited column draws");
+            for (int y = 0; y < Layers; y++)
+            {
+                if (pool.TryGet(new Vector3Int(far.x, y, far.z), out ChunkRenderer chunkRenderer))
+                {
+                    Assert.That(chunkRenderer.Renderer.forceRenderingOff, Is.False, $"layer {y} of the edited column draws");
+                }
+            }
+
+            streamer.DetailDistance = 0;
+            foreach (var entry in pool.Active)
+            {
+                Assert.That(entry.Value.Renderer.forceRenderingOff, Is.False, "no detail distance: every chunk draws");
+            }
+        }
+
+        private void AssertDrawnWithin(Vector3 focus, int distance)
+        {
+            Vector3Int centre = world.Grid.WorldToChunk(focus);
+            int drawn = 0;
+            int hidden = 0;
+            foreach (var entry in pool.Active)
+            {
+                int dx = entry.Key.x - centre.x;
+                int dz = entry.Key.z - centre.z;
+                bool within = dx * dx + dz * dz <= distance * distance || world.HasEditsIn(new Vector2Int(entry.Key.x, entry.Key.z));
+                Assert.That(entry.Value.Renderer.forceRenderingOff, Is.EqualTo(!within), $"{entry.Key} drawn only within the detail distance");
+                drawn += within ? 1 : 0;
+                hidden += within ? 0 : 1;
+            }
+            Assert.That(drawn, Is.GreaterThan(0));
+            Assert.That(hidden, Is.GreaterThan(0));
+        }
+
         private void Settle(Vector3 focus)
         {
             for (int frame = 0; frame < 5000; frame++)

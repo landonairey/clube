@@ -285,5 +285,73 @@ namespace Clube.Core.Tests
             Assert.AreEqual(2.2f, other[0].Amount, 1e-4f, "The part goes with the stack.");
             Assert.IsTrue(bag[0].IsEmpty);
         }
+
+        // GL174: sorting merges what stacks and orders the rest, tools first; slots before the run stay put.
+        [Test]
+        public void Sort_MergesStacksAndOrdersThem_LeavingSlotsBeforeTheRun()
+        {
+            var bag = new Inventory(6);
+            bag.Add(stone, 1);
+            bag.Replace(1, new ItemStack(stone, 3));
+            bag.Replace(2, new ItemStack(ore, 4));
+            bag.Replace(4, new ItemStack(stone, 5));
+            bag.Replace(5, new ItemStack(pickaxe, 1));
+
+            bag.Sort(1, 6);
+
+            Assert.AreEqual(1, bag[0].Count, "the slot before the run is left alone");
+            Assert.AreEqual(pickaxe, bag[1].Item, "tools first");
+            Assert.AreEqual(ore, bag[2].Item, "then by name");
+            Assert.AreEqual(stone, bag[3].Item);
+            Assert.AreEqual(8, bag[3].Count, "3 + 5 stones merged");
+            Assert.IsTrue(bag[4].IsEmpty && bag[5].IsEmpty, "empty slots last");
+        }
+
+        // GL173: the trash empties a slot for good.
+        [Test]
+        public void TakeAll_EmptiesTheSlot()
+        {
+            var bag = new Inventory(2);
+            bag.Add(ore, 7, null, 0, 1f, 0.4f);
+            ItemStack gone = bag.TakeAll(0);
+            Assert.AreEqual(7.4f, gone.Amount, 1e-4f);
+            Assert.IsTrue(bag[0].IsEmpty);
+            Assert.AreEqual(0, bag.Count(ore));
+        }
+
+        // GL176: part of a stack into a station; the rest stays in its slot.
+        [Test]
+        public void MoveTo_WithACount_MovesThatManyAndKeepsTheRest()
+        {
+            var bag = new Inventory(1);
+            bag.Add(ore, 9);
+            var station = new Inventory(2);
+
+            Assert.AreEqual(5, bag.MoveTo(0, station, 5));
+            Assert.AreEqual(4, bag[0].Count);
+            Assert.AreEqual(5, station[0].Count);
+            Assert.AreEqual(4, bag.MoveTo(0, station, 100), "more than there is moves the whole stack");
+            Assert.IsTrue(bag[0].IsEmpty);
+        }
+
+        // GL172: a part added to a gathered stack blends its quality in by amount.
+        [Test]
+        public void APartItem_BlendsItsQualityIntoTheStack()
+        {
+            VoxelMaterial clay = VoxelMaterial.Create(13, "Clay");
+            try
+            {
+                var bag = new Inventory(1);
+                Composition contents = Composition.From(new Content(clay, 1f));
+                bag.Add(ore, 1, contents, 0, 1f);
+                bag.Add(ore, 0, contents, 0, 0.5f, 0.5f);
+                Assert.AreEqual(1.5f, bag[0].Amount, 1e-4f);
+                Assert.AreEqual((1f * 1f + 0.5f * 0.5f) / 1.5f, bag[0].Quality, 1e-3f);
+            }
+            finally
+            {
+                Object.DestroyImmediate(clay);
+            }
+        }
     }
 }
