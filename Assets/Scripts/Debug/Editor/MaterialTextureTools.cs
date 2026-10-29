@@ -91,9 +91,9 @@ namespace Clube.Debug.Editor
                 { "brick", (new Color(0.62f, 0.28f, 0.18f), new Color(0.70f, 0.36f, 0.24f), null, Wear.Bricks) },
                 // Added last, so the entries above keep their seeds and textures.
                 { "cassiterite", (new Color(0.45f, 0.45f, 0.47f), new Color(0.60f, 0.60f, 0.62f), new Color(0.22f, 0.15f, 0.10f), Wear.Whole) },
-                // Maple (GL150): the old brown bark, and autumn leaves, red with a hint of brown.
+                // Maple (GL150, GL168): the old brown bark, and autumn leaves, a muted amber with a little red.
                 { "maple wood", (new Color(0.36f, 0.25f, 0.16f), new Color(0.48f, 0.35f, 0.23f), null, Wear.Bark) },
-                { "maple leaves", (new Color(0.5f, 0.23f, 0.12f), new Color(0.66f, 0.37f, 0.19f), null, Wear.Leaves) },
+                { "maple leaves", (new Color(0.46f, 0.3f, 0.16f), new Color(0.61f, 0.45f, 0.25f), null, Wear.Leaves) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]

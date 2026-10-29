@@ -25,6 +25,10 @@ namespace Clube.Core
         private Vector3Int overlayCentre;
         private int overlayRadius = -1;
 
+        // Which columns (x, z) draw their chunks (P18); null draws every one. Chunks outside stay
+        // loaded and keep their renderer, switched off.
+        private Func<Vector2Int, bool> isColumnDrawn;
+
         /// <param name="parent">Renderers sit under it, at their chunk's origin in its space.</param>
         /// <param name="withColliders">Give every renderer a <see cref="ChunkCollider"/> (M6).</param>
         public ChunkRendererPool(Transform parent, bool withColliders, Material[] materials)
@@ -49,6 +53,7 @@ namespace Clube.Core
             chunkRenderer.transform.localPosition = world.Grid.ChunkOrigin(coord);
             chunkRenderer.Show(world, coord, chunk, meshSettings);
             ShowOverlays(coord, chunkRenderer, IsWithinOverlayRadius(coord), force: true);
+            ApplyDrawn(coord, chunkRenderer);
             active.Add(coord, chunkRenderer);
             return chunkRenderer;
         }
@@ -62,6 +67,7 @@ namespace Clube.Core
             }
             active.Remove(coord);
             withOverlays.Remove(coord);
+            chunkRenderer.Renderer.forceRenderingOff = false;
             chunkRenderer.Hide();
             idle.Push(chunkRenderer);
         }
@@ -96,6 +102,47 @@ namespace Clube.Core
             foreach (KeyValuePair<Vector3Int, ChunkRenderer> entry in active)
             {
                 ShowOverlays(entry.Key, entry.Value, IsWithinOverlayRadius(entry.Key));
+            }
+        }
+
+        /// <summary>
+        /// Which columns (x, z) draw their chunks (P18): the others' renderers are switched off, not
+        /// released. Null draws every one. Applies to every renderer shown now and to those shown later.
+        /// </summary>
+        public void SetDrawRule(Func<Vector2Int, bool> rule)
+        {
+            isColumnDrawn = rule;
+            RefreshDrawn();
+        }
+
+        /// <summary>Applies the draw rule to every renderer, e.g. after it changed everywhere.</summary>
+        public void RefreshDrawn()
+        {
+            foreach (KeyValuePair<Vector3Int, ChunkRenderer> entry in active)
+            {
+                ApplyDrawn(entry.Key, entry.Value);
+            }
+        }
+
+        /// <summary>Applies the draw rule to the column's renderers, layers 0 to <paramref name="height"/> - 1.</summary>
+        public void RefreshColumn(Vector2Int column, int height)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                var coord = new Vector3Int(column.x, y, column.y);
+                if (active.TryGetValue(coord, out ChunkRenderer chunkRenderer))
+                {
+                    ApplyDrawn(coord, chunkRenderer);
+                }
+            }
+        }
+
+        private void ApplyDrawn(Vector3Int coord, ChunkRenderer chunkRenderer)
+        {
+            bool hidden = isColumnDrawn != null && !isColumnDrawn(new Vector2Int(coord.x, coord.z));
+            if (chunkRenderer.Renderer.forceRenderingOff != hidden)
+            {
+                chunkRenderer.Renderer.forceRenderingOff = hidden;
             }
         }
 

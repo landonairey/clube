@@ -7,7 +7,7 @@ namespace Clube.Game
     /// <summary>
     /// The player's own settings (A3), separate from the world definition in
     /// <see cref="WorldConfig"/>: things a player tunes for their machine or taste.
-    /// Render distance (M3), look sensitivity (M6) and brush size (M8) so far; the
+    /// Render distance (M3), detail distance (P18), look sensitivity (M6) and brush size (M8) so far; the
     /// in-game settings menu (P10) will edit it.
     /// </summary>
     [CreateAssetMenu(fileName = "PlayerSettings", menuName = "Clube/Player Settings")]
@@ -21,6 +21,10 @@ namespace Clube.Game
         [Tooltip("How many chunks around the player stay loaded, as a radius in chunks (M3).")]
         [SerializeField, Range(WorldView.MinRenderDistance, WorldView.MaxRenderDistance)]
         private int renderDistance = 6;
+
+        [Tooltip("How many chunks around the player are drawn in full detail, as a radius in chunks (P18); past it the coarse terrain draws the ground. 0: every loaded chunk.")]
+        [SerializeField, Range(0, WorldView.MaxRenderDistance)]
+        private int detailDistance = 24;
 
         [Tooltip("Degrees the view turns per pixel of mouse movement (M6).")]
         [SerializeField, Range(MinLookSensitivity, MaxLookSensitivity)]
@@ -37,6 +41,12 @@ namespace Clube.Game
         {
             get => renderDistance;
             set => Set(ref renderDistance, Mathf.Clamp(value, WorldView.MinRenderDistance, WorldView.MaxRenderDistance));
+        }
+
+        public int DetailDistance
+        {
+            get => detailDistance;
+            set => Set(ref detailDistance, value <= 0 ? 0 : Mathf.Clamp(value, WorldView.MinDetailDistance, WorldView.MaxRenderDistance));
         }
 
         public float LookSensitivity

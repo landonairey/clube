@@ -203,5 +203,24 @@ namespace Clube.Core.Tests
                 Assert.That(Shown.Remove((level, coord)), Is.True, $"{coord} hidden without being shown");
             }
         }
+
+        // P19: the first coarse level leaves out its middle 2 x 2 chunks for the world's to cover; a level may come
+        // first only where that middle, wherever the focus puts it, lies within the world's reach. A fixed area
+        // (reach 0) starts at level 1; render distance 64 at level 3, as before (P17).
+        [Test]
+        public void FirstLevel_LeavesNoGapBetweenTheWorldsEdgeAndItsMiddle()
+        {
+            Assert.AreEqual(1, TerrainLodView.FirstLevelFor(0, 8, 8));
+            Assert.AreEqual(3, TerrainLodView.FirstLevelFor(64, 8, 8));
+            for (int reach = 0; reach <= 64; reach++)
+            {
+                int first = TerrainLodView.FirstLevelFor(reach, 8, 8);
+                if (first > 1)
+                {
+                    float middle = 2f * TerrainLodRing.ScaleOf(first) * Mathf.Sqrt(2f);
+                    Assert.That(middle, Is.LessThan(reach), $"reach {reach}: level {first}'s middle reaches {middle} chunks");
+                }
+            }
+        }
     }
 }

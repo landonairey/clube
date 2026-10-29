@@ -150,6 +150,31 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// Moves up to <paramref name="count"/> whole items of one slot's stack into another inventory (GL176: half a
+        /// stack of wood into a furnace), as many as fit; the rest, and any part item, stay. The whole stack when
+        /// <paramref name="count"/> covers it. Returns how many whole items moved.
+        /// </summary>
+        public int MoveTo(int slot, Inventory target, int count)
+        {
+            ItemStack stack = slots[slot];
+            if (stack.IsEmpty || target == null || target == this || count <= 0)
+            {
+                return 0;
+            }
+            if (count >= stack.Count)
+            {
+                return MoveTo(slot, target);
+            }
+            int moved = count - target.Add(stack.Item, count, stack.Contents, stack.Wear, stack.Quality);
+            if (moved > 0)
+            {
+                slots[slot] = stack.WithCount(stack.Count - moved);
+                Changed?.Invoke();
+            }
+            return moved;
+        }
+
+        /// <summary>
         /// What an item held here is made of, blended by volume across its stacks (GL32); null
         /// when it has no contents or isn't here.
         /// </summary>
@@ -214,6 +239,20 @@ namespace Clube.Core
             slots[slot] = slots[slot].WithCount(slots[slot].Count - taken);
             Changed?.Invoke();
             return taken;
+        }
+
+        /// <summary>
+        /// Puts a stack in a slot in place of what's there (GL177: a refined stack keeps its slot). Nothing changes
+        /// when the slot doesn't take the item.
+        /// </summary>
+        public void Replace(int slot, ItemStack stack)
+        {
+            if (!Fits(slot, stack.Item))
+            {
+                return;
+            }
+            slots[slot] = stack;
+            Changed?.Invoke();
         }
 
         /// <summary>Empties a slot, whole and part items alike (GL136: selling or dropping a whole stack); returns what was there.</summary>
@@ -370,6 +409,99 @@ namespace Clube.Core
             return total;
         }
 
+        /// <summary>
+        /// Tidies a run of slots, <paramref name="start"/> up to but not including <paramref name="end"/> (GL174):
+        /// stacks that stack are merged, then the stacks are put in order (tools, then things to build, then
+        /// everything else, each by name, better quality and bigger stacks first), empty slots last. A run with
+        /// a slot that doesn't take every item (the tool slot) is only merged.
+        /// </summary>
+        public void Sort(int start, int end)
+        {
+            start = Math.Max(0, start);
+            end = Math.Min(slots.Length, end);
+            if (end - start < 2)
+            {
+                return;
+            }
+
+            // Merge: each stack takes what stacks onto it from the slots after it.
+            for (int i = start; i < end; i++)
+            {
+                for (int j = i + 1; j < end && !slots[i].IsEmpty; j++)
+                {
+                    ItemStack other = slots[j];
+                    if (!other.IsEmpty && Stacks(slots[i], other.Item, other.Contents, other.Quality)
+                        && (slots[i].Space > 0 || other.Count == 0))
+                    {
+                        MoveQuietly(j, i);
+                    }
+                }
+            }
+
+            var stacks = new System.Collections.Generic.List<ItemStack>();
+            bool everyItemFits = true;
+            for (int i = start; i < end; i++)
+            {
+                if (!slots[i].IsEmpty)
+                {
+                    stacks.Add(slots[i]);
+                }
+            }
+            for (int i = start; i < end && everyItemFits; i++)
+            {
+                foreach (ItemStack stack in stacks)
+                {
+                    everyItemFits &= Fits(i, stack.Item);
+                }
+            }
+            if (everyItemFits)
+            {
+                stacks.Sort(CompareForSorting);
+                for (int i = start; i < end; i++)
+                {
+                    int index = i - start;
+                    slots[i] = index < stacks.Count ? stacks[index] : ItemStack.Empty;
+                }
+            }
+            Changed?.Invoke();
+        }
+
+        // Tools first, then things to build, then the rest; by name, better quality first, then bigger stacks first.
+        private static int CompareForSorting(ItemStack a, ItemStack b)
+        {
+            int group = SortGroup(a.Item).CompareTo(SortGroup(b.Item));
+            if (group != 0)
+            {
+                return group;
+            }
+            int name = string.Compare(a.Item.DisplayName, b.Item.DisplayName, StringComparison.OrdinalIgnoreCase);
+            if (name != 0)
+            {
+                return name;
+            }
+            int quality = b.Quality.CompareTo(a.Quality);
+            return quality != 0 ? quality : b.Amount.CompareTo(a.Amount);
+        }
+
+        private static int SortGroup(ItemDefinition item)
+        {
+            return item is ToolDefinition ? 0 : item is PlaceableDefinition ? 1 : 2;
+        }
+
+        // Move, without raising Changed (Sort raises it once).
+        private void MoveQuietly(int from, int to)
+        {
+            ItemStack moving = slots[from];
+            int moved = Math.Min(moving.Count, slots[to].Space);
+            slots[to] = TopUp(slots[to], moved, moving.Contents, moving.Quality);
+            slots[from] = moving.WithCount(moving.Count - moved);
+            if (slots[from].Count == 0 && moving.Part > 0f)
+            {
+                slots[to] = WithPart(BlendPart(slots[to], moving.Part, moving.Contents, moving.Quality), moving.Part, out ItemStack spill);
+                slots[from] = spill;
+            }
+        }
+
         private bool Fits(int slot, ItemDefinition item)
         {
             return Accepts == null || item == null || Accepts(slot, item);
@@ -383,7 +515,7 @@ namespace Clube.Core
             {
                 if (Stacks(slots[i], item, contents, quality) && Fits(i, item) && (slots[i].Part + part < 1f || slots[i].Space > 0))
                 {
-                    ItemStack blended = TopUp(slots[i], 0, contents, quality);
+                    ItemStack blended = BlendPart(slots[i], part, contents, quality);
                     slots[i] = WithPart(blended, part, out _);
                     return true;
                 }
@@ -420,6 +552,20 @@ namespace Clube.Core
                 }
             }
             return new ItemStack(stack.Item, whole, stack.Contents, stack.Wear, stack.Quality, Math.Max(0f, total));
+        }
+
+        // A stack about to take a part item: its contents and quality blend with the part's by amount (GL172), so
+        // every hand hit's mix shows in the stack it joins.
+        private static ItemStack BlendPart(ItemStack stack, float part, Composition contents, float quality)
+        {
+            float amount = stack.Amount;
+            if (part <= 0f || amount <= 0f)
+            {
+                return amount <= 0f ? new ItemStack(stack.Item, stack.Count, contents, stack.Wear, quality, stack.Part) : stack;
+            }
+            Composition blended = Composition.Blend(stack.Contents, amount, contents, part);
+            float mixed = (stack.Quality * amount + quality * part) / (amount + part);
+            return new ItemStack(stack.Item, stack.Count, blended, stack.Wear, mixed, stack.Part);
         }
 
         // A stack with more of its item on top, the contents blended by volume (GL32).

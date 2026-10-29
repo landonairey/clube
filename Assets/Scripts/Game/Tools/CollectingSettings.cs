@@ -59,6 +59,11 @@ namespace Clube.Game
         [Range(0f, 1f)]
         public float OtherMaterialFactor = 0.5f;
 
+        [Tooltip("Gradual sphere, hand and hand axe (GL172): the other ground corners of the voxel under the dot that are another material give up, between them, " +
+                 "up to this share of what the hit takes, by how many of them there are, so dirt dug by grass comes up with grass in it.")]
+        [Range(0f, 1f)]
+        public float AimedMixFactor = 0.5f;
+
         public bool UsesSphere => Mode != CollectMode.VoxelHits;
     }
 }

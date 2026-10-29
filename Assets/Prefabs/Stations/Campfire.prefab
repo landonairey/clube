@@ -264,7 +264,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ea02483da2e659341b6db2aa15139bec, type: 2}
   - {fileID: 11400000, guid: c902d9e5741101b4cbaf625578a16691, type: 2}
   burnsFuel: 1
-  heat: 1
+  heat: 0.75
+  recovery: 0.5
 --- !u!114 &423415346032570738
 MonoBehaviour:
   m_ObjectHideFlags: 0

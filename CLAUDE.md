@@ -389,9 +389,19 @@ freed only when a real frame ends (draw once per `Time.frameCount`; a 50 s pump 
 GL163-GL165, P17 (`Docs/20261028c clube-backlog.md`): grass regrows nearest the focus first. `TreeForests` splits the land into
 forests (`TreeGeneration.Chance`) and open fields (`FieldChance`; `ForestCover`, `ForestScale`) and scales each tree by a hashed
 age (`YoungestSize`); GL166 gives birch and maple their own heights and trunks (`MapleHeight`, `MapleTrunkRadius`). The streamer keeps its wanted area per column (`World.LoadedColumns`, `WorldStreamer.IsWanted`): per chunk,
-render distance 64 cost 240 ms every chunk-border crossing. Coarse terrain starts past the render distance; distant trees draw
+render distance 64 cost 240 ms every chunk-border crossing. Distant trees draw
 only the tiles in view. To time a system, the far terrain, coarse terrain and distant tree views have `LastUpdateMilliseconds`
 and `WorldView.Stats.Phases` splits streaming; `FrameTimingManager` reads real frames in Play mode (its GPU time reads ~0 here).
+GL167-GL178, P18, P19 (`Docs/20261028e clube-backlog.md`): the world draws its chunks only within `WorldView.DetailDistance`
+(a player setting, 24 chunks; P18): past it they stay loaded with their renderers switched off (`ChunkRendererPool.SetDrawRule`,
+`WorldStreamer.IsColumnDrawn`; edited columns always draw, `World.HasEditsIn`) and the coarse terrain and distant trees draw
+there, once `TerrainLodView` sets `CoarseTerrainReady`; the coverage mask counts only drawn columns (`WorldView.DrawVersion`).
+The first coarse level is `TerrainLodView.FirstLevelFor` (level 1 in a fixed area, P19). Grass stands on a fixed world grid,
+rescatters a rebuilt chunk in the same frame and keeps tufts within three radii across the ground (GL167, GL171). Hits hand
+over part items at once (`Gathering.TakeAll`, GL169); hand and hand axe hits mix in the aimed voxel's other materials
+(`CollectingSettings.AimedMixFactor`, GL172). The inventory screen has a trash slot and Sort (`Inventory.Sort`); Shift-click
+loads half a stack into a station, Ctrl-click one (GL176). Holding Place on a boulder with a mixed stack picks it over
+(`Refining`, `BoulderBashing`, GL177). Stations have a recovery (campfire 0.5, stone furnace 0.75, clay 1; GL178).
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

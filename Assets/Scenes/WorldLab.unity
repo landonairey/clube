@@ -674,6 +674,7 @@ MonoBehaviour:
   frameBudgetMilliseconds: 3
   loadingBudgetMilliseconds: 30
   overlayRadius: 32
+  detailDistance: 24
   maxJobsInFlight: 0
   chunkColliders: 1
   colliderRadius: 24
@@ -918,7 +919,7 @@ MonoBehaviour:
   birchBark: {r: 0.66, g: 0.65, b: 0.63, a: 1}
   birchLeaves: {r: 0.27, g: 0.36, b: 0.19, a: 1}
   mapleBark: {r: 0.33, g: 0.22, b: 0.14, a: 1}
-  mapleLeaves: {r: 0.6, g: 0.26, b: 0.1, a: 1}
+  mapleLeaves: {r: 0.54, g: 0.34, b: 0.17, a: 1}
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -1276,6 +1277,7 @@ MonoBehaviour:
     ToolAmount: 1
     ToolOffAmount: 0.1
     OtherMaterialFactor: 0.5
+    AimedMixFactor: 0.5
 --- !u!114 &1697135570
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1790,6 +1792,10 @@ MonoBehaviour:
   crushSkill: 3
   crushLevel: 2
   crushExperience: 1
+  refineSeconds: 1
+  refineSecondsPerItem: 0.04
+  refineShare: 0.3
+  refineExperience: 0.5
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

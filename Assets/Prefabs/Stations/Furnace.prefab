@@ -180,6 +180,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2ea129385f04d4e4191060b48a63ffdf, type: 2}
   burnsFuel: 1
   heat: 1
+  recovery: 0.75
 --- !u!114 &8073203352125683687
 MonoBehaviour:
   m_ObjectHideFlags: 0

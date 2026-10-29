@@ -203,6 +203,69 @@ namespace Clube.Core.Tests
         }
 
         // Runs frames until nothing is pending or running.
+        [Test]
+        public void PastTheDetailDistance_ChunksStayLoadedButHidden_ExceptEditedColumns()
+        {
+            // P18: within the detail distance chunks draw; past it they're loaded but switched off, and the
+            // edge follows the focus. An edited column draws whole at any distance.
+            streamer.RenderDistance = 4;
+            streamer.DetailDistance = 1;
+            Settle(Vector3.zero);
+            AssertDrawnWithin(Vector3.zero, 1);
+
+            var moved = new Vector3(Size + 1f, 0f, 0f);
+            Settle(moved);
+            AssertDrawnWithin(moved, 1);
+
+            Vector3Int far = default;
+            bool found = false;
+            foreach (var entry in pool.Active)
+            {
+                if (entry.Value.Renderer.forceRenderingOff)
+                {
+                    far = entry.Key;
+                    found = true;
+                    break;
+                }
+            }
+            Assert.That(found, "some chunks are hidden");
+            Vector3Int sample = world.Grid.ChunkFirstSample(far) + Vector3Int.one;
+            world.SetDensity(sample, 1f - (world.GetDensity(sample) ?? 0f));
+            Settle(moved);
+            Assert.That(streamer.IsColumnDrawn(new Vector2Int(far.x, far.z)), "the edited column draws");
+            for (int y = 0; y < Layers; y++)
+            {
+                if (pool.TryGet(new Vector3Int(far.x, y, far.z), out ChunkRenderer chunkRenderer))
+                {
+                    Assert.That(chunkRenderer.Renderer.forceRenderingOff, Is.False, $"layer {y} of the edited column draws");
+                }
+            }
+
+            streamer.DetailDistance = 0;
+            foreach (var entry in pool.Active)
+            {
+                Assert.That(entry.Value.Renderer.forceRenderingOff, Is.False, "no detail distance: every chunk draws");
+            }
+        }
+
+        private void AssertDrawnWithin(Vector3 focus, int distance)
+        {
+            Vector3Int centre = world.Grid.WorldToChunk(focus);
+            int drawn = 0;
+            int hidden = 0;
+            foreach (var entry in pool.Active)
+            {
+                int dx = entry.Key.x - centre.x;
+                int dz = entry.Key.z - centre.z;
+                bool within = dx * dx + dz * dz <= distance * distance || world.HasEditsIn(new Vector2Int(entry.Key.x, entry.Key.z));
+                Assert.That(entry.Value.Renderer.forceRenderingOff, Is.EqualTo(!within), $"{entry.Key} drawn only within the detail distance");
+                drawn += within ? 1 : 0;
+                hidden += within ? 0 : 1;
+            }
+            Assert.That(drawn, Is.GreaterThan(0));
+            Assert.That(hidden, Is.GreaterThan(0));
+        }
+
         private void Settle(Vector3 focus)
         {
             for (int frame = 0; frame < 5000; frame++)

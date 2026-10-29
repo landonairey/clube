@@ -54,7 +54,7 @@ namespace Clube.Core
         private Color mapleBark = new Color(0.33f, 0.22f, 0.14f);
 
         [SerializeField]
-        private Color mapleLeaves = new Color(0.6f, 0.26f, 0.1f);
+        private Color mapleLeaves = new Color(0.54f, 0.34f, 0.17f);
 
         private DistantTreeBuilder builder;
         private ITerrainGenerator builtFor;
