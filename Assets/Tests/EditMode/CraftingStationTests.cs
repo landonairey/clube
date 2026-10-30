@@ -493,5 +493,33 @@ namespace Clube.Core.Tests
                 Object.DestroyImmediate(tinBun);
             }
         }
+
+        // GL197: with the picked smelt's ore used up, the furnace goes on to the other ore loaded beside it.
+        [Test]
+        public void Smelter_MovesOnToTheOtherLoadedOre()
+        {
+            ItemDefinition tin = ItemDefinition.Create("tin-ore", "Tin ore");
+            Recipe tinSmelt = Recipe.Create(StationKind.Furnace, new ItemAmount(bun, 1), RecipeWork.Time, 6f, new ItemAmount(tin, 2));
+            try
+            {
+                var furnace = new CraftingStation(StationKind.Furnace, new[] { smelt, tinSmelt });
+                // Two left over after a run of 8: too few for another, but enough to have kept the furnace waiting.
+                furnace.Input.Add(ore, 10);
+                furnace.Input.Add(tin, 2);
+                furnace.Chosen = smelt;
+                furnace.Tick(6f);
+                Assert.AreEqual(1, furnace.Output.Count(bun));
+                Assert.AreEqual(2, furnace.Input.Count(ore));
+                Assert.AreSame(tinSmelt, furnace.Upcoming, "The tin is next.");
+                furnace.Tick(6f);
+                Assert.AreEqual(2, furnace.Output.Count(bun), "Both slots got smelted.");
+                Assert.AreEqual(0, furnace.Input.Count(tin));
+            }
+            finally
+            {
+                Object.DestroyImmediate(tinSmelt);
+                Object.DestroyImmediate(tin);
+            }
+        }
     }
 }

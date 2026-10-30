@@ -171,6 +171,28 @@ namespace Clube.Core.Tests
             Assert.IsFalse(Refining.CanRefine(new ItemStack(clayItem, 3), registry), "no mix to pick over");
         }
 
+        // GL186: crushed ore's own material is its ore's, so refining keeps the cassiterite and takes out the stone.
+        [Test]
+        public void Refining_CrushedOre_KeepsItsOre()
+        {
+            ItemDefinition crushed = ItemDefinition.Create("crushed-cassiterite", "Crushed cassiterite").WithPurityAs(oreItem);
+            try
+            {
+                var stack = new ItemStack(crushed, 10, Composition.From(new Content(ore, 0.5f), new Content(stone, 0.5f)), 0, 0.5f);
+                Assert.AreEqual(0.5f, registry.Quality(stack.Contents, crushed), 1e-4f);
+                var removed = new List<Content>();
+                ItemStack refined = Refining.Pass(stack, registry, 1f, removed);
+                Assert.AreEqual(9f, refined.Amount, 1e-3f, "One item of stone out");
+                Assert.AreEqual(5f / 9f, refined.Quality, 1e-3f);
+                Assert.AreEqual(1, removed.Count);
+                Assert.AreEqual(stone, removed[0].Material, "Only stone comes out");
+            }
+            finally
+            {
+                Object.DestroyImmediate(crushed);
+            }
+        }
+
         // GL132: gathered ore is as good as its share of the ore itself: half the samples ore at a 40%
         // grade is 20%, not 50%.
         [Test]
