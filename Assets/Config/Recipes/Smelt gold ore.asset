@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb68c50b39e0a91499017be61cd90094, type: 3}
+  m_Name: Smelt gold ore
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.Recipe
+  station: 0
+  inputs:
+  - Item: {fileID: 11400000, guid: 4273b1a1d0181c84a8fd5cdb5377de07, type: 2}
+    Count: 5
+  output:
+    Item: {fileID: 11400000, guid: 41bbf31f86dbf384ba57bd90811a9c3b, type: 2}
+    Count: 5
+  work: 0
+  amount: 4
+  experienceSkill: 4
+  experience: 30
+  unlockSkill: 0
+  unlockLevel: 0
+  qualityFactor: 1
+  extracts: {fileID: 11400000, guid: 028349ab45517db4984a7ae07bcf9347, type: 2}
+  typicalGrade: 0.22
