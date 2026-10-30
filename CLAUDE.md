@@ -68,12 +68,12 @@ measures it, and `ChunkMesherTests.RandomChunk_MatchesPolygonisePerVoxel`
 guards the output.
 2E is done (K13–K16, K33). `TerrainBrush` (Core) adds or removes a sphere
 through A7; `TerrainBrushTool` (ChunkLab) picks Select, Dig or Add with
-1/2/3 and switches `VoxelSelector` off while editing. *Clube → Build → Lab
-demo* (`DemoBuild`) builds the playable exe to `Builds/Demo/`.
-K34 is done: the exe opens on the `DemoMenu` welcome scene (Single voxel =
-VoxelLab, Single chunk = ChunkLab, Exit; `DemoExitButton` and Esc in either
-lab return to it), in a resizable 1280×720 window, and the lab panels fit
-small windows.
+1/2/3 and switches `VoxelSelector` off while editing. *Clube → Build → Game
+demo* (`DemoBuild`) builds the playable exe to `Builds/Demo/` (since GL200: the
+`MainMenu` scene and WorldLab; see the twenty-third pass below).
+K34 is done: the exe opened on a welcome scene (now `MainMenu`); `DemoExitButton` and
+Esc in VoxelLab or ChunkLab still return to it, in a resizable 1280×720 window, and the
+lab panels fit small windows.
 2F is done (K17–K22). ChunkLab's chunk has a `Step Through`
 child (off by default; its Inspector and the in-game panel have the
 controls), with `StepThroughVoxelLink` (selecting a voxel jumps there, K21)
@@ -422,6 +422,21 @@ and actions (a finished recipe by the skill it trains: crafting, smelting, smith
 `PlayerBuilder.Placed`, `PlayerParcels.Bought`) play them on one 2D AudioSource. `PlayerSounds.EffectsOn` (lab panel, Sound
 section, `SoundControls`) switches all of it, and is off until the clips are picked properly. Clips are Kenney CC0 in
 `Assets/Audio/`; sources in `Docs/audio-credits.md`.
+Twenty-third pass (GL200-GL205, `Docs/20261030 clube-backlog.md`): the demo exe is the game. *Clube → Build → Game demo*
+(`DemoBuild`) builds `MainMenu` and WorldLab, writing the version from git into `Resources/BuildInfo.txt` for the build
+(gitignored, removed after; `BuildInfo.Version`). `MainMenu` (Game/Menu) has New, Load, Exit over a render of the valley;
+New opens `NewGamePage` (mode: only World playable; seed, typed or rolled). `GameSession` (static, Game/Session) carries the
+mode, seed and loaded save into the scene; `GameScenes` names the scenes. In WorldLab, `GameSessionHost` (on World) is an
+`IWorldConfigOverride` (Core: changes `WorldView`'s play copy of its config in Awake) that sets the seed, restores a save and
+captures one; `PauseMenu` is Esc (closes an open player screen first; Back, Save and Exit, Exit Without Saving;
+`Time.timeScale` 0). A menu game starts as the player (`PlayerCameraToggle`). Saving (first pass of S1-S4) is `Core/Saving`:
+`GameSave` (plain data, ids not references), `GameSaveFile` (header plain, body gzipped, `SaveHeader.CurrentVersion`),
+`WorldSaving` (edited chunks; `World.EditedChunks`, `World.Keep` puts them back before streaming), `StackSaving`; in Game
+`PlayerSaveState` (on Player), `PlacedObjectSaving`, `ItemLookup` (catalog, then `OreKnowledge.DisguiseById`), `SaveSlot`
+(one file, `Application.persistentDataPath/Saves/world.clubesave`). Restore hooks: `PlayerSpawn.PlaceAt`,
+`PlayerParcels.Restore`, `GameClock.Restore`, `TerrainStructure.Restore`, `SkillSet.SetExperience`, `MiningJournal.Restore`,
+`GroundDrying.Restore`. When testing by pumping `SendMessage("Update")`, note it also runs disabled components (a disabled
+`PlayerController` then resets the head's pitch); step real frames to check look angles.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
@@ -433,7 +448,7 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   Game reference Core; **Core never references Debug or Game.** Debug also
   references Game (lab tools tune the player, M16); Game never references Debug.
 - Namespaces match assembly names (`Clube.Core`, `Clube.Debug`, `Clube.Game`).
-- Scenes (A9): `VoxelLab`, `ChunkLab`, `WorldLab` (fixed area), `ProceduralWorldLab` (streamed), `Game`. The `Game` scene
+- Scenes (A9): `MainMenu` (the exe's first scene), `VoxelLab`, `ChunkLab`, `WorldLab` (fixed area), `ProceduralWorldLab` (streamed), `Game`. The `Game` scene
   contains no `Clube.Debug` components (A10).
 - Docs go in `Docs/` (capital D, G5).
 - Workflow (G2): one objective = one GitHub issue; one sub-section = one
@@ -442,7 +457,7 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   asmdef per folder, grouped by feature inside (e.g. `Core/Meshing/`).
   Core's folders are layers (A14, `Docs/architecture.md`): data (`Voxels`,
   `World`, `Materials`, `Config`, `Items`, `Crafting`, `Economy`) → algorithms (`Generation`,
-  `Meshing`, `Editing`, `Queries`, `Volume`) → `Streaming` → `Rendering`
+  `Meshing`, `Editing`, `Queries`, `Volume`, `Saving`) → `Streaming` → `Rendering`
   (everything with a GameObject). Lower layers never use higher ones.
   Inspector/editor code goes in `Debug/Editor/` (`Clube.Debug.Editor`,
   editor-only); write `UnityEditor.Editor` in full there, since `Editor`
