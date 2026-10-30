@@ -113,7 +113,7 @@ namespace Clube.Game
 
             var crafting = recipes.Where(r => r != null && !IsSmelting(r.Station))
                 .OrderBy(r => StationOrder(r.Station)).ThenBy(r => r.UnlockLevel).ToList();
-            AddChapter("Chapter one: Crafting", "Crafting (cont.)", PlacesEntries(recipes).Concat(crafting.Select(r => RecipeEntry(r, skills))));
+            AddChapter("Chapter one: Crafting", "Crafting (cont.)", PlacesEntries().Concat(crafting.Select(r => RecipeEntry(r, skills))));
 
             var furnaces = recipes.Where(r => r != null && r.Output.Item is PlaceableDefinition placeable && Smelter(placeable) != null)
                 .OrderBy(r => Smelter((PlaceableDefinition)r.Output.Item).Heat).Select(r => FurnaceEntry(r, skills));
@@ -124,38 +124,17 @@ namespace Clube.Game
         }
 
         // The two places to craft that nobody builds (GL214), first in the Crafting chapter: they're easy to miss.
-        private static IEnumerable<Entry> PlacesEntries(IReadOnlyList<Recipe> recipes)
+        private static IEnumerable<Entry> PlacesEntries()
         {
-            yield return new Entry(Sketch(recipes, "wood"), "Tree stump",
-                "A cut tree leaves a stump: a worktop. Look at it and press E.\n" +
-                "Whittle sticks, make the first tools, build a campfire and, later, furnaces.\n" +
-                "Every tree stands on one: cut the trunk away with a hand axe or a hatchet.");
-            yield return new Entry(Sketch(recipes, "stone"), "Stone boulder",
+            yield return new Entry(PlaceSketch.Stump, "Tree stump",
+                "Every tree stands on a stump, a worktop. Look at the foot of the trunk and press E.\n" +
+                "Whittle sticks, make the first tools, build a campfire and, later, furnaces.");
+            yield return new Entry(PlaceSketch.Boulder, "Stone boulder",
                 "Rock too big to pick up. Aim at it and use the right mouse button:\n" +
                 "a stone in hand is knocked into a hand axe;\n" +
                 "hold with raw ore to crush it (from Mining 2), an item every 0.25 s;\n" +
                 "hold with a mixed stack, like clay with dirt in it, to pick it over.\n" +
                 "Chisel its top flat for a flat rock, a better worktop.");
-        }
-
-        // An ink sketch of an item the recipes use, found by id, for the places' entries.
-        private static Texture2D Sketch(IReadOnlyList<Recipe> recipes, string itemId)
-        {
-            foreach (Recipe recipe in recipes)
-            {
-                if (recipe == null)
-                {
-                    continue;
-                }
-                foreach (ItemAmount input in recipe.Inputs)
-                {
-                    if (input.Item != null && input.Item.Id == itemId)
-                    {
-                        return ItemSketch.For(input.Item);
-                    }
-                }
-            }
-            return null;
         }
 
         // How many levels short of a recipe the player is (GL181): 0 when it's unlocked.
