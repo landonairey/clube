@@ -92,19 +92,23 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void EarnFraction_PaysACoinOnceThePartsAddUp()
+        // GL199: coins are decimal, kept to the hundredth.
+        public void Earn_KeepsPartsOfACoin()
         {
             var wallet = new Wallet();
             for (int i = 0; i < 9; i++)
             {
-                wallet.EarnFraction(0.1f);
+                wallet.Earn(0.1f);
             }
-            Assert.AreEqual(0, wallet.Coins);
-            wallet.EarnFraction(0.1f);
-            Assert.AreEqual(1, wallet.Coins, "Ten tenths make a coin.");
-            wallet.EarnFraction(2.5f);
-            wallet.EarnFraction(0.5f);
-            Assert.AreEqual(4, wallet.Coins);
+            Assert.AreEqual(0.9f, wallet.Coins, 1e-4f);
+            wallet.Earn(0.1f);
+            Assert.AreEqual(1f, wallet.Coins, 1e-4f, "Ten tenths make a coin.");
+            wallet.Earn(2.5f);
+            wallet.Earn(0.004f);
+            Assert.AreEqual(3.5f, wallet.Coins, 1e-4f, "Less than a hundredth rounds away.");
+            Assert.IsTrue(wallet.Spend(3.5f));
+            Assert.AreEqual(0f, wallet.Coins, 1e-4f);
+            Assert.AreEqual("12.5", Wallet.Format(12.5f));
         }
 
         [Test]

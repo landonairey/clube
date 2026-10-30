@@ -336,7 +336,7 @@ namespace Clube.Game
                 return;
             }
             World world = worldView.World;
-            float radius = tool == hand ? collecting.HandRadius : collecting.ToolRadius;
+            float radius = tool == hand ? collecting.HandRadius : collecting.ToolRadius * tool.ReachScale;
             ImpactCentre = hit.Point;
             ImpactRadius = radius;
             ReachIsSphere = true;
@@ -606,7 +606,13 @@ namespace Clube.Game
             {
                 return collecting.HandAmount;
             }
-            float amount = (tool.ReachesWideOn(material) ? collecting.ToolAmount : collecting.ToolOffAmount) * tool.Efficiency;
+            bool madeFor = tool.ReachesWideOn(material);
+            float amount = (madeFor ? collecting.ToolAmount : collecting.ToolOffAmount) * tool.Efficiency;
+            if (madeFor && material != null && material.IsSoft)
+            {
+                // Soft stuff of its kind (GL193): a hatchet takes little of the leaves round the wood.
+                amount *= tool.SoftFactor;
+            }
             return material == aimed ? amount : amount * collecting.OtherMaterialFactor;
         }
 

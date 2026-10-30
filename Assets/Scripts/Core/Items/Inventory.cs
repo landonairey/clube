@@ -333,6 +333,67 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// Moves up to <paramref name="count"/> whole items of one slot's stack onto another slot (GL191: dragging half a
+        /// stack): into an empty slot, or onto a stack they stack with as far as there's room. A part item stays behind.
+        /// The whole stack when <paramref name="count"/> covers it, as <see cref="Move(int, int)"/> (which may swap).
+        /// Returns how many whole items moved.
+        /// </summary>
+        public int Move(int from, int to, int count)
+        {
+            ItemStack moving = slots[from];
+            if (from == to || moving.IsEmpty || count <= 0 || !Fits(to, moving.Item))
+            {
+                return 0;
+            }
+            if (count >= moving.Count)
+            {
+                int before = moving.Count;
+                Move(from, to);
+                return slots[from].Item == moving.Item ? before - slots[from].Count : before;
+            }
+            int moved;
+            if (slots[to].IsEmpty)
+            {
+                moved = count;
+                slots[to] = new ItemStack(moving.Item, count, moving.Contents, moving.Wear, moving.Quality);
+            }
+            else if (Stacks(slots[to], moving.Item, moving.Contents, moving.Quality) && slots[to].Space > 0)
+            {
+                moved = Math.Min(count, slots[to].Space);
+                slots[to] = TopUp(slots[to], moved, moving.Contents, moving.Quality);
+            }
+            else
+            {
+                return 0;
+            }
+            slots[from] = moving.WithCount(moving.Count - moved);
+            Changed?.Invoke();
+            return moved;
+        }
+
+        /// <summary>
+        /// Splits <paramref name="count"/> whole items off a stack into the nearest empty slot after it (GL191), wrapping
+        /// round; the rest and any part item stay. Returns the slot they went to, or -1 when there's no room or nothing to split.
+        /// </summary>
+        public int Split(int slot, int count)
+        {
+            ItemStack stack = slots[slot];
+            if (stack.IsEmpty || count <= 0 || count >= stack.Count)
+            {
+                return -1;
+            }
+            for (int step = 1; step < slots.Length; step++)
+            {
+                int target = (slot + step) % slots.Length;
+                if (slots[target].IsEmpty && Fits(target, stack.Item))
+                {
+                    return Move(slot, target, count) > 0 ? target : -1;
+                }
+            }
+            return -1;
+        }
+
+        /// <summary>
         /// Moves up to <paramref name="count"/> whole items of an item, from whichever stacks hold it, into
         /// another inventory (GL80: a recipe's ingredients into a station), keeping each stack's
         /// contents and wear. Returns how many moved.
@@ -513,7 +574,7 @@ namespace Clube.Core
         {
             for (int i = 0; i < slots.Length; i++)
             {
-                if (Stacks(slots[i], item, contents, quality) && Fits(i, item) && (slots[i].Part + part < 1f || slots[i].Space > 0))
+                if (Stacks(slots[i], item, contents, quality) && Fits(i, item) && HasRoomForPart(slots[i], part))
                 {
                     ItemStack blended = BlendPart(slots[i], part, contents, quality);
                     slots[i] = WithPart(blended, part, out _);
@@ -531,6 +592,19 @@ namespace Clube.Core
             return false;
         }
 
+        // True when a stack can take a part item on top without passing its MaxStack (GL188): a part needs a
+        // place of its own unless it joins one already there, and parts passing 1 need room for the whole one.
+        private static bool HasRoomForPart(ItemStack stack, float part)
+        {
+            int room = stack.Item.MaxStack - stack.Count;
+            float total = stack.Part + part;
+            if (stack.Part <= 0f)
+            {
+                return room >= 1 && (total < 1f - ItemStack.PartEpsilon || total - 1f <= ItemStack.PartEpsilon || room >= 2);
+            }
+            return total < 1f - ItemStack.PartEpsilon || total - 1f <= ItemStack.PartEpsilon || room >= 2;
+        }
+
         // A stack with a part item added: the parts add up, and past 1 make a whole item if there's room.
         // What doesn't fit comes back as a stack of its own.
         private static ItemStack WithPart(ItemStack stack, float part, out ItemStack spill)
@@ -538,18 +612,34 @@ namespace Clube.Core
             float total = stack.Part + part;
             int whole = stack.Count;
             spill = ItemStack.Empty;
+            // Places left for whole or part items (GL188: never more than MaxStack in all).
+            int room = stack.IsEmpty ? 0 : stack.Item.MaxStack - stack.Count;
             if (total >= 1f - ItemStack.PartEpsilon)
             {
-                if (stack.Space > 0)
+                float rest = Math.Max(0f, total - 1f);
+                if (room >= 2 || (room == 1 && rest <= ItemStack.PartEpsilon))
                 {
                     whole++;
-                    total -= 1f;
+                    total = rest;
+                }
+                else if (room == 1)
+                {
+                    // The last place takes a whole item; what's over it has nowhere to go here.
+                    whole++;
+                    spill = new ItemStack(stack.Item, 0, stack.Contents, 0, stack.Quality, rest);
+                    total = 0f;
                 }
                 else
                 {
                     spill = new ItemStack(stack.Item, 0, stack.Contents, 0, stack.Quality, total - stack.Part);
                     total = stack.Part;
                 }
+            }
+            else if (room < 1)
+            {
+                // A full stack has no place for a part.
+                spill = new ItemStack(stack.Item, 0, stack.Contents, 0, stack.Quality, part);
+                total = stack.Part;
             }
             return new ItemStack(stack.Item, whole, stack.Contents, stack.Wear, stack.Quality, Math.Max(0f, total));
         }

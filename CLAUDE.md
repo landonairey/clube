@@ -264,7 +264,7 @@ a `Fuel` slot). Clay (13) deposits are surface lenses (`TerrainLayers.Clay`,
 `ChunkFillKernel.ClayDepthAt`); dropped clay dries into Brick (14) on a `GameClock`
 (`GroundDrying`, `DroppedGroundDrying`), or is fired in the furnace.
 Ninth pass (GL47-GL55, `Docs/20261013 clube-backlog.md`): the beginning path. `SkillSet` (Core/Skills:
-Crafting, Woodcutting, Mining, Smelting; level n at 10 n (n + 1) xp) lives on `PlayerSkills`, which
+Crafting, Woodcutting, Mining, Smelting; each level costs 50% more xp than the last, 20 for level 1, GL184) lives on `PlayerSkills`, which
 awards xp per mined sample (`PlayerToolUser.Mined`) and per finished recipe
 (`CraftingStation.Completed`). Recipes give xp and can need a level (`Recipe.UnlockSkill/Level`,
 checked against `CraftingStation.Learner`; `StationObject` connects the player). `SkillsHud` shows
@@ -402,6 +402,18 @@ over part items at once (`Gathering.TakeAll`, GL169); hand and hand axe hits mix
 (`CollectingSettings.AimedMixFactor`, GL172). The inventory screen has a trash slot and Sort (`Inventory.Sort`); Shift-click
 loads half a stack into a station, Ctrl-click one (GL176). Holding Place on a boulder with a mixed stack picks it over
 (`Refining`, `BoulderBashing`, GL177). Stations have a recovery (campfire 0.5, stone furnace 0.75, clay 1; GL178).
+Twenty-second pass (GL179-GL199, `Docs/20261029 clube-backlog.md`): land too far to buy says "You don't own this land"
+(`INoticeOnly`: a prompt with no key). The crafting journal (J) has no Mining chapter; an entry is full once unlocked,
+outlined a level away, a question mark further off; `ItemSketch` reads icons on opaque backgrounds (the furnaces); both
+journals put their glyphs in the font before drawing (`JournalBook.Prepare`). Mining xp per sample is stone 0.08, ore 0.16,
+soil 0.02. Crushed ores measure purity as their raw ore (`ItemDefinition.PurityAs`), so refining keeps the ore; a refine pass is
+1 s and takes 1 item of impurities. A part item takes a stack place of its own (`ItemStack.Space`: 1023.7, never 1024.7).
+Wood wins over leaves inside a trunk (`TreeStamp`). `InventoryDrag` is the mouse for the inventory and station screens:
+drag (Shift half, Ctrl one), right-click splits (`Inventory.Move(from, to, count)`, `Split`); drop on a station's input or
+fuel slot. A smelt's count is what pure mineral gives, so yield is mineral share times efficiency, never over 100%; a smelter
+whose picked recipe ran out starts the other loaded ore. Tools: `ReachScale` (bronze 1.3, 3 hits/s) and `SoftFactor` (hatchets
+0.15 on leaves). The merchant buys sticks; coins are decimal (`Wallet.Coins` float, `Wallet.Format`). The furnace build preview
+is the meshed surface of its samples (*Clube → Models → Build furnaces*, which keeps the body collider).
 Sound effects (2026-10-28): `PlayerSounds` (`Assets/Config/Audio/`) holds `SoundSet`s (random clip and pitch) for
 footsteps by material (stone, dirt, grass, clay; others by `MaterialKind`), a hit per tool (hand, hand axe, stone pick,
 stone hatchet, chisels, other tools; any hit on soft ground or leaves sounds like the material, `PlayerToolUser.HitMaterial`)

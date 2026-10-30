@@ -59,7 +59,7 @@ namespace Clube.Debug.Editor
         }
 
         // The prefab as a structure of one material: no model of its own (the preview child shows where
-        // the samples go), a glow inside, and a collider in its mouth to use it by.
+        // the samples go), a glow inside, and a collider round its body to use it by.
         private static void Configure(string path, string name, float heat, VoxelMaterial material, Material look, UnityEngine.Mesh stamp)
         {
             GameObject root = PrefabUtility.LoadPrefabContents(path);
@@ -69,8 +69,9 @@ namespace Clube.Debug.Editor
                 Object.DestroyImmediate(root.GetComponent<MeshFilter>());
 
                 var box = Get<BoxCollider>(root);
-                box.center = new Vector3(0f, 0.2f, 0.5f);
-                box.size = new Vector3(0.45f, 0.45f, 0.3f);
+                // The whole body (GL143), so the player can use it from any side and tools still break it.
+                box.center = new Vector3(0f, 0.85f, 0f);
+                box.size = new Vector3(1.3f, 1.7f, 1.3f);
 
                 var station = new SerializedObject(root.GetComponent<StationObject>());
                 station.FindProperty("displayName").stringValue = name;

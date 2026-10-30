@@ -91,7 +91,9 @@ namespace Clube.Game
                 return;
             }
             promptStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 16 };
-            GUI.Label(new Rect(0f, Screen.height * 0.5f + 24f, Screen.width, 24f), $"E  {Target.Prompt}", promptStyle);
+            // A notice (GL179) is shown without the key: pressing it does nothing.
+            string prompt = Target is INoticeOnly ? Target.Prompt : $"E  {Target.Prompt}";
+            GUI.Label(new Rect(0f, Screen.height * 0.5f + 24f, Screen.width, 24f), prompt, promptStyle);
         }
     }
 }

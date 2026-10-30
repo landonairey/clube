@@ -100,7 +100,12 @@ namespace Clube.Core
         /// </summary>
         public bool IsSourceOf(VoxelMaterial material, ItemDefinition item)
         {
-            return material != null && item != null && material.FinalDrop == item;
+            if (material == null || item == null)
+            {
+                return false;
+            }
+            // Crushed ore is its ore's (GL186): the cassiterite in crushed cassiterite is what it's made of.
+            return material.FinalDrop == item || (item.PurityAs != null && item.PurityAs != item && material.FinalDrop == item.PurityAs);
         }
 
         /// <summary>True when mining some material gives this item (stone, clay, an ore): it has a purity (GL115).</summary>

@@ -30,6 +30,9 @@ namespace Clube.Core
             return new TreePart { From = centre, To = centre, FromRadius = radius, ToRadius = radius, Material = material };
         }
 
+        /// <summary>True for a trunk or branch segment (wood), false for a ball of leaves (GL189).</summary>
+        public bool IsSegment => math.any(From != To);
+
         /// <summary>
         /// How far inside the part a position is, in metres (negative outside), like a terrain
         /// generator's depth, so <see cref="TerrainDensity.FromDepth"/> turns it into a density.

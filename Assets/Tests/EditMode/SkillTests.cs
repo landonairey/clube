@@ -16,8 +16,12 @@ namespace Clube.Core.Tests
             Assert.AreEqual(0, skills.Level(SkillType.Mining));
             skills.Award(SkillType.Mining, 1f);
             Assert.AreEqual(1, skills.Level(SkillType.Mining));
-            skills.Award(SkillType.Mining, 40f);
-            Assert.AreEqual(2, skills.Level(SkillType.Mining), "60 xp in total is level 2.");
+            skills.Award(SkillType.Mining, 30f);
+            Assert.AreEqual(2, skills.Level(SkillType.Mining), "50 xp in total is level 2.");
+            skills.Award(SkillType.Mining, 44f);
+            Assert.AreEqual(2, skills.Level(SkillType.Mining), "Level 3 costs 45 more (GL184).");
+            skills.Award(SkillType.Mining, 1f);
+            Assert.AreEqual(3, skills.Level(SkillType.Mining));
             Assert.AreEqual(0, skills.Level(SkillType.Crafting), "Skills are separate.");
         }
 
@@ -27,7 +31,7 @@ namespace Clube.Core.Tests
             var skills = new SkillSet();
             var reached = new List<int>();
             skills.LevelReached += (skill, level) => reached.Add(level);
-            skills.Award(SkillType.Smelting, 130f);
+            skills.Award(SkillType.Smelting, 100f);
             CollectionAssert.AreEqual(new[] { 1, 2, 3 }, reached);
         }
 

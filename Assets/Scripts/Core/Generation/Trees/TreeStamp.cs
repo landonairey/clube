@@ -7,7 +7,9 @@ namespace Clube.Core
     /// Writes tree parts into a chunk being generated (GL30), after the terrain, ores and rocks
     /// (<see cref="ChunkFillKernel"/>). Each sample takes the part it lies deepest inside, so the
     /// result doesn't depend on the order parts arrive in; then, where that part's density beats
-    /// what's there, the sample becomes the part's density and material (wood or leaves). Trees add
+    /// what's there, the sample becomes the part's density and material (wood or leaves). A sample
+    /// inside any wood segment is wood, however deep it also lies in a leaf ball (GL189: a trunk
+    /// running up through its crown stays wood). Trees add
     /// to the ground and never carve it. Burst-compatible static code.
     /// </summary>
     public static class TreeStamp
@@ -23,9 +25,13 @@ namespace Clube.Core
             int length = grid.Length;
             var deepest = new NativeArray<float>(length, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
             var material = new NativeArray<byte>(length, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+            // The wood a sample lies inside, if any (GL189).
+            var wood = new NativeArray<byte>(length, Allocator.Temp, NativeArrayOptions.ClearMemory);
+            var woodDepth = new NativeArray<float>(length, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
             for (int i = 0; i < length; i++)
             {
                 deepest[i] = float.MinValue;
+                woodDepth[i] = -1f;
             }
 
             // Only samples within a voxel of a part's surface or inside it matter: the mesh is cut
@@ -49,6 +55,11 @@ namespace Clube.Core
                         {
                             float depth = part.Depth(grid.Position(x, y, z));
                             int i = grid.Index(x, y, z);
+                            if (depth >= 0f && part.IsSegment && depth > woodDepth[i])
+                            {
+                                woodDepth[i] = depth;
+                                wood[i] = part.Material;
+                            }
                             if (depth < -reach || depth <= deepest[i])
                             {
                                 continue;
@@ -90,7 +101,7 @@ namespace Clube.Core
                     }
                     output.Densities[i] = density;
                 }
-                output.Materials[i] = material[i];
+                output.Materials[i] = woodDepth[i] >= 0f ? wood[i] : material[i];
                 changed = true;
             }
             return changed;

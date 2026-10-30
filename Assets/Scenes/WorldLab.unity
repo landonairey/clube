@@ -1530,9 +1530,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSkills
   wood: 1
   leaves: 0.2
-  stone: 1
-  ore: 2
-  soil: 0.25
+  stone: 0.08
+  ore: 0.16
+  soil: 0.02
 --- !u!114 &1697135582
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1795,11 +1795,10 @@ MonoBehaviour:
   crushedStone: {fileID: 11400000, guid: e6ec90f8b46ea6747b89bbc179234604, type: 2}
   crushSkill: 3
   crushLevel: 2
-  crushExperience: 1
+  crushExperience: 0.1
   refineSeconds: 1
-  refineSecondsPerItem: 0.04
-  refineShare: 0.3
-  refineExperience: 0.5
+  refineVolume: 1
+  refineExperience: 0.1
 --- !u!114 &1697135593
 MonoBehaviour:
   m_ObjectHideFlags: 0

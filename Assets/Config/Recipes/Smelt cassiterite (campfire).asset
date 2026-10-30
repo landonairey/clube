@@ -15,14 +15,14 @@ MonoBehaviour:
   station: 3
   inputs:
   - Item: {fileID: 11400000, guid: abc86bcbe8361da41bd3f644418bc0a3, type: 2}
-    Count: 4
+    Count: 8
   output:
     Item: {fileID: 11400000, guid: e49cea8103fd9d94682cdecb145df7f8, type: 2}
-    Count: 1
+    Count: 5
   work: 0
-  amount: 6
+  amount: 12
   experienceSkill: 4
-  experience: 12
+  experience: 24
   unlockSkill: 0
   unlockLevel: 0
   extracts: {fileID: 11400000, guid: fcb47a3195818b0449ad72b166340337, type: 2}

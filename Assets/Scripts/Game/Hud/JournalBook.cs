@@ -93,6 +93,31 @@ namespace Clube.Game
             return inner.y + 36f;
         }
 
+        /// <summary>
+        /// Puts every character of a page's text into the font's atlas before any of it is drawn (GL187). A dynamic
+        /// font rebuilds its atlas when it meets new glyphs, and text IMGUI had already laid out against the old atlas
+        /// could stay blank until the journal was closed and opened again. Call on the Layout event, before drawing.
+        /// </summary>
+        public static void Prepare(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+            Request(Title, text);
+            Request(Text, text);
+            Request(Small, text);
+        }
+
+        private static void Request(GUIStyle style, string text)
+        {
+            Font font = style.font != null ? style.font : GUI.skin.font;
+            if (font != null && font.dynamic)
+            {
+                font.RequestCharactersInTexture(text, style.fontSize, style.fontStyle);
+            }
+        }
+
         /// <summary>A ruled ink line, e.g. between entries.</summary>
         public static void InkLine(Rect area)
         {

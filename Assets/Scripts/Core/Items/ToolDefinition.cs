@@ -103,6 +103,14 @@ namespace Clube.Core
         [SerializeField, Range(0.05f, 1f)]
         private float efficiency = 1f;
 
+        [Tooltip("Sphere modes: its area of impact as a share of the tool radius (GL196: bronze reaches wider than stone).")]
+        [SerializeField, Range(0.5f, 2f)]
+        private float reachScale = 1f;
+
+        [Tooltip("Gradual sphere: share of a full hit it takes from soft material of the kind it's made for (GL193: a hatchet barely takes leaves, so wood comes up mostly wood).")]
+        [SerializeField, Range(0f, 1f)]
+        private float softFactor = 1f;
+
         [Tooltip("Sphere modes: each hit takes only from the ground sample under the dot, like the bare hand (GL155: the hand axe), not a sphere.")]
         [SerializeField]
         private bool aimedOnly;
@@ -149,6 +157,12 @@ namespace Clube.Core
 
         /// <summary>How much of a full hit it takes, 0-1 (GL146).</summary>
         public float Efficiency => efficiency;
+
+        /// <summary>Its area of impact as a share of the tool radius, in the sphere modes (GL196).</summary>
+        public float ReachScale => reachScale;
+
+        /// <summary>Share of a full hit it takes from soft material of its kind (GL193: a hatchet on leaves).</summary>
+        public float SoftFactor => softFactor;
 
         /// <summary>True when a sphere-mode hit takes only the ground sample under the dot (GL155).</summary>
         public bool AimedOnly => aimedOnly;

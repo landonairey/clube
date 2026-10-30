@@ -42,3 +42,5 @@ MonoBehaviour:
   hitsOnAnything: 0
   tier: 2
   efficiency: 1
+  reachScale: 1
+  softFactor: 0.15

@@ -9,7 +9,8 @@ namespace Clube.Game
     /// The screen for a <see cref="StationObject"/> the player is using (GL10, GL11, GL19, GL20),
     /// in slots like the hotbar: the station's input slots, then the work (a smelting bar, or a
     /// Strike button on the anvil, which supplies the hammer), then its output slot, and the
-    /// player's inventory below. Click one of your stacks to load it (Shift half of it, Ctrl one, GL176), an input stack to take it
+    /// player's inventory below. Click one of your stacks to load it (Shift half of it, Ctrl one, GL176), or drag it onto an
+    /// input or fuel slot, between your own slots, or right-click to split it (GL191, GL195); click an input stack to take it
     /// back, the output to collect it. The empty output slot shows what's about to be made,
     /// greyed out (GL58); a made tool moves to the inventory by itself (GL59). The furnace keeps
     /// working through what's loaded with the screen closed; a worktop or anvil hands its
@@ -35,6 +36,7 @@ namespace Clube.Game
         private PlayerController player;
         private int openedFrame;
         private GUIStyle recipeStyle;
+        private readonly InventoryDrag drag = new InventoryDrag();
 
         /// <summary>The station being used, or null when closed.</summary>
         public StationObject Current { get; private set; }
@@ -60,6 +62,7 @@ namespace Clube.Game
         public void Open(StationObject station)
         {
             Current = station;
+            drag.Reset();
             openedFrame = Time.frameCount;
             if (player != null)
             {
@@ -173,6 +176,9 @@ namespace Clube.Game
             }
 
             // Input slots, the work in the middle, the output slot.
+            // Where the station's slots are, for stacks dragged onto them (GL195).
+            var inputSlots = new Rect(x, y, station.Input.SlotCount * (slot + gap), slot);
+            var fuelSlots = Rect.zero;
             int input = InventoryGridGui.DrawRow(new Vector2(x, y), station.Input);
             if (input >= 0)
             {
@@ -203,6 +209,7 @@ namespace Clube.Game
             {
                 y += slot + gap * 2f;
                 GUI.Label(new Rect(x, y + 18f, 40f, 20f), "Fuel");
+                fuelSlots = new Rect(x + 44f, y, slot, slot);
                 int fuel = InventoryGridGui.DrawRow(new Vector2(x + 44f, y), station.Fuel);
                 if (fuel >= 0)
                 {
@@ -212,27 +219,48 @@ namespace Clube.Game
             }
             y += slot + 30f;
 
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Your items: click a stack to load it, Shift-click half of it, Ctrl-click one");
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Your items: click to load (Shift half, Ctrl one), drag onto a slot, right-click to split");
             y += 22f;
-            int mine = InventoryGridGui.DrawPlayer(new Vector2(x, y), inventory, -1);
-            if (mine >= 0)
+            // Dragging works here as in the inventory (GL195): between your slots, or onto the station's input and
+            // fuel slots, Shift carrying half and Ctrl one (GL191).
+            var grid = new Vector2(x, y);
+            InventoryDragResult mouse = drag.Handle(inventory, grid);
+            if (mouse.Kind == InventoryDragKind.Clicked)
             {
-                station.Load(items, mine, LoadCount(items[mine]));
+                station.Load(items, mouse.Slot, mouse.Count);
             }
-            InventoryGridGui.DrawTooltip();
+            else if (mouse.Kind == InventoryDragKind.DroppedOutside)
+            {
+                DropOnStation(station, items, mouse, inputSlots, fuelSlots);
+            }
+            InventoryGridGui.DrawPlayer(grid, inventory, drag.Pressed);
+            if (drag.IsDragging)
+            {
+                drag.DrawCarried(items);
+            }
+            else
+            {
+                InventoryGridGui.DrawTooltip();
+            }
         }
 
-        // How much of a clicked stack to load (GL176): all of it, half with Shift (rounded up), one with Ctrl.
-        private static int LoadCount(ItemStack stack)
+        // A stack dragged from the player's slots and let go over the station (GL191, GL195): onto the input slots,
+        // or onto the fuel slot if it burns. How many go is what the drag carried.
+        private static void DropOnStation(CraftingStation station, Inventory items, InventoryDragResult drop, Rect inputRow, Rect fuelRow)
         {
-            Keyboard keyboard = Keyboard.current;
-            bool shift = Event.current.shift || (keyboard != null && keyboard.shiftKey.isPressed);
-            bool control = Event.current.control || (keyboard != null && keyboard.ctrlKey.isPressed);
-            if (control)
+            ItemStack stack = items[drop.Slot];
+            if (stack.IsEmpty)
             {
-                return 1;
+                return;
             }
-            return shift ? Mathf.Max(1, (stack.Count + 1) / 2) : int.MaxValue;
+            if (inputRow.Contains(drop.Position))
+            {
+                items.MoveTo(drop.Slot, station.Input, drop.Count);
+            }
+            else if (station.BurnsFuel && stack.Item.IsFuel && fuelRow.Contains(drop.Position))
+            {
+                items.MoveTo(drop.Slot, station.Fuel, drop.Count);
+            }
         }
 
         // The smelting bar, or the anvil's Strike button, between input and output.
@@ -293,7 +321,8 @@ namespace Clube.Game
             {
                 return null;
             }
-            return $"Yield {yield * 100f:0}%: {next.Output.Count * yield:0.##} a run";
+            // A smelt's count is what pure mineral gives (GL192), so its yield is the ore's share times the efficiency.
+            return $"Yield {yield * 100f:0}%: {next.Output.Count * yield:0.##} of {next.Output.Count} a run";
         }
 
         // The fuel burning now as a bar that empties (GL35).

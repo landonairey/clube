@@ -149,3 +149,7 @@ MonoBehaviour:
     Coins: 8
     Units: 1
     ByVolume: 0
+  - Item: {fileID: 11400000, guid: 4f717f7cc0f3ec743b5f84c88baea32c, type: 2}
+    Coins: 1
+    Units: 2
+    ByVolume: 0

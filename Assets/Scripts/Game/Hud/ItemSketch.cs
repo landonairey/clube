@@ -35,15 +35,16 @@ namespace Clube.Game
         private static Texture2D Paint(ItemDefinition item, bool made)
         {
             Color[] icon = ReadIcon(item.Icon);
+            float[] cover = Coverage(icon);
             var pixels = new Color[Size * Size];
             for (int y = 1; y < Size - 1; y++)
             {
                 for (int x = 1; x < Size - 1; x++)
                 {
                     int i = y * Size + x;
-                    float alpha = icon[i].a;
+                    float alpha = cover[i];
                     // An edge: where the icon's coverage changes sharply.
-                    float edge = Mathf.Abs(icon[i + 1].a - icon[i - 1].a) + Mathf.Abs(icon[i + Size].a - icon[i - Size].a);
+                    float edge = Mathf.Abs(cover[i + 1] - cover[i - 1]) + Mathf.Abs(cover[i + Size] - cover[i - Size]);
                     if (edge > 0.6f)
                     {
                         pixels[i] = new Color(Ink.r, Ink.g, Ink.b, Mathf.Clamp01(edge));
@@ -71,6 +72,31 @@ namespace Clube.Game
             texture.SetPixels(pixels);
             texture.Apply();
             return texture;
+        }
+
+        // How much of each pixel is the item, 0-1: its alpha, or for an icon drawn on an opaque background
+        // (the furnaces' renders, GL180) how far its colour is from the background's, read from the corners.
+        private static float[] Coverage(Color[] icon)
+        {
+            var cover = new float[icon.Length];
+            Color[] corners = { icon[0], icon[Size - 1], icon[(Size - 1) * Size], icon[Size * Size - 1] };
+            bool opaque = true;
+            foreach (Color corner in corners)
+            {
+                opaque &= corner.a > 0.9f;
+            }
+            Color background = opaque ? (corners[0] + corners[1] + corners[2] + corners[3]) * 0.25f : Color.clear;
+            for (int i = 0; i < icon.Length; i++)
+            {
+                if (!opaque)
+                {
+                    cover[i] = icon[i].a;
+                    continue;
+                }
+                float distance = Mathf.Abs(icon[i].r - background.r) + Mathf.Abs(icon[i].g - background.g) + Mathf.Abs(icon[i].b - background.b);
+                cover[i] = Mathf.Clamp01((distance - 0.04f) * 8f);
+            }
+            return cover;
         }
 
         // The icon at the sketch's size, read back through a render texture: icons needn't be readable.

@@ -105,6 +105,19 @@ namespace Clube.Game
             }
 
             IReadOnlyList<VoxelMaterial> ores = journal.Ores;
+            if (Event.current.type == EventType.Layout)
+            {
+                // Every glyph into the font atlas before any text is laid out (GL187: descriptions came up blank).
+                JournalBook.Prepare("Field notes: ores (cont.) No. p. 0123456789");
+                foreach (VoxelMaterial ore in ores)
+                {
+                    MiningJournal.Entry entry = journal.Journal.EntryFor(ore);
+                    if (entry != null)
+                    {
+                        JournalBook.Prepare(ore.DisplayName + "Unknown Ore" + Notes(ore, entry, journal.Knows(ore)));
+                    }
+                }
+            }
             int pages = Mathf.Max(1, Mathf.CeilToInt(ores.Count / (float)OresPerPage));
             spread = JournalBook.Draw(spread, pages, (area, page) => DrawPage(area, page, ores));
         }
@@ -149,13 +162,17 @@ namespace Clube.Game
             float y = area.y + 2f;
             GUI.Label(new Rect(x, y, width, 26f), known ? ore.DisplayName : "Unknown Ore", JournalBook.Title);
             y += 26f;
+            GUI.Label(new Rect(x, y, width, area.yMax - y - 6f), Notes(ore, found, known), JournalBook.Text);
+        }
+
+        // An entry's notes: for an ore found before the player can tell it apart (GL77, GL91), how to learn more; else
+        // where it was found, the grades mined, what it looks like and its uses.
+        private string Notes(VoxelMaterial ore, MiningJournal.Entry found, bool known)
+        {
             if (!known)
             {
-                // Found before the player can tell it apart (GL77, GL91): an outline, the name and how to learn more.
                 string how = journal.HowToKnow(ore);
-                GUI.Label(new Rect(x, y, width, area.yMax - y - 6f),
-                    "Something in the rock I can't yet tell apart. " + (how != null ? how + " to discover it." : "More mining may tell what it is."), JournalBook.Text);
-                return;
+                return "Something in the rock I can't yet tell apart. " + (how != null ? how + " to discover it." : "More mining may tell what it is.");
             }
 
             MineralNotes notes = ore.Notes;
@@ -175,7 +192,7 @@ namespace Clube.Game
             }
             List<string> uses = journal.UsesOf(ore);
             lines.Add(uses.Count > 0 ? "Uses: " + string.Join("; ", uses) + "." : "Uses: not yet worked out.");
-            GUI.Label(new Rect(x, y, width, area.yMax - y - 6f), string.Join("\n", lines), JournalBook.Text);
+            return string.Join("\n", lines);
         }
 
         private static void AddNote(List<string> lines, string label, string text)

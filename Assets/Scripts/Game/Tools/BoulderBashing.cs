@@ -76,24 +76,20 @@ namespace Clube.Game
         private int crushLevel = 2;
 
         [SerializeField, Min(0f)]
-        private float crushExperience = 1f;
+        private float crushExperience = 0.1f;
 
         [Header("Refining (GL177)")]
-        [Tooltip("Seconds a pass over a mixed stack takes at least; holding Place keeps passing.")]
+        [Tooltip("Seconds a pass over a mixed stack takes, whatever its size (GL190); holding Place keeps passing.")]
         [SerializeField, Min(0.05f)]
         private float refineSeconds = 1f;
 
-        [Tooltip("More seconds a pass takes for each item in the stack.")]
-        [SerializeField, Min(0f)]
-        private float refineSecondsPerItem = 0.04f;
-
-        [Tooltip("Share of the impurities each pass picks out.")]
-        [SerializeField, Range(0.05f, 1f)]
-        private float refineShare = 0.3f;
+        [Tooltip("Items' worth of impurities each pass picks out (GL190), all of them once only a trace is left.")]
+        [SerializeField, Min(0.05f)]
+        private float refineVolume = 1f;
 
         [Tooltip("Crafting experience per pass.")]
         [SerializeField, Min(0f)]
-        private float refineExperience = 0.5f;
+        private float refineExperience = 0.1f;
 
         private PlayerController player;
         private PlayerInventory inventory;
@@ -147,7 +143,7 @@ namespace Clube.Game
                 return;
             }
             refineProgress += Time.deltaTime;
-            if (refineProgress >= Refining.PassSeconds(inventory.Inventory[slot], refineSeconds, refineSecondsPerItem))
+            if (refineProgress >= refineSeconds)
             {
                 refineProgress = 0f;
                 RefinePass(slot);
@@ -161,7 +157,7 @@ namespace Clube.Game
             MaterialRegistry materials = worldView.Config.Materials;
             ItemStack held = items[slot];
             pickedOut.Clear();
-            ItemStack refined = Refining.Pass(held, materials, refineShare, pickedOut);
+            ItemStack refined = Refining.Pass(held, materials, refineVolume, pickedOut);
             items.Replace(slot, refined);
             foreach (Content picked in pickedOut)
             {
@@ -202,11 +198,10 @@ namespace Clube.Game
             {
                 return;
             }
-            float seconds = Refining.PassSeconds(stack, refineSeconds, refineSecondsPerItem);
             var bar = new Rect(Screen.width * 0.5f - 90f, Screen.height * 0.5f + 70f, 180f, 10f);
             GUI.Label(new Rect(bar.x - 30f, bar.y - 22f, bar.width + 60f, 20f), $"Refining {stack.Item.DisplayName.ToLowerInvariant()} ({stack.Quality * 100f:0}%)");
             GUI.Box(bar, GUIContent.none);
-            GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(refineProgress / seconds), bar.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(refineProgress / refineSeconds), bar.height), Texture2D.whiteTexture);
         }
 
         /// <summary>Bashes what's selected on the boulder aimed at: a stone becomes a hand axe, ore is crushed. False when nothing happened.</summary>
@@ -225,6 +220,11 @@ namespace Clube.Game
                 skills?.Skills.Award(SkillType.Crafting, handAxeExperience);
                 Message?.Invoke($"Knocked the stone into a {handAxe.DisplayName.ToLowerInvariant()}");
                 return true;
+            }
+            if (held.Count < 1)
+            {
+                Message?.Invoke($"Crushing takes a whole {held.Item.DisplayName.ToLowerInvariant()}");
+                return false;
             }
             if (skills != null && !skills.Skills.Has(crushSkill, crushLevel))
             {
@@ -255,15 +255,18 @@ namespace Clube.Game
             {
                 return false;
             }
-            ItemDefinition item = inventory.Inventory[slot].Item;
-            if (item == null || inventory.Inventory[slot].Count == 0)
+            ItemStack stack = inventory.Inventory[slot];
+            ItemDefinition item = stack.Item;
+            if (item == null)
             {
                 return false;
             }
             if (item == stone && handAxe != null)
             {
-                return true;
+                return stack.Count > 0;
             }
+            // Raw ore stays something to crush when less than an item of it is left (GL194): a bash then
+            // says it needs a whole one, rather than the boulder picking the ore over instead.
             foreach (Crush entry in crushes)
             {
                 if (entry.Raw == item && entry.Crushed != null)

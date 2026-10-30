@@ -57,8 +57,12 @@ namespace Clube.Core
 
         public bool IsEmpty => Item == null;
 
-        /// <summary>How many more of its item fit on top; 0 for an empty stack (any item fits there).</summary>
-        public int Space => IsEmpty ? 0 : Item.MaxStack - Count;
+        /// <summary>
+        /// How many more whole items fit on top; 0 for an empty stack (any item fits there). A part item takes
+        /// a place of its own (GL188), so a stack never holds more than its item's <see cref="ItemDefinition.MaxStack"/>
+        /// in all: 1023.7 stone, not 1024.7.
+        /// </summary>
+        public int Space => IsEmpty ? 0 : System.Math.Max(0, Item.MaxStack - Count - (Part > 0f ? 1 : 0));
 
         /// <summary>The whole stack's volume (GL33): count × the item's unit volume.</summary>
         public float Volume => IsEmpty ? 0f : Amount * Item.UnitVolume;

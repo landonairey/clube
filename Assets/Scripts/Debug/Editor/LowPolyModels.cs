@@ -173,17 +173,43 @@ namespace Clube.Debug.Editor
             Save("Furnace stamp", FurnaceStamp());
         }
 
-        // Submesh 0: the furnace built from the ground (GL98) as the build preview shows it, a lump where
-        // each of its samples goes, at the game's 0.25 m voxels.
+        // The furnace built from the ground (GL98) as the build preview shows it: the surface its samples make once
+        // they're in the ground (GL185), meshed by the game's own marching cubes at 0.25 m voxels, rather than a lump
+        // per sample, which read as a busy pile of voxels. The ground under it is left out, so the base is closed.
         private static Mesh FurnaceStamp()
         {
             const float voxel = 0.25f;
-            var model = new ModelBuilder(1);
-            foreach ((Vector3Int part, float _) in FurnaceParts())
+            const float iso = 0.5f;
+            List<(Vector3Int Offset, float Density)> parts = FurnaceParts();
+            var min = new Vector3Int(int.MaxValue, int.MaxValue, int.MaxValue);
+            var max = new Vector3Int(int.MinValue, int.MinValue, int.MinValue);
+            foreach ((Vector3Int offset, float _) in parts)
             {
-                model.Lump(0, new Vector3(part.x, part.y, part.z) * voxel, 0.4f, 0.32f);
+                min = Vector3Int.Min(min, offset);
+                max = Vector3Int.Max(max, offset);
             }
-            return model.Build("Furnace stamp");
+            // A sample of air all round, so every face closes.
+            Vector3Int first = min - Vector3Int.one;
+            var chunk = new Clube.Core.Chunk(max - min + Vector3Int.one * 2);
+            foreach ((Vector3Int offset, float density) in parts)
+            {
+                // As TerrainStructure writes them: never below just over the surface.
+                chunk.SetDensity(offset - first, density > 0f ? Mathf.Max(density, iso + 0.02f) : 0.85f);
+            }
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            Clube.Core.ChunkMesher.Build(chunk, new Clube.Core.ChunkMeshSettings(iso, voxel, shading: Clube.Core.Shading.Smooth), vertices, triangles);
+            Vector3 shift = (Vector3)first * voxel;
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                vertices[i] += shift;
+            }
+            var mesh = new Mesh { name = "Furnace stamp" };
+            mesh.SetVertices(vertices);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            return mesh;
         }
 
         private static void Save(string name, Mesh mesh)
