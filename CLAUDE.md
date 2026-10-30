@@ -441,6 +441,20 @@ streaming), `StackSaving`, `SaveNames` (defaults, file names); in Game `PlayerSa
 `PlayerParcels.Restore`, `GameClock.Restore`, `TerrainStructure.Restore`, `SkillSet.SetExperience`, `MiningJournal.Restore`,
 `GroundDrying.Restore`. When testing by pumping `SendMessage("Update")`, note it also runs disabled components (a disabled
 `PlayerController` then resets the head's pitch); step real frames to check look angles.
+Twenty-fourth pass (GL210-GL230, `Docs/20261030d clube-backlog.md`): defaults are render distance 32, a 300 m fixed area and
+80° field of view; the graphics popup also sets render distance and freezes the sky at an hour; the lab panel starts hidden
+(F2). Place no longer adds dirt in play (`PlayerDigTool.placesGround`). Q opens the field log (`FieldLogScreen`): tabs for
+Quests, the ore journal (`JournalScreen`) and the tool journal (`CraftingJournalScreen`, starting with the stump and the
+boulder); both journals are now page drawers, not screens. Quests: `QuestLog` (Core/Quests) of main and side quests,
+ticked by `PlayerQuests` (inventory checks and events), shown by `QuestHud` under the lab HUD box (`HudLayout`; the lab HUD
+reports its bottom), saved at the body's end (`SaveHeader.CurrentVersion` 3). C crouches, and slides out of a sprint
+(`PlayerController`). Boulder refining and crushing hold Place, an item every 0.25 s (`BoulderBashing.secondsPerVolume`).
+`DayNightCycle` (on World) lights the sky from `GameClock` (a day is 2400 s, so clay dries in 1 day) and works on copies of
+the skybox and ambient settings. `DryingClayEffect` steams drying clay. The station screens have a trash slot
+(`InventoryGridGui.DrawTrash`). Silver and gold smelt in every furnace and hammer into ingots; the flat rock makes bronze
+tools; the brick furnace (heat 2.25, 100 bricks, Crafting 6) is built by *Clube → Models → Build furnaces*. The starting
+inventory is empty and the merchant stands in the starting parcel. The exe runs in the background. The load list deletes
+saves.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
