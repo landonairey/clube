@@ -92,13 +92,55 @@ namespace Clube.Core.Tests
             }
         }
 
+        // S1: a version 1 save (before names, GL206, GL207) still reads, with empty names.
+        [Test]
+        public void Version1Save_StillReads()
+        {
+            var save = new GameSave { Header = new SaveHeader { Mode = "World", Seed = 7, Build = "b" } };
+            save.Player = new PlayerSave { Coins = 3f };
+            byte[] current;
+            using (var stream = new MemoryStream())
+            {
+                GameSaveFile.Write(stream, save);
+                current = stream.ToArray();
+            }
+            // Version 2 added two strings at the header's end: here both empty, one length byte each, after
+            // the magic (8), version (4), "World" (6), seed (4), time (8) and "b" (2).
+            const int namesAt = 8 + 4 + 6 + 4 + 8 + 2;
+            Assert.AreEqual(0, current[namesAt]);
+            Assert.AreEqual(0, current[namesAt + 1]);
+            var version1 = new List<byte>(current);
+            version1.RemoveRange(namesAt, 2);
+            version1[8] = 1;
+
+            using var old = new MemoryStream(version1.ToArray());
+            GameSave read = GameSaveFile.Read(old);
+            Assert.AreEqual(1, read.Header.Version);
+            Assert.AreEqual(7, read.Header.Seed);
+            Assert.AreEqual("", read.Header.SaveName);
+            Assert.AreEqual(3f, read.Player.Coins);
+        }
+
+        // GL206, GL207: the default save name, and the file a name is kept in.
+        [Test]
+        public void SaveNames_DefaultAndFileName()
+        {
+            var time = new System.DateTime(2026, 10, 30, 15, 4, 59);
+            Assert.AreEqual("Hello World - World - 2026-10-30 15:04", SaveNames.DefaultSaveName("Hello World", "World", time));
+            Assert.AreEqual("Hello World - World - 2026-10-30 15:04", SaveNames.DefaultSaveName("  ", "World", time), "No name: the default world name.");
+            Assert.AreEqual("Hello World - World - 2026-10-30 15-04.clubesave", SaveNames.FileNameFor("Hello World - World - 2026-10-30 15:04"));
+            Assert.AreEqual("a-b-c.clubesave", SaveNames.FileNameFor(" a/b?c. "));
+            Assert.AreEqual("Save.clubesave", SaveNames.FileNameFor("???".Replace("?", "")));
+            Assert.AreEqual(SaveNames.MaxLength, SaveNames.Clean(new string('x', 100)).Length);
+        }
+
         [Test]
         public void Header_ReadsAlone_AndANewerVersionIsRefused()
         {
             string path = Path.Combine(Application.temporaryCachePath, "save-test.clubesave");
             try
             {
-                var save = new GameSave { Header = new SaveHeader { Mode = "World", Seed = 4242, Build = "test" } };
+                var save = new GameSave { Header = new SaveHeader { Mode = "World", Seed = 4242, Build = "test", SaveName = "My base", WorldName = "Hello World" } };
                 save.Placed.Add(new PlacedSave { Item = "furnace", Position = new Vector3(1f, 2f, 3f), Stamped = { new Vector3Int(4, 8, 4) } });
                 GameSaveFile.Write(path, save);
 
@@ -106,6 +148,8 @@ namespace Clube.Core.Tests
                 Assert.AreEqual(SaveHeader.CurrentVersion, header.Version);
                 Assert.AreEqual("World", header.Mode);
                 Assert.AreEqual(4242, header.Seed);
+                Assert.AreEqual("My base", header.SaveName);
+                Assert.AreEqual("Hello World", header.WorldName);
                 Assert.IsNull(GameSaveFile.Read(path).Player, "Saved before there was a player.");
                 Assert.AreEqual(new Vector3Int(4, 8, 4), GameSaveFile.Read(path).Placed[0].Stamped[0]);
 

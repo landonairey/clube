@@ -109,6 +109,9 @@ namespace Clube.Core
             writer.Write(header.Seed);
             writer.Write(header.SavedAt.ToUniversalTime().Ticks);
             writer.Write(header.Build ?? "");
+            // Version 2.
+            writer.Write(header.SaveName ?? "");
+            writer.Write(header.WorldName ?? "");
         }
 
         private static SaveHeader ReadHeader(BinaryReader reader)
@@ -123,7 +126,7 @@ namespace Clube.Core
             {
                 throw new InvalidDataException($"The save is version {version}, newer than this build reads ({SaveHeader.CurrentVersion}).");
             }
-            return new SaveHeader
+            var header = new SaveHeader
             {
                 Version = version,
                 Mode = reader.ReadString(),
@@ -131,6 +134,12 @@ namespace Clube.Core
                 SavedAt = new DateTime(reader.ReadInt64(), DateTimeKind.Utc),
                 Build = reader.ReadString(),
             };
+            if (version >= 2)
+            {
+                header.SaveName = reader.ReadString();
+                header.WorldName = reader.ReadString();
+            }
+            return header;
         }
 
         private static void WritePlayer(BinaryWriter w, PlayerSave player)

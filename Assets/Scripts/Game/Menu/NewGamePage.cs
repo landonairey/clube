@@ -1,10 +1,11 @@
+using Clube.Core;
 using UnityEngine;
 
 namespace Clube.Game
 {
     /// <summary>
-    /// The main menu's new-game page (GL203): the game mode, with only the playable ones enabled (the rest
-    /// greyed out as work in progress), and the world seed, typed or rolled. Any text makes a seed: a number
+    /// The main menu's new-game page (GL203, GL206): the game mode, with only the playable ones enabled (the rest
+    /// greyed out as work in progress), the world's name, and its seed, typed or rolled. Any text makes a seed: a number
     /// is used as it is, other text is hashed (<see cref="SeedFrom"/>).
     /// </summary>
     public sealed class NewGamePage
@@ -33,6 +34,7 @@ namespace Clube.Game
         };
 
         private GameMode selected = GameMode.World;
+        private string worldName = SaveNames.DefaultWorldName;
         private string seedText;
 
         public NewGamePage(int defaultSeed)
@@ -41,6 +43,9 @@ namespace Clube.Game
         }
 
         public GameMode Mode => selected;
+
+        /// <summary>The world's name as typed (GL206); <see cref="GameSession"/> takes the default for an empty one.</summary>
+        public string WorldName => worldName;
 
         /// <summary>The seed the text makes.</summary>
         public int Seed => SeedFrom(seedText);
@@ -92,6 +97,11 @@ namespace Clube.Game
             }
 
             GUILayout.Space(14f);
+            GUILayout.Label("World name", styles.Label);
+            GUILayout.Space(4f);
+            worldName = GUILayout.TextField(worldName, SaveNames.MaxLength, styles.Field, GUILayout.Height(36f));
+
+            GUILayout.Space(10f);
             GUILayout.Label("World seed", styles.Label);
             GUILayout.Space(4f);
             GUILayout.BeginHorizontal();

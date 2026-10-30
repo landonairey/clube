@@ -36,10 +36,19 @@ namespace Clube.Core
     /// </summary>
     public sealed class SaveHeader
     {
-        /// <summary>Format version written by this build (S1). Raise it when the format changes, and upgrade older ones on read.</summary>
-        public const int CurrentVersion = 1;
+        /// <summary>
+        /// Format version written by this build (S1). Raise it when the format changes, and upgrade older ones on read.
+        /// 1: the first. 2: the save's and the world's names (GL206, GL207).
+        /// </summary>
+        public const int CurrentVersion = 2;
 
         public int Version = CurrentVersion;
+
+        /// <summary>What the player called the save (GL207); empty in a version 1 save.</summary>
+        public string SaveName = "";
+
+        /// <summary>What the player called the world on the new-game page (GL206); empty in a version 1 save.</summary>
+        public string WorldName = "";
 
         /// <summary>The game mode it was played in, e.g. "World".</summary>
         public string Mode = "";

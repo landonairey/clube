@@ -90,13 +90,21 @@ namespace Clube.Game
             restoring = null;
         }
 
-        /// <summary>Everything a save keeps, as it is now.</summary>
-        public GameSave Capture()
+        /// <summary>The world's name (GL206): the session's, or the default when played from the Editor.</summary>
+        public string WorldName => GameSession.IsActive ? GameSession.WorldName : SaveNames.DefaultWorldName;
+
+        /// <summary>The name a save gets when the player doesn't type one (GL207): world, mode and the time now.</summary>
+        public string DefaultSaveName => SaveNames.DefaultSaveName(WorldName, Mode.ToString(), DateTime.Now);
+
+        /// <summary>Everything a save keeps, as it is now, under a name.</summary>
+        public GameSave Capture(string saveName)
         {
             var save = new GameSave
             {
                 Header = new SaveHeader
                 {
+                    SaveName = saveName,
+                    WorldName = WorldName,
                     Mode = Mode.ToString(),
                     Seed = worldView.Config.Terrain.Seed,
                     SavedAt = DateTime.UtcNow,
@@ -123,8 +131,11 @@ namespace Clube.Game
             return save;
         }
 
-        /// <summary>Writes the game to the save slot; false, with the reason, when it couldn't.</summary>
-        public bool Save(out string problem)
+        /// <summary>
+        /// Writes the game as a save of this name, replacing one of the same name (GL207); an empty name takes
+        /// <see cref="DefaultSaveName"/>. False, with the reason, when it couldn't.
+        /// </summary>
+        public bool Save(string saveName, out string problem)
         {
             if (restoring != null)
             {
@@ -132,7 +143,8 @@ namespace Clube.Game
                 problem = "The game is still loading.";
                 return false;
             }
-            return SaveSlot.Write(Capture(), out problem);
+            string name = SaveNames.Clean(saveName);
+            return SaveSlots.Write(Capture(name.Length > 0 ? name : DefaultSaveName), out problem);
         }
     }
 }

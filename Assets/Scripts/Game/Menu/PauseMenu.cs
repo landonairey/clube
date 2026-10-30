@@ -1,3 +1,4 @@
+using Clube.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -6,13 +7,16 @@ namespace Clube.Game
     /// <summary>
     /// Esc in the game (GL204): a small popup over a stopped game with Back, Save and Exit, and Exit Without
     /// Saving. Esc first closes whatever player screen is open (inventory, journal, a station, the merchant);
-    /// with none open it opens the popup, and Esc again goes back. Saving goes through
-    /// <see cref="GameSessionHost"/>; both exits return to the main menu.
+    /// with none open it opens the popup, and Esc again goes back. Save and Exit first asks for the save's name
+    /// (GL207), filled in with the default (world, mode, time); saving goes through <see cref="GameSessionHost"/>.
+    /// Both exits return to the main menu.
     /// </summary>
     public class PauseMenu : MonoBehaviour
     {
         private const float Width = 300f;
+        private const float NamingWidth = 460f;
         private const float ButtonHeight = 40f;
+        private const string NameField = "SaveName";
 
         [Tooltip("Saves the game for Save and Exit.")]
         [SerializeField]
@@ -28,10 +32,17 @@ namespace Clube.Game
         private StationPanel stationPanel;
         private MerchantPanel merchantPanel;
         private string problem;
+
+        // The save name being typed, while Save and Exit asks for one (GL207); null otherwise.
+        private string saveName;
+        private bool focusName;
         private CursorLockMode cursorBefore;
         private bool cursorVisibleBefore;
         private GUIStyle titleStyle;
         private GUIStyle buttonStyle;
+        private GUIStyle labelStyle;
+        private GUIStyle hintStyle;
+        private GUIStyle fieldStyle;
         private GUIStyle problemStyle;
 
         public bool IsOpen { get; private set; }
@@ -63,7 +74,13 @@ namespace Clube.Game
             {
                 return;
             }
-            if (IsOpen)
+            if (IsOpen && saveName != null)
+            {
+                // Naming the save: back to the popup.
+                saveName = null;
+                problem = null;
+            }
+            else if (IsOpen)
             {
                 SetOpen(false);
             }
@@ -112,6 +129,7 @@ namespace Clube.Game
         {
             IsOpen = open;
             problem = null;
+            saveName = null;
             // The game stops under the popup: the clock, stations and the player.
             Time.timeScale = open ? 0f : 1f;
             if (open)
@@ -150,10 +168,20 @@ namespace Clube.Game
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = previous;
 
-            float height = 56f + 3f * (ButtonHeight + 10f) + (problem != null ? 40f : 0f) + 16f;
-            var area = new Rect((Screen.width - Width) * 0.5f, (Screen.height - height) * 0.5f, Width, height);
-            InventoryGridGui.Panel(area);
-            GUILayout.BeginArea(new Rect(area.x + 20f, area.y + 12f, area.width - 40f, area.height - 24f));
+            if (saveName != null)
+            {
+                DrawNaming();
+            }
+            else
+            {
+                DrawPaused();
+            }
+        }
+
+        private void DrawPaused()
+        {
+            float height = 56f + 3f * (ButtonHeight + 10f) + 16f;
+            BeginPopup(Width, height);
             GUILayout.Label("Paused", titleStyle);
             GUILayout.Space(8f);
             if (GUILayout.Button("Back", buttonStyle, GUILayout.Height(ButtonHeight)))
@@ -163,13 +191,51 @@ namespace Clube.Game
             GUILayout.Space(10f);
             if (GUILayout.Button("Save and Exit", buttonStyle, GUILayout.Height(ButtonHeight)))
             {
-                SaveAndExit();
+                StartNaming();
             }
             GUILayout.Space(10f);
             if (GUILayout.Button("Exit Without Saving", buttonStyle, GUILayout.Height(ButtonHeight)))
             {
                 Exit();
             }
+            GUILayout.EndArea();
+        }
+
+        // The save's name (GL207), filled in with the default: world, mode and the time.
+        private void DrawNaming()
+        {
+            // Enter saves; read before the text field takes the key.
+            Event current = Event.current;
+            bool enter = current.type == EventType.KeyDown && (current.keyCode == KeyCode.Return || current.keyCode == KeyCode.KeypadEnter);
+
+            float height = 56f + 22f + 40f + 22f + ButtonHeight + 28f + (problem != null ? 40f : 0f);
+            BeginPopup(NamingWidth, height);
+            GUILayout.Label("Save game", titleStyle);
+            GUILayout.Space(6f);
+            GUILayout.Label("Save name", labelStyle);
+            GUI.SetNextControlName(NameField);
+            saveName = GUILayout.TextField(saveName, SaveNames.MaxLength, fieldStyle, GUILayout.Height(34f));
+            if (focusName)
+            {
+                GUI.FocusControl(NameField);
+                focusName = false;
+            }
+            string name = SaveNames.Clean(saveName);
+            GUILayout.Label(name.Length == 0 ? "Empty: saved as " + host.DefaultSaveName
+                : SaveSlots.Exists(name) ? "Replaces the save with this name." : " ", hintStyle);
+            GUILayout.Space(4f);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Cancel", buttonStyle, GUILayout.Height(ButtonHeight)))
+            {
+                saveName = null;
+                problem = null;
+            }
+            GUILayout.Space(10f);
+            if (GUILayout.Button("Save", buttonStyle, GUILayout.Height(ButtonHeight)) || enter)
+            {
+                SaveAndExit();
+            }
+            GUILayout.EndHorizontal();
             if (problem != null)
             {
                 GUILayout.Space(6f);
@@ -178,14 +244,29 @@ namespace Clube.Game
             GUILayout.EndArea();
         }
 
-        private void SaveAndExit()
+        // A dark panel in the middle of the screen, with a layout area inside it (end it with GUILayout.EndArea).
+        private static void BeginPopup(float width, float height)
+        {
+            width = Mathf.Min(width, Screen.width - 32f);
+            var area = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
+            InventoryGridGui.Panel(area);
+            GUILayout.BeginArea(new Rect(area.x + 20f, area.y + 12f, area.width - 40f, area.height - 24f));
+        }
+
+        private void StartNaming()
         {
             if (host == null)
             {
-                problem = "nothing here to save.";
                 return;
             }
-            if (!host.Save(out string why))
+            saveName = host.DefaultSaveName;
+            focusName = true;
+            problem = null;
+        }
+
+        private void SaveAndExit()
+        {
+            if (!host.Save(saveName, out string why))
             {
                 problem = why;
                 return;
@@ -214,6 +295,9 @@ namespace Clube.Game
                 normal = { textColor = Color.white },
             };
             buttonStyle = new GUIStyle(GUI.skin.button) { fontSize = 16 };
+            labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 14, normal = { textColor = Color.white } };
+            hintStyle = new GUIStyle(GUI.skin.label) { fontSize = 12, wordWrap = true, normal = { textColor = new Color(0.72f, 0.72f, 0.7f) } };
+            fieldStyle = new GUIStyle(GUI.skin.textField) { fontSize = 16, alignment = TextAnchor.MiddleLeft, padding = new RectOffset(8, 8, 4, 4) };
             problemStyle = new GUIStyle(GUI.skin.label) { wordWrap = true, normal = { textColor = new Color(1f, 0.6f, 0.5f) } };
         }
     }

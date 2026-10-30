@@ -1,4 +1,4 @@
-using System;
+using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
 
@@ -7,8 +7,9 @@ namespace Clube.Game
     /// <summary>
     /// The demo's main menu (GL201, GL202), the first scene of the exe: a splash of the world with the title,
     /// New, Load and Exit, and the build's version in the corner (<see cref="BuildInfo"/>). New opens the
-    /// new-game page (<see cref="NewGamePage"/>); Load carries on the saved game, and is greyed out without
-    /// one. Drawn with IMGUI like the rest of the game's screens, and sized to fit small windows.
+    /// new-game page (<see cref="NewGamePage"/>); Load opens the list of saved games (<see cref="LoadGamePage"/>,
+    /// GL208), and is greyed out without any. Drawn with IMGUI like the rest of the game's screens, and sized
+    /// to fit small windows.
     /// </summary>
     public class MainMenu : MonoBehaviour
     {
@@ -30,7 +31,8 @@ namespace Clube.Game
 
         private MenuStyles styles;
         private NewGamePage newGame;
-        private SaveHeader save;
+        private LoadGamePage loadGame;
+        private List<SaveEntry> saves;
         private string problem;
 
         private void Awake()
@@ -40,7 +42,7 @@ namespace Clube.Game
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             GameSession.End();
-            save = SaveSlot.ReadHeader();
+            saves = SaveSlots.List();
         }
 
         private void OnGUI()
@@ -48,11 +50,15 @@ namespace Clube.Game
             styles ??= new MenuStyles();
             DrawBackground();
 
-            float width = Mathf.Min(Screen.width - 32f, newGame != null ? 460f : 520f);
+            float width = Mathf.Min(Screen.width - 32f, newGame != null || loadGame != null ? 460f : 520f);
             var column = new Rect((Screen.width - width) * 0.5f, 16f, width, Screen.height - 48f);
             if (newGame != null)
             {
                 DrawNewGame(column);
+            }
+            else if (loadGame != null)
+            {
+                DrawLoadGame(column);
             }
             else
             {
@@ -79,22 +85,17 @@ namespace Clube.Game
             }
             GUILayout.Space(10f);
             bool wasEnabled = GUI.enabled;
-            GUI.enabled = save != null;
+            GUI.enabled = saves.Count > 0;
             if (GUILayout.Button("Load", styles.Button, GUILayout.Height(48f)))
             {
-                Load();
+                OpenLoadGame();
             }
             GUI.enabled = wasEnabled;
-            GUILayout.Label(save != null ? Describe(save) : "No saved game yet", styles.Caption);
+            GUILayout.Label(SavesCaption(), styles.Caption);
             GUILayout.Space(10f);
             if (GUILayout.Button("Exit", styles.Button, GUILayout.Height(48f)))
             {
                 GameScenes.Quit();
-            }
-            if (problem != null)
-            {
-                GUILayout.Space(8f);
-                GUILayout.Label(problem, styles.Caption);
             }
             GUILayout.EndVertical();
             GUILayout.FlexibleSpace();
@@ -105,18 +106,35 @@ namespace Clube.Game
 
         private void DrawNewGame(Rect column)
         {
-            // A darker panel behind the page, so the options read over the picture.
-            var panel = new Rect(column.x - 12f, column.y + column.height * 0.5f - 290f, column.width + 24f, 580f);
-            Shade(panel);
-
-            switch (newGame.Draw(new Rect(column.x + 12f, panel.y + 10f, column.width - 24f, panel.height - 20f), styles))
+            Rect panel = Page(column, 650f);
+            switch (newGame.Draw(Inside(panel), styles))
             {
                 case NewGamePage.Choice.Back:
                     newGame = null;
                     break;
                 case NewGamePage.Choice.Start:
-                    GameSession.StartNew(newGame.Mode, newGame.Seed);
+                    GameSession.StartNew(newGame.Mode, newGame.Seed, newGame.WorldName);
                     GameScenes.LoadGame();
+                    break;
+            }
+        }
+
+        private void DrawLoadGame(Rect column)
+        {
+            Rect panel = Page(column, 620f);
+            LoadGamePage.Choice choice = loadGame.Draw(Inside(panel), styles);
+            if (problem != null)
+            {
+                GUI.Label(new Rect(panel.x, panel.yMax + 4f, panel.width, 40f), problem, styles.Caption);
+            }
+            switch (choice)
+            {
+                case LoadGamePage.Choice.Back:
+                    loadGame = null;
+                    problem = null;
+                    break;
+                case LoadGamePage.Choice.Load:
+                    Load(loadGame.Selected);
                     break;
             }
         }
@@ -126,9 +144,20 @@ namespace Clube.Game
             newGame = new NewGamePage(worldConfig != null ? worldConfig.Terrain.Seed : 1);
         }
 
-        private void Load()
+        private void OpenLoadGame()
         {
-            GameSave loaded = SaveSlot.Read(out string why);
+            saves = SaveSlots.List();
+            loadGame = new LoadGamePage(saves);
+            problem = null;
+        }
+
+        private void Load(SaveEntry entry)
+        {
+            if (entry == null)
+            {
+                return;
+            }
+            GameSave loaded = SaveSlots.Read(entry.Path, out string why);
             if (loaded == null)
             {
                 problem = "Couldn't load the save: " + why;
@@ -136,6 +165,29 @@ namespace Clube.Game
             }
             GameSession.StartLoaded(loaded);
             GameScenes.LoadGame();
+        }
+
+        private string SavesCaption()
+        {
+            if (saves.Count == 0)
+            {
+                return "No saved game yet";
+            }
+            return saves.Count == 1 ? "1 saved game" : $"{saves.Count} saved games";
+        }
+
+        // A shaded page in the middle of the column, as tall as it wants or as the window allows.
+        private Rect Page(Rect column, float height)
+        {
+            height = Mathf.Min(height, column.height);
+            var panel = new Rect(column.x - 12f, column.y + (column.height - height) * 0.5f, column.width + 24f, height);
+            Shade(panel);
+            return panel;
+        }
+
+        private static Rect Inside(Rect panel)
+        {
+            return new Rect(panel.x + 24f, panel.y + 16f, panel.width - 48f, panel.height - 32f);
         }
 
         private void DrawBackground()
@@ -152,7 +204,7 @@ namespace Clube.Game
                 GUI.DrawTexture(screen, Texture2D.whiteTexture);
                 GUI.color = previous;
             }
-            // Darker towards the middle column, where the text is.
+            // A little darker all over, so the text reads.
             Color before = GUI.color;
             GUI.color = new Color(0f, 0f, 0f, 0.35f);
             GUI.DrawTexture(screen, Texture2D.whiteTexture);
@@ -166,12 +218,6 @@ namespace Clube.Game
             GUI.color = new Color(0.05f, 0.06f, 0.07f, 0.72f);
             GUI.DrawTexture(panel, Texture2D.whiteTexture);
             GUI.color = previous;
-        }
-
-        private static string Describe(SaveHeader header)
-        {
-            DateTime saved = header.SavedAt.ToLocalTime();
-            return $"{header.Mode} · seed {header.Seed} · saved {saved:d MMM yyyy, HH:mm}";
         }
     }
 }
