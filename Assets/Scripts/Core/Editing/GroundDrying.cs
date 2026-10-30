@@ -70,6 +70,27 @@ namespace Clube.Core
             return dried;
         }
 
+        /// <summary>Every sample still drying, with its material and the day it's ready, for saving (GL205).</summary>
+        public IEnumerable<(Vector3Int Sample, VoxelMaterial Material, double ReadyAt)> Waiting
+        {
+            get
+            {
+                foreach (Drying drying in waiting)
+                {
+                    yield return (drying.Sample, drying.Material, drying.ReadyAt);
+                }
+            }
+        }
+
+        /// <summary>Puts back a sample that was drying when the game was saved (GL205).</summary>
+        public void Restore(Vector3Int sample, VoxelMaterial material, double readyAt)
+        {
+            if (material != null && material.DriesInto != null)
+            {
+                waiting.Add(new Drying(sample, material, readyAt));
+            }
+        }
+
         /// <summary>Days until the next sample dries, or null with nothing drying.</summary>
         public double? NextReadyAt
         {

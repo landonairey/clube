@@ -263,6 +263,11 @@ namespace Clube.Core
 
             runtimeConfig = Instantiate(config);
             runtimeConfig.name = $"{config.name} (Play mode copy)";
+            // e.g. a new game's seed (GL203), before the first chunk is generated.
+            foreach (IWorldConfigOverride change in GetComponents<IWorldConfigOverride>())
+            {
+                change.Apply(runtimeConfig);
+            }
             renderers = new ChunkRendererPool(transform, chunkColliders, RenderMaterials());
             StartWorld();
         }

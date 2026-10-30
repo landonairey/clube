@@ -88,6 +88,17 @@ namespace Clube.Core
             Changed?.Invoke();
         }
 
+        /// <summary>Sets a skill's experience as a save had it (GL205), raising no level events.</summary>
+        public void SetExperience(SkillType skill, float amount)
+        {
+            if (skill == SkillType.None)
+            {
+                return;
+            }
+            experience[(int)skill] = Mathf.Max(0f, amount);
+            Changed?.Invoke();
+        }
+
         /// <summary>Raises a skill to at least <paramref name="level"/> (cheats, tests); never lowers it.</summary>
         public void RaiseTo(SkillType skill, int level)
         {
