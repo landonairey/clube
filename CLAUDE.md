@@ -422,18 +422,20 @@ and actions (a finished recipe by the skill it trains: crafting, smelting, smith
 `PlayerBuilder.Placed`, `PlayerParcels.Bought`) play them on one 2D AudioSource. `PlayerSounds.EffectsOn` (lab panel, Sound
 section, `SoundControls`) switches all of it, and is off until the clips are picked properly. Clips are Kenney CC0 in
 `Assets/Audio/`; sources in `Docs/audio-credits.md`.
-Twenty-third pass (GL200-GL205, `Docs/20261030 clube-backlog.md`): the demo exe is the game. *Clube → Build → Game demo*
+Twenty-third pass (GL200-GL208, `Docs/20261030 clube-backlog.md`, `Docs/20261030b clube-backlog.md`): the demo exe is the game. *Clube → Build → Game demo*
 (`DemoBuild`) builds `MainMenu` and WorldLab, writing the version from git into `Resources/BuildInfo.txt` for the build
 (gitignored, removed after; `BuildInfo.Version`). `MainMenu` (Game/Menu) has New, Load, Exit over a render of the valley;
-New opens `NewGamePage` (mode: only World playable; seed, typed or rolled). `GameSession` (static, Game/Session) carries the
-mode, seed and loaded save into the scene; `GameScenes` names the scenes. In WorldLab, `GameSessionHost` (on World) is an
+New opens `NewGamePage` (mode: only World playable; world name, "Hello World" by default; seed, typed or rolled), Load opens
+`LoadGamePage` (saves newest first, the newest selected). `GameSession` (static, Game/Session) carries the mode, seed, world
+name and loaded save into the scene; `GameScenes` names the scenes. In WorldLab, `GameSessionHost` (on World) is an
 `IWorldConfigOverride` (Core: changes `WorldView`'s play copy of its config in Awake) that sets the seed, restores a save and
 captures one; `PauseMenu` is Esc (closes an open player screen first; Back, Save and Exit, Exit Without Saving;
-`Time.timeScale` 0). A menu game starts as the player (`PlayerCameraToggle`). Saving (first pass of S1-S4) is `Core/Saving`:
-`GameSave` (plain data, ids not references), `GameSaveFile` (header plain, body gzipped, `SaveHeader.CurrentVersion`),
-`WorldSaving` (edited chunks; `World.EditedChunks`, `World.Keep` puts them back before streaming), `StackSaving`; in Game
-`PlayerSaveState` (on Player), `PlacedObjectSaving`, `ItemLookup` (catalog, then `OreKnowledge.DisguiseById`), `SaveSlot`
-(one file, `Application.persistentDataPath/Saves/world.clubesave`). Restore hooks: `PlayerSpawn.PlaceAt`,
+`Time.timeScale` 0; Save and Exit asks for a name, filled in with `<world> - <mode> - <time>`). A menu game starts as the player (`PlayerCameraToggle`). Saving (first pass of S1-S4) is `Core/Saving`:
+`GameSave` (plain data, ids not references), `GameSaveFile` (header plain, body gzipped, `SaveHeader.CurrentVersion` 2: names
+added; version 1 still reads), `WorldSaving` (edited chunks; `World.EditedChunks`, `World.Keep` puts them back before
+streaming), `StackSaving`, `SaveNames` (defaults, file names); in Game `PlayerSaveState` (on Player), `PlacedObjectSaving`,
+`ItemLookup` (catalog, then `OreKnowledge.DisguiseById`), `SaveSlots` (one file per save, named after it, in
+`Application.persistentDataPath/Saves/`; the same name replaces a save). Restore hooks: `PlayerSpawn.PlaceAt`,
 `PlayerParcels.Restore`, `GameClock.Restore`, `TerrainStructure.Restore`, `SkillSet.SetExperience`, `MiningJournal.Restore`,
 `GroundDrying.Restore`. When testing by pumping `SendMessage("Update")`, note it also runs disabled components (a disabled
 `PlayerController` then resets the head's pitch); step real frames to check look angles.
