@@ -164,6 +164,38 @@ namespace Clube.Game
             return disguise;
         }
 
+        /// <summary>
+        /// The "? ore" a saved id names (GL205): the generic one, or the copy for one ore ("unknown-" and the
+        /// real item's id), made again in a loaded game. Null when the id isn't a "? ore".
+        /// </summary>
+        public ItemDefinition DisguiseById(string id, Func<string, ItemDefinition> findReal)
+        {
+            const string Prefix = "unknown-";
+            if (unknownOre == null || string.IsNullOrEmpty(id))
+            {
+                return null;
+            }
+            if (id == unknownOre.Id)
+            {
+                return unknownOre;
+            }
+            if (!id.StartsWith(Prefix, StringComparison.Ordinal))
+            {
+                return null;
+            }
+            ItemDefinition real = findReal(id.Substring(Prefix.Length));
+            if (real == null)
+            {
+                return null;
+            }
+            VoxelMaterial material = null;
+            foreach (HiddenOres group in groups)
+            {
+                material ??= group.Materials.Find(candidate => candidate != null && candidate.FinalDrop == real);
+            }
+            return DisguiseFor(real, material);
+        }
+
         private bool Reached(HiddenOres group)
         {
             return skills != null && skills.Skills.Has(skill, group.Level);

@@ -59,6 +59,7 @@ namespace Clube.Game
 
         private readonly List<Vector3Int> stamped = new List<Vector3Int>();
         private Vector3Int origin;
+        private List<Vector3Int> restored;
         private GameObject glow;
         private Mesh glowMesh;
         private WorldView worldView;
@@ -224,6 +225,22 @@ namespace Clube.Game
             }
         }
 
+        /// <summary>
+        /// Stands the structure in the samples a save says it stood in (GL205), which the saved ground already
+        /// holds: call before its first frame, in place of writing its parts again.
+        /// </summary>
+        public void Restore(IEnumerable<Vector3Int> samples)
+        {
+            restored = new List<Vector3Int>(samples);
+        }
+
+        // The sample at the structure's centre, on the ground it stands on.
+        private Vector3Int Origin(World world)
+        {
+            Vector3 local = worldView.transform.InverseTransformPoint(transform.position) + Vector3.up * (world.Grid.VoxelSize * 0.5f);
+            return world.Grid.WorldToNearestSample(local);
+        }
+
         // Writes each part into an air sample around the centre.
         private void Stamp()
         {
@@ -233,8 +250,15 @@ namespace Clube.Game
                 return;
             }
             float iso = worldView.Config.IsoLevel;
-            Vector3 local = worldView.transform.InverseTransformPoint(transform.position) + Vector3.up * (world.Grid.VoxelSize * 0.5f);
-            origin = world.Grid.WorldToNearestSample(local);
+            origin = Origin(world);
+            if (restored != null)
+            {
+                // Loaded from a save (GL205): its samples are already in the saved ground.
+                stamped.AddRange(restored);
+                restored = null;
+                IsStanding = stamped.Count > 0;
+                return;
+            }
             // Turned as the object was placed (R turns it a quarter, GL28), so a furnace's mouth faces its front.
             int quarters = Mathf.RoundToInt(transform.eulerAngles.y / 90f) & 3;
             // Each column settles on the ground under it, all before any part is written: a part higher up

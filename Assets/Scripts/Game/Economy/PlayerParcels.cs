@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
 
@@ -33,6 +34,15 @@ namespace Clube.Game
         private ParcelOffer offer;
         private NotOwnedNotice notOwned;
 
+        // Parcels a save owned (GL205), granted as soon as the land is set up.
+        private List<Vector2Int> restoring;
+
+        /// <summary>Owns what a save owned (GL205), in place of the parcel the player lands in.</summary>
+        public void Restore(IEnumerable<Vector2Int> owned)
+        {
+            restoring = new List<Vector2Int>(owned);
+        }
+
         /// <summary>The land and its prices; null until the world exists.</summary>
         public LandParcels Parcels { get; private set; }
 
@@ -54,6 +64,14 @@ namespace Clube.Game
             if (Parcels == null && worldView != null && worldView.IsReady)
             {
                 Parcels = new LandParcels(sizeInChunks * worldView.World.Grid.ChunkWorldSize.x, firstPrice, priceStep);
+            }
+            if (Parcels != null && restoring != null)
+            {
+                foreach (Vector2Int parcel in restoring)
+                {
+                    Parcels.Grant(parcel);
+                }
+                restoring = null;
             }
 
             // The first parcel is the one the player lands in.

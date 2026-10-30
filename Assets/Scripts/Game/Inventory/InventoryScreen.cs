@@ -73,6 +73,15 @@ namespace Clube.Game
             }
         }
 
+        /// <summary>Closes the screen (Esc, GL204).</summary>
+        public void Close()
+        {
+            if (IsOpen)
+            {
+                SetOpen(false);
+            }
+        }
+
         private void SetOpen(bool open)
         {
             IsOpen = open;

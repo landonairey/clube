@@ -24,6 +24,9 @@ namespace Clube.Game
 
         private readonly GroundDrying drying = new GroundDrying();
 
+        /// <summary>What's drying, for saving and loading (GL205).</summary>
+        public GroundDrying Drying => drying;
+
         /// <summary>Samples still drying.</summary>
         public int Count => drying.Count;
 

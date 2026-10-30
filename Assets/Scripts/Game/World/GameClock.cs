@@ -20,6 +20,12 @@ namespace Clube.Game
         /// <summary>In-game days since the clock started, fractions included.</summary>
         public double Days { get; private set; }
 
+        /// <summary>Sets the clock to where a save left it (GL205).</summary>
+        public void Restore(double days)
+        {
+            Days = System.Math.Max(0d, days);
+        }
+
         public float DayLengthSeconds
         {
             get => dayLengthSeconds;

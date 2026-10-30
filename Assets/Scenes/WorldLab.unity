@@ -576,6 +576,8 @@ GameObject:
   - component: {fileID: 1350119471}
   - component: {fileID: 1350119472}
   - component: {fileID: 1350119473}
+  - component: {fileID: 1350119475}
+  - component: {fileID: 1350119474}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -920,6 +922,36 @@ MonoBehaviour:
   birchLeaves: {r: 0.27, g: 0.36, b: 0.19, a: 1}
   mapleBark: {r: 0.33, g: 0.22, b: 0.14, a: 1}
   mapleLeaves: {r: 0.54, g: 0.34, b: 0.17, a: 1}
+--- !u!114 &1350119474
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed5d726e48d17ea4aacd4e449d902b9d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PauseMenu
+  host: {fileID: 1350119475}
+  player: {fileID: 1697135563}
+--- !u!114 &1350119475
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fccd651c15506d8459884751742aa0b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.GameSessionHost
+  catalog: {fileID: 11400000, guid: 529535e765d597b47b63cf6a57402d86, type: 2}
+  player: {fileID: 1697135597}
+  clock: {fileID: 1350119469}
+  drying: {fileID: 1350119468}
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -1091,6 +1123,7 @@ GameObject:
   - component: {fileID: 1697135595}
   - component: {fileID: 1697135594}
   - component: {fileID: 1697135593}
+  - component: {fileID: 1697135597}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1942,6 +1975,18 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &1697135597
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78d1be2aafcf26041820add94d061f1a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSaveState
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
