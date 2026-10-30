@@ -1,18 +1,16 @@
 using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace Clube.Game
 {
     /// <summary>
-    /// The mining journal (GL73): Journal (Q) opens a field notebook on graph paper, two pages
-    /// side by side, three ores to a page. An ore the player hasn't found is a blank numbered entry;
-    /// a found one has a sketch (<see cref="OreSketch"/>) and notes: where it was first found, the
-    /// grades mined, its hardness, luster, colour and feel (<see cref="MineralNotes"/>), and its
-    /// uses once the player has made them. One found before the player can tell it apart is an
-    /// "Unknown Ore": the outline of its sketch and the Mining level that tells it apart (GL77, GL91). A short notice says when
-    /// a new entry is written.
+    /// The mining journal (GL73), now the ore pages of the field log (GL215, <see cref="FieldLogScreen"/>, Q): a field
+    /// notebook on graph paper, two pages side by side, three ores to a page. An ore the player hasn't found is a blank
+    /// numbered entry; a found one has a sketch (<see cref="OreSketch"/>) and notes: where it was first found, the
+    /// grades mined, its hardness, luster, colour and feel (<see cref="MineralNotes"/>), and its uses once the player
+    /// has made them. One found before the player can tell it apart is an "Unknown Ore": the outline of its sketch and
+    /// the Mining level that tells it apart (GL77, GL91). A short notice says when a new entry is written.
     /// </summary>
     [RequireComponent(typeof(PlayerJournal))]
     public class JournalScreen : MonoBehaviour
@@ -20,99 +18,46 @@ namespace Clube.Game
         private const int OresPerPage = 3;
         private const float NoticeSeconds = 4f;
 
-        [Tooltip("Opens and closes the journal (Q).")]
-        [SerializeField]
-        private InputActionReference toggleAction;
-
         private PlayerJournal journal;
-        private PlayerController player;
-        private InventoryScreen inventoryScreen;
-        private StationPanel stationPanel;
-        private MerchantPanel merchantPanel;
-        private CraftingJournalScreen craftingJournal;
+        private FieldLogScreen fieldLog;
         private int spread;
         private string notice;
         private float noticeUntil;
 
-        public bool IsOpen { get; private set; }
-
         private void Awake()
         {
             journal = GetComponent<PlayerJournal>();
-            player = GetComponent<PlayerController>();
-            inventoryScreen = GetComponent<InventoryScreen>();
-            stationPanel = GetComponent<StationPanel>();
-            merchantPanel = GetComponent<MerchantPanel>();
-            craftingJournal = GetComponent<CraftingJournalScreen>();
+            fieldLog = GetComponent<FieldLogScreen>();
         }
 
         private void OnEnable()
         {
-            toggleAction?.action.Enable();
             journal.Journal.Discovered += OnDiscovered;
         }
 
         private void OnDisable()
         {
             journal.Journal.Discovered -= OnDiscovered;
-            if (IsOpen)
-            {
-                SetOpen(false);
-            }
-        }
-
-        private void Update()
-        {
-            if (player != null && !player.enabled)
-            {
-                return;
-            }
-            // One screen at a time.
-            bool otherOpen = (inventoryScreen != null && inventoryScreen.IsOpen)
-                || (stationPanel != null && stationPanel.IsOpen)
-                || (merchantPanel != null && merchantPanel.IsOpen)
-                || (craftingJournal != null && craftingJournal.IsOpen);
-            if (toggleAction != null && toggleAction.action.WasPressedThisFrame() && !otherOpen)
-            {
-                SetOpen(!IsOpen);
-            }
-        }
-
-        /// <summary>Closes the journal (Esc, GL204).</summary>
-        public void Close()
-        {
-            if (IsOpen)
-            {
-                SetOpen(false);
-            }
-        }
-
-        private void SetOpen(bool open)
-        {
-            IsOpen = open;
-            if (player != null)
-            {
-                player.IsInMenu = open;
-            }
         }
 
         private void OnDiscovered(MiningJournal.Entry entry)
         {
-            notice = $"New journal entry: {(journal.Knows(entry.Ore) ? entry.Ore.DisplayName : "an unknown ore")}  (Q)";
+            notice = $"New field log entry: {(journal.Knows(entry.Ore) ? entry.Ore.DisplayName : "an unknown ore")}  (Q)";
             noticeUntil = Time.time + NoticeSeconds;
         }
 
         private void OnGUI()
         {
-            if (!IsOpen)
+            bool logOpen = fieldLog != null && fieldLog.IsOpen;
+            if (!logOpen && notice != null && Time.time < noticeUntil)
             {
-                if (notice != null && Time.time < noticeUntil)
-                {
-                    JournalBook.Notice(notice);
-                }
-                return;
+                JournalBook.Notice(notice);
             }
+        }
 
+        /// <summary>Draws the ore pages in the open book; the field log calls it from its OnGUI.</summary>
+        public void DrawBook()
+        {
             IReadOnlyList<VoxelMaterial> ores = journal.Ores;
             if (Event.current.type == EventType.Layout)
             {

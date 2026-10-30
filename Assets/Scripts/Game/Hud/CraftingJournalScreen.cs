@@ -2,95 +2,40 @@ using System.Collections.Generic;
 using System.Linq;
 using Clube.Core;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace Clube.Game
 {
     /// <summary>
-    /// The crafting journal (GL137), a second notebook beside the mining journal: CraftingJournal (J)
-    /// opens it, drawn in the same book (<see cref="JournalBook"/>), three entries to a page. Chapter
-    /// one, Crafting: every recipe made at a worktop, the flat rock or the anvil, with an ink sketch of
-    /// what it makes (<see cref="ItemSketch"/>), what it takes, the work, the level it needs and the
-    /// experience it gives. Chapter two, Smelting: the kinds of furnace and what each does, then the
-    /// smelting recipes and their unlocks. (What each Mining level shows is in the mining journal, Q;
-    /// GL182.) How much an entry tells follows the player's level (GL181): an unlocked recipe has its
-    /// sketch and every note; one a level away is only outlined, with its name and the level it unlocks
-    /// at; anything further off is a big question mark.
+    /// The crafting journal (GL137), now the tool pages of the field log (GL215, <see cref="FieldLogScreen"/>), drawn
+    /// in the same book (<see cref="JournalBook"/>), three entries to a page. Chapter one, Crafting: first the places
+    /// to craft with nothing built, the tree stump and the stone boulder (GL214), then every recipe made at a worktop,
+    /// the flat rock or the anvil, with an ink sketch of what it makes (<see cref="ItemSketch"/>), what it takes, the
+    /// work, the level it needs and the experience it gives. Chapter two, Smelting: the kinds of furnace and what each
+    /// does, then the smelting recipes and their unlocks. (What each Mining level shows is on the ore pages; GL182.)
+    /// How much an entry tells follows the player's level (GL181): an unlocked recipe has its sketch and every note;
+    /// one a level away is only outlined, with its name and the level it unlocks at; anything further off is a big
+    /// question mark.
     /// </summary>
     [RequireComponent(typeof(PlayerJournal))]
     public class CraftingJournalScreen : MonoBehaviour
     {
         private const int EntriesPerPage = 3;
 
-        [Tooltip("Opens and closes the crafting journal (J).")]
-        [SerializeField]
-        private InputActionReference toggleAction;
-
         private static GUIStyle questionStyle;
 
         private readonly List<Page> pages = new List<Page>();
         private PlayerJournal journal;
-        private PlayerController player;
-        private JournalScreen miningJournal;
-        private InventoryScreen inventoryScreen;
-        private StationPanel stationPanel;
-        private MerchantPanel merchantPanel;
         private int spread;
-
-        public bool IsOpen { get; private set; }
 
         private void Awake()
         {
             journal = GetComponent<PlayerJournal>();
-            player = GetComponent<PlayerController>();
-            miningJournal = GetComponent<JournalScreen>();
-            inventoryScreen = GetComponent<InventoryScreen>();
-            stationPanel = GetComponent<StationPanel>();
-            merchantPanel = GetComponent<MerchantPanel>();
         }
 
-        private void OnEnable()
+        /// <summary>Writes the pages from what the player knows now; the field log calls it when the tool pages open.</summary>
+        public void Refresh()
         {
-            toggleAction?.action.Enable();
-        }
-
-        private void OnDisable()
-        {
-            if (IsOpen)
-            {
-                SetOpen(false);
-            }
-        }
-
-        private void Update()
-        {
-            if (player != null && !player.enabled)
-            {
-                return;
-            }
-            // One screen at a time.
-            bool otherOpen = (inventoryScreen != null && inventoryScreen.IsOpen)
-                || (stationPanel != null && stationPanel.IsOpen)
-                || (merchantPanel != null && merchantPanel.IsOpen)
-                || (miningJournal != null && miningJournal.IsOpen);
-            if (toggleAction != null && toggleAction.action.WasPressedThisFrame() && !otherOpen)
-            {
-                SetOpen(!IsOpen);
-            }
-        }
-
-        /// <summary>Opens or closes the journal; opening writes its pages from what the player knows now.</summary>
-        public void SetOpen(bool open)
-        {
-            IsOpen = open;
-            if (open)
-            {
-                Write();
-            }
-            if (player != null)
-            {
-                player.IsInMenu = open;
-            }
+            Write();
         }
 
         /// <summary>Turns to the spread holding a page (0-based), e.g. the start of a chapter.</summary>
@@ -102,12 +47,9 @@ namespace Clube.Game
         /// <summary>The pages as last written: a heading and up to three entries each.</summary>
         public IReadOnlyList<Page> Pages => pages;
 
-        private void OnGUI()
+        /// <summary>Draws the tool pages in the open book; the field log calls it from its OnGUI.</summary>
+        public void DrawBook()
         {
-            if (!IsOpen)
-            {
-                return;
-            }
             if (Event.current.type == EventType.Layout)
             {
                 // Every glyph into the font atlas before any text is laid out (GL187).
@@ -171,7 +113,7 @@ namespace Clube.Game
 
             var crafting = recipes.Where(r => r != null && !IsSmelting(r.Station))
                 .OrderBy(r => StationOrder(r.Station)).ThenBy(r => r.UnlockLevel).ToList();
-            AddChapter("Chapter one: Crafting", "Crafting (cont.)", crafting.Select(r => RecipeEntry(r, skills)));
+            AddChapter("Chapter one: Crafting", "Crafting (cont.)", PlacesEntries(recipes).Concat(crafting.Select(r => RecipeEntry(r, skills))));
 
             var furnaces = recipes.Where(r => r != null && r.Output.Item is PlaceableDefinition placeable && Smelter(placeable) != null)
                 .OrderBy(r => Smelter((PlaceableDefinition)r.Output.Item).Heat).Select(r => FurnaceEntry(r, skills));
@@ -179,6 +121,41 @@ namespace Clube.Game
                 .OrderBy(r => r.Station == StationKind.Campfire ? 0 : 1).ThenBy(r => r.UnlockLevel).ThenBy(r => r.Extracts != null ? 0 : 1)
                 .Select(r => RecipeEntry(r, skills));
             AddChapter("Chapter two: Smelting", "Smelting (cont.)", furnaces.Concat(smelting));
+        }
+
+        // The two places to craft that nobody builds (GL214), first in the Crafting chapter: they're easy to miss.
+        private static IEnumerable<Entry> PlacesEntries(IReadOnlyList<Recipe> recipes)
+        {
+            yield return new Entry(Sketch(recipes, "wood"), "Tree stump",
+                "A cut tree leaves a stump: a worktop. Look at it and press E.\n" +
+                "Whittle sticks, make the first tools, build a campfire and, later, furnaces.\n" +
+                "Every tree stands on one: cut the trunk away with a hand axe or a hatchet.");
+            yield return new Entry(Sketch(recipes, "stone"), "Stone boulder",
+                "Rock too big to pick up. Aim at it and use the right mouse button:\n" +
+                "a stone in hand is knocked into a hand axe;\n" +
+                "hold with raw ore to crush it (from Mining 2), an item every 0.25 s;\n" +
+                "hold with a mixed stack, like clay with dirt in it, to pick it over.\n" +
+                "Chisel its top flat for a flat rock, a better worktop.");
+        }
+
+        // An ink sketch of an item the recipes use, found by id, for the places' entries.
+        private static Texture2D Sketch(IReadOnlyList<Recipe> recipes, string itemId)
+        {
+            foreach (Recipe recipe in recipes)
+            {
+                if (recipe == null)
+                {
+                    continue;
+                }
+                foreach (ItemAmount input in recipe.Inputs)
+                {
+                    if (input.Item != null && input.Item.Id == itemId)
+                    {
+                        return ItemSketch.For(input.Item);
+                    }
+                }
+            }
+            return null;
         }
 
         // How many levels short of a recipe the player is (GL181): 0 when it's unlocked.

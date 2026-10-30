@@ -27,8 +27,7 @@ namespace Clube.Game
         private PlayerController player;
 
         private InventoryScreen inventoryScreen;
-        private JournalScreen journalScreen;
-        private CraftingJournalScreen craftingJournal;
+        private FieldLogScreen fieldLog;
         private StationPanel stationPanel;
         private MerchantPanel merchantPanel;
         private string problem;
@@ -55,8 +54,7 @@ namespace Clube.Game
             if (player != null)
             {
                 inventoryScreen = player.GetComponent<InventoryScreen>();
-                journalScreen = player.GetComponent<JournalScreen>();
-                craftingJournal = player.GetComponent<CraftingJournalScreen>();
+                fieldLog = player.GetComponent<FieldLogScreen>();
                 stationPanel = player.GetComponent<StationPanel>();
                 merchantPanel = player.GetComponent<MerchantPanel>();
             }
@@ -109,14 +107,9 @@ namespace Clube.Game
                 inventoryScreen.Close();
                 return true;
             }
-            if (journalScreen != null && journalScreen.IsOpen)
+            if (fieldLog != null && fieldLog.IsOpen)
             {
-                journalScreen.Close();
-                return true;
-            }
-            if (craftingJournal != null && craftingJournal.IsOpen)
-            {
-                craftingJournal.SetOpen(false);
+                fieldLog.Close();
                 return true;
             }
             if (stationPanel != null && stationPanel.IsOpen)

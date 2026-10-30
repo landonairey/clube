@@ -80,6 +80,8 @@ namespace Clube.Core
                     w.Write(d.Material);
                     w.Write(d.ReadyAt);
                 });
+                // Version 3 (GL216): the player's quests done, at the end so older bodies read as they were.
+                WriteList(body, save.Player?.Quests ?? new List<string>(), (w, q) => w.Write(q ?? ""));
             }
             writer.Dispose();
         }
@@ -96,6 +98,14 @@ namespace Clube.Core
                 save.Chunks = ReadList(body, ReadChunk);
                 save.Placed = ReadList(body, ReadPlaced);
                 save.Drying = ReadList(body, r => new DryingSave { Sample = ReadVector3Int(r), Material = r.ReadByte(), ReadyAt = r.ReadDouble() });
+                if (save.Header.Version >= 3)
+                {
+                    List<string> quests = ReadList(body, r => r.ReadString());
+                    if (save.Player != null)
+                    {
+                        save.Player.Quests = quests;
+                    }
+                }
             }
             reader.Dispose();
             return save;
@@ -173,7 +183,7 @@ namespace Clube.Core
 
         private static PlayerSave ReadPlayer(BinaryReader r)
         {
-            return new PlayerSave
+            var player = new PlayerSave
             {
                 Position = ReadVector3(r),
                 Yaw = r.ReadSingle(),
@@ -193,6 +203,7 @@ namespace Clube.Core
                 MadeRecipes = ReadList(r, x => x.ReadString()),
                 Parcels = ReadList(r, x => new Vector2Int(x.ReadInt32(), x.ReadInt32())),
             };
+            return player;
         }
 
         private static void WriteStack(BinaryWriter w, StackSave stack)

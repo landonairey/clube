@@ -38,9 +38,9 @@ namespace Clube.Core
     {
         /// <summary>
         /// Format version written by this build (S1). Raise it when the format changes, and upgrade older ones on read.
-        /// 1: the first. 2: the save's and the world's names (GL206, GL207).
+        /// 1: the first. 2: the save's and the world's names (GL206, GL207). 3: the quests done (GL216), at the body's end.
         /// </summary>
-        public const int CurrentVersion = 2;
+        public const int CurrentVersion = 3;
 
         public int Version = CurrentVersion;
 
@@ -91,6 +91,9 @@ namespace Clube.Core
 
         /// <summary>Land parcels owned.</summary>
         public List<Vector2Int> Parcels = new List<Vector2Int>();
+
+        /// <summary>Quests done, by id (GL216; save version 3).</summary>
+        public List<string> Quests = new List<string>();
     }
 
     public struct SkillSave

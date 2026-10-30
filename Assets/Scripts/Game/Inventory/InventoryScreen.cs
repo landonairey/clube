@@ -26,8 +26,7 @@ namespace Clube.Game
         private PlayerController player;
         private StationPanel stationPanel;
         private MerchantPanel merchantPanel;
-        private JournalScreen journalScreen;
-        private CraftingJournalScreen craftingJournal;
+        private FieldLogScreen fieldLog;
         private readonly InventoryDrag drag = new InventoryDrag();
         private Rect trashSlot;
 
@@ -39,8 +38,7 @@ namespace Clube.Game
             player = GetComponent<PlayerController>();
             stationPanel = GetComponent<StationPanel>();
             merchantPanel = GetComponent<MerchantPanel>();
-            journalScreen = GetComponent<JournalScreen>();
-            craftingJournal = GetComponent<CraftingJournalScreen>();
+            fieldLog = GetComponent<FieldLogScreen>();
         }
 
         private void OnEnable()
@@ -65,8 +63,7 @@ namespace Clube.Game
 
             // One screen at a time: not over a station's or a merchant's panel.
             bool otherOpen = (stationPanel != null && stationPanel.IsOpen) || (merchantPanel != null && merchantPanel.IsOpen)
-                || (journalScreen != null && journalScreen.IsOpen)
-                || (craftingJournal != null && craftingJournal.IsOpen);
+                || (fieldLog != null && fieldLog.IsOpen);
             if (toggleAction != null && toggleAction.action.WasPressedThisFrame() && !otherOpen)
             {
                 SetOpen(!IsOpen);
@@ -135,12 +132,7 @@ namespace Clube.Game
             {
                 items.Sort(sortFrom, items.SlotCount);
             }
-            bool over = drag.IsDragging && trashSlot.Contains(Event.current.mousePosition);
-            ItemSlotGui.Draw(trashSlot, ItemStack.Empty, over);
-            var centred = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
-            GUI.Label(trashSlot, "Trash", centred);
-            var right = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleRight };
-            GUI.Label(new Rect(trashSlot.x - 228f, trashSlot.y, 220f, trashSlot.height), "Drop a stack here to destroy it", right);
+            InventoryGridGui.DrawTrash(trashSlot, drag.IsDragging);
         }
 
         // GL71, GL191: InventoryDrag moves, splits and carries stacks between slots; here a click sends a stack
@@ -151,18 +143,8 @@ namespace Clube.Game
             switch (result.Kind)
             {
                 case InventoryDragKind.DroppedOutside:
-                    if (trashSlot.Contains(result.Position))
-                    {
-                        // Gone for good (GL173): the part dragged, or the whole stack.
-                        if (result.Count >= items[result.Slot].Count)
-                        {
-                            items.TakeAll(result.Slot);
-                        }
-                        else
-                        {
-                            items.RemoveAt(result.Slot, result.Count);
-                        }
-                    }
+                    // Gone for good (GL173).
+                    InventoryGridGui.Trash(items, result, trashSlot);
                     break;
                 case InventoryDragKind.Clicked:
                     int pressed = result.Slot;

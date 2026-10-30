@@ -21,6 +21,23 @@ namespace Clube.Game
         private static GUIStyle text;
         private static GUIStyle small;
 
+        /// <summary>Room left of the book for the field log's tabs (GL215).</summary>
+        public const float TabWidth = 150f;
+
+        /// <summary>Where the open book is on screen: centred in what's left beside the tabs.</summary>
+        public static Rect Area
+        {
+            get
+            {
+                float width = Mathf.Min(Screen.width - 60f - TabWidth, 1120f);
+                float height = Mathf.Min(Screen.height - 60f, 700f);
+                return new Rect(TabWidth + (Screen.width - TabWidth - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
+            }
+        }
+
+        /// <summary>Paper, for a tab drawn like a page edge.</summary>
+        public static Color PaperColor => Paper;
+
         /// <summary>A page or entry heading, in bold italic ink.</summary>
         public static GUIStyle Title => EnsureStyles(ref title);
 
@@ -41,9 +58,7 @@ namespace Clube.Game
             int spreads = (pages + 1) / 2;
             spread = Mathf.Clamp(spread, 0, spreads - 1);
 
-            float width = Mathf.Min(Screen.width - 60f, 1120f);
-            float height = Mathf.Min(Screen.height - 60f, 700f);
-            var book = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
+            Rect book = Area;
             InventoryGridGui.Panel(new Rect(book.x - 10f, book.y - 10f, book.width + 20f, book.height + 20f));
             float pageWidth = book.width * 0.5f;
             for (int side = 0; side < 2; side++)
@@ -130,9 +145,12 @@ namespace Clube.Game
         /// <summary>A short notice near the top of the screen (a new journal entry).</summary>
         public static void Notice(string notice)
         {
-            var area = new Rect(Screen.width * 0.5f - 200f, 70f, 400f, 30f);
+            var style = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Italic };
+            // As wide as the text needs (a quest title can be long, GL216), at least 400.
+            float width = Mathf.Min(Screen.width - 20f, Mathf.Max(400f, style.CalcSize(new GUIContent(notice)).x + 40f));
+            var area = new Rect((Screen.width - width) * 0.5f, 70f, width, 30f);
             InventoryGridGui.Panel(area);
-            GUI.Label(area, notice, new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Italic });
+            GUI.Label(area, notice, style);
         }
 
         private static void DrawPaper(Rect area)

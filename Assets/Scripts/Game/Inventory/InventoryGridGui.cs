@@ -18,6 +18,41 @@ namespace Clube.Game
 
         private static readonly Color PanelColor = new Color(0.08f, 0.09f, 0.1f, 0.92f);
 
+        private static GUIStyle trashStyle;
+        private static GUIStyle trashHintStyle;
+
+        /// <summary>
+        /// The trash slot (GL173), in the inventory and the station screens (GL224): a slot marked Trash, lit while a stack
+        /// is carried over it, with a hint to its left.
+        /// </summary>
+        public static void DrawTrash(Rect slot, bool dragging)
+        {
+            bool over = dragging && slot.Contains(Event.current.mousePosition);
+            ItemSlotGui.Draw(slot, ItemStack.Empty, over);
+            trashStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+            trashHintStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleRight };
+            GUI.Label(slot, "Trash", trashStyle);
+            GUI.Label(new Rect(slot.x - 228f, slot.y, 220f, slot.height), "Drop a stack here to destroy it", trashHintStyle);
+        }
+
+        /// <summary>Destroys what a drag let go over the trash slot: the part dragged, or the whole stack. True when it did.</summary>
+        public static bool Trash(Inventory items, InventoryDragResult drop, Rect slot)
+        {
+            if (drop.Kind != InventoryDragKind.DroppedOutside || !slot.Contains(drop.Position) || items[drop.Slot].IsEmpty)
+            {
+                return false;
+            }
+            if (drop.Count >= items[drop.Slot].Count)
+            {
+                items.TakeAll(drop.Slot);
+            }
+            else
+            {
+                items.RemoveAt(drop.Slot, drop.Count);
+            }
+            return true;
+        }
+
         /// <summary>A screen's background: nearly opaque, so the world doesn't show through the slots.</summary>
         public static void Panel(Rect area)
         {

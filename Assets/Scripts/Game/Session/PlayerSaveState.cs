@@ -23,6 +23,7 @@ namespace Clube.Game
         private PlayerJournal journal;
         private PlayerParcels parcels;
         private OreKnowledge ores;
+        private PlayerQuests quests;
 
         /// <summary>Makes the hidden ores' "? ore" items again for a loaded game; null when the player has none.</summary>
         public OreKnowledge Ores => ores;
@@ -41,6 +42,7 @@ namespace Clube.Game
             journal = GetComponent<PlayerJournal>();
             parcels = GetComponent<PlayerParcels>();
             ores = GetComponent<OreKnowledge>();
+            quests = GetComponent<PlayerQuests>();
         }
 
         public PlayerSave Capture()
@@ -95,6 +97,10 @@ namespace Clube.Game
             if (parcels != null && parcels.Parcels != null)
             {
                 save.Parcels.AddRange(parcels.Parcels.Owned);
+            }
+            if (quests != null)
+            {
+                save.Quests.AddRange(quests.Log.DoneIds);
             }
             return save;
         }
@@ -158,6 +164,10 @@ namespace Clube.Game
             if (parcels != null)
             {
                 parcels.Restore(save.Parcels);
+            }
+            if (quests != null)
+            {
+                quests.Log.Restore(save.Quests);
             }
 
             // Facing as saved; PlayerController reads its look from these when it's switched on.
