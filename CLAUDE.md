@@ -407,7 +407,7 @@ Twenty-second pass (GL179-GL199, `Docs/20261029 clube-backlog.md`): land too far
 outlined a level away, a question mark further off; `ItemSketch` reads icons on opaque backgrounds (the furnaces); both
 journals put their glyphs in the font before drawing (`JournalBook.Prepare`). Mining xp per sample is stone 0.08, ore 0.16,
 soil 0.02. Crushed ores measure purity as their raw ore (`ItemDefinition.PurityAs`), so refining keeps the ore; a refine pass is
-1 s and takes 1 item of impurities. A part item takes a stack place of its own (`ItemStack.Space`: 1023.7, never 1024.7).
+1 s and takes 1 item of impurities. Part items fill a stack to its MaxStack exactly, never past (`Inventory.RoomFor`); the tooltip shows each material's amount. Under one raw ore left, a bash crushes the part.
 Wood wins over leaves inside a trunk (`TreeStamp`). `InventoryDrag` is the mouse for the inventory and station screens:
 drag (Shift half, Ctrl one), right-click splits (`Inventory.Move(from, to, count)`, `Split`); drop on a station's input or
 fuel slot. A smelt's count is what pure mineral gives, so yield is mineral share times efficiency, never over 100%; a smelter

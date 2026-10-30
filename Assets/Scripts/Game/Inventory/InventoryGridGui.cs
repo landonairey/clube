@@ -169,7 +169,7 @@ namespace Clube.Game
 
         /// <summary>
         /// One fact a line (GL70): "Chalcopyrite ×12", "Volume 12", then a line per component,
-        /// "80% Stone", "20% Chalcopyrite".
+        /// "80% Stone (9.6)", "20% Chalcopyrite (2.4)": its share and how much of the stack that is (GL188).
         /// </summary>
         public static string Describe(ItemStack stack)
         {
@@ -191,10 +191,12 @@ namespace Clube.Game
             }
             else if (stack.Contents != null)
             {
+                // Each material's share, and how much of the stack that is (GL188): "92% Stone (942.1)".
                 foreach (Content part in stack.Contents.Parts)
                 {
                     float percent = part.Fraction * 100f;
-                    text += percent >= 1f ? $"\n{percent:0}% {part.Material.DisplayName}" : $"\n{percent:0.#}% {part.Material.DisplayName}";
+                    string share = percent >= 1f ? $"{percent:0}%" : $"{percent:0.#}%";
+                    text += $"\n{share} {part.Material.DisplayName} ({stack.Volume * part.Fraction:0.#})";
                 }
             }
             if (stack.Item.IsFuel)

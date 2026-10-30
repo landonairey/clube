@@ -58,9 +58,9 @@ namespace Clube.Core
         public bool IsEmpty => Item == null;
 
         /// <summary>
-        /// How many more whole items fit on top; 0 for an empty stack (any item fits there). A part item takes
-        /// a place of its own (GL188), so a stack never holds more than its item's <see cref="ItemDefinition.MaxStack"/>
-        /// in all: 1023.7 stone, not 1024.7.
+        /// How many more whole items fit on top; 0 for an empty stack (any item fits there). A stack never holds more
+        /// than its item's <see cref="ItemDefinition.MaxStack"/> in all, part items included (GL188), so a part takes the
+        /// place of a whole item here: 1023.7 stone has room for 0.3 more, but no whole one.
         /// </summary>
         public int Space => IsEmpty ? 0 : System.Math.Max(0, Item.MaxStack - Count - (Part > 0f ? 1 : 0));
 

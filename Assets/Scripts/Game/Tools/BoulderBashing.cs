@@ -221,25 +221,30 @@ namespace Clube.Game
                 Message?.Invoke($"Knocked the stone into a {handAxe.DisplayName.ToLowerInvariant()}");
                 return true;
             }
-            if (held.Count < 1)
-            {
-                Message?.Invoke($"Crushing takes a whole {held.Item.DisplayName.ToLowerInvariant()}");
-                return false;
-            }
             if (skills != null && !skills.Skills.Has(crushSkill, crushLevel))
             {
                 Message?.Invoke($"Crushing ore needs {crushSkill} {crushLevel}");
                 return false;
             }
-            // One item of ore: its minerals stay, half the rock comes off as crushed stone (GL148).
+            // One item of ore, or the part of one that's left (GL194): its minerals stay, half the rock comes off as
+            // crushed stone (GL148).
+            float amount = held.Count >= 1 ? 1f : held.Part;
             Composition crushed = Crushing.Crush(held.Contents, out float knockedOff);
             MaterialRegistry materials = worldView.Config.Materials;
             float quality = crushed != null && materials != null ? materials.Quality(crushed, crush.Raw) : held.Quality;
-            items.RemoveAt(slot, 1);
-            items.Add(crush.Crushed, 1, crushed, 0, quality);
+            if (held.Count >= 1)
+            {
+                items.RemoveAt(slot, 1);
+                items.Add(crush.Crushed, 1, crushed, 0, quality);
+            }
+            else
+            {
+                items.TakeAll(slot);
+                items.Add(crush.Crushed, 0, crushed, 0, quality, amount);
+            }
             if (crushedStone != null && knockedOff > 0f)
             {
-                items.Add(crushedStone, 0, null, 0, 1f, knockedOff);
+                items.Add(crushedStone, 0, null, 0, 1f, knockedOff * amount);
             }
             skills?.Skills.Award(crushSkill, crushExperience);
             Message?.Invoke($"Crushed into {crush.Crushed.DisplayName.ToLowerInvariant()} ({quality * 100f:0}%)");
@@ -265,8 +270,8 @@ namespace Clube.Game
             {
                 return stack.Count > 0;
             }
-            // Raw ore stays something to crush when less than an item of it is left (GL194): a bash then
-            // says it needs a whole one, rather than the boulder picking the ore over instead.
+            // Raw ore stays something to crush when less than an item of it is left (GL194): the part is crushed,
+            // rather than the boulder picking the ore over instead.
             foreach (Crush entry in crushes)
             {
                 if (entry.Raw == item && entry.Crushed != null)

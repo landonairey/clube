@@ -354,9 +354,9 @@ namespace Clube.Core.Tests
             }
         }
 
-        // GL188: a part item takes a place of its own, so a stack never holds more than its MaxStack in all.
+        // GL188: part items fill a stack to its MaxStack exactly, never past it.
         [Test]
-        public void PartItem_NeverPassesMaxStack()
+        public void PartItem_FillsAStackToExactlyItsMax()
         {
             var inventory = new Inventory(3);
             inventory.Add(ore, 10);
@@ -369,9 +369,11 @@ namespace Clube.Core.Tests
             second.Add(ore, 9);
             second.Add(ore, 0, null, 0, 1f, 0.5f);
             Assert.AreEqual(9.5f, second[0].Amount, 1e-4f);
-            Assert.AreEqual(0, second[0].Space, "9 whole and a part fill 10 places.");
-            second.Add(ore, 0, null, 0, 1f, 0.5f);
-            Assert.AreEqual(10f, second[0].Amount, 1e-4f, "Two halves make the tenth whole one.");
+            Assert.AreEqual(0, second[0].Space, "No room for another whole one.");
+            second.Add(ore, 0, null, 0, 1f, 0.7f);
+            Assert.AreEqual(10f, second[0].Amount, 1e-4f, "The stack fills to its max exactly...");
+            Assert.AreEqual(10, second[0].Count);
+            Assert.AreEqual(0.2f, second[1].Amount, 1e-4f, "...and the rest goes on to the next slot.");
         }
 
         // GL191: splitting a stack, and moving part of one onto another slot.
