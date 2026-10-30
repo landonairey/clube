@@ -154,13 +154,20 @@ namespace Clube.Game
                 return;
             }
             carried.Clear();
+            bool carriesOre = false;
             for (int i = 0; i < items.SlotCount; i++)
             {
                 ItemStack stack = items[i];
                 if (!stack.IsEmpty && stack.Item != null && !string.IsNullOrEmpty(stack.Item.Id))
                 {
                     carried.Add(stack.Item.Id);
+                    carriesOre |= HoldsOre(stack);
                 }
+            }
+            // Any amount of ore counts, a part of one included (0.56 of cassiterite gathered by hand).
+            if (carriesOre)
+            {
+                Log.Complete("first-ore");
             }
             if (carried.Contains("stone"))
             {
@@ -187,6 +194,29 @@ namespace Clube.Game
             {
                 Log.Complete("collect-all");
             }
+        }
+
+        // A stack of ore, however little of it (a part item counts): the item an ore drops, an unidentified "? ore", or
+        // crushed ore. Not ground that only has a trace of ore mixed in.
+        private static bool HoldsOre(ItemStack stack)
+        {
+            ItemDefinition item = stack.Item;
+            if (item.HidesContents || (item.Id.StartsWith("crushed-") && item.Id != "crushed-stone"))
+            {
+                return true;
+            }
+            if (stack.Contents == null)
+            {
+                return false;
+            }
+            foreach (Content part in stack.Contents.Parts)
+            {
+                if (part.Material != null && part.Material.Category == VoxelMaterialCategory.Ore && part.Material.FinalDrop == item)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // Any ore in the mining journal: known or not, the first ore has been mined.
