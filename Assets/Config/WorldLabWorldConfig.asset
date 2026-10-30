@@ -16,7 +16,7 @@ MonoBehaviour:
   worldHeightInChunks: 40
   sealEdges: 1
   fixedArea: 1
-  fixedAreaSize: 100
+  fixedAreaSize: 300
   voxelSize: 0.25
   isoLevel: 0.5
   edgePlacement: 0

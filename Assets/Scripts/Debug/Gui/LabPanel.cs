@@ -23,7 +23,7 @@ namespace Clube.Debug
     {
         [Tooltip("Show the panel when Play mode starts. F2 toggles it.")]
         [SerializeField]
-        private bool startOpen = true;
+        private bool startOpen = false;
 
         [SerializeField, Min(200f)]
         private float width = 340f;

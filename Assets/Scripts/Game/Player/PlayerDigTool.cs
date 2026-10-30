@@ -54,6 +54,10 @@ namespace Clube.Game
         [SerializeField, Range(1f, 30f)]
         private float repeatRate = 5f;
 
+        [Tooltip("Whether Place adds a ball of ground (M8). Off in play since GL213: the lab panel's brush does that, and Place is for boulders.")]
+        [SerializeField]
+        private bool placesGround;
+
         private PlayerController player;
         private BoulderBashing bashing;
         private ToolCursor cursor;
@@ -121,7 +125,7 @@ namespace Clube.Game
             FindTarget();
             bool digging = !ToolHeld;
             // Place bashes a stone or ore on a boulder instead, when it can (GL146, GL148).
-            bool placing = bashing == null || !bashing.CanBash;
+            bool placing = placesGround && (bashing == null || !bashing.CanBash);
             HeldOperation = digging && IsHeld(digAction) ? BrushOperation.Remove : placing && IsHeld(placeAction) ? BrushOperation.Add : (BrushOperation?)null;
 
             if (digging && ShouldApply(digAction))

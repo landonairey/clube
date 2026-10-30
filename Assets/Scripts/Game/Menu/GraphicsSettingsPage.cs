@@ -4,13 +4,14 @@ namespace Clube.Game
 {
     /// <summary>
     /// The graphics popup (GL209), opened from the pause popup: field of view on a slider (60-120 degrees,
-    /// vertical) and the frame rate limit (30, 60, VSync or unlimited). Changes apply at once and are kept
-    /// (<see cref="GraphicsSettings"/>); Back returns to the pause popup.
+    /// vertical), render distance in chunks (GL211), the frame rate limit (30, 60, VSync or unlimited) and the
+    /// time of day frozen at an hour (GL227). Changes apply at once and are kept (<see cref="GraphicsSettings"/>);
+    /// Back returns to the pause popup.
     /// </summary>
     public sealed class GraphicsSettingsPage
     {
-        public const float Width = 400f;
-        public const float Height = 290f;
+        public const float Width = 420f;
+        public const float Height = 440f;
 
         private static readonly FrameRateLimit[] Limits = { FrameRateLimit.Fps30, FrameRateLimit.Fps60, FrameRateLimit.VSync, FrameRateLimit.Unlimited };
         private static string[] limitLabels;
@@ -32,7 +33,12 @@ namespace Clube.Game
 
             GUILayout.Label($"Field of view  {GraphicsSettings.FieldOfView:0}°", label);
             GraphicsSettings.FieldOfView = GUILayout.HorizontalSlider(GraphicsSettings.FieldOfView, GraphicsSettings.MinFieldOfView, GraphicsSettings.MaxFieldOfView);
-            GUILayout.Space(12f);
+            GUILayout.Space(10f);
+
+            int distance = GraphicsSettings.RenderDistance;
+            GUILayout.Label($"Render distance  {distance} chunks ({distance * 4} m)", label);
+            GraphicsSettings.RenderDistance = Mathf.RoundToInt(GUILayout.HorizontalSlider(distance, GraphicsSettings.MinRenderDistance, GraphicsSettings.MaxRenderDistance));
+            GUILayout.Space(10f);
 
             GUILayout.Label("Frame rate", label);
             int current = System.Array.IndexOf(Limits, GraphicsSettings.FrameRate);
@@ -42,6 +48,15 @@ namespace Clube.Game
                 GraphicsSettings.FrameRate = Limits[picked];
             }
             GUILayout.Label(Describe(GraphicsSettings.FrameRate), hint);
+            GUILayout.Space(8f);
+
+            GraphicsSettings.FreezeDay = GUILayout.Toggle(GraphicsSettings.FreezeDay, "  Freeze the time of day", label);
+            bool wasEnabled = GUI.enabled;
+            GUI.enabled = GraphicsSettings.FreezeDay;
+            GUILayout.Label($"Frozen at  {GraphicsSettings.ClockTime(GraphicsSettings.FrozenHour)}", label);
+            GraphicsSettings.FrozenHour = GUILayout.HorizontalSlider(GraphicsSettings.FrozenHour, 0f, 23.5f);
+            GUI.enabled = wasEnabled;
+            GUILayout.Label("Only the sky stops: drying and smelting go on.", hint);
 
             GUILayout.FlexibleSpace();
             return GUILayout.Button("Back", button, GUILayout.Height(36f));

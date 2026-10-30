@@ -9,11 +9,11 @@ namespace Clube.Game
     /// <summary>
     /// Bashing what's in hand on a boulder (GL146, GL148): with a stone selected, Place (right click)
     /// aimed at a boulder or rock face knocks it into a hand axe, the first tool, for a little Crafting
-    /// experience. From a Mining level on, a bash with ore selected crushes one item of it: crushed ore
+    /// experience. From a Mining level on, holding Place with ore selected crushes it an item every 0.25 s (GL221): crushed ore
     /// holding half the stone it had (<see cref="Crushing"/>), and the crushed stone knocked off it. A
     /// boulder is stone too big to be a loose stone (<see cref="ToolStrike.IsSmallPiece"/>). Holding Place with
     /// any other mixed stack selected (clay with dirt and grass in it) uses the boulder as a worktop to pick the
-    /// impurities out, a pass at a time, each pass longer for a bigger stack (GL177, <see cref="Refining"/>); what
+    /// impurities out, an item's volume every 0.25 s (GL177, GL220, <see cref="Refining"/>); what
     /// comes out goes back as stacks of its own. While a bash is possible, Place does this instead of adding
     /// ground (<see cref="PlayerDigTool"/>).
     /// </summary>
@@ -78,10 +78,10 @@ namespace Clube.Game
         [SerializeField, Min(0f)]
         private float crushExperience = 0.1f;
 
-        [Header("Refining (GL177)")]
-        [Tooltip("Seconds a pass over a mixed stack takes, whatever its size (GL190); holding Place keeps passing.")]
+        [Header("Refining (GL177) and crushing (GL221)")]
+        [Tooltip("Seconds to refine or crush one item's volume (GL220, GL221): a refining pass picks out that much, a crush takes one item of ore. Holding Place keeps going.")]
         [SerializeField, Min(0.05f)]
-        private float refineSeconds = 1f;
+        private float secondsPerVolume = 0.25f;
 
         [Tooltip("Items' worth of impurities each pass picks out (GL190), all of them once only a trace is left.")]
         [SerializeField, Min(0.05f)]
@@ -124,29 +124,50 @@ namespace Clube.Game
                 refineProgress = 0f;
                 return;
             }
-            if (placeAction.action.WasPressedThisFrame() && HoldsSomethingToBash(out _, out _) && AimsAtBoulder())
+            bool pressed = placeAction.action.WasPressedThisFrame();
+            if (pressed && HoldsSomethingToBash(out _, out Crush crush) && AimsAtBoulder())
             {
-                Bash();
-                return;
+                // A stone becomes a hand axe at once; ore is crushed while Place is held (GL221).
+                if (crush.Raw == null)
+                {
+                    Bash();
+                    return;
+                }
+                if (skills != null && !skills.Skills.Has(crushSkill, crushLevel))
+                {
+                    Message?.Invoke($"Crushing ore needs {crushSkill} {crushLevel}");
+                    return;
+                }
             }
-            UpdateRefining();
+            UpdateHold();
         }
 
-        // Holding Place on a boulder with a mixed stack selected picks it over, a pass at a time (GL177).
-        private void UpdateRefining()
+        // Holding Place on a boulder works the selected stack an item's volume at a time (GL220, GL221): ore is crushed,
+        // a mixed stack picked over (GL177).
+        private void UpdateHold()
         {
             int slot = -1;
-            refining = placeAction.action.IsPressed() && HoldsSomethingToRefine(out slot) && AimsAtBoulder();
-            if (!refining)
+            bool crushing = placeAction.action.IsPressed() && HoldsSomethingToBash(out slot, out Crush crush) && crush.Raw != null
+                && (skills == null || skills.Skills.Has(crushSkill, crushLevel));
+            refining = crushing || (placeAction.action.IsPressed() && HoldsSomethingToRefine(out slot));
+            if (!refining || !AimsAtBoulder())
             {
+                refining = false;
                 refineProgress = 0f;
                 return;
             }
             refineProgress += Time.deltaTime;
-            if (refineProgress >= refineSeconds)
+            if (refineProgress >= secondsPerVolume)
             {
                 refineProgress = 0f;
-                RefinePass(slot);
+                if (crushing)
+                {
+                    Bash();
+                }
+                else
+                {
+                    RefinePass(slot);
+                }
             }
         }
 
@@ -199,9 +220,10 @@ namespace Clube.Game
                 return;
             }
             var bar = new Rect(Screen.width * 0.5f - 90f, Screen.height * 0.5f + 70f, 180f, 10f);
-            GUI.Label(new Rect(bar.x - 30f, bar.y - 22f, bar.width + 60f, 20f), $"Refining {stack.Item.DisplayName.ToLowerInvariant()} ({stack.Quality * 100f:0}%)");
+            string doing = HoldsSomethingToBash(out _, out Crush crush) && crush.Raw != null ? "Crushing" : "Refining";
+            GUI.Label(new Rect(bar.x - 30f, bar.y - 22f, bar.width + 60f, 20f), $"{doing} {stack.Item.DisplayName.ToLowerInvariant()} ({stack.Quality * 100f:0}%)");
             GUI.Box(bar, GUIContent.none);
-            GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(refineProgress / refineSeconds), bar.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(refineProgress / secondsPerVolume), bar.height), Texture2D.whiteTexture);
         }
 
         /// <summary>Bashes what's selected on the boulder aimed at: a stone becomes a hand axe, ore is crushed. False when nothing happened.</summary>
