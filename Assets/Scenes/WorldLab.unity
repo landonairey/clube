@@ -578,6 +578,7 @@ GameObject:
   - component: {fileID: 1350119473}
   - component: {fileID: 1350119475}
   - component: {fileID: 1350119474}
+  - component: {fileID: 1350119476}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -952,6 +953,18 @@ MonoBehaviour:
   player: {fileID: 1697135597}
   clock: {fileID: 1350119469}
   drying: {fileID: 1350119468}
+--- !u!114 &1350119476
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 900a9d03b31830d4eadb524325bf7da8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.GraphicsSettingsApplier
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0

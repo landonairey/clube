@@ -34,6 +34,8 @@ namespace Clube.Game
         private LoadGamePage loadGame;
         private List<SaveEntry> saves;
         private string problem;
+        private int vSyncBefore;
+        private int targetFrameRateBefore;
 
         private void Awake()
         {
@@ -43,6 +45,20 @@ namespace Clube.Game
             Cursor.visible = true;
             GameSession.End();
             saves = SaveSlots.List();
+            // Never unlimited here: an idle menu drawn as fast as it can kept a quarter of the CPU busy (GL209).
+            vSyncBefore = QualitySettings.vSyncCount;
+            targetFrameRateBefore = Application.targetFrameRate;
+            GraphicsSettings.ApplyFrameRate(inMenu: true);
+        }
+
+        private void OnDestroy()
+        {
+            if (Application.isEditor)
+            {
+                // Runtime changes to the quality settings can stick in the Editor: put them back.
+                QualitySettings.vSyncCount = vSyncBefore;
+                Application.targetFrameRate = targetFrameRateBefore;
+            }
         }
 
         private void OnGUI()

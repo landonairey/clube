@@ -5,8 +5,8 @@ using UnityEngine.InputSystem;
 namespace Clube.Game
 {
     /// <summary>
-    /// Esc in the game (GL204): a small popup over a stopped game with Back, Save and Exit, and Exit Without
-    /// Saving. Esc first closes whatever player screen is open (inventory, journal, a station, the merchant);
+    /// Esc in the game (GL204): a small popup over a stopped game with Back, Graphics (a smaller popup of its own,
+    /// <see cref="GraphicsSettingsPage"/>, GL209), Save and Exit, and Exit Without Saving. Esc first closes whatever player screen is open (inventory, journal, a station, the merchant);
     /// with none open it opens the popup, and Esc again goes back. Save and Exit first asks for the save's name
     /// (GL207), filled in with the default (world, mode, time); saving goes through <see cref="GameSessionHost"/>.
     /// Both exits return to the main menu.
@@ -36,6 +36,9 @@ namespace Clube.Game
         // The save name being typed, while Save and Exit asks for one (GL207); null otherwise.
         private string saveName;
         private bool focusName;
+
+        // The graphics popup while it's open (GL209); null otherwise.
+        private GraphicsSettingsPage graphics;
         private CursorLockMode cursorBefore;
         private bool cursorVisibleBefore;
         private GUIStyle titleStyle;
@@ -79,6 +82,10 @@ namespace Clube.Game
                 // Naming the save: back to the popup.
                 saveName = null;
                 problem = null;
+            }
+            else if (IsOpen && graphics != null)
+            {
+                graphics = null;
             }
             else if (IsOpen)
             {
@@ -130,6 +137,7 @@ namespace Clube.Game
             IsOpen = open;
             problem = null;
             saveName = null;
+            graphics = null;
             // The game stops under the popup: the clock, stations and the player.
             Time.timeScale = open ? 0f : 1f;
             if (open)
@@ -163,14 +171,24 @@ namespace Clube.Game
             // Over the lab panel and the HUDs.
             GUI.depth = -100;
 
+            // Lighter under the graphics popup, so a change to the field of view shows behind it.
             Color previous = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, 0.45f);
+            GUI.color = new Color(0f, 0f, 0f, graphics != null ? 0.15f : 0.45f);
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = previous;
 
             if (saveName != null)
             {
                 DrawNaming();
+            }
+            else if (graphics != null)
+            {
+                BeginPopup(GraphicsSettingsPage.Width, GraphicsSettingsPage.Height);
+                if (graphics.Draw(titleStyle, labelStyle, hintStyle, buttonStyle))
+                {
+                    graphics = null;
+                }
+                GUILayout.EndArea();
             }
             else
             {
@@ -180,13 +198,18 @@ namespace Clube.Game
 
         private void DrawPaused()
         {
-            float height = 56f + 3f * (ButtonHeight + 10f) + 16f;
+            float height = 56f + 4f * (ButtonHeight + 10f) + 16f;
             BeginPopup(Width, height);
             GUILayout.Label("Paused", titleStyle);
             GUILayout.Space(8f);
             if (GUILayout.Button("Back", buttonStyle, GUILayout.Height(ButtonHeight)))
             {
                 SetOpen(false);
+            }
+            GUILayout.Space(10f);
+            if (GUILayout.Button("Graphics", buttonStyle, GUILayout.Height(ButtonHeight)))
+            {
+                OpenGraphics();
             }
             GUILayout.Space(10f);
             if (GUILayout.Button("Save and Exit", buttonStyle, GUILayout.Height(ButtonHeight)))
@@ -251,6 +274,11 @@ namespace Clube.Game
             var area = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(area);
             GUILayout.BeginArea(new Rect(area.x + 20f, area.y + 12f, area.width - 40f, area.height - 24f));
+        }
+
+        private void OpenGraphics()
+        {
+            graphics = new GraphicsSettingsPage();
         }
 
         private void StartNaming()
