@@ -100,5 +100,31 @@ namespace Clube.Game
                 return false;
             }
         }
+
+        /// <summary>
+        /// Deletes a save's file (GL230); only files in the saves folder. False, with the reason in
+        /// <paramref name="problem"/>, when it couldn't be deleted.
+        /// </summary>
+        public static bool Delete(string path, out string problem)
+        {
+            problem = null;
+            try
+            {
+                string full = Path.GetFullPath(path);
+                if (!string.Equals(Path.GetDirectoryName(full), Path.GetFullPath(Folder), StringComparison.OrdinalIgnoreCase))
+                {
+                    problem = "Not in the saves folder.";
+                    return false;
+                }
+                File.Delete(full);
+                return true;
+            }
+            catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
+            {
+                problem = exception.Message;
+                UnityEngine.Debug.LogWarning($"Couldn't delete the save {path}: {exception}");
+                return false;
+            }
+        }
     }
 }

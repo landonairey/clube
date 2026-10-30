@@ -135,7 +135,8 @@ namespace Clube.Game
             float gap = InventoryGridGui.Gap;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
             float fuelRow = station.BurnsFuel ? slot + gap * 2f : 0f;
-            float height = Padding * 2f + 24f + 22f * station.Recipes.Count + slot + fuelRow + 30f + 22f + InventoryGridGui.PlayerHeight(inventory);
+            // The trash slot (GL224) sits in a row under your items.
+            float height = Padding * 2f + 24f + 22f * station.Recipes.Count + slot + fuelRow + 30f + 22f + InventoryGridGui.PlayerHeight(inventory) + InventoryGridGui.RowGap + slot;
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
@@ -224,16 +225,18 @@ namespace Clube.Game
             // Dragging works here as in the inventory (GL195): between your slots, or onto the station's input and
             // fuel slots, Shift carrying half and Ctrl one (GL191).
             var grid = new Vector2(x, y);
+            var trashSlot = new Rect(panel.xMax - Padding - slot, y + InventoryGridGui.PlayerHeight(inventory) + InventoryGridGui.RowGap, slot, slot);
             InventoryDragResult mouse = drag.Handle(inventory, grid);
             if (mouse.Kind == InventoryDragKind.Clicked)
             {
                 station.Load(items, mouse.Slot, mouse.Count);
             }
-            else if (mouse.Kind == InventoryDragKind.DroppedOutside)
+            else if (mouse.Kind == InventoryDragKind.DroppedOutside && !InventoryGridGui.Trash(items, mouse, trashSlot))
             {
                 DropOnStation(station, items, mouse, inputSlots, fuelSlots);
             }
             InventoryGridGui.DrawPlayer(grid, inventory, drag.Pressed);
+            InventoryGridGui.DrawTrash(trashSlot, drag.IsDragging);
             if (drag.IsDragging)
             {
                 drag.DrawCarried(items);

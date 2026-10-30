@@ -6,7 +6,8 @@ namespace Clube.Game
 {
     /// <summary>
     /// The main menu's load page (GL208): the saved games, newest first, with the newest selected. Click one to
-    /// select it, then Load (or Enter); a second click on the selected one loads it too. Back (or Esc) returns.
+    /// select it, then Load (or Enter); a second click on the selected one loads it too. Delete removes the selected
+    /// save after asking once (GL230). Back (or Esc) returns.
     /// </summary>
     public sealed class LoadGamePage
     {
@@ -20,6 +21,10 @@ namespace Clube.Game
         private readonly List<SaveEntry> saves;
         private int selected;
         private Vector2 scroll;
+
+        // True while Delete asks whether it's meant (GL230).
+        private bool confirmingDelete;
+        private string problem;
 
         public LoadGamePage(List<SaveEntry> saves)
         {
@@ -51,31 +56,30 @@ namespace Clube.Game
                 // A click flips the toggle: on another row it selects that one, on the selected row it loads.
                 if (GUILayout.Toggle(isSelected, text, styles.ModeButton, GUILayout.Height(52f)) != isSelected)
                 {
-                    if (isSelected)
+                    if (isSelected && !confirmingDelete)
                     {
                         choice = Choice.Load;
                     }
                     selected = i;
+                    confirmingDelete = false;
                 }
                 GUILayout.Space(4f);
             }
             GUILayout.EndScrollView();
 
+            if (problem != null)
+            {
+                GUILayout.Label(problem, styles.Caption);
+            }
             GUILayout.Space(14f);
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Back", styles.Button, GUILayout.Height(46f)))
+            if (confirmingDelete && Selected != null)
             {
-                choice = Choice.Back;
+                DrawConfirmDelete(styles);
             }
-            GUILayout.Space(12f);
-            bool wasEnabled = GUI.enabled;
-            GUI.enabled = Selected != null;
-            if (GUILayout.Button("Load", styles.Button, GUILayout.Height(46f)))
+            else
             {
-                choice = Choice.Load;
+                choice = DrawButtons(styles, choice);
             }
-            GUI.enabled = wasEnabled;
-            GUILayout.EndHorizontal();
             GUILayout.EndArea();
 
             Event current = Event.current;
@@ -85,22 +89,85 @@ namespace Clube.Game
                 {
                     case KeyCode.Return:
                     case KeyCode.KeypadEnter:
-                        choice = Selected != null ? Choice.Load : choice;
+                        choice = Selected != null && !confirmingDelete ? Choice.Load : choice;
                         break;
                     case KeyCode.Escape:
-                        choice = Choice.Back;
+                        if (confirmingDelete)
+                        {
+                            confirmingDelete = false;
+                            current.Use();
+                        }
+                        else
+                        {
+                            choice = Choice.Back;
+                        }
                         break;
                     case KeyCode.UpArrow:
                         selected = Mathf.Max(0, selected - 1);
+                        confirmingDelete = false;
                         current.Use();
                         break;
                     case KeyCode.DownArrow:
                         selected = Mathf.Min(saves.Count - 1, selected + 1);
+                        confirmingDelete = false;
                         current.Use();
                         break;
                 }
             }
             return choice;
+        }
+
+        // Back, Delete and Load.
+        private Choice DrawButtons(MenuStyles styles, Choice choice)
+        {
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Back", styles.Button, GUILayout.Height(46f)))
+            {
+                choice = Choice.Back;
+            }
+            GUILayout.Space(12f);
+            bool wasEnabled = GUI.enabled;
+            GUI.enabled = Selected != null;
+            if (GUILayout.Button("Delete", styles.Button, GUILayout.Height(46f)))
+            {
+                confirmingDelete = true;
+                problem = null;
+            }
+            GUILayout.Space(12f);
+            if (GUILayout.Button("Load", styles.Button, GUILayout.Height(46f)))
+            {
+                choice = Choice.Load;
+            }
+            GUI.enabled = wasEnabled;
+            GUILayout.EndHorizontal();
+            return choice;
+        }
+
+        // "Delete this save?" with Cancel and Delete: a save can't come back.
+        private void DrawConfirmDelete(MenuStyles styles)
+        {
+            GUILayout.Label($"Delete \"{Escape(Selected.Name)}\"? This can't be undone.", styles.Caption);
+            GUILayout.Space(6f);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Cancel", styles.Button, GUILayout.Height(46f)))
+            {
+                confirmingDelete = false;
+            }
+            GUILayout.Space(12f);
+            if (GUILayout.Button("Delete", styles.Button, GUILayout.Height(46f)))
+            {
+                confirmingDelete = false;
+                if (SaveSlots.Delete(Selected.Path, out string why))
+                {
+                    saves.RemoveAt(selected);
+                    selected = Mathf.Clamp(selected, 0, saves.Count - 1);
+                }
+                else
+                {
+                    problem = "Couldn't delete the save: " + why;
+                }
+            }
+            GUILayout.EndHorizontal();
         }
 
         private static string Describe(SaveEntry save)

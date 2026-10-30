@@ -32,8 +32,9 @@ namespace Clube.Game
             {
                 purity = Materials.Quality(stack.Contents, stack.Item);
             }
-            purityStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = 10, fontStyle = FontStyle.Bold, normal = { textColor = new Color(1f, 0.8f, 0.35f) } };
-            GUI.Label(new Rect(rect.x, rect.y + 1f, rect.width - 3f, 14f), (purity * 100f).ToString("0") + "%", purityStyle);
+            // No padding or clipping: the skin's label padding cut the bottom off the digits (GL222).
+            purityStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = 10, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0), clipping = TextClipping.Overflow, normal = { textColor = new Color(1f, 0.8f, 0.35f) } };
+            GUI.Label(new Rect(rect.x, rect.y + 2f, rect.width - 4f, 16f), (purity * 100f).ToString("0") + "%", purityStyle);
         }
 
         /// <param name="corner">Small text for the lower left, e.g. a merchant's price; null for none.</param>
