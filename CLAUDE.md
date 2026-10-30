@@ -454,7 +454,7 @@ the skybox and ambient settings. `DryingClayEffect` steams drying clay. The stat
 (`InventoryGridGui.DrawTrash`). Silver and gold smelt in every furnace and hammer into ingots; the flat rock makes bronze
 tools; the brick furnace (heat 2.25, 100 bricks, Crafting 6) is built by *Clube → Models → Build furnaces*. The starting
 inventory is empty and the merchant stands in the starting parcel. The exe runs in the background. The load list deletes
-saves.
+saves. Stumps open from the foot of the trunk (`StumpWorktops`, GL231); `PlaceSketch` draws the stump and boulder entries (GL232).
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
