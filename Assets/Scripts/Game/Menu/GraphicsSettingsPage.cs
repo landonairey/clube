@@ -15,6 +15,7 @@ namespace Clube.Game
 
         private static readonly FrameRateLimit[] Limits = { FrameRateLimit.Fps30, FrameRateLimit.Fps60, FrameRateLimit.VSync, FrameRateLimit.Unlimited };
         private static string[] limitLabels;
+        private static GUIStyle toggleStyle;
 
         /// <summary>Draws the popup's contents in the current layout area; true when Back was pressed.</summary>
         public bool Draw(GUIStyle title, GUIStyle label, GUIStyle hint, GUIStyle button)
@@ -50,7 +51,9 @@ namespace Clube.Game
             GUILayout.Label(Describe(GraphicsSettings.FrameRate), hint);
             GUILayout.Space(8f);
 
-            GraphicsSettings.FreezeDay = GUILayout.Toggle(GraphicsSettings.FreezeDay, "  Freeze the time of day", label);
+            // The skin's toggle, which draws the box; a label style would hide it.
+            toggleStyle ??= new GUIStyle(GUI.skin.toggle) { fontSize = label.fontSize, normal = { textColor = label.normal.textColor }, onNormal = { textColor = label.normal.textColor } };
+            GraphicsSettings.FreezeDay = GUILayout.Toggle(GraphicsSettings.FreezeDay, " Freeze the time of day", toggleStyle);
             bool wasEnabled = GUI.enabled;
             GUI.enabled = GraphicsSettings.FreezeDay;
             GUILayout.Label($"Frozen at  {GraphicsSettings.ClockTime(GraphicsSettings.FrozenHour)}", label);
