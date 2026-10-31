@@ -236,6 +236,12 @@ namespace Clube.Core
         /// <summary>How much it shines, 0-1 (GL251): gold does, the rest of the ground is matt.</summary>
         public float Shine => shine;
 
+        /// <summary>
+        /// How rough its surface is drawn, 0-1 (GL268): rock fully (bumps and cracks on stone faces), soft ground a little,
+        /// plants not at all (the shader moves and shades the surface by it; the voxels are unchanged).
+        /// </summary>
+        public float Relief => Kind == MaterialKind.Rock ? 1f : Kind == MaterialKind.Soil ? 0.35f : 0f;
+
         /// <summary>Sets what it takes to work it (GL145, GL152), for materials made in code (tests).</summary>
         public VoxelMaterial WithToolTier(int tier, SkillType skill = SkillType.None, int level = 0)
         {

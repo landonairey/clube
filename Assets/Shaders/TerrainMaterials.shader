@@ -71,6 +71,61 @@ Shader "Clube/Terrain Materials"
             return positionWS;
         }
 
+        // How rough each material is drawn, 0-1 (GL268: rock 1, soft ground 0.35, plants 0), set from the registry.
+        float _MaterialRelief[64];
+
+        float Hash31(float3 p)
+        {
+            p = frac(p * float3(0.1031, 0.1030, 0.0973));
+            p += dot(p, p.yxz + 33.33);
+            return frac((p.x + p.y) * p.z);
+        }
+
+        // Smooth 3D value noise, 0-1.
+        float Noise3(float3 p)
+        {
+            float3 i = floor(p);
+            float3 f = frac(p);
+            f = f * f * (3.0 - 2.0 * f);
+            float a = Hash31(i), b = Hash31(i + float3(1, 0, 0)), c = Hash31(i + float3(0, 1, 0)), d = Hash31(i + float3(1, 1, 0));
+            float e = Hash31(i + float3(0, 0, 1)), g = Hash31(i + float3(1, 0, 1)), h = Hash31(i + float3(0, 1, 1)), k = Hash31(i + float3(1, 1, 1));
+            return lerp(lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y), lerp(lerp(e, g, f.x), lerp(h, k, f.x), f.y), f.z);
+        }
+
+        // How rough the surface is here: its materials' relief, by weight.
+        float ReliefOf(float3 ids, float3 weights)
+        {
+            float total = weights.x + weights.y + weights.z;
+            if (total <= 0.0)
+            {
+                return 0.0;
+            }
+            return (weights.x * _MaterialRelief[(int)ids.x] + weights.y * _MaterialRelief[(int)ids.y]
+                    + weights.z * _MaterialRelief[(int)ids.z]) / total;
+        }
+
+        // A surface's relief (GL268): each vertex moved by a smooth 3D noise of where it is (lumps about 1.5 m across, up
+        // to 12 cm, and finer ones of 5 cm), so stone faces read as rough rock and soft ground as uneven. It depends only on
+        // the position (and the materials, which neighbouring chunks agree on), so chunk seams stay closed. Only drawn: the
+        // voxels and the colliders are unchanged.
+        float3 Relief(float3 positionWS, float3 ids, float3 weights)
+        {
+            float relief = ReliefOf(ids, weights);
+            if (relief <= 0.0)
+            {
+                return positionWS;
+            }
+            float3 broad = float3(Noise3(positionWS * 0.7), Noise3(positionWS * 0.7 + 17.3), Noise3(positionWS * 0.7 + 41.9)) - 0.5;
+            float3 fine = float3(Noise3(positionWS * 2.1 + 5.1), Noise3(positionWS * 2.1 + 29.7), Noise3(positionWS * 2.1 + 63.2)) - 0.5;
+            return positionWS + (broad * 0.24 + fine * 0.1) * relief;
+        }
+
+        // Where a terrain vertex is drawn: swayed if it's leaves, roughened if it's rock or soil.
+        float3 ShapeTerrain(float3 positionWS, float3 ids, float3 weights)
+        {
+            return Relief(SwayLeaves(positionWS, ids, weights), ids, weights);
+        }
+
         // Global (GL102), not per material.
         float _HardMaterialEdges;
 
@@ -164,7 +219,7 @@ Shader "Clube/Terrain Materials"
             Varyings Vertex(Attributes input)
             {
                 Varyings output;
-                output.positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
+                output.positionWS = ShapeTerrain(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 output.positionCS = TransformWorldToHClip(output.positionWS);
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.materialIds = input.materialIds;
@@ -307,11 +362,30 @@ Shader "Clube/Terrain Materials"
                 return shine * (lit * (sheen + glint * half3(1.0, 0.95, 0.75)) + skyGlint);
             }
 
+            // Fine relief in the shading (GL268): the normal tilted by the slope of a 3D noise about 30 cm across, so rock
+            // reads as pitted and cracked between its vertices. Only the light; the surface itself is where Relief put it.
+            float3 Bumped(float3 positionWS, float3 normalWS, float relief)
+            {
+                if (relief <= 0.0)
+                {
+                    return normalWS;
+                }
+                const float step = 0.04;
+                float3 p = positionWS * 3.3;
+                float here = Noise3(p);
+                float3 slope = float3(Noise3(p + float3(step, 0, 0)), Noise3(p + float3(0, step, 0)), Noise3(p + float3(0, 0, step))) - here;
+                slope /= step;
+                // Only the part across the surface tilts it.
+                slope -= normalWS * dot(slope, normalWS);
+                return normalize(normalWS - slope * 0.22 * relief);
+            }
+
             half4 Fragment(Varyings input) : SV_Target
             {
                 ClipLod(input.positionWS);
                 float3 normalWS = normalize(input.normalWS);
                 half3 albedo = Albedo(input, normalWS);
+                normalWS = Bumped(input.positionWS, normalWS, ReliefOf(input.materialIds, input.materialWeights));
                 if (_LodClip > 0.5)
                 {
                     albedo *= _LodTint.rgb;
@@ -363,7 +437,7 @@ Shader "Clube/Terrain Materials"
 
             float4 ShadowVertex(Attributes input) : SV_POSITION
             {
-                float3 positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
+                float3 positionWS = ShapeTerrain(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
             #if _CASTING_PUNCTUAL_LIGHT_SHADOW
                 float3 lightDirection = normalize(_LightPosition - positionWS);
@@ -414,7 +488,7 @@ Shader "Clube/Terrain Materials"
             DepthVaryings DepthVertex(DepthAttributes input)
             {
                 DepthVaryings output;
-                output.positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
+                output.positionWS = ShapeTerrain(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 output.positionCS = TransformWorldToHClip(output.positionWS);
                 return output;
             }
@@ -457,7 +531,7 @@ Shader "Clube/Terrain Materials"
             Varyings NormalsVertex(Attributes input)
             {
                 Varyings output;
-                output.positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
+                output.positionWS = ShapeTerrain(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 output.positionCS = TransformWorldToHClip(output.positionWS);
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 return output;
