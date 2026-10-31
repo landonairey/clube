@@ -113,6 +113,20 @@ namespace Clube.Game
         /// <summary>Where the moon is, a world direction towards it.</summary>
         public Vector3 MoonDirection { get; private set; } = Vector3.down;
 
+        /// <summary>
+        /// Sets the clock to an hour of the day, <paramref name="laterDays"/> days on from today (the lab's time cheat, GL248):
+        /// for looking at the sky and the moon's phases. Everything on the clock (drying, smelting) moves with it.
+        /// </summary>
+        public void SetTime(float hour, double laterDays = 0d)
+        {
+            if (clock == null)
+            {
+                return;
+            }
+            double day = System.Math.Floor(clock.Days) + System.Math.Max(0d, laterDays);
+            clock.Restore(day + Mathf.Repeat(hour - startHour, 24f) / 24d);
+        }
+
         // The latitude the sky is seen from: the sun's noon height sets it.
         private float Latitude => 90f - noonElevation;
 

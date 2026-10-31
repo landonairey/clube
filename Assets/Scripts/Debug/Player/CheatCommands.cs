@@ -12,7 +12,7 @@ namespace Clube.Debug
     /// </summary>
     public static class CheatCommands
     {
-        public const string Help = "coins <amount> · give <item> [count] · level <skill|all> <n> · xp <skill> <amount> · help";
+        public const string Help = "coins <amount> · give <item> [count] · level <skill|all> <n> · xp <skill> <amount> · time <hour> [days on] · help";
 
         /// <summary>Runs one command line; returns what happened, for the panel to show.</summary>
         public static string Run(string line, PlayerInventory inventory, PlayerWallet wallet, ItemCatalog catalog, PlayerSkills skills = null)
@@ -58,9 +58,33 @@ namespace Clube.Debug
                 case "xp":
                     return Skills(words, skills);
 
+                case "time":
+                    return SetClock(words);
+
                 default:
                     return $"Unknown command \"{words[0]}\". {Help}";
             }
+        }
+
+        // "time 21", "time 21 14" (GL248): the hour of the day, and how many days on, for the sun and the moon's phases.
+        private static string SetClock(string[] words)
+        {
+            var cycle = UnityEngine.Object.FindFirstObjectByType<DayNightCycle>();
+            if (cycle == null)
+            {
+                return "No day and night here (Play mode in a world lab only)";
+            }
+            if (words.Length < 2 || !float.TryParse(words[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float hour) || hour < 0f || hour >= 24f)
+            {
+                return "Usage: time <hour 0-24> [days on]";
+            }
+            double later = 0d;
+            if (words.Length > 2 && !double.TryParse(words[2], NumberStyles.Float, CultureInfo.InvariantCulture, out later))
+            {
+                return "Usage: time <hour 0-24> [days on]";
+            }
+            cycle.SetTime(hour, later);
+            return $"{hour:0.#}:00, moon {cycle.MoonPhase * 100f:0}% through its month";
         }
 
         // "level mining 3", "level all 5", "xp smelting 40" (GL47).
