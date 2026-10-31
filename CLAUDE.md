@@ -464,6 +464,15 @@ bushes where `BushGrowth` puts them (`BushMeshes`, `Bush.mat`, no collider); bot
 `PlayerToolUser` picks the bush aimed at on Attack (`BushPicked`), and `PlayerBushes` hands over leaves and sticks. Picked and
 broken bushes are saved (`GameSave.RemovedBushes`, save version 4). Wind: `Assets/Shaders/Wind.hlsl` for grass, bushes, the
 voxel leaves (`VoxelMaterial.WindSway`, `_MaterialSway` from `MaterialRegistry`) and the distant trees.
+Twenty-sixth pass (GL240-GL251, `Docs/20261030g clube-backlog.md`): a stump opens only once the wood above it is cleared
+(GL231 reverted). In the sphere modes a tool on ground it isn't made for (a shovel on stone) works only the sample under the
+dot. Gathered stacks blend only within 15 points of purity, a pure stack only with pure (`Inventory.MixTolerance`); stations
+load the best stack first (`SlotsByQuality`); the merchant sells part items (`Inventory.RemoveAmount`). Slides last while C is
+held, up to 8 m, never up a steep rise. The sky: `SkyPositions` (Core/Sky) puts the sun (under the horizon at night) and the
+moon (its own 29.5-day orbit and phases); `DayNightCycle` lights from either, `MoonDisc` (`Clube/Moon`) draws the moon.
+The wooden chest (`StorageChest`, `ChestPanel`, `StorageCapacity`: 27 slots at 100% wood down to 5) is a placeable from
+100 wood at the stump. Birds: `BirdFlock` (Core/Fauna) and `BirdFlocks` on World. Gold shines (`VoxelMaterial.Shine`,
+`_MaterialShine` in `Clube/Terrain Materials`, glints in its texture). Silver and gold buns are called buttons.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

@@ -258,9 +258,9 @@ namespace Clube.Core.Tests
             try
             {
                 mixes.Add(ore, 2, Composition.From(new Content(rock, 1f)), 0, 0.5f);
-                mixes.Add(ore, 2, Composition.From(new Content(rock, 1f)), 0, 0.7f);
-                Assert.AreEqual(4, mixes[0].Count, "Gathered ore blends.");
-                Assert.AreEqual(0.6f, mixes[0].Quality, 1e-4f);
+                mixes.Add(ore, 2, Composition.From(new Content(rock, 1f)), 0, 0.6f);
+                Assert.AreEqual(4, mixes[0].Count, "Gathered ore of a close quality blends (GL245).");
+                Assert.AreEqual(0.55f, mixes[0].Quality, 1e-4f);
             }
             finally
             {
@@ -343,10 +343,10 @@ namespace Clube.Core.Tests
             {
                 var bag = new Inventory(1);
                 Composition contents = Composition.From(new Content(clay, 1f));
-                bag.Add(ore, 1, contents, 0, 1f);
-                bag.Add(ore, 0, contents, 0, 0.5f, 0.5f);
+                bag.Add(ore, 1, contents, 0, 0.9f);
+                bag.Add(ore, 0, contents, 0, 0.8f, 0.5f);
                 Assert.AreEqual(1.5f, bag[0].Amount, 1e-4f);
-                Assert.AreEqual((1f * 1f + 0.5f * 0.5f) / 1.5f, bag[0].Quality, 1e-3f);
+                Assert.AreEqual((1f * 0.9f + 0.5f * 0.8f) / 1.5f, bag[0].Quality, 1e-3f);
             }
             finally
             {
