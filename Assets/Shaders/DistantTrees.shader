@@ -177,5 +177,59 @@ Shader "Clube/Distant Trees"
             }
             ENDHLSL
         }
+
+        // Depth and normals for the camera's depth texture: with SSAO on, URP builds it from this pass, and the clouds
+        // (Clube/Clouds) read it to stop behind the trees; without it they drew over them.
+        Pass
+        {
+            Name "DepthNormals"
+            Tags { "LightMode" = "DepthNormals" }
+
+            ZWrite On
+
+            HLSLPROGRAM
+            #pragma vertex NormalsVertex
+            #pragma fragment NormalsFragment
+            #pragma multi_compile_instancing
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
+
+            struct Attributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct NormalsVaryings
+            {
+                float4 positionCS : SV_POSITION;
+                float3 normalWS : TEXCOORD0;
+                float2 keep : TEXCOORD1;
+            };
+
+            NormalsVaryings NormalsVertex(Attributes input)
+            {
+                UNITY_SETUP_INSTANCE_ID(input);
+                NormalsVaryings output;
+                float3 root = TransformObjectToWorld(float3(0, 0, 0));
+                output.positionCS = Covered(root) ? float4(2, 2, 2, 1) : TransformWorldToHClip(SwayCrown(input.positionOS.xyz));
+                output.normalWS = TransformObjectToWorldNormal(input.normalOS);
+                output.keep = LevelKeep(root);
+                return output;
+            }
+
+            half4 NormalsFragment(NormalsVaryings input) : SV_Target
+            {
+                ClipLevel(input.positionCS, input.keep);
+                float3 normalWS = SafeNormalize(input.normalWS);
+            #if defined(_GBUFFER_NORMALS_OCT)
+                float2 octahedral = PackNormalOctQuadEncode(normalWS);
+                return half4(PackFloat2To888(saturate(octahedral * 0.5 + 0.5)), 0.0);
+            #else
+                return half4(normalWS, 0.0);
+            #endif
+            }
+            ENDHLSL
+        }
     }
 }

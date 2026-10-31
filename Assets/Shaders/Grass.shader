@@ -241,5 +241,56 @@ Shader "Clube/Grass"
             }
             ENDHLSL
         }
+
+        // Depth and normals for the camera's depth texture: with SSAO on, URP builds it from this pass, and the clouds
+        // (Clube/Clouds) read it to stop behind what's in front of them; without it they drew over the grass and bushes.
+        Pass
+        {
+            Name "DepthNormals"
+            Tags { "LightMode" = "DepthNormals" }
+            Cull Off
+            ZWrite On
+
+            HLSLPROGRAM
+            #pragma vertex NormalsVertex
+            #pragma fragment NormalsFragment
+            #pragma multi_compile_instancing
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
+
+            struct Attributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
+                half4 color : COLOR;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct Varyings
+            {
+                float4 positionCS : SV_POSITION;
+                float3 normalWS : TEXCOORD0;
+            };
+
+            Varyings NormalsVertex(Attributes input)
+            {
+                UNITY_SETUP_INSTANCE_ID(input);
+                Varyings output;
+                output.positionCS = TransformWorldToHClip(FloraPosition(input.positionOS.xyz, input.color.a));
+                output.normalWS = TransformObjectToWorldNormal(input.normalOS);
+                return output;
+            }
+
+            half4 NormalsFragment(Varyings input) : SV_Target
+            {
+                float3 normalWS = normalize(input.normalWS);
+            #if defined(_GBUFFER_NORMALS_OCT)
+                float2 octahedral = PackNormalOctQuadEncode(normalWS);
+                return half4(PackFloat2To888(saturate(octahedral * 0.5 + 0.5)), 0.0);
+            #else
+                return half4(normalWS, 0.0);
+            #endif
+            }
+            ENDHLSL
+        }
     }
 }
