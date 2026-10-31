@@ -7,7 +7,8 @@ namespace Clube.Core
     /// game's day: the sun crosses from east to west and goes under the horizon at night; the moon goes round once a
     /// synodic month (<see cref="SynodicMonthDays"/>), so it rises about 50 minutes (of game time) later each day, and its
     /// phase is how far it has drifted from the sun. Its path tilts with the ecliptic and its own 5° orbit, so it rides
-    /// high some nights and low on others.
+    /// high some nights and low on others. The stars turn about the celestial pole once a sidereal day
+    /// (<see cref="SiderealAngle"/>), the pole standing as high over the north horizon as the latitude.
     /// </summary>
     /// <remarks>
     /// Plain math. Directions are in the sky's frame: x east, y up, z north. The sun keeps to the equinox (no seasons), so
@@ -92,5 +93,42 @@ namespace Clube.Core
             float hourAngle = SunHourAngle(hour) - MoonPhase(days) * 360f;
             return Direction(hourAngle, MoonDeclination(days), latitude);
         }
+
+        /// <summary>
+        /// How far the stars have turned, in degrees (the local sidereal time, GL253): the sun's hour angle plus its
+        /// drift east through the stars, once a year. So the stars turn once a sidereal day, about 4 minutes (of 24 game
+        /// hours) shorter than the sun's, and the same stars rise a little earlier each night.
+        /// </summary>
+        public static float SiderealAngle(double days, float hour)
+        {
+            double years = days / TropicalYearDays;
+            return SunHourAngle(hour) + (float)((years - System.Math.Floor(years)) * 360d);
+        }
+
+        /// <summary>
+        /// Where a star is, from its place on the sky (right ascension and declination, degrees), <paramref name="days"/>
+        /// into the game at an hour of the day.
+        /// </summary>
+        public static Vector3 Star(float rightAscension, float declination, double days, float hour, float latitude)
+        {
+            return Direction(SiderealAngle(days, hour) - rightAscension, declination, latitude);
+        }
+
+        /// <summary>
+        /// The moon illusion (GL254): how much bigger the moon looks at a height (the sine of its angle over the horizon)
+        /// than high in the sky, as a factor: 1 + <paramref name="growth"/> on the horizon, easing back to 1 by the
+        /// height <paramref name="band"/>.
+        /// </summary>
+        public static float MoonIllusion(float height, float growth, float band)
+        {
+            float low = 1f - Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(height / Mathf.Max(band, 1e-3f)));
+            return 1f + growth * low;
+        }
+
+        /// <summary>The year, equinox to equinox, in days: how long the sun takes to go once round the stars.</summary>
+        public const double TropicalYearDays = 365.24219;
+
+        /// <summary>The stars' day as a share of the sun's: once round in 23 h 56 min.</summary>
+        public const double SiderealDayShare = TropicalYearDays / (TropicalYearDays + 1d);
     }
 }

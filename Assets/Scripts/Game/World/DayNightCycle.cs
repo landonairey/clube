@@ -46,6 +46,10 @@ namespace Clube.Game
         [SerializeField]
         private MoonDisc moon;
 
+        [Tooltip("Draws the stars, turned with the sky (GL253). Optional.")]
+        [SerializeField]
+        private StarSky stars;
+
         [Tooltip("How high the sun gets at noon, in degrees.")]
         [SerializeField, Range(10f, 90f)]
         private float noonElevation = 62f;
@@ -90,8 +94,8 @@ namespace Clube.Game
         /// <summary>How much daylight there is, 0 at night to 1 by day.</summary>
         public float Daylight { get; private set; } = 1f;
 
-        /// <summary>Days since a new moon, the clock's (or the frozen hour's on the clock's day).</summary>
-        public double MoonAge
+        /// <summary>Days on the clock, or the frozen hour's time on the clock's day.</summary>
+        public double Days
         {
             get
             {
@@ -100,9 +104,12 @@ namespace Clube.Game
                 {
                     days = System.Math.Floor(days) + (GraphicsSettings.FrozenHour - startHour) / 24d;
                 }
-                return days + startMoonAge;
+                return days;
             }
         }
+
+        /// <summary>Days since a new moon.</summary>
+        public double MoonAge => Days + startMoonAge;
 
         /// <summary>The moon's phase, 0-1 of its month: 0 new, 0.5 full (GL248).</summary>
         public float MoonPhase => SkyPositions.MoonPhase(MoonAge);
@@ -223,6 +230,20 @@ namespace Clube.Game
             if (moon != null)
             {
                 moon.Show(moonDirection, sunDirection, Daylight);
+            }
+            if (stars != null)
+            {
+                // The celestial frame: right ascension 0 and 90 on the equator, and the pole, where they are now.
+                // They come out once the sun is under the horizon, all of them by nautical dusk (12 degrees down).
+                double days = Days;
+                float latitude = Latitude;
+                // A bright moon high up washes out the fainter ones.
+                float night = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.02f, -0.2f, sunHeight))
+                              * (1f - 0.45f * illumination * Mathf.Clamp01(moonDirection.y * 2f));
+                stars.Show(compass * SkyPositions.Star(0f, 0f, days, hour, latitude),
+                    compass * SkyPositions.Star(90f, 0f, days, hour, latitude),
+                    compass * SkyPositions.Star(0f, 90f, days, hour, latitude),
+                    night);
             }
 
             // A bright moon lights the night a little more than a new one.
