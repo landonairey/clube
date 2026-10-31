@@ -70,6 +70,10 @@ namespace Clube.Game
         private string brokenName;
         private float brokenUntil;
         private BushScatter bushes;
+        // After a bush is picked, the held Attack does nothing more until it is let go (GL241): the ground behind stays.
+        private bool waitForRelease;
+        // This frame's aim is on ground the tool isn't made for (GL242): only the sample under the dot is worked.
+        private bool offKindHit;
 
         /// <summary>Raised for each item a hit collects, one at a time, with its contents (mixed ore, GL32).</summary>
         public event Action<ItemStack> Collected;
@@ -175,6 +179,7 @@ namespace Clube.Game
         private void Update()
         {
             targets.Clear();
+            offKindHit = false;
             HasReach = false;
             HasBush = false;
             ReachIsSphere = false;
@@ -204,8 +209,19 @@ namespace Clube.Game
                 if (useAction != null && useAction.action.WasPressedThisFrame() && bushes.Pick(bush))
                 {
                     BushPicked?.Invoke(bush);
+                    waitForRelease = true;
                 }
                 return;
+            }
+
+            // The press that picked a bush doesn't go on to dig the grass that was behind it (GL241).
+            if (waitForRelease)
+            {
+                if (useAction != null && useAction.action.IsPressed())
+                {
+                    return;
+                }
+                waitForRelease = false;
             }
 
             FindTargets(tool);
@@ -385,6 +401,7 @@ namespace Clube.Game
         // the hand's smaller than a tool's. Reach is the box of voxels round it, for the cursor.
         private void AimSphere(ToolDefinition tool, WorldHit hit)
         {
+            offKindHit = IsOffKind(tool, hit);
             if (TakesAimedSample(tool))
             {
                 AimSample(hit);
@@ -409,7 +426,20 @@ namespace Clube.Game
         // The hand (GL106, GL154) and tools like the hand axe (GL155) take only the sample under the dot.
         private bool TakesAimedSample(ToolDefinition tool)
         {
-            return tool == hand ? collecting.HandTakesAimedVoxel : tool.AimedOnly;
+            return tool == hand ? collecting.HandTakesAimedVoxel : tool.AimedOnly || offKindHit;
+        }
+
+        // True when the ground under the dot isn't what the tool is made for (GL242): a shovel on stone, a pick on dirt.
+        // Like a voxel hit (GL39), it then works only the sample under the dot, at ToolOffAmount, never the whole sphere.
+        private bool IsOffKind(ToolDefinition tool, WorldHit hit)
+        {
+            if (tool == hand || tool.WideOn == ReachOn.Anything)
+            {
+                return false;
+            }
+            VoxelMaterial ground = ToolStrike.AimedMaterial(
+                worldView.World, ToolStrike.AimedVoxel(worldView.World, hit), worldView.Config.IsoLevel, worldView.Config.Materials);
+            return ground != null && !tool.ReachesWideOn(ground);
         }
 
         // On the press, then at the tool's rate while held.
