@@ -33,7 +33,8 @@ namespace Clube.Game
         private PlayerController player;
         private int openedFrame;
         private int selected = -1;
-        private int splitCount = 1;
+        // How much "Sell part" sells: whole items, or to the hundredth for a part item (GL246).
+        private float splitAmount = 1f;
         private GUIStyle countStyle;
 
         /// <summary>The table being used, or null when closed.</summary>
@@ -142,7 +143,7 @@ namespace Clube.Game
             if (clicked >= 0)
             {
                 selected = clicked == selected ? -1 : clicked;
-                splitCount = selected >= 0 ? items[selected].Count : 1;
+                splitAmount = selected >= 0 ? items[selected].Amount : 1f;
             }
             y += InventoryGridGui.PlayerHeight(inventory) + 12f;
 
@@ -153,11 +154,11 @@ namespace Clube.Game
                 : $"The merchant doesn't buy {chosen.Item.DisplayName}";
             GUI.Label(new Rect(x, y + 4f, 260f, 20f), what);
             GUI.enabled = buys;
-            string oneLabel = "Sell 1" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, 1))}" : "");
+            string oneLabel = "Sell 1" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, Mathf.Min(1f, chosen.Amount)))}" : "");
             string stackLabel = "Sell stack" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, chosen.Amount))}" : "");
             if (GUI.Button(new Rect(x + 270f, y, 100f, SellRowHeight), oneLabel))
             {
-                SellFromSlot(selected, 1);
+                SellFromSlot(selected, 1f);
             }
             if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), stackLabel))
             {
@@ -165,28 +166,31 @@ namespace Clube.Game
             }
             y += SellRowHeight + 6f;
 
-            // Part of the stack (GL57): a slider for how many, e.g. 100 of 109 stone for exactly 100 coins.
-            int most = buys ? chosen.Count : 1;
-            splitCount = Mathf.Clamp(splitCount, 1, most);
+            // Part of the stack (GL57): a slider for how much, e.g. 100 of 109 stone for exactly 100 coins. Part items
+            // sell too (GL246): under 10 the slider moves in hundredths, so 0.99 clay can go.
+            float most = buys ? chosen.Amount : 1f;
+            float least = Mathf.Min(most, most < 10f ? 0.01f : 1f);
+            splitAmount = Mathf.Clamp(splitAmount, least, most);
             GUI.Label(new Rect(x, y + 12f, 60f, 20f), "Sell part");
-            splitCount = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(x + 64f, y + 18f, 196f, 16f), splitCount, 1f, most));
+            splitAmount = SnapAmount(GUI.HorizontalSlider(new Rect(x + 64f, y + 18f, 196f, 16f), splitAmount, least, most), most);
             if (buys)
             {
                 // Arrow buttons for the last few, which a slider over a big stack can't hit.
+                float step = most < 10f ? 0.01f : 1f;
                 if (GUI.Button(new Rect(x + 270f, y + 8f, 24f, 28f), "-"))
                 {
-                    splitCount = Mathf.Max(1, splitCount - 1);
+                    splitAmount = Mathf.Max(least, SnapAmount(splitAmount - step, most));
                 }
                 if (GUI.Button(new Rect(x + 346f, y + 8f, 24f, 28f), "+"))
                 {
-                    splitCount = Mathf.Min(most, splitCount + 1);
+                    splitAmount = Mathf.Min(most, SnapAmount(splitAmount + step, most));
                 }
-                GUI.Label(new Rect(x + 296f, y + 12f, 48f, 20f), splitCount.ToString(), countStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter });
+                GUI.Label(new Rect(x + 296f, y + 12f, 48f, 20f), FormatAmount(splitAmount), countStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter });
             }
-            string partLabel = $"Sell {(buys ? splitCount : 0)}" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, splitCount))}" : "");
+            string partLabel = $"Sell {(buys ? FormatAmount(splitAmount) : "0")}" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, splitAmount))}" : "");
             if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), partLabel))
             {
-                SellFromSlot(selected, splitCount);
+                SellFromSlot(selected, splitAmount);
             }
             GUI.enabled = true;
             y += SellRowHeight + 6f;
@@ -254,8 +258,23 @@ namespace Clube.Game
             selected = -1;
         }
 
+        // Whole items from a big stack; to the hundredth under 10, and the whole amount at the top of the slider.
+        private static float SnapAmount(float amount, float most)
+        {
+            if (amount >= most - 0.005f)
+            {
+                return most;
+            }
+            return most < 10f ? Mathf.Round(amount * 100f) / 100f : Mathf.Round(amount);
+        }
+
+        private static string FormatAmount(float amount)
+        {
+            return Mathf.Approximately(amount, Mathf.Round(amount)) ? $"{Mathf.Round(amount):0}" : $"{amount:0.##}";
+        }
+
         // Sells from one slot, so the stack the player picked is the one that goes.
-        private void SellFromSlot(int slot, int count)
+        private void SellFromSlot(int slot, float amount)
         {
             Inventory items = inventory.Inventory;
             ItemStack stack = items[slot];
@@ -263,14 +282,14 @@ namespace Clube.Game
             {
                 return;
             }
-            // Any number sells; a price that isn't a whole coin pays its part of one (GL199).
-            int sold = Mathf.Min(count, stack.Count);
+            // Any amount sells, a part item included (GL246); a price that isn't a whole coin pays its part of one (GL199).
+            float sold = Mathf.Min(amount, stack.Amount);
             float earned = Current.Prices.PriceOf(stack, sold);
-            items.RemoveAt(slot, sold);
+            sold = items.RemoveAmount(slot, sold);
             wallet.Wallet.Earn(earned);
-            if (sold > 0)
+            if (sold > 0f)
             {
-                Sold?.Invoke(sold);
+                Sold?.Invoke(Mathf.Max(1, Mathf.FloorToInt(sold)));
             }
             if (items[slot].IsEmpty)
             {

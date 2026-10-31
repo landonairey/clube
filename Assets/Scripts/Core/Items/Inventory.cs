@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Clube.Core
 {
@@ -22,6 +23,15 @@ namespace Clube.Core
         // Qualities closer than this stack together: the same to the percent shown.
         private const float SameQuality = 0.005f;
 
+        /// <summary>
+        /// Gathered stacks (with contents) blend only when their qualities are this close (GL245): refined clay at 100%
+        /// doesn't take in 55% clay and come out 80%.
+        /// </summary>
+        public const float MixTolerance = 0.15f;
+
+        // A stack at least this pure is kept apart from anything less pure (GL245).
+        private const float Pure = 0.995f;
+
         private readonly ItemStack[] slots;
 
         public Inventory(int slotCount)
@@ -43,13 +53,30 @@ namespace Clube.Core
         public ItemStack this[int slot] => slots[slot];
 
         /// <summary>
-        /// True when items with these contents and quality go onto the stack (GL131): the same item, and
-        /// either gathered material (its mix blends in) or the same quality.
+        /// True when items with these contents and quality go onto the stack (GL131): the same item, and either the same
+        /// quality or gathered material (its mix blends in) of a quality within <see cref="MixTolerance"/> (GL245). A pure
+        /// stack takes only pure material, so a stack refined to 100% stays at 100%.
         /// </summary>
         public static bool Stacks(ItemStack stack, ItemDefinition item, Composition contents, float quality)
         {
-            return !stack.IsEmpty && stack.Item == item
-                && (stack.Contents != null || contents != null || Math.Abs(stack.Quality - quality) < SameQuality);
+            if (stack.IsEmpty || stack.Item != item)
+            {
+                return false;
+            }
+            float gap = Math.Abs(stack.Quality - quality);
+            if (gap < SameQuality)
+            {
+                return true;
+            }
+            if (stack.Contents == null && contents == null)
+            {
+                return false;
+            }
+            if ((stack.Quality >= Pure) != (quality >= Pure))
+            {
+                return false;
+            }
+            return gap <= MixTolerance;
         }
 
         /// <summary>
@@ -242,6 +269,29 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// Takes an amount from one slot, part items included (GL246: selling 0.99 clay); returns how much it took, never more
+        /// than the slot holds. Less than all of it leaves the rest in the slot, its contents and quality kept.
+        /// </summary>
+        public float RemoveAmount(int slot, float amount)
+        {
+            ItemStack stack = slots[slot];
+            if (stack.IsEmpty || amount <= ItemStack.PartEpsilon)
+            {
+                return 0f;
+            }
+            if (amount >= stack.Amount - ItemStack.PartEpsilon)
+            {
+                TakeAll(slot);
+                return stack.Amount;
+            }
+            float left = stack.Amount - amount;
+            int whole = (int)Math.Floor(left + ItemStack.PartEpsilon * 0.5f);
+            slots[slot] = new ItemStack(stack.Item, whole, stack.Contents, stack.Wear, stack.Quality, left - whole);
+            Changed?.Invoke();
+            return amount;
+        }
+
+        /// <summary>
         /// Puts a stack in a slot in place of what's there (GL177: a refined stack keeps its slot). Nothing changes
         /// when the slot doesn't take the item.
         /// </summary>
@@ -398,6 +448,21 @@ namespace Clube.Core
         /// another inventory (GL80: a recipe's ingredients into a station), keeping each stack's
         /// contents and wear. Returns how many moved.
         /// </summary>
+        /// <summary>The slots holding an item, best quality first (ties in slot order).</summary>
+        public List<int> SlotsByQuality(ItemDefinition item)
+        {
+            var found = new List<int>();
+            for (int slot = 0; slot < slots.Length; slot++)
+            {
+                if (item != null && slots[slot].Item == item)
+                {
+                    found.Add(slot);
+                }
+            }
+            found.Sort((a, b) => slots[a].Quality != slots[b].Quality ? slots[b].Quality.CompareTo(slots[a].Quality) : a.CompareTo(b));
+            return found;
+        }
+
         public int MoveItemTo(ItemDefinition item, int count, Inventory target)
         {
             if (item == null || target == null || target == this)
@@ -405,13 +470,14 @@ namespace Clube.Core
                 return 0;
             }
             int moved = 0;
-            for (int slot = 0; slot < slots.Length && moved < count; slot++)
+            // The best stacks go first (GL245): a station loads the refined clay, not the dirty stack beside it.
+            foreach (int slot in SlotsByQuality(item))
             {
-                ItemStack stack = slots[slot];
-                if (stack.Item != item)
+                if (moved >= count)
                 {
-                    continue;
+                    break;
                 }
+                ItemStack stack = slots[slot];
                 int take = Math.Min(count - moved, stack.Count);
                 int placed = take - target.Add(item, take, stack.Contents, stack.Wear, stack.Quality);
                 if (placed > 0)
