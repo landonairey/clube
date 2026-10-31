@@ -61,7 +61,8 @@ Core/
     Fill/        generation jobs and the shared ChunkFillKernel
     Ores/        OreSpec, OreField (placement), OreRoll (the roll, shared)
     Trees/       TreeGeneration (settings), TreeField (placement), TreeShape (one tree), TreeStamp (into a chunk, GL30)
-    Flora/       GrassGrowth (grass height, wheat fields, GL234-GL235), BushGrowth (where bushes grow, sizes, drops, GL236)
+    Flora/       GrassGrowth (grass height, wheat fields, GL234-GL235), BushGrowth (where bushes grow, sizes, drops, GL236),
+                 TreeCover (how thick the grown trees stand round a place)
   Meshing/       MarchingCubes + tables, ChunkMeshSettings, variants (A6)
     Managed/     ChunkMesher and its strategies, the managed material pass: labs, step-through (A11)
     Jobs/        ChunkMeshJob: the Burst mesh build the world runs; CarvedVoxels: walls round chiselled voxels (GL92)

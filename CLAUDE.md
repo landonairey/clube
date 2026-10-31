@@ -457,7 +457,7 @@ inventory is empty and the merchant stands in the starting parcel. The exe runs 
 saves. Stumps open from the foot of the trunk (`StumpWorktops`, GL231); `PlaceSketch` draws the stump and boulder entries (GL232).
 Twenty-fifth pass (GL234-GL239, `Docs/20261030f clube-backlog.md`): varied flora, drawn meshes on the built terrain, not voxels.
 `GrassGrowth` (Core/Generation/Flora, on `GrassScatter`) grows grass up to twice as tall in open meadows (by
-`TreeForests.ForestAt`), shorter high up, and wheat in patches of open land (`ValueNoise`, shared with the forests); the
+`TreeCover`, the trees that grow within 10 m), shorter high up, and wheat in patches of open land (`ValueNoise`, shared with the forests); the
 `Clube/Grass` shader turns tall instances to straw. `BushScatter` (Rendering, on World) grows small, medium and large
 bushes where `BushGrowth` puts them (`BushMeshes`, `Bush.mat`, no collider); both scatters find their spots through
 `GrassyGround` and draw through `InstanceBatches`. A rebuilt chunk breaks bushes whose ground went (`BushScatter.Broken`);
