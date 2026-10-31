@@ -25,3 +25,4 @@ Requests from 2026-10-31, kept as they were given (spelling tidied). They are or
 - [ ] A cooldown on tool use: 1 s between uses. Dawn gives an early-bird bonus, the cooldown 25% shorter. Hands are 25% quicker than tools. → **GL270**
 - [ ] Generate our own sound effects for footsteps, tools and material breaking/gathering. → **GL271**
 - [ ] Add bird chirping, an ambient wind breeze and soft rustling of tree leaves. → **GL272**
+- [ ] Make the dawn bonus last from 04:30 to 09:30. → **GL270**

@@ -21,7 +21,7 @@ namespace Clube.Core
 
         /// <summary>When dawn starts and ends, hours of the day.</summary>
         public const float DawnFrom = 4.5f;
-        public const float DawnTo = 7.5f;
+        public const float DawnTo = 9.5f;
 
         /// <summary>True at dawn, when the early bird's bonus holds.</summary>
         public static bool IsDawn(float hour)
