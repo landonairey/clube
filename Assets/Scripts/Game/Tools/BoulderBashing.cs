@@ -9,11 +9,11 @@ namespace Clube.Game
     /// <summary>
     /// Bashing what's in hand on a boulder (GL146, GL148): with a stone selected, Place (right click)
     /// aimed at a boulder or rock face knocks it into a hand axe, the first tool, for a little Crafting
-    /// experience. From a Mining level on, a bash with ore selected crushes one item of it: crushed ore
+    /// experience. From a Mining level on, holding Place with ore selected crushes it an item every 0.25 s (GL221): crushed ore
     /// holding half the stone it had (<see cref="Crushing"/>), and the crushed stone knocked off it. A
     /// boulder is stone too big to be a loose stone (<see cref="ToolStrike.IsSmallPiece"/>). Holding Place with
     /// any other mixed stack selected (clay with dirt and grass in it) uses the boulder as a worktop to pick the
-    /// impurities out, a pass at a time, each pass longer for a bigger stack (GL177, <see cref="Refining"/>); what
+    /// impurities out, an item's volume every 0.25 s (GL177, GL220, <see cref="Refining"/>); what
     /// comes out goes back as stacks of its own. While a bash is possible, Place does this instead of adding
     /// ground (<see cref="PlayerDigTool"/>).
     /// </summary>
@@ -76,24 +76,20 @@ namespace Clube.Game
         private int crushLevel = 2;
 
         [SerializeField, Min(0f)]
-        private float crushExperience = 1f;
+        private float crushExperience = 0.1f;
 
-        [Header("Refining (GL177)")]
-        [Tooltip("Seconds a pass over a mixed stack takes at least; holding Place keeps passing.")]
+        [Header("Refining (GL177) and crushing (GL221)")]
+        [Tooltip("Seconds to refine or crush one item's volume (GL220, GL221): a refining pass picks out that much, a crush takes one item of ore. Holding Place keeps going.")]
         [SerializeField, Min(0.05f)]
-        private float refineSeconds = 1f;
+        private float secondsPerVolume = 0.25f;
 
-        [Tooltip("More seconds a pass takes for each item in the stack.")]
-        [SerializeField, Min(0f)]
-        private float refineSecondsPerItem = 0.04f;
-
-        [Tooltip("Share of the impurities each pass picks out.")]
-        [SerializeField, Range(0.05f, 1f)]
-        private float refineShare = 0.3f;
+        [Tooltip("Items' worth of impurities each pass picks out (GL190), all of them once only a trace is left.")]
+        [SerializeField, Min(0.05f)]
+        private float refineVolume = 1f;
 
         [Tooltip("Crafting experience per pass.")]
         [SerializeField, Min(0f)]
-        private float refineExperience = 0.5f;
+        private float refineExperience = 0.1f;
 
         private PlayerController player;
         private PlayerInventory inventory;
@@ -128,29 +124,50 @@ namespace Clube.Game
                 refineProgress = 0f;
                 return;
             }
-            if (placeAction.action.WasPressedThisFrame() && HoldsSomethingToBash(out _, out _) && AimsAtBoulder())
+            bool pressed = placeAction.action.WasPressedThisFrame();
+            if (pressed && HoldsSomethingToBash(out _, out Crush crush) && AimsAtBoulder())
             {
-                Bash();
-                return;
+                // A stone becomes a hand axe at once; ore is crushed while Place is held (GL221).
+                if (crush.Raw == null)
+                {
+                    Bash();
+                    return;
+                }
+                if (skills != null && !skills.Skills.Has(crushSkill, crushLevel))
+                {
+                    Message?.Invoke($"Crushing ore needs {crushSkill} {crushLevel}");
+                    return;
+                }
             }
-            UpdateRefining();
+            UpdateHold();
         }
 
-        // Holding Place on a boulder with a mixed stack selected picks it over, a pass at a time (GL177).
-        private void UpdateRefining()
+        // Holding Place on a boulder works the selected stack an item's volume at a time (GL220, GL221): ore is crushed,
+        // a mixed stack picked over (GL177).
+        private void UpdateHold()
         {
             int slot = -1;
-            refining = placeAction.action.IsPressed() && HoldsSomethingToRefine(out slot) && AimsAtBoulder();
-            if (!refining)
+            bool crushing = placeAction.action.IsPressed() && HoldsSomethingToBash(out slot, out Crush crush) && crush.Raw != null
+                && (skills == null || skills.Skills.Has(crushSkill, crushLevel));
+            refining = crushing || (placeAction.action.IsPressed() && HoldsSomethingToRefine(out slot));
+            if (!refining || !AimsAtBoulder())
             {
+                refining = false;
                 refineProgress = 0f;
                 return;
             }
             refineProgress += Time.deltaTime;
-            if (refineProgress >= Refining.PassSeconds(inventory.Inventory[slot], refineSeconds, refineSecondsPerItem))
+            if (refineProgress >= secondsPerVolume)
             {
                 refineProgress = 0f;
-                RefinePass(slot);
+                if (crushing)
+                {
+                    Bash();
+                }
+                else
+                {
+                    RefinePass(slot);
+                }
             }
         }
 
@@ -161,7 +178,7 @@ namespace Clube.Game
             MaterialRegistry materials = worldView.Config.Materials;
             ItemStack held = items[slot];
             pickedOut.Clear();
-            ItemStack refined = Refining.Pass(held, materials, refineShare, pickedOut);
+            ItemStack refined = Refining.Pass(held, materials, refineVolume, pickedOut);
             items.Replace(slot, refined);
             foreach (Content picked in pickedOut)
             {
@@ -202,11 +219,11 @@ namespace Clube.Game
             {
                 return;
             }
-            float seconds = Refining.PassSeconds(stack, refineSeconds, refineSecondsPerItem);
             var bar = new Rect(Screen.width * 0.5f - 90f, Screen.height * 0.5f + 70f, 180f, 10f);
-            GUI.Label(new Rect(bar.x - 30f, bar.y - 22f, bar.width + 60f, 20f), $"Refining {stack.Item.DisplayName.ToLowerInvariant()} ({stack.Quality * 100f:0}%)");
+            string doing = HoldsSomethingToBash(out _, out Crush crush) && crush.Raw != null ? "Crushing" : "Refining";
+            GUI.Label(new Rect(bar.x - 30f, bar.y - 22f, bar.width + 60f, 20f), $"{doing} {stack.Item.DisplayName.ToLowerInvariant()} ({stack.Quality * 100f:0}%)");
             GUI.Box(bar, GUIContent.none);
-            GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(refineProgress / seconds), bar.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(refineProgress / secondsPerVolume), bar.height), Texture2D.whiteTexture);
         }
 
         /// <summary>Bashes what's selected on the boulder aimed at: a stone becomes a hand axe, ore is crushed. False when nothing happened.</summary>
@@ -231,15 +248,25 @@ namespace Clube.Game
                 Message?.Invoke($"Crushing ore needs {crushSkill} {crushLevel}");
                 return false;
             }
-            // One item of ore: its minerals stay, half the rock comes off as crushed stone (GL148).
+            // One item of ore, or the part of one that's left (GL194): its minerals stay, half the rock comes off as
+            // crushed stone (GL148).
+            float amount = held.Count >= 1 ? 1f : held.Part;
             Composition crushed = Crushing.Crush(held.Contents, out float knockedOff);
             MaterialRegistry materials = worldView.Config.Materials;
             float quality = crushed != null && materials != null ? materials.Quality(crushed, crush.Raw) : held.Quality;
-            items.RemoveAt(slot, 1);
-            items.Add(crush.Crushed, 1, crushed, 0, quality);
+            if (held.Count >= 1)
+            {
+                items.RemoveAt(slot, 1);
+                items.Add(crush.Crushed, 1, crushed, 0, quality);
+            }
+            else
+            {
+                items.TakeAll(slot);
+                items.Add(crush.Crushed, 0, crushed, 0, quality, amount);
+            }
             if (crushedStone != null && knockedOff > 0f)
             {
-                items.Add(crushedStone, 0, null, 0, 1f, knockedOff);
+                items.Add(crushedStone, 0, null, 0, 1f, knockedOff * amount);
             }
             skills?.Skills.Award(crushSkill, crushExperience);
             Message?.Invoke($"Crushed into {crush.Crushed.DisplayName.ToLowerInvariant()} ({quality * 100f:0}%)");
@@ -255,15 +282,18 @@ namespace Clube.Game
             {
                 return false;
             }
-            ItemDefinition item = inventory.Inventory[slot].Item;
-            if (item == null || inventory.Inventory[slot].Count == 0)
+            ItemStack stack = inventory.Inventory[slot];
+            ItemDefinition item = stack.Item;
+            if (item == null)
             {
                 return false;
             }
             if (item == stone && handAxe != null)
             {
-                return true;
+                return stack.Count > 0;
             }
+            // Raw ore stays something to crush when less than an item of it is left (GL194): the part is crushed,
+            // rather than the boulder picking the ore over instead.
             foreach (Crush entry in crushes)
             {
                 if (entry.Raw == item && entry.Crushed != null)

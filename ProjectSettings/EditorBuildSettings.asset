@@ -6,14 +6,20 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/DemoMenu.unity
+    path: Assets/Scenes/MainMenu.unity
     guid: e50ab3aa9297df34bbdb2e6a392f29c5
+  - enabled: 1
+    path: Assets/Scenes/WorldLab.unity
+    guid: 428a0dda8b2c3d7478c496718085cbf3
   - enabled: 1
     path: Assets/Scenes/VoxelLab.unity
     guid: 6709f881c41ad6c4c90b7219022ec70b
   - enabled: 1
     path: Assets/Scenes/ChunkLab.unity
     guid: 5cb7e9d3ed1e5b14b959b8c80dc41430
+  - enabled: 1
+    path: Assets/Scenes/ProceduralWorldLab.unity
+    guid: cb207be13d42fdf4184fadf8260f8ac5
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

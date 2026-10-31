@@ -379,7 +379,8 @@ namespace Clube.Core.Tests
             Assert.AreEqual(0f, furnace.Output[0].Part, 1e-4f);
         }
 
-        // GL128: ore twice as rich as typical yields two buns; smelted metal is pure whatever the ore's purity.
+        // GL128, GL192: a smelt's count is what pure mineral gives, so ore yields its mineral share of it and never
+        // more than the count; smelted metal is pure whatever the ore's purity.
         [Test]
         public void Yield_FollowsOreConcentration_AndSmeltedMetalIsPure()
         {
@@ -391,14 +392,18 @@ namespace Clube.Core.Tests
                 var furnace = new CraftingStation(StationKind.Furnace, new[] { smelt });
                 Composition rich = Composition.From(new Content(mineral, 0.4f), new Content(rock, 0.6f));
                 furnace.Input.Add(ore, 8, rich, 0, 0.6f);
-                Assert.AreEqual(2f, furnace.YieldOf(smelt), 1e-4f);
+                Assert.AreEqual(0.4f, furnace.YieldOf(smelt), 1e-4f);
                 furnace.Tick(6f);
-                Assert.AreEqual(2, furnace.Output.Count(bun));
+                Assert.AreEqual(0.4f, furnace.Output[0].Amount, 1e-4f);
                 Assert.AreEqual(1f, furnace.Output[0].Quality, 1e-4f, "Impurity costs yield, not quality.");
 
                 Composition lean = Composition.From(new Content(mineral, 0.1f), new Content(rock, 0.9f));
                 furnace.Input.Add(ore, 8, lean);
-                Assert.AreEqual(0.5f, furnace.YieldOf(smelt), 1e-4f);
+                Assert.AreEqual(0.1f, furnace.YieldOf(smelt), 1e-4f);
+
+                furnace.Input.Remove(ore, furnace.Input.Count(ore));
+                furnace.Input.Add(ore, 8, Composition.From(new Content(mineral, 1f)));
+                Assert.AreEqual(1f, furnace.YieldOf(smelt), 1e-4f, "Pure mineral makes the full count, no more.");
             }
             finally
             {
@@ -486,6 +491,34 @@ namespace Clube.Core.Tests
                 Object.DestroyImmediate(smeltTin);
                 Object.DestroyImmediate(tinOre);
                 Object.DestroyImmediate(tinBun);
+            }
+        }
+
+        // GL197: with the picked smelt's ore used up, the furnace goes on to the other ore loaded beside it.
+        [Test]
+        public void Smelter_MovesOnToTheOtherLoadedOre()
+        {
+            ItemDefinition tin = ItemDefinition.Create("tin-ore", "Tin ore");
+            Recipe tinSmelt = Recipe.Create(StationKind.Furnace, new ItemAmount(bun, 1), RecipeWork.Time, 6f, new ItemAmount(tin, 2));
+            try
+            {
+                var furnace = new CraftingStation(StationKind.Furnace, new[] { smelt, tinSmelt });
+                // Two left over after a run of 8: too few for another, but enough to have kept the furnace waiting.
+                furnace.Input.Add(ore, 10);
+                furnace.Input.Add(tin, 2);
+                furnace.Chosen = smelt;
+                furnace.Tick(6f);
+                Assert.AreEqual(1, furnace.Output.Count(bun));
+                Assert.AreEqual(2, furnace.Input.Count(ore));
+                Assert.AreSame(tinSmelt, furnace.Upcoming, "The tin is next.");
+                furnace.Tick(6f);
+                Assert.AreEqual(2, furnace.Output.Count(bun), "Both slots got smelted.");
+                Assert.AreEqual(0, furnace.Input.Count(tin));
+            }
+            finally
+            {
+                Object.DestroyImmediate(tinSmelt);
+                Object.DestroyImmediate(tin);
             }
         }
     }

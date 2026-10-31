@@ -98,6 +98,8 @@ namespace Clube.Debug
             var rect = new Rect(Margin, Margin, Width, style.CalcHeight(content, Width));
             GuiDrawing.Rect(rect, new Color(0f, 0f, 0f, 0.65f));
             GUI.Label(rect, content, style);
+            // The active quest goes under the box (GL216).
+            Clube.Game.HudLayout.ReportTopLeft(rect.yMax);
         }
     }
 }

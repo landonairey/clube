@@ -132,7 +132,7 @@ namespace Clube.Game
             float x = panel.x + Padding;
             float y = panel.y + Padding;
             GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   (E to close)");
-            GUI.Label(new Rect(panel.xMax - Padding - 160f, y, 160f, 20f), $"Your coins: {wallet.Wallet.Coins}");
+            GUI.Label(new Rect(panel.xMax - Padding - 160f, y, 160f, 20f), $"Your coins: {Wallet.Format(wallet.Wallet.Coins)}");
             y += 24f;
             GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Click one of your items to see what the merchant pays for it.");
             y += 22f;
@@ -154,14 +154,14 @@ namespace Clube.Game
             GUI.Label(new Rect(x, y + 4f, 260f, 20f), what);
             GUI.enabled = buys;
             string oneLabel = "Sell 1" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, 1))}" : "");
-            string stackLabel = "Sell stack" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, chosen.Count))}" : "");
+            string stackLabel = "Sell stack" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, chosen.Amount))}" : "");
             if (GUI.Button(new Rect(x + 270f, y, 100f, SellRowHeight), oneLabel))
             {
                 SellFromSlot(selected, 1);
             }
             if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), stackLabel))
             {
-                SellFromSlot(selected, chosen.Count);
+                SellStack(selected);
             }
             y += SellRowHeight + 6f;
 
@@ -238,6 +238,22 @@ namespace Clube.Game
             }
         }
 
+        // The whole stack, a part item included (GL199): nothing is left behind, and the coins come to the hundredth.
+        private void SellStack(int slot)
+        {
+            Inventory items = inventory.Inventory;
+            ItemStack stack = items[slot];
+            if (stack.IsEmpty || !Current.Prices.TryGetLot(stack.Item, out _, out _))
+            {
+                return;
+            }
+            float earned = Current.Prices.PriceOf(stack, stack.Amount);
+            items.TakeAll(slot);
+            wallet.Wallet.Earn(earned);
+            Sold?.Invoke(Mathf.Max(1, stack.Count));
+            selected = -1;
+        }
+
         // Sells from one slot, so the stack the player picked is the one that goes.
         private void SellFromSlot(int slot, int count)
         {
@@ -247,11 +263,11 @@ namespace Clube.Game
             {
                 return;
             }
-            // Any number sells; a price that isn't a whole coin is kept as a part of one (Wallet.EarnFraction).
+            // Any number sells; a price that isn't a whole coin pays its part of one (GL199).
             int sold = Mathf.Min(count, stack.Count);
             float earned = Current.Prices.PriceOf(stack, sold);
             items.RemoveAt(slot, sold);
-            wallet.Wallet.EarnFraction(earned);
+            wallet.Wallet.Earn(earned);
             if (sold > 0)
             {
                 Sold?.Invoke(sold);

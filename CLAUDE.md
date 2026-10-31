@@ -68,12 +68,12 @@ measures it, and `ChunkMesherTests.RandomChunk_MatchesPolygonisePerVoxel`
 guards the output.
 2E is done (K13–K16, K33). `TerrainBrush` (Core) adds or removes a sphere
 through A7; `TerrainBrushTool` (ChunkLab) picks Select, Dig or Add with
-1/2/3 and switches `VoxelSelector` off while editing. *Clube → Build → Lab
-demo* (`DemoBuild`) builds the playable exe to `Builds/Demo/`.
-K34 is done: the exe opens on the `DemoMenu` welcome scene (Single voxel =
-VoxelLab, Single chunk = ChunkLab, Exit; `DemoExitButton` and Esc in either
-lab return to it), in a resizable 1280×720 window, and the lab panels fit
-small windows.
+1/2/3 and switches `VoxelSelector` off while editing. *Clube → Build → Game
+demo* (`DemoBuild`) builds the playable exe to `Builds/Demo/` (since GL200: the
+`MainMenu` scene and WorldLab; see the twenty-third pass below).
+K34 is done: the exe opened on a welcome scene (now `MainMenu`); `DemoExitButton` and
+Esc in VoxelLab or ChunkLab still return to it, in a resizable 1280×720 window, and the
+lab panels fit small windows.
 2F is done (K17–K22). ChunkLab's chunk has a `Step Through`
 child (off by default; its Inspector and the in-game panel have the
 controls), with `StepThroughVoxelLink` (selecting a voxel jumps there, K21)
@@ -264,7 +264,7 @@ a `Fuel` slot). Clay (13) deposits are surface lenses (`TerrainLayers.Clay`,
 `ChunkFillKernel.ClayDepthAt`); dropped clay dries into Brick (14) on a `GameClock`
 (`GroundDrying`, `DroppedGroundDrying`), or is fired in the furnace.
 Ninth pass (GL47-GL55, `Docs/20261013 clube-backlog.md`): the beginning path. `SkillSet` (Core/Skills:
-Crafting, Woodcutting, Mining, Smelting; level n at 10 n (n + 1) xp) lives on `PlayerSkills`, which
+Crafting, Woodcutting, Mining, Smelting; each level costs 50% more xp than the last, 20 for level 1, GL184) lives on `PlayerSkills`, which
 awards xp per mined sample (`PlayerToolUser.Mined`) and per finished recipe
 (`CraftingStation.Completed`). Recipes give xp and can need a level (`Recipe.UnlockSkill/Level`,
 checked against `CraftingStation.Learner`; `StationObject` connects the player). `SkillsHud` shows
@@ -402,6 +402,18 @@ over part items at once (`Gathering.TakeAll`, GL169); hand and hand axe hits mix
 (`CollectingSettings.AimedMixFactor`, GL172). The inventory screen has a trash slot and Sort (`Inventory.Sort`); Shift-click
 loads half a stack into a station, Ctrl-click one (GL176). Holding Place on a boulder with a mixed stack picks it over
 (`Refining`, `BoulderBashing`, GL177). Stations have a recovery (campfire 0.5, stone furnace 0.75, clay 1; GL178).
+Twenty-second pass (GL179-GL199, `Docs/20261029 clube-backlog.md`): land too far to buy says "You don't own this land"
+(`INoticeOnly`: a prompt with no key). The crafting journal (J) has no Mining chapter; an entry is full once unlocked,
+outlined a level away, a question mark further off; `ItemSketch` reads icons on opaque backgrounds (the furnaces); both
+journals put their glyphs in the font before drawing (`JournalBook.Prepare`). Mining xp per sample is stone 0.08, ore 0.16,
+soil 0.02. Crushed ores measure purity as their raw ore (`ItemDefinition.PurityAs`), so refining keeps the ore; a refine pass is
+1 s and takes 1 item of impurities. Part items fill a stack to its MaxStack exactly, never past (`Inventory.RoomFor`); the tooltip shows each material's amount. Under one raw ore left, a bash crushes the part.
+Wood wins over leaves inside a trunk (`TreeStamp`). `InventoryDrag` is the mouse for the inventory and station screens:
+drag (Shift half, Ctrl one), right-click splits (`Inventory.Move(from, to, count)`, `Split`); drop on a station's input or
+fuel slot. A smelt's count is what pure mineral gives, so yield is mineral share times efficiency, never over 100%; a smelter
+whose picked recipe ran out starts the other loaded ore. Tools: `ReachScale` (bronze 1.3, 3 hits/s) and `SoftFactor` (hatchets
+0.15 on leaves). The merchant buys sticks; coins are decimal (`Wallet.Coins` float, `Wallet.Format`). The furnace build preview
+is the meshed surface of its samples (*Clube → Models → Build furnaces*, which keeps the body collider).
 Sound effects (2026-10-28): `PlayerSounds` (`Assets/Config/Audio/`) holds `SoundSet`s (random clip and pitch) for
 footsteps by material (stone, dirt, grass, clay; others by `MaterialKind`), a hit per tool (hand, hand axe, stone pick,
 stone hatchet, chisels, other tools; any hit on soft ground or leaves sounds like the material, `PlayerToolUser.HitMaterial`)
@@ -410,6 +422,39 @@ and actions (a finished recipe by the skill it trains: crafting, smelting, smith
 `PlayerBuilder.Placed`, `PlayerParcels.Bought`) play them on one 2D AudioSource. `PlayerSounds.EffectsOn` (lab panel, Sound
 section, `SoundControls`) switches all of it, and is off until the clips are picked properly. Clips are Kenney CC0 in
 `Assets/Audio/`; sources in `Docs/audio-credits.md`.
+Twenty-third pass (GL200-GL209, `Docs/20261030 clube-backlog.md`, `20261030b`, `20261030c`): the demo exe is the game. *Clube → Build → Game demo*
+(`DemoBuild`) builds `MainMenu` and WorldLab, writing the version from git into `Resources/BuildInfo.txt` for the build
+(gitignored, removed after; `BuildInfo.Version`). `MainMenu` (Game/Menu) has New, Load, Exit over a render of the valley;
+New opens `NewGamePage` (mode: only World playable; world name, "Hello World" by default; seed, typed or rolled), Load opens
+`LoadGamePage` (saves newest first, the newest selected). `GameSession` (static, Game/Session) carries the mode, seed, world
+name and loaded save into the scene; `GameScenes` names the scenes. In WorldLab, `GameSessionHost` (on World) is an
+`IWorldConfigOverride` (Core: changes `WorldView`'s play copy of its config in Awake) that sets the seed, restores a save and
+captures one; `PauseMenu` is Esc (closes an open player screen first; Back, Save and Exit, Exit Without Saving;
+`Time.timeScale` 0; Save and Exit asks for a name, filled in with `<world> - <mode> - <time>`; Graphics opens
+`GraphicsSettingsPage`: field of view 60-120 and a frame rate limit, kept in PlayerPrefs by `GraphicsSettings` and applied by
+`GraphicsSettingsApplier` on World, in the Editor only for a menu game; the main menu caps unlimited at 60, GL209). A menu game starts as the player (`PlayerCameraToggle`). Saving (first pass of S1-S4) is `Core/Saving`:
+`GameSave` (plain data, ids not references), `GameSaveFile` (header plain, body gzipped, `SaveHeader.CurrentVersion` 2: names
+added; version 1 still reads), `WorldSaving` (edited chunks; `World.EditedChunks`, `World.Keep` puts them back before
+streaming), `StackSaving`, `SaveNames` (defaults, file names); in Game `PlayerSaveState` (on Player), `PlacedObjectSaving`,
+`ItemLookup` (catalog, then `OreKnowledge.DisguiseById`), `SaveSlots` (one file per save, named after it, in
+`Application.persistentDataPath/Saves/`; the same name replaces a save). Restore hooks: `PlayerSpawn.PlaceAt`,
+`PlayerParcels.Restore`, `GameClock.Restore`, `TerrainStructure.Restore`, `SkillSet.SetExperience`, `MiningJournal.Restore`,
+`GroundDrying.Restore`. When testing by pumping `SendMessage("Update")`, note it also runs disabled components (a disabled
+`PlayerController` then resets the head's pitch); step real frames to check look angles.
+Twenty-fourth pass (GL210-GL230, `Docs/20261030d clube-backlog.md`): defaults are render distance 32, a 300 m fixed area and
+80° field of view; the graphics popup also sets render distance and freezes the sky at an hour; the lab panel starts hidden
+(F2). Place no longer adds dirt in play (`PlayerDigTool.placesGround`). Q opens the field log (`FieldLogScreen`): tabs for
+Quests, the ore journal (`JournalScreen`) and the tool journal (`CraftingJournalScreen`, starting with the stump and the
+boulder); both journals are now page drawers, not screens. Quests: `QuestLog` (Core/Quests) of main and side quests,
+ticked by `PlayerQuests` (inventory checks and events), shown by `QuestHud` under the lab HUD box (`HudLayout`; the lab HUD
+reports its bottom), saved at the body's end (`SaveHeader.CurrentVersion` 3). C crouches, and slides out of a sprint
+(`PlayerController`). Boulder refining and crushing hold Place, an item every 0.25 s (`BoulderBashing.secondsPerVolume`).
+`DayNightCycle` (on World) lights the sky from `GameClock` (a day is 2400 s, so clay dries in 1 day) and works on copies of
+the skybox and ambient settings. `DryingClayEffect` steams drying clay. The station screens have a trash slot
+(`InventoryGridGui.DrawTrash`). Silver and gold smelt in every furnace and hammer into ingots; the flat rock makes bronze
+tools; the brick furnace (heat 2.25, 100 bricks, Crafting 6) is built by *Clube → Models → Build furnaces*. The starting
+inventory is empty and the merchant stands in the starting parcel. The exe runs in the background. The load list deletes
+saves. Stumps open from the foot of the trunk (`StumpWorktops`, GL231); `PlaceSketch` draws the stump and boulder entries (GL232).
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
@@ -421,7 +466,7 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   Game reference Core; **Core never references Debug or Game.** Debug also
   references Game (lab tools tune the player, M16); Game never references Debug.
 - Namespaces match assembly names (`Clube.Core`, `Clube.Debug`, `Clube.Game`).
-- Scenes (A9): `VoxelLab`, `ChunkLab`, `WorldLab` (fixed area), `ProceduralWorldLab` (streamed), `Game`. The `Game` scene
+- Scenes (A9): `MainMenu` (the exe's first scene), `VoxelLab`, `ChunkLab`, `WorldLab` (fixed area), `ProceduralWorldLab` (streamed), `Game`. The `Game` scene
   contains no `Clube.Debug` components (A10).
 - Docs go in `Docs/` (capital D, G5).
 - Workflow (G2): one objective = one GitHub issue; one sub-section = one
@@ -430,7 +475,7 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   asmdef per folder, grouped by feature inside (e.g. `Core/Meshing/`).
   Core's folders are layers (A14, `Docs/architecture.md`): data (`Voxels`,
   `World`, `Materials`, `Config`, `Items`, `Crafting`, `Economy`) → algorithms (`Generation`,
-  `Meshing`, `Editing`, `Queries`, `Volume`) → `Streaming` → `Rendering`
+  `Meshing`, `Editing`, `Queries`, `Volume`, `Saving`) → `Streaming` → `Rendering`
   (everything with a GameObject). Lower layers never use higher ones.
   Inspector/editor code goes in `Debug/Editor/` (`Clube.Debug.Editor`,
   editor-only); write `UnityEditor.Editor` in full there, since `Editor`

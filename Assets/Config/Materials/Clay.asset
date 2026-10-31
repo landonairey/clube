@@ -30,7 +30,7 @@ MonoBehaviour:
   isWorktop: 0
   isSoft: 1
   driesInto: {fileID: 11400000, guid: fa2db4ed1fa4c71429702010ea7ff249, type: 2}
-  dryingDays: 2
+  dryingDays: 1
   notes:
     Hardness: 
     Luster: 

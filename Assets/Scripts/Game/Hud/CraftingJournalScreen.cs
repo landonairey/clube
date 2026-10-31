@@ -2,91 +2,40 @@ using System.Collections.Generic;
 using System.Linq;
 using Clube.Core;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace Clube.Game
 {
     /// <summary>
-    /// The crafting journal (GL137), a second notebook beside the mining journal: CraftingJournal (J)
-    /// opens it, drawn in the same book (<see cref="JournalBook"/>), three entries to a page. Chapter
-    /// one, Crafting: every recipe made at a worktop, the flat rock or the anvil, with an ink sketch of
-    /// what it makes (<see cref="ItemSketch"/>), what it takes, the work, the level it needs and the
-    /// experience it gives. Chapter two, Mining: what ore each Mining level lets the player see
-    /// (<see cref="OreKnowledge"/>). Chapter three, Smelting: the kinds of furnace and what each does,
-    /// then the smelting recipes and their unlocks. Things not yet made are only outlined.
+    /// The crafting journal (GL137), now the tool pages of the field log (GL215, <see cref="FieldLogScreen"/>), drawn
+    /// in the same book (<see cref="JournalBook"/>), three entries to a page. Chapter one, Crafting: first the places
+    /// to craft with nothing built, the tree stump and the stone boulder (GL214), then every recipe made at a worktop,
+    /// the flat rock or the anvil, with an ink sketch of what it makes (<see cref="ItemSketch"/>), what it takes, the
+    /// work, the level it needs and the experience it gives. Chapter two, Smelting: the kinds of furnace and what each
+    /// does, then the smelting recipes and their unlocks. (What each Mining level shows is on the ore pages; GL182.)
+    /// How much an entry tells follows the player's level (GL181): an unlocked recipe has its sketch and every note;
+    /// one a level away is only outlined, with its name and the level it unlocks at; anything further off is a big
+    /// question mark.
     /// </summary>
     [RequireComponent(typeof(PlayerJournal))]
     public class CraftingJournalScreen : MonoBehaviour
     {
         private const int EntriesPerPage = 3;
 
-        [Tooltip("Opens and closes the crafting journal (J).")]
-        [SerializeField]
-        private InputActionReference toggleAction;
+        private static GUIStyle questionStyle;
 
         private readonly List<Page> pages = new List<Page>();
         private PlayerJournal journal;
-        private PlayerController player;
-        private JournalScreen miningJournal;
-        private InventoryScreen inventoryScreen;
-        private StationPanel stationPanel;
-        private MerchantPanel merchantPanel;
         private int spread;
-
-        public bool IsOpen { get; private set; }
 
         private void Awake()
         {
             journal = GetComponent<PlayerJournal>();
-            player = GetComponent<PlayerController>();
-            miningJournal = GetComponent<JournalScreen>();
-            inventoryScreen = GetComponent<InventoryScreen>();
-            stationPanel = GetComponent<StationPanel>();
-            merchantPanel = GetComponent<MerchantPanel>();
         }
 
-        private void OnEnable()
+        /// <summary>Writes the pages from what the player knows now; the field log calls it when the tool pages open.</summary>
+        public void Refresh()
         {
-            toggleAction?.action.Enable();
-        }
-
-        private void OnDisable()
-        {
-            if (IsOpen)
-            {
-                SetOpen(false);
-            }
-        }
-
-        private void Update()
-        {
-            if (player != null && !player.enabled)
-            {
-                return;
-            }
-            // One screen at a time.
-            bool otherOpen = (inventoryScreen != null && inventoryScreen.IsOpen)
-                || (stationPanel != null && stationPanel.IsOpen)
-                || (merchantPanel != null && merchantPanel.IsOpen)
-                || (miningJournal != null && miningJournal.IsOpen);
-            if (toggleAction != null && toggleAction.action.WasPressedThisFrame() && !otherOpen)
-            {
-                SetOpen(!IsOpen);
-            }
-        }
-
-        /// <summary>Opens or closes the journal; opening writes its pages from what the player knows now.</summary>
-        public void SetOpen(bool open)
-        {
-            IsOpen = open;
-            if (open)
-            {
-                Write();
-            }
-            if (player != null)
-            {
-                player.IsInMenu = open;
-            }
+            Write();
         }
 
         /// <summary>Turns to the spread holding a page (0-based), e.g. the start of a chapter.</summary>
@@ -98,11 +47,21 @@ namespace Clube.Game
         /// <summary>The pages as last written: a heading and up to three entries each.</summary>
         public IReadOnlyList<Page> Pages => pages;
 
-        private void OnGUI()
+        /// <summary>Draws the tool pages in the open book; the field log calls it from its OnGUI.</summary>
+        public void DrawBook()
         {
-            if (!IsOpen)
+            if (Event.current.type == EventType.Layout)
             {
-                return;
+                // Every glyph into the font atlas before any text is laid out (GL187).
+                JournalBook.Prepare("p. 0123456789?");
+                foreach (Page page in pages)
+                {
+                    JournalBook.Prepare(page.Heading);
+                    foreach (Entry entry in page.Entries)
+                    {
+                        JournalBook.Prepare(entry.Title + entry.Body);
+                    }
+                }
             }
             spread = JournalBook.Draw(spread, pages.Count, DrawPage);
         }
@@ -127,6 +86,13 @@ namespace Clube.Game
         private static void DrawEntry(Rect area, Entry entry)
         {
             float sketchWidth = Mathf.Min(OreSketch.Width, area.width * 0.3f);
+            if (entry.IsMystery)
+            {
+                // More than a level away (GL181): nothing but a big question mark where the sketch goes.
+                questionStyle ??= new GUIStyle(JournalBook.Title) { fontSize = 64, alignment = TextAnchor.MiddleCenter };
+                GUI.Label(new Rect(area.x, area.y + 6f, sketchWidth, area.height - 12f), "?", questionStyle);
+                return;
+            }
             if (entry.Sketch != null)
             {
                 float sketchHeight = sketchWidth * entry.Sketch.height / entry.Sketch.width;
@@ -147,16 +113,49 @@ namespace Clube.Game
 
             var crafting = recipes.Where(r => r != null && !IsSmelting(r.Station))
                 .OrderBy(r => StationOrder(r.Station)).ThenBy(r => r.UnlockLevel).ToList();
-            AddChapter("Chapter one: Crafting", "Crafting (cont.)", crafting.Select(r => RecipeEntry(r, skills)));
-
-            AddChapter("Chapter two: Mining", "Mining (cont.)", MiningEntries(skills));
+            AddChapter("Chapter one: Crafting", "Crafting (cont.)", PlacesEntries().Concat(crafting.Select(r => RecipeEntry(r, skills))));
 
             var furnaces = recipes.Where(r => r != null && r.Output.Item is PlaceableDefinition placeable && Smelter(placeable) != null)
                 .OrderBy(r => Smelter((PlaceableDefinition)r.Output.Item).Heat).Select(r => FurnaceEntry(r, skills));
             var smelting = recipes.Where(r => r != null && IsSmelting(r.Station))
                 .OrderBy(r => r.Station == StationKind.Campfire ? 0 : 1).ThenBy(r => r.UnlockLevel).ThenBy(r => r.Extracts != null ? 0 : 1)
                 .Select(r => RecipeEntry(r, skills));
-            AddChapter("Chapter three: Smelting", "Smelting (cont.)", furnaces.Concat(smelting));
+            AddChapter("Chapter two: Smelting", "Smelting (cont.)", furnaces.Concat(smelting));
+        }
+
+        // The two places to craft that nobody builds (GL214), first in the Crafting chapter: they're easy to miss.
+        private static IEnumerable<Entry> PlacesEntries()
+        {
+            yield return new Entry(PlaceSketch.Stump, "Tree stump",
+                "Every tree stands on a stump, a worktop. Look at the foot of the trunk and press E.\n" +
+                "Whittle sticks, make the first tools, build a campfire and, later, furnaces.");
+            yield return new Entry(PlaceSketch.Boulder, "Stone boulder",
+                "Rock too big to pick up. Aim at it and use the right mouse button:\n" +
+                "a stone in hand is knocked into a hand axe;\n" +
+                "hold with raw ore to crush it (from Mining 2), an item every 0.25 s;\n" +
+                "hold with a mixed stack, like clay with dirt in it, to pick it over.\n" +
+                "Chisel its top flat for a flat rock, a better worktop.");
+        }
+
+        // How many levels short of a recipe the player is (GL181): 0 when it's unlocked.
+        private static int LevelsAway(Recipe recipe, SkillSet skills)
+        {
+            if (recipe.IsUnlockedFor(skills) || recipe.UnlockSkill == SkillType.None)
+            {
+                return 0;
+            }
+            int level = skills != null ? skills.Level(recipe.UnlockSkill) : 0;
+            return Mathf.Max(1, recipe.UnlockLevel - level);
+        }
+
+        // An entry for something still locked (GL181): a level away, its outline, name and unlock level; further, a question mark.
+        private static Entry LockedEntry(Recipe recipe, ItemDefinition item, string title, SkillSet skills)
+        {
+            if (LevelsAway(recipe, skills) > 1)
+            {
+                return Entry.Mystery;
+            }
+            return new Entry(ItemSketch.For(item, false), title, $"Unlocks at {recipe.UnlockSkill} {recipe.UnlockLevel}.");
         }
 
         // A chapter starts on a page of its own; its entries run on, three to a page.
@@ -183,6 +182,10 @@ namespace Clube.Game
             bool made = journal.Journal.HasMade(recipe);
             ItemAmount output = recipe.Output;
             string title = output.Count > 1 ? $"{output.Item.DisplayName} ×{output.Count}" : output.Item.DisplayName;
+            if (LevelsAway(recipe, skills) > 0)
+            {
+                return LockedEntry(recipe, output.Item, title, skills);
+            }
             string takes = string.Join(" + ", recipe.Inputs.Select(input => $"{input.Count} {input.Item.DisplayName}"));
             string work = recipe.Work == RecipeWork.Strikes ? $"{recipe.Amount:0} strikes" : $"{recipe.Amount:0.#} s of heat";
             var lines = new List<string>
@@ -196,50 +199,22 @@ namespace Clube.Game
             }
             if (recipe.Extracts != null)
             {
-                lines.Add($"Yield follows the ore: {recipe.TypicalGrade * 100f:0}% {recipe.Extracts.DisplayName} makes the full count.");
+                lines.Add($"The count is what pure {recipe.Extracts.DisplayName} gives; ore yields its share (typical ore is {recipe.TypicalGrade * 100f:0}%).");
             }
-            lines.Add(made ? "Made it." : recipe.IsUnlockedFor(skills) ? "Not made yet." : "Not unlocked yet.");
-            return new Entry(ItemSketch.For(output.Item, made), title, string.Join("\n", lines));
+            lines.Add(made ? "Made it." : "Not made yet.");
+            return new Entry(ItemSketch.For(output.Item), title, string.Join("\n", lines));
         }
 
-        // What each Mining level shows (GL54, GL72): the ores anyone sees, then each hidden group at its level.
-        private IEnumerable<Entry> MiningEntries(SkillSet skills)
-        {
-            OreKnowledge knowledge = journal.Knowledge;
-            var hidden = new HashSet<VoxelMaterial>();
-            if (knowledge != null)
-            {
-                foreach (OreKnowledge.HiddenOres group in knowledge.Groups)
-                {
-                    hidden.UnionWith(group.Materials);
-                }
-            }
-            List<VoxelMaterial> plain = journal.Ores.Where(ore => ore != null && !hidden.Contains(ore)).ToList();
-            if (plain.Count > 0)
-            {
-                yield return new Entry(OreSketch.For(plain[0]), "From the start",
-                    $"{Names(plain)} can be told apart in the rock by anyone.");
-            }
-            if (knowledge == null)
-            {
-                yield break;
-            }
-            int level = skills != null ? skills.Level(knowledge.Skill) : 0;
-            foreach (OreKnowledge.HiddenOres group in knowledge.Groups.OrderBy(g => g.Level))
-            {
-                List<VoxelMaterial> ores = group.Materials.Where(m => m != null && journal.Ores.Contains(m)).ToList();
-                bool seen = level >= group.Level;
-                string body = $"{knowledge.Skill} {group.Level} lets me see {group.Name}: {Names(ores)}. Until then it looks like plain rock, and what I mine of it is \"? ore\".\n"
-                    + (seen ? "I can see these now." : $"I'm at {knowledge.Skill} {level}.");
-                yield return new Entry(ores.Count > 0 ? OreSketch.For(ores[0], seen) : null, $"{knowledge.Skill} {group.Level}: {group.Name}", body);
-            }
-        }
 
         // A kind of furnace (or the campfire): how hot it works, what builds it and what it smelts.
         private Entry FurnaceEntry(Recipe build, SkillSet skills)
         {
             var placeable = (PlaceableDefinition)build.Output.Item;
             StationObject station = Smelter(placeable);
+            if (LevelsAway(build, skills) > 0)
+            {
+                return LockedEntry(build, placeable, placeable.DisplayName, skills);
+            }
             bool made = journal.Journal.HasMade(build);
             string takes = string.Join(" + ", build.Inputs.Select(input => $"{input.Count} {input.Item.DisplayName}"));
             string smelts = string.Join(", ", station.Recipes.Where(r => r != null && r.Output.Item != null).Select(r => r.Output.Item.DisplayName).Distinct());
@@ -250,7 +225,7 @@ namespace Clube.Game
                 "Built of impure material it is less efficient: slower, and it yields less.",
                 $"Makes: {smelts}.",
             };
-            return new Entry(ItemSketch.For(placeable, made), placeable.DisplayName, string.Join("\n", lines));
+            return new Entry(ItemSketch.For(placeable), placeable.DisplayName, string.Join("\n", lines));
         }
 
         private static StationObject Smelter(PlaceableDefinition placeable)
@@ -292,11 +267,6 @@ namespace Clube.Game
             }
         }
 
-        private static string Names(IEnumerable<VoxelMaterial> ores)
-        {
-            return string.Join(", ", ores.Select(ore => ore.DisplayName));
-        }
-
         /// <summary>One page of the journal: a heading and its entries.</summary>
         public sealed class Page
         {
@@ -310,11 +280,15 @@ namespace Clube.Game
             public List<Entry> Entries { get; } = new List<Entry>();
         }
 
-        /// <summary>One entry: a sketch, a title and its notes.</summary>
+        /// <summary>One entry: a sketch, a title and its notes; or, for something far from unlocked, a question mark (GL181).</summary>
         public readonly struct Entry
         {
-            public Entry(Texture2D sketch, string title, string body)
+            /// <summary>An entry more than a level from being unlocked: a big question mark and nothing else.</summary>
+            public static Entry Mystery => new Entry(null, null, null, true);
+
+            public Entry(Texture2D sketch, string title, string body, bool mystery = false)
             {
+                IsMystery = mystery;
                 Sketch = sketch;
                 Title = title;
                 Body = body;
@@ -325,6 +299,8 @@ namespace Clube.Game
             public string Title { get; }
 
             public string Body { get; }
+
+            public bool IsMystery { get; }
         }
     }
 }

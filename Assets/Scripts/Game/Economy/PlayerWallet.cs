@@ -35,7 +35,7 @@ namespace Clube.Game
             float hotbarRight = Screen.width * 0.5f + (9 * 56f + 8 * 4f) * 0.5f;
             Color previous = GUI.color;
             GUI.color = new Color(1f, 0.85f, 0.35f);
-            GUI.Label(new Rect(hotbarRight - 200f, Screen.height - 56f - 12f - 26f, 200f, 24f), $"{Wallet.Coins} coins", style);
+            GUI.Label(new Rect(hotbarRight - 200f, Screen.height - 56f - 12f - 26f, 200f, 24f), $"{Wallet.Format(Wallet.Coins)} coins", style);
             GUI.color = previous;
         }
     }

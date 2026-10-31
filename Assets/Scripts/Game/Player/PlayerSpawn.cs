@@ -36,8 +36,22 @@ namespace Clube.Game
         private bool isPlaced;
         private float buriedFor;
 
+        // A saved position to set the player down at instead of the highest ground (GL205), once.
+        private Vector3? placeAt;
+
         /// <summary>True once the player stands in the world; false while waiting for ground.</summary>
         public bool IsPlaced => isPlaced;
+
+        /// <summary>
+        /// Sets the player down where a save left it (GL205), in a cave or a pit too, once the ground there has
+        /// loaded; until then it waits at the top of the world like any spawn.
+        /// </summary>
+        public void PlaceAt(Vector3 position)
+        {
+            placeAt = position;
+            transform.position = position;
+            Wait();
+        }
 
         private void Awake()
         {
@@ -106,6 +120,15 @@ namespace Clube.Game
             // Every chunk in the column loaded, meshed, and its collider cooked: ground to stand on.
             if (!worldView.HasGround(transform.position))
             {
+                return;
+            }
+
+            if (placeAt.HasValue)
+            {
+                player.Teleport(placeAt.Value);
+                placeAt = null;
+                player.enabled = true;
+                isPlaced = true;
                 return;
             }
 

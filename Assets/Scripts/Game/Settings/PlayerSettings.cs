@@ -20,7 +20,7 @@ namespace Clube.Game
 
         [Tooltip("How many chunks around the player stay loaded, as a radius in chunks (M3).")]
         [SerializeField, Range(WorldView.MinRenderDistance, WorldView.MaxRenderDistance)]
-        private int renderDistance = 6;
+        private int renderDistance = 32;
 
         [Tooltip("How many chunks around the player are drawn in full detail, as a radius in chunks (P18); past it the coarse terrain draws the ground. 0: every loaded chunk.")]
         [SerializeField, Range(0, WorldView.MaxRenderDistance)]

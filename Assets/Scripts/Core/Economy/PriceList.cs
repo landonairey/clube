@@ -122,11 +122,20 @@ namespace Clube.Core
         /// </summary>
         public float PriceOf(ItemStack stack, int count)
         {
-            if (stack.IsEmpty || count <= 0 || !TryGetLot(stack.Item, out int coins, out int lot))
+            return PriceOf(stack, (float)Math.Min(count, stack.Count));
+        }
+
+        /// <summary>
+        /// What an amount of a stack is worth, a part item included (GL199: a whole stack of 2.48 tin buns),
+        /// up to the stack's amount. 0 when the item isn't bought.
+        /// </summary>
+        public float PriceOf(ItemStack stack, float amount)
+        {
+            if (stack.IsEmpty || amount <= 0f || !TryGetLot(stack.Item, out int coins, out int lot))
             {
                 return 0f;
             }
-            float value = (float)Math.Min(count, stack.Count) * coins / lot;
+            float value = Math.Min(amount, stack.Amount) * coins / lot;
             if (stack.Item is ToolDefinition tool && tool.MaxHits > 0)
             {
                 // What hits it has left of a full tool's (GL37, GL118).
@@ -165,7 +174,7 @@ namespace Clube.Core
             {
                 return 0;
             }
-            to.EarnFraction(sold / lot * coins * quality);
+            to.Earn(sold / lot * coins * quality);
             return sold;
         }
     }

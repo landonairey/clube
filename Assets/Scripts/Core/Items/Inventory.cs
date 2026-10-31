@@ -333,6 +333,67 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// Moves up to <paramref name="count"/> whole items of one slot's stack onto another slot (GL191: dragging half a
+        /// stack): into an empty slot, or onto a stack they stack with as far as there's room. A part item stays behind.
+        /// The whole stack when <paramref name="count"/> covers it, as <see cref="Move(int, int)"/> (which may swap).
+        /// Returns how many whole items moved.
+        /// </summary>
+        public int Move(int from, int to, int count)
+        {
+            ItemStack moving = slots[from];
+            if (from == to || moving.IsEmpty || count <= 0 || !Fits(to, moving.Item))
+            {
+                return 0;
+            }
+            if (count >= moving.Count)
+            {
+                int before = moving.Count;
+                Move(from, to);
+                return slots[from].Item == moving.Item ? before - slots[from].Count : before;
+            }
+            int moved;
+            if (slots[to].IsEmpty)
+            {
+                moved = count;
+                slots[to] = new ItemStack(moving.Item, count, moving.Contents, moving.Wear, moving.Quality);
+            }
+            else if (Stacks(slots[to], moving.Item, moving.Contents, moving.Quality) && slots[to].Space > 0)
+            {
+                moved = Math.Min(count, slots[to].Space);
+                slots[to] = TopUp(slots[to], moved, moving.Contents, moving.Quality);
+            }
+            else
+            {
+                return 0;
+            }
+            slots[from] = moving.WithCount(moving.Count - moved);
+            Changed?.Invoke();
+            return moved;
+        }
+
+        /// <summary>
+        /// Splits <paramref name="count"/> whole items off a stack into the nearest empty slot after it (GL191), wrapping
+        /// round; the rest and any part item stay. Returns the slot they went to, or -1 when there's no room or nothing to split.
+        /// </summary>
+        public int Split(int slot, int count)
+        {
+            ItemStack stack = slots[slot];
+            if (stack.IsEmpty || count <= 0 || count >= stack.Count)
+            {
+                return -1;
+            }
+            for (int step = 1; step < slots.Length; step++)
+            {
+                int target = (slot + step) % slots.Length;
+                if (slots[target].IsEmpty && Fits(target, stack.Item))
+                {
+                    return Move(slot, target, count) > 0 ? target : -1;
+                }
+            }
+            return -1;
+        }
+
+        /// <summary>
         /// Moves up to <paramref name="count"/> whole items of an item, from whichever stacks hold it, into
         /// another inventory (GL80: a recipe's ingredients into a station), keeping each stack's
         /// contents and wear. Returns how many moved.
@@ -497,7 +558,7 @@ namespace Clube.Core
             slots[from] = moving.WithCount(moving.Count - moved);
             if (slots[from].Count == 0 && moving.Part > 0f)
             {
-                slots[to] = WithPart(BlendPart(slots[to], moving.Part, moving.Contents, moving.Quality), moving.Part, out ItemStack spill);
+                slots[to] = WithPart(BlendPart(slots[to], Math.Min(moving.Part, RoomFor(slots[to])), moving.Contents, moving.Quality), moving.Part, out ItemStack spill);
                 slots[from] = spill;
             }
         }
@@ -507,51 +568,64 @@ namespace Clube.Core
             return Accepts == null || item == null || Accepts(slot, item);
         }
 
-        // Adds a part item (GL136) to a stack it stacks with, making a whole one when the parts pass 1, or
-        // puts it in an empty slot. False when there's nowhere for it.
+        // Adds a part item (GL136) onto stacks it stacks with, as far as each has room (GL188: a stack fills to exactly
+        // its MaxStack, parts included), making a whole one when the parts pass 1; the rest goes in an empty slot.
+        // False when none of it found a place.
         private bool AddPart(ItemDefinition item, float part, Composition contents, float quality)
         {
-            for (int i = 0; i < slots.Length; i++)
+            float left = part;
+            for (int i = 0; i < slots.Length && left > ItemStack.PartEpsilon; i++)
             {
-                if (Stacks(slots[i], item, contents, quality) && Fits(i, item) && (slots[i].Part + part < 1f || slots[i].Space > 0))
+                if (!Stacks(slots[i], item, contents, quality) || !Fits(i, item))
                 {
-                    ItemStack blended = BlendPart(slots[i], part, contents, quality);
-                    slots[i] = WithPart(blended, part, out _);
-                    return true;
+                    continue;
+                }
+                float taken = Math.Min(left, RoomFor(slots[i]));
+                if (taken > ItemStack.PartEpsilon)
+                {
+                    slots[i] = WithPart(BlendPart(slots[i], taken, contents, quality), taken, out _);
+                    left -= taken;
                 }
             }
-            for (int i = 0; i < slots.Length; i++)
+            for (int i = 0; i < slots.Length && left > ItemStack.PartEpsilon; i++)
             {
                 if (slots[i].IsEmpty && Fits(i, item))
                 {
-                    slots[i] = new ItemStack(item, 0, contents, 0, quality, part);
-                    return true;
+                    slots[i] = new ItemStack(item, 0, contents, 0, quality, left);
+                    left = 0f;
                 }
             }
-            return false;
+            return left < part - ItemStack.PartEpsilon;
         }
 
-        // A stack with a part item added: the parts add up, and past 1 make a whole item if there's room.
-        // What doesn't fit comes back as a stack of its own.
+        // How much more a stack holds, whole and part items together (GL188): up to its MaxStack exactly.
+        private static float RoomFor(ItemStack stack)
+        {
+            return stack.IsEmpty ? 0f : Math.Max(0f, stack.Item.MaxStack - stack.Amount);
+        }
+
+        // A stack with a part item added: the parts add up, and past 1 make a whole item. The stack fills to its
+        // MaxStack exactly (GL188: 1023.7 stone takes 0.3 more, to 1024); what's over comes back as a stack of its own.
         private static ItemStack WithPart(ItemStack stack, float part, out ItemStack spill)
         {
-            float total = stack.Part + part;
+            float taken = Math.Min(part, RoomFor(stack));
+            spill = part - taken > ItemStack.PartEpsilon
+                ? new ItemStack(stack.Item, 0, stack.Contents, 0, stack.Quality, part - taken)
+                : ItemStack.Empty;
+            float total = stack.Part + taken;
             int whole = stack.Count;
-            spill = ItemStack.Empty;
             if (total >= 1f - ItemStack.PartEpsilon)
             {
-                if (stack.Space > 0)
-                {
-                    whole++;
-                    total -= 1f;
-                }
-                else
-                {
-                    spill = new ItemStack(stack.Item, 0, stack.Contents, 0, stack.Quality, total - stack.Part);
-                    total = stack.Part;
-                }
+                whole++;
+                total = Math.Max(0f, total - 1f);
             }
-            return new ItemStack(stack.Item, whole, stack.Contents, stack.Wear, stack.Quality, Math.Max(0f, total));
+            if (!stack.IsEmpty && whole >= stack.Item.MaxStack)
+            {
+                // Full: nothing on top.
+                whole = stack.Item.MaxStack;
+                total = 0f;
+            }
+            return new ItemStack(stack.Item, whole, stack.Contents, stack.Wear, stack.Quality, total);
         }
 
         // A stack about to take a part item: its contents and quality blend with the part's by amount (GL172), so

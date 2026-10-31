@@ -353,5 +353,44 @@ namespace Clube.Core.Tests
                 Object.DestroyImmediate(clay);
             }
         }
+
+        // GL188: part items fill a stack to its MaxStack exactly, never past it.
+        [Test]
+        public void PartItem_FillsAStackToExactlyItsMax()
+        {
+            var inventory = new Inventory(3);
+            inventory.Add(ore, 10);
+            inventory.Add(ore, 0, null, 0, 1f, 0.7f);
+            Assert.AreEqual(10f, inventory[0].Amount, 1e-4f, "The full stack takes no part.");
+            Assert.AreEqual(0.7f, inventory[1].Amount, 1e-4f, "The part goes to a slot of its own.");
+            Assert.AreEqual(0, inventory[0].Space);
+
+            var second = new Inventory(2);
+            second.Add(ore, 9);
+            second.Add(ore, 0, null, 0, 1f, 0.5f);
+            Assert.AreEqual(9.5f, second[0].Amount, 1e-4f);
+            Assert.AreEqual(0, second[0].Space, "No room for another whole one.");
+            second.Add(ore, 0, null, 0, 1f, 0.7f);
+            Assert.AreEqual(10f, second[0].Amount, 1e-4f, "The stack fills to its max exactly...");
+            Assert.AreEqual(10, second[0].Count);
+            Assert.AreEqual(0.2f, second[1].Amount, 1e-4f, "...and the rest goes on to the next slot.");
+        }
+
+        // GL191: splitting a stack, and moving part of one onto another slot.
+        [Test]
+        public void Split_AndMoveACount()
+        {
+            var inventory = new Inventory(3);
+            inventory.Add(ore, 6);
+            Assert.AreEqual(1, inventory.Split(0, 3));
+            Assert.AreEqual(3, inventory[0].Count);
+            Assert.AreEqual(3, inventory[1].Count);
+            Assert.AreEqual(2, inventory.Move(0, 1, 2));
+            Assert.AreEqual(1, inventory[0].Count);
+            Assert.AreEqual(5, inventory[1].Count);
+            Assert.AreEqual(1, inventory.Move(0, 2, 1), "The last one moves whole.");
+            Assert.IsTrue(inventory[0].IsEmpty);
+            Assert.AreEqual(-1, inventory.Split(1, 5), "Nothing to split off a whole stack.");
+        }
     }
 }

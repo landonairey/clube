@@ -18,4 +18,5 @@ MonoBehaviour:
   maxStack: 256
   unitVolume: 1
   burnSeconds: 0
+  purityAs: {fileID: 11400000, guid: 1e3311289ece4ce428134389e92a4e43, type: 2}
   hidesContents: 0

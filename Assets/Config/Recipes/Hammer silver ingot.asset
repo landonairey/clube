@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb68c50b39e0a91499017be61cd90094, type: 3}
+  m_Name: Hammer silver ingot
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.Recipe
+  station: 1
+  inputs:
+  - Item: {fileID: 11400000, guid: 74d3905274cac194e8d538552c2976d4, type: 2}
+    Count: 1
+  output:
+    Item: {fileID: 11400000, guid: 2597dfd35cabe7645af5d5d40a766387, type: 2}
+    Count: 1
+  work: 1
+  amount: 6
+  experienceSkill: 5
+  experience: 3
+  unlockSkill: 0
+  unlockLevel: 0
+  qualityFactor: 1
+  extracts: {fileID: 0}
+  typicalGrade: 0.2

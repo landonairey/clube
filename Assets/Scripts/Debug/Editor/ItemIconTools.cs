@@ -27,6 +27,12 @@ namespace Clube.Debug.Editor
         private static readonly Color Bronze = new Color(0.7f, 0.5f, 0.24f);
         private static readonly Color BronzeLight = new Color(0.95f, 0.78f, 0.45f);
         private static readonly Color BronzeDark = new Color(0.34f, 0.22f, 0.08f);
+        private static readonly Color Silver = new Color(0.76f, 0.78f, 0.82f);
+        private static readonly Color SilverLight = new Color(0.98f, 0.99f, 1f);
+        private static readonly Color SilverDark = new Color(0.36f, 0.38f, 0.42f);
+        private static readonly Color Gold = new Color(0.9f, 0.7f, 0.18f);
+        private static readonly Color GoldLight = new Color(1f, 0.93f, 0.55f);
+        private static readonly Color GoldDark = new Color(0.46f, 0.3f, 0.04f);
 
         [MenuItem("Clube/Items/Generate icons")]
         public static void GenerateIcons()
@@ -38,6 +44,11 @@ namespace Clube.Debug.Editor
             Write("tin ingot", "Tin ingot", PaintIngot(Tin, TinLight, TinDark));
             Write("bronze bun", "Bronze bun", PaintBun(Bronze, BronzeLight, BronzeDark));
             Write("bronze ingot", "Bronze ingot", PaintIngot(Bronze, BronzeLight, BronzeDark));
+            // GL225: silver and gold smelt like the rest.
+            Write("silver bun", "Silver bun", PaintBun(Silver, SilverLight, SilverDark));
+            Write("silver ingot", "Silver ingot", PaintIngot(Silver, SilverLight, SilverDark));
+            Write("gold bun", "Gold bun", PaintBun(Gold, GoldLight, GoldDark));
+            Write("gold ingot", "Gold ingot", PaintIngot(Gold, GoldLight, GoldDark));
             // Birch (GL150): pale bark with dark marks.
             Write("wood", "Wood", PaintLog(new Color(0.86f, 0.84f, 0.78f), new Color(0.32f, 0.3f, 0.28f), new Color(0.9f, 0.82f, 0.62f), new Color(0.76f, 0.64f, 0.44f)));
             Write("maple wood", "Maple wood", PaintLog(new Color(0.36f, 0.24f, 0.14f), new Color(0.22f, 0.14f, 0.08f), new Color(0.85f, 0.7f, 0.48f), new Color(0.62f, 0.42f, 0.24f)));

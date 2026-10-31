@@ -147,13 +147,13 @@ namespace Clube.Core.Tests
             Assert.AreEqual(0f, gathering.PendingFor(clay), 1e-5f);
         }
 
-        // GL177: a pass on the boulder takes a share of the impurities out, and hands them back.
+        // GL177, GL190: a pass on the boulder takes a set volume of the impurities out, and hands them back.
         [Test]
-        public void Refining_TakesOutAShareOfTheImpurities()
+        public void Refining_TakesOutAVolumeOfTheImpurities()
         {
             var stack = new ItemStack(clayItem, 10, Composition.From(new Content(clay, 0.6f), new Content(stone, 0.4f)), 0, 0.6f);
             var removed = new List<Content>();
-            ItemStack refined = Refining.Pass(stack, registry, 0.5f, removed);
+            ItemStack refined = Refining.Pass(stack, registry, 2f, removed);
 
             Assert.AreEqual(8f, refined.Amount, 1e-3f, "6 clay and 2 of the 4 stone left");
             Assert.AreEqual(0.75f, refined.Quality, 1e-3f);
@@ -163,12 +163,34 @@ namespace Clube.Core.Tests
 
             for (int pass = 0; pass < 20 && Refining.CanRefine(refined, registry); pass++)
             {
-                refined = Refining.Pass(refined, registry, 0.5f, removed);
+                refined = Refining.Pass(refined, registry, 1f, removed);
             }
             Assert.AreEqual(1f, refined.Quality, 1e-4f, "passes end at pure clay");
             Assert.AreEqual(6f, refined.Amount, 1e-3f, "all the clay is kept");
             Assert.IsFalse(Refining.CanRefine(refined, registry));
             Assert.IsFalse(Refining.CanRefine(new ItemStack(clayItem, 3), registry), "no mix to pick over");
+        }
+
+        // GL186: crushed ore's own material is its ore's, so refining keeps the cassiterite and takes out the stone.
+        [Test]
+        public void Refining_CrushedOre_KeepsItsOre()
+        {
+            ItemDefinition crushed = ItemDefinition.Create("crushed-cassiterite", "Crushed cassiterite").WithPurityAs(oreItem);
+            try
+            {
+                var stack = new ItemStack(crushed, 10, Composition.From(new Content(ore, 0.5f), new Content(stone, 0.5f)), 0, 0.5f);
+                Assert.AreEqual(0.5f, registry.Quality(stack.Contents, crushed), 1e-4f);
+                var removed = new List<Content>();
+                ItemStack refined = Refining.Pass(stack, registry, 1f, removed);
+                Assert.AreEqual(9f, refined.Amount, 1e-3f, "One item of stone out");
+                Assert.AreEqual(5f / 9f, refined.Quality, 1e-3f);
+                Assert.AreEqual(1, removed.Count);
+                Assert.AreEqual(stone, removed[0].Material, "Only stone comes out");
+            }
+            finally
+            {
+                Object.DestroyImmediate(crushed);
+            }
         }
 
         // GL132: gathered ore is as good as its share of the ore itself: half the samples ore at a 40%

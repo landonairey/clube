@@ -11,8 +11,8 @@ namespace Clube.Debug
     /// controls own the mouse; they come back as they were.
     /// </summary>
     /// <remarks>
-    /// Works with the player as a plain GameObject, so the lab doesn't depend on
-    /// <c>Clube.Game</c>: the player's spawn component places it when it is switched on.
+    /// Works with the player as a plain GameObject: the player's spawn component places it when
+    /// it is switched on. It reads <c>Clube.Game</c> only to start as the player in a menu game.
     /// </remarks>
     public class PlayerCameraToggle : MonoBehaviour
     {
@@ -58,7 +58,8 @@ namespace Clube.Debug
                 return;
             }
             player.SetActive(false);
-            if (startAsPlayer)
+            // A game started from the main menu (GL203) is played as the player; P still flies.
+            if (startAsPlayer || Clube.Game.GameSession.IsActive)
             {
                 Switch(true);
             }

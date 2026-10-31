@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 65212d9605cadae48a1038007b71c543, type: 3}
   m_Name: PlayerSettings
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSettings
-  renderDistance: 6
+  renderDistance: 32

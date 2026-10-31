@@ -33,6 +33,10 @@ namespace Clube.Core
         [SerializeField, Min(0f)]
         private float burnSeconds;
 
+        [Tooltip("For an item no material drops but that is made of one (crushed cassiterite, GL186): the item whose material counts as its own, for its purity and for refining. Empty for the rest.")]
+        [SerializeField]
+        private ItemDefinition purityAs;
+
         [Tooltip("What it's made of is unknown to the player (\"? ore\", GL76): its tooltip doesn't list its contents, though it still carries them.")]
         [SerializeField]
         private bool hidesContents;
@@ -90,6 +94,19 @@ namespace Clube.Core
         public float BurnSeconds => burnSeconds;
 
         public bool IsFuel => burnSeconds > 0f;
+
+        /// <summary>
+        /// The item whose material counts as this one's own (GL186): crushed cassiterite is pure when it's all
+        /// cassiterite. Null for an item that is its own (stone, clay), or has no purity.
+        /// </summary>
+        public ItemDefinition PurityAs => purityAs;
+
+        /// <summary>Sets <see cref="PurityAs"/>, for items made in code (tests).</summary>
+        public ItemDefinition WithPurityAs(ItemDefinition item)
+        {
+            purityAs = item;
+            return this;
+        }
 
         /// <summary>True when the player can't see what it's made of (GL76).</summary>
         public bool HidesContents => hidesContents;

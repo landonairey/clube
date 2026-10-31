@@ -18,6 +18,41 @@ namespace Clube.Game
 
         private static readonly Color PanelColor = new Color(0.08f, 0.09f, 0.1f, 0.92f);
 
+        private static GUIStyle trashStyle;
+        private static GUIStyle trashHintStyle;
+
+        /// <summary>
+        /// The trash slot (GL173), in the inventory and the station screens (GL224): a slot marked Trash, lit while a stack
+        /// is carried over it, with a hint to its left.
+        /// </summary>
+        public static void DrawTrash(Rect slot, bool dragging)
+        {
+            bool over = dragging && slot.Contains(Event.current.mousePosition);
+            ItemSlotGui.Draw(slot, ItemStack.Empty, over);
+            trashStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+            trashHintStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleRight };
+            GUI.Label(slot, "Trash", trashStyle);
+            GUI.Label(new Rect(slot.x - 228f, slot.y, 220f, slot.height), "Drop a stack here to destroy it", trashHintStyle);
+        }
+
+        /// <summary>Destroys what a drag let go over the trash slot: the part dragged, or the whole stack. True when it did.</summary>
+        public static bool Trash(Inventory items, InventoryDragResult drop, Rect slot)
+        {
+            if (drop.Kind != InventoryDragKind.DroppedOutside || !slot.Contains(drop.Position) || items[drop.Slot].IsEmpty)
+            {
+                return false;
+            }
+            if (drop.Count >= items[drop.Slot].Count)
+            {
+                items.TakeAll(drop.Slot);
+            }
+            else
+            {
+                items.RemoveAt(drop.Slot, drop.Count);
+            }
+            return true;
+        }
+
         /// <summary>A screen's background: nearly opaque, so the world doesn't show through the slots.</summary>
         public static void Panel(Rect area)
         {
@@ -169,7 +204,7 @@ namespace Clube.Game
 
         /// <summary>
         /// One fact a line (GL70): "Chalcopyrite ×12", "Volume 12", then a line per component,
-        /// "80% Stone", "20% Chalcopyrite".
+        /// "80% Stone (9.6)", "20% Chalcopyrite (2.4)": its share and how much of the stack that is (GL188).
         /// </summary>
         public static string Describe(ItemStack stack)
         {
@@ -191,10 +226,12 @@ namespace Clube.Game
             }
             else if (stack.Contents != null)
             {
+                // Each material's share, and how much of the stack that is (GL188): "92% Stone (942.1)".
                 foreach (Content part in stack.Contents.Parts)
                 {
                     float percent = part.Fraction * 100f;
-                    text += percent >= 1f ? $"\n{percent:0}% {part.Material.DisplayName}" : $"\n{percent:0.#}% {part.Material.DisplayName}";
+                    string share = percent >= 1f ? $"{percent:0}%" : $"{percent:0.#}%";
+                    text += $"\n{share} {part.Material.DisplayName} ({stack.Volume * part.Fraction:0.#})";
                 }
             }
             if (stack.Item.IsFuel)

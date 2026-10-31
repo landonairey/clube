@@ -88,15 +88,14 @@ namespace Clube.Game
                 new Row("Move", "Move", "WASD"),
                 new Row("Jump", "Jump"),
                 new Row("Sprint", "Sprint"),
+                new Row("Crouch (slide when sprinting)", "Crouch"),
                 new Row("Use tool", "Attack", "LMB"),
-                new Row("Add ground", "Place"),
-                new Row("Brush size", "Previous", "[ ]"),
+                new Row("Interact with boulder", "Place", "RMB"),
                 new Row("Use station", "Interact"),
                 new Row("Hotbar slot", "Hotbar", "1-9"),
                 new Row("Next slot", "NextSlot"),
                 new Row("Inventory", "Inventory"),
-                new Row("Mining journal", "Journal"),
-                new Row("Crafting journal", "CraftingJournal"),
+                new Row("Field log", "Journal"),
                 new Row("Drop (hold to pour)", "Drop"),
                 new Row("Place (hold to pick up)", "Build"),
                 new Row("Rotate placement", "Rotate"),
@@ -174,7 +173,7 @@ namespace Clube.Game
             BuildLines();
             const float rowHeight = 17f;
             const float keyWidth = 96f;
-            const float labelWidth = 150f;
+            const float labelWidth = 185f;
             // Above the axes gizmo in the corner.
             float height = lines.Count * rowHeight + 10f;
             var box = new Rect(8f, Screen.height - 130f - height, keyWidth + labelWidth + 16f, height);

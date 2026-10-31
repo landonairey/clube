@@ -24,6 +24,9 @@ namespace Clube.Game
         private PlayerController player;
         private StumpWorktops stumps;
         private PlayerParcels parcels;
+
+        // True when the target is a stump found under the trunk aimed at (GL231): tools still chop the trunk.
+        private bool targetOnTrunk;
         private GUIStyle promptStyle;
 
         /// <summary>What's under the crosshair and within reach this frame, or null.</summary>
@@ -31,9 +34,9 @@ namespace Clube.Game
 
         /// <summary>
         /// True when the target is built into the ground (a furnace or campfire, a <see cref="TerrainStructure"/>,
-        /// GL141): tools still work on it, since mining its body is how it's broken.
+        /// GL141), or a stump reached through the trunk above it (GL231): tools still work on it, since mining its body is how it's broken.
         /// </summary>
-        public bool TargetIsGround => Target is Component component && component.GetComponentInParent<TerrainStructure>() != null;
+        public bool TargetIsGround => targetOnTrunk || (Target is Component component && component.GetComponentInParent<TerrainStructure>() != null);
 
         public float Reach => reach;
 
@@ -57,6 +60,7 @@ namespace Clube.Game
         private void Update()
         {
             Target = null;
+            targetOnTrunk = false;
             // On the frame a screen closed, its E mustn't reopen what's still under the crosshair.
             if (!player.enabled || player.IsCursorFree || player.MenuClosedThisFrame)
             {
@@ -75,7 +79,17 @@ namespace Clube.Game
                     continue;
                 }
                 nearest = hit.distance;
-                Target = hit.collider.GetComponentInParent<IInteractable>() ?? stumps?.Find(hit) ?? parcels?.Find(hit);
+                targetOnTrunk = false;
+                IInteractable found = hit.collider.GetComponentInParent<IInteractable>();
+                if (found == null && stumps != null)
+                {
+                    found = stumps.Find(hit, out targetOnTrunk);
+                }
+                if (found == null && parcels != null)
+                {
+                    found = parcels.Find(hit);
+                }
+                Target = found;
             }
 
             if (Target != null && interactAction != null && interactAction.action.WasPressedThisFrame())
@@ -91,7 +105,9 @@ namespace Clube.Game
                 return;
             }
             promptStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 16 };
-            GUI.Label(new Rect(0f, Screen.height * 0.5f + 24f, Screen.width, 24f), $"E  {Target.Prompt}", promptStyle);
+            // A notice (GL179) is shown without the key: pressing it does nothing.
+            string prompt = Target is INoticeOnly ? Target.Prompt : $"E  {Target.Prompt}";
+            GUI.Label(new Rect(0f, Screen.height * 0.5f + 24f, Screen.width, 24f), prompt, promptStyle);
         }
     }
 }

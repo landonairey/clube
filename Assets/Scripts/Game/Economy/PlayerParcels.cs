@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
 
@@ -31,6 +32,16 @@ namespace Clube.Game
         private PlayerWallet wallet;
         private PlayerSpawn spawn;
         private ParcelOffer offer;
+        private NotOwnedNotice notOwned;
+
+        // Parcels a save owned (GL205), granted as soon as the land is set up.
+        private List<Vector2Int> restoring;
+
+        /// <summary>Owns what a save owned (GL205), in place of the parcel the player lands in.</summary>
+        public void Restore(IEnumerable<Vector2Int> owned)
+        {
+            restoring = new List<Vector2Int>(owned);
+        }
 
         /// <summary>The land and its prices; null until the world exists.</summary>
         public LandParcels Parcels { get; private set; }
@@ -45,6 +56,7 @@ namespace Clube.Game
             wallet = GetComponent<PlayerWallet>();
             spawn = GetComponent<PlayerSpawn>();
             offer = new ParcelOffer(this);
+            notOwned = new NotOwnedNotice();
         }
 
         private void Update()
@@ -52,6 +64,14 @@ namespace Clube.Game
             if (Parcels == null && worldView != null && worldView.IsReady)
             {
                 Parcels = new LandParcels(sizeInChunks * worldView.World.Grid.ChunkWorldSize.x, firstPrice, priceStep);
+            }
+            if (Parcels != null && restoring != null)
+            {
+                foreach (Vector2Int parcel in restoring)
+                {
+                    Parcels.Grant(parcel);
+                }
+                restoring = null;
             }
 
             // The first parcel is the one the player lands in.
@@ -73,7 +93,10 @@ namespace Clube.Game
             return Parcels == null || Parcels.Owned.Count == 0 || Parcels.IsOwnedAt(worldView.World.Grid.SampleToWorld(sample));
         }
 
-        /// <summary>The offer to buy the parcel under a terrain hit, for <see cref="PlayerInteractor"/>; null when it can't be bought.</summary>
+        /// <summary>
+        /// The offer to buy the parcel under a terrain hit, for <see cref="PlayerInteractor"/>: null on the player's own
+        /// land, and a "You don't own this land" notice on land too far from it to buy (GL179).
+        /// </summary>
         public IInteractable Find(RaycastHit hit)
         {
             if (Parcels == null || Parcels.Owned.Count == 0 || hit.collider.GetComponentInParent<WorldView>() != worldView)
@@ -82,9 +105,14 @@ namespace Clube.Game
             }
             // Just inside the surface, so a hit on a wall between parcels counts for the parcel it faces.
             Vector2Int parcel = Parcels.ParcelAt(Local(hit.point - hit.normal * 0.05f));
-            if (!Parcels.IsBuyable(parcel))
+            if (Parcels.IsOwned(parcel))
             {
                 return null;
+            }
+            if (!Parcels.IsBuyable(parcel))
+            {
+                // Land further than a parcel from the player's own (GL179): it only says so.
+                return notOwned;
             }
             offer.Parcel = parcel;
             return offer;
@@ -93,6 +121,16 @@ namespace Clube.Game
         private Vector3 Local(Vector3 worldPoint)
         {
             return worldView != null ? worldView.transform.InverseTransformPoint(worldPoint) : worldPoint;
+        }
+
+        // Land that can't be bought from here (GL179): Interact does nothing.
+        private sealed class NotOwnedNotice : INoticeOnly
+        {
+            public string Prompt => "You don't own this land";
+
+            public void Interact(PlayerInteractor by)
+            {
+            }
         }
 
         // Buying the parcel being looked at.
@@ -112,8 +150,8 @@ namespace Clube.Game
                 get
                 {
                     int price = owner.Parcels.NextPrice;
-                    int coins = owner.wallet.Wallet.Coins;
-                    return coins >= price ? $"Buy this land: {price} coins" : $"This land costs {price} coins (you have {coins})";
+                    float coins = owner.wallet.Wallet.Coins;
+                    return coins >= price ? $"Buy this land: {price} coins" : $"This land costs {price} coins (you have {Wallet.Format(coins)})";
                 }
             }
 

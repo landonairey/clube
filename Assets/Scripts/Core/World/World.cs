@@ -257,6 +257,37 @@ namespace Clube.Core
             }
         }
 
+        /// <summary>Every edited chunk, loaded or kept, by coordinate: what a save holds of the world (S2, GL205).</summary>
+        public IEnumerable<KeyValuePair<Vector3Int, Chunk>> EditedChunks()
+        {
+            foreach (Vector3Int coord in edited)
+            {
+                if (loaded.TryGetValue(coord, out Chunk chunk) || editedUnloaded.TryGetValue(coord, out chunk))
+                {
+                    yield return new KeyValuePair<Vector3Int, Chunk>(coord, chunk);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Takes an edited chunk from a save (GL205) before the world streams it: it's kept as an edited,
+        /// unloaded chunk, so the streamer restores it instead of generating it. A loaded chunk there is
+        /// replaced the same way (unloaded first).
+        /// </summary>
+        public void Keep(Vector3Int coord, Chunk chunk)
+        {
+            if (loaded.ContainsKey(coord))
+            {
+                Unload(coord);
+            }
+            if (editedUnloaded.TryGetValue(coord, out Chunk old) && old != chunk)
+            {
+                old.Release();
+            }
+            editedUnloaded[coord] = chunk;
+            MarkEdited(coord);
+        }
+
         /// <summary>Forgets every chunk, edited ones too, e.g. before regenerating the terrain; their memory goes back to the pool.</summary>
         public void Clear()
         {

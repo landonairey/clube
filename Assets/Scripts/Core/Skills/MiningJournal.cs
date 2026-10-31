@@ -53,6 +53,23 @@ namespace Clube.Core
 
         public bool HasFound(VoxelMaterial ore) => EntryFor(ore) != null;
 
+        /// <summary>Every ore found, for saving (GL205).</summary>
+        public IEnumerable<Entry> Entries => entries.Values;
+
+        /// <summary>Every recipe finished, for saving (GL205).</summary>
+        public IEnumerable<Recipe> Made => made;
+
+        /// <summary>Puts back an entry as a save had it (GL205), raising no discovery.</summary>
+        public void Restore(VoxelMaterial ore, float firstDepth, float lowestGrade, float highestGrade, int samples)
+        {
+            if (ore == null)
+            {
+                return;
+            }
+            entries[ore] = new Entry(ore, firstDepth, lowestGrade) { HighestGrade = highestGrade, Samples = Math.Max(1, samples) };
+            Changed?.Invoke();
+        }
+
         /// <summary>True once the player has finished the recipe at least once.</summary>
         public bool HasMade(Recipe recipe) => recipe != null && made.Contains(recipe);
 

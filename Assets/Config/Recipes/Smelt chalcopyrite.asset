@@ -18,7 +18,7 @@ MonoBehaviour:
     Count: 5
   output:
     Item: {fileID: 11400000, guid: dc5a1a0a6cbcb6141a8cb40a674ffd35, type: 2}
-    Count: 1
+    Count: 5
   work: 0
   amount: 4
   experienceSkill: 4

@@ -11,7 +11,8 @@ namespace Clube.Debug.Editor
     /// Builds the furnaces from the ground (GL98), as the campfire is (GL85): <i>Clube → Models → Build
     /// furnaces</i> turns the furnace prefab into the Stone furnace, a <see cref="TerrainStructure"/> of
     /// loose stone (cobbles) in the shape of <see cref="LowPolyModels.FurnaceParts"/>, and makes the Clay
-    /// furnace beside it: the same shape in clay, hotter, with its own item, icon and recipe. Run again
+    /// furnace beside it: the same shape in clay, hotter, with its own item, icon and recipe, and the Brick
+    /// furnace (GL229) in bricks, hotter again. Run again
     /// after changing the shape; it updates what's there.
     /// </summary>
     public static class FurnaceStructures
@@ -26,9 +27,18 @@ namespace Clube.Debug.Editor
         private const string ClayIcon = "Assets/Textures/Items/clay furnace.png";
         private const string StoneLook = "Assets/Materials/Stations/Furnace.mat";
         private const string ClayLook = "Assets/Materials/Stations/Clay.mat";
+        private const string BrickPrefab = "Assets/Prefabs/Stations/Brick Furnace.prefab";
+        private const string BrickItem = "Assets/Config/Items/Brick furnace.asset";
+        private const string BrickRecipe = "Assets/Config/Recipes/Build brick furnace.asset";
+        private const string BrickIcon = "Assets/Textures/Items/brick furnace.png";
+        private const string BrickLook = "Assets/Materials/Stations/Brick.mat";
 
         private const float ClayHeat = 1.5f;
         private const int ClayUnlockLevel = 5;
+
+        // The brick furnace outdoes the clay one (GL229): hotter, so faster on the same fuel.
+        private const float BrickHeat = 2.25f;
+        private const int BrickUnlockLevel = 6;
 
         [MenuItem("Clube/Models/Build furnaces")]
         public static void Build()
@@ -40,26 +50,39 @@ namespace Clube.Debug.Editor
             var looseStone = AssetDatabase.LoadAssetAtPath<VoxelMaterial>("Assets/Config/Materials/Loose stone.asset");
             var clay = AssetDatabase.LoadAssetAtPath<VoxelMaterial>("Assets/Config/Materials/Clay.asset");
             var clayItem = AssetDatabase.LoadAssetAtPath<ItemDefinition>("Assets/Config/Items/Clay.asset");
-            var glow = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Stations/Glow.mat");
+            var brick = AssetDatabase.LoadAssetAtPath<VoxelMaterial>("Assets/Config/Materials/Brick.asset");
+            var brickItem = AssetDatabase.LoadAssetAtPath<ItemDefinition>("Assets/Config/Items/Brick.asset");
 
             Configure(StonePrefab, "Stone furnace", 1f, looseStone, AssetDatabase.LoadAssetAtPath<Material>(StoneLook), stamp);
             Rename(StoneItem, "Stone furnace");
             SetCost(StoneRecipe, null, cost, -1);
 
-            if (!File.Exists(ClayPrefab))
-            {
-                AssetDatabase.CopyAsset(StonePrefab, ClayPrefab);
-            }
-            Configure(ClayPrefab, "Clay furnace", ClayHeat, clay, ClayMaterial(), stamp);
-            ItemDefinition clayFurnace = ClayFurnaceItem();
-            ClayFurnaceRecipe();
+            CopyIfMissing(StonePrefab, ClayPrefab);
+            Configure(ClayPrefab, "Clay furnace", ClayHeat, clay, Look(ClayLook, new Color(0.68f, 0.48f, 0.34f)), stamp);
+            ItemDefinition clayFurnace = FurnaceItem(ClayItem, "clay-furnace", "Clay furnace", ClayIcon, new Color(1.25f, 0.9f, 0.68f), ClayPrefab);
+            CopyIfMissing(StoneRecipe, ClayRecipe);
             SetCost(ClayRecipe, clayItem, cost, ClayUnlockLevel, clayFurnace);
+
+            // The brick furnace (GL229): the clay one's copy, so it smelts the same recipes, built of bricks.
+            CopyIfMissing(ClayPrefab, BrickPrefab);
+            Configure(BrickPrefab, "Brick furnace", BrickHeat, brick, Look(BrickLook, new Color(0.62f, 0.27f, 0.2f)), stamp);
+            ItemDefinition brickFurnace = FurnaceItem(BrickItem, "brick-furnace", "Brick furnace", BrickIcon, new Color(1.3f, 0.7f, 0.6f), BrickPrefab);
+            CopyIfMissing(ClayRecipe, BrickRecipe);
+            SetCost(BrickRecipe, brickItem, cost, BrickUnlockLevel, brickFurnace);
             AssetDatabase.SaveAssets();
-            UnityEngine.Debug.Log($"Built the stone and clay furnaces ({LowPolyModels.FurnaceParts().Count} samples each, built for {cost}).");
+            UnityEngine.Debug.Log($"Built the stone, clay and brick furnaces ({LowPolyModels.FurnaceParts().Count} samples each, built for {cost}).");
+        }
+
+        private static void CopyIfMissing(string from, string to)
+        {
+            if (!File.Exists(to))
+            {
+                AssetDatabase.CopyAsset(from, to);
+            }
         }
 
         // The prefab as a structure of one material: no model of its own (the preview child shows where
-        // the samples go), a glow inside, and a collider in its mouth to use it by.
+        // the samples go), a glow inside, and a collider round its body to use it by.
         private static void Configure(string path, string name, float heat, VoxelMaterial material, Material look, UnityEngine.Mesh stamp)
         {
             GameObject root = PrefabUtility.LoadPrefabContents(path);
@@ -69,8 +92,9 @@ namespace Clube.Debug.Editor
                 Object.DestroyImmediate(root.GetComponent<MeshFilter>());
 
                 var box = Get<BoxCollider>(root);
-                box.center = new Vector3(0f, 0.2f, 0.5f);
-                box.size = new Vector3(0.45f, 0.45f, 0.3f);
+                // The whole body (GL143), so the player can use it from any side and tools still break it.
+                box.center = new Vector3(0f, 0.85f, 0f);
+                box.size = new Vector3(1.3f, 1.7f, 1.3f);
 
                 var station = new SerializedObject(root.GetComponent<StationObject>());
                 station.FindProperty("displayName").stringValue = name;
@@ -139,43 +163,40 @@ namespace Clube.Debug.Editor
             item.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        // A warm clay colour for the clay furnace's build preview, made from the stone one.
-        private static Material ClayMaterial()
+        // A furnace's build-preview colour, made from the stone one.
+        private static Material Look(string path, Color color)
         {
-            var material = AssetDatabase.LoadAssetAtPath<Material>(ClayLook);
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (material == null)
             {
                 material = new Material(AssetDatabase.LoadAssetAtPath<Material>(StoneLook));
-                AssetDatabase.CreateAsset(material, ClayLook);
+                AssetDatabase.CreateAsset(material, path);
             }
-            material.SetColor("_BaseColor", new Color(0.68f, 0.48f, 0.34f));
+            material.SetColor("_BaseColor", color);
             EditorUtility.SetDirty(material);
             return material;
         }
 
-        // The clay furnace's item: the stone one's copy, its own id, name, prefab and a clay-tinted icon.
-        private static ItemDefinition ClayFurnaceItem()
+        // A furnace's item: the stone one's copy, its own id, name, prefab and a tinted icon.
+        private static ItemDefinition FurnaceItem(string path, string id, string name, string icon, Color tint, string prefab)
         {
-            if (!File.Exists(ClayItem))
-            {
-                AssetDatabase.CopyAsset(StoneItem, ClayItem);
-            }
-            TintIcon();
-            var item = AssetDatabase.LoadAssetAtPath<ItemDefinition>(ClayItem);
+            CopyIfMissing(StoneItem, path);
+            TintIcon(icon, tint);
+            var item = AssetDatabase.LoadAssetAtPath<ItemDefinition>(path);
             var serialized = new SerializedObject(item);
-            serialized.FindProperty("id").stringValue = "clay-furnace";
-            serialized.FindProperty("displayName").stringValue = "Clay furnace";
-            serialized.FindProperty("icon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Texture2D>(ClayIcon);
-            serialized.FindProperty("prefab").objectReferenceValue = AssetDatabase.LoadAssetAtPath<GameObject>(ClayPrefab);
+            serialized.FindProperty("id").stringValue = id;
+            serialized.FindProperty("displayName").stringValue = name;
+            serialized.FindProperty("icon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Texture2D>(icon);
+            serialized.FindProperty("prefab").objectReferenceValue = AssetDatabase.LoadAssetAtPath<GameObject>(prefab);
             serialized.ApplyModifiedPropertiesWithoutUndo();
             return item;
         }
 
-        private static void TintIcon()
+        // The stone furnace's icon, tinted, written to its own file.
+        private static void TintIcon(string path, Color tint)
         {
             var source = new Texture2D(2, 2);
             source.LoadImage(File.ReadAllBytes(StoneIcon));
-            var tint = new Color(1.25f, 0.9f, 0.68f);
             Color[] pixels = source.GetPixels();
             for (int i = 0; i < pixels.Length; i++)
             {
@@ -183,24 +204,15 @@ namespace Clube.Debug.Editor
                 pixels[i] = new Color(Mathf.Clamp01(pixel.r * tint.r), Mathf.Clamp01(pixel.g * tint.g), Mathf.Clamp01(pixel.b * tint.b), pixel.a);
             }
             source.SetPixels(pixels);
-            File.WriteAllBytes(ClayIcon, source.EncodeToPNG());
+            File.WriteAllBytes(path, source.EncodeToPNG());
             Object.DestroyImmediate(source);
-            AssetDatabase.ImportAsset(ClayIcon);
-            var importer = (TextureImporter)AssetImporter.GetAtPath(ClayIcon);
+            AssetDatabase.ImportAsset(path);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
             var stoneImporter = (TextureImporter)AssetImporter.GetAtPath(StoneIcon);
             importer.alphaIsTransparency = stoneImporter.alphaIsTransparency;
             importer.mipmapEnabled = stoneImporter.mipmapEnabled;
             importer.textureCompression = stoneImporter.textureCompression;
             importer.SaveAndReimport();
-        }
-
-        private static Recipe ClayFurnaceRecipe()
-        {
-            if (!File.Exists(ClayRecipe))
-            {
-                AssetDatabase.CopyAsset(StoneRecipe, ClayRecipe);
-            }
-            return AssetDatabase.LoadAssetAtPath<Recipe>(ClayRecipe);
         }
 
         // A build recipe's single input and count, its output and the Crafting level it unlocks at

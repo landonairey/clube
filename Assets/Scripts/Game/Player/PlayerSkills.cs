@@ -21,17 +21,17 @@ namespace Clube.Game
         [SerializeField, Min(0f)]
         private float leaves = 0.2f;
 
-        [Tooltip("Mining: stone and other hard ground.")]
+        [Tooltip("Mining: stone and other hard ground (GL183: set so a Mining level takes about ten times the work it did).")]
         [SerializeField, Min(0f)]
-        private float stone = 1f;
+        private float stone = 0.08f;
 
         [Tooltip("Mining: ore.")]
         [SerializeField, Min(0f)]
-        private float ore = 2f;
+        private float ore = 0.16f;
 
         [Tooltip("Mining: soft ground (grass, dirt, clay).")]
         [SerializeField, Min(0f)]
-        private float soil = 0.25f;
+        private float soil = 0.02f;
 
         private PlayerToolUser tools;
 

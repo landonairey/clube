@@ -29,9 +29,6 @@ namespace Clube.Core
     {
         public const int DefaultInputSlots = 2;
 
-        /// <summary>The most a smelt yields of its count from ore richer than typical (GL128).</summary>
-        public const float MaxGradeYield = 2f;
-
         private readonly List<Recipe> recipes = new List<Recipe>();
         private float done;
 
@@ -266,7 +263,17 @@ namespace Clube.Core
             // A chosen recipe is the only one that starts; others sharing its inputs wait (ML1).
             if (Chosen != null)
             {
-                return Chosen.Work == work && Chosen.IsUnlockedFor(Learner) && Chosen.HasInputs(Input) && OutputFits(Chosen) ? Chosen : null;
+                if (Chosen.Work == work && Chosen.IsUnlockedFor(Learner) && Chosen.HasInputs(Input) && OutputFits(Chosen))
+                {
+                    return Chosen;
+                }
+                // A smelter that has used up the picked recipe's ore goes on to whatever else is loaded (GL197: two
+                // ores in the two input slots both get smelted). Worktops and anvils still wait, so a spear never
+                // starts in place of the hatchet the player picked.
+                if (work != RecipeWork.Time || Chosen.HasInputs(Input))
+                {
+                    return null;
+                }
             }
             return Best(recipe => recipe.Work == work && recipe.IsUnlockedFor(Learner) && recipe.HasInputs(Input) && OutputFits(recipe));
         }
@@ -314,7 +321,7 @@ namespace Clube.Core
                 {
                     return Active;
                 }
-                if (Chosen != null)
+                if (Chosen != null && (Chosen.Work != RecipeWork.Time || Chosen.HasInputs(Input) || !HoldsAnyOther(Chosen)))
                 {
                     return Chosen.IsUnlockedFor(Learner) ? Chosen : null;
                 }
@@ -423,15 +430,16 @@ namespace Clube.Core
 
         /// <summary>
         /// What a run of the recipe yields of its output count with what's loaded now (GL127, GL128): the station's
-        /// <see cref="Quality"/>, times, for a smelt, how rich the ore is against its typical grade (up to
-        /// <see cref="MaxGradeYield"/>). 1 for a plain recipe at a station of full quality.
+        /// <see cref="Quality"/>, times, for a smelt, the extracted mineral's share of the ore (GL192): a smelt's count
+        /// is what pure mineral gives, so a yield never passes 100% and no metal comes from nothing. 1 for a plain
+        /// recipe at a station of full quality.
         /// </summary>
         public float YieldOf(Recipe recipe)
         {
             float yield = Math.Max(0f, Quality);
             if (recipe != null && recipe.Extracts != null)
             {
-                yield *= Math.Min(MaxGradeYield, Concentration(recipe) / recipe.TypicalGrade);
+                yield *= Math.Min(1f, Concentration(recipe));
             }
             return yield;
         }
@@ -559,6 +567,20 @@ namespace Clube.Core
             foreach (ItemAmount input in recipe.Inputs)
             {
                 if (input.Item != null && Input.Count(input.Item) > 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // True when the input slots hold something the recipe doesn't take (another ore beside the picked one).
+        private bool HoldsAnyOther(Recipe recipe)
+        {
+            for (int slot = 0; slot < Input.SlotCount; slot++)
+            {
+                ItemDefinition item = Input[slot].Item;
+                if (item != null && !recipe.Takes(item))
                 {
                     return true;
                 }

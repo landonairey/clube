@@ -96,11 +96,11 @@ namespace Clube.Core
         [SerializeField, Range(0.1f, 2f)]
         private float qualityFactor = 1f;
 
-        [Tooltip("Smelting (GL128): the mineral this recipe extracts. Its share of the ore's contents against the typical grade sets how much comes out, and the metal comes out pure. None: the inputs' quality carries over.")]
+        [Tooltip("Smelting (GL128, GL192): the mineral this recipe extracts. The output count is what pure mineral gives; ore makes its mineral share of it, and the metal comes out pure. None: the inputs' quality carries over.")]
         [SerializeField]
         private VoxelMaterial extracts;
 
-        [Tooltip("Smelting (GL128): the mineral's share of typical ore, 0-1. Ore this rich yields the recipe's count; twice as rich, twice as much.")]
+        [Tooltip("Smelting (GL128): the mineral's share of typical ore, 0-1: what ore with no known contents counts as, and what the journal quotes.")]
         [SerializeField, Range(0.01f, 1f)]
         private float typicalGrade = 0.2f;
 
