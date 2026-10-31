@@ -72,7 +72,10 @@ namespace Clube.Core.Tests
             VoxelMaterial dirt = VoxelMaterial.Create(1, "Dirt");
             var from = new Inventory(3);
             from.Add(item, 20, Composition.From(new Content(clay, 0.55f), new Content(dirt, 0.45f)), 0, 0.55f);
-            from.Add(item, 20, Composition.From(new Content(clay, 1f)), 0, 1f);
+            // The refined clay in a stack of its own, as it comes back out of a station (GL256).
+            var refined = new Inventory(1);
+            refined.Add(item, 20, Composition.From(new Content(clay, 1f)), 0, 1f);
+            refined.MoveTo(0, from, keepApart: true);
             var to = new Inventory(2);
             Assert.AreEqual(5, from.MoveItemTo(item, 5, to));
             Assert.AreEqual(1f, to[0].Quality, 1e-4f, "The refined clay went in.");
