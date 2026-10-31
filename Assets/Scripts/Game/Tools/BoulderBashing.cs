@@ -219,7 +219,8 @@ namespace Clube.Game
             {
                 return;
             }
-            var bar = new Rect(Screen.width * 0.5f - 90f, Screen.height * 0.5f + 70f, 180f, 10f);
+            // Above the crosshair (GL244): under it are the tool hint and the pickup notices, which wrote over this.
+            var bar = new Rect(Screen.width * 0.5f - 90f, Screen.height * 0.5f - 52f, 180f, 10f);
             string doing = HoldsSomethingToBash(out _, out Crush crush) && crush.Raw != null ? "Crushing" : "Refining";
             GUI.Label(new Rect(bar.x - 30f, bar.y - 22f, bar.width + 60f, 20f), $"{doing} {stack.Item.DisplayName.ToLowerInvariant()} ({stack.Quality * 100f:0}%)");
             GUI.Box(bar, GUIContent.none);
