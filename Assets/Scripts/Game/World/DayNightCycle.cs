@@ -74,7 +74,20 @@ namespace Clube.Game
         [SerializeField, Range(0f, 1f)]
         private float nightAmbient = 0.3f;
 
+        [Tooltip("How strongly sunrises and sunsets take their colour (GL262): 0 the plain warm light every day, 1 as the day's weather has it.")]
+        [SerializeField, Range(0f, 2f)]
+        private float sunsetStrength = 1f;
+
+        private static readonly int SkyTintId = Shader.PropertyToID("_SkyTint");
+        private static readonly int AtmosphereId = Shader.PropertyToID("_AtmosphereThickness");
+        private static readonly int CloudLightDirId = Shader.PropertyToID("_CloudLightDir");
+        private static readonly int CloudLightColorId = Shader.PropertyToID("_CloudLightColor");
+
         private Material sky;
+        private Color skyTint = Color.gray;
+        private float atmosphere = 1f;
+        private CloudLayer clouds;
+        private WorldView world;
         private Material sceneSky;
         private Color ambientSky;
         private Color ambientEquator;
@@ -157,6 +170,8 @@ namespace Clube.Game
             {
                 sky = new Material(sceneSky) { name = sceneSky.name + " (day and night)" };
                 skyExposure = sky.HasProperty("_Exposure") ? sky.GetFloat("_Exposure") : 1f;
+                skyTint = sky.HasProperty(SkyTintId) ? sky.GetColor(SkyTintId) : Color.gray;
+                atmosphere = sky.HasProperty(AtmosphereId) ? sky.GetFloat(AtmosphereId) : 1f;
                 sunDiscKeyword = sky.IsKeywordEnabled("_SUNDISK_SIMPLE") ? "_SUNDISK_SIMPLE" : "_SUNDISK_HIGH_QUALITY";
                 sunDiscShown = true;
                 RenderSettings.skybox = sky;
@@ -181,11 +196,26 @@ namespace Clube.Game
             RenderSettings.ambientGroundColor = ambientGround;
             RenderSettings.ambientProbe = ambientProbe;
             RenderSettings.fogColor = fogColor;
+            Shader.SetGlobalVector(CloudLightColorId, Vector4.zero);
             if (sky != null)
             {
                 Destroy(sky);
                 sky = null;
             }
+        }
+
+        /// <summary>
+        /// The look of the sunrise or sunset nearest the hour (GL262): the morning's before noon, the evening's after,
+        /// with the clouds' cover now.
+        /// </summary>
+        public SunsetLook SunsetNow(float hour)
+        {
+            world ??= GetComponent<WorldView>();
+            clouds ??= GetComponent<CloudLayer>();
+            int seed = world != null && world.Config != null ? world.Config.Terrain.Seed : 0;
+            float cover = clouds != null && clouds.isActiveAndEnabled ? clouds.Coverage : 0.4f;
+            SunsetLook look = SkyWeather.Sunset(seed, Day, hour >= 12f, cover);
+            return new SunsetLook(look.Glow, Mathf.Clamp01(look.Vividness * sunsetStrength));
         }
 
         private void LateUpdate()
@@ -211,12 +241,23 @@ namespace Clube.Game
                               * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.02f, 0.12f, moonDirection.y))
                               * Mathf.Lerp(0.15f, 1f, illumination);
             bool sunsLight = sunHeight > -0.07f;
+
+            // Sunrise and sunset (GL262): today's colour, strongest with the sun at the horizon, gone by about 15° up or
+            // 10° under. The low sun lights the land in it, the sky takes a tint and a thicker haze, and the clouds catch
+            // it most of all, still lit from under the horizon after the land has gone dark.
+            SunsetLook look = SunsetNow(hour);
+            float twilight = sunHeight >= 0f
+                ? 1f - Mathf.SmoothStep(0f, 1f, sunHeight / 0.26f)
+                : 1f - Mathf.SmoothStep(0f, 1f, -sunHeight / 0.18f);
+            float glow = look.Vividness * twilight;
+            Color lowSun = Color.Lerp(lowSunColor, look.Glow, look.Vividness * 0.85f);
+            Color sunColour = Color.Lerp(lowSun, noonColor, Mathf.SmoothStep(0f, 1f, sunHeight * 2f));
             if (sun != null)
             {
                 if (sunsLight)
                 {
                     sun.transform.rotation = Quaternion.LookRotation(-sunDirection);
-                    sun.color = Color.Lerp(lowSunColor, noonColor, Mathf.SmoothStep(0f, 1f, sunHeight * 2f));
+                    sun.color = sunColour;
                     sun.intensity = dayIntensity * sunLight;
                 }
                 else
@@ -256,11 +297,32 @@ namespace Clube.Game
             RenderSettings.ambientEquatorColor = ambientEquator * ambient;
             RenderSettings.ambientGroundColor = ambientGround * ambient;
             RenderSettings.ambientProbe = ambientProbe * ambient;
-            RenderSettings.fogColor = Color.Lerp(fogColor * 0.15f, fogColor, Daylight);
+            Color fog = Color.Lerp(fogColor * 0.15f, fogColor, Daylight);
+            RenderSettings.fogColor = Color.Lerp(fog, look.Glow * fog.maxColorComponent * 1.4f, glow * 0.3f);
             if (sky != null && sky.HasProperty("_Exposure"))
             {
                 sky.SetFloat("_Exposure", Mathf.Lerp(0.18f, skyExposure, Daylight));
             }
+            if (sky != null && sky.HasProperty(SkyTintId))
+            {
+                sky.SetColor(SkyTintId, Color.Lerp(skyTint, look.Glow * 0.75f, glow * 0.22f));
+                sky.SetFloat(AtmosphereId, atmosphere * (1f + 0.45f * glow));
+            }
+            LightClouds(sunDirection, sunHeight, sunColour, look, glow, moonDirection, moonLight);
+        }
+
+        // The clouds' light (GL262), for Clube/Clouds: the sun's while it can reach them, which at their height is a
+        // while after it has left the land, in the sunset's colour near the horizon; then the moon's.
+        private void LightClouds(Vector3 sunDirection, float sunHeight, Color sunColour, SunsetLook look, float glow, Vector3 moonDirection, float moonLight)
+        {
+            float sunOnClouds = dayIntensity * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.17f, 0.05f, sunHeight));
+            Color onClouds = Color.Lerp(sunColour, look.Glow, glow * 0.8f) * (1f + 0.6f * glow);
+            float moonOnClouds = moonIntensity * moonLight;
+            bool sunLights = sunOnClouds * onClouds.maxColorComponent >= moonOnClouds * moonColor.maxColorComponent;
+            Vector3 direction = sunLights ? sunDirection : moonDirection;
+            Color light = sunLights ? onClouds.linear * sunOnClouds : moonColor.linear * moonOnClouds;
+            Shader.SetGlobalVector(CloudLightDirId, direction.normalized);
+            Shader.SetGlobalVector(CloudLightColorId, new Vector4(light.r, light.g, light.b, 1f));
         }
 
         // The procedural skybox's sun disc is a keyword set (none, simple, high quality); the material is this cycle's copy.

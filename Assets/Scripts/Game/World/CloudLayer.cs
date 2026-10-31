@@ -1,3 +1,4 @@
+using Clube.Core;
 using UnityEngine;
 
 namespace Clube.Game
@@ -48,15 +49,11 @@ namespace Clube.Game
         [SerializeField, Min(50f)]
         private float thickness = 900f;
 
-        [Tooltip("How much of the sky is covered on an average day, 0-1.")]
-        [SerializeField, Range(0f, 1f)]
-        private float coverage = 0.42f;
+        [Tooltip("Scales each day's cloud cover (GL263: clear, partly cloudy or heavy by the day, SkyWeather.Cover); 1 as the days have it.")]
+        [SerializeField, Range(0f, 2f)]
+        private float coverageScale = 1f;
 
-        [Tooltip("How far the cover strays from the average from one day to the next.")]
-        [SerializeField, Range(0f, 0.5f)]
-        private float coverageSwing = 0.18f;
-
-        [Tooltip("Roughly how many game days a spell of weather lasts.")]
+        [Tooltip("Roughly how many game days the wind and the clouds' patterns take to change.")]
         [SerializeField, Min(0.1f)]
         private float weatherDays = 1.5f;
 
@@ -109,6 +106,7 @@ namespace Clube.Game
 
         private GameObject sphere;
         private Material instance;
+        private WorldView world;
         private double driftX;
         private double driftZ;
         private double boilOffset;
@@ -119,8 +117,20 @@ namespace Clube.Game
         /// <summary>Height of the top of the layer, in metres.</summary>
         public float TopHeight => baseHeight + thickness;
 
-        /// <summary>How much of the sky is covered now, 0-1.</summary>
-        public float Coverage => Mathf.Clamp01(coverage + coverageSwing * (2f * Mathf.PerlinNoise(WeatherTime, 0.37f) - 1f));
+        /// <summary>How much of the sky is covered now, 0-1: today's cover (GL263), easing into tomorrow's.</summary>
+        public float Coverage => Mathf.Clamp01(SkyWeather.Cover(Seed, GameDays) * coverageScale);
+
+        // The world's seed, so the same world has the same weather.
+        private int Seed
+        {
+            get
+            {
+                world ??= GetComponent<WorldView>();
+                return world != null && world.Config != null ? world.Config.Terrain.Seed : 0;
+            }
+        }
+
+        private double GameDays => dayNight != null ? dayNight.Days : Time.time / 2400d;
 
         /// <summary>Where the wind blows towards now, a flat world direction.</summary>
         public Vector3 Wind
@@ -133,7 +143,7 @@ namespace Clube.Game
         }
 
         // The weather's place in its noise: game days over a spell's length.
-        private float WeatherTime => (float)((dayNight != null ? dayNight.Days : Time.time / 2400d) / weatherDays % 10000d);
+        private float WeatherTime => (float)(GameDays / weatherDays % 10000d);
 
         private void Update()
         {

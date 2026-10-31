@@ -7,7 +7,8 @@
 // sample wears their edges into wisps at the base and billows on top. Everything drifts with the wind (_ShapeOffset,
 // _Weather.xy) and boils slowly upwards (_Weather.w).
 //
-// Light: the main light (the sun by day, the moon at night) is marched a few steps towards the light for the cloud's
+// Light: the sun or the moon, as DayNightCycle gives it (_CloudLightDir, _CloudLightColor; GL262: the sun reaches the
+// clouds a while after it has left the land, in the sunset's colour), else the main light, is marched a few steps towards the light for the cloud's
 // shadow on itself, with a few octaves of cheaper, wider scattering standing in for light bouncing many times inside. A
 // two-lobed Henyey-Greenstein phase scatters strongly forwards, so cloud edges in front of the sun or moon glow, with a
 // little back-scatter; thin cloud edges facing away look darker ("powder"). The sky's ambient light (spherical
@@ -62,6 +63,12 @@ Shader "Clube/Clouds"
 
             TEXTURE3D(_CloudNoise);
             SAMPLER(sampler_CloudNoise);
+
+            // The light on the clouds (GL262), globals set by DayNightCycle: towards it, and its colour times its
+            // intensity (linear), a set when given. The sun lights clouds a while after it has left the land, in the
+            // sunset's colour; without it, the main light.
+            float4 _CloudLightDir;
+            float4 _CloudLightColor;
 
             CBUFFER_START(UnityPerMaterial)
                 float _Albedo;
@@ -279,9 +286,10 @@ Shader "Clube/Clouds"
                 float t = start + stepLength * InterleavedGradientNoise(input.positionCS.xy);
 
                 Light light = GetMainLight();
-                float3 towardsLight = light.direction;
+                bool given = _CloudLightColor.a > 0.5;
+                float3 towardsLight = given ? normalize(_CloudLightDir.xyz) : light.direction;
                 float cosine = dot(ray, towardsLight);
-                float3 lightColour = light.color;
+                float3 lightColour = given ? _CloudLightColor.rgb : light.color;
                 float3 skyTop = max(SampleSH(float3(0, 1, 0)), 0.0) * _Ambient;
                 float3 skyBottom = skyTop * 0.4;
 

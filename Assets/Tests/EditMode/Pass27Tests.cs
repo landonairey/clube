@@ -70,6 +70,58 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Sunsets_VaryFromPlainToVivid_InManyColours()
+        {
+            int plain = 0, vivid = 0;
+            var hues = new System.Collections.Generic.HashSet<int>();
+            for (int day = 0; day < 400; day++)
+            {
+                SunsetLook look = SkyWeather.Sunset(11, day, day % 2 == 0, 0.45f);
+                Assert.AreEqual(look.Vividness, SkyWeather.Sunset(11, day, day % 2 == 0, 0.45f).Vividness, "The same day looks the same.");
+                plain += look.Vividness == 0f ? 1 : 0;
+                vivid += look.Vividness >= 0.8f ? 1 : 0;
+                // Which palette colour it's nearest.
+                int nearest = 0;
+                float best = float.MaxValue;
+                for (int i = 0; i < SkyWeather.Palette.Length; i++)
+                {
+                    Color c = SkyWeather.Palette[i];
+                    float d = Mathf.Abs(c.r - look.Glow.r) + Mathf.Abs(c.g - look.Glow.g) + Mathf.Abs(c.b - look.Glow.b);
+                    if (d < best)
+                    {
+                        best = d;
+                        nearest = i;
+                    }
+                }
+                hues.Add(nearest);
+            }
+            Assert.Greater(plain, 40, "Some sunsets aren't coloured at all.");
+            Assert.Greater(vivid, 30, "Some are vivid.");
+            Assert.AreEqual(SkyWeather.Palette.Length, hues.Count, "Every colour comes up.");
+            Assert.Less(SkyWeather.Sunset(11, 3, true, 0.05f).Vividness, SkyWeather.Sunset(11, 3, true, 0.45f).Vividness + 1e-4f,
+                "A clear sky doesn't make it more vivid than broken cloud.");
+        }
+
+        [Test]
+        public void CloudCover_ChangesFromDayToDay_Smoothly()
+        {
+            int clear = 0, heavy = 0;
+            for (int day = 0; day < 300; day++)
+            {
+                float cover = SkyWeather.Cover(5, day + 0.5d);
+                Assert.AreEqual(SkyWeather.DayCover(5, day), cover, 1e-4f, "A day's cover holds at its middle.");
+                clear += cover < 0.16f ? 1 : 0;
+                heavy += cover > 0.54f ? 1 : 0;
+            }
+            Assert.Greater(clear, 45, "Some days are nearly clear.");
+            Assert.Greater(heavy, 60, "Some are heavily clouded.");
+            for (double days = 0d; days < 20d; days += 0.01d)
+            {
+                Assert.Less(Mathf.Abs(SkyWeather.Cover(5, days + 0.01d) - SkyWeather.Cover(5, days)), 0.05f, "It eases, never jumps.");
+            }
+        }
+
+        [Test]
         public void TheMoon_LooksAQuarterBiggerOnTheHorizon()
         {
             Assert.AreEqual(1.25f, SkyPositions.MoonIllusion(0f, 0.25f, 0.4f), 1e-4f);
