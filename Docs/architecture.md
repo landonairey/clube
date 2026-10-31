@@ -76,6 +76,7 @@ Core/
                  CloudNoise (the clouds' repeating 3D noise, baked to a texture, GL252), SkyWeather (each
                  sunset's colour and each day's cloud cover, GL262, GL263)
   Fauna/         BirdFlock (a group of birds flying a pattern, then leaving, GL250)
+  Audio/         SoundSynth (sound effects made in code, GL271)
   Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea, FarTerrainBuilder (far terrain levels),
                  TerrainLodRing + TerrainLodBuilder (coarse terrain levels, P7c), DistantTreeBuilder (GL162)
   Rendering/     WorldView, ChunkView, ChunkRenderer(+Pool), ChunkCollider, ChunkMeshBuilder, GrassScatter (GL67),

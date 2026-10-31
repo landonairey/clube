@@ -491,7 +491,10 @@ its cloud cover; `DayNightCycle` lights the clouds itself (`_CloudLightDir`, `_C
 leaves the land. The main menu reads "Extract, Refine, Craft, Build your World". Dahlias (GL265, `DahliaGrowth` on
 `GrassScatter`) grow rarely among the grass over about a third of gold nodes, a patch of a few flowers mostly of one colour. Birds come mostly
 in flocks (GL266). Any shader drawn in the world needs a DepthNormals pass (GL267): with SSAO the depth texture is built from
-them, and the clouds stop at it.
+them, and the clouds stop at it. Terrain relief, held tools and sound (GL268-GL272): `Clube/Terrain Materials` roughens
+rock and soil by `VoxelMaterial.Relief` (drawn only); `HeldToolView` (Game/Tools) holds and swings the tool; `ToolCooldown` puts
+a second between uses (hands and dawn a quarter quicker); `SoundSynth` (Core/Audio) makes every sound effect, written by *Clube →
+Audio → Generate sound effects*, and `AmbientSounds` (on World) plays wind, leaves and birds.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

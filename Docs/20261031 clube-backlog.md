@@ -20,3 +20,8 @@ Requests from 2026-10-31, kept as they were given (spelling tidied). They are or
 - [ ] Add dahlias to the 3D grass flora. They are rarer and sparsely generated, on the terrain surface above a gold node. → **GL265**
 - [ ] Bug: a bush on the ground is covered by distant clouds; 3D grass and distant trees are also covered by clouds that should be behind them. → **GL267**
 - [ ] Make it more common for larger flocks of birds to fly together. → **GL266**
+- [ ] Add a little noise to the terrain surface, especially the sloping stone faces of the mountains, to give a bit of 3D texturing on the voxel meshes. → **GL268**
+- [ ] Add low-poly models for hand gathering and all the tools, shown in the HUD, with mining, chopping and gathering swing animations. Tools are held in the right hand, on the right of the screen, with a gentle sway from breathing and the player's velocity. The hand swipes; picks drop vertically, stop at the target and recoil; chopping is similar but comes in at an angle. → **GL269**
+- [ ] A cooldown on tool use: 1 s between uses. Dawn gives an early-bird bonus, the cooldown 25% shorter. Hands are 25% quicker than tools. → **GL270**
+- [ ] Generate our own sound effects for footsteps, tools and material breaking/gathering. → **GL271**
+- [ ] Add bird chirping, an ambient wind breeze and soft rustling of tree leaves. → **GL272**
