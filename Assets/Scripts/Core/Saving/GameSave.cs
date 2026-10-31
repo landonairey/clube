@@ -146,7 +146,7 @@ namespace Clube.Core
         public float Quality = 1f;
         public List<ContentSave> Contents;
 
-        /// <summary>A station's slots; empty lists for an object that isn't one.</summary>
+        /// <summary>A station's slots (a chest's go in Input, GL249); empty lists for an object that has none.</summary>
         public List<StackSave> Input = new List<StackSave>();
         public List<StackSave> Output = new List<StackSave>();
         public List<StackSave> Fuel = new List<StackSave>();

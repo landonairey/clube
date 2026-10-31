@@ -106,6 +106,11 @@ namespace Clube.Game
             {
                 station.MadeOf(held.Quality);
             }
+            // A chest of poorer wood holds less (GL249).
+            if (placed.TryGetComponent(out StorageChest chest))
+            {
+                chest.MadeOf(held.Quality);
+            }
             inventory.Inventory.RemoveAt(hotbar.SelectedSlot, 1);
             CanPlace = false;
             Placed?.Invoke(placedObject);

@@ -164,6 +164,28 @@ namespace Clube.Game
             return clicked;
         }
 
+        /// <summary>The height of an inventory laid out in rows of <see cref="Columns"/> (<see cref="DrawGrid"/>).</summary>
+        public static float GridHeight(Inventory items)
+        {
+            int rows = Mathf.Max(1, (items.SlotCount + Columns - 1) / Columns);
+            return rows * (SlotSize + Gap) - Gap;
+        }
+
+        /// <summary>An inventory's slots in rows of <see cref="Columns"/> from <paramref name="topLeft"/> (a chest, GL249). Returns the slot clicked, or -1.</summary>
+        public static int DrawGrid(Vector2 topLeft, Inventory items, int selected = -1)
+        {
+            int clicked = -1;
+            for (int slot = 0; slot < items.SlotCount; slot++)
+            {
+                var position = new Vector2(topLeft.x + (slot % Columns) * (SlotSize + Gap), topLeft.y + (slot / Columns) * (SlotSize + Gap));
+                if (Slot(position, items[slot], slot == selected, null, null))
+                {
+                    clicked = slot;
+                }
+            }
+            return clicked;
+        }
+
         /// <summary>One slot as a button. True when clicked.</summary>
         public static bool Slot(Vector2 position, ItemStack stack, bool selected, string key, System.Func<ItemStack, string> corner)
         {

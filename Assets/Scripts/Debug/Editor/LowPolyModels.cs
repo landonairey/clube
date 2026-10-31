@@ -26,6 +26,7 @@ namespace Clube.Debug.Editor
             Save("Campfire", Campfire());
             Save("Campfire stamp", CampfireStamp());
             Save("Furnace stamp", FurnaceStamp());
+            Save("Wooden Chest", WoodenChest());
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Built station models in {Folder}.");
         }
@@ -56,6 +57,40 @@ namespace Clube.Debug.Editor
             model.Box(0, new Vector3(-0.04f, 0.69f, 0f), new Vector3(0.58f, 0.14f, 0.24f));
             model.LoftX(0, new Vector3(0.25f, 0.71f, 0f), new Vector2(0.1f, 0.2f), new Vector3(0.56f, 0.75f, 0f), new Vector2(0.02f, 0.03f));
             return model.Build("Anvil");
+        }
+
+        /// <summary>Builds only the wooden chest (GL249), leaving the other models as they are.</summary>
+        [MenuItem("Clube/Models/Build chest model")]
+        public static void BuildChest()
+        {
+            Directory.CreateDirectory(Folder);
+            Save("Wooden Chest", WoodenChest());
+            AssetDatabase.SaveAssets();
+        }
+
+        // Submeshes: 0 wood, 1 iron. A plank box with a lid a little wider than it, iron bands over the lid and down
+        // the front and back, iron corners and a latch at the front (+Z) (GL249).
+        private static Mesh WoodenChest()
+        {
+            var model = new ModelBuilder(2);
+            model.Box(0, new Vector3(0f, 0.25f, 0f), new Vector3(0.9f, 0.5f, 0.55f));
+            model.Box(0, new Vector3(0f, 0.56f, 0f), new Vector3(0.94f, 0.12f, 0.59f));
+            model.Box(0, new Vector3(0f, 0.65f, 0f), new Vector3(0.9f, 0.06f, 0.5f));
+            foreach (float x in new[] { -0.3f, 0.3f })
+            {
+                model.Box(1, new Vector3(x, 0.66f, 0f), new Vector3(0.06f, 0.04f, 0.52f));
+                model.Box(1, new Vector3(x, 0.31f, 0.28f), new Vector3(0.06f, 0.62f, 0.02f));
+                model.Box(1, new Vector3(x, 0.31f, -0.28f), new Vector3(0.06f, 0.62f, 0.02f));
+            }
+            foreach (float x in new[] { -0.44f, 0.44f })
+            {
+                foreach (float z in new[] { -0.265f, 0.265f })
+                {
+                    model.Box(1, new Vector3(x, 0.25f, z), new Vector3(0.04f, 0.5f, 0.04f));
+                }
+            }
+            model.Box(1, new Vector3(0f, 0.5f, 0.29f), new Vector3(0.1f, 0.14f, 0.03f));
+            return model.Build("Wooden Chest");
         }
 
         // Submeshes: 0 wood, 1 cloth. A plank table on four legs, two posts at the back

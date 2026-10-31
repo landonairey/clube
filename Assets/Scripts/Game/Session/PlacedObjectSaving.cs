@@ -6,7 +6,7 @@ namespace Clube.Game
 {
     /// <summary>
     /// What the player built, in a save (GL205): each <see cref="PlacedObject"/>'s item, place, quality and
-    /// contents, a station's slots, and the samples a structure (campfire, furnace) stands in. Loading places
+    /// contents, a station's slots or a chest's (GL249), and the samples a structure (campfire, furnace) stands in. Loading places
     /// each again from its item's prefab, as <see cref="PlayerBuilder"/> does, without taking the item from
     /// the inventory. A station's work under way (a recipe's progress, fuel burning) starts over.
     /// </summary>
@@ -37,6 +37,11 @@ namespace Clube.Game
                     {
                         save.Fuel = StackSaving.Capture(station.Station.Fuel);
                     }
+                }
+                if (placed.TryGetComponent(out StorageChest chest))
+                {
+                    // A chest's slots go where a station's input slots do (GL249).
+                    save.Input = StackSaving.Capture(chest.Storage);
                 }
                 if (placed.TryGetComponent(out TerrainStructure structure))
                 {
@@ -77,6 +82,11 @@ namespace Clube.Game
                     {
                         StackSaving.Restore(station.Station.Fuel, save.Fuel, items.Find, materials);
                     }
+                }
+                if (placed.TryGetComponent(out StorageChest chest))
+                {
+                    chest.MadeOf(save.Quality);
+                    StackSaving.Restore(chest.Storage, save.Input, items.Find, materials);
                 }
                 if (placed.TryGetComponent(out TerrainStructure structure))
                 {
