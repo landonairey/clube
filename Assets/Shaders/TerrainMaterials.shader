@@ -47,6 +47,27 @@ Shader "Clube/Terrain Materials"
             float4 _LodTint;
         CBUFFER_END
 
+        #include "Assets/Shaders/Wind.hlsl"
+
+        // How far each material sways in the wind, 0-1 (the leaves, so the tops of the trees move). Set from the
+        // registry like the colours; not a material property.
+        float _MaterialSway[64];
+
+        // A vertex moved by the wind by as much as its materials sway: 7 cm for leaves. Leaves and the wood they
+        // meet share vertices at a seam and only the leaf side moves, so the strength stays small.
+        float3 SwayLeaves(float3 positionWS, float3 ids, float3 weights)
+        {
+            float total = weights.x + weights.y + weights.z;
+            if (total <= 0.0)
+            {
+                return positionWS;
+            }
+            float sway = (weights.x * _MaterialSway[(int)ids.x] + weights.y * _MaterialSway[(int)ids.y]
+                        + weights.z * _MaterialSway[(int)ids.z]) / total;
+            positionWS.xz += WindSway(positionWS, 0.07 * sway, 0.9);
+            return positionWS;
+        }
+
         // Global (GL102), not per material.
         float _HardMaterialEdges;
 
@@ -130,7 +151,7 @@ Shader "Clube/Terrain Materials"
             Varyings Vertex(Attributes input)
             {
                 Varyings output;
-                output.positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                output.positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 output.positionCS = TransformWorldToHClip(output.positionWS);
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.materialIds = input.materialIds;
@@ -271,11 +292,13 @@ Shader "Clube/Terrain Materials"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS : NORMAL;
+                float3 materialIds : TEXCOORD2;
+                float3 materialWeights : TEXCOORD3;
             };
 
             float4 ShadowVertex(Attributes input) : SV_POSITION
             {
-                float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                float3 positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
             #if _CASTING_PUNCTUAL_LIGHT_SHADOW
                 float3 lightDirection = normalize(_LightPosition - positionWS);
@@ -316,10 +339,17 @@ Shader "Clube/Terrain Materials"
                 float3 positionWS : TEXCOORD0;
             };
 
-            DepthVaryings DepthVertex(float4 positionOS : POSITION)
+            struct DepthAttributes
+            {
+                float4 positionOS : POSITION;
+                float3 materialIds : TEXCOORD2;
+                float3 materialWeights : TEXCOORD3;
+            };
+
+            DepthVaryings DepthVertex(DepthAttributes input)
             {
                 DepthVaryings output;
-                output.positionWS = TransformObjectToWorld(positionOS.xyz);
+                output.positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 output.positionCS = TransformWorldToHClip(output.positionWS);
                 return output;
             }
@@ -348,6 +378,8 @@ Shader "Clube/Terrain Materials"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS : NORMAL;
+                float3 materialIds : TEXCOORD2;
+                float3 materialWeights : TEXCOORD3;
             };
 
             struct Varyings
@@ -360,7 +392,7 @@ Shader "Clube/Terrain Materials"
             Varyings NormalsVertex(Attributes input)
             {
                 Varyings output;
-                output.positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                output.positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 output.positionCS = TransformWorldToHClip(output.positionWS);
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 return output;

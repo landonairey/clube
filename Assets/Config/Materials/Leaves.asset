@@ -26,6 +26,7 @@ MonoBehaviour:
   toolTier: 0
   requiredSkill: 0
   requiredLevel: 0
+  windSway: 1
   breaksInto: {fileID: 0}
   isWorktop: 0
   isSoft: 1

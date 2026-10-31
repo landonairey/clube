@@ -23,6 +23,7 @@ namespace Clube.Core
         private static readonly int TexturesId = Shader.PropertyToID("_Textures");
         private static readonly int MaterialColorsId = Shader.PropertyToID("_MaterialColors");
         private static readonly int LayerRemapId = Shader.PropertyToID("_LayerRemap");
+        private static readonly int MaterialSwayId = Shader.PropertyToID("_MaterialSway");
 
         [SerializeField]
         private List<VoxelMaterial> materials = new List<VoxelMaterial>();
@@ -45,6 +46,7 @@ namespace Clube.Core
         // The texture layer each id is drawn with (GL54): its own, or another material's while it's
         // hidden. Runtime state only; never saved.
         private float[] layerRemap;
+        private float[] sway;
 
         /// <summary>Makes a registry in code (tests, tools); the game's registry is an asset.</summary>
         public static MaterialRegistry Create(params VoxelMaterial[] materials)
@@ -223,6 +225,7 @@ namespace Clube.Core
             }
             material.SetVectorArray(MaterialColorsId, colors);
             material.SetFloatArray(LayerRemapId, layerRemap);
+            material.SetFloatArray(MaterialSwayId, sway);
         }
 
         private void EnsureLookup()
@@ -234,6 +237,7 @@ namespace Clube.Core
             byId = new VoxelMaterial[MaxMaterials];
             colors = new Vector4[MaxMaterials];
             layerRemap = new float[MaxMaterials];
+            sway = new float[MaxMaterials];
             for (int i = 0; i < MaxMaterials; i++)
             {
                 layerRemap[i] = i;
@@ -251,6 +255,7 @@ namespace Clube.Core
                 }
                 byId[material.Id] = material;
                 colors[material.Id] = material.DebugColor;
+                sway[material.Id] = material.WindSway;
             }
         }
 
