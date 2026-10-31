@@ -23,6 +23,8 @@ Shader "Clube/Distant Trees"
         CBUFFER_START(UnityPerMaterial)
             float4 _Coverage;
             float _Variation;
+            float4 _FadeIn;
+            float4 _FadeOut;
         CBUFFER_END
 
         #include "Assets/Shaders/Wind.hlsl"
@@ -38,6 +40,25 @@ Shader "Clube/Distant Trees"
             float crown = saturate((positionOS.y - 0.45) / 0.55);
             positionWS.xz += WindSway(positionWS, 0.02 * height * crown, 0.9);
             return positionWS;
+        }
+
+        // How much of a tree this level keeps at its distance (GL258), as a range of the dither: it shows where the
+        // pixel's dither is at least x and under y. Fading in over _FadeIn (start, end metres) lowers x from 1 to 0; fading
+        // out over _FadeOut lowers y from 1 to 0. Neighbouring levels fade over the same metres, so between them every
+        // pixel shows exactly one.
+        float2 LevelKeep(float3 root)
+        {
+            float d = distance(root.xz, _WorldSpaceCameraPos.xz);
+            float into = saturate((d - _FadeIn.x) / max(_FadeIn.y - _FadeIn.x, 0.001));
+            float outOf = saturate((d - _FadeOut.x) / max(_FadeOut.y - _FadeOut.x, 0.001));
+            return float2(1.0 - into, 1.0 - outOf);
+        }
+
+        // A fragment of a tree fading between levels: dropped unless the screen's dither falls in the kept range.
+        void ClipLevel(float4 positionCS, float2 keep)
+        {
+            float dither = frac(52.9829189 * frac(dot(positionCS.xy, float2(0.06711056, 0.00583715))));
+            clip(dither >= keep.x && dither < keep.y ? 1.0 : -1.0);
         }
 
         // True when the voxel world draws the column under this root itself.
@@ -77,6 +98,7 @@ Shader "Clube/Distant Trees"
                 float3 normalWS : TEXCOORD0;
                 half3 color : TEXCOORD1;
                 float fogFactor : TEXCOORD2;
+                float2 keep : TEXCOORD3;
             };
 
             Varyings Vertex(Attributes input)
@@ -95,11 +117,13 @@ Shader "Clube/Distant Trees"
                 float shade = 1.0 + _Variation * (frac(sin(dot(root.xz, float2(12.9898, 78.233))) * 43758.5453) * 2.0 - 1.0);
                 output.color = input.color.rgb * shade;
                 output.fogFactor = ComputeFogFactor(output.positionCS.z);
+                output.keep = LevelKeep(root);
                 return output;
             }
 
             half4 Fragment(Varyings input) : SV_Target
             {
+                ClipLevel(input.positionCS, input.keep);
                 float3 normalWS = SafeNormalize(input.normalWS);
                 Light mainLight = GetMainLight();
                 half3 direct = mainLight.color * saturate(dot(normalWS, mainLight.direction));
@@ -130,15 +154,25 @@ Shader "Clube/Distant Trees"
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
-            float4 DepthVertex(Attributes input) : SV_POSITION
+            struct DepthVaryings
+            {
+                float4 positionCS : SV_POSITION;
+                float2 keep : TEXCOORD0;
+            };
+
+            DepthVaryings DepthVertex(Attributes input)
             {
                 UNITY_SETUP_INSTANCE_ID(input);
+                DepthVaryings output;
                 float3 root = TransformObjectToWorld(float3(0, 0, 0));
-                return Covered(root) ? float4(2, 2, 2, 1) : TransformWorldToHClip(SwayCrown(input.positionOS.xyz));
+                output.positionCS = Covered(root) ? float4(2, 2, 2, 1) : TransformWorldToHClip(SwayCrown(input.positionOS.xyz));
+                output.keep = LevelKeep(root);
+                return output;
             }
 
-            half DepthFragment() : SV_Target
+            half DepthFragment(DepthVaryings input) : SV_Target
             {
+                ClipLevel(input.positionCS, input.keep);
                 return 0;
             }
             ENDHLSL

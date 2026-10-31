@@ -5787,11 +5787,12 @@ MonoBehaviour:
   material: {fileID: 2100000, guid: 5b7150ee6f9d759419b90967e177ee79, type: 2}
   show: 1
   range: 3000
-  detailDistance: 400
-  birchBark: {r: 0.66, g: 0.65, b: 0.63, a: 1}
-  birchLeaves: {r: 0.27, g: 0.36, b: 0.19, a: 1}
-  mapleBark: {r: 0.33, g: 0.22, b: 0.14, a: 1}
-  mapleLeaves: {r: 0.54, g: 0.34, b: 0.17, a: 1}
+  levelEnds: {x: 220, y: 520, z: 1100}
+  fadeWidth: 60
+  birchBark: {r: 0.65, g: 0.63, b: 0.57, a: 1}
+  birchLeaves: {r: 0.37, g: 0.47, b: 0.31, a: 1}
+  mapleBark: {r: 0.38, g: 0.27, b: 0.18, a: 1}
+  mapleLeaves: {r: 0.61, g: 0.45, b: 0.25, a: 1}
 --- !u!114 &1350119474
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Clube.Debug
 {
-    /// <summary>The distant trees' part of the lab panel (GL162): on or off, how far, where the plain mesh starts, and counts.</summary>
+    /// <summary>The distant trees' part of the lab panel (GL162): on or off, how far, where each level of detail ends and how wide they cross-fade (GL258), and counts.</summary>
     public static class DistantTreeControls
     {
         public static void Draw(LabPanelFrame frame, DistantTreeView trees)
@@ -24,10 +24,20 @@ namespace Clube.Debug
             {
                 trees.Range = range;
             }
-            float detail = Mathf.Round(frame.Slider("Detailed within (m)", trees.DetailDistance, 50f, 2000f, "0") / 10f) * 10f;
-            if (!Mathf.Approximately(detail, trees.DetailDistance))
+            // Where each level of detail ends (GL258), in whole tens of metres.
+            Vector3 ends = trees.LevelEnds;
+            float full = Mathf.Round(frame.Slider("Full trees within (m)", ends.x, 50f, 2000f, "0") / 10f) * 10f;
+            float clusters = Mathf.Round(frame.Slider("Leaf clusters within (m)", ends.y, 70f, 4000f, "0") / 10f) * 10f;
+            float crowns = Mathf.Round(frame.Slider("Crowns within (m)", ends.z, 90f, DistantTreeView.MaxRange, "0") / 10f) * 10f;
+            var picked = new Vector3(full, clusters, crowns);
+            if (picked != ends)
             {
-                trees.DetailDistance = detail;
+                trees.LevelEnds = picked;
+            }
+            float fade = Mathf.Round(frame.Slider("Cross-fade (m)", trees.FadeWidth, 0f, 200f, "0"));
+            if (!Mathf.Approximately(fade, trees.FadeWidth))
+            {
+                trees.FadeWidth = fade;
             }
 
             if (trees.Problem != null)
