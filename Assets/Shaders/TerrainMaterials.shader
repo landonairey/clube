@@ -74,6 +74,16 @@ Shader "Clube/Terrain Materials"
         // Global (GL102), not per material.
         float _HardMaterialEdges;
 
+        // Grass seen from afar (GL257, set by GrassScatter; _GrassLawnTo 0 when there's none): the grass material's
+        // ground takes on the colour of the blades standing on it (GrassLawnAt: green, straw in meadows, wheat), a little
+        // within the 3D grass and fully by the edge of it, so there's no line where the tufts end and the bare texture
+        // begins.
+        #include "Assets/Shaders/GrassLawn.hlsl"
+        float _GrassLawnLayer;
+        float _GrassLawnFrom;
+        float _GrassLawnTo;
+        float _GrassLawnNear;
+
         // Coarse terrain LOD (P7c, TerrainLodView), set on a copy of the material per level; 0 on the
         // world's own chunks. _LodClip 2: leave out the columns the world's chunks draw in
         // full (_LodCoverageMask, one texel per column; _LodCoverage: x, z of texel 0, column width,
@@ -208,6 +218,25 @@ Shader "Clube/Terrain Materials"
                 return alongX * axisWeights.x + alongY * axisWeights.y + alongZ * axisWeights.z;
             }
 
+            // Grass ground seen from afar (GL257): the colour of its blades, mottled as tufts are at a distance.
+            half3 Lawn(half3 albedo, float3 positionWS, int3 ids, float3 weights)
+            {
+                if (_GrassLawnTo <= 0.0)
+                {
+                    return albedo;
+                }
+                int layer = (int)_GrassLawnLayer;
+                float grass = (ids.x == layer ? weights.x : 0.0) + (ids.y == layer ? weights.y : 0.0) + (ids.z == layer ? weights.z : 0.0);
+                if (grass <= 0.001)
+                {
+                    return albedo;
+                }
+                float far = smoothstep(_GrassLawnFrom, _GrassLawnTo, distance(positionWS, _WorldSpaceCameraPos));
+                float mottle = ValueNoise(positionWS.xz * 1.3) * 0.45 + ValueNoise(positionWS.xz * 0.21) * 0.35 + ValueNoise(positionWS.xz * 0.05) * 0.2;
+                half3 lawn = GrassLawnAt(positionWS.xz) * (0.78 + 0.44 * mottle);
+                return lerp(albedo, lawn, grass * lerp(_GrassLawnNear, 1.0, far));
+            }
+
             half3 Albedo(Varyings input, float3 normalWS)
             {
                 float3 weights = input.materialWeights / max(dot(input.materialWeights, 1.0), 1e-5);
@@ -246,6 +275,7 @@ Shader "Clube/Terrain Materials"
                     }
                     // Brighter and darker patches tens of metres across, so even the breakup doesn't read as a pattern.
                     albedo *= 1.0 + _TintVariation * (ValueNoise(input.positionWS.xz * 0.04) * 2.0 - 1.0);
+                    albedo = Lawn(albedo, input.positionWS, ids, weights);
                 }
                 return albedo;
             }

@@ -43,6 +43,10 @@ Shader "Clube/Far Terrain"
 
         TEXTURE2D(_CoverageMask);
 
+        // Grass seen from afar (GL257), globals set by GrassScatter; _GrassLawnTo 0 when there's no 3D grass.
+        #include "Assets/Shaders/GrassLawn.hlsl"
+        float _GrassLawnTo;
+
         // Per renderer (a property block): each level's debug tint.
         half4 _LevelTint;
 
@@ -107,7 +111,9 @@ Shader "Clube/Far Terrain"
                 float slope = 1.0 - normalWS.y;
 
                 // Flat low land a little drier; steep ground rock; high gentle ground snow.
-                half3 albedo = lerp(_GrassColor.rgb, _DryColor.rgb, 0.35 * saturate(1.0 - slope * 6.0));
+                // Grass in the 3D grass's colour seen from afar when the world grows it (GL257), as the nearer terrain.
+                half3 grassColour = _GrassLawnTo > 0.0 ? GrassLawnAt(input.positionWS.xz) : _GrassColor.rgb;
+                half3 albedo = lerp(grassColour, _DryColor.rgb * (grassColour / max(_GrassColor.rgb, 0.01)), 0.35 * saturate(1.0 - slope * 6.0));
                 albedo = lerp(albedo, _RockColor.rgb, smoothstep(_RockSlope - 0.08, _RockSlope + 0.08, slope));
                 float snow = smoothstep(_SnowHeight - _SnowBlend, _SnowHeight + _SnowBlend, input.positionWS.y)
                            * (1.0 - smoothstep(0.45, 0.65, slope));
