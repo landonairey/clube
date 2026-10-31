@@ -111,6 +111,10 @@ namespace Clube.Core
         [SerializeField, Range(0f, 1f)]
         private float windSway;
 
+        [Tooltip("How much it shines, 0-1 (GL251: gold glints, so it's told from chalcopyrite): a metallic highlight and sparkles in the Clube/Terrain Materials shader.")]
+        [SerializeField, Range(0f, 1f)]
+        private float shine;
+
         [Tooltip("What a tool turns it into once broken (MF5, GL3), e.g. stone → cracked stone → loose stone. None: breaking it removes it and gives its drop.")]
         [SerializeField]
         private VoxelMaterial breaksInto;
@@ -228,6 +232,9 @@ namespace Clube.Core
 
         /// <summary>How far it sways in the wind, 0-1: leaves sway, the ground does not.</summary>
         public float WindSway => windSway;
+
+        /// <summary>How much it shines, 0-1 (GL251): gold does, the rest of the ground is matt.</summary>
+        public float Shine => shine;
 
         /// <summary>Sets what it takes to work it (GL145, GL152), for materials made in code (tests).</summary>
         public VoxelMaterial WithToolTier(int tier, SkillType skill = SkillType.None, int level = 0)

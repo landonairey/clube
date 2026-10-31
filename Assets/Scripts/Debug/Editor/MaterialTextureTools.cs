@@ -202,15 +202,89 @@ namespace Clube.Debug.Editor
             foreach (KeyValuePair<string, (Color Base, Color Mix, Color? Fleck, Wear Wear)> entry in Placeholders)
             {
                 string path = $"{PlaceholderFolder}/{entry.Key}.png";
-                File.WriteAllBytes(path, Paint(entry.Value.Base, entry.Value.Mix, entry.Value.Fleck, entry.Value.Wear, seed++).EncodeToPNG());
-                AssetDatabase.ImportAsset(path);
-                var importer = (TextureImporter)AssetImporter.GetAtPath(path);
-                importer.isReadable = true;
-                importer.wrapMode = TextureWrapMode.Repeat;
-                importer.textureCompression = TextureImporterCompression.Uncompressed;
-                importer.SaveAndReimport();
+                WritePlaceholder(entry.Key, entry.Value, seed++);
             }
             UnityEngine.Debug.Log($"Wrote {Placeholders.Count} placeholder textures to {PlaceholderFolder}.");
+        }
+
+        /// <summary>Writes only the gold texture again (GL251), with its glints; rebuild the texture array after.</summary>
+        [MenuItem("Clube/Materials/Regenerate gold texture")]
+        public static void RegenerateGold()
+        {
+            Directory.CreateDirectory(PlaceholderFolder);
+            int seed = 1;
+            foreach (KeyValuePair<string, (Color Base, Color Mix, Color? Fleck, Wear Wear)> entry in Placeholders)
+            {
+                if (entry.Key == "gold")
+                {
+                    WritePlaceholder(entry.Key, entry.Value, seed);
+                    return;
+                }
+                seed++;
+            }
+        }
+
+        private static void WritePlaceholder(string key, (Color Base, Color Mix, Color? Fleck, Wear Wear) entry, int seed)
+        {
+            string path = $"{PlaceholderFolder}/{key}.png";
+            Texture2D texture = Paint(entry.Base, entry.Mix, entry.Fleck, entry.Wear, seed);
+            if (key == "gold" && entry.Fleck.HasValue)
+            {
+                // Gold shines (GL251), so it reads apart from chalcopyrite's duller brass.
+                AddShine(texture, entry.Fleck.Value, seed * 7919);
+            }
+            File.WriteAllBytes(path, texture.EncodeToPNG());
+            AssetDatabase.ImportAsset(path);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+            importer.isReadable = true;
+            importer.wrapMode = TextureWrapMode.Repeat;
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
+            importer.SaveAndReimport();
+        }
+
+        // Polished-looking flecks (GL251): each fleck pixel brighter and warmer, lit from the upper left, and on some of
+        // them a small four-pointed glint of near-white gold.
+        private static void AddShine(Texture2D texture, Color fleck, int seed)
+        {
+            var random = new System.Random(seed);
+            int size = texture.width;
+            Color[] pixels = texture.GetPixels();
+            var bright = new Color(1f, 0.92f, 0.55f);
+            var glint = new Color(1f, 0.98f, 0.85f);
+            var flecks = new List<int>();
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                Color p = pixels[i];
+                // Fleck pixels are the saturated yellow ones; the stone round them is grey.
+                if (p.r - p.b > 0.35f && p.g - p.b > 0.25f)
+                {
+                    flecks.Add(i);
+                    int x = i % size, y = i / size;
+                    float light = 0.5f + 0.5f * Mathf.Sin((x - y) * 0.9f);
+                    pixels[i] = Color.Lerp(p, bright, 0.35f + 0.35f * light);
+                }
+            }
+            int glints = Mathf.Max(4, flecks.Count / 40);
+            for (int g = 0; g < glints && flecks.Count > 0; g++)
+            {
+                int at = flecks[random.Next(flecks.Count)];
+                int cx = at % size, cy = at / size;
+                int arm = 1 + random.Next(3);
+                for (int d = -arm; d <= arm; d++)
+                {
+                    float fade = 1f - Mathf.Abs(d) / (arm + 1f);
+                    Blend(pixels, size, cx + d, cy, glint, fade);
+                    Blend(pixels, size, cx, cy + d, glint, fade);
+                }
+            }
+            texture.SetPixels(pixels);
+            texture.Apply();
+        }
+
+        private static void Blend(Color[] pixels, int size, int x, int y, Color colour, float amount)
+        {
+            int i = ((y + size) % size) * size + (x + size) % size;
+            pixels[i] = Color.Lerp(pixels[i], colour, amount);
         }
 
         private static Texture2D Paint(Color baseColor, Color mix, Color? fleck, Wear wear, int seed)

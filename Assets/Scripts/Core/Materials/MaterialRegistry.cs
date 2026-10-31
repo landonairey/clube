@@ -24,6 +24,7 @@ namespace Clube.Core
         private static readonly int MaterialColorsId = Shader.PropertyToID("_MaterialColors");
         private static readonly int LayerRemapId = Shader.PropertyToID("_LayerRemap");
         private static readonly int MaterialSwayId = Shader.PropertyToID("_MaterialSway");
+        private static readonly int MaterialShineId = Shader.PropertyToID("_MaterialShine");
 
         [SerializeField]
         private List<VoxelMaterial> materials = new List<VoxelMaterial>();
@@ -47,6 +48,7 @@ namespace Clube.Core
         // hidden. Runtime state only; never saved.
         private float[] layerRemap;
         private float[] sway;
+        private float[] shine;
 
         /// <summary>Makes a registry in code (tests, tools); the game's registry is an asset.</summary>
         public static MaterialRegistry Create(params VoxelMaterial[] materials)
@@ -226,6 +228,7 @@ namespace Clube.Core
             material.SetVectorArray(MaterialColorsId, colors);
             material.SetFloatArray(LayerRemapId, layerRemap);
             material.SetFloatArray(MaterialSwayId, sway);
+            material.SetFloatArray(MaterialShineId, shine);
         }
 
         private void EnsureLookup()
@@ -238,6 +241,7 @@ namespace Clube.Core
             colors = new Vector4[MaxMaterials];
             layerRemap = new float[MaxMaterials];
             sway = new float[MaxMaterials];
+            shine = new float[MaxMaterials];
             for (int i = 0; i < MaxMaterials; i++)
             {
                 layerRemap[i] = i;
@@ -256,6 +260,7 @@ namespace Clube.Core
                 byId[material.Id] = material;
                 colors[material.Id] = material.DebugColor;
                 sway[material.Id] = material.WindSway;
+                shine[material.Id] = material.Shine;
             }
         }
 
