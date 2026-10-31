@@ -174,30 +174,31 @@ namespace Clube.Game
             }
         }
 
-        // A group of a random size and pattern: mostly a few birds, now and then one alone or a big flock.
+        // A group of a random size and pattern (GL266): most often a flock — a V of 7-16 or a swirling flock of 18-50 —
+        // sometimes a few birds, now and then one alone.
         private void Spawn(Vector3 viewer)
         {
             float roll = Range(0f, 1f);
             int count;
             FlightPattern pattern;
-            if (roll < 0.25f)
+            if (roll < 0.1f)
             {
                 count = 1;
                 pattern = Range(0f, 1f) < 0.6f ? FlightPattern.Circle : FlightPattern.Pass;
             }
-            else if (roll < 0.6f)
+            else if (roll < 0.3f)
             {
                 count = Mathf.RoundToInt(Range(2f, 5f));
                 pattern = Range(0f, 1f) < 0.3f ? FlightPattern.Circle : FlightPattern.Pass;
             }
-            else if (roll < 0.8f)
+            else if (roll < 0.6f)
             {
-                count = Mathf.RoundToInt(Range(5f, 11f));
+                count = Mathf.RoundToInt(Range(7f, 16f));
                 pattern = FlightPattern.Vee;
             }
             else
             {
-                count = Mathf.RoundToInt(Range(14f, 40f));
+                count = Mathf.RoundToInt(Range(18f, 50f));
                 pattern = FlightPattern.Swirl;
             }
 
