@@ -183,7 +183,7 @@ namespace Clube.Game
             int input = InventoryGridGui.DrawRow(new Vector2(x, y), station.Input);
             if (input >= 0)
             {
-                station.Input.MoveTo(input, items);
+                station.Input.MoveTo(input, items, keepApart: true);
             }
             float workX = x + station.Input.SlotCount * (slot + gap) + 12f;
             DrawWork(new Rect(workX, y, WorkWidth, slot), station);
@@ -191,7 +191,7 @@ namespace Clube.Game
             int output = InventoryGridGui.DrawRow(outputAt, station.Output);
             if (output >= 0)
             {
-                station.Output.MoveTo(output, items);
+                station.Output.MoveTo(output, items, keepApart: true);
             }
             // What it's about to make, greyed out in the empty output slot (GL58).
             Recipe upcoming = station.Upcoming;
@@ -214,7 +214,7 @@ namespace Clube.Game
                 int fuel = InventoryGridGui.DrawRow(new Vector2(x + 44f, y), station.Fuel);
                 if (fuel >= 0)
                 {
-                    station.Fuel.MoveTo(fuel, items);
+                    station.Fuel.MoveTo(fuel, items, keepApart: true);
                 }
                 DrawBurn(new Rect(x + 44f + slot + 12f, y, WorkWidth, slot), station);
             }

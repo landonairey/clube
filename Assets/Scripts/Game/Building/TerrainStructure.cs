@@ -339,7 +339,7 @@ namespace Clube.Game
         {
             for (int slot = 0; slot < from.SlotCount; slot++)
             {
-                from.MoveTo(slot, to);
+                from.MoveTo(slot, to, keepApart: true);
             }
         }
     }

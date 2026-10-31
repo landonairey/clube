@@ -3,30 +3,65 @@ using UnityEngine;
 
 namespace Clube.Core.Tests
 {
-    // GL245-GL250: stacks of very different purity kept apart, part items sold, the chest's size, the sun and moon's
-    // paths, and birds that leave.
+    // GL245-GL250, GL256: how stacks mix (gathering and dropping by hand blend; out of a station keeps apart), part
+    // items sold, the chest's size, the sun and moon's paths, and birds that leave.
     public class Pass26Tests
     {
         [Test]
-        public void GatheredStacks_OfVeryDifferentPurity_DontMix()
+        public void Digging_BlendsIntoTheStackItGoesTo()
+        {
+            // GL256 (replacing GL245's tolerance): what's gathered goes onto the stack and mixes, whatever its purity.
+            VoxelMaterial clay = VoxelMaterial.Create(13, "Clay");
+            VoxelMaterial dirt = VoxelMaterial.Create(1, "Dirt");
+            ItemDefinition item = ItemDefinition.Create("clay", "Clay", 1024);
+            var items = new Inventory(4);
+            items.Add(item, 10, Composition.From(new Content(clay, 1f)), 0, 1f);
+            items.Add(item, 10, Composition.From(new Content(clay, 0.55f), new Content(dirt, 0.45f)), 0, 0.55f);
+            Assert.AreEqual(20, items[0].Count);
+            Assert.AreEqual(0.775f, items[0].Quality, 1e-3f);
+            Assert.IsTrue(items[1].IsEmpty);
+        }
+
+        [Test]
+        public void DroppingAStackOnAnother_CombinesThem_AtAnyQuality()
+        {
+            ItemDefinition sticks = ItemDefinition.Create("stick", "Stick", 64);
+            var items = new Inventory(3);
+            items.Add(sticks, 4, null, 0, 1.4f);
+            items.Add(sticks, 4, null, 0, 1f);
+            Assert.AreEqual(4, items[0].Count, "Crafted items of different quality don't stack by themselves.");
+            items.Move(1, 0);
+            Assert.AreEqual(8, items[0].Count, "Dropped on it by hand, they join.");
+            Assert.AreEqual(1.2f, items[0].Quality, 1e-3f);
+            Assert.IsTrue(items[1].IsEmpty);
+
+            items.Add(sticks, 6, null, 0, 0.5f);
+            Assert.AreEqual(3, items.Move(1, 0, 3), "Half a stack dragged on joins too.");
+            Assert.AreEqual(11, items[0].Count);
+        }
+
+        [Test]
+        public void PullingOutOfAStation_KeepsQualitiesApart()
         {
             VoxelMaterial clay = VoxelMaterial.Create(13, "Clay");
             VoxelMaterial dirt = VoxelMaterial.Create(1, "Dirt");
             ItemDefinition item = ItemDefinition.Create("clay", "Clay", 1024);
             Composition pure = Composition.From(new Content(clay, 1f));
             Composition dirty = Composition.From(new Content(clay, 0.55f), new Content(dirt, 0.45f));
-            Composition nearly = Composition.From(new Content(clay, 0.6f), new Content(dirt, 0.4f));
+            var player = new Inventory(3);
+            player.Add(item, 30, dirty, 0, 0.55f);
+            var station = new Inventory(2);
+            station.Add(item, 5, pure, 0, 1f);
 
-            var items = new Inventory(4);
-            items.Add(item, 10, pure, 0, 1f);
-            items.Add(item, 10, dirty, 0, 0.55f);
-            Assert.AreEqual(10, items[0].Count, "The 100% stack took nothing in.");
-            Assert.AreEqual(1f, items[0].Quality, 1e-4f);
-            Assert.AreEqual(10, items[1].Count, "The 55% clay has its own stack.");
+            Assert.AreEqual(5, station.MoveTo(0, player, keepApart: true));
+            Assert.AreEqual(30, player[0].Count, "The dirty stack took nothing in.");
+            Assert.AreEqual(0.55f, player[0].Quality, 1e-4f);
+            Assert.AreEqual(5, player[1].Count, "The refined clay came out on its own.");
+            Assert.AreEqual(1f, player[1].Quality, 1e-4f);
 
-            items.Add(item, 5, nearly, 0, 0.6f);
-            Assert.AreEqual(15, items[1].Count, "Close purities still blend.");
-            Assert.IsTrue(items[2].IsEmpty);
+            station.Add(item, 3, pure, 0, 1f);
+            station.MoveTo(0, player, keepApart: true);
+            Assert.AreEqual(8, player[1].Count, "It joins a stack of the same quality.");
         }
 
         [Test]

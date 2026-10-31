@@ -33,15 +33,15 @@ namespace Clube.Game
             if (chest != null)
             {
                 // What's inside comes along (GL249).
-                MoveAll(chest.Storage, inventory);
+                MoveAll(chest.Storage, inventory, false);
             }
             if (station != null)
             {
-                MoveAll(station.Station.Input, inventory);
-                MoveAll(station.Station.Output, inventory);
+                MoveAll(station.Station.Input, inventory, true);
+                MoveAll(station.Station.Output, inventory, true);
                 if (station.Station.Fuel != null)
                 {
-                    MoveAll(station.Station.Fuel, inventory);
+                    MoveAll(station.Station.Fuel, inventory, true);
                 }
             }
             // A structure built from the ground takes its samples back out with it (GL85).
@@ -67,24 +67,25 @@ namespace Clube.Game
                     return false;
                 }
             }
-            if (station != null && (!AddAll(station.Station.Input, trial) || !AddAll(station.Station.Output, trial)
-                || (station.Station.Fuel != null && !AddAll(station.Station.Fuel, trial))))
+            if (station != null && (!AddAll(station.Station.Input, trial, true) || !AddAll(station.Station.Output, trial, true)
+                || (station.Station.Fuel != null && !AddAll(station.Station.Fuel, trial, true))))
             {
                 return false;
             }
-            if (chest != null && !AddAll(chest.Storage, trial))
+            if (chest != null && !AddAll(chest.Storage, trial, false))
             {
                 return false;
             }
             return Item == null || trial.Add(Item, 1, Contents, 0, Quality) == 0;
         }
 
-        private static bool AddAll(Inventory from, Inventory to)
+        // A station's contents keep apart from other qualities on the way out (GL256); a chest's stack as usual.
+        private static bool AddAll(Inventory from, Inventory to, bool keepApart)
         {
             for (int slot = 0; slot < from.SlotCount; slot++)
             {
                 ItemStack stack = from[slot];
-                if (!stack.IsEmpty && to.Add(stack.Item, stack.Count, stack.Contents, stack.Wear, stack.Quality, stack.Part) > 0)
+                if (!stack.IsEmpty && to.Add(stack.Item, stack.Count, stack.Contents, stack.Wear, stack.Quality, stack.Part, keepApart) > 0)
                 {
                     return false;
                 }
@@ -92,11 +93,11 @@ namespace Clube.Game
             return true;
         }
 
-        private static void MoveAll(Inventory from, Inventory to)
+        private static void MoveAll(Inventory from, Inventory to, bool keepApart)
         {
             for (int slot = 0; slot < from.SlotCount; slot++)
             {
-                from.MoveTo(slot, to);
+                from.MoveTo(slot, to, keepApart);
             }
         }
     }

@@ -23,15 +23,6 @@ namespace Clube.Core
         // Qualities closer than this stack together: the same to the percent shown.
         private const float SameQuality = 0.005f;
 
-        /// <summary>
-        /// Gathered stacks (with contents) blend only when their qualities are this close (GL245): refined clay at 100%
-        /// doesn't take in 55% clay and come out 80%.
-        /// </summary>
-        public const float MixTolerance = 0.15f;
-
-        // A stack at least this pure is kept apart from anything less pure (GL245).
-        private const float Pure = 0.995f;
-
         private readonly ItemStack[] slots;
 
         public Inventory(int slotCount)
@@ -53,30 +44,37 @@ namespace Clube.Core
         public ItemStack this[int slot] => slots[slot];
 
         /// <summary>
-        /// True when items with these contents and quality go onto the stack (GL131): the same item, and either the same
-        /// quality or gathered material (its mix blends in) of a quality within <see cref="MixTolerance"/> (GL245). A pure
-        /// stack takes only pure material, so a stack refined to 100% stays at 100%.
+        /// True when items with these contents and quality go onto the stack by themselves (GL131), as when digging or
+        /// chopping: the same item, and either gathered material (its mix blends in, whatever its quality) or the same
+        /// quality.
         /// </summary>
         public static bool Stacks(ItemStack stack, ItemDefinition item, Composition contents, float quality)
         {
-            if (stack.IsEmpty || stack.Item != item)
-            {
-                return false;
-            }
-            float gap = Math.Abs(stack.Quality - quality);
-            if (gap < SameQuality)
-            {
-                return true;
-            }
-            if (stack.Contents == null && contents == null)
-            {
-                return false;
-            }
-            if ((stack.Quality >= Pure) != (quality >= Pure))
-            {
-                return false;
-            }
-            return gap <= MixTolerance;
+            return !stack.IsEmpty && stack.Item == item
+                && (stack.Contents != null || contents != null || Math.Abs(stack.Quality - quality) < SameQuality);
+        }
+
+        /// <summary>
+        /// True when items taken out of a crafting station go onto the stack (GL256): only one of the same item at the
+        /// same quality, so refined clay pulled back out of a station doesn't blend into a dirtier stack.
+        /// </summary>
+        public static bool StacksApart(ItemStack stack, ItemDefinition item, float quality)
+        {
+            return !stack.IsEmpty && stack.Item == item && Math.Abs(stack.Quality - quality) < SameQuality;
+        }
+
+        /// <summary>
+        /// True when a stack dropped on another by hand joins it (GL256): the same item, any quality (it blends by
+        /// count); not single items such as tools.
+        /// </summary>
+        public static bool Combines(ItemStack stack, ItemDefinition item)
+        {
+            return !stack.IsEmpty && stack.Item == item && item.MaxStack > 1;
+        }
+
+        private static bool Joins(ItemStack stack, ItemDefinition item, Composition contents, float quality, bool keepApart)
+        {
+            return keepApart ? StacksApart(stack, item, quality) : Stacks(stack, item, contents, quality);
         }
 
         /// <summary>
@@ -85,7 +83,8 @@ namespace Clube.Core
         /// </summary>
         /// <param name="contents">What the items are made of (mixed ore, GL32); a stack topped up with them blends its contents by volume.</param>
         /// <param name="part">A part item on top (GL136), added to a stack it stacks with or put in a slot of its own.</param>
-        public int Add(ItemDefinition item, int count = 1, Composition contents = null, int wear = 0, float quality = 1f, float part = 0f)
+        /// <param name="keepApart">Only onto stacks of the same quality (<see cref="StacksApart"/>, GL256): out of a station.</param>
+        public int Add(ItemDefinition item, int count = 1, Composition contents = null, int wear = 0, float quality = 1f, float part = 0f, bool keepApart = false)
         {
             count = Math.Max(0, count);
             if (item == null || (count == 0 && part <= ItemStack.PartEpsilon))
@@ -96,7 +95,7 @@ namespace Clube.Core
             int left = count;
             for (int i = 0; i < slots.Length && left > 0; i++)
             {
-                if (Stacks(slots[i], item, contents, quality) && slots[i].Space > 0 && Fits(i, item))
+                if (Joins(slots[i], item, contents, quality, keepApart) && slots[i].Space > 0 && Fits(i, item))
                 {
                     int moved = Math.Min(left, slots[i].Space);
                     slots[i] = TopUp(slots[i], moved, contents, quality);
@@ -112,7 +111,7 @@ namespace Clube.Core
                     left -= moved;
                 }
             }
-            bool partAdded = part > ItemStack.PartEpsilon && AddPart(item, part, contents, quality);
+            bool partAdded = part > ItemStack.PartEpsilon && AddPart(item, part, contents, quality, keepApart);
 
             if (left != count || partAdded)
             {
@@ -125,12 +124,12 @@ namespace Clube.Core
         /// Adds items only onto stacks they stack with, never into an empty slot (GL140: topping up a
         /// station's loaded inputs without taking the slot another input needs). Returns how many didn't fit.
         /// </summary>
-        public int AddToStacks(ItemDefinition item, int count, Composition contents = null, float quality = 1f)
+        public int AddToStacks(ItemDefinition item, int count, Composition contents = null, float quality = 1f, bool keepApart = false)
         {
             int left = Math.Max(0, count);
             for (int i = 0; i < slots.Length && left > 0 && item != null; i++)
             {
-                if (Stacks(slots[i], item, contents, quality) && slots[i].Space > 0 && Fits(i, item))
+                if (Joins(slots[i], item, contents, quality, keepApart) && slots[i].Space > 0 && Fits(i, item))
                 {
                     int moved = Math.Min(left, slots[i].Space);
                     slots[i] = TopUp(slots[i], moved, contents, quality);
@@ -161,15 +160,16 @@ namespace Clube.Core
         /// <summary>
         /// Moves the stack in one slot into another inventory (a station's slots, a chest),
         /// as much as fits there, a part item with the whole ones; the rest stays. Returns how many whole items moved.
+        /// With <paramref name="keepApart"/> (out of a station, GL256) it joins only stacks of the same quality there.
         /// </summary>
-        public int MoveTo(int slot, Inventory target)
+        public int MoveTo(int slot, Inventory target, bool keepApart = false)
         {
             ItemStack stack = slots[slot];
             if (stack.IsEmpty || target == null || target == this)
             {
                 return 0;
             }
-            int left = target.Add(stack.Item, stack.Count, stack.Contents, stack.Wear, stack.Quality, stack.Part);
+            int left = target.Add(stack.Item, stack.Count, stack.Contents, stack.Wear, stack.Quality, stack.Part, keepApart);
             int moved = stack.Count - left;
             slots[slot] = left > 0 ? new ItemStack(stack.Item, left, stack.Contents, stack.Wear, stack.Quality) : ItemStack.Empty;
             Changed?.Invoke();
@@ -181,7 +181,7 @@ namespace Clube.Core
         /// stack of wood into a furnace), as many as fit; the rest, and any part item, stay. The whole stack when
         /// <paramref name="count"/> covers it. Returns how many whole items moved.
         /// </summary>
-        public int MoveTo(int slot, Inventory target, int count)
+        public int MoveTo(int slot, Inventory target, int count, bool keepApart = false)
         {
             ItemStack stack = slots[slot];
             if (stack.IsEmpty || target == null || target == this || count <= 0)
@@ -190,9 +190,9 @@ namespace Clube.Core
             }
             if (count >= stack.Count)
             {
-                return MoveTo(slot, target);
+                return MoveTo(slot, target, keepApart);
             }
-            int moved = count - target.Add(stack.Item, count, stack.Contents, stack.Wear, stack.Quality);
+            int moved = count - target.Add(stack.Item, count, stack.Contents, stack.Wear, stack.Quality, 0f, keepApart);
             if (moved > 0)
             {
                 slots[slot] = stack.WithCount(stack.Count - moved);
@@ -347,8 +347,9 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Moves the stack in one slot onto another: merges into a stack it stacks with as far as it
-        /// fits (a part item going with the last whole ones), otherwise the two slots swap.
+        /// Moves the stack in one slot onto another by hand: merges into a stack of the same item as far as it fits,
+        /// whatever their qualities (they blend by count, GL256), a part item going with the last whole ones; otherwise
+        /// the two slots swap.
         /// </summary>
         public void Move(int from, int to)
         {
@@ -358,7 +359,7 @@ namespace Clube.Core
             }
 
             ItemStack moving = slots[from];
-            if (Stacks(slots[to], moving.Item, moving.Contents, moving.Quality) && (slots[to].Space > 0 || moving.Count == 0))
+            if (Combines(slots[to], moving.Item) && (slots[to].Space > 0 || moving.Count == 0))
             {
                 int moved = Math.Min(moving.Count, slots[to].Space);
                 slots[to] = TopUp(slots[to], moved, moving.Contents, moving.Quality);
@@ -407,7 +408,7 @@ namespace Clube.Core
                 moved = count;
                 slots[to] = new ItemStack(moving.Item, count, moving.Contents, moving.Wear, moving.Quality);
             }
-            else if (Stacks(slots[to], moving.Item, moving.Contents, moving.Quality) && slots[to].Space > 0)
+            else if (Combines(slots[to], moving.Item) && slots[to].Space > 0)
             {
                 moved = Math.Min(count, slots[to].Space);
                 slots[to] = TopUp(slots[to], moved, moving.Contents, moving.Quality);
@@ -637,12 +638,12 @@ namespace Clube.Core
         // Adds a part item (GL136) onto stacks it stacks with, as far as each has room (GL188: a stack fills to exactly
         // its MaxStack, parts included), making a whole one when the parts pass 1; the rest goes in an empty slot.
         // False when none of it found a place.
-        private bool AddPart(ItemDefinition item, float part, Composition contents, float quality)
+        private bool AddPart(ItemDefinition item, float part, Composition contents, float quality, bool keepApart)
         {
             float left = part;
             for (int i = 0; i < slots.Length && left > ItemStack.PartEpsilon; i++)
             {
-                if (!Stacks(slots[i], item, contents, quality) || !Fits(i, item))
+                if (!Joins(slots[i], item, contents, quality, keepApart) || !Fits(i, item))
                 {
                     continue;
                 }
