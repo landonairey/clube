@@ -9,7 +9,8 @@ namespace Clube.Game
     /// of 40 minutes, the sun up from 06:00 to 18:00 (20 minutes) and down for the other 20. The sun rises in the east,
     /// crosses the sky warm and low at the ends of the day, and goes down under the horizon (GL248). The moon has its own
     /// orbit (<see cref="SkyPositions"/>): a month of 29.5 days, rising about 50 minutes later each day, its phase the
-    /// angle between it and the sun, drawn by <see cref="MoonDisc"/>. The one directional light is the sun while it's up
+    /// angle between it and the sun, drawn by <see cref="MoonDisc"/>. The stars (<see cref="StarSky"/>) turn about the
+    /// celestial pole once a sidereal day and come out after sunset (GL253). The one directional light is the sun while it's up
     /// or just under, and the moon after dusk, as bright as its phase; the ambient light, fog and sky darken at night.
     /// The graphics popup can freeze the sky at an hour (<see cref="GraphicsSettings.FreezeDay"/>); the clock itself,
     /// and so drying and smelting, go on.

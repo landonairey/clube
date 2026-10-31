@@ -473,6 +473,13 @@ moon (its own 29.5-day orbit and phases); `DayNightCycle` lights from either, `M
 The wooden chest (`StorageChest`, `ChestPanel`, `StorageCapacity`: 27 slots at 100% wood down to 5) is a placeable from
 100 wood at the stump. Birds: `BirdFlock` (Core/Fauna) and `BirdFlocks` on World. Gold shines (`VoxelMaterial.Shine`,
 `_MaterialShine` in `Clube/Terrain Materials`, glints in its texture). Silver and gold buns are called buttons.
+Twenty-seventh pass (GL252-GL255, `Docs/20261031 clube-backlog.md`): the sky. `CloudLayer` (on World) ray-marches volumetric
+cumulus (1100-2000 m) with `Clube/Clouds` on a camera-centred `SkySphere`, from a baked repeating 3D noise (`CloudNoise` in
+Core/Sky, *Clube → Sky → Build cloud noise*, `Assets/Textures/Sky/Cloud noise.asset`), lit by the main light (sun or moon),
+stopped at the ground by the camera's depth texture; wind and cover change with the game's days. `StarSky` (`Clube/Stars`)
+is turned by `DayNightCycle` once a sidereal day (`SkyPositions.SiderealAngle`). The moon is 2.16° and grows a quarter near
+the horizon (`SkyPositions.MoonIllusion`). Birds come every 10-30 s, 25-80 m off, 10-35 m over the ground. Draw order on
+the sky: stars (Transparent-450), moon (-400), clouds (-300).
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

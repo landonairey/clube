@@ -72,7 +72,8 @@ Core/
   Queries/       SurfaceRaycast, VoxelRaycast, SurfacePoints (GL4)
   Volume/        VoxelVolume, ChunkVolume (V11, V12, K30)
   Saving/        GameSave (plain data), GameSaveFile (versioned binary, S1), WorldSaving (edited chunks, S2), StackSaving (GL205), SaveNames (GL207)
-  Sky/           SkyPositions (the sun and the moon's orbit and phases, GL248)
+  Sky/           SkyPositions (the sun, the moon's orbit and phases, the stars' sidereal turn, GL248, GL253),
+                 CloudNoise (the clouds' repeating 3D noise, baked to a texture, GL252)
   Fauna/         BirdFlock (a group of birds flying a pattern, then leaving, GL250)
   Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea, FarTerrainBuilder (far terrain levels),
                  TerrainLodRing + TerrainLodBuilder (coarse terrain levels, P7c), DistantTreeBuilder (GL162)
