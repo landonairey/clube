@@ -488,7 +488,8 @@ trees have four levels made from real `TreeShape` trees (`DistantTreeMeshes.Buil
 clusters to 520 m, crowns to 1100 m, one blob beyond; six variants per kind), cross-faded by dither in `Clube/Distant Trees`,
 in the voxel trees' texture colours. `SkyWeather` (Core/Sky) gives each sunrise and sunset a colour and strength and each day
 its cloud cover; `DayNightCycle` lights the clouds itself (`_CloudLightDir`, `_CloudLightColor`), by the sun a while after it
-leaves the land. The main menu reads "Extract, Refine, Craft, Build your World".
+leaves the land. The main menu reads "Extract, Refine, Craft, Build your World". Dahlias (GL265, `DahliaGrowth` on
+`GrassScatter`) grow rarely among the grass over about a third of gold nodes, a patch of a few flowers mostly of one colour.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

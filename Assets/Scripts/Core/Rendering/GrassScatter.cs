@@ -23,6 +23,8 @@ namespace Clube.Core
     /// A chunk's tufts are kept while the focus is within a few radii of it across the ground, at any
     /// height, and drawn only within the radius, so switching cameras or flying up and back finds the
     /// grass still there (GL167). The tufts shrink into the ground over the last metres of the radius.</para>
+    /// <para>Dahlias (GL265): rarely, a few among the grass straight above a gold node, densest over its centre
+    /// (<see cref="DahliaGrowth"/>, the nodes from the world's <see cref="OreField"/>); each patch mostly one colour.</para>
     /// <para>Far grass (GL257): past <see cref="thinFrom"/> metres fewer tufts stand (the shader drops them by a hash of
     /// their place) and those left are wider, so a 64 m reach costs little more than a short one. What grass looks like
     /// from afar at each place (<see cref="GrassLawn"/>: green, straw in tall meadows, wheat; worked out from these tufts'
@@ -42,6 +44,21 @@ namespace Clube.Core
         private const int SaltYaw = 3;
         private const int SaltHeight = 4;
         private const int SaltWheat = 5;
+        private const int SaltDahlia = 6;
+        private const int SaltDahliaStray = 7;
+        private const int SaltDahliaColour = 8;
+
+        private static readonly int StrawStrengthProperty = Shader.PropertyToID("_StrawStrength");
+
+        // The dahlias' petal colours (linear): crimson, magenta, orange, golden yellow, blush pink.
+        private static readonly Color[] DahliaColours =
+        {
+            new Color(0.5f, 0.02f, 0.05f, 1f),
+            new Color(0.55f, 0.04f, 0.3f, 1f),
+            new Color(0.9f, 0.24f, 0.03f, 1f),
+            new Color(0.88f, 0.6f, 0.04f, 1f),
+            new Color(0.82f, 0.45f, 0.55f, 1f),
+        };
 
         private static readonly int FadeStart = Shader.PropertyToID("_FadeStart");
         private static readonly int FadeEnd = Shader.PropertyToID("_FadeEnd");
@@ -114,6 +131,10 @@ namespace Clube.Core
         [SerializeField]
         private GrassGrowth growth = new GrassGrowth();
 
+        [Tooltip("Where dahlias grow among the grass: rarely, over gold nodes (GL265).")]
+        [SerializeField]
+        private DahliaGrowth dahlias = new DahliaGrowth();
+
         [Tooltip("Milliseconds a frame may spend scattering chunks.")]
         [SerializeField, Min(0.1f)]
         private float scatterMilliseconds = 1f;
@@ -124,6 +145,9 @@ namespace Clube.Core
         private readonly List<Vector3Int> dropped = new List<Vector3Int>();
         private readonly InstanceBatches grassBatches = new InstanceBatches();
         private readonly InstanceBatches wheatBatches = new InstanceBatches();
+        private readonly InstanceBatches[] dahliaBatches = new InstanceBatches[DahliaGrowth.Colours];
+        private readonly List<OreNode> dahliaNodes = new List<OreNode>();
+        private readonly List<OreNode> nodeScratch = new List<OreNode>();
         private readonly GrassyGround ground = new GrassyGround();
         private readonly List<GroundSpot> spots = new List<GroundSpot>();
         private readonly System.Diagnostics.Stopwatch clock = new System.Diagnostics.Stopwatch();
@@ -137,6 +161,8 @@ namespace Clube.Core
         private TreeField coverOf;
         private Mesh tuft;
         private Mesh wheat;
+        private readonly Mesh[] dahliaMeshes = new Mesh[DahliaGrowth.Colours];
+        private MaterialPropertyBlock dahliaProperties;
         private MaterialPropertyBlock properties;
         private bool batchesDirty;
         private bool scanPending = true;
@@ -149,12 +175,27 @@ namespace Clube.Core
         {
             public readonly List<Matrix4x4> Grass = new List<Matrix4x4>();
             public readonly List<Matrix4x4> Wheat = new List<Matrix4x4>();
+            public readonly List<Matrix4x4>[] Dahlias = NewLists();
+
+            private static List<Matrix4x4>[] NewLists()
+            {
+                var lists = new List<Matrix4x4>[DahliaGrowth.Colours];
+                for (int i = 0; i < lists.Length; i++)
+                {
+                    lists[i] = new List<Matrix4x4>();
+                }
+                return lists;
+            }
             public bool Drawn;
 
             public void Clear()
             {
                 Grass.Clear();
                 Wheat.Clear();
+                foreach (List<Matrix4x4> dahlias in Dahlias)
+                {
+                    dahlias.Clear();
+                }
             }
         }
 
@@ -163,6 +204,12 @@ namespace Clube.Core
 
         /// <summary>Wheat stalks among them.</summary>
         public int WheatCount { get; private set; }
+
+        /// <summary>Dahlias drawn last frame (GL265).</summary>
+        public int DahliaCount { get; private set; }
+
+        /// <summary>Where dahlias grow; call <see cref="Regrow"/> after changing it.</summary>
+        public DahliaGrowth Dahlias => dahlias;
 
         /// <summary>Chunks whose tufts are kept, drawn or not.</summary>
         public int KeptChunkCount => tufts.Count;
@@ -186,6 +233,12 @@ namespace Clube.Core
             worldView = GetComponent<WorldView>();
             tuft = BuildTuft();
             wheat = BuildWheat();
+            dahliaProperties = new MaterialPropertyBlock();
+            for (int i = 0; i < DahliaGrowth.Colours; i++)
+            {
+                dahliaBatches[i] = new InstanceBatches();
+                dahliaMeshes[i] = BuildDahlia(DahliaColours[i]);
+            }
             properties = new MaterialPropertyBlock();
             lawnAt = LawnColourAt;
         }
@@ -223,6 +276,13 @@ namespace Clube.Core
             if (wheat != null)
             {
                 Destroy(wheat);
+            }
+            foreach (Mesh mesh in dahliaMeshes)
+            {
+                if (mesh != null)
+                {
+                    Destroy(mesh);
+                }
             }
         }
 
@@ -426,6 +486,10 @@ namespace Clube.Core
 
             TreeCover trees = CoverOf(worldView.Trees);
             int seed = worldView.Config.Terrain.Seed;
+            // The gold nodes under this chunk's ground, if any: dahlias grow over them (GL265).
+            Vector3 chunkMin = worldView.transform.InverseTransformPoint(chunkRenderer.Transform.position);
+            Vector3 chunkSize = worldView.World.Grid.ChunkWorldSize;
+            dahlias.NodesUnder(worldView.Ores, new Bounds(chunkMin + chunkSize * 0.5f, chunkSize), dahliaNodes, nodeScratch);
             foreach (GroundSpot spot in spots)
             {
                 int ix = spot.Cell.x, iz = spot.Cell.y;
@@ -434,6 +498,19 @@ namespace Clube.Core
                 float yaw = VoxelHash.Uniform(0, ix, 0, iz, SaltYaw) * 360f;
                 float roll = VoxelHash.Uniform(0, ix, 0, iz, SaltHeight);
                 Quaternion rotation = Quaternion.FromToRotation(Vector3.up, Vector3.Lerp(Vector3.up, spot.Normal, 0.5f)) * Quaternion.Euler(0f, yaw, 0f);
+
+                if (dahliaNodes.Count > 0)
+                {
+                    float share = dahlias.ShareAt(dahliaNodes, local, out int node);
+                    if (share > 0f && VoxelHash.Uniform(0, ix, 0, iz, SaltDahlia) < share)
+                    {
+                        int colour = DahliaGrowth.ColourOf(dahliaNodes[node], VoxelHash.Uniform(0, ix, 0, iz, SaltDahliaStray), VoxelHash.Uniform(0, ix, 0, iz, SaltDahliaColour));
+                        float tall = dahlias.HeightFor(roll);
+                        // Upright: flowers stand straight whatever the slope.
+                        scattered.Dahlias[colour].Add(Matrix4x4.TRS(spot.Position, Quaternion.Euler(0f, yaw, 0f), Vector3.one * tall));
+                        continue;
+                    }
+                }
 
                 float wheatHere = growth.WheatAt(seed, local.x, local.z, forest);
                 if (wheatHere > 0f && VoxelHash.Uniform(0, ix, 0, iz, SaltWheat) < wheatHere)
@@ -488,6 +565,19 @@ namespace Clube.Core
             }
             grassBatches.Draw(parameters, tuft);
             wheatBatches.Draw(parameters, wheat);
+
+            // Dahlias: their own colours (no drying to straw, no far grass colour) and never thinned out.
+            dahliaProperties.SetFloat(FadeStart, fadeStart);
+            dahliaProperties.SetFloat(FadeEnd, radius - 1f);
+            dahliaProperties.SetFloat(ThinStart, 1e6f);
+            dahliaProperties.SetFloat(ThinMin, 1f);
+            dahliaProperties.SetFloat(LawnBlend, 0f);
+            dahliaProperties.SetFloat(StrawStrengthProperty, 0f);
+            parameters.matProps = dahliaProperties;
+            for (int i = 0; i < DahliaGrowth.Colours; i++)
+            {
+                dahliaBatches[i].Draw(parameters, dahliaMeshes[i]);
+            }
         }
 
         // Packs every drawn chunk's tufts into the batches, kept until the tufts change.
@@ -496,15 +586,28 @@ namespace Clube.Core
             batchesDirty = false;
             grassBatches.Clear();
             wheatBatches.Clear();
+            foreach (InstanceBatches batch in dahliaBatches)
+            {
+                batch.Clear();
+            }
             foreach (Scattered scattered in tufts.Values)
             {
                 if (scattered.Drawn)
                 {
                     grassBatches.AddRange(scattered.Grass);
                     wheatBatches.AddRange(scattered.Wheat);
+                    for (int i = 0; i < DahliaGrowth.Colours; i++)
+                    {
+                        dahliaBatches[i].AddRange(scattered.Dahlias[i]);
+                    }
                 }
             }
-            TuftCount = grassBatches.Count + wheatBatches.Count;
+            DahliaCount = 0;
+            foreach (InstanceBatches batch in dahliaBatches)
+            {
+                DahliaCount += batch.Count;
+            }
+            TuftCount = grassBatches.Count + wheatBatches.Count + DahliaCount;
             WheatCount = wheatBatches.Count;
         }
 
@@ -570,6 +673,57 @@ namespace Clube.Core
                 Diamond(earBottom, earTop, middle, outward * 0.028f, side, ear, positions, colors, normalsOut, indices);
             }
             return Make("Wheat", positions, colors, normalsOut, indices);
+        }
+
+        // A dahlia, 1 m tall before scaling (GL265): a stem with three leaves, and a full flower head tilted a little
+        // forward, two rings of pointed petals, darker towards the middle, round a small centre.
+        private static Mesh BuildDahlia(Color petals)
+        {
+            var positions = new List<Vector3>();
+            var colors = new List<Color>();
+            var normalsOut = new List<Vector3>();
+            var indices = new List<int>();
+            var stemRoot = new Color(0.08f, 0.2f, 0.04f, 0f);
+            var stemTop = new Color(0.16f, 0.36f, 0.08f, 0.9f);
+            var head = new Vector3(0f, 0.86f, 0.03f);
+
+            // The stem, as two crossed blades so it shows from every side.
+            Blade(Vector3.zero, Vector3.right * 0.014f, head, Vector3.forward, stemRoot, stemTop, positions, colors, normalsOut, indices);
+            Blade(Vector3.zero, Vector3.forward * 0.014f, head, Vector3.right, stemRoot, stemTop, positions, colors, normalsOut, indices);
+            // Three leaves up the stem, turning round it.
+            for (int i = 0; i < 3; i++)
+            {
+                float angle = i * 2.3f + 0.5f;
+                var outward = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+                var side = new Vector3(-outward.z, 0f, outward.x);
+                var at = new Vector3(0f, 0.18f + i * 0.14f, 0f);
+                Blade(at, side * 0.045f, at + outward * 0.19f + Vector3.up * 0.07f, outward, stemRoot, stemTop, positions, colors, normalsOut, indices);
+            }
+
+            // The head faces up and a little forward.
+            Vector3 facing = new Vector3(0f, 1f, 0.35f).normalized;
+            Vector3 u = Vector3.Cross(facing, Vector3.right).normalized;
+            Vector3 v = Vector3.Cross(facing, u);
+            Ring(head, facing, u, v, 10, 0f, 0.2f, 0.052f, petals, positions, colors, normalsOut, indices);
+            Ring(head + facing * 0.015f, facing, u, v, 8, 0.5f, 0.13f, 0.044f, petals * 0.78f, positions, colors, normalsOut, indices);
+            Ring(head + facing * 0.028f, facing, u, v, 6, 0.25f, 0.055f, 0.034f, petals * 0.5f + new Color(0.25f, 0.18f, 0f) * 0.5f, positions, colors, normalsOut, indices);
+            return Make("Dahlia", positions, colors, normalsOut, indices);
+        }
+
+        // A ring of pointed petals round a centre, in the plane across <paramref name="facing"/>, cupped a little.
+        private static void Ring(Vector3 centre, Vector3 facing, Vector3 u, Vector3 v, int count, float turn, float length, float width,
+            Color color, List<Vector3> positions, List<Color> colors, List<Vector3> normalsOut, List<int> indices)
+        {
+            color.a = 1f;
+            for (int i = 0; i < count; i++)
+            {
+                float angle = (i + turn) * Mathf.PI * 2f / count;
+                Vector3 along = u * Mathf.Cos(angle) + v * Mathf.Sin(angle);
+                Vector3 tip = centre + along * length + facing * (length * 0.18f);
+                Vector3 middle = centre + along * (length * 0.5f) + facing * (length * 0.06f);
+                Vector3 across = Vector3.Cross(facing, along).normalized * width;
+                Diamond(centre, tip, middle, across, facing, color, positions, colors, normalsOut, indices);
+            }
         }
 
         private static void Blade(Vector3 baseCentre, Vector3 halfWidth, Vector3 top, Vector3 outward, Color root, Color tip,

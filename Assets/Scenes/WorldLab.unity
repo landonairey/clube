@@ -5732,6 +5732,13 @@ MonoBehaviour:
     wheatScale: 48
     wheatMaxForest: 0.2
     wheatHeight: {x: 0.78, y: 0.98}
+  dahlias:
+    ore: {fileID: 11400000, guid: 028349ab45517db4984a7ae07bcf9347, type: 2}
+    nodeShare: 0.3
+    peakShare: 0.05
+    spread: 2
+    deepest: 30
+    height: {x: 0.7, y: 1.1}
   scatterMilliseconds: 1
 --- !u!114 &1350119471
 MonoBehaviour:
@@ -5864,6 +5871,7 @@ MonoBehaviour:
   moonIntensity: 0.22
   moonColor: {r: 0.55, g: 0.66, b: 1, a: 1}
   nightAmbient: 0.3
+  sunsetStrength: 1
 --- !u!114 &1350119478
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5944,8 +5952,7 @@ MonoBehaviour:
   dayNight: {fileID: 1350119477}
   baseHeight: 1100
   thickness: 900
-  coverage: 0.42
-  coverageSwing: 0.18
+  coverageScale: 1
   weatherDays: 1.5
   extinction: 0.035
   windSpeed: 9

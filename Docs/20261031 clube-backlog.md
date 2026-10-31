@@ -17,3 +17,4 @@ Requests from 2026-10-31, kept as they were given (spelling tidied). They are or
 - [ ] Change the description on the main splash screen to "Extract, Refine, Craft, Build your World". → **GL261**
 - [ ] Add varied colour to sunrises and sunsets: yellows, oranges, deep reds, pinks, purples. Vary them a little day to day; some not at all, some much more vivid than others. Cloud cover plays a role, with colour bouncing off the clouds for a more dramatic look. → **GL262**
 - [ ] Make cloud cover vary as well: some days barely anything, others more coverage. → **GL263**
+- [ ] Add dahlias to the 3D grass flora. They are rarer and sparsely generated, on the terrain surface above a gold node. → **GL265**

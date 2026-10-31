@@ -122,6 +122,28 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Dahlias_GrowOverGoldNodes_ThinningAway()
+        {
+            var growth = new DahliaGrowth { PeakShare = 0.04f, Spread = 2.5f, Deepest = 30f };
+            var nodes = new System.Collections.Generic.List<OreNode>
+            {
+                new OreNode(0, 5, new Vector3(10f, 20f, 10f), Vector3.one, 0.45f, 2),
+            };
+            Assert.AreEqual(0.04f, growth.ShareAt(nodes, new Vector3(10f, 35f, 10f), out int node), 1e-5f, "Straight over the node, the peak.");
+            Assert.AreEqual(0, node);
+            float aside = growth.ShareAt(nodes, new Vector3(13f, 35f, 10f), out _);
+            Assert.IsTrue(aside > 0f && aside < 0.04f, "Fewer a few metres to the side.");
+            Assert.Less(growth.ShareAt(nodes, new Vector3(10f + growth.Reach, 35f, 10f), out _), 0.001f, "Next to none at the patch's edge.");
+            Assert.AreEqual(0f, growth.ShareAt(nodes, new Vector3(10f, 55f, 10f), out node), "Nothing over a node deeper than the deepest.");
+            Assert.AreEqual(-1, node);
+            Assert.AreEqual(0f, growth.ShareAt(nodes, new Vector3(10f, 15f, 10f), out _), "Nothing under a node.");
+
+            int colour = DahliaGrowth.ColourOf(nodes[0], 0.9f, 0.3f);
+            Assert.IsTrue(colour >= 0 && colour < DahliaGrowth.Colours);
+            Assert.AreEqual(colour, DahliaGrowth.ColourOf(nodes[0], 0.6f, 0.9f), "A patch keeps its colour.");
+        }
+
+        [Test]
         public void TheMoon_LooksAQuarterBiggerOnTheHorizon()
         {
             Assert.AreEqual(1.25f, SkyPositions.MoonIllusion(0f, 0.25f, 0.4f), 1e-4f);
