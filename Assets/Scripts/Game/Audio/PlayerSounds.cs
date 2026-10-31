@@ -62,6 +62,23 @@ namespace Clube.Game
         [SerializeField]
         private SoundSet leafHits = new SoundSet();
 
+        [Header("Breaking and gathering")]
+        [Tooltip("Rock or ore coming away after a hit (GL271): a crumble of grit.")]
+        [SerializeField]
+        private SoundSet rockBreaks = new SoundSet();
+
+        [Tooltip("Soft ground coming away: a soft thud of earth.")]
+        [SerializeField]
+        private SoundSet soilBreaks = new SoundSet();
+
+        [Tooltip("Wood or leaves coming away, and a picked bush: a rustle.")]
+        [SerializeField]
+        private SoundSet plantBreaks = new SoundSet();
+
+        [Tooltip("What a hit gathered going into the pack: a soft pick-up.")]
+        [SerializeField]
+        private SoundSet gathered = new SoundSet();
+
         [Header("Actions")]
         [Tooltip("A finished recipe that trains Crafting (worktops: sticks, tools), or no skill.")]
         [SerializeField]
@@ -113,6 +130,30 @@ namespace Clube.Game
                     return crafted;
             }
         }
+
+        /// <summary>The sound of a material coming away after a hit (GL271), by its kind.</summary>
+        public SoundSet BreakOf(VoxelMaterial material)
+        {
+            if (material == null)
+            {
+                return soilBreaks;
+            }
+            switch (material.Kind)
+            {
+                case MaterialKind.Rock:
+                    return rockBreaks;
+                case MaterialKind.Plant:
+                    return plantBreaks;
+                default:
+                    return soilBreaks;
+            }
+        }
+
+        /// <summary>A picked bush's rustle.</summary>
+        public SoundSet Plants => plantBreaks;
+
+        /// <summary>Gathered things going into the pack.</summary>
+        public SoundSet Gathered => gathered;
 
         public SoundSet Sold => sold;
 

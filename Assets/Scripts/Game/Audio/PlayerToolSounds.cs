@@ -30,19 +30,49 @@ namespace Clube.Game
         private void OnEnable()
         {
             tools.Struck += OnStruck;
+            tools.Collected += OnCollected;
+            tools.BushPicked += OnBushPicked;
         }
 
         private void OnDisable()
         {
             tools.Struck -= OnStruck;
+            tools.Collected -= OnCollected;
+            tools.BushPicked -= OnBushPicked;
         }
 
         private void OnStruck(StrikeResult result)
         {
-            if (sounds != null)
+            if (sounds == null)
             {
-                sounds.Play(sounds.HitWith(tools.Current, tools.HitMaterial), source, result.Broken > 0 ? 1f : missVolume);
+                return;
+            }
+            sounds.Play(sounds.HitWith(tools.Current, tools.HitMaterial), source, result.Broken > 0 ? 1f : missVolume);
+            // Ground that came away crumbles, thuds or rustles by what it was (GL271).
+            if (result.Removed > 0)
+            {
+                sounds.Play(sounds.BreakOf(tools.HitMaterial), source, Mathf.Lerp(0.6f, 1f, Mathf.Clamp01(result.Removed / 8f)));
             }
         }
+
+        // One soft pick-up a frame, however many stacks a hit filled.
+        private void OnCollected(ItemStack stack)
+        {
+            if (sounds != null && collectedFrame != Time.frameCount)
+            {
+                collectedFrame = Time.frameCount;
+                sounds.Play(sounds.Gathered, source, 0.7f);
+            }
+        }
+
+        private void OnBushPicked(Bush bush)
+        {
+            if (sounds != null)
+            {
+                sounds.Play(sounds.Plants, source);
+            }
+        }
+
+        private int collectedFrame = -1;
     }
 }
