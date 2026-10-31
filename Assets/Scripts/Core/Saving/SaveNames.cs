@@ -19,11 +19,14 @@ namespace Clube.Core
 
         private const string NotInFileNames = "\\/:*?\"<>|";
 
-        /// <summary>"Hello World - World - 2026-10-30 15:04": the world, the game mode and when, to the minute.</summary>
-        public static string DefaultSaveName(string worldName, string mode, DateTime localTime)
+        /// <summary>
+        /// "Hello World - World - Day 03 - 2026-10-30 15:04": the world, the game mode, the day the game is on (GL260; two
+        /// digits or more) and when it was saved, to the minute.
+        /// </summary>
+        public static string DefaultSaveName(string worldName, string mode, int day, DateTime localTime)
         {
             string world = Clean(worldName);
-            return $"{(world.Length > 0 ? world : DefaultWorldName)} - {mode} - {localTime:yyyy-MM-dd HH:mm}";
+            return $"{(world.Length > 0 ? world : DefaultWorldName)} - {mode} - Day {Math.Max(1, day):00} - {localTime:yyyy-MM-dd HH:mm}";
         }
 
         /// <summary>A name trimmed, on one line, and no longer than <see cref="MaxLength"/>; empty for none.</summary>

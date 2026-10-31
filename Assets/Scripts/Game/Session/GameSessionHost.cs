@@ -100,8 +100,11 @@ namespace Clube.Game
         /// <summary>The world's name (GL206): the session's, or the default when played from the Editor.</summary>
         public string WorldName => GameSession.IsActive ? GameSession.WorldName : SaveNames.DefaultWorldName;
 
-        /// <summary>The name a save gets when the player doesn't type one (GL207): world, mode and the time now.</summary>
-        public string DefaultSaveName => SaveNames.DefaultSaveName(WorldName, Mode.ToString(), DateTime.Now);
+        /// <summary>The name a save gets when the player doesn't type one (GL207): world, mode, the game's day (GL260) and the time now.</summary>
+        public string DefaultSaveName => SaveNames.DefaultSaveName(WorldName, Mode.ToString(), Day, DateTime.Now);
+
+        // The day the game is on, from the sky's clock; day 1 without one.
+        private int Day => GetComponent<DayNightCycle>() is DayNightCycle sky ? sky.Day : 1;
 
         /// <summary>Everything a save keeps, as it is now, under a name.</summary>
         public GameSave Capture(string saveName)
