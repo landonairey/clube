@@ -88,6 +88,8 @@ namespace Clube.Core
         private readonly System.Diagnostics.Stopwatch clock = new System.Diagnostics.Stopwatch();
 
         private WorldView worldView;
+        private TreeCover cover;
+        private TreeField coverOf;
         private GrassScatter grassScatter;
         private MaterialPropertyBlock properties;
         private bool batchesDirty;
@@ -362,7 +364,7 @@ namespace Clube.Core
             spots.Clear();
             int seed = Seed;
             ground.Find(chunkRenderer, grass, minUp, growth.CellSize, seed, BushGrowth.SpotSaltX, BushGrowth.SpotSaltZ, BushGrowth.SpotMargin, spots);
-            TreeField trees = worldView.Trees;
+            TreeCover trees = CoverOf(worldView.Trees);
             foreach (GroundSpot spot in spots)
             {
                 if (removed.Contains(spot.Cell))
@@ -370,7 +372,7 @@ namespace Clube.Core
                     continue;
                 }
                 Vector3 local = worldView.transform.InverseTransformPoint(spot.Position);
-                float forest = trees != null ? TreeForests.ForestAt(trees.Seed, trees.Settings, local.x, local.z) : 0f;
+                float forest = trees.At(local.x, local.z);
                 // No bushes in a wheat field.
                 if (grassScatter != null && grassScatter.Growth.WheatAt(seed, local.x, local.z, forest) > 0.1f)
                 {
@@ -382,6 +384,17 @@ namespace Clube.Core
                     scattered.Bushes.Add(new Bush(spot.Cell, size, tall, spot.Position - Vector3.up * (0.05f * tall)));
                 }
             }
+        }
+
+        // How thick the trees stand, from the world's tree field (made again if the world gets a new one).
+        private TreeCover CoverOf(TreeField trees)
+        {
+            if (cover == null || coverOf != trees)
+            {
+                cover = new TreeCover(trees);
+                coverOf = trees;
+            }
+            return cover;
         }
 
         private void Draw()

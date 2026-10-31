@@ -111,8 +111,8 @@ namespace Clube.Core
                     float lump = 0.82f + 0.3f * (float)random.NextDouble();
                     corners[i] = centre + Vector3.Scale(corners[i] * lump, radius);
                 }
-                var dark = new Color(0.1f + 0.04f * hue, 0.24f + 0.05f * hue, 0.06f, 1f);
-                var light = new Color(0.26f + 0.08f * hue, 0.46f + 0.06f * hue, 0.12f, 1f);
+                var dark = new Color(0.05f + 0.03f * hue, 0.16f + 0.05f * hue, 0.04f, 1f);
+                var light = new Color(0.3f + 0.1f * hue, 0.56f + 0.06f * hue, 0.16f, 1f);
                 for (int f = 0; f < faces.Count; f += 3)
                 {
                     Vector3 a = corners[faces[f]], b = corners[faces[f + 1]], c = corners[faces[f + 2]];
@@ -127,7 +127,9 @@ namespace Clube.Core
                     Vector3 normal = (flat + outward).normalized;
                     // Darker low down and on the underside.
                     float shade = Mathf.Clamp01(middle.y * 0.9f + 0.25f + 0.25f * normal.y);
-                    Color color = Color.Lerp(dark, light, shade);
+                    // Each facet a little lighter or darker, so the clump reads as leaves rather than one smooth mass.
+                    float leaf = 0.75f + 0.5f * (float)random.NextDouble();
+                    Color color = Color.Lerp(dark, light, shade) * leaf;
                     int first = positions.Count;
                     foreach (Vector3 corner in new[] { a, b, c })
                     {

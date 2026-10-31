@@ -83,6 +83,8 @@ namespace Clube.Core
         private readonly System.Diagnostics.Stopwatch clock = new System.Diagnostics.Stopwatch();
 
         private WorldView worldView;
+        private TreeCover cover;
+        private TreeField coverOf;
         private Mesh tuft;
         private Mesh wheat;
         private MaterialPropertyBlock properties;
@@ -331,13 +333,13 @@ namespace Clube.Core
             spots.Clear();
             ground.Find(chunkRenderer, grass, minUp, 1f / Mathf.Sqrt(density), 0, SaltX, SaltZ, 0f, spots);
 
-            TreeField trees = worldView.Trees;
+            TreeCover trees = CoverOf(worldView.Trees);
             int seed = worldView.Config.Terrain.Seed;
             foreach (GroundSpot spot in spots)
             {
                 int ix = spot.Cell.x, iz = spot.Cell.y;
                 Vector3 local = worldView.transform.InverseTransformPoint(spot.Position);
-                float forest = trees != null ? TreeForests.ForestAt(trees.Seed, trees.Settings, local.x, local.z) : 0f;
+                float forest = trees.At(local.x, local.z);
                 float yaw = VoxelHash.Uniform(0, ix, 0, iz, SaltYaw) * 360f;
                 float roll = VoxelHash.Uniform(0, ix, 0, iz, SaltHeight);
                 Quaternion rotation = Quaternion.FromToRotation(Vector3.up, Vector3.Lerp(Vector3.up, spot.Normal, 0.5f)) * Quaternion.Euler(0f, yaw, 0f);
@@ -355,6 +357,17 @@ namespace Clube.Core
                 float width = baseSize * Mathf.Sqrt(scale);
                 scattered.Grass.Add(Matrix4x4.TRS(spot.Position, rotation, new Vector3(width, baseSize * scale, width)));
             }
+        }
+
+        // How thick the trees stand, from the world's tree field (made again if the world gets a new one).
+        private TreeCover CoverOf(TreeField trees)
+        {
+            if (cover == null || coverOf != trees)
+            {
+                cover = new TreeCover(trees);
+                coverOf = trees;
+            }
+            return cover;
         }
 
         private void Draw()
