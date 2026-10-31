@@ -430,7 +430,7 @@ New opens `NewGamePage` (mode: only World playable; world name, "Hello World" by
 name and loaded save into the scene; `GameScenes` names the scenes. In WorldLab, `GameSessionHost` (on World) is an
 `IWorldConfigOverride` (Core: changes `WorldView`'s play copy of its config in Awake) that sets the seed, restores a save and
 captures one; `PauseMenu` is Esc (closes an open player screen first; Back, Save and Exit, Exit Without Saving;
-`Time.timeScale` 0; Save and Exit asks for a name, filled in with `<world> - <mode> - <time>`; Graphics opens
+`Time.timeScale` 0; Save and Exit asks for a name, filled in with `<world> - <mode> - Day <##> - <time>` (GL260); Graphics opens
 `GraphicsSettingsPage`: field of view 60-120 and a frame rate limit, kept in PlayerPrefs by `GraphicsSettings` and applied by
 `GraphicsSettingsApplier` on World, in the Editor only for a menu game; the main menu caps unlimited at 60, GL209). A menu game starts as the player (`PlayerCameraToggle`). Saving (first pass of S1-S4) is `Core/Saving`:
 `GameSave` (plain data, ids not references), `GameSaveFile` (header plain, body gzipped, `SaveHeader.CurrentVersion` 2: names
@@ -466,20 +466,29 @@ broken bushes are saved (`GameSave.RemovedBushes`, save version 4). Wind: `Asset
 voxel leaves (`VoxelMaterial.WindSway`, `_MaterialSway` from `MaterialRegistry`) and the distant trees.
 Twenty-sixth pass (GL240-GL251, `Docs/20261030g clube-backlog.md`): a stump opens only once the wood above it is cleared
 (GL231 reverted). In the sphere modes a tool on ground it isn't made for (a shovel on stone) works only the sample under the
-dot. Gathered stacks blend only within 15 points of purity, a pure stack only with pure (`Inventory.MixTolerance`); stations
+dot. (GL245's purity tolerance was replaced by GL256, below.) Stations
 load the best stack first (`SlotsByQuality`); the merchant sells part items (`Inventory.RemoveAmount`). Slides last while C is
 held, up to 8 m, never up a steep rise. The sky: `SkyPositions` (Core/Sky) puts the sun (under the horizon at night) and the
 moon (its own 29.5-day orbit and phases); `DayNightCycle` lights from either, `MoonDisc` (`Clube/Moon`) draws the moon.
 The wooden chest (`StorageChest`, `ChestPanel`, `StorageCapacity`: 27 slots at 100% wood down to 5) is a placeable from
 100 wood at the stump. Birds: `BirdFlock` (Core/Fauna) and `BirdFlocks` on World. Gold shines (`VoxelMaterial.Shine`,
 `_MaterialShine` in `Clube/Terrain Materials`, glints in its texture). Silver and gold buns are called buttons.
-Twenty-seventh pass (GL252-GL255, `Docs/20261031 clube-backlog.md`): the sky. `CloudLayer` (on World) ray-marches volumetric
+Twenty-seventh pass (GL252-GL264, `Docs/20261031 clube-backlog.md`): the sky. `CloudLayer` (on World) ray-marches volumetric
 cumulus (1100-2000 m) with `Clube/Clouds` on a camera-centred `SkySphere`, from a baked repeating 3D noise (`CloudNoise` in
 Core/Sky, *Clube → Sky → Build cloud noise*, `Assets/Textures/Sky/Cloud noise.asset`), lit by the main light (sun or moon),
 stopped at the ground by the camera's depth texture; wind and cover change with the game's days. `StarSky` (`Clube/Stars`)
 is turned by `DayNightCycle` once a sidereal day (`SkyPositions.SiderealAngle`). The moon is 2.16° and grows a quarter near
 the horizon (`SkyPositions.MoonIllusion`). Birds come every 10-30 s, 25-80 m off, 10-35 m over the ground. Draw order on
-the sky: stars (Transparent-450), moon (-400), clouds (-300).
+the sky: stars (Transparent-450), moon (-400), clouds (-300). The lab HUD ends with the game time and day (GL259).
+Also in this pass (GL256-GL264): stacks mix again when digging and when dropped by hand (`Inventory.Combines`); only what
+comes out of a crafting station keeps apart from other qualities (`StacksApart`, `keepApart` on `Add`/`MoveTo`). Grass reaches
+64 m, thinning past 22 m, and grass ground takes the tufts' colour from afar (`GrassLawn`, `GrassLawnMap` round the focus,
+`Assets/Shaders/GrassLawn.hlsl` in the terrain, far terrain and grass shaders), so the tufts end without a line. Distant
+trees have four levels made from real `TreeShape` trees (`DistantTreeMeshes.BuildLevels`: every leaf ball to 220 m, leaf
+clusters to 520 m, crowns to 1100 m, one blob beyond; six variants per kind), cross-faded by dither in `Clube/Distant Trees`,
+in the voxel trees' texture colours. `SkyWeather` (Core/Sky) gives each sunrise and sunset a colour and strength and each day
+its cloud cover; `DayNightCycle` lights the clouds itself (`_CloudLightDir`, `_CloudLightColor`), by the sun a while after it
+leaves the land. The main menu reads "Extract, Refine, Craft, Build your World".
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
