@@ -43,8 +43,8 @@ namespace Clube.Core
                 return 0f;
             }
             float scale = settings.ForestScale;
-            float noise = (1f - DetailShare) * ValueNoise(seed, x / scale, z / scale, 0)
-                          + DetailShare * ValueNoise(seed, x / (scale * DetailSize), z / (scale * DetailSize), 1);
+            float noise = (1f - DetailShare) * ValueNoise.At(seed, x / scale, z / scale, 0, ForestSalt)
+                          + DetailShare * ValueNoise.At(seed, x / (scale * DetailSize), z / (scale * DetailSize), 1, ForestSalt);
 
             // The two octaves' sum gathers round 0.5 (spread about 0.2), so the cover maps onto a
             // threshold that narrow way.
@@ -76,25 +76,6 @@ namespace Clube.Core
         {
             float size = settings.CellSize;
             return ForestAt(seed, settings, (cell.x + 0.5f) * size, (cell.y + 0.5f) * size);
-        }
-
-        // Smoothly blended hashed values on a unit lattice, 0-1.
-        private static float ValueNoise(int seed, float x, float z, int octave)
-        {
-            int ix = Mathf.FloorToInt(x);
-            int iz = Mathf.FloorToInt(z);
-            float fx = Fade(x - ix);
-            float fz = Fade(z - iz);
-            float a = VoxelHash.Uniform(seed, ix, octave, iz, ForestSalt);
-            float b = VoxelHash.Uniform(seed, ix + 1, octave, iz, ForestSalt);
-            float c = VoxelHash.Uniform(seed, ix, octave, iz + 1, ForestSalt);
-            float d = VoxelHash.Uniform(seed, ix + 1, octave, iz + 1, ForestSalt);
-            return Mathf.Lerp(Mathf.Lerp(a, b, fx), Mathf.Lerp(c, d, fx), fz);
-        }
-
-        private static float Fade(float t)
-        {
-            return t * t * (3f - 2f * t);
         }
     }
 }
