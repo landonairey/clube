@@ -455,6 +455,15 @@ the skybox and ambient settings. `DryingClayEffect` steams drying clay. The stat
 tools; the brick furnace (heat 2.25, 100 bricks, Crafting 6) is built by *Clube → Models → Build furnaces*. The starting
 inventory is empty and the merchant stands in the starting parcel. The exe runs in the background. The load list deletes
 saves. Stumps open from the foot of the trunk (`StumpWorktops`, GL231); `PlaceSketch` draws the stump and boulder entries (GL232).
+Twenty-fifth pass (GL234-GL239, `Docs/20261030f clube-backlog.md`): varied flora, drawn meshes on the built terrain, not voxels.
+`GrassGrowth` (Core/Generation/Flora, on `GrassScatter`) grows grass up to twice as tall in open meadows (by
+`TreeForests.ForestAt`), shorter high up, and wheat in patches of open land (`ValueNoise`, shared with the forests); the
+`Clube/Grass` shader turns tall instances to straw. `BushScatter` (Rendering, on World) grows small, medium and large
+bushes where `BushGrowth` puts them (`BushMeshes`, `Bush.mat`, no collider); both scatters find their spots through
+`GrassyGround` and draw through `InstanceBatches`. A rebuilt chunk breaks bushes whose ground went (`BushScatter.Broken`);
+`PlayerToolUser` picks the bush aimed at on Attack (`BushPicked`), and `PlayerBushes` hands over leaves and sticks. Picked and
+broken bushes are saved (`GameSave.RemovedBushes`, save version 4). Wind: `Assets/Shaders/Wind.hlsl` for grass, bushes, the
+voxel leaves (`VoxelMaterial.WindSway`, `_MaterialSway` from `MaterialRegistry`) and the distant trees.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

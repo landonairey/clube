@@ -61,6 +61,7 @@ Core/
     Fill/        generation jobs and the shared ChunkFillKernel
     Ores/        OreSpec, OreField (placement), OreRoll (the roll, shared)
     Trees/       TreeGeneration (settings), TreeField (placement), TreeShape (one tree), TreeStamp (into a chunk, GL30)
+    Flora/       GrassGrowth (grass height, wheat fields, GL234-GL235), BushGrowth (where bushes grow, sizes, drops, GL236)
   Meshing/       MarchingCubes + tables, ChunkMeshSettings, variants (A6)
     Managed/     ChunkMesher and its strategies, the managed material pass: labs, step-through (A11)
     Jobs/        ChunkMeshJob: the Burst mesh build the world runs; CarvedVoxels: walls round chiselled voxels (GL92)
@@ -74,6 +75,8 @@ Core/
                  TerrainLodRing + TerrainLodBuilder (coarse terrain levels, P7c), DistantTreeBuilder (GL162)
   Rendering/     WorldView, ChunkView, ChunkRenderer(+Pool), ChunkCollider, ChunkMeshBuilder, GrassScatter (GL67),
                  FarTerrainView + ChunkCoverageMask (P7a), TerrainLodView (P7c), DistantTreeView + DistantTreeMeshes (GL162)
+                 BushScatter + BushMeshes (GL236), GrassyGround (flora spots on the built meshes) and InstanceBatches,
+                 shared by the grass and the bushes
 ```
 
 All of it is namespace `Clube.Core`; folders are for people, not the compiler.
@@ -486,7 +489,7 @@ Notes for upcoming chapters, so new code lands in the right layer.
 |---|---|---|
 | **Edits and seams in the coarse terrain (rest of P7).** The coarse levels (§5, P7c) are generated, never edited, and overlap per pixel rather than stitching. | `TerrainLodBuilder` (rebuild a coarse chunk an edit reaches, from `World` data where it exists) and `ClipLod` | Big edits (a quarry) vanish once you walk away from them; downsampling the world's edited chunks into the coarse level would keep them. Transvoxel would replace the per-pixel overlap and the sink. Render distance should become metres (P16) rather than chunks. |
 | **P5 caves, P12 multi-noise terrain** | new `IVolumeField` / `IHeightField` structs in `Fields/` | `LandscapeHeight` (GL26) is P12's first pass: a mask, ridged and plains noise in one height field. Growing it means more fields and editable splines in the same struct. A height field plus a 3D modifier can be one volume field that samples the column height; see "Adding a generator". |
-| **P6 / S1–S6 save and load** | `Core/Saving/` (first pass, GL205), called from `Game` (`GameSessionHost`, `PlayerSaveState`, `PlacedObjectSaving`) | Done so far: named saves, one file each (`SaveSlots`, `SaveNames`), written on the main thread at Save and Exit: the header (version, mode, seed) plain, the rest gzipped; edited chunks per sample (bytes for byte storage), restored with `World.Keep` before streaming. The quests done are at the body's end (version 3, GL216); the load list deletes saves (GL230). Still open: run-length chunks (K26) to shrink saves, writing off the main thread (S5), autosave (S4), a station's work in progress. |
+| **P6 / S1–S6 save and load** | `Core/Saving/` (first pass, GL205), called from `Game` (`GameSessionHost`, `PlayerSaveState`, `PlacedObjectSaving`) | Done so far: named saves, one file each (`SaveSlots`, `SaveNames`), written on the main thread at Save and Exit: the header (version, mode, seed) plain, the rest gzipped; edited chunks per sample (bytes for byte storage), restored with `World.Keep` before streaming. The quests done are at the body's end (version 3, GL216), the picked and broken bushes after them (version 4, GL236); the load list deletes saves (GL230). Still open: run-length chunks (K26) to shrink saves, writing off the main thread (S5), autosave (S4), a station's work in progress. |
 | **I5 mining → inventory, PK1 mixed ore** | `Editing/` (what was removed, per material) → `Game` (inventory) | Tools already collect: `ToolStrike.Hit` adds one drop per removed sample and `PlayerToolUser.Collected` reports it (GL5), so the inventory (GL6) subscribes there. For the brush, `BrushResult` would need removed volume per material id (the brush already reads each sample's material). |
 | **N1 inventory, CR crafting, T tech tree** | plain C# data models in Core (or a new `Clube.Items` / `Clube.Economy` assembly when they grow), UI in `Clube.Game` | `ItemDefinition` (O6) is the start. Keep the models free of MonoBehaviours so they're unit-testable (G3). |
 | **ST1 settlement scoring, U1 mini map** | `Generation/` queries | Column heights and `OreField.NodesInCell` answer "what's here" without generating voxels. |
