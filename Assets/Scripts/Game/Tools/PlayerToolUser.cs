@@ -67,6 +67,7 @@ namespace Clube.Game
         private OreKnowledge knowledge;
         private PlayerSkills skills;
         private float nextHitTime;
+        private DayNightCycle dayNight;
         private string brokenName;
         private float brokenUntil;
         private BushScatter bushes;
@@ -206,8 +207,9 @@ namespace Clube.Game
             {
                 HasBush = true;
                 AimedBush = bush;
-                if (useAction != null && useAction.action.WasPressedThisFrame() && bushes.Pick(bush))
+                if (useAction != null && useAction.action.WasPressedThisFrame() && Time.time >= nextHitTime && bushes.Pick(bush))
                 {
+                    nextHitTime = Time.time + CooldownFor(tool);
                     BushPicked?.Invoke(bush);
                     waitForRelease = true;
                 }
@@ -442,7 +444,7 @@ namespace Clube.Game
             return ground != null && !tool.ReachesWideOn(ground);
         }
 
-        // On the press, then at the tool's rate while held.
+        // Once the last use's cooldown is over (GL270), on a press or while held.
         private bool ShouldHit(ToolDefinition tool)
         {
             if (useAction == null || targets.Count == 0)
@@ -450,12 +452,47 @@ namespace Clube.Game
                 return false;
             }
             InputAction action = useAction.action;
-            if (action.WasPressedThisFrame() || (action.IsPressed() && Time.time >= nextHitTime))
+            if (action.IsPressed() && Time.time >= nextHitTime)
             {
-                nextHitTime = Time.time + 1f / tool.HitsPerSecond;
+                nextHitTime = Time.time + CooldownFor(tool);
                 return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Seconds between uses of a tool now (GL270): a second, bare hands a quarter quicker, and everything a quarter
+        /// quicker again at dawn.
+        /// </summary>
+        public float CooldownFor(ToolDefinition tool)
+        {
+            return ToolCooldown.SecondsFor(tool == hand, Hour);
+        }
+
+        /// <summary>True at dawn, when tools are quicker (the early bird's bonus, GL270).</summary>
+        public bool EarlyBird => ToolCooldown.IsDawn(Hour);
+
+        /// <summary>How far through the wait after the last use, 0 just used to 1 ready.</summary>
+        public float Readiness
+        {
+            get
+            {
+                float wait = CooldownFor(Current);
+                return wait <= 0f ? 1f : Mathf.Clamp01(1f - (nextHitTime - Time.time) / wait);
+            }
+        }
+
+        // The hour of the day, from the world's sky; noon without one.
+        private float Hour
+        {
+            get
+            {
+                if (dayNight == null && worldView != null)
+                {
+                    dayNight = worldView.GetComponent<DayNightCycle>();
+                }
+                return dayNight != null ? dayNight.Hour : 12f;
+            }
         }
 
         private void Hit(ToolDefinition tool)
