@@ -294,7 +294,7 @@ MonoBehaviour:
   worldConfig: {fileID: 11400000, guid: b8ca195e979ea82418e6510f13b246be, type: 2}
   splash: {fileID: 2800000, guid: 292adb6812325a44285ddc8e38c71e3f, type: 3}
   title: clube
-  subtitle: Dig, smelt and build in a world of voxels
+  subtitle: Extract, Refine, Craft, Build your World
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
