@@ -5430,6 +5430,7 @@ GameObject:
   - component: {fileID: 1350119472}
   - component: {fileID: 1350119473}
   - component: {fileID: 1350119474}
+  - component: {fileID: 1350119475}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -5712,6 +5713,13 @@ MonoBehaviour:
   density: 6
   minUp: 0.7
   height: {x: 0.18, y: 0.38}
+  growth:
+    meadowGrowth: 1
+    shorterWithAltitude: {x: 30, y: 90}
+    wheatShare: 0.18
+    wheatScale: 48
+    wheatMaxForest: 0.2
+    wheatHeight: {x: 0.78, y: 0.98}
   scatterMilliseconds: 1
 --- !u!114 &1350119471
 MonoBehaviour:
@@ -5798,6 +5806,32 @@ MonoBehaviour:
   moonIntensity: 0.22
   moonColor: {r: 0.55, g: 0.66, b: 1, a: 1}
   nightAmbient: 0.3
+--- !u!114 &1350119475
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec9dc6480032dd642aec5c4fb916e44f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.BushScatter
+  grass: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
+  material: {fileID: 2100000, guid: 8cebf60f6153e604c94b17c70b067925, type: 2}
+  radius: 60
+  minUp: 0.8
+  growth:
+    cellSize: 3
+    fieldChance: 0.08
+    forestChance: 0.22
+    sizeShares: {x: 0.5, y: 0.35, z: 0.15}
+    smallHeight: {x: 0.45, y: 0.65}
+    mediumHeight: {x: 0.8, y: 1.1}
+    largeHeight: {x: 1.6, y: 1.9}
+    leaves: {x: 3, y: 6, z: 12}
+  scatterMilliseconds: 0.5
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -5972,6 +6006,7 @@ GameObject:
   - component: {fileID: 1697135599}
   - component: {fileID: 1697135598}
   - component: {fileID: 1697135597}
+  - component: {fileID: 1697135600}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -6876,6 +6911,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.FieldLogScreen
   toggleAction: {fileID: -8765368810939497189, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   toolsAction: {fileID: -833899942069987867, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+--- !u!114 &1697135600
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6f1ef47c21c320e43a0a492c958eed43, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerBushes
+  leaves: {fileID: 11400000, guid: e5acd428b6947c7469aca6cbe59c5618, type: 2}
+  leafMaterial: {fileID: 11400000, guid: c3a9464decc6a0d4386f7028c5aa4060, type: 2}
+  stick: {fileID: 11400000, guid: 4f717f7cc0f3ec743b5f84c88baea32c, type: 2}
+  brokenReach: 8
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -69,6 +69,7 @@ namespace Clube.Game
         private float nextHitTime;
         private string brokenName;
         private float brokenUntil;
+        private BushScatter bushes;
 
         /// <summary>Raised for each item a hit collects, one at a time, with its contents (mixed ore, GL32).</summary>
         public event Action<ItemStack> Collected;
@@ -90,6 +91,15 @@ namespace Clube.Game
 
         /// <summary>Raised after a chisel hit (GL87), with the voxels it reached and what it did.</summary>
         public event Action<VoxelReach, ChiselResult> Chiselled;
+
+        /// <summary>Raised when an Attack press picks the bush aimed at (GL238): it's gone, and drops its leaves and sticks.</summary>
+        public event Action<Bush> BushPicked;
+
+        /// <summary>Whether the view is on a bush within reach, in front of the ground (GL238).</summary>
+        public bool HasBush { get; private set; }
+
+        /// <summary>The bush aimed at, while <see cref="HasBush"/>.</summary>
+        public Bush AimedBush { get; private set; }
 
         /// <summary>
         /// The tool in hand: the selected hotbar slot's, or the hand. Null with neither, and while
@@ -158,6 +168,7 @@ namespace Clube.Game
         {
             targets.Clear();
             HasReach = false;
+            HasBush = false;
             ReachIsSphere = false;
         }
 
@@ -165,6 +176,7 @@ namespace Clube.Game
         {
             targets.Clear();
             HasReach = false;
+            HasBush = false;
             ReachIsSphere = false;
             if (!player.enabled || player.IsCursorFree || worldView == null || !worldView.IsReady)
             {
@@ -184,11 +196,54 @@ namespace Clube.Game
                 return;
             }
 
+            // A bush in front of the ground: Attack picks it whole (GL238), and the ground behind is left alone.
+            if (AimBush(out Bush bush))
+            {
+                HasBush = true;
+                AimedBush = bush;
+                if (useAction != null && useAction.action.WasPressedThisFrame() && bushes.Pick(bush))
+                {
+                    BushPicked?.Invoke(bush);
+                }
+                return;
+            }
+
             FindTargets(tool);
             if (ShouldHit(tool))
             {
                 Hit(tool);
             }
+        }
+
+        /// <summary>Hands an item to whoever takes what the tools collect (the inventory, the pickup notice): a bush's drops (GL237, GL238).</summary>
+        public void Deliver(ItemStack stack)
+        {
+            if (!stack.IsEmpty)
+            {
+                Collected?.Invoke(stack);
+            }
+        }
+
+        // The bush the view is on within reach, when no ground stands in front of it.
+        private bool AimBush(out Bush bush)
+        {
+            bush = default;
+            if (bushes == null)
+            {
+                bushes = worldView.GetComponent<BushScatter>();
+                if (bushes == null)
+                {
+                    return false;
+                }
+            }
+            Transform head = player.Head != null ? player.Head : transform;
+            var ray = new Ray(head.position, head.forward);
+            if (!bushes.Raycast(ray, reach, out bush, out float distance))
+            {
+                return false;
+            }
+            return !worldView.Raycast(ray, out WorldHit hit)
+                   || (worldView.transform.TransformPoint(hit.Point) - head.position).magnitude > distance;
         }
 
         private void FindTargets(ToolDefinition tool)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
 
@@ -29,6 +30,7 @@ namespace Clube.Game
         private DroppedGroundDrying drying;
 
         private WorldView worldView;
+        private BushScatter bushes;
 
         // A loaded save still to be put back on the player and the built objects.
         private GameSave restoring;
@@ -47,6 +49,7 @@ namespace Clube.Game
         private void Awake()
         {
             worldView = GetComponent<WorldView>();
+            bushes = GetComponent<BushScatter>();
         }
 
         private void Start()
@@ -58,6 +61,10 @@ namespace Clube.Game
             }
             // Before the world streams its first chunk (WorldView.Update), so edited ones aren't generated.
             WorldSaving.Restore(worldView.World, save.Chunks);
+            if (bushes != null)
+            {
+                bushes.Restore(save.RemovedBushes);
+            }
             if (clock != null)
             {
                 clock.Restore(save.Days);
@@ -116,6 +123,10 @@ namespace Clube.Game
             if (worldView.World != null)
             {
                 save.Chunks = WorldSaving.Capture(worldView.World);
+            }
+            if (bushes != null)
+            {
+                save.RemovedBushes = new List<Vector2Int>(bushes.RemovedCells);
             }
             if (player != null && player.IsReady)
             {

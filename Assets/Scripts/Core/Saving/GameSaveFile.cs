@@ -82,6 +82,12 @@ namespace Clube.Core
                 });
                 // Version 3 (GL216): the player's quests done, at the end so older bodies read as they were.
                 WriteList(body, save.Player?.Quests ?? new List<string>(), (w, q) => w.Write(q ?? ""));
+                // Version 4 (GL236): the bushes picked or broken.
+                WriteList(body, save.RemovedBushes, (w, c) =>
+                {
+                    w.Write(c.x);
+                    w.Write(c.y);
+                });
             }
             writer.Dispose();
         }
@@ -105,6 +111,10 @@ namespace Clube.Core
                     {
                         save.Player.Quests = quests;
                     }
+                }
+                if (save.Header.Version >= 4)
+                {
+                    save.RemovedBushes = ReadList(body, r => new Vector2Int(r.ReadInt32(), r.ReadInt32()));
                 }
             }
             reader.Dispose();
