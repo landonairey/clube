@@ -144,6 +144,53 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Cooldown_IsASecond_HandsAndDawnAQuarterQuicker()
+        {
+            Assert.AreEqual(1f, ToolCooldown.SecondsFor(false, 12f), 1e-5f);
+            Assert.AreEqual(0.75f, ToolCooldown.SecondsFor(true, 12f), 1e-5f, "Hands are a quarter quicker.");
+            Assert.AreEqual(0.75f, ToolCooldown.SecondsFor(false, 6f), 1e-5f, "The early bird's bonus at dawn.");
+            Assert.AreEqual(0.5625f, ToolCooldown.SecondsFor(true, 6f), 1e-5f, "Both together.");
+            Assert.IsFalse(ToolCooldown.IsDawn(8f));
+            Assert.IsFalse(ToolCooldown.IsDawn(3f));
+        }
+
+        [Test]
+        public void Relief_IsRockRough_SoilSlight_PlantsSmooth()
+        {
+            Assert.AreEqual(1f, VoxelMaterial.Create(0, "Stone").Relief);
+            Assert.AreEqual(0.35f, VoxelMaterial.Create(1, "Dirt").WithSoft().Relief, 1e-5f);
+            Assert.AreEqual(0f, VoxelMaterial.Create(12, "Leaves", VoxelMaterialCategory.Plant).Relief);
+        }
+
+        [Test]
+        public void SynthesizedSounds_AreAudible_AndLoopsJoin()
+        {
+            var sounds = new System.Collections.Generic.List<float[]>
+            {
+                SoundSynth.Footstep(StepSurface.Grass, 1), SoundSynth.Footstep(StepSurface.Stone, 2),
+                SoundSynth.Hit(HitSound.Clink, 3), SoundSynth.Hit(HitSound.Chop, 4), SoundSynth.Crumble(5),
+                SoundSynth.Rustle(6), SoundSynth.Pickup(7), SoundSynth.Chirp(8),
+            };
+            foreach (float[] samples in sounds)
+            {
+                float peak = 0f;
+                foreach (float s in samples)
+                {
+                    Assert.IsFalse(float.IsNaN(s));
+                    peak = Mathf.Max(peak, Mathf.Abs(s));
+                }
+                Assert.IsTrue(peak > 0.3f && peak <= 1f, "Audible and never clipping.");
+                Assert.Less(samples.Length, SoundSynth.SampleRate * 2, "Short.");
+            }
+            float[] wind = SoundSynth.WindLoop(4f, 9);
+            Assert.AreEqual(SoundSynth.SampleRate * 4, wind.Length);
+            Assert.Less(Mathf.Abs(wind[wind.Length - 1] - wind[0]), 0.1f, "The loop's end meets its start.");
+            byte[] wav = SoundSynth.ToWav(new float[100]);
+            Assert.AreEqual(44 + 200, wav.Length);
+            Assert.AreEqual((byte)'R', wav[0]);
+        }
+
+        [Test]
         public void TheMoon_LooksAQuarterBiggerOnTheHorizon()
         {
             Assert.AreEqual(1.25f, SkyPositions.MoonIllusion(0f, 0.25f, 0.4f), 1e-4f);

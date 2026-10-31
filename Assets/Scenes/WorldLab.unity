@@ -5438,6 +5438,7 @@ GameObject:
   - component: {fileID: 1350119479}
   - component: {fileID: 1350119482}
   - component: {fileID: 1350119481}
+  - component: {fileID: 1350119483}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -5979,6 +5980,34 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.StarSky
   material: {fileID: 2100000, guid: fcee9d4b03c50d846a0ea1acc10230f6, type: 2}
   distanceShare: 0.95
+--- !u!114 &1350119483
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9da773a53200c9b48a2684e610afa1d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.AmbientSounds
+  sounds: {fileID: 11400000, guid: a0d526c704e75e74a9b485c3484f305f, type: 2}
+  windLoop: {fileID: 8300000, guid: a3a5bc9db081a6945be570ce3feca7c7, type: 3}
+  leavesLoop: {fileID: 8300000, guid: 5b40c297e1f8e8143a65373ddd502549, type: 3}
+  birdCalls:
+  - {fileID: 8300000, guid: 3c82142c81ede6b4eb0888eae8a56c43, type: 3}
+  - {fileID: 8300000, guid: 379ebfce06e161c4dacdf21ae6d33869, type: 3}
+  - {fileID: 8300000, guid: dc6cf4dda5662b24893cb583255d102a, type: 3}
+  - {fileID: 8300000, guid: 28ff68a6b0818774dab87bc53ebc4d79, type: 3}
+  - {fileID: 8300000, guid: 09442a08dd2d93542b436e917b88a281, type: 3}
+  - {fileID: 8300000, guid: 72ac502e9aa967649af93b2c9178c738, type: 3}
+  - {fileID: 8300000, guid: 4eacf1aa58d19e44b84cbd9f850accb9, type: 3}
+  - {fileID: 8300000, guid: 916b43354c38e8c4aa51cf171f0e85e2, type: 3}
+  windVolume: {x: 0.12, y: 0.35}
+  leavesVolume: 0.3
+  birdSeconds: {x: 4, y: 14}
+  birdVolume: 0.35
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -6156,6 +6185,7 @@ GameObject:
   - component: {fileID: 1697135598}
   - component: {fileID: 1697135601}
   - component: {fileID: 1697135602}
+  - component: {fileID: 1697135603}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -7106,6 +7136,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.ChestPanel
   closeAction: {fileID: 1781555164194001046, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   closeDistance: 5
+--- !u!114 &1697135603
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4554e46fc8d9154099e5ce1f03297d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.HeldToolView
+  material: {fileID: 2100000, guid: 4d599372257648141b207c3dbd8d5b8f, type: 2}
+  restPosition: {x: 0.24, y: -0.26, z: 0.52}
+  restTurn: {x: -8, y: -14, z: 6}
+  swingSeconds: 0.42
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
