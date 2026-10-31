@@ -109,6 +109,9 @@ namespace Clube.Game
             }
         }
 
+        /// <summary>The day the game is on by the clock, from 1; a day starts at midnight (GL259).</summary>
+        public int Day => (int)System.Math.Floor((clock != null ? clock.Days : 0d) + startHour / 24d) + 1;
+
         /// <summary>Days since a new moon.</summary>
         public double MoonAge => Days + startMoonAge;
 
