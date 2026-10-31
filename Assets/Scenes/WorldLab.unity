@@ -5716,7 +5716,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Core::Clube.Core.GrassScatter
   grass: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
   material: {fileID: 2100000, guid: bebf70da50c2fd042afe43cc4a285452, type: 2}
-  radius: 28
+  radius: 64
+  thinFrom: 22
+  thinTo: 0.2
+  fadeLength: 16
+  lawnShade: 0.6
+  lawnNear: 0.55
   density: 6
   minUp: 0.7
   height: {x: 0.18, y: 0.38}

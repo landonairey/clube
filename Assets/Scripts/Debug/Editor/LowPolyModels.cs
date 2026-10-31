@@ -76,11 +76,14 @@ namespace Clube.Debug.Editor
             model.Box(0, new Vector3(0f, 0.25f, 0f), new Vector3(0.9f, 0.5f, 0.55f));
             model.Box(0, new Vector3(0f, 0.56f, 0f), new Vector3(0.94f, 0.12f, 0.59f));
             model.Box(0, new Vector3(0f, 0.65f, 0f), new Vector3(0.9f, 0.06f, 0.5f));
+            // The bands stand proud of every wooden face they cross, so no two faces lie in one plane (they flickered).
             foreach (float x in new[] { -0.3f, 0.3f })
             {
-                model.Box(1, new Vector3(x, 0.66f, 0f), new Vector3(0.06f, 0.04f, 0.52f));
-                model.Box(1, new Vector3(x, 0.31f, 0.28f), new Vector3(0.06f, 0.62f, 0.02f));
-                model.Box(1, new Vector3(x, 0.31f, -0.28f), new Vector3(0.06f, 0.62f, 0.02f));
+                // Over the lid: from the rim's top (0.62) to 2 cm above the lid's top (0.68), out past the rim.
+                model.Box(1, new Vector3(x, 0.66f, 0f), new Vector3(0.06f, 0.08f, 0.61f));
+                // Down the front and back: a little wider than the lid band, out past the rim's face (0.295).
+                model.Box(1, new Vector3(x, 0.345f, 0.2925f), new Vector3(0.064f, 0.69f, 0.035f));
+                model.Box(1, new Vector3(x, 0.345f, -0.2925f), new Vector3(0.064f, 0.69f, 0.035f));
             }
             foreach (float x in new[] { -0.44f, 0.44f })
             {
