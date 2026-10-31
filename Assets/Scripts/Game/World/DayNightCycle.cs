@@ -79,6 +79,7 @@ namespace Clube.Game
         private float sunsetStrength = 1f;
 
         private static readonly int SkyTintId = Shader.PropertyToID("_SkyTint");
+        private static readonly Color TwilightTint = new Color(0.4f, 0.4f, 0.75f);
         private static readonly int AtmosphereId = Shader.PropertyToID("_AtmosphereThickness");
         private static readonly int CloudLightDirId = Shader.PropertyToID("_CloudLightDir");
         private static readonly int CloudLightColorId = Shader.PropertyToID("_CloudLightColor");
@@ -305,8 +306,10 @@ namespace Clube.Game
             }
             if (sky != null && sky.HasProperty(SkyTintId))
             {
-                sky.SetColor(SkyTintId, Color.Lerp(skyTint, look.Glow * 0.75f, glow * 0.22f));
-                sky.SetFloat(AtmosphereId, atmosphere * (1f + 0.45f * glow));
+                // The procedural sky turns olive just after sunset under a thick atmosphere, whatever its tint; a thin one
+                // keeps the clear sky between the clouds a deep twilight blue, so the colour is the clouds' and the haze's.
+                sky.SetColor(SkyTintId, Color.Lerp(skyTint, TwilightTint, twilight * 0.5f));
+                sky.SetFloat(AtmosphereId, Mathf.Lerp(atmosphere, 0.75f, twilight));
             }
             LightClouds(sunDirection, sunHeight, sunColour, look, glow, moonDirection, moonLight);
         }
