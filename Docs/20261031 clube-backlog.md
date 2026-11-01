@@ -26,3 +26,5 @@ Requests from 2026-10-31, kept as they were given (spelling tidied). They are or
 - [ ] Generate our own sound effects for footsteps, tools and material breaking/gathering. → **GL271**
 - [ ] Add bird chirping, an ambient wind breeze and soft rustling of tree leaves. → **GL272**
 - [ ] Make the dawn bonus last from 04:30 to 09:30. → **GL270**
+- [ ] (2026-11-01) The stone pick in hand should look like a primitive stone lashed to a stick, its head off one side only, as its icon; the bronze pickaxe can stay a real pickaxe. → **GL273**
+- [ ] (2026-11-01) Particle effects: low-poly crumbles of the material being collected. → **GL274**
