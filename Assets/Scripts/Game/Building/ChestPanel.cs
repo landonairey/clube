@@ -111,6 +111,7 @@ namespace Clube.Game
             {
                 chest.MoveTo(taken, items);
             }
+            InventoryGridGui.PullHalf(chest, items, false);
             y += chestArea.height + 16f;
 
             GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Your items: click to store (Shift half, Ctrl one), drag onto the chest, right-click to split");

@@ -5959,7 +5959,6 @@ MonoBehaviour:
   reach: 11000
   size: {x: 250, y: 1900}
   heightSpread: 700
-  towerChance: 0.12
   sheetHeight: 550
   wispHeight: 5200
   wispDays: 0.7
@@ -6417,6 +6416,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.InventoryScreen
   toggleAction: {fileID: 6583218457637385746, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  interactAction: {fileID: 1781555164194001046, guid: 052faaac586de48259a63d0c4782560b, type: 3}
 --- !u!114 &1697135571
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7229,6 +7229,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.TorchBurner
   clock: {fileID: 0}
+  smokeMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -22,12 +22,18 @@ namespace Clube.Game
         [SerializeField]
         private InputActionReference toggleAction;
 
+        [Tooltip("Interact (E) also opens and closes it when nothing usable is aimed at (GL298), so one key does both.")]
+        [SerializeField]
+        private InputActionReference interactAction;
+
         private PlayerInventory inventory;
         private PlayerController player;
         private StationPanel stationPanel;
         private MerchantPanel merchantPanel;
         private ChestPanel chestPanel;
         private FieldLogScreen fieldLog;
+        private PlayerInteractor interactor;
+        private RestScreen rest;
         private readonly InventoryDrag drag = new InventoryDrag();
         private Rect trashSlot;
 
@@ -41,11 +47,14 @@ namespace Clube.Game
             merchantPanel = GetComponent<MerchantPanel>();
             chestPanel = GetComponent<ChestPanel>();
             fieldLog = GetComponent<FieldLogScreen>();
+            interactor = GetComponent<PlayerInteractor>();
+            rest = GetComponent<RestScreen>();
         }
 
         private void OnEnable()
         {
             toggleAction?.action.Enable();
+            interactAction?.action.Enable();
         }
 
         private void OnDisable()
@@ -65,10 +74,23 @@ namespace Clube.Game
 
             // One screen at a time: not over a station's or a merchant's panel.
             bool otherOpen = (stationPanel != null && stationPanel.IsOpen) || (merchantPanel != null && merchantPanel.IsOpen)
-                || (fieldLog != null && fieldLog.IsOpen) || (chestPanel != null && chestPanel.IsOpen);
+                || (fieldLog != null && fieldLog.IsOpen) || (chestPanel != null && chestPanel.IsOpen) || (rest != null && rest.IsOpen);
             if (toggleAction != null && toggleAction.action.WasPressedThisFrame() && !otherOpen)
             {
                 SetOpen(!IsOpen);
+            }
+            else if (interactAction != null && interactAction.action.WasPressedThisFrame() && !otherOpen)
+            {
+                // E closes it, or opens it when nothing usable is aimed at (GL298) and it isn't the E that just closed
+                // another screen.
+                if (IsOpen)
+                {
+                    SetOpen(false);
+                }
+                else if ((interactor == null || interactor.Target == null || interactor.Target is INoticeOnly) && (player == null || !player.MenuClosedThisFrame))
+                {
+                    SetOpen(true);
+                }
             }
         }
 

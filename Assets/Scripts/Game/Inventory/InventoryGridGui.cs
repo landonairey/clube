@@ -153,9 +153,11 @@ namespace Clube.Game
         public static int DrawRow(Vector2 topLeft, Inventory items, int selected = -1)
         {
             int clicked = -1;
+            RightClicked = -1;
             for (int slot = 0; slot < items.SlotCount; slot++)
             {
                 var position = new Vector2(topLeft.x + slot * (SlotSize + Gap), topLeft.y);
+                CatchRightClick(position, items, slot);
                 if (Slot(position, items[slot], slot == selected, null, null))
                 {
                     clicked = slot;
@@ -175,15 +177,46 @@ namespace Clube.Game
         public static int DrawGrid(Vector2 topLeft, Inventory items, int selected = -1)
         {
             int clicked = -1;
+            RightClicked = -1;
             for (int slot = 0; slot < items.SlotCount; slot++)
             {
                 var position = new Vector2(topLeft.x + (slot % Columns) * (SlotSize + Gap), topLeft.y + (slot / Columns) * (SlotSize + Gap));
+                CatchRightClick(position, items, slot);
                 if (Slot(position, items[slot], slot == selected, null, null))
                 {
                     clicked = slot;
                 }
             }
             return clicked;
+        }
+
+        /// <summary>
+        /// The slot of the last <see cref="DrawRow"/> or <see cref="DrawGrid"/> right-clicked this event, or -1: a station's or
+        /// a chest's screen pulls half of it to the player (GL300).
+        /// </summary>
+        public static int RightClicked { get; private set; } = -1;
+
+        /// <summary>Moves half (rounded up) of a right-clicked slot of another inventory into the player's (GL300).</summary>
+        public static void PullHalf(Inventory from, Inventory to, bool keepApart)
+        {
+            if (RightClicked < 0 || RightClicked >= from.SlotCount || from[RightClicked].IsEmpty)
+            {
+                return;
+            }
+            int half = Mathf.Max(1, (from[RightClicked].Count + 1) / 2);
+            from.MoveTo(RightClicked, to, half, keepApart);
+            RightClicked = -1;
+        }
+
+        private static void CatchRightClick(Vector2 position, Inventory items, int slot)
+        {
+            Event current = Event.current;
+            if (current.type == EventType.MouseDown && current.button == 1 && !items[slot].IsEmpty
+                && new Rect(position.x, position.y, SlotSize, SlotSize).Contains(current.mousePosition))
+            {
+                RightClicked = slot;
+                current.Use();
+            }
         }
 
         /// <summary>One slot as a button. True when clicked.</summary>

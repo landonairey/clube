@@ -169,8 +169,11 @@ Shader "Clube/Terrain Materials"
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #pragma multi_compile_fog
+            #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Assets/Shaders/AdditionalLights.hlsl"
 
             TEXTURE2D_ARRAY(_Textures);
             SAMPLER(sampler_Textures);
@@ -381,6 +384,8 @@ Shader "Clube/Terrain Materials"
                 half3 direct = mainLight.color * saturate(dot(normalWS, mainLight.direction))
                              * mainLight.shadowAttenuation * mainLight.distanceAttenuation;
                 half3 ambient = SampleSH(normalWS);
+                // Torches and other point lights (GL294).
+                direct += AdditionalDiffuse(input.positionWS, normalWS, input.positionCS);
 
                 half3 color = albedo * (direct + ambient);
                 float shine = ShineOf(input);

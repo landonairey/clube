@@ -17,6 +17,10 @@ namespace Clube.Game
         [SerializeField]
         private GameClock clock;
 
+        [Tooltip("The smoke rising from a held torch (the Drying steam material, tinted grey).")]
+        [SerializeField]
+        private Material smokeMaterial;
+
         private PlayerInventory inventory;
         private Hotbar hotbar;
         private PlayerController player;
@@ -126,7 +130,7 @@ namespace Clube.Game
             if (shown && flame == null)
             {
                 Transform head = player.Head != null ? player.Head : transform;
-                flame = new TorchFlame(head, new Vector3(0.35f, 0.15f, 0.5f), 11f, 1.6f);
+                flame = new TorchFlame(head, new Vector3(0.3f, 0.12f, 0.55f), 18f, 5f, smokeMaterial);
             }
             if (flame == null)
             {

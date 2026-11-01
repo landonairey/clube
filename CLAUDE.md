@@ -506,6 +506,9 @@ wood or sticks. The sleeping roll (`SleepingRoll`, `RestScreen`, `RestBlur` in G
 rests 1-24 hours at one a second (`GameClock.Advance`). Placed objects keep a wear (save version 5). The chest is a crate.
 Slope ridges are generated into the density (GL293: `SlopeRidges` in the heightfield fill, by column gradient); the
 terrain shader adds only fine pitting in the shading (GL268).
+Torches light the terrain, grass and held items (GL294: `AdditionalLights.hlsl` in their shaders); a torch is held
+until B starts placing it. E also opens the inventory (GL298); fuel clicked at a fire goes to its fuel slot (GL299);
+right-click pulls half a station or chest slot (GL300). Next: GL302-GL305 (`Docs/20261102 clube-backlog.md`).
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

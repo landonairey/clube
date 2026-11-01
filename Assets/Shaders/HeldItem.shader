@@ -28,7 +28,10 @@ Shader "Clube/Held Item"
             HLSLPROGRAM
             #pragma vertex Vertex
             #pragma fragment Fragment
+            #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Assets/Shaders/AdditionalLights.hlsl"
 
             struct Attributes
             {
@@ -41,15 +44,17 @@ Shader "Clube/Held Item"
             {
                 float4 positionCS : SV_POSITION;
                 float3 normalWS : TEXCOORD0;
-                half3 color : TEXCOORD1;
+                half4 color : TEXCOORD1;
+                float3 positionWS : TEXCOORD2;
             };
 
             Varyings Vertex(Attributes input)
             {
                 Varyings output;
-                output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+                output.positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                output.positionCS = TransformWorldToHClip(output.positionWS);
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
-                output.color = input.color.rgb * _Tint.rgb;
+                output.color = half4(input.color.rgb * _Tint.rgb, input.color.a);
                 return output;
             }
 
@@ -59,7 +64,13 @@ Shader "Clube/Held Item"
                 Light mainLight = GetMainLight();
                 half3 direct = mainLight.color * (saturate(dot(normalWS, mainLight.direction)) * 0.8 + 0.2);
                 half3 ambient = SampleSH(normalWS);
-                return half4(input.color * (direct + ambient), 1.0);
+                // A torch's flame (vertex alpha 0, GL294) glows by itself, whatever the light.
+                if (input.color.a < 0.5)
+                {
+                    return half4(input.color.rgb * 1.8, 1.0);
+                }
+                direct += AdditionalDiffuse(input.positionWS, normalWS, input.positionCS);
+                return half4(input.color.rgb * (direct + ambient), 1.0);
             }
             ENDHLSL
         }

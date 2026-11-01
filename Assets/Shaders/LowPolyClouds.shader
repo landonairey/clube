@@ -13,6 +13,10 @@ Shader "Clube/Low Poly Clouds"
         _Ambient ("Sky light", Range(0, 2)) = 1.1
         _Silver ("Silver lining", Range(0, 2)) = 0.7
         _ShineThrough ("Sun through cloud", Range(0, 3)) = 1.4
+        _Alpha ("Opacity", Range(0, 1)) = 1
+        [HideInInspector] _SrcBlend ("Source blend", Float) = 1
+        [HideInInspector] _DstBlend ("Destination blend", Float) = 0
+        [HideInInspector] _ZWrite ("Write depth", Float) = 1
     }
 
     SubShader
@@ -23,6 +27,9 @@ Shader "Clube/Low Poly Clouds"
         {
             Name "ForwardLit"
             Tags { "LightMode" = "UniversalForward" }
+            // Opaque puffs; CloudLayer's see-through copy (sheets and streaks, GL301) blends over the sky without depth.
+            Blend [_SrcBlend] [_DstBlend]
+            ZWrite [_ZWrite]
 
             HLSLPROGRAM
             #pragma vertex Vertex
@@ -38,6 +45,7 @@ Shader "Clube/Low Poly Clouds"
                 float _Ambient;
                 float _Silver;
                 float _ShineThrough;
+                float _Alpha;
             CBUFFER_END
 
             float4 _CloudLightDir;
@@ -129,7 +137,7 @@ Shader "Clube/Low Poly Clouds"
                 }
 
                 colour = MixFog(colour, input.fogFactor);
-                return half4(colour, 1.0);
+                return half4(colour, _Alpha);
             }
             ENDHLSL
         }

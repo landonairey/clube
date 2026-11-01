@@ -113,14 +113,63 @@ namespace Clube.Game
 
             var crafting = recipes.Where(r => r != null && !IsSmelting(r.Station))
                 .OrderBy(r => StationOrder(r.Station)).ThenBy(r => r.UnlockLevel).ToList();
-            AddChapter("Chapter one: Crafting", "Crafting (cont.)", PlacesEntries().Concat(crafting.Select(r => RecipeEntry(r, skills))));
+            AddChapter("Chapter one: Crafting", "Crafting (cont.)", PlacesEntries().Concat(Grouped(crafting).Select(g => GroupEntry(g, skills))));
 
             var furnaces = recipes.Where(r => r != null && r.Output.Item is PlaceableDefinition placeable && Smelter(placeable) != null)
                 .OrderBy(r => Smelter((PlaceableDefinition)r.Output.Item).Heat).Select(r => FurnaceEntry(r, skills));
             var smelting = recipes.Where(r => r != null && IsSmelting(r.Station))
                 .OrderBy(r => r.Station == StationKind.Campfire ? 0 : 1).ThenBy(r => r.UnlockLevel).ThenBy(r => r.Extracts != null ? 0 : 1)
-                .Select(r => RecipeEntry(r, skills));
-            AddChapter("Chapter two: Smelting", "Smelting (cont.)", furnaces.Concat(smelting));
+                .ToList();
+            AddChapter("Chapter two: Smelting", "Smelting (cont.)", furnaces.Concat(Grouped(smelting).Select(g => GroupEntry(g, skills))));
+        }
+
+        // Recipes that make the same thing from plain items (GL295: charcoal from wood or from sticks, at the campfire or a
+        // furnace; a pick at the anvil or the flat rock) share one entry; smelts that extract an ore keep their own.
+        private static IEnumerable<List<Recipe>> Grouped(List<Recipe> recipes)
+        {
+            var groups = new List<List<Recipe>>();
+            foreach (Recipe recipe in recipes)
+            {
+                List<Recipe> group = recipe.Extracts == null
+                    ? groups.FirstOrDefault(g => g[0].Extracts == null && g[0].Output.Item == recipe.Output.Item)
+                    : null;
+                if (group != null)
+                {
+                    group.Add(recipe);
+                }
+                else
+                {
+                    groups.Add(new List<Recipe> { recipe });
+                }
+            }
+            return groups;
+        }
+
+        // One thing and every way to make it: made once any of them has been.
+        private Entry GroupEntry(List<Recipe> group, SkillSet skills)
+        {
+            if (group.Count == 1)
+            {
+                return RecipeEntry(group[0], skills);
+            }
+            Recipe first = group.FirstOrDefault(r => LevelsAway(r, skills) == 0) ?? group[0];
+            ItemDefinition item = first.Output.Item;
+            if (LevelsAway(first, skills) > 0)
+            {
+                return LockedEntry(first, item, item.DisplayName, skills);
+            }
+            var lines = new List<string>();
+            foreach (Recipe recipe in group)
+            {
+                string takes = string.Join(" + ", recipe.Inputs.Select(input => $"{input.Count} {input.Item.DisplayName}"));
+                string work = recipe.Work == RecipeWork.Strikes ? $"{recipe.Amount:0} strikes" : $"{recipe.Amount:0.#} s of heat";
+                string makes = recipe.Output.Count > 1 ? $", makes {recipe.Output.Count}" : string.Empty;
+                lines.Add($"At the {StationName(recipe.Station)}: {takes}{makes}; {work}.");
+            }
+            lines.Add(first.UnlockSkill == SkillType.None || first.UnlockLevel <= 0 ? "Anyone can make it." : $"Needs {first.UnlockSkill} {first.UnlockLevel}.");
+            bool made = group.Any(journal.Journal.HasMade);
+            lines.Add(made ? "Made it." : "Not made yet.");
+            return new Entry(ItemSketch.For(item), item.DisplayName, string.Join("\n", lines));
         }
 
         // The two places to craft that nobody builds (GL214), first in the Crafting chapter: they're easy to miss.

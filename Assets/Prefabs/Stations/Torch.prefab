@@ -140,4 +140,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 728aef535813f47469c191594e7c14e6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlacedTorch
-  flameAt: {x: 0, y: 1.05, z: 0}
+  flameAt: {x: 0, y: 1.15, z: 0}
+  smokeMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}

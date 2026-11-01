@@ -13,7 +13,11 @@ namespace Clube.Game
     {
         [Tooltip("Where the flame is, above the torch's foot.")]
         [SerializeField]
-        private Vector3 flameAt = new Vector3(0f, 1.05f, 0f);
+        private Vector3 flameAt = new Vector3(0f, 1.15f, 0f);
+
+        [Tooltip("The smoke rising from the flame (the Drying steam material, tinted grey).")]
+        [SerializeField]
+        private Material smokeMaterial;
 
         private PlacedObject placed;
         private TorchFlame flame;
@@ -23,7 +27,7 @@ namespace Clube.Game
         {
             placed = GetComponent<PlacedObject>();
             ticks = new GameClockTicks(FindAnyObjectByType<GameClock>());
-            flame = new TorchFlame(transform, flameAt, 12f, 2.2f);
+            flame = new TorchFlame(transform, flameAt, 18f, 6f, smokeMaterial);
         }
 
         private void Update()

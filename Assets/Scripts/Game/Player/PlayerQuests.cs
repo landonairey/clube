@@ -35,6 +35,7 @@ namespace Clube.Game
         private MerchantPanel merchant;
         private PlayerParcels parcels;
         private FlatRockCarver carver;
+        private RestScreen rest;
         private float nextCheck;
         private string notice;
         private float noticeUntil;
@@ -55,6 +56,8 @@ namespace Clube.Game
             log.Add("smelt-bun", "Smelt ore into a bun", MainSection);
             log.Add("bronze", "Smelt copper and tin into bronze", MainSection);
             log.Add("flat-rock", "Chisel a stone boulder into a flat rock", MainSection);
+            log.Add("flat-rock-ingot", "Craft Bronze Ingot on Flat Rock", MainSection);
+            log.Add("flat-rock-pick", "Craft Bronze Pick on Flat Rock", MainSection);
             log.Add("sell", "Sell an item to the merchant", SideSection);
             log.Add("coins", "Have 10k coins", SideSection);
             log.Add("parcel", "Buy another parcel of land", SideSection);
@@ -62,6 +65,7 @@ namespace Clube.Game
             log.Add("smelt-crushed", "Smelt crushed ore into a bun", SideSection);
             log.Add("find-gold", "Find gold!", SideSection);
             log.Add("collect-all", "Collect them all! Have an ingot of tin, copper, bronze, silver and gold at once", SideSection);
+            log.Add("sleep", "Sleep through the night", SideSection);
             return log;
         }
 
@@ -75,6 +79,7 @@ namespace Clube.Game
             merchant = GetComponent<MerchantPanel>();
             parcels = GetComponent<PlayerParcels>();
             carver = GetComponent<FlatRockCarver>();
+            rest = GetComponent<RestScreen>();
         }
 
         private void OnEnable()
@@ -100,6 +105,10 @@ namespace Clube.Game
             {
                 carver.Made += OnFlatRock;
             }
+            if (rest != null)
+            {
+                rest.Rested += OnRested;
+            }
         }
 
         private void OnDisable()
@@ -124,6 +133,10 @@ namespace Clube.Game
             if (carver != null)
             {
                 carver.Made -= OnFlatRock;
+            }
+            if (rest != null)
+            {
+                rest.Rested -= OnRested;
             }
         }
 
@@ -162,6 +175,11 @@ namespace Clube.Game
                 {
                     carried.Add(stack.Item.Id);
                     carriesOre |= HoldsOre(stack);
+                    // A clay furnace made well enough counts once it's made (GL296), not only when it's placed.
+                    if (stack.Item.Id == "clay-furnace" && stack.Quality > FurnaceQualityGoal)
+                    {
+                        Log.Complete("clay-furnace");
+                    }
                 }
             }
             // Any amount of ore counts, a part of one included (0.56 of cassiterite gathered by hand).
@@ -232,6 +250,14 @@ namespace Clube.Game
         private void OnRecipeFinished(Recipe recipe)
         {
             string made = recipe.Output.Item != null ? recipe.Output.Item.Id : null;
+            if (recipe.Station == StationKind.FlatRock && made == "bronze-ingot")
+            {
+                Log.Complete("flat-rock-ingot");
+            }
+            if (recipe.Station == StationKind.FlatRock && made == "bronze-pick")
+            {
+                Log.Complete("flat-rock-pick");
+            }
             if (made == null || !made.EndsWith("-bun"))
             {
                 return;
@@ -247,6 +273,17 @@ namespace Clube.Game
                 {
                     Log.Complete("smelt-crushed");
                 }
+            }
+        }
+
+        // A rest of six hours or more that ends in the morning (GL297).
+        private void OnRested(int hours)
+        {
+            var sky = FindAnyObjectByType<DayNightCycle>();
+            float hour = sky != null ? sky.ClockHour : 7f;
+            if (hours >= 6 && hour >= 4f && hour <= 11f)
+            {
+                Log.Complete("sleep");
             }
         }
 

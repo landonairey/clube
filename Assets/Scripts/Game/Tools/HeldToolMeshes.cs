@@ -35,8 +35,9 @@ namespace Clube.Game
         private static readonly Color Copper = new Color(0.8f, 0.43f, 0.25f);
         private static readonly Color Patina = new Color(0.33f, 0.62f, 0.5f);
         private static readonly Color Charcoal = new Color(0.12f, 0.11f, 0.1f);
-        private static readonly Color Flame = new Color(1f, 0.62f, 0.18f);
-        private static readonly Color FlameCore = new Color(1f, 0.92f, 0.55f);
+        // Alpha 0: Clube/Held Item draws it glowing, unlit (GL294).
+        private static readonly Color Flame = new Color(1f, 0.62f, 0.18f, 0f);
+        private static readonly Color FlameCore = new Color(1f, 0.92f, 0.55f, 0f);
 
         // A tool made of stone (a stone pick, hatchet or hammer), as against bronze or iron.
         private static bool IsStone(ToolDefinition tool)

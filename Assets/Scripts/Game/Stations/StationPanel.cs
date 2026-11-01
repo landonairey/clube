@@ -185,6 +185,7 @@ namespace Clube.Game
             {
                 station.Input.MoveTo(input, items, keepApart: true);
             }
+            InventoryGridGui.PullHalf(station.Input, items, true);
             float workX = x + station.Input.SlotCount * (slot + gap) + 12f;
             DrawWork(new Rect(workX, y, WorkWidth, slot), station);
             var outputAt = new Vector2(workX + WorkWidth + 12f, y);
@@ -193,6 +194,7 @@ namespace Clube.Game
             {
                 station.Output.MoveTo(output, items, keepApart: true);
             }
+            InventoryGridGui.PullHalf(station.Output, items, true);
             // What it's about to make, greyed out in the empty output slot (GL58).
             Recipe upcoming = station.Upcoming;
             if (upcoming != null && station.Output[0].IsEmpty)
@@ -216,6 +218,7 @@ namespace Clube.Game
                 {
                     station.Fuel.MoveTo(fuel, items, keepApart: true);
                 }
+                InventoryGridGui.PullHalf(station.Fuel, items, true);
                 DrawBurn(new Rect(x + 44f + slot + 12f, y, WorkWidth, slot), station);
             }
             y += slot + 30f;
@@ -229,7 +232,7 @@ namespace Clube.Game
             InventoryDragResult mouse = drag.Handle(inventory, grid);
             if (mouse.Kind == InventoryDragKind.Clicked)
             {
-                station.Load(items, mouse.Slot, mouse.Count);
+                LoadClicked(station, items, mouse.Slot, mouse.Count);
             }
             else if (mouse.Kind == InventoryDragKind.DroppedOutside && !InventoryGridGui.Trash(items, mouse, trashSlot))
             {
@@ -245,6 +248,26 @@ namespace Clube.Game
             {
                 InventoryGridGui.DrawTooltip();
             }
+        }
+
+        // A click on one of the player's stacks (GL299): fuel (wood, sticks) goes to the fire first, and only what the
+        // fuel slot can't take is loaded as an input; dragging it onto an input slot loads it there instead.
+        private static void LoadClicked(CraftingStation station, Inventory items, int slot, int count)
+        {
+            ItemStack stack = items[slot];
+            if (stack.IsEmpty)
+            {
+                return;
+            }
+            if (station.BurnsFuel && stack.Item.IsFuel)
+            {
+                count -= items.MoveTo(slot, station.Fuel, count);
+                if (count <= 0 || items[slot].IsEmpty)
+                {
+                    return;
+                }
+            }
+            station.Load(items, slot, count);
         }
 
         // A stack dragged from the player's slots and let go over the station (GL191, GL195): onto the input slots,

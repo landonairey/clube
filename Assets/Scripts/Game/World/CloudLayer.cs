@@ -5,10 +5,10 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// Low-poly clouds (GL277, replacing GL252's ray-marched ones), faceted like the leaf clusters on the trees, of four kinds
+    /// Low-poly clouds (GL277, replacing GL252's ray-marched ones), faceted like the leaf clusters on the trees, of three kinds
     /// (GL283): fluffy cumulus of every size at varied heights, on a grid that drifts with the wind round the camera, out to
-    /// <see cref="reach"/>; now and then a towering cumulonimbus with a spreading anvil where the cover is thick; long flat
-    /// stratus sheets low down on overcast days; and thin cirrus wisps high up, lined up with the wind, on most days. How
+    /// <see cref="reach"/>; long flat, see-through
+    /// stratus sheets low down on overcast days; and thin see-through cirrus streaks high up, lined up with the wind, on most days. How
     /// many there are and how big follows the day's cover (<see cref="SkyWeather.Cover"/>) and slowly changing patterns, so
     /// they grow and shrink rather than pop. Drawn instanced by <c>Clube/Low Poly Clouds</c>, lit by the light
     /// <see cref="DayNightCycle"/> gives the clouds (the sun, in the sunrise's or sunset's colour, a while after it leaves
@@ -18,12 +18,10 @@ namespace Clube.Game
     public class CloudLayer : MonoBehaviour
     {
         private const int Puffs = 6;
-        private const int Towers = 3;
         private const int Sheets = 3;
         private const int Wisps = 4;
-        private const int Variants = Puffs + Towers + Sheets + Wisps;
-        private const int TowerStart = Puffs;
-        private const int SheetStart = TowerStart + Towers;
+        private const int Variants = Puffs + Sheets + Wisps;
+        private const int SheetStart = Puffs;
         private const int WispStart = SheetStart + Sheets;
         private const int Salt = 0x434c44;
 
@@ -65,10 +63,6 @@ namespace Clube.Game
         private float heightSpread = 700f;
 
         [Header("Other kinds")]
-        [Tooltip("Share of the thickest cumulus spots that tower up as cumulonimbus.")]
-        [SerializeField, Range(0f, 1f)]
-        private float towerChance = 0.12f;
-
         [Tooltip("Height of the stratus sheets, in metres; they come on overcast days.")]
         [SerializeField, Min(0f)]
         private float sheetHeight = 550f;
@@ -101,6 +95,7 @@ namespace Clube.Game
         private double driftZ;
         private int drawnFrame = -1;
         private double lastDays = -1d;
+        private Material translucent;
 
         /// <summary>How much of the sky is covered now, 0-1: today's cover (GL263), easing into tomorrow's.</summary>
         public float Coverage => Mathf.Clamp01(SkyWeather.Cover(Seed, GameDays) * coverageScale);
@@ -138,8 +133,7 @@ namespace Clube.Game
             for (int i = 0; i < Variants; i++)
             {
                 batches[i] = new InstanceBatches();
-                meshes[i] = i < TowerStart ? BuildPuff(i)
-                    : i < SheetStart ? BuildTower(i - TowerStart)
+                meshes[i] = i < SheetStart ? BuildPuff(i)
                     : i < WispStart ? BuildSheet(i - SheetStart)
                     : BuildWisp(i - WispStart);
             }
@@ -217,14 +211,18 @@ namespace Clube.Game
                 receiveShadows = false,
                 worldBounds = new Bounds(eye, Vector3.one * (reach * 2.2f + wispHeight * 4f)),
             };
+            // Puffs solid; sheets and streaks see-through (GL301).
+            translucent ??= Translucent(material);
+            var seeThrough = parameters;
+            seeThrough.material = translucent;
             for (int i = 0; i < Variants; i++)
             {
-                batches[i].Draw(parameters, meshes[i]);
+                batches[i].Draw(i < SheetStart ? parameters : seeThrough, meshes[i]);
             }
         }
 
         // Cumulus: at most one a cell, most of them small and some very large, at heights spread over a few hundred metres;
-        // where the cover is thickest a few tower up as cumulonimbus.
+        // (GL301: no more cumulonimbus towers.)
         private void AddCumulus(Vector3 eye, float cover, float time, int seed)
         {
             ForCells(eye, cellSize, 0, (cx, cz, x, z) =>
@@ -241,17 +239,6 @@ namespace Clube.Game
                 }
                 float yaw = VoxelHash.Uniform(seed, cx, 5, cz, Salt) * 360f;
                 float pick = VoxelHash.Uniform(seed, cx, 6, cz, Salt);
-                if (here > 0.75f && VoxelHash.Uniform(seed, cx, 7, cz, Salt) < towerChance)
-                {
-                    // A cumulonimbus: as wide as the biggest cumulus and more than twice as tall, on the lowest bases.
-                    float wide = Mathf.Lerp(size.y * 0.8f, size.y * 1.4f, VoxelHash.Uniform(seed, cx, 3, cz, Salt))
-                                 * (0.5f + 0.5f * grown) * Mathf.InverseLerp(0.75f, 0.95f, here);
-                    if (wide > 1f)
-                    {
-                        Place(TowerStart + (int)(pick * Towers) % Towers, new Vector3(x, baseHeight - 150f, z), yaw, new Vector3(wide, wide, wide));
-                        return;
-                    }
-                }
                 // Width: most small, a few large (the square of a roll), all growing in with the cover.
                 float share = VoxelHash.Uniform(seed, cx, 3, cz, Salt);
                 float width = Mathf.Lerp(size.x, size.y, share * share) * (0.4f + 0.6f * grown);
@@ -302,8 +289,20 @@ namespace Clube.Game
                 float height = wispHeight + VoxelHash.Uniform(seed, cx, 4, cz, Salt + 2) * 1200f;
                 float yaw = along + (VoxelHash.Uniform(seed, cx, 5, cz, Salt + 2) - 0.5f) * 40f;
                 int variant = WispStart + (int)(VoxelHash.Uniform(seed, cx, 6, cz, Salt + 2) * Wisps) % Wisps;
-                Place(variant, new Vector3(x, height, z), yaw, new Vector3(length * 0.5f, length * 0.08f, length));
+                Place(variant, new Vector3(x, height, z), yaw, new Vector3(length * 0.35f, length * 0.05f, length * 1.6f));
             });
+        }
+
+        // A copy of the cloud material that blends over the sky without writing depth (GL301).
+        private static Material Translucent(Material solid)
+        {
+            var copy = new Material(solid) { name = solid.name + " (see-through)" };
+            copy.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            copy.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            copy.SetFloat("_ZWrite", 0f);
+            copy.SetFloat("_Alpha", 0.62f);
+            copy.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent - 300;
+            return copy;
         }
 
         // Every cell of a drifting grid within reach: the grid moves with the wind, and the camera through it.
@@ -357,71 +356,44 @@ namespace Clube.Game
             return parts.Build($"Cloud {variant + 1}");
         }
 
-        // A cumulonimbus a unit wide at its foot: a column of puffs rising about two units, narrowing, under a wide, flat
-        // anvil that spreads out downwind (+Z) at the top.
-        private static Mesh BuildTower(int variant)
-        {
-            var random = new System.Random(2003 + variant * 37);
-            var parts = new MeshParts();
-            const float top = 2.1f;
-            int tiers = 6;
-            for (int k = 0; k < tiers; k++)
-            {
-                float t = k / (float)(tiers - 1);
-                float spread = Mathf.Lerp(0.42f, 0.24f, t);
-                int around = k == 0 ? 6 : 4;
-                for (int i = 0; i < around; i++)
-                {
-                    float angle = (i + (float)random.NextDouble() * 0.5f) * Mathf.PI * 2f / around;
-                    float radius = Mathf.Lerp(0.32f, 0.22f, t) * (0.85f + 0.3f * (float)random.NextDouble());
-                    var centre = new Vector3(Mathf.Cos(angle) * spread, Mathf.Lerp(0.2f, top - 0.35f, t), Mathf.Sin(angle) * spread);
-                    Ball(centre, radius, Vector3.one, true, top, random, parts);
-                }
-            }
-            // The anvil: flattened balls fanned out at the top, further downwind.
-            for (int i = 0; i < 9; i++)
-            {
-                float angle = (i / 9f - 0.5f) * Mathf.PI * 1.3f;
-                float far = Mathf.Lerp(0.3f, 0.95f, (float)random.NextDouble());
-                var centre = new Vector3(Mathf.Sin(angle) * far * 0.8f, top - 0.1f + (float)random.NextDouble() * 0.12f, Mathf.Cos(angle) * far);
-                Ball(centre, 0.32f, new Vector3(1.2f, 0.35f, 1.4f), false, top, random, parts);
-            }
-            return parts.Build($"Cumulonimbus {variant + 1}");
-        }
-
-        // A stratus sheet about a unit long (along Z), a unit wide and very flat: low, wide slabs side by side.
+        // A stratus sheet about a unit long (along Z), a unit wide and flat (GL301): many low faceted lumps of different
+        // sizes side by side, a few riding higher, so its top reads as low-poly billows. Drawn see-through.
         private static Mesh BuildSheet(int variant)
         {
             var random = new System.Random(3001 + variant * 41);
             var parts = new MeshParts();
-            for (int i = 0; i < 9; i++)
+            for (int i = 0; i < 18; i++)
             {
-                var centre = new Vector3(((float)random.NextDouble() - 0.5f) * 0.6f, 0.25f, Mathf.Lerp(-0.4f, 0.4f, i / 8f));
-                Ball(centre, 0.25f, new Vector3(1.5f, 0.45f, 1.1f), true, 0.5f, random, parts);
+                float t = i / 17f;
+                float radius = 0.16f + 0.12f * (float)random.NextDouble();
+                var centre = new Vector3(((float)random.NextDouble() - 0.5f) * 0.7f, 0.18f + (float)random.NextDouble() * 0.12f,
+                    Mathf.Lerp(-0.42f, 0.42f, t) + ((float)random.NextDouble() - 0.5f) * 0.08f);
+                Ball(centre, radius, new Vector3(1.4f, 0.5f, 1.2f), true, 0.45f, random, parts);
             }
             return parts.Build($"Stratus {variant + 1}");
         }
 
-        // A cirrus wisp about a unit long (along Z): a few thin, sharp strands of stretched shards, curling a little and
-        // thinning towards their ends. Undivided, so its facets are few and angular; lit evenly (no darker underside).
+        // A cirrus streak about a unit long (along Z, GL301): a few long, thin trails side by side, each a chain of
+        // stretched shards thinning to nothing at both ends and bending a little, like mares' tails. Undivided, so its
+        // facets are few and angular; lit evenly (no darker underside); drawn see-through.
         private static Mesh BuildWisp(int variant)
         {
             var random = new System.Random(4001 + variant * 43);
             var parts = new MeshParts();
-            int strands = 2 + random.Next(3);
+            int strands = 3 + random.Next(3);
             for (int s = 0; s < strands; s++)
             {
-                float offset = ((float)random.NextDouble() - 0.5f) * 0.5f;
-                float curl = ((float)random.NextDouble() - 0.5f) * 0.3f;
-                float start = -0.5f + (float)random.NextDouble() * 0.2f, end = 0.5f - (float)random.NextDouble() * 0.2f;
-                int shards = 6 + random.Next(4);
+                float offset = ((float)random.NextDouble() - 0.5f) * 0.3f;
+                float bend = ((float)random.NextDouble() - 0.5f) * 0.25f;
+                float start = -0.5f + (float)random.NextDouble() * 0.25f, end = 0.5f - (float)random.NextDouble() * 0.25f;
+                int shards = 12 + random.Next(6);
                 for (int i = 0; i < shards; i++)
                 {
                     float t = i / (float)(shards - 1);
                     float z = Mathf.Lerp(start, end, t);
-                    float x = offset + curl * Mathf.Sin(t * Mathf.PI);
-                    float thick = Mathf.Sin(Mathf.Lerp(0.15f, 0.85f, t) * Mathf.PI) * (0.7f + 0.5f * (float)random.NextDouble());
-                    Ball(new Vector3(x, 0.5f, z), 0.06f * thick + 0.02f, new Vector3(2.4f, 0.35f, 3.2f), false, 0f, random, parts, false);
+                    float x = offset + bend * t * t;
+                    float thick = Mathf.Sin(t * Mathf.PI) * (0.6f + 0.5f * (float)random.NextDouble());
+                    Ball(new Vector3(x, 0.5f, z), 0.025f * thick + 0.008f, new Vector3(1.2f, 0.3f, 6f), false, 0f, random, parts, false);
                 }
             }
             return parts.Build($"Cirrus {variant + 1}");
