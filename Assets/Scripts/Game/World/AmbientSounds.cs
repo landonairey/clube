@@ -29,7 +29,7 @@ namespace Clube.Game
 
         [Tooltip("The leaves' volume among thick trees.")]
         [SerializeField, Range(0f, 1f)]
-        private float leavesVolume = 0.3f;
+        private float leavesVolume = 0.18f;
 
         [Tooltip("Seconds between bird calls by day, at random within this range; a third of it at dawn.")]
         [SerializeField]
@@ -90,17 +90,19 @@ namespace Clube.Game
                 return;
             }
             Vector3 at = listener.transform.position;
+            // The player's ambient volume (GL276).
+            float gain = SoundSettings.Gain(AudioChannel.Ambient);
             float daylight = dayNight != null ? dayNight.Daylight : 1f;
 
             // The breeze: louder up high (from 60 m to 160 m) and under heavy cloud.
             float height = Mathf.InverseLerp(60f, 160f, at.y);
             float cloud = clouds != null && clouds.isActiveAndEnabled ? Mathf.InverseLerp(0.3f, 0.8f, clouds.Coverage) : 0f;
-            Play(wind, Mathf.Lerp(windVolume.x, windVolume.y, Mathf.Max(height, cloud * 0.7f)));
+            Play(wind, gain * Mathf.Lerp(windVolume.x, windVolume.y, Mathf.Max(height, cloud * 0.7f)));
 
             // Leaves: as thick as the trees round the listener, eased so walking into a wood swells it gently.
             float trees = TreesAround(at);
             treeLevel = Mathf.MoveTowards(treeLevel, trees, Time.deltaTime * 0.5f);
-            Play(leaves, leavesVolume * treeLevel);
+            Play(leaves, gain * leavesVolume * treeLevel);
 
             // Birds: by day, more at dawn, none in the dark; a call from somewhere round about, up in the trees.
             if (Time.time >= nextBird)
@@ -113,7 +115,7 @@ namespace Clube.Game
                     float angle = Random.Range(0f, Mathf.PI * 2f);
                     birds.transform.position = at + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * Random.Range(10f, 30f) + Vector3.up * Random.Range(3f, 10f);
                     birds.pitch = Random.Range(0.9f, 1.15f);
-                    birds.PlayOneShot(birdCalls[Random.Range(0, birdCalls.Length)], birdVolume * Mathf.InverseLerp(0.35f, 0.8f, daylight));
+                    birds.PlayOneShot(birdCalls[Random.Range(0, birdCalls.Length)], gain * birdVolume * Mathf.InverseLerp(0.35f, 0.8f, daylight));
                 }
             }
         }

@@ -29,7 +29,7 @@ namespace Clube.Game
                 }
             }
 
-            GUILayout.Label("Graphics", title);
+            GUILayout.Label("Video", title);
             GUILayout.Space(8f);
 
             GUILayout.Label($"Field of view  {GraphicsSettings.FieldOfView:0}°", label);

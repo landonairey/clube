@@ -5,7 +5,8 @@ using UnityEngine.InputSystem;
 namespace Clube.Game
 {
     /// <summary>
-    /// Esc in the game (GL204): a small popup over a stopped game with Back, Graphics (a smaller popup of its own,
+    /// Esc in the game (GL204): a small popup over a stopped game with Back, Video and Audio (GL275, GL276; each a smaller
+    /// popup of its own, <see cref="AudioSettingsPage"/> and
     /// <see cref="GraphicsSettingsPage"/>, GL209), Save and Exit, and Exit Without Saving. Esc first closes whatever player screen is open (inventory, journal, a station, the merchant);
     /// with none open it opens the popup, and Esc again goes back. Save and Exit first asks for the save's name
     /// (GL207), filled in with the default (world, mode, time); saving goes through <see cref="GameSessionHost"/>.
@@ -39,6 +40,7 @@ namespace Clube.Game
 
         // The graphics popup while it's open (GL209); null otherwise.
         private GraphicsSettingsPage graphics;
+        private AudioSettingsPage audio;
         private CursorLockMode cursorBefore;
         private bool cursorVisibleBefore;
         private GUIStyle titleStyle;
@@ -83,9 +85,10 @@ namespace Clube.Game
                 saveName = null;
                 problem = null;
             }
-            else if (IsOpen && graphics != null)
+            else if (IsOpen && (graphics != null || audio != null))
             {
                 graphics = null;
+                audio = null;
             }
             else if (IsOpen)
             {
@@ -138,6 +141,7 @@ namespace Clube.Game
             problem = null;
             saveName = null;
             graphics = null;
+            audio = null;
             // The game stops under the popup: the clock, stations and the player.
             Time.timeScale = open ? 0f : 1f;
             if (open)
@@ -173,7 +177,7 @@ namespace Clube.Game
 
             // Lighter under the graphics popup, so a change to the field of view shows behind it.
             Color previous = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, graphics != null ? 0.15f : 0.45f);
+            GUI.color = new Color(0f, 0f, 0f, graphics != null || audio != null ? 0.15f : 0.45f);
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = previous;
 
@@ -187,6 +191,15 @@ namespace Clube.Game
                 if (graphics.Draw(titleStyle, labelStyle, hintStyle, buttonStyle))
                 {
                     graphics = null;
+                }
+                GUILayout.EndArea();
+            }
+            else if (audio != null)
+            {
+                BeginPopup(AudioSettingsPage.Width, AudioSettingsPage.Height);
+                if (audio.Draw(titleStyle, labelStyle, hintStyle, buttonStyle))
+                {
+                    audio = null;
                 }
                 GUILayout.EndArea();
             }
@@ -207,10 +220,18 @@ namespace Clube.Game
                 SetOpen(false);
             }
             GUILayout.Space(10f);
-            if (GUILayout.Button("Graphics", buttonStyle, GUILayout.Height(ButtonHeight)))
+            // Video and Audio side by side (GL275, GL276).
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Video", buttonStyle, GUILayout.Height(ButtonHeight)))
             {
                 OpenGraphics();
             }
+            GUILayout.Space(10f);
+            if (GUILayout.Button("Audio", buttonStyle, GUILayout.Height(ButtonHeight)))
+            {
+                audio = new AudioSettingsPage();
+            }
+            GUILayout.EndHorizontal();
             GUILayout.Space(10f);
             if (GUILayout.Button("Save and Exit", buttonStyle, GUILayout.Height(ButtonHeight)))
             {

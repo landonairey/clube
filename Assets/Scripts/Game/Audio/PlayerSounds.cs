@@ -108,12 +108,14 @@ namespace Clube.Game
             set => effectsOn = value;
         }
 
-        /// <summary>Plays a sound on a source, unless sound effects are off.</summary>
-        public void Play(SoundSet sound, AudioSource source, float volumeScale = 1f)
+        /// <summary>
+        /// Plays a sound on a source, unless sound effects are off, at the player's volume for its channel (GL276).
+        /// </summary>
+        public void Play(SoundSet sound, AudioSource source, float volumeScale = 1f, AudioChannel channel = AudioChannel.Effects)
         {
             if (effectsOn && sound != null)
             {
-                sound.Play(source, volumeScale);
+                sound.Play(source, volumeScale * SoundSettings.Gain(channel));
             }
         }
 

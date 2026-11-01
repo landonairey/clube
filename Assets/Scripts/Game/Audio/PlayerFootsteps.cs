@@ -81,7 +81,8 @@ namespace Clube.Game
         {
             if (sounds.EffectsOn)
             {
-                sounds.Play(sounds.StepsOn(GroundMaterial()), source);
+                // Footsteps sit under the rest of the mix (GL275), at the player's footstep volume (GL276).
+                sounds.Play(sounds.StepsOn(GroundMaterial()), source, 0.6f, AudioChannel.Footsteps);
             }
         }
 
