@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91874965c05e15a46b40d681661c7d44, type: 3}
+  m_Name: Lit torch
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.TorchDefinition
+  id: lit-torch
+  displayName: Lit torch
+  icon: {fileID: 2800000, guid: 60346bb3b63fbe54db6f6a5e9cdbf831, type: 3}
+  maxStack: 1
+  unitVolume: 1
+  burnSeconds: 0
+  purityAs: {fileID: 0}
+  hidesContents: 0
+  prefab: {fileID: 7166874474169212171, guid: 032319acc9bb9eb44a1eb17a0eeea3cc, type: 3}
+  lifeSeconds: 1200
+  lit: {fileID: 0}
+  unlit: {fileID: 11400000, guid: 781da9aaba956e543b3c7da3e7b05bee, type: 2}

@@ -144,6 +144,12 @@ namespace Clube.Game
                     int target = InventoryGridGui.PlayerSlotNear(gridTopLeft, inventory, current.mousePosition, InventoryGridGui.RowGap * 0.5f);
                     if (target >= 0 && target != from)
                     {
+                        // A repair item dropped on the tool it mends mends it, up to the items carried (GL286).
+                        if (ToolRepair.CanRepair(items[target], items[from].Item))
+                        {
+                            ToolRepair.Repair(items, target, items, from, Mathf.Max(1, count));
+                            break;
+                        }
                         items.Move(from, target, Mathf.Max(1, count));
                         break;
                     }

@@ -96,7 +96,7 @@ namespace Clube.Game
         [SerializeField, Range(0.15f, 0.8f)]
         private float swingSeconds = 0.42f;
 
-        private readonly Dictionary<ToolDefinition, Mesh> meshes = new Dictionary<ToolDefinition, Mesh>();
+        private readonly Dictionary<ItemDefinition, Mesh> meshes = new Dictionary<ItemDefinition, Mesh>();
         private PlayerToolUser toolUser;
         private PlayerController player;
         private CharacterController body;
@@ -104,7 +104,8 @@ namespace Clube.Game
         private GameObject held;
         private MeshFilter filter;
         private Material instance;
-        private ToolDefinition shown;
+        private ItemDefinition shown;
+        private Hotbar hotbar;
         private bool shownSet;
         private Key[] swing;
         private float swingTime = 1f;
@@ -125,6 +126,7 @@ namespace Clube.Game
             player = GetComponent<PlayerController>();
             body = GetComponent<CharacterController>();
             view = GetComponentInChildren<Camera>(true);
+            hotbar = GetComponent<Hotbar>();
         }
 
         private void OnEnable()
@@ -218,11 +220,13 @@ namespace Clube.Game
             {
                 return;
             }
-            if (!shownSet || tool != shown)
+            // A torch selected is held in place of the hand (GL287).
+            ItemDefinition item = hotbar != null && hotbar.SelectedStack.Item is TorchDefinition torch ? torch : tool;
+            if (!shownSet || item != shown)
             {
-                shown = tool;
+                shown = item;
                 shownSet = true;
-                filter.sharedMesh = MeshFor(tool);
+                filter.sharedMesh = MeshFor(item);
             }
 
             // The swing, eased between its keyframes.
@@ -289,12 +293,12 @@ namespace Clube.Game
             renderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
         }
 
-        private Mesh MeshFor(ToolDefinition tool)
+        private Mesh MeshFor(ItemDefinition item)
         {
-            if (!meshes.TryGetValue(tool, out Mesh mesh))
+            if (!meshes.TryGetValue(item, out Mesh mesh))
             {
-                mesh = HeldToolMeshes.Build(tool);
-                meshes.Add(tool, mesh);
+                mesh = item is TorchDefinition torch ? HeldToolMeshes.BuildTorch(torch.IsLit) : HeldToolMeshes.Build(item as ToolDefinition);
+                meshes.Add(item, mesh);
             }
             return mesh;
         }

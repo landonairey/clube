@@ -674,6 +674,132 @@ namespace Clube.Debug.Editor
             }
         }
 
+        /// <summary>Writes the twenty-eighth pass's icons only (GL286, GL287, GL288, GL290), leaving the rest as they are.</summary>
+        [MenuItem("Clube/Items/Generate pass 28 icons")]
+        public static void GeneratePass28()
+        {
+            Directory.CreateDirectory(Folder);
+            Write("copper pick", "Copper pick", Weathered(PaintPickaxe(Copper)));
+            Write("copper hatchet", "Copper hatchet", Weathered(PaintHatchet(Copper, CopperLight)));
+            Write("charcoal", "Charcoal", PaintCharcoal());
+            Write("torch", "Torch", PaintTorch(false));
+            Write("lit torch", "Lit torch", PaintTorch(true));
+            Write("sleeping roll", "Sleeping roll", PaintSleepingRoll());
+            AssetDatabase.SaveAssets();
+        }
+
+        // Copper weathers green (GL286): the metal's pixels near its edges take a patina.
+        private static Texture2D Weathered(Texture2D texture)
+        {
+            var patina = new Color(0.33f, 0.64f, 0.5f);
+            Color[] pixels = texture.GetPixels();
+            var result = (Color[])pixels.Clone();
+            for (int y = 0; y < Size; y++)
+            {
+                for (int x = 0; x < Size; x++)
+                {
+                    Color c = pixels[y * Size + x];
+                    bool metal = c.a > 0.5f && Mathf.Min(Distance(c, Copper), Mathf.Min(Distance(c, CopperLight), Distance(c, CopperDark))) < 0.14f;
+                    if (!metal)
+                    {
+                        continue;
+                    }
+                    // Next to the outline (transparent or ink), with a hashed speckle further in.
+                    bool edge = false;
+                    for (int dy = -1; dy <= 1 && !edge; dy++)
+                    {
+                        for (int dx = -1; dx <= 1 && !edge; dx++)
+                        {
+                            int nx = x + dx, ny = y + dy;
+                            Color n = nx < 0 || ny < 0 || nx >= Size || ny >= Size ? Color.clear : pixels[ny * Size + nx];
+                            edge = n.a < 0.5f || n.maxColorComponent < 0.2f;
+                        }
+                    }
+                    bool speck = ((x * 73 + y * 151) % 17) == 0;
+                    // Patchy along the edges, not a solid rim.
+                    bool patch = ((x / 3 + y / 3) % 3) != 0;
+                    if ((edge && patch) || speck)
+                    {
+                        result[y * Size + x] = Color.Lerp(c, patina, edge ? 0.75f : 0.45f) * new Color(1f, 1f, 1f, 0f) + new Color(0f, 0f, 0f, c.a);
+                    }
+                }
+            }
+            texture.SetPixels(result);
+            texture.Apply();
+            return texture;
+        }
+
+        private static float Distance(Color a, Color b)
+        {
+            return Mathf.Abs(a.r - b.r) + Mathf.Abs(a.g - b.g) + Mathf.Abs(a.b - b.b);
+        }
+
+        // Lumps of charcoal: dark, faceted, with a dull sheen on their tops.
+        private static Texture2D PaintCharcoal()
+        {
+            Texture2D texture = Blank();
+            var dark = new Color(0.1f, 0.1f, 0.11f);
+            var mid = new Color(0.2f, 0.2f, 0.22f);
+            var sheen = new Color(0.42f, 0.42f, 0.46f);
+            Vector2[] lumps = { new Vector2(22f, 22f), new Vector2(40f, 20f), new Vector2(31f, 36f), new Vector2(46f, 34f) };
+            float[] sizes = { 11f, 9f, 12f, 8f };
+            for (int i = 0; i < lumps.Length; i++)
+            {
+                Vector2 c = lumps[i];
+                float s = sizes[i];
+                FillQuad(texture, c + new Vector2(-s, -s * 0.6f), c + new Vector2(s * 0.8f, -s * 0.8f), c + new Vector2(s, s * 0.5f), c + new Vector2(-s * 0.7f, s * 0.8f), mid);
+                FillQuad(texture, c + new Vector2(-s * 0.7f, s * 0.8f), c + new Vector2(s, s * 0.5f), c + new Vector2(s * 0.4f, s * 0.95f), c + new Vector2(-s * 0.3f, s), sheen);
+                FillQuad(texture, c + new Vector2(-s, -s * 0.6f), c + new Vector2(s * 0.8f, -s * 0.8f), c + new Vector2(s * 0.5f, -s * 0.3f), c + new Vector2(-s * 0.6f, -s * 0.2f), dark);
+            }
+            Outline(texture, new Color(0.04f, 0.04f, 0.05f));
+            texture.Apply();
+            return texture;
+        }
+
+        // A torch leaning to the top right: a stick, a charred head bound with cord, and a flame when lit.
+        private static Texture2D PaintTorch(bool lit)
+        {
+            Texture2D texture = Blank();
+            Line(texture, new Vector2(14f, 8f), new Vector2(36f, 36f), 3.6f, Handle);
+            Line(texture, new Vector2(14f, 10f), new Vector2(34f, 36f), 1.1f, HandleLight);
+            Line(texture, new Vector2(35f, 35f), new Vector2(43f, 45f), 7.5f, new Color(0.12f, 0.11f, 0.1f));
+            Line(texture, new Vector2(33f, 37f), new Vector2(37f, 33f), 2f, new Color(0.62f, 0.52f, 0.34f));
+            if (lit)
+            {
+                var flame = new Color(1f, 0.55f, 0.15f);
+                var core = new Color(1f, 0.92f, 0.5f);
+                FillQuad(texture, new Vector2(38f, 44f), new Vector2(48f, 42f), new Vector2(54f, 60f), new Vector2(42f, 54f), flame);
+                FillQuad(texture, new Vector2(41f, 45f), new Vector2(46f, 44f), new Vector2(50f, 55f), new Vector2(44f, 52f), core);
+            }
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
+        // A rolled sleeping roll seen from the side and a little above: the roll's body, its end spiralled, two straps.
+        private static Texture2D PaintSleepingRoll()
+        {
+            Texture2D texture = Blank();
+            var cloth = new Color(0.36f, 0.48f, 0.42f);
+            var clothLight = new Color(0.5f, 0.62f, 0.54f);
+            var strap = new Color(0.4f, 0.26f, 0.14f);
+            FillQuad(texture, new Vector2(8f, 18f), new Vector2(48f, 18f), new Vector2(48f, 44f), new Vector2(8f, 44f), cloth);
+            FillQuad(texture, new Vector2(8f, 36f), new Vector2(48f, 36f), new Vector2(48f, 44f), new Vector2(8f, 44f), clothLight);
+            for (int ring = 0; ring < 3; ring++)
+            {
+                float r = 13f - ring * 4f;
+                Color c = ring % 2 == 0 ? clothLight : cloth;
+                FillQuad(texture, new Vector2(48f - r * 0.5f, 31f - r), new Vector2(48f + r * 0.5f, 31f - r), new Vector2(48f + r * 0.5f, 31f + r), new Vector2(48f - r * 0.5f, 31f + r), c);
+            }
+            foreach (float x in new[] { 18f, 36f })
+            {
+                FillQuad(texture, new Vector2(x - 2.5f, 17f), new Vector2(x + 2.5f, 17f), new Vector2(x + 2.5f, 45f), new Vector2(x - 2.5f, 45f), strap);
+            }
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
         /// <summary>Writes only the wooden chest's icon (GL249), leaving the rest as they are.</summary>
         [MenuItem("Clube/Items/Generate chest icon")]
         public static void GenerateChestIcon()
@@ -683,36 +809,42 @@ namespace Clube.Debug.Editor
             AssetDatabase.SaveAssets();
         }
 
-        // A wooden chest seen from the front and a little above (GL249): the plank front, the lid's top leaning back,
-        // the right end in shadow, two iron bands over it and a latch.
+        // A wooden crate seen from the front and a little above (GL282): light slats, a dark frame round each face and
+        // a brace across the front and the end.
         private static Texture2D PaintChest()
         {
             Texture2D texture = Blank();
-            var front = new Color(0.55f, 0.36f, 0.2f);
-            var top = new Color(0.68f, 0.47f, 0.27f);
-            var end = new Color(0.4f, 0.25f, 0.13f);
-            var iron = new Color(0.36f, 0.36f, 0.38f);
-            var ironLight = new Color(0.6f, 0.6f, 0.63f);
+            var front = new Color(0.7f, 0.53f, 0.33f);
+            var top = new Color(0.8f, 0.63f, 0.41f);
+            var end = new Color(0.52f, 0.38f, 0.22f);
+            var frame = new Color(0.42f, 0.27f, 0.15f);
+            var frameEnd = new Color(0.3f, 0.19f, 0.1f);
             var dark = new Color(0.2f, 0.12f, 0.06f);
-            float l = Size * 0.1f, r = Size * 0.76f, b = Size * 0.16f, t = Size * 0.6f, back = Size * 0.14f;
+            float l = Size * 0.1f, r = Size * 0.7f, b = Size * 0.12f, t = Size * 0.66f, back = Size * 0.18f, lift = back * 0.8f;
+            var endTop = new Vector2(r + back, t + lift);
             FillQuad(texture, new Vector2(l, b), new Vector2(r, b), new Vector2(r, t), new Vector2(l, t), front);
-            FillQuad(texture, new Vector2(l, t), new Vector2(r, t), new Vector2(r + back, t + back * 0.9f), new Vector2(l + back, t + back * 0.9f), top);
-            FillQuad(texture, new Vector2(r, b), new Vector2(r + back, b + back * 0.9f), new Vector2(r + back, t + back * 0.9f), new Vector2(r, t), end);
-            // Plank seams across the front, and the lid's edge.
-            for (int i = 1; i < 4; i++)
+            FillQuad(texture, new Vector2(l, t), new Vector2(r, t), endTop, new Vector2(l + back, t + lift), top);
+            FillQuad(texture, new Vector2(r, b), new Vector2(r + back, b + lift), endTop, new Vector2(r, t), end);
+            // Slat seams across the front and the end.
+            for (int i = 1; i < 3; i++)
             {
-                float y = b + (t - b) * i / 4f;
-                Line(texture, new Vector2(l, y), new Vector2(r, y), 1f, Color.Lerp(front, dark, 0.5f));
+                float y = b + (t - b) * i / 3f;
+                Line(texture, new Vector2(l, y), new Vector2(r, y), 1f, Color.Lerp(front, dark, 0.45f));
+                Line(texture, new Vector2(r, y), new Vector2(r + back, y + lift), 1f, Color.Lerp(end, dark, 0.45f));
             }
-            Line(texture, new Vector2(l, t - Size * 0.12f), new Vector2(r, t - Size * 0.12f), 2f, dark);
-            foreach (float share in new[] { 0.25f, 0.75f })
-            {
-                float x = Mathf.Lerp(l, r, share);
-                FillQuad(texture, new Vector2(x - 2.5f, b), new Vector2(x + 2.5f, b), new Vector2(x + 2.5f, t), new Vector2(x - 2.5f, t), iron);
-                FillQuad(texture, new Vector2(x - 2.5f, t), new Vector2(x + 2.5f, t), new Vector2(x + 2.5f + back, t + back * 0.9f), new Vector2(x - 2.5f + back, t + back * 0.9f), ironLight);
-            }
-            float mid = (l + r) * 0.5f;
-            FillQuad(texture, new Vector2(mid - 4f, t - Size * 0.2f), new Vector2(mid + 4f, t - Size * 0.2f), new Vector2(mid + 4f, t - Size * 0.07f), new Vector2(mid - 4f, t - Size * 0.07f), ironLight);
+            // The frame: a border round the front, the end and the top, and a brace corner to corner on the front and end.
+            float w = 4f;
+            Line(texture, new Vector2(l, b), new Vector2(r, b), w, frame);
+            Line(texture, new Vector2(l, t), new Vector2(r, t), w, frame);
+            Line(texture, new Vector2(l, b), new Vector2(l, t), w, frame);
+            Line(texture, new Vector2(r, b), new Vector2(r, t), w, frame);
+            Line(texture, new Vector2(l + w, b + w), new Vector2(r - w, t - w), w, frame);
+            Line(texture, new Vector2(r + back, b + lift), endTop, w * 0.8f, frameEnd);
+            Line(texture, new Vector2(r, b), new Vector2(r + back, b + lift), w * 0.8f, frameEnd);
+            Line(texture, new Vector2(r + 2f, t - 3f), new Vector2(r + back - 2f, b + lift + 3f), w * 0.8f, frameEnd);
+            Line(texture, new Vector2(l + back, t + lift), endTop, w * 0.8f, frame);
+            Line(texture, new Vector2(l, t), new Vector2(l + back, t + lift), w * 0.8f, frame);
+            Line(texture, new Vector2(r, t), endTop, w * 0.8f, frame);
             Outline(texture, dark);
             texture.Apply();
             return texture;

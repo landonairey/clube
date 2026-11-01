@@ -96,7 +96,7 @@ namespace Clube.Core
         [SerializeField]
         private bool pickedFromPiles;
 
-        [Tooltip("The tool tier it takes to work it (GL145): 0 bare hands (dirt, grass, clay, leaves), 1 a hand axe (wood, stone, ore), 2 stone tools, 3 bronze (maple).")]
+        [Tooltip("The tool tier it takes to work it (GL145): 0 bare hands (dirt, grass, clay, leaves), 1 a hand axe (wood, stone, ore), 2 stone tools, 3 copper (maple), 4 bronze.")]
         [SerializeField, Range(0, 5)]
         private int toolTier;
 

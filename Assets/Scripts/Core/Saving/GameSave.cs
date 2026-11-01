@@ -44,7 +44,7 @@ namespace Clube.Core
         /// 1: the first. 2: the save's and the world's names (GL206, GL207). 3: the quests done (GL216), at the body's end.
         /// 4: the bushes picked or broken (GL236), after the quests.
         /// </summary>
-        public const int CurrentVersion = 4;
+        public const int CurrentVersion = 5;
 
         public int Version = CurrentVersion;
 
@@ -145,6 +145,9 @@ namespace Clube.Core
         public Quaternion Rotation = Quaternion.identity;
         public float Quality = 1f;
         public List<ContentSave> Contents;
+
+        /// <summary>What it has burned (a torch, GL287); saved at the body's end from version 5.</summary>
+        public int Wear;
 
         /// <summary>A station's slots (a chest's go in Input, GL249); empty lists for an object that has none.</summary>
         public List<StackSave> Input = new List<StackSave>();

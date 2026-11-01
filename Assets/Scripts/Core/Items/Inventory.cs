@@ -255,6 +255,13 @@ namespace Clube.Core
             return broke;
         }
 
+        /// <summary>Puts a stack into a slot as it is, over what was there (a mended tool, GL286; a torch burning down, GL287).</summary>
+        public void Set(int slot, ItemStack stack)
+        {
+            slots[slot] = stack;
+            Changed?.Invoke();
+        }
+
         /// <summary>Takes up to <paramref name="count"/> whole items from one slot; returns how many it took. A part item stays.</summary>
         public int RemoveAt(int slot, int count = 1)
         {

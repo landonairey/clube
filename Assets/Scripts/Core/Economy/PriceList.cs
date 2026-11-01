@@ -66,9 +66,16 @@ namespace Clube.Core
 
         public IReadOnlyList<ItemPrice> Prices => prices;
 
+        // A lit torch is priced as the unlit torch it was (GL287).
+        private static ItemDefinition PricedAs(ItemDefinition item)
+        {
+            return item is TorchDefinition torch ? torch.Unlit : item;
+        }
+
         /// <summary>The coins paid for a lot of the item, and how many items make a lot (GL38); false when it isn't listed.</summary>
         public bool TryGetLot(ItemDefinition item, out int coins, out int lot)
         {
+            item = PricedAs(item);
             foreach (ItemPrice price in prices)
             {
                 if (price.Item != null && price.Item == item)
@@ -102,7 +109,12 @@ namespace Clube.Core
                 return 0;
             }
             float value = Math.Min(count, stack.Count) / lot * coins;
-            if (stack.Item is ToolDefinition tool && tool.MaxHits > 0)
+            if (stack.Item is TorchDefinition torch)
+            {
+                // A lit torch sells as an unlit one, for what's left of its burning (GL287).
+                value *= torch.Left(stack);
+            }
+            else if (stack.Item is ToolDefinition tool && tool.MaxHits > 0)
             {
                 // What hits it has left of a full tool's (GL37, GL118).
                 value *= Math.Max(0f, (float)(stack.MaxHits - stack.Wear) / tool.MaxHits);
@@ -136,7 +148,12 @@ namespace Clube.Core
                 return 0f;
             }
             float value = Math.Min(amount, stack.Amount) * coins / lot;
-            if (stack.Item is ToolDefinition tool && tool.MaxHits > 0)
+            if (stack.Item is TorchDefinition torch)
+            {
+                // A lit torch sells as an unlit one, for what's left of its burning (GL287).
+                value *= torch.Left(stack);
+            }
+            else if (stack.Item is ToolDefinition tool && tool.MaxHits > 0)
             {
                 // What hits it has left of a full tool's (GL37, GL118).
                 value *= Math.Max(0f, (float)(stack.MaxHits - stack.Wear) / tool.MaxHits);

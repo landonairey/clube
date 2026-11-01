@@ -32,6 +32,11 @@ namespace Clube.Game
         private static readonly Color Bronze = new Color(0.72f, 0.46f, 0.2f);
         private static readonly Color Iron = new Color(0.55f, 0.57f, 0.6f);
         private static readonly Color Cord = new Color(0.62f, 0.52f, 0.34f);
+        private static readonly Color Copper = new Color(0.8f, 0.43f, 0.25f);
+        private static readonly Color Patina = new Color(0.33f, 0.62f, 0.5f);
+        private static readonly Color Charcoal = new Color(0.12f, 0.11f, 0.1f);
+        private static readonly Color Flame = new Color(1f, 0.62f, 0.18f);
+        private static readonly Color FlameCore = new Color(1f, 0.92f, 0.55f);
 
         // A tool made of stone (a stone pick, hatchet or hammer), as against bronze or iron.
         private static bool IsStone(ToolDefinition tool)
@@ -147,7 +152,48 @@ namespace Clube.Game
                     model.Diamond(new Vector3(0f, 0.93f, 0.28f), new Vector3(0.025f, 0.13f, 0.04f), head);
                     break;
             }
+            if (head == Copper)
+            {
+                AddPatina(model, shape);
+            }
             return model.Make($"Held {shape}");
+        }
+
+        // Copper weathers green at its edges (GL286): patina over the tips and the eye round the handle.
+        private static void AddPatina(Builder model, HeldShape shape)
+        {
+            switch (shape)
+            {
+                case HeldShape.Pick:
+                    model.Prism(new Vector3(0f, 0.394f, 0.2f), new Vector3(0f, 0.39f, 0.245f), 0.0085f, 0.0035f, 4, Patina);
+                    model.Prism(new Vector3(0f, 0.415f, -0.14f), new Vector3(0f, 0.41f, -0.175f), 0.0095f, 0.004f, 4, Patina);
+                    model.Box(new Vector3(0f, 0.45f, 0f), new Vector3(0.064f, 0.034f, 0.062f), Quaternion.identity, Patina * 0.9f);
+                    break;
+                case HeldShape.Hatchet:
+                    model.Box(new Vector3(0f, 0.4f, 0.165f), new Vector3(0.02f, 0.13f, 0.012f), Quaternion.identity, Patina);
+                    model.Box(new Vector3(0f, 0.4f, 0.012f), new Vector3(0.036f, 0.072f, 0.012f), Quaternion.identity, Patina * 0.9f);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// A torch held in the fist (GL287): a stick with a charred head bound on, and when lit a flame of a few bright
+        /// facets over it.
+        /// </summary>
+        public static Mesh BuildTorch(bool lit)
+        {
+            var model = new Builder();
+            model.Prism(new Vector3(0.06f, -0.2f, -0.5f), new Vector3(0.01f, -0.03f, -0.06f), 0.05f, 0.042f, 6, Sleeve);
+            model.Box(new Vector3(0f, 0f, 0f), new Vector3(0.085f, 0.075f, 0.09f), Quaternion.identity, Skin);
+            model.Prism(new Vector3(0f, -0.14f, 0f), new Vector3(0.005f, 0.34f, 0.03f), 0.018f, 0.016f, 5, Wood);
+            model.Prism(new Vector3(0.005f, 0.3f, 0.027f), new Vector3(0.006f, 0.4f, 0.035f), 0.032f, 0.026f, 6, Charcoal);
+            model.Box(new Vector3(0.005f, 0.3f, 0.027f), new Vector3(0.068f, 0.014f, 0.068f), Quaternion.identity, Cord);
+            if (lit)
+            {
+                model.Diamond(new Vector3(0.006f, 0.47f, 0.036f), new Vector3(0.03f, 0.08f, 0.03f), Flame);
+                model.Diamond(new Vector3(0.006f, 0.45f, 0.036f), new Vector3(0.017f, 0.05f, 0.017f), FlameCore);
+            }
+            return model.Make(lit ? "Held lit torch" : "Held torch");
         }
 
         /// <summary>Collects flat-shaded triangles.</summary>

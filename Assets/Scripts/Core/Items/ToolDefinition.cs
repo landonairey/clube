@@ -115,6 +115,19 @@ namespace Clube.Core
         [SerializeField]
         private bool aimedOnly;
 
+        [Header("Repair (GL286)")]
+        [Tooltip("What mends it, one at a time (a copper tool: copper ingots); none for tools that just wear out.")]
+        [SerializeField]
+        private ItemDefinition repairItem;
+
+        [Tooltip("The share of its full hits one repair item gives back.")]
+        [SerializeField, Range(0.05f, 1f)]
+        private float repairShare = 0.5f;
+
+        [Tooltip("The share of every repaired hit that is lost for good (grey on its bar): copper more than bronze.")]
+        [SerializeField, Range(0f, 1f)]
+        private float wearLostPerRepair = 0.25f;
+
         /// <summary>Makes a tool in code (tests); the game's tools are assets.</summary>
         public static ToolDefinition Create(
             string id, string displayName, int impactSize, float power, float hitsPerSecond = 2f, ImpactShape shape = ImpactShape.Cube)
@@ -166,6 +179,24 @@ namespace Clube.Core
 
         /// <summary>True when a sphere-mode hit takes only the ground sample under the dot (GL155).</summary>
         public bool AimedOnly => aimedOnly;
+
+        /// <summary>What mends it (GL286), or null when it can't be mended.</summary>
+        public ItemDefinition RepairItem => repairItem;
+
+        /// <summary>The share of its full hits one repair item gives back.</summary>
+        public float RepairShare => repairShare;
+
+        /// <summary>The share of each repaired hit lost for good, as a lower quality (GL286).</summary>
+        public float WearLostPerRepair => wearLostPerRepair;
+
+        /// <summary>Makes it mendable (tests).</summary>
+        public ToolDefinition WithRepair(ItemDefinition item, float share, float lost)
+        {
+            repairItem = item;
+            repairShare = Mathf.Clamp(share, 0.05f, 1f);
+            wearLostPerRepair = Mathf.Clamp01(lost);
+            return this;
+        }
 
         /// <summary>True when it can work the material at all (GL145): its tier is high enough.</summary>
         public bool CanWork(VoxelMaterial material)

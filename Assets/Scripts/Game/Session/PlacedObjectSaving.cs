@@ -28,6 +28,7 @@ namespace Clube.Game
                     Rotation = placed.transform.rotation,
                     Quality = placed.Quality,
                     Contents = StackSaving.Capture(placed.Contents),
+                    Wear = placed.Wear,
                 };
                 if (placed.TryGetComponent(out StationObject station))
                 {
@@ -73,6 +74,7 @@ namespace Clube.Game
                 placedObject.Item = item;
                 placedObject.Contents = StackSaving.Restore(save.Contents, materials);
                 placedObject.Quality = save.Quality;
+                placedObject.Wear = save.Wear;
                 if (placed.TryGetComponent(out StationObject station))
                 {
                     station.MadeOf(save.Quality);

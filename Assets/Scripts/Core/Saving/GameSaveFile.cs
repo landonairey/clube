@@ -88,6 +88,8 @@ namespace Clube.Core
                     w.Write(c.x);
                     w.Write(c.y);
                 });
+                // Version 5 (GL287): what each placed object has burned, in the order they were written.
+                WriteList(body, save.Placed, (w, p) => w.Write(p.Wear));
             }
             writer.Dispose();
         }
@@ -115,6 +117,14 @@ namespace Clube.Core
                 if (save.Header.Version >= 4)
                 {
                     save.RemovedBushes = ReadList(body, r => new Vector2Int(r.ReadInt32(), r.ReadInt32()));
+                }
+                if (save.Header.Version >= 5)
+                {
+                    List<int> wear = ReadList(body, r => r.ReadInt32());
+                    for (int i = 0; i < wear.Count && i < save.Placed.Count; i++)
+                    {
+                        save.Placed[i].Wear = wear[i];
+                    }
                 }
             }
             reader.Dispose();

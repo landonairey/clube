@@ -23,7 +23,7 @@ MonoBehaviour:
     ByVolume: 1
   - Item: {fileID: 11400000, guid: 2c26c5c4f4a60ca449a71671d88094ad, type: 2}
     Coins: 1
-    Units: 1
+    Units: 10
     ByVolume: 1
   - Item: {fileID: 11400000, guid: 9feabda89ca47d5479fc62960a078576, type: 2}
     Coins: 2
@@ -50,11 +50,11 @@ MonoBehaviour:
     Units: 1
     ByVolume: 0
   - Item: {fileID: 11400000, guid: 834e2b54760fc7142a38069199661761, type: 2}
-    Coins: 1
+    Coins: 5
     Units: 1
     ByVolume: 1
   - Item: {fileID: 11400000, guid: ce1c9585acf5fc14f848a8b43eddc45d, type: 2}
-    Coins: 1
+    Coins: 5
     Units: 1
     ByVolume: 1
   - Item: {fileID: 11400000, guid: e5acd428b6947c7469aca6cbe59c5618, type: 2}
@@ -110,7 +110,7 @@ MonoBehaviour:
     Units: 1
     ByVolume: 0
   - Item: {fileID: 11400000, guid: 8864539802b2d884296933ec2cccedf1, type: 2}
-    Coins: 2
+    Coins: 10
     Units: 1
     ByVolume: 1
   - Item: {fileID: 11400000, guid: e6ec90f8b46ea6747b89bbc179234604, type: 2}
@@ -179,5 +179,25 @@ MonoBehaviour:
     ByVolume: 0
   - Item: {fileID: 11400000, guid: 4deb51d79b8d11b43afd2b9a9f938789, type: 2}
     Coins: 110
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 3d69f87512eb09842b9ec73744ff5790, type: 2}
+    Coins: 1
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 781da9aaba956e543b3c7da3e7b05bee, type: 2}
+    Coins: 8
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: e03060fe9ac797745b8b656d593b7671, type: 2}
+    Coins: 45
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: b41295084fb37454693bab6f100dfeb5, type: 2}
+    Coins: 45
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: da484e758e746c7499d8857c26737e70, type: 2}
+    Coins: 500
     Units: 1
     ByVolume: 0

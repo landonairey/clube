@@ -18,6 +18,9 @@ namespace Clube.Game
         /// <summary>How well it was made (GL118), given back with it when it's picked up.</summary>
         public float Quality { get; set; } = 1f;
 
+        /// <summary>What it has worn or burned (a torch's seconds alight, GL287), given back with it when it's picked up.</summary>
+        public int Wear { get; set; }
+
         /// <summary>
         /// Puts the item, and anything a station holds, into an inventory and removes the object.
         /// False, changing nothing, when they wouldn't all fit.
@@ -50,7 +53,7 @@ namespace Clube.Game
             {
                 structure.Clear();
             }
-            inventory.Add(Item, 1, Contents, 0, Quality);
+            inventory.Add(Item, 1, Contents, Wear, Quality);
             Destroy(gameObject);
             return true;
         }
@@ -76,7 +79,7 @@ namespace Clube.Game
             {
                 return false;
             }
-            return Item == null || trial.Add(Item, 1, Contents, 0, Quality) == 0;
+            return Item == null || trial.Add(Item, 1, Contents, Wear, Quality) == 0;
         }
 
         // A station's contents keep apart from other qualities on the way out (GL256); a chest's stack as usual.

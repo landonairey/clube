@@ -32,6 +32,7 @@ namespace Clube.Game
         private StationPanel stationPanel;
         private MerchantPanel merchantPanel;
         private ChestPanel chestPanel;
+        private RestScreen restScreen;
         private string problem;
 
         // The save name being typed, while Save and Exit asks for one (GL207); null otherwise.
@@ -40,7 +41,7 @@ namespace Clube.Game
 
         // The graphics popup while it's open (GL209); null otherwise.
         private GraphicsSettingsPage graphics;
-        private AudioSettingsPage audio;
+        private AudioSettingsPage audioPage;
         private CursorLockMode cursorBefore;
         private bool cursorVisibleBefore;
         private GUIStyle titleStyle;
@@ -61,6 +62,7 @@ namespace Clube.Game
                 stationPanel = player.GetComponent<StationPanel>();
                 merchantPanel = player.GetComponent<MerchantPanel>();
                 chestPanel = player.GetComponent<ChestPanel>();
+                restScreen = player.GetComponent<RestScreen>();
             }
         }
 
@@ -85,10 +87,10 @@ namespace Clube.Game
                 saveName = null;
                 problem = null;
             }
-            else if (IsOpen && (graphics != null || audio != null))
+            else if (IsOpen && (graphics != null || audioPage != null))
             {
                 graphics = null;
-                audio = null;
+                audioPage = null;
             }
             else if (IsOpen)
             {
@@ -127,6 +129,12 @@ namespace Clube.Game
                 merchantPanel.Close();
                 return true;
             }
+            if (restScreen != null && restScreen.IsOpen)
+            {
+                // Esc wakes the player, or puts the rest dial away (GL290).
+                restScreen.Close();
+                return true;
+            }
             if (chestPanel != null && chestPanel.IsOpen)
             {
                 chestPanel.Close();
@@ -141,7 +149,7 @@ namespace Clube.Game
             problem = null;
             saveName = null;
             graphics = null;
-            audio = null;
+            audioPage = null;
             // The game stops under the popup: the clock, stations and the player.
             Time.timeScale = open ? 0f : 1f;
             if (open)
@@ -177,7 +185,7 @@ namespace Clube.Game
 
             // Lighter under the graphics popup, so a change to the field of view shows behind it.
             Color previous = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, graphics != null || audio != null ? 0.15f : 0.45f);
+            GUI.color = new Color(0f, 0f, 0f, graphics != null || audioPage != null ? 0.15f : 0.45f);
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = previous;
 
@@ -194,12 +202,12 @@ namespace Clube.Game
                 }
                 GUILayout.EndArea();
             }
-            else if (audio != null)
+            else if (audioPage != null)
             {
                 BeginPopup(AudioSettingsPage.Width, AudioSettingsPage.Height);
-                if (audio.Draw(titleStyle, labelStyle, hintStyle, buttonStyle))
+                if (audioPage.Draw(titleStyle, labelStyle, hintStyle, buttonStyle))
                 {
-                    audio = null;
+                    audioPage = null;
                 }
                 GUILayout.EndArea();
             }
@@ -229,7 +237,7 @@ namespace Clube.Game
             GUILayout.Space(10f);
             if (GUILayout.Button("Audio", buttonStyle, GUILayout.Height(ButtonHeight)))
             {
-                audio = new AudioSettingsPage();
+                audioPage = new AudioSettingsPage();
             }
             GUILayout.EndHorizontal();
             GUILayout.Space(10f);

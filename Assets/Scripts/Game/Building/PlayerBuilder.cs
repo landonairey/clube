@@ -101,6 +101,12 @@ namespace Clube.Game
             placedObject.Item = aimedItem;
             placedObject.Contents = held.Contents;
             placedObject.Quality = held.Quality;
+            // A torch is lit as it goes down, burning on from what it burned in the hand (GL287).
+            if (aimedItem is TorchDefinition torch && torch.Lit != null)
+            {
+                placedObject.Item = torch.Lit;
+                placedObject.Wear = torch.IsLit ? held.Wear : 0;
+            }
             // Built from a mix, a station works as well as the share of what it's made of (GL100).
             if (placed.TryGetComponent(out StationObject station))
             {

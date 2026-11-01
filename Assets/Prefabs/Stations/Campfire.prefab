@@ -263,6 +263,8 @@ MonoBehaviour:
   recipes:
   - {fileID: 11400000, guid: ea02483da2e659341b6db2aa15139bec, type: 2}
   - {fileID: 11400000, guid: c902d9e5741101b4cbaf625578a16691, type: 2}
+  - {fileID: 11400000, guid: eccc62bfc479f654bae3f198c751dae2, type: 2}
+  - {fileID: 11400000, guid: 8010ff67b533dd24d8e25d72182905cf, type: 2}
   burnsFuel: 1
   heat: 0.75
   recovery: 0.5

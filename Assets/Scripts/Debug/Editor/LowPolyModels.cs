@@ -59,6 +59,48 @@ namespace Clube.Debug.Editor
             return model.Build("Anvil");
         }
 
+        /// <summary>Builds the torch and the sleeping roll (GL287, GL290), leaving the other models as they are.</summary>
+        [MenuItem("Clube/Models/Build torch and sleeping roll")]
+        public static void BuildTorchAndRoll()
+        {
+            Directory.CreateDirectory(Folder);
+            Save("Torch", Torch());
+            Save("Sleeping Roll", SleepingRoll());
+            AssetDatabase.SaveAssets();
+        }
+
+        // Submeshes: 0 wood, 1 char and binding, 2 flame. A stick pushed into the ground, a charred head bound on at
+        // the top, and a flame of two crossed, pointed blocks over it (GL287).
+        private static Mesh Torch()
+        {
+            var model = new ModelBuilder(3);
+            model.Loft(0, 0f, new Vector2(0.05f, 0.05f), 0.92f, new Vector2(0.04f, 0.04f));
+            model.Loft(1, 0.86f, new Vector2(0.075f, 0.075f), 1.0f, new Vector2(0.065f, 0.065f));
+            model.Box(1, new Vector3(0f, 0.86f, 0f), new Vector3(0.085f, 0.025f, 0.085f));
+            foreach (float yaw in new[] { 0f, 90f })
+            {
+                model.Box(2, new Vector3(0f, 1.08f, 0f), new Vector3(0.07f, 0.12f, 0.02f), Quaternion.Euler(0f, yaw + 45f, 0f));
+            }
+            model.Loft(2, 1.0f, new Vector2(0.05f, 0.05f), 1.2f, new Vector2(0.005f, 0.005f));
+            return model.Build("Torch");
+        }
+
+        // Submeshes: 0 cloth, 1 straps. A sleeping roll laid out flat (GL290): a long padded mat, the head end rolled up
+        // into a bolster, two straps round the roll.
+        private static Mesh SleepingRoll()
+        {
+            var model = new ModelBuilder(2);
+            model.Box(0, new Vector3(0f, 0.035f, 0.1f), new Vector3(0.78f, 0.07f, 1.7f));
+            // The bolster: two square lofts turned an eighth apart make an eight-sided roll.
+            model.LoftX(0, new Vector3(-0.39f, 0.11f, -0.8f), new Vector2(0.2f, 0.2f), new Vector3(0.39f, 0.11f, -0.8f), new Vector2(0.2f, 0.2f));
+            model.Box(0, new Vector3(0f, 0.11f, -0.8f), new Vector3(0.77f, 0.2f, 0.2f), Quaternion.Euler(45f, 0f, 0f));
+            foreach (float x in new[] { -0.22f, 0.22f })
+            {
+                model.Box(1, new Vector3(x, 0.11f, -0.8f), new Vector3(0.05f, 0.25f, 0.25f), Quaternion.Euler(22.5f, 0f, 0f));
+            }
+            return model.Build("Sleeping Roll");
+        }
+
         /// <summary>Builds only the wooden chest (GL249), leaving the other models as they are.</summary>
         [MenuItem("Clube/Models/Build chest model")]
         public static void BuildChest()
@@ -68,31 +110,47 @@ namespace Clube.Debug.Editor
             AssetDatabase.SaveAssets();
         }
 
-        // Submeshes: 0 wood, 1 iron. A plank box with a lid a little wider than it, iron bands over the lid and down
-        // the front and back, iron corners and a latch at the front (+Z) (GL249).
+        // Submeshes: 0 light planks, 1 dark framing. A wooden crate (GL282): three slats a side over a core box, a
+        // frame of battens round the top and bottom, corner posts, and a diagonal brace on every side. Each layer stands
+        // a little further out than the one under it (core, slats 1 cm, braces 2.5, battens 3, posts 4), so no two faces
+        // share a plane: the old chest's bands flickered where they did.
         private static Mesh WoodenChest()
         {
+            const float width = 0.8f, height = 0.7f, depth = 0.6f, batten = 0.07f, post = 0.08f;
             var model = new ModelBuilder(2);
-            model.Box(0, new Vector3(0f, 0.25f, 0f), new Vector3(0.9f, 0.5f, 0.55f));
-            model.Box(0, new Vector3(0f, 0.56f, 0f), new Vector3(0.94f, 0.12f, 0.59f));
-            model.Box(0, new Vector3(0f, 0.65f, 0f), new Vector3(0.9f, 0.06f, 0.5f));
-            // The bands stand proud of every wooden face they cross, so no two faces lie in one plane (they flickered).
-            foreach (float x in new[] { -0.3f, 0.3f })
+            model.Box(0, new Vector3(0f, height * 0.5f, 0f), new Vector3(width - 0.02f, height, depth - 0.02f));
+            for (int k = 0; k < 3; k++)
             {
-                // Over the lid: from the rim's top (0.62) to 2 cm above the lid's top (0.68), out past the rim.
-                model.Box(1, new Vector3(x, 0.66f, 0f), new Vector3(0.06f, 0.08f, 0.61f));
-                // Down the front and back: a little wider than the lid band, out past the rim's face (0.295).
-                model.Box(1, new Vector3(x, 0.345f, 0.2925f), new Vector3(0.064f, 0.69f, 0.035f));
-                model.Box(1, new Vector3(x, 0.345f, -0.2925f), new Vector3(0.064f, 0.69f, 0.035f));
+                model.Box(0, new Vector3(0f, 0.115f + k * 0.235f, 0f), new Vector3(width, 0.215f, depth));
             }
-            foreach (float x in new[] { -0.44f, 0.44f })
+            // Battens round the top and bottom, standing 3 cm out of the slats and 1 cm over the top.
+            foreach (float y in new[] { batten * 0.5f, height + 0.01f - batten * 0.5f })
             {
-                foreach (float z in new[] { -0.265f, 0.265f })
+                foreach (float side in new[] { -1f, 1f })
                 {
-                    model.Box(1, new Vector3(x, 0.25f, z), new Vector3(0.04f, 0.5f, 0.04f));
+                    model.Box(1, new Vector3(0f, y, side * (depth * 0.5f + 0.015f)), new Vector3(width, batten, 0.03f));
+                    model.Box(1, new Vector3(side * (width * 0.5f + 0.015f), y, 0f), new Vector3(0.03f, batten, depth));
                 }
             }
-            model.Box(1, new Vector3(0f, 0.5f, 0.29f), new Vector3(0.1f, 0.14f, 0.03f));
+            foreach (float x in new[] { -1f, 1f })
+            {
+                foreach (float z in new[] { -1f, 1f })
+                {
+                    model.Box(1, new Vector3(x * width * 0.5f, (height + 0.02f) * 0.5f, z * depth * 0.5f), new Vector3(post, height + 0.02f, post));
+                }
+            }
+            // A brace across each side, from a bottom corner to the opposite top corner, between the posts and battens.
+            float span = height - 2f * batten;
+            float frontRun = width - post, sideRun = depth - post;
+            float frontAngle = Mathf.Atan2(span, frontRun) * Mathf.Rad2Deg, sideAngle = Mathf.Atan2(span, sideRun) * Mathf.Rad2Deg;
+            float frontLength = Mathf.Sqrt(span * span + frontRun * frontRun), sideLength = Mathf.Sqrt(span * span + sideRun * sideRun);
+            foreach (float side in new[] { -1f, 1f })
+            {
+                model.Box(1, new Vector3(0f, height * 0.5f, side * (depth * 0.5f + 0.0125f)), new Vector3(frontLength, batten, 0.025f),
+                    Quaternion.Euler(0f, 0f, side * frontAngle));
+                model.Box(1, new Vector3(side * (width * 0.5f + 0.0125f), height * 0.5f, 0f), new Vector3(0.025f, batten, sideLength),
+                    Quaternion.Euler(side * sideAngle, 0f, 0f));
+            }
             return model.Build("Wooden Chest");
         }
 

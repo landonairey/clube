@@ -5957,7 +5957,12 @@ MonoBehaviour:
   weatherDays: 1.5
   cellSize: 1100
   reach: 11000
-  size: {x: 450, y: 1100}
+  size: {x: 250, y: 1900}
+  heightSpread: 700
+  towerChance: 0.12
+  sheetHeight: 550
+  wispHeight: 5200
+  wispDays: 0.7
   windSpeed: 9
   windDirection: 70
   windSwing: 35
@@ -6198,6 +6203,8 @@ GameObject:
   - component: {fileID: 1697135602}
   - component: {fileID: 1697135603}
   - component: {fileID: 1697135604}
+  - component: {fileID: 1697135606}
+  - component: {fileID: 1697135605}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -6667,6 +6674,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ce272991d7e38a645a6a4134ffda0a02, type: 2}
   - {fileID: 11400000, guid: 5ec8e0ac578bb0e4db7dae5132312b4d, type: 2}
   - {fileID: 11400000, guid: 6fadc24742a123946b249fca8b1a81a3, type: 2}
+  - {fileID: 11400000, guid: 3b915b6e75ae6fe4883f76455350ed82, type: 2}
+  - {fileID: 11400000, guid: d60685b224db7664a9af1c897162e558, type: 2}
+  - {fileID: 11400000, guid: 6e1d0ec0bd2d48440b2b96a163e7b96b, type: 2}
   kinds:
   - Material: {fileID: 11400000, guid: a7a179311785ad14bab47c68162a300f, type: 2}
     Name: Flat Rock
@@ -6737,6 +6747,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5494c424192226542928114696f6423b, type: 2}
   - {fileID: 11400000, guid: 4b6b35cb8a9260e42b8d0c25a6bc295b, type: 2}
   - {fileID: 11400000, guid: 3f9e228f10fb98e44a8816bc33a794c1, type: 2}
+  - {fileID: 11400000, guid: 976f635456435f6429c0041567c411d1, type: 2}
+  - {fileID: 11400000, guid: 8631d3965ce9c6242a9e08353f96e6c7, type: 2}
 --- !u!114 &1697135586
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6846,6 +6858,15 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 882189830830a7e439fb72c867040d03, type: 2}
   - {fileID: 11400000, guid: 5ec8e0ac578bb0e4db7dae5132312b4d, type: 2}
   - {fileID: 11400000, guid: 6fadc24742a123946b249fca8b1a81a3, type: 2}
+  - {fileID: 11400000, guid: eccc62bfc479f654bae3f198c751dae2, type: 2}
+  - {fileID: 11400000, guid: 8010ff67b533dd24d8e25d72182905cf, type: 2}
+  - {fileID: 11400000, guid: 8072c269a6427d146a7e5d0577b45068, type: 2}
+  - {fileID: 11400000, guid: 047abb6ed16abca459fb3bcdb4f41160, type: 2}
+  - {fileID: 11400000, guid: 3b915b6e75ae6fe4883f76455350ed82, type: 2}
+  - {fileID: 11400000, guid: 976f635456435f6429c0041567c411d1, type: 2}
+  - {fileID: 11400000, guid: 8631d3965ce9c6242a9e08353f96e6c7, type: 2}
+  - {fileID: 11400000, guid: d60685b224db7664a9af1c897162e558, type: 2}
+  - {fileID: 11400000, guid: 6e1d0ec0bd2d48440b2b96a163e7b96b, type: 2}
 --- !u!114 &1697135589
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7178,6 +7199,36 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.HitDebris
   material: {fileID: 2100000, guid: 4d599372257648141b207c3dbd8d5b8f, type: 2}
   gravity: 12
+--- !u!114 &1697135605
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf01769c614cf254ab9ee7a6ac2253ca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.RestScreen
+  clock: {fileID: 0}
+  dayNight: {fileID: 0}
+  closeAction: {fileID: 1781555164194001046, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  secondsPerHour: 1
+  blurSeconds: 0.6
+--- !u!114 &1697135606
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02c0e4f41fcaa774d8a3692fb2a05793, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.TorchBurner
+  clock: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

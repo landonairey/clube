@@ -180,6 +180,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2ea129385f04d4e4191060b48a63ffdf, type: 2}
   - {fileID: 11400000, guid: f4da6991b017a7945abfa36571cdec99, type: 2}
   - {fileID: 11400000, guid: 920c30d37746a7f45924e18044f271f0, type: 2}
+  - {fileID: 11400000, guid: 8072c269a6427d146a7e5d0577b45068, type: 2}
+  - {fileID: 11400000, guid: 047abb6ed16abca459fb3bcdb4f41160, type: 2}
   burnsFuel: 1
   heat: 1.5
   recovery: 1
