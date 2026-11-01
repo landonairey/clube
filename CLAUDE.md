@@ -505,7 +505,7 @@ and a lit item; `TorchBurner`, `PlacedTorch` in Game/Torches) burn by game time 
 wood or sticks. The sleeping roll (`SleepingRoll`, `RestScreen`, `RestBlur` in Game/Rest; Clube.Game now references URP)
 rests 1-24 hours at one a second (`GameClock.Advance`). Placed objects keep a wear (save version 5). The chest is a crate.
 Slope ridges are generated into the density (GL293: `SlopeRidges` in the heightfield fill, by column gradient); the
-terrain shader only adds fine grooves in the shading.
+terrain shader adds only fine pitting in the shading (GL268).
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
