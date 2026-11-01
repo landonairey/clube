@@ -31,6 +31,9 @@ namespace Clube.Core
 
         /// <summary>A bare hand: a soft slap.</summary>
         Slap,
+
+        /// <summary>A pick into rock or ore: a sharp crack, then grit crushing and gravel falling (GL280).</summary>
+        Crunch,
     }
 
     /// <summary>
@@ -129,6 +132,20 @@ namespace Clube.Core
                     AddNoise(samples, random, 0f, 0.0003f, 0.005f, 0.5f, Band(4500f, 1f));
                     AddCrackles(samples, random, 0.005f, 0.08f, 5, 0.12f, 6000f);
                     break;
+                case HitSound.Crunch:
+                {
+                    samples = new float[Samples(0.6f)];
+                    // The point going in: a hard crack with a little weight under it.
+                    AddNoise(samples, random, 0f, 0.0003f, 0.012f, 0.75f, Band(Range(random, 1500f, 2100f), 1.1f));
+                    AddTone(samples, 0f, Range(random, 150f, 190f), 95f, 0.0008f, 0.045f, 0.4f);
+                    AddNoise(samples, random, 0f, 0.001f, 0.05f, 0.35f, Low(420f));
+                    // The rock giving way: dense grit, coarse then finer, and a few chips skittering after.
+                    AddCrackles(samples, random, 0.004f, 0.12f, 70, 0.32f, 1800f);
+                    AddCrackles(samples, random, 0.02f, 0.25f, 50, 0.22f, 3600f);
+                    AddNoise(samples, random, 0.01f, 0.008f, 0.09f, 0.25f, Band(Range(random, 900f, 1300f), 0.7f));
+                    AddCrackles(samples, random, 0.12f, 0.35f, 14, 0.16f, 5000f);
+                    break;
+                }
                 default:
                     samples = new float[Samples(0.25f)];
                     AddNoise(samples, random, 0f, 0.002f, 0.04f, 0.6f, Low(900f));
@@ -143,7 +160,10 @@ namespace Clube.Core
         {
             var random = new Random(seed);
             float[] samples = new float[Samples(0.6f)];
-            AddCrackles(samples, random, 0f, 0.45f, 60, 0.35f, 3500f);
+            // Chunks cracking off, then gravel pouring and settling: crunchier than grit alone (GL280).
+            AddNoise(samples, random, 0f, 0.0004f, 0.015f, 0.5f, Band(Range(random, 1200f, 1700f), 1f));
+            AddCrackles(samples, random, 0f, 0.2f, 80, 0.38f, 2000f);
+            AddCrackles(samples, random, 0.03f, 0.45f, 70, 0.28f, 3800f);
             AddNoise(samples, random, 0f, 0.01f, 0.18f, 0.3f, Low(350f));
             return Normalize(samples, 0.85f);
         }

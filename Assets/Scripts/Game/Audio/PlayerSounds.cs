@@ -54,6 +54,10 @@ namespace Clube.Game
         [SerializeField]
         private SoundSet chiselHits = new SoundSet();
 
+        [Tooltip("A pick's hit on stone or ore, in place of the pick's own sound: rock cracking and crunching (GL280).")]
+        [SerializeField]
+        private SoundSet pickRockHits = new SoundSet();
+
         [Tooltip("Any tool's hit on soft ground (dirt, grass, clay), in place of the tool's own sound.")]
         [SerializeField]
         private SoundSet soilHits = new SoundSet();
@@ -195,7 +199,7 @@ namespace Clube.Game
 
         /// <summary>
         /// The sound of a hit with a tool on a material: chisels always chisel; soft ground and
-        /// leaves sound like themselves whatever hits them; otherwise the tool's own sound.
+        /// leaves sound like themselves whatever hits them; a pick crunches into rock; otherwise the tool's own sound.
         /// </summary>
         public SoundSet HitWith(ToolDefinition tool, VoxelMaterial material = null)
         {
@@ -206,6 +210,10 @@ namespace Clube.Game
             if (material != null && material.IsSoft)
             {
                 return material.Kind == MaterialKind.Plant ? leafHits : soilHits;
+            }
+            if (material != null && material.Kind == MaterialKind.Rock && HeldToolMeshes.ShapeOf(tool) == HeldShape.Pick && pickRockHits.HasClips)
+            {
+                return pickRockHits;
             }
             foreach (ToolSound entry in toolHits)
             {

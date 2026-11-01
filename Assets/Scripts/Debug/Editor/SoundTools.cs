@@ -91,6 +91,7 @@ namespace Clube.Debug.Editor
                 SetClips(so, "claySteps", Clips("Step Clay"));
                 SetClips(so, "otherToolHits", Clips("Hit Knock"));
                 SetClips(so, "chiselHits", Clips("Hit Tap"));
+                SetClips(so, "pickRockHits", Clips("Hit Crunch"));
                 SetClips(so, "soilHits", Clips("Hit Scrape"));
                 SetClips(so, "leafHits", Clips("Rustle"));
                 SetClips(so, "rockBreaks", Clips("Crumble"));

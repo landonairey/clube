@@ -97,10 +97,16 @@ Shader "Clube/Low Poly Clouds"
                 half3 light = given ? _CloudLightColor.rgb : main.color;
                 float3 view = normalize(input.positionWS - GetCameraPositionWS());
 
+                // Lit by the light and the sky alone, with no floor of its own, so clouds go as dark as the night (GL284).
                 float wrap = saturate(dot(normalWS, towardsLight) * 0.5 + 0.5);
-                half3 ambient = max(SampleSH(normalWS), 0.0) * _Ambient;
+                float direct = saturate(dot(normalWS, towardsLight));
+                half3 ambient = max(SampleSH(normalWS), 0.0) * _Ambient * (0.75 + 0.25 * normalWS.y);
                 half shade = lerp(_Underside, 1.0, input.height);
-                half3 colour = _Color.rgb * (0.22 + ambient * 0.9 + light * wrap) * shade;
+                // Each facet a touch lighter or darker by which way it faces, so the polygon edges read in any light,
+                // moonlight included, where the faces would otherwise all come out one grey.
+                float facet = 0.84 + 0.08 * (sin(dot(normalWS, float3(5.1, 9.7, 3.3))) + 1.0);
+                // A floor that scales with the light itself (white by day, nothing at night) keeps the shade side from going muddy.
+                half3 colour = _Color.rgb * (ambient * 1.05 + light * (0.35 + wrap * 0.5 + direct * 0.55)) * shade * facet;
 
                 // Silver edges: faces turned away from the camera, with the light behind the cloud.
                 float behind = pow(saturate(dot(view, towardsLight)), 6.0);

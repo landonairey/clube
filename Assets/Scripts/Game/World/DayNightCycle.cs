@@ -104,6 +104,9 @@ namespace Clube.Game
         private string sunDiscKeyword = "_SUNDISK_HIGH_QUALITY";
         private bool sunDiscShown = true;
 
+        /// <summary>The game's clock, or null.</summary>
+        public GameClock Clock => clock;
+
         /// <summary>The hour of day shown now, 0-24: the clock's, or the frozen hour.</summary>
         public float Hour => GraphicsSettings.FreezeDay ? GraphicsSettings.FrozenHour : ClockHour;
 

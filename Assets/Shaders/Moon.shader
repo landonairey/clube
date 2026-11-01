@@ -1,5 +1,5 @@
-// The moon (GL248, MoonDisc), low poly (GL278): a 12-sided disc cut into flat facets, each shaded as a ball lit from
-// _SunDirection would be there, so the phase is whatever
+// The moon (GL248, MoonDisc), low poly (GL278, GL285): a 12-sided disc whose phase edge is a six-segment polygon line,
+// placed where a ball lit from _SunDirection would have it, so the phase is whatever
 // the angle between the moon and the sun makes it: full opposite the sun, a thin crescent beside it. Darker seas are
 // hashed across its face. The unlit side shows faintly at night (earthshine) and not at all by day, when the lit side
 // is pale. Drawn after the sky without writing depth, so the ground in front hides it.
@@ -84,34 +84,42 @@ Shader "Clube/Moon"
 
             half4 Fragment(Varyings input) : SV_Target
             {
-                // Low poly (GL278): the outline a 12-sided polygon, the face cut into flat facets (four rings of twelve,
-                // each ring turned half a facet from the last), each shaded as one, so the phase steps across in facets.
-                const float Sides = 12.0;
-                const float Rings = 4.0;
-                const float Sector = 6.2831853 / Sides;
-                float r = length(input.disc);
-                float angle = atan2(input.disc.y, input.disc.x) + 3.1415927;
-                float across = fmod(angle, Sector) - Sector * 0.5;
-                float polygon = cos(Sector * 0.5) / cos(across);
-                if (r > polygon)
+                // Low poly (GL278, GL285): the outline a 12-sided polygon and the phase's edge a polygon line of six segments
+                // through the same heights, both turned with the light. On a ball the edge of the light is an ellipse,
+                // u = -k sqrt(1 - v^2) across the disc (u towards the sun, k how far the sun is behind the viewer); here the
+                // circle's half-width is the 12-gon's, so the edge is the outline squashed: straight segments, clean corners.
+                const float Step = 3.1415927 / 6.0;
+                float3 sun = normalize(_SunDirection.xyz);
+                float2 across2 = float2(dot(sun, input.right), dot(sun, input.up));
+                float k = dot(sun, input.towardsViewer);
+                float2 towards = dot(across2, across2) > 1e-6 ? normalize(across2) : float2(1.0, 0.0);
+                float u = dot(input.disc, towards);
+                float v = dot(input.disc, float2(-towards.y, towards.x));
+                // The 12-gon's half-width at height v: between its corners at every 30 degrees from the top.
+                float vc = clamp(v, -1.0, 1.0);
+                float theta = asin(vc);
+                float corner = min(floor((theta + 1.5707963) / Step), 5.0);
+                float theta0 = -1.5707963 + corner * Step;
+                float theta1 = theta0 + Step;
+                float t = saturate((vc - sin(theta0)) / max(sin(theta1) - sin(theta0), 1e-5));
+                float halfWidth = lerp(cos(theta0), cos(theta1), t);
+                float edgeWidth = fwidth(u) * 1.2;
+                float inside = (1.0 - smoothstep(halfWidth - edgeWidth, halfWidth, abs(u))) * step(abs(v), 1.0);
+                if (inside <= 0.0)
                 {
                     discard;
                 }
-                float inside = 1.0;
-                float ring = min(floor(r / polygon * Rings), Rings - 1.0);
-                float turn = fmod(ring, 2.0) * 0.5;
-                float facet = floor(angle / Sector + turn);
-                float facetAngle = (facet + 0.5 - turn) * Sector - 3.1415927;
-                float facetRadius = (ring + 0.5) / Rings * cos(Sector * 0.5);
-                float2 centre = ring < 0.5 ? float2(0.0, 0.0) + float2(cos(facetAngle), sin(facetAngle)) * 0.12 : float2(cos(facetAngle), sin(facetAngle)) * facetRadius;
-                float depth = sqrt(saturate(1.0 - dot(centre, centre)));
-                float3 normal = normalize(input.right * centre.x + input.up * centre.y + input.towardsViewer * depth);
-                float facing = dot(normal, normalize(_SunDirection.xyz));
-                // A hard, faceted terminator.
-                float lit = smoothstep(-0.02, 0.06, facing);
+                float lit = smoothstep(-k * halfWidth - edgeWidth, -k * halfWidth + edgeWidth, u);
 
+                // Flat facets for tone only (twelve sectors in three rings), so the face stays low poly without a stepped edge.
+                float r = length(input.disc);
+                float angle = atan2(input.disc.y, input.disc.x) + 3.1415927;
+                float facet = floor(angle / (Step * 2.0));
+                float ring = min(floor(r * 3.0), 2.0);
+                float2 centre = input.disc;
+                float depth = sqrt(saturate(1.0 - r * r));
                 float seas = Noise(centre * 2.3 + 4.1) * 0.6 + Noise(centre * 5.7 + 1.3) * 0.4;
-                float albedo = lerp(1.0, 0.68, smoothstep(0.45, 0.7, seas)) * lerp(0.82, 1.0, depth) * (0.94 + 0.12 * Hash(float2(facet, ring)));
+                float albedo = lerp(1.0, 0.68, smoothstep(0.45, 0.7, seas)) * lerp(0.85, 1.0, depth) * (0.94 + 0.1 * Hash(float2(facet, ring)));
                 float night = 1.0 - _Daylight;
 
                 float3 colour = _Color.rgb * albedo * lit;

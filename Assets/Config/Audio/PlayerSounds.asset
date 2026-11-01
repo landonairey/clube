@@ -89,6 +89,24 @@ MonoBehaviour:
       volume: 0.6
       pitchJitter: 0.1
       playAll: 0
+  - tool: {fileID: 11400000, guid: b41295084fb37454693bab6f100dfeb5, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: 86995559ff73a1444a36efa113edc264, type: 3}
+      - {fileID: 8300000, guid: 201b66e29fd48d848b99c0a5f3af0aa0, type: 3}
+      - {fileID: 8300000, guid: e3898a6e9b9a8d843be94074ad62cb10, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  - tool: {fileID: 11400000, guid: e03060fe9ac797745b8b656d593b7671, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: 0b3fe07558da8384c8e087cd011b6d00, type: 3}
+      - {fileID: 8300000, guid: 3be405fb7bf5d6a47b603be5fb011a53, type: 3}
+      - {fileID: 8300000, guid: 8fc2add3e7f4dd64fb2d20f7b48cadb7, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
   - tool: {fileID: 11400000, guid: a56a1ea3071fb444faf3aa4d3fba77a8, type: 2}
     sound:
       clips:
@@ -176,6 +194,14 @@ MonoBehaviour:
     - {fileID: 8300000, guid: 221c67d1b135cbb45bce35b8c0ac6164, type: 3}
     volume: 0.5
     pitchJitter: 0.1
+    playAll: 0
+  pickRockHits:
+    clips:
+    - {fileID: 8300000, guid: 6b8dc0288cae1b3468aa1149d8d21a39, type: 3}
+    - {fileID: 8300000, guid: 88d8c89948f20c54a8b73cc78137a18c, type: 3}
+    - {fileID: 8300000, guid: a4abb4187e1646244990c3981fea3fc6, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
     playAll: 0
   soilHits:
     clips:
