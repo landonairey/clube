@@ -496,6 +496,14 @@ rock and soil by `VoxelMaterial.Relief` (drawn only); `HeldToolView` (Game/Tools
 a second between uses (hands and dawn a quarter quicker); `SoundSynth` (Core/Audio) makes every sound effect, written by *Clube →
 Audio → Generate sound effects*, and `AmbientSounds` (on World) plays wind, leaves and birds. Hits throw low-poly crumbs of the material (`HitDebris`, GL274); the
 stone pick is a stone lashed to a stick (GL273).
+Twenty-eighth pass (GL279-GL291, `Docs/20261101 clube-backlog.md`): a gradual hit gathers the volume the mesh lost
+(`RegionVolume` in Core/Volume, by the tetrahedra before and after; GL288), and the pickup notice shows what went in. Clouds
+come in four kinds (cumulus, cumulonimbus, stratus, cirrus) and drift by game time; the moon's phase edge is a polygon line.
+Tool tiers: hand axe 1, stone 2, copper 3, bronze 4; copper and bronze tools are mended by dropping their ingot on them
+(`ToolRepair`; a share of each mended hit is lost for good as quality, grey on the bar). Torches (`TorchDefinition`, an unlit
+and a lit item; `TorchBurner`, `PlacedTorch` in Game/Torches) burn by game time (`GameClockTicks`); charcoal is cooked from
+wood or sticks. The sleeping roll (`SleepingRoll`, `RestScreen`, `RestBlur` in Game/Rest; Clube.Game now references URP)
+rests 1-24 hours at one a second (`GameClock.Advance`). Placed objects keep a wear (save version 5). The chest is a crate.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

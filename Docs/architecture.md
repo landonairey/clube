@@ -48,7 +48,8 @@ Core/
   Voxels/        Chunk, IVoxelStorage + schemes (2G), VoxelMaterials (M10), VoxelArrayPool, VoxelBox
   World/         World (loaded chunks, borders, edit paths), WorldGrid (coordinates)
   Materials/     VoxelMaterial, MaterialRegistry (M9), TerrainLayers, MaterialCensus, MineralNotes (GL73)
-  Items/         ItemDefinition (O6), ToolDefinition (GL1), Inventory + ItemStack (GL6), Composition (GL32)
+  Items/         ItemDefinition (O6), ToolDefinition (GL1), Inventory + ItemStack (GL6), Composition (GL32),
+                 ToolRepair (mending with ingots, GL286), TorchDefinition (GL287)
   Crafting/      Recipe, CraftingStation (GL8; fixed batches GL61, fuel GL35)
   Economy/       Wallet, PriceList (GL12, GL13)
   Skills/        SkillSet: experience and levels per skill (GL47), MiningJournal (GL73)
@@ -70,7 +71,7 @@ Core/
     Recording/   MeshingRecorder (A11)
   Editing/       TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5; slivers GL79), TerrainPile (I4), GroundDrying (GL34), ChiselStrike + FlatTop (GL87, GL88), IDensityField, IEditableTerrain
   Queries/       SurfaceRaycast, VoxelRaycast, SurfacePoints (GL4)
-  Volume/        VoxelVolume, ChunkVolume (V11, V12, K30)
+  Volume/        VoxelVolume, ChunkVolume (V11, V12, K30), RegionVolume (the mesh volume round some samples: what a hit gathers, GL288)
   Saving/        GameSave (plain data), GameSaveFile (versioned binary, S1), WorldSaving (edited chunks, S2), StackSaving (GL205), SaveNames (GL207)
   Sky/           SkyPositions (the sun, the moon's orbit and phases, the stars' sidereal turn, GL248, GL253),
                  SkyWeather (each
