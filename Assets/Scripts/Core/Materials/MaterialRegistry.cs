@@ -215,6 +215,21 @@ namespace Clube.Core
             Prepare(debugMaterial);
         }
 
+        /// <summary>
+        /// The material a material is drawn as (GL273): itself, or the one it's shown as while hidden (GL54: copper ore as
+        /// stone until the player can tell them apart), so effects of it give nothing away.
+        /// </summary>
+        public VoxelMaterial Shown(VoxelMaterial material)
+        {
+            if (material == null)
+            {
+                return null;
+            }
+            EnsureLookup();
+            VoxelMaterial shown = Get((byte)layerRemap[material.Id]);
+            return shown != null ? shown : material;
+        }
+
         // Array properties aren't saved with a material asset, so they're set before each use.
         private void Prepare(Material material)
         {
