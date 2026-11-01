@@ -51,6 +51,10 @@ namespace Clube.Game
         [SerializeField]
         private StarSky stars;
 
+        [Tooltip("Draws the sun as a low-poly ball of light (GL277), in place of the skybox's. Optional: without it the skybox draws it.")]
+        [SerializeField]
+        private SunDisc sunDisc;
+
         [Tooltip("How high the sun gets at noon, in degrees.")]
         [SerializeField, Range(10f, 90f)]
         private float noonElevation = 62f;
@@ -271,7 +275,8 @@ namespace Clube.Game
             if (sky != null)
             {
                 // The sky draws the sun's disc where the light comes from: none while the light is the moon's.
-                SetSunDisc(sunsLight);
+                // The skybox draws the sun only without a SunDisc, and only while the light is the sun's.
+                SetSunDisc(sunsLight && sunDisc == null);
             }
             if (moon != null)
             {
@@ -312,6 +317,10 @@ namespace Clube.Game
                 sky.SetFloat(AtmosphereId, Mathf.Lerp(atmosphere, 0.75f, twilight));
             }
             LightClouds(sunDirection, sunHeight, sunColour, look, glow, moonDirection, moonLight);
+            if (sunDisc != null)
+            {
+                sunDisc.Show(sunDirection, sunColour, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.05f, 0.03f, sunHeight)));
+            }
         }
 
         // The clouds' light (GL262), for Clube/Clouds: the sun's while it can reach them, which at their height is a

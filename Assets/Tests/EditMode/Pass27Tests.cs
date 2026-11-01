@@ -3,41 +3,11 @@ using UnityEngine;
 
 namespace Clube.Core.Tests
 {
-    // GL252-GL254: the clouds' repeating noise, the stars turning with the sky, and the moon looking bigger low down.
+    // GL253-GL274: the stars turning with the sky, the moon looking bigger low down, sunsets and cloud cover, dahlias,
+    // tool cooldowns, relief and made sounds.
     public class Pass27Tests
     {
         private const float Latitude = 28f;
-
-        [Test]
-        public void CloudNoise_RepeatsSeamlessly()
-        {
-            var point = new Vector3(1.37f, 2.81f, 0.53f);
-            foreach (Vector3 axis in new[] { Vector3.right, Vector3.up, Vector3.forward })
-            {
-                Assert.AreEqual(CloudNoise.Worley(point, 4, 9), CloudNoise.Worley(point + axis * 4f, 4, 9), 1e-4f, "Worley repeats every tile.");
-                Assert.AreEqual(CloudNoise.Perlin(point, 8, 9), CloudNoise.Perlin(point + axis * 8f, 8, 9), 1e-4f, "Perlin repeats every tile.");
-            }
-        }
-
-        [Test]
-        public void CloudNoise_SpansTheFullRange()
-        {
-            const int size = 8;
-            byte[] bytes = CloudNoise.Build(size, 3);
-            Assert.AreEqual(size * size * size * 4, bytes.Length);
-            for (int channel = 0; channel < 4; channel++)
-            {
-                byte low = 255;
-                byte high = 0;
-                for (int i = channel; i < bytes.Length; i += 4)
-                {
-                    low = (byte)Mathf.Min(low, bytes[i]);
-                    high = (byte)Mathf.Max(high, bytes[i]);
-                }
-                Assert.AreEqual(0, low, $"Channel {channel} reaches 0.");
-                Assert.AreEqual(255, high, $"Channel {channel} reaches 255.");
-            }
-        }
 
         [Test]
         public void TheCelestialPole_StandsAtTheLatitude_InTheNorth()

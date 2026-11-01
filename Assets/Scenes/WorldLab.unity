@@ -5439,6 +5439,7 @@ GameObject:
   - component: {fileID: 1350119482}
   - component: {fileID: 1350119481}
   - component: {fileID: 1350119483}
+  - component: {fileID: 1350119484}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -5865,6 +5866,7 @@ MonoBehaviour:
   startMoonAge: 5
   moon: {fileID: 1350119480}
   stars: {fileID: 1350119482}
+  sunDisc: {fileID: 1350119484}
   noonElevation: 62
   dayIntensity: 1.15
   noonColor: {r: 1, g: 0.96, b: 0.9, a: 1}
@@ -5949,23 +5951,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.CloudLayer
   material: {fileID: 2100000, guid: 53ba5696c89f53a4ea56189fd958240e, type: 2}
-  noise: {fileID: 11700000, guid: 387ac4b2061111240ba8fe9b5e6067c4, type: 2}
   dayNight: {fileID: 1350119477}
-  baseHeight: 1100
-  thickness: 900
+  baseHeight: 1000
   coverageScale: 1
   weatherDays: 1.5
-  extinction: 0.035
+  cellSize: 1100
+  reach: 11000
+  size: {x: 450, y: 1100}
   windSpeed: 9
   windDirection: 70
   windSwing: 35
-  boil: 1.5
-  shapeScale: 3200
-  detailScale: 520
-  weatherScale: 16000
-  steps: 48
-  maxDistance: 30000
-  planetRadius: 600000
 --- !u!114 &1350119482
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6005,9 +6000,25 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 4eacf1aa58d19e44b84cbd9f850accb9, type: 3}
   - {fileID: 8300000, guid: 916b43354c38e8c4aa51cf171f0e85e2, type: 3}
   windVolume: {x: 0.12, y: 0.35}
-  leavesVolume: 0.3
+  leavesVolume: 0.18
   birdSeconds: {x: 4, y: 14}
   birdVolume: 0.35
+--- !u!114 &1350119484
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d895f9c27423d5a4c968a3bf3b242bff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.SunDisc
+  material: {fileID: 2100000, guid: b1efab7fdb8913948be73f516610b7b0, type: 2}
+  glowSize: 16
+  size: 4.5
+  distanceShare: 0.93
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
