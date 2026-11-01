@@ -473,10 +473,10 @@ moon (its own 29.5-day orbit and phases); `DayNightCycle` lights from either, `M
 The wooden chest (`StorageChest`, `ChestPanel`, `StorageCapacity`: 27 slots at 100% wood down to 5) is a placeable from
 100 wood at the stump. Birds: `BirdFlock` (Core/Fauna) and `BirdFlocks` on World. Gold shines (`VoxelMaterial.Shine`,
 `_MaterialShine` in `Clube/Terrain Materials`, glints in its texture). Silver and gold buns are called buttons.
-Twenty-seventh pass (GL252-GL264, `Docs/20261031 clube-backlog.md`): the sky. `CloudLayer` (on World) ray-marches volumetric
-cumulus (1100-2000 m) with `Clube/Clouds` on a camera-centred `SkySphere`, from a baked repeating 3D noise (`CloudNoise` in
-Core/Sky, *Clube → Sky → Build cloud noise*, `Assets/Textures/Sky/Cloud noise.asset`), lit by the main light (sun or moon),
-stopped at the ground by the camera's depth texture; wind and cover change with the game's days. `StarSky` (`Clube/Stars`)
+Twenty-seventh pass (GL252-GL264, `Docs/20261031 clube-backlog.md`): the sky. `CloudLayer` (on World) draws low-poly clouds (GL277:
+faceted puffs with flat bottoms, instanced over a wind-drifted grid round the camera, `Clube/Low Poly Clouds`), lit by the sun or
+moon as `DayNightCycle` gives it; `SunDisc` (`Clube/Sun`) draws the sun as a ball of light whose 12-sided outline shines through
+clouds in front of it, and the moon is a 12-sided faceted disc (GL278); wind and cover change with the game's days. `StarSky` (`Clube/Stars`)
 is turned by `DayNightCycle` once a sidereal day (`SkyPositions.SiderealAngle`). The moon is 2.16° and grows a quarter near
 the horizon (`SkyPositions.MoonIllusion`). Birds come every 10-30 s, 25-80 m off, 10-35 m over the ground. Draw order on
 the sky: stars (Transparent-450), moon (-400), clouds (-300). The lab HUD ends with the game time and day (GL259).

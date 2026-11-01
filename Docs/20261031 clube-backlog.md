@@ -28,3 +28,6 @@ Requests from 2026-10-31, kept as they were given (spelling tidied). They are or
 - [ ] Make the dawn bonus last from 04:30 to 09:30. → **GL270**
 - [ ] (2026-11-01) The stone pick in hand should look like a primitive stone lashed to a stick, its head off one side only, as its icon; the bronze pickaxe can stay a real pickaxe. → **GL273**
 - [ ] (2026-11-01) Particle effects: low-poly crumbles of the material being collected. → **GL274**
+- [ ] (2026-11-01) Rename the "Graphics" settings button to "Video". Make the footsteps and the leaves' rustling a bit quieter. → **GL275**
+- [ ] (2026-11-01) An "Audio" settings menu next to Video, with sliders 0-100 for SFX (tool hits, use noises), Footsteps and Ambient (leaves, birds, wind), the default mix at 50. → **GL276**
+- [ ] (2026-11-01) Make the clouds, sun and moon low poly, to match the landscape: fluffy clouds that tie in with the low-poly leaves on the tree tops; the sun still a round ball of light, but a 12-sided outline shining through a cloud in front of it; the moon's phases and shape drawn with polygons. Sunrises and sunsets should still colour them. → **GL277**, **GL278**
