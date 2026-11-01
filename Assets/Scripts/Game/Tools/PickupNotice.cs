@@ -84,12 +84,12 @@ namespace Clube.Game
 
         private void OnCollected(ItemStack collected)
         {
-            OnAdded(collected.Item);
+            OnAdded(collected.Item, collected.Amount);
         }
 
-        private void OnAdded(ItemDefinition item)
+        private void OnAdded(ItemDefinition item, float amount)
         {
-            Note(item, Kind.Added, 1);
+            Note(item, Kind.Added, amount);
         }
 
         private void OnRejected(ItemDefinition item)
@@ -107,7 +107,7 @@ namespace Clube.Game
             Note(item, Kind.CantDrop, 1);
         }
 
-        private void Note(ItemDefinition item, Kind kind, int count)
+        private void Note(ItemDefinition item, Kind kind, float count)
         {
             foreach (Notice notice in notices)
             {
@@ -151,19 +151,30 @@ namespace Clube.Game
                 case Kind.Full:
                     return $"Inventory full: {name}";
                 case Kind.Dropped:
-                    return $"-{notice.Count} {name}";
+                    return $"-{Amount(notice.Count)} {name}";
                 case Kind.CantDrop:
                     return $"Can't drop {name}";
                 default:
-                    return $"+{notice.Count} {name}";
+                    return $"+{Amount(notice.Count)} {name}";
             }
+        }
+
+        // Whole amounts as they are, parts to a tenth or a hundredth, as the stack shows them.
+        private static string Amount(float count)
+        {
+            float rounded = Mathf.Round(count);
+            if (Mathf.Abs(count - rounded) < 0.005f)
+            {
+                return rounded.ToString("0");
+            }
+            return count < 1f ? count.ToString("0.0#") : count.ToString("0.#");
         }
 
         private sealed class Notice
         {
             public ItemDefinition Item;
             public Kind Kind;
-            public int Count;
+            public float Count;
             public float LastTime;
         }
     }

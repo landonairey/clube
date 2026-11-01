@@ -46,8 +46,8 @@ namespace Clube.Game
         private Inventory classic;
         private Inventory toolSlotItems;
 
-        /// <summary>Raised for each collected item that went in.</summary>
-        public event Action<ItemDefinition> Added;
+        /// <summary>Raised for what a collected stack put in, with the amount that went in (parts included).</summary>
+        public event Action<ItemDefinition, float> Added;
 
         /// <summary>Raised for each collected item that didn't fit.</summary>
         public event Action<ItemDefinition> Rejected;
@@ -102,14 +102,16 @@ namespace Clube.Game
         private void OnCollected(ItemStack collected)
         {
             ItemDefinition item = collected.Item;
-            if (Inventory.Add(item, collected.Count, collected.Contents, 0, collected.Quality, collected.Part) > 0)
+            int left = Inventory.Add(item, collected.Count, collected.Contents, 0, collected.Quality, collected.Part);
+            // The notice shows what went into the stack, parts included (GL279).
+            float added = left > 0 ? collected.Count - left : collected.Amount;
+            if (added > ItemStack.PartEpsilon)
+            {
+                Added?.Invoke(item, added);
+            }
+            if (left > 0)
             {
                 Rejected?.Invoke(item);
-            }
-            else if (collected.Count > 0)
-            {
-                // A part of an item (a hand hit, GL169) shows in its stack, without a notice each hit.
-                Added?.Invoke(item);
             }
         }
 
