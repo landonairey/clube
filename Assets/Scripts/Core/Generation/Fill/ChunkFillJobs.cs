@@ -136,6 +136,22 @@ namespace Clube.Core
             var depths = new NativeArray<float>(Grid.Length, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
             int3 count = Grid.SampleCount;
             int stride = count.x + 2;
+
+            // Each column's gradient, from the bordered heights, so neighbouring chunks agree on it.
+            var gradients = new NativeArray<float>(count.x * count.z, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+            for (int z = 0; z < count.z; z++)
+            {
+                for (int x = 0; x < count.x; x++)
+                {
+                    int centre = stride * (z + 1) + x + 1;
+                    float dx = (Heights[centre + 1] - Heights[centre - 1]) / (2f * Grid.VoxelSize);
+                    float dz = (Heights[centre + stride] - Heights[centre - stride]) / (2f * Grid.VoxelSize);
+                    gradients[x + count.x * z] = math.sqrt(dx * dx + dz * dz);
+                }
+            }
+
+            // Ridges down the slopes (GL293) are in the data; coarse levels (P7c) are too coarse to hold them.
+            bool ridges = Settings.Layers.RidgeDepth > 0f && Settings.LodScale <= 1f;
             for (int z = 0; z < count.z; z++)
             {
                 for (int y = 0; y < count.y; y++)
@@ -145,7 +161,12 @@ namespace Clube.Core
                     int column = stride * (z + 1) + 1;
                     for (int x = 0; x < count.x; x++)
                     {
-                        depths[row + x] = (Heights[column + x] - height) * depthScale;
+                        float depth = Heights[column + x] - height;
+                        if (ridges)
+                        {
+                            depth += SlopeRidges.Offset(Grid.Position(x, y, z), gradients[x + count.x * z], Settings.Layers);
+                        }
+                        depths[row + x] = depth * depthScale;
                     }
                 }
             }
@@ -156,9 +177,7 @@ namespace Clube.Core
                 for (int x = 0; x < count.x; x++)
                 {
                     int centre = stride * (z + 1) + x + 1;
-                    float dx = (Heights[centre + 1] - Heights[centre - 1]) / (2f * Grid.VoxelSize);
-                    float dz = (Heights[centre + stride] - Heights[centre - stride]) / (2f * Grid.VoxelSize);
-                    steep[x + count.x * z] = Settings.Layers.IsSteep(math.sqrt(dx * dx + dz * dz), Heights[centre]) ? (byte)1 : (byte)0;
+                    steep[x + count.x * z] = Settings.Layers.IsSteep(gradients[x + count.x * z], Heights[centre]) ? (byte)1 : (byte)0;
                 }
             }
             ChunkFillKernel.Run(depths, steep, Grid, Settings, Ores, Trees, ref Output);

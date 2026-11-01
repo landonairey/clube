@@ -111,30 +111,11 @@ Shader "Clube/Terrain Materials"
             return n * n;
         }
 
-        // A surface's relief (GL268, GL292): ridges and gullies that run down the slopes. The noise is stretched upright
-        // (ridges about 2 m across and 20 m long, gullies under 1 m), so on any slope its long axis lies along the fall line: vertical flutes
-        // on cliffs, ribs running down hillsides. Vertices are pushed mostly sideways, so steep faces take the ridges and
-        // flat ground hardly moves. It depends only on the position (and the materials, which neighbouring chunks agree
-        // on), so chunk seams stay closed. Only drawn: the voxels and the colliders are unchanged.
-        float3 Relief(float3 positionWS, float3 ids, float3 weights)
-        {
-            float relief = ReliefOf(ids, weights);
-            if (relief <= 0.0)
-            {
-                return positionWS;
-            }
-            float3 ridges = positionWS * float3(0.5, 0.05, 0.5);
-            float3 gullies = positionWS * float3(1.6, 0.15, 1.6);
-            // Centred on 0 (ridged noise averages about 0.4), so the surface as a whole stays where the voxels put it.
-            float3 broad = float3(Ridged(ridges), Noise3(ridges + 17.3), Ridged(ridges + 41.9)) - float3(0.4, 0.5, 0.4);
-            float3 fine = float3(Ridged(gullies + 5.1), Noise3(gullies + 29.7), Ridged(gullies + 63.2)) - float3(0.4, 0.5, 0.4);
-            return positionWS + (broad * float3(0.9, 0.05, 0.9) + fine * float3(0.14, 0.02, 0.14)) * relief;
-        }
-
-        // Where a terrain vertex is drawn: swayed if it's leaves, roughened if it's rock or soil.
+        // Where a terrain vertex is drawn: swayed if it's leaves. The ground's shape is all in the voxels (GL293: slope
+        // ridges are generated into the density); only the shading adds fine grooves (Bumped).
         float3 ShapeTerrain(float3 positionWS, float3 ids, float3 weights)
         {
-            return Relief(SwayLeaves(positionWS, ids, weights), ids, weights);
+            return SwayLeaves(positionWS, ids, weights);
         }
 
         // Global (GL102), not per material.

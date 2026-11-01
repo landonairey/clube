@@ -25,6 +25,13 @@ namespace Clube.Core
         /// <summary>Surface height, in metres, above which steep columns show the base material.</summary>
         public float SteepMinHeight;
 
+        /// <summary>Slope ridges (GL293): see <see cref="SlopeRidges"/>. Depth 0 is none.</summary>
+        public float RidgeDepth;
+        public float RidgeWidth;
+        public float RidgeLength;
+        public float RidgeFromGradient;
+        public float RidgeFullGradient;
+
         /// <summary>Material id of the surface rocks.</summary>
         public byte Rock;
 
@@ -99,6 +106,11 @@ namespace Clube.Core
                 Base = layers.Base != null ? layers.Base.Id : (byte)0,
                 SteepGradient = layers.SteepAngle < 89.9f ? math.tan(math.radians(layers.SteepAngle)) : 0f,
                 SteepMinHeight = layers.SteepMinHeight,
+                RidgeDepth = layers.RidgeDepth,
+                RidgeWidth = layers.RidgeWidth,
+                RidgeLength = layers.RidgeLength,
+                RidgeFromGradient = math.tan(math.radians(layers.RidgeFromAngle)),
+                RidgeFullGradient = math.tan(math.radians(math.max(layers.RidgeFullAngle, layers.RidgeFromAngle + 1f))),
                 Rock = layers.Rock != null ? layers.Rock.Id : (byte)0,
                 RockChance = layers.Rock != null ? layers.RockChance : 0f,
                 BuriedStoneChance = layers.Rock != null ? layers.BuriedStoneChance : 0f,

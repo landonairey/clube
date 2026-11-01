@@ -41,6 +41,26 @@ namespace Clube.Core
         [SerializeField]
         private float steepMinHeight = 24f;
 
+        [Tooltip("Ridges and gullies down slopes (GL293), in the terrain itself: how far they stand in and out of the face, in metres. 0 turns them off.")]
+        [SerializeField, Range(0f, 2f)]
+        private float ridgeDepth = 0.6f;
+
+        [Tooltip("How wide one ridge is across the slope, in metres.")]
+        [SerializeField, Range(0.5f, 10f)]
+        private float ridgeWidth = 3.5f;
+
+        [Tooltip("How far a ridge runs down the slope before it changes, in metres.")]
+        [SerializeField, Range(2f, 60f)]
+        private float ridgeLength = 30f;
+
+        [Tooltip("Slope (degrees) where ridges begin; they are full by the steep slope below.")]
+        [SerializeField, Range(5f, 80f)]
+        private float ridgeFromAngle = 22f;
+
+        [Tooltip("Slope (degrees) where ridges are at their full depth.")]
+        [SerializeField, Range(10f, 85f)]
+        private float ridgeFullAngle = 50f;
+
         [Tooltip("Small rocks scattered on the top layer (GL22): clusters of 1-3 samples just above the surface. None for no rocks.")]
         [SerializeField]
         private VoxelMaterial rock;
@@ -114,6 +134,37 @@ namespace Clube.Core
         {
             get => steepMinHeight;
             set => steepMinHeight = value;
+        }
+
+        /// <summary>How far slope ridges stand in and out of a face, in metres (GL293); 0 is off.</summary>
+        public float RidgeDepth
+        {
+            get => ridgeDepth;
+            set => ridgeDepth = Mathf.Clamp(value, 0f, 2f);
+        }
+
+        public float RidgeWidth
+        {
+            get => ridgeWidth;
+            set => ridgeWidth = Mathf.Clamp(value, 0.5f, 10f);
+        }
+
+        public float RidgeLength
+        {
+            get => ridgeLength;
+            set => ridgeLength = Mathf.Clamp(value, 2f, 60f);
+        }
+
+        public float RidgeFromAngle
+        {
+            get => ridgeFromAngle;
+            set => ridgeFromAngle = Mathf.Clamp(value, 5f, 80f);
+        }
+
+        public float RidgeFullAngle
+        {
+            get => ridgeFullAngle;
+            set => ridgeFullAngle = Mathf.Clamp(value, 10f, 85f);
         }
 
         /// <summary>The material of the small surface rocks (GL22), or null for none.</summary>

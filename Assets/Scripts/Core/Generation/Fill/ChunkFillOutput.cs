@@ -43,8 +43,12 @@ namespace Clube.Core
         /// <summary>What a depth is multiplied by before the density and layers: 1 / <see cref="LodScale"/>.</summary>
         public float DepthScale => LodScale > 0f ? 1f / LodScale : 1f;
 
-        /// <summary>How far above the surface, in metres, the density ramp reaches.</summary>
-        public float RampReach => TerrainDensity.RampHalfWidth * (LodScale > 0f ? LodScale : 1f);
+        /// <summary>
+        /// How far above (or below) the heightfield's surface, in metres, the ground can reach: the density ramp, and on
+        /// full-detail levels the slope ridges (GL293).
+        /// </summary>
+        public float RampReach => TerrainDensity.RampHalfWidth * (LodScale > 0f ? LodScale : 1f)
+                                  + (LodScale <= 1f ? SlopeRidges.Reach(Layers) : 0f);
 
         /// <summary>
         /// These settings for an LOD level <paramref name="scale"/> times coarser: the bands widen with
