@@ -104,10 +104,18 @@ Shader "Clube/Terrain Materials"
                     + weights.z * _MaterialRelief[(int)ids.z]) / total;
         }
 
-        // A surface's relief (GL268): each vertex moved by a smooth 3D noise of where it is (lumps about 1.5 m across, up
-        // to 12 cm, and finer ones of 5 cm), so stone faces read as rough rock and soft ground as uneven. It depends only on
-        // the position (and the materials, which neighbouring chunks agree on), so chunk seams stay closed. Only drawn: the
-        // voxels and the colliders are unchanged.
+        // Ridged noise, 0-1: sharp crests where the noise crosses its middle, rounded troughs between.
+        float Ridged(float3 p)
+        {
+            float n = 1.0 - abs(Noise3(p) * 2.0 - 1.0);
+            return n * n;
+        }
+
+        // A surface's relief (GL268, GL292): ridges and gullies that run down the slopes. The noise is stretched upright
+        // (ridges about 2 m across and 20 m long, gullies under 1 m), so on any slope its long axis lies along the fall line: vertical flutes
+        // on cliffs, ribs running down hillsides. Vertices are pushed mostly sideways, so steep faces take the ridges and
+        // flat ground hardly moves. It depends only on the position (and the materials, which neighbouring chunks agree
+        // on), so chunk seams stay closed. Only drawn: the voxels and the colliders are unchanged.
         float3 Relief(float3 positionWS, float3 ids, float3 weights)
         {
             float relief = ReliefOf(ids, weights);
@@ -115,9 +123,12 @@ Shader "Clube/Terrain Materials"
             {
                 return positionWS;
             }
-            float3 broad = float3(Noise3(positionWS * 0.7), Noise3(positionWS * 0.7 + 17.3), Noise3(positionWS * 0.7 + 41.9)) - 0.5;
-            float3 fine = float3(Noise3(positionWS * 2.1 + 5.1), Noise3(positionWS * 2.1 + 29.7), Noise3(positionWS * 2.1 + 63.2)) - 0.5;
-            return positionWS + (broad * 0.24 + fine * 0.1) * relief;
+            float3 ridges = positionWS * float3(0.5, 0.05, 0.5);
+            float3 gullies = positionWS * float3(1.6, 0.15, 1.6);
+            // Centred on 0 (ridged noise averages about 0.4), so the surface as a whole stays where the voxels put it.
+            float3 broad = float3(Ridged(ridges), Noise3(ridges + 17.3), Ridged(ridges + 41.9)) - float3(0.4, 0.5, 0.4);
+            float3 fine = float3(Ridged(gullies + 5.1), Noise3(gullies + 29.7), Ridged(gullies + 63.2)) - float3(0.4, 0.5, 0.4);
+            return positionWS + (broad * float3(0.9, 0.05, 0.9) + fine * float3(0.14, 0.02, 0.14)) * relief;
         }
 
         // Where a terrain vertex is drawn: swayed if it's leaves, roughened if it's rock or soil.
@@ -362,19 +373,27 @@ Shader "Clube/Terrain Materials"
                 return shine * (lit * (sheen + glint * half3(1.0, 0.95, 0.75)) + skyGlint);
             }
 
-            // Fine relief in the shading (GL268): the normal tilted by the slope of a 3D noise about 30 cm across, so rock
-            // reads as pitted and cracked between its vertices. Only the light; the surface itself is where Relief put it.
+            // Fine relief in the shading (GL268, GL292): the normal tilted by the slope of ridged noise stretched upright, so
+            // rock reads as grooved down its faces between its vertices, more the steeper it is. Only the light; the surface
+            // itself is where Relief put it.
+            float BumpField(float3 positionWS)
+            {
+                float3 p = positionWS * float3(1.2, 0.06, 1.2);
+                return Ridged(p) * 0.8 + Ridged(positionWS * float3(2.6, 0.12, 2.6) + 7.7) * 0.2;
+            }
+
             float3 Bumped(float3 positionWS, float3 normalWS, float relief)
             {
                 if (relief <= 0.0)
                 {
                     return normalWS;
                 }
-                const float step = 0.04;
-                float3 p = positionWS * 3.3;
-                float here = Noise3(p);
-                float3 slope = float3(Noise3(p + float3(step, 0, 0)), Noise3(p + float3(0, step, 0)), Noise3(p + float3(0, 0, step))) - here;
-                slope /= step;
+                const float step = 0.02;
+                float here = BumpField(positionWS);
+                float3 slope = float3(BumpField(positionWS + float3(step, 0, 0)), BumpField(positionWS + float3(0, step, 0)),
+                    BumpField(positionWS + float3(0, 0, step))) - here;
+                slope /= step * 1.2;
+                relief *= lerp(0.45, 1.0, saturate((1.0 - normalWS.y) * 2.0));
                 // Only the part across the surface tilts it.
                 slope -= normalWS * dot(slope, normalWS);
                 return normalize(normalWS - slope * 0.22 * relief);
