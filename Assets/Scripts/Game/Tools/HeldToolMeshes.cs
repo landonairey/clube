@@ -31,6 +31,13 @@ namespace Clube.Game
         private static readonly Color Flint = new Color(0.36f, 0.35f, 0.38f);
         private static readonly Color Bronze = new Color(0.72f, 0.46f, 0.2f);
         private static readonly Color Iron = new Color(0.55f, 0.57f, 0.6f);
+        private static readonly Color Cord = new Color(0.62f, 0.52f, 0.34f);
+
+        // A tool made of stone (a stone pick, hatchet or hammer), as against bronze or iron.
+        private static bool IsStone(ToolDefinition tool)
+        {
+            return tool != null && tool.DisplayName.ToLowerInvariant().Contains("stone");
+        }
 
         /// <summary>The shape a tool is drawn as, by its name; the hand when there's none.</summary>
         public static HeldShape ShapeOf(ToolDefinition tool)
@@ -101,6 +108,16 @@ namespace Clube.Game
                 case HeldShape.HandAxe:
                     // A knapped stone, pointed end forward, held in the fist.
                     model.Diamond(new Vector3(0f, 0.04f, 0.09f), new Vector3(0.05f, 0.085f, 0.11f), head);
+                    break;
+                case HeldShape.Pick when IsStone(tool):
+                    // A primitive pick (as its icon): a rough stick, and a pointed stone lashed across its top,
+                    // sticking out to one side only, bound on with cord.
+                    model.Prism(new Vector3(0f, -0.14f, 0f), new Vector3(0.01f, 0.44f, -0.01f), 0.019f, 0.016f, 5, Wood);
+                    model.Prism(new Vector3(0f, 0.43f, -0.035f), new Vector3(0f, 0.38f, 0.23f), 0.034f, 0.007f, 5, head);
+                    model.Box(new Vector3(0f, 0.44f, -0.045f), new Vector3(0.05f, 0.055f, 0.04f), Quaternion.Euler(8f, 0f, 0f), head * 0.9f);
+                    model.Box(new Vector3(0.002f, 0.415f, -0.004f), new Vector3(0.046f, 0.016f, 0.05f), Quaternion.Euler(30f, 0f, 0f), Cord);
+                    model.Box(new Vector3(0.002f, 0.45f, -0.004f), new Vector3(0.046f, 0.016f, 0.05f), Quaternion.Euler(-30f, 0f, 0f), Cord);
+                    model.Box(new Vector3(0.002f, 0.39f, 0.006f), new Vector3(0.04f, 0.014f, 0.04f), Quaternion.identity, Cord * 0.9f);
                     break;
                 case HeldShape.Pick:
                     model.Prism(new Vector3(0f, -0.14f, 0f), new Vector3(0f, 0.46f, 0f), 0.017f, 0.015f, 5, Wood);
