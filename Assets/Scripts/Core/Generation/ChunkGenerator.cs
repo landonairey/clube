@@ -80,10 +80,13 @@ namespace Clube.Core
         }
 
         /// <summary>The fill settings for a terrain's layers and ores.</summary>
-        public static ChunkFillSettings SettingsFor(TerrainLayers layers, OreField ores, DensityFormat format, StartArea start = null)
+        public static ChunkFillSettings SettingsFor(
+            TerrainLayers layers, OreField ores, DensityFormat format, StartArea start = null, ITerrainGenerator generator = null)
         {
             int seed = ores?.Seed ?? 0;
-            return new ChunkFillSettings(LayerTable.From(layers, start, seed), seed, format);
+            var settings = new ChunkFillSettings(LayerTable.From(layers, start, seed), seed, format);
+            settings.Water = generator is HeightfieldGenerator heightfield ? heightfield.Water : WaterMap.None;
+            return settings;
         }
 
         /// <summary>
@@ -173,7 +176,7 @@ namespace Clube.Core
             NativeArray<TreePart> parts = CollectTrees(trees, grid, Allocator.Persistent);
             try
             {
-                Schedule(generator, grid, SettingsFor(layers, ores, format), nodes, parts, output).Complete();
+                Schedule(generator, grid, SettingsFor(layers, ores, format, null, generator), nodes, parts, output).Complete();
             }
             finally
             {

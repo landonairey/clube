@@ -280,7 +280,7 @@ namespace Clube.Core
         private void CreateBuilder(HeightfieldGenerator heightfield, WorldConfig config, int firstLevel)
         {
             World world = worldView.World;
-            ChunkFillSettings fill = ChunkGenerator.SettingsFor(config.Terrain.Layers, worldView.Ores, world.PreferredFormat, config.Terrain.StartArea);
+            ChunkFillSettings fill = ChunkGenerator.SettingsFor(config.Terrain.Layers, worldView.Ores, world.PreferredFormat, config.Terrain.StartArea, heightfield);
             // No voxel trees in the coarse levels: past the world's chunks trees are meshes (DistantTreeView, GL162).
             builder = new TerrainLodBuilder(
                 heightfield, world.Grid, fill, config.MeshSettings, world.StorageFactory,

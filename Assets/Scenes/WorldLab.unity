@@ -5440,6 +5440,8 @@ GameObject:
   - component: {fileID: 1350119481}
   - component: {fileID: 1350119483}
   - component: {fileID: 1350119484}
+  - component: {fileID: 1350119486}
+  - component: {fileID: 1350119485}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -6023,6 +6025,34 @@ MonoBehaviour:
   glowSize: 16
   size: 4.5
   distanceShare: 0.93
+--- !u!114 &1350119485
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 996535754489a154d8379d1126e29772, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.FallingGround
+  stepSeconds: 0.06
+  maxMovesPerStep: 1500
+--- !u!114 &1350119486
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 469ce04ad93e32742aff016bee04291d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.WaterView
+  material: {fileID: 2100000, guid: 842257cf3c1f32044ab4a5739a08c2ed, type: 2}
+  show: 1
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0

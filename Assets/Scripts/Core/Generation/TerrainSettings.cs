@@ -70,6 +70,10 @@ namespace Clube.Core
         [SerializeField]
         private StartArea startArea = new StartArea();
 
+        [Tooltip("Rivers and lakes (GL307), heightfield generators only: rivers down the valleys into lakes in the hollows, with sand and clay by them.")]
+        [SerializeField]
+        private WaterGeneration water = new WaterGeneration();
+
         [Header("Landscape")]
         [Tooltip("Landscape (GL26): width of a mountain, in metres. Ranges and plains are several times wider. Amplitude is the mountains' height above the plains, Surface level the plains' height, Octaves the ridges' detail.")]
         [SerializeField, Min(10f)]
@@ -129,6 +133,9 @@ namespace Clube.Core
 
         /// <summary>The start area generation stocks with trees and clay.</summary>
         public StartArea StartArea => startArea;
+
+        /// <summary>Rivers and lakes (GL307).</summary>
+        public WaterGeneration Water => water;
 
         public TerrainGeneratorType Generator
         {

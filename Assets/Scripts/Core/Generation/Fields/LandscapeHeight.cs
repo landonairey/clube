@@ -29,6 +29,7 @@ namespace Clube.Core
         private float lacunarity;
         private float persistence;
         private DistantRanges distant;
+        private WaterMap water;
 
         /// <param name="level">Height of the plains, in metres.</param>
         /// <param name="mountainHeight">Tallest the mountains rise above the plains, in metres.</param>
@@ -41,6 +42,7 @@ namespace Clube.Core
             int octaves = 5, float lacunarity = 2f, float persistence = 0.5f, DistantRanges distant = default)
         {
             this.distant = distant;
+            water = WaterMap.None;
             noise = new PerlinNoise(seed);
             this.level = level;
             this.mountainHeight = math.max(0f, mountainHeight);
@@ -51,7 +53,24 @@ namespace Clube.Core
             this.persistence = math.saturate(persistence);
         }
 
+        /// <summary>The same land with river beds cut into it (GL307).</summary>
+        public LandscapeHeight WithWater(WaterMap map)
+        {
+            LandscapeHeight cut = this;
+            cut.water = map;
+            return cut;
+        }
+
+        /// <summary>The rivers and lakes this land carries (GL307); not created for none.</summary>
+        public WaterMap Water => water;
+
         public float Height(float x, float z)
+        {
+            return RawHeight(x, z) - water.CarveAt(x, z);
+        }
+
+        /// <summary>The land before rivers cut into it.</summary>
+        public float RawHeight(float x, float z)
         {
             // Bend space by up to a quarter of a feature, so ridges and coastlines wander.
             float warpScale = 1f / (featureSize * 1.5f);

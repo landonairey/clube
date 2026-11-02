@@ -2,6 +2,19 @@ using UnityEngine;
 
 namespace Clube.Core
 {
+    /// <summary>How ground of a material moves under gravity (GL308).</summary>
+    public enum GroundFall
+    {
+        /// <summary>It stays where it is (rock, clay, plants).</summary>
+        Stays,
+
+        /// <summary>It falls straight down into air below it (dirt, grass).</summary>
+        Drops,
+
+        /// <summary>It falls, and slides down sideways where the slope is steeper than 45° (sand).</summary>
+        Slides,
+    }
+
     /// <summary>How dropped material of a kind piles up (GL17).</summary>
     public enum PileShape
     {
@@ -114,6 +127,10 @@ namespace Clube.Core
         [Tooltip("How much it shines, 0-1 (GL251: gold glints, so it's told from chalcopyrite): a metallic highlight and sparkles in the Clube/Terrain Materials shader.")]
         [SerializeField, Range(0f, 1f)]
         private float shine;
+
+        [Tooltip("Whether it falls when nothing holds it up (GL308): dirt and grass drop straight down, sand also slides off slopes steeper than 45°.")]
+        [SerializeField]
+        private GroundFall fall;
 
         [Tooltip("What a tool turns it into once broken (MF5, GL3), e.g. stone → cracked stone → loose stone. None: breaking it removes it and gives its drop.")]
         [SerializeField]
@@ -235,6 +252,9 @@ namespace Clube.Core
 
         /// <summary>How much it shines, 0-1 (GL251): gold does, the rest of the ground is matt.</summary>
         public float Shine => shine;
+
+        /// <summary>Whether it falls when nothing holds it up (GL308).</summary>
+        public GroundFall Fall => fall;
 
         /// <summary>
         /// How rough its surface is drawn, 0-1 (GL268): rock fully (bumps and cracks on stone faces), soft ground a little,

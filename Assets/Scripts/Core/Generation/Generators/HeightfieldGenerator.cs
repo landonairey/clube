@@ -20,6 +20,9 @@ namespace Clube.Core
         /// <summary>Ground height in world units at a horizontal position.</summary>
         public abstract float Height(float x, float z);
 
+        /// <summary>The rivers and lakes cut into this ground (GL307); not created when it has none.</summary>
+        public virtual WaterMap Water => WaterMap.None;
+
         /// <summary>
         /// Schedules a job writing the height of every column in <paramref name="block"/> to
         /// <paramref name="heights"/> (x fastest, then z) and (lowest, highest) to <paramref name="range"/>[0].
@@ -56,6 +59,9 @@ namespace Clube.Core
         {
             this.field = field;
         }
+
+        /// <summary>The shape's struct, as jobs get it.</summary>
+        protected TField Field => field;
 
         public override float Height(float x, float z)
         {

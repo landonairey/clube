@@ -37,6 +37,10 @@ namespace Clube.Core
             {
                 StampClay(depths, steepColumns, grid, settings.Seed, settings.Layers, output.Materials);
             }
+            if (settings.Water.IsCreated)
+            {
+                StampWaterBanks(depths, grid, settings, output.Materials);
+            }
             if (ores.Length > 0)
             {
                 StampOres(depths, grid, settings.Seed, ores, output.Materials);
@@ -211,6 +215,37 @@ namespace Clube.Core
                         if (depths[i] >= 0f && depths[i] < deposit)
                         {
                             materials[i] = layers.Clay;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Sand and clay by rivers and lakes (GL307): sand on the beds and lake shores, clay in patches
+        // along river banks and on deeper lake floors (WaterMap.MaterialAt), on top of the layers and
+        // clay deposits, under ore. Only the material changes, by global position, so borders agree.
+        private static void StampWaterBanks(NativeArray<float> depths, in ChunkSampleGrid grid, in ChunkFillSettings settings, NativeArray<byte> materials)
+        {
+            int3 count = grid.SampleCount;
+            float lod = settings.LodScale > 0f ? settings.LodScale : 1f;
+            for (int z = 0; z < count.z; z++)
+            {
+                for (int x = 0; x < count.x; x++)
+                {
+                    float2 column = grid.Position(x, 0, z).xz;
+                    if (!settings.Water.TryCell(column, out int cell) || (settings.Water.Kind[cell] == 0
+                        && settings.Water.LakeDistance[cell] > settings.Water.Banks.ShoreSand
+                        && settings.Water.RiverDistance[cell] > settings.Water.Banks.BankClay))
+                    {
+                        continue;
+                    }
+                    for (int y = 0; y < count.y; y++)
+                    {
+                        int i = grid.Index(x, y, z);
+                        byte material = settings.Water.MaterialAt(column, depths[i] * lod, settings.Seed);
+                        if (material != WaterMap.Keep)
+                        {
+                            materials[i] = material;
                         }
                     }
                 }

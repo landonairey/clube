@@ -77,6 +77,9 @@ namespace Clube.Core
             return loadedColumns.TryGetValue(column, out int layers) ? layers : 0;
         }
 
+        /// <summary>A global sample's density was changed through <see cref="SetDensity"/> (GL308: falling ground wakes up by it).</summary>
+        public event Action<Vector3Int> DensityChanged;
+
         /// <summary>Chunks touched by any edit, loaded or kept in memory.</summary>
         public int EditedCount => edited.Count;
 
@@ -350,6 +353,10 @@ namespace Clube.Core
             if (before.HasValue && density > before.Value)
             {
                 UncarveAround(sample);
+            }
+            if (changed > 0)
+            {
+                DensityChanged?.Invoke(sample);
             }
             return changed;
         }

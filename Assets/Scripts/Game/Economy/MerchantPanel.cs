@@ -140,7 +140,8 @@ namespace Clube.Game
             GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Click one of your items to see what the merchant pays for it.");
             y += 22f;
 
-            int clicked = InventoryGridGui.DrawPlayer(new Vector2(x, y), inventory, selected,
+            // While a group is picked only its stacks are lit (GL310): the last Ctrl-clicked slot may have just left it.
+            int clicked = InventoryGridGui.DrawPlayer(new Vector2(x, y), inventory, group.Count > 0 ? -1 : selected,
                 _ => null, group);
             if (clicked >= 0)
             {
@@ -295,7 +296,16 @@ namespace Clube.Game
             {
                 group.Add(slot);
             }
-            selected = group.Count > 0 ? slot : -1;
+            selected = group.Contains(slot) ? slot : group.Count > 0 ? First(group) : -1;
+        }
+
+        private static int First(System.Collections.Generic.HashSet<int> slots)
+        {
+            foreach (int slot in slots)
+            {
+                return slot;
+            }
+            return -1;
         }
 
         // The Ctrl-picked stacks (GL305): how much they come to, and a button selling them all.

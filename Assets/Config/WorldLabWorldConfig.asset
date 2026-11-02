@@ -95,6 +95,11 @@ MonoBehaviour:
       baseMaterial: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
       steepAngle: 35
       steepMinHeight: 24
+      ridgeDepth: 0.6
+      ridgeWidth: 3.5
+      ridgeLength: 30
+      ridgeFromAngle: 22
+      ridgeFullAngle: 50
       rock: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
       rockChance: 0.004
       buriedStoneChance: 0.002
@@ -203,6 +208,22 @@ MonoBehaviour:
       size: 32
       minTrees: 2
       clay: 1
+    water:
+      enabled: 1
+      areaSize: 640
+      flowCellSize: 4
+      riverArea: 12000
+      riverWidth: {x: 1.5, y: 6}
+      riverDepth: {x: 0.8, y: 2}
+      riverFill: 0.75
+      lakeMinDepth: 0.6
+      sand: {fileID: 11400000, guid: 3e3ca126ca1953d4ab4c916ecbbec1b1, type: 2}
+      sandDepth: 1.25
+      clayDepth: 1
+      clayFloorDepth: 1
+      shoreSand: 2.5
+      bankClay: 3
+      bankClayCover: 0.55
     featureSize: 250
     mountainCoverage: 0.35
     distantRangeHeight: 1500
