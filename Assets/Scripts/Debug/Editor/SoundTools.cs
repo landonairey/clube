@@ -62,6 +62,11 @@ namespace Clube.Debug.Editor
             {
                 Write("Pickup", v, SoundSynth.Pickup(330 + v));
             }
+            for (int v = 0; v < 3; v++)
+            {
+                Write("Whoosh", v, SoundSynth.Whoosh(340 + v));
+                Write("Err", v, SoundSynth.Err(350 + v));
+            }
             for (int v = 0; v < 8; v++)
             {
                 Write("Bird", v, SoundSynth.Chirp(400 + v));
@@ -98,6 +103,8 @@ namespace Clube.Debug.Editor
                 SetClips(so, "soilBreaks", Clips("Thud"));
                 SetClips(so, "plantBreaks", Clips("Rustle"));
                 SetClips(so, "gathered", Clips("Pickup"));
+                SetClips(so, "swishes", Clips("Whoosh"));
+                SetClips(so, "refusals", Clips("Err"));
 
                 // A hit sound for every tool, by its kind.
                 var tools = new List<ToolDefinition>();

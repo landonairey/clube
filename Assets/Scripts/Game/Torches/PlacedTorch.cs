@@ -19,6 +19,10 @@ namespace Clube.Game
         [SerializeField]
         private Material smokeMaterial;
 
+        [Tooltip("The flame's material (Embers: glowing); it flickers (GL304).")]
+        [SerializeField]
+        private Material flameMaterial;
+
         private PlacedObject placed;
         private TorchFlame flame;
         private GameClockTicks ticks;
@@ -27,7 +31,7 @@ namespace Clube.Game
         {
             placed = GetComponent<PlacedObject>();
             ticks = new GameClockTicks(FindAnyObjectByType<GameClock>());
-            flame = new TorchFlame(transform, flameAt, 18f, 6f, smokeMaterial);
+            flame = new TorchFlame(transform, flameAt, 18f, 6f, smokeMaterial, flameMaterial);
         }
 
         private void Update()

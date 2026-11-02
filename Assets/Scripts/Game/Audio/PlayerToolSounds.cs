@@ -32,6 +32,8 @@ namespace Clube.Game
             tools.Struck += OnStruck;
             tools.Collected += OnCollected;
             tools.BushPicked += OnBushPicked;
+            tools.Missed += OnMissed;
+            tools.Blocked += OnBlocked;
         }
 
         private void OnDisable()
@@ -39,6 +41,8 @@ namespace Clube.Game
             tools.Struck -= OnStruck;
             tools.Collected -= OnCollected;
             tools.BushPicked -= OnBushPicked;
+            tools.Missed -= OnMissed;
+            tools.Blocked -= OnBlocked;
         }
 
         private void OnStruck(StrikeResult result)
@@ -73,6 +77,26 @@ namespace Clube.Game
             }
         }
 
+        // A swing at nothing (GL302).
+        private void OnMissed(ToolDefinition tool)
+        {
+            if (sounds != null)
+            {
+                sounds.Play(sounds.Swish, source, 0.8f);
+            }
+        }
+
+        // A hit the tool can't make (GL302): a low err, at most every half second while held.
+        private void OnBlocked(string why)
+        {
+            if (sounds != null && Time.time >= nextRefusal)
+            {
+                nextRefusal = Time.time + 0.5f;
+                sounds.Play(sounds.Refused, source, 0.8f);
+            }
+        }
+
+        private float nextRefusal;
         private int collectedFrame = -1;
     }
 }

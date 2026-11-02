@@ -136,6 +136,7 @@ namespace Clube.Game
                 toolUser.Struck += OnStruck;
                 toolUser.Blocked += OnBlocked;
                 toolUser.BushPicked += OnBushPicked;
+                toolUser.Missed += OnMissed;
             }
         }
 
@@ -146,6 +147,7 @@ namespace Clube.Game
                 toolUser.Struck -= OnStruck;
                 toolUser.Blocked -= OnBlocked;
                 toolUser.BushPicked -= OnBushPicked;
+                toolUser.Missed -= OnMissed;
             }
             if (held != null)
             {
@@ -173,6 +175,12 @@ namespace Clube.Game
         private void OnBlocked(string why)
         {
             Swing(SwingFor(toolUser.Current));
+        }
+
+        // A swing at nothing still swings (GL302).
+        private void OnMissed(ToolDefinition tool)
+        {
+            Swing(SwingFor(tool));
         }
 
         private void OnBushPicked(Bush bush)

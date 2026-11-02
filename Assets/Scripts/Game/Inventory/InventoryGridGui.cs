@@ -78,7 +78,9 @@ namespace Clube.Game
         /// </summary>
         /// <param name="selected">A slot to draw highlighted, or -1.</param>
         /// <param name="corner">Optional small text for a slot's lower left, e.g. a price; null for none.</param>
-        public static int DrawPlayer(Vector2 topLeft, PlayerInventory player, int selected, System.Func<ItemStack, string> corner = null)
+        /// <param name="marked">More slots to draw highlighted (the merchant's Ctrl-picked group, GL305), or null.</param>
+        public static int DrawPlayer(Vector2 topLeft, PlayerInventory player, int selected, System.Func<ItemStack, string> corner = null,
+            System.Collections.Generic.ICollection<int> marked = null)
         {
             Inventory items = player.Inventory;
             int hotbar = player.HotbarSlots;
@@ -87,7 +89,7 @@ namespace Clube.Game
             {
                 int index = slot - hotbar;
                 var position = new Vector2(topLeft.x + (index % Columns) * (SlotSize + Gap), topLeft.y + (index / Columns) * (SlotSize + Gap));
-                if (Slot(position, items[slot], slot == selected, null, corner))
+                if (Slot(position, items[slot], slot == selected || (marked != null && marked.Contains(slot)), null, corner))
                 {
                     clicked = slot;
                 }
@@ -96,7 +98,7 @@ namespace Clube.Game
             for (int slot = 0; slot < hotbar; slot++)
             {
                 var position = new Vector2(topLeft.x + slot * (SlotSize + Gap), hotbarTop);
-                if (Slot(position, items[slot], slot == selected, null, corner))
+                if (Slot(position, items[slot], slot == selected || (marked != null && marked.Contains(slot)), null, corner))
                 {
                     clicked = slot;
                 }

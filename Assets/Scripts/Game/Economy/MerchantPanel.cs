@@ -33,6 +33,7 @@ namespace Clube.Game
         private PlayerController player;
         private int openedFrame;
         private int selected = -1;
+        private readonly System.Collections.Generic.HashSet<int> group = new System.Collections.Generic.HashSet<int>();
         // How much "Sell part" sells: whole items, or to the hundredth for a part item (GL246).
         private float splitAmount = 1f;
         private GUIStyle countStyle;
@@ -66,6 +67,7 @@ namespace Clube.Game
         {
             Current = table;
             selected = -1;
+            group.Clear();
             openedFrame = Time.frameCount;
             if (player != null)
             {
@@ -127,7 +129,7 @@ namespace Clube.Game
             PriceList prices = Current.Prices;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
             float offerRows = Current.Offers.Count > 0 ? Current.Offers.Count * (RowHeight + 4f) + 28f : 0f;
-            float height = Padding * 2f + 24f + 22f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + SellRowHeight + 6f + offerRows;
+            float height = Padding * 2f + 24f + 22f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + SellRowHeight + 6f + offerRows + (group.Count > 0 ? SellRowHeight + 6f : 0f);
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
@@ -139,13 +141,27 @@ namespace Clube.Game
             y += 22f;
 
             int clicked = InventoryGridGui.DrawPlayer(new Vector2(x, y), inventory, selected,
-                _ => null);
+                _ => null, group);
             if (clicked >= 0)
             {
-                selected = clicked == selected ? -1 : clicked;
+                if (Keyboard.current != null && Keyboard.current.ctrlKey.isPressed)
+                {
+                    PickForGroup(items, clicked);
+                }
+                else
+                {
+                    group.Clear();
+                    selected = clicked == selected ? -1 : clicked;
+                }
                 splitAmount = selected >= 0 ? items[selected].Amount : 1f;
             }
             y += InventoryGridGui.PlayerHeight(inventory) + 12f;
+
+            if (group.Count > 0)
+            {
+                DrawGroup(items, prices, x, y);
+                y += SellRowHeight + 6f;
+            }
 
             ItemStack chosen = selected >= 0 ? items[selected] : ItemStack.Empty;
             bool buys = !chosen.IsEmpty && prices.TryGetLot(chosen.Item, out _, out _);
@@ -256,6 +272,58 @@ namespace Clube.Game
             wallet.Wallet.Earn(earned);
             Sold?.Invoke(Mathf.Max(1, stack.Count));
             selected = -1;
+        }
+
+        // Ctrl-click (GL305): the first picks every stack of that item; later ones add a stack to the group or take it out.
+        private void PickForGroup(Inventory items, int slot)
+        {
+            if (items[slot].IsEmpty)
+            {
+                return;
+            }
+            if (group.Count == 0)
+            {
+                for (int i = 0; i < items.SlotCount; i++)
+                {
+                    if (!items[i].IsEmpty && items[i].Item == items[slot].Item)
+                    {
+                        group.Add(i);
+                    }
+                }
+            }
+            else if (!group.Remove(slot))
+            {
+                group.Add(slot);
+            }
+            selected = group.Count > 0 ? slot : -1;
+        }
+
+        // The Ctrl-picked stacks (GL305): how much they come to, and a button selling them all.
+        private void DrawGroup(Inventory items, PriceList prices, float x, float y)
+        {
+            group.RemoveWhere(slot => slot >= items.SlotCount || items[slot].IsEmpty);
+            float amount = 0f, coins = 0f;
+            foreach (int slot in group)
+            {
+                amount += items[slot].Amount;
+                coins += prices.PriceOf(items[slot], items[slot].Amount);
+            }
+            GUI.Label(new Rect(x, y + 4f, 360f, 40f),
+                $"{group.Count} stack{(group.Count == 1 ? "" : "s")} picked: {FormatAmount(amount)} in all\nCtrl-click to add or take out a stack");
+            GUI.enabled = coins > 0f;
+            if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), $"Sell picked\n{FormatCoins(coins)}"))
+            {
+                foreach (int slot in new System.Collections.Generic.List<int>(group))
+                {
+                    if (!items[slot].IsEmpty && prices.TryGetLot(items[slot].Item, out _, out _))
+                    {
+                        SellStack(slot);
+                    }
+                }
+                group.Clear();
+                selected = -1;
+            }
+            GUI.enabled = true;
         }
 
         // Whole items from a big stack; to the hundredth under 10, and the whole amount at the top of the slider.

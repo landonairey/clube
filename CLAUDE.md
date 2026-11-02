@@ -508,7 +508,8 @@ Slope ridges are generated into the density (GL293: `SlopeRidges` in the heightf
 terrain shader adds only fine pitting in the shading (GL268).
 Torches light the terrain, grass and held items (GL294: `AdditionalLights.hlsl` in their shaders); a torch is held
 until B starts placing it. E also opens the inventory (GL298); fuel clicked at a fire goes to its fuel slot (GL299);
-right-click pulls half a station or chest slot (GL300). Next: GL302-GL305 (`Docs/20261102 clube-backlog.md`).
+right-click pulls half a station or chest slot (GL300). A swing at nothing whooshes, a refused hit errs (GL302);
+placed torches have a flickering flame (GL304); Ctrl-click at the merchant picks stacks to sell together (GL305).
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
