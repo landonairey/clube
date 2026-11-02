@@ -510,6 +510,16 @@ Torches light the terrain, grass and held items (GL294: `AdditionalLights.hlsl` 
 until B starts placing it. E also opens the inventory (GL298); fuel clicked at a fire goes to its fuel slot (GL299);
 right-click pulls half a station or chest slot (GL300). A swing at nothing whooshes, a refused hit errs (GL302);
 placed torches have a flickering flame (GL304); Ctrl-click at the merchant picks stacks to sell together (GL305).
+Thirtieth pass (GL306-GL311, `Docs/20261102b clube-backlog.md`): water and falling ground. `Hydrology` (Core/Generation/Water)
+drains the heightfield over `WaterGeneration.AreaSize` (640 m round the origin; start area kept dry) into a `WaterMap` (1 m
+cells: river cut, water surface and depth, kind, flow, distance to lake and river water), cached per world shape.
+`LandscapeHeight.Height` subtracts the cut, so river beds are in the terrain data and every height reader agrees;
+`ChunkFillSettings.Water` lets `ChunkFillKernel.StampWaterBanks` lay sand (id 24, GL306) on beds and lake shores and clay on
+banks and deep lake floors; `TreeField.TryGetSpot` keeps trees off. Jobs refuse unassigned arrays even unread, so "no water"
+is `WaterMap.None` (empty arrays), never `default`. `WaterView` (on World) draws the water as flat triangles in the
+`Clube/Water` shader (bands downstream on rivers, random twinkles on lakes, GL309). Dirt and grass drop, sand also slides
+(`VoxelMaterial.Fall`): `GroundSettling` (Core/Editing) wakes on `World.DensityChanged` and `FallingGround` (on World) steps it
+(GL308). The water doesn't move when dug beside, and there's no swimming yet (GL311).
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
