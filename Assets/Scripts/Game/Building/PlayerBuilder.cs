@@ -60,6 +60,8 @@ namespace Clube.Game
         private PlayerController player;
         private PlayerParcels parcels;
         private GameObject preview;
+        private bool placingTorch;
+        private int placingSlot = -1;
         private PlaceableDefinition previewItem;
         private MaterialPropertyBlock properties;
         private float pressedAt;
@@ -101,6 +103,12 @@ namespace Clube.Game
             placedObject.Item = aimedItem;
             placedObject.Contents = held.Contents;
             placedObject.Quality = held.Quality;
+            // A torch is lit as it goes down, burning on from what it burned in the hand (GL287).
+            if (aimedItem is TorchDefinition torch && torch.Lit != null)
+            {
+                placedObject.Item = torch.Lit;
+                placedObject.Wear = torch.IsLit ? held.Wear : 0;
+            }
             // Built from a mix, a station works as well as the share of what it's made of (GL100).
             if (placed.TryGetComponent(out StationObject station))
             {
@@ -171,6 +179,22 @@ namespace Clube.Game
 
             InputAction action = buildAction != null ? buildAction.action : null;
             // Aimed at something already placed, Build's hold picks it up even with another placeable in hand.
+            // A torch is held in the hand (GL294); B takes it into placing, and a second B puts it down.
+            if (hotbar.SelectedSlot != placingSlot || !(hotbar.SelectedStack.Item is TorchDefinition))
+            {
+                placingTorch = false;
+            }
+            if (hotbar.SelectedStack.Item is TorchDefinition && !placingTorch && Aimed() == null)
+            {
+                StopBuilding();
+                hint = "B  Place torch";
+                if (action != null && action.WasPressedThisFrame())
+                {
+                    placingTorch = true;
+                    placingSlot = hotbar.SelectedSlot;
+                }
+                return;
+            }
             if (hotbar.SelectedStack.Item is PlaceableDefinition placeable && placeable.Prefab != null && Aimed() == null)
             {
                 Build(placeable, action);

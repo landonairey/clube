@@ -7,7 +7,7 @@ namespace Clube.Game
     /// <summary>
     /// Birds in the sky (GL250, a first look at fauna): now and then a group comes over, from a lone bird to a flock of
     /// a few dozen, flies a pattern for a while (<see cref="BirdFlock"/>: passing over, circling high, a swirling flock,
-    /// a V) and leaves until it's out of sight. Few at a time and far off, so the sky stays quiet; fewer at dusk and none
+    /// a V) and leaves until it's out of sight. Few at a time, near enough to make out (25-80 m off, 10-35 m over the ground), so the sky stays quiet; fewer at dusk and none
     /// at night. Drawn instanced, each bird a small dark silhouette, its wings in one of four poses of the beat.
     /// </summary>
     public class BirdFlocks : MonoBehaviour
@@ -24,33 +24,34 @@ namespace Clube.Game
 
         [Tooltip("The most groups in the sky at once.")]
         [SerializeField, Range(1, 6)]
-        private int maxGroups = 3;
+        private int maxGroups = 4;
 
         [Tooltip("Seconds between new groups, at random within this range.")]
         [SerializeField]
-        private Vector2 secondsBetween = new Vector2(25f, 80f);
+        private Vector2 secondsBetween = new Vector2(10f, 30f);
 
         [Tooltip("How far from the camera a group's pattern is flown, in metres.")]
         [SerializeField]
-        private Vector2 distance = new Vector2(70f, 180f);
+        private Vector2 distance = new Vector2(25f, 80f);
 
-        [Tooltip("How high above the camera they fly, in metres.")]
+        [Tooltip("How high above the ground under them they fly, in metres (never lower than that above the camera's feet).")]
         [SerializeField]
-        private Vector2 height = new Vector2(25f, 70f);
+        private Vector2 height = new Vector2(10f, 35f);
 
         [Tooltip("How far out they're gone, in metres: they fly off past this before they're dropped.")]
         [SerializeField, Min(100f)]
-        private float goneDistance = 650f;
+        private float goneDistance = 450f;
 
         [Tooltip("Wingspan of a bird, in metres; a big flock's birds are smaller, a lone circling bird larger.")]
         [SerializeField, Min(0.1f)]
-        private float wingspan = 0.9f;
+        private float wingspan = 1f;
 
         private readonly List<BirdFlock> groups = new List<BirdFlock>();
         private readonly List<float> sizes = new List<float>();
         private readonly InstanceBatches[] batches = new InstanceBatches[Poses];
         private readonly Mesh[] meshes = new Mesh[Poses];
         private System.Random random;
+        private WorldView world;
         private float nextGroup;
         private int drawnFrame = -1;
 
@@ -90,7 +91,7 @@ namespace Clube.Game
                 meshes[pose] = BuildBird(pose);
             }
             // The first group comes along soon after the start.
-            nextGroup = Time.time + Range(6f, 15f);
+            nextGroup = Time.time + Range(3f, 8f);
         }
 
         private void OnDestroy()
@@ -173,36 +174,38 @@ namespace Clube.Game
             }
         }
 
-        // A group of a random size and pattern: mostly a few birds, now and then one alone or a big flock.
+        // A group of a random size and pattern (GL266): most often a flock — a V of 7-16 or a swirling flock of 18-50 —
+        // sometimes a few birds, now and then one alone.
         private void Spawn(Vector3 viewer)
         {
             float roll = Range(0f, 1f);
             int count;
             FlightPattern pattern;
-            if (roll < 0.25f)
+            if (roll < 0.1f)
             {
                 count = 1;
                 pattern = Range(0f, 1f) < 0.6f ? FlightPattern.Circle : FlightPattern.Pass;
             }
-            else if (roll < 0.6f)
+            else if (roll < 0.3f)
             {
                 count = Mathf.RoundToInt(Range(2f, 5f));
                 pattern = Range(0f, 1f) < 0.3f ? FlightPattern.Circle : FlightPattern.Pass;
             }
-            else if (roll < 0.8f)
+            else if (roll < 0.6f)
             {
-                count = Mathf.RoundToInt(Range(5f, 11f));
+                count = Mathf.RoundToInt(Range(7f, 16f));
                 pattern = FlightPattern.Vee;
             }
             else
             {
-                count = Mathf.RoundToInt(Range(14f, 40f));
+                count = Mathf.RoundToInt(Range(18f, 50f));
                 pattern = FlightPattern.Swirl;
             }
 
             float angle = Range(0f, Mathf.PI * 2f);
             var around = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
-            Vector3 anchor = viewer + around * Range(distance.x, distance.y) + Vector3.up * Range(height.x, height.y);
+            Vector3 anchor = viewer + around * Range(distance.x, distance.y);
+            anchor.y = Mathf.Max(GroundUnder(anchor, viewer.y), viewer.y - 2f) + Range(height.x, height.y);
             // They come in from one side and leave roughly on across the sky; circling and swirling ones leave anywhere.
             float entryAngle = Range(0f, Mathf.PI * 2f);
             var entry = new Vector3(Mathf.Cos(entryAngle), 0f, Mathf.Sin(entryAngle));
@@ -210,8 +213,23 @@ namespace Clube.Game
                 ? Quaternion.Euler(0f, Range(-25f, 25f), 0f) * -entry
                 : Quaternion.Euler(0f, Range(-120f, 120f), 0f) * -entry;
             float stay = pattern == FlightPattern.Pass || pattern == FlightPattern.Vee ? 30f : Range(25f, 60f);
-            groups.Add(new BirdFlock(pattern, count, anchor, entry, exit, stay, random.Next(), Range(200f, 320f)));
+            groups.Add(new BirdFlock(pattern, count, anchor, entry, exit, stay, random.Next(), Range(110f, 180f)));
             sizes.Add(wingspan * (pattern == FlightPattern.Swirl ? 0.6f : pattern == FlightPattern.Circle ? 1.4f : pattern == FlightPattern.Vee ? 1.5f : 1f));
+        }
+
+        // The generated ground's height under a point, so birds keep over hills; the fallback without a world.
+        private float GroundUnder(Vector3 point, float fallback)
+        {
+            if (world == null)
+            {
+                world = GetComponent<WorldView>();
+            }
+            if (world == null || !world.IsReady || world.Generator == null)
+            {
+                return fallback;
+            }
+            float top = world.World.Grid.ChunkWorldSize.y * world.Config.WorldHeightInChunks;
+            return TerrainSurface.HeightAt(world.Generator, point.x, point.z, 0f, top);
         }
 
         private float Range(float min, float max)

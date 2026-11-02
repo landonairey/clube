@@ -54,6 +54,10 @@ namespace Clube.Game
         [SerializeField]
         private SoundSet chiselHits = new SoundSet();
 
+        [Tooltip("A pick's hit on stone or ore, in place of the pick's own sound: rock cracking and crunching (GL280).")]
+        [SerializeField]
+        private SoundSet pickRockHits = new SoundSet();
+
         [Tooltip("Any tool's hit on soft ground (dirt, grass, clay), in place of the tool's own sound.")]
         [SerializeField]
         private SoundSet soilHits = new SoundSet();
@@ -61,6 +65,23 @@ namespace Clube.Game
         [Tooltip("Any tool's hit on soft plants (leaves), in place of the tool's own sound.")]
         [SerializeField]
         private SoundSet leafHits = new SoundSet();
+
+        [Header("Breaking and gathering")]
+        [Tooltip("Rock or ore coming away after a hit (GL271): a crumble of grit.")]
+        [SerializeField]
+        private SoundSet rockBreaks = new SoundSet();
+
+        [Tooltip("Soft ground coming away: a soft thud of earth.")]
+        [SerializeField]
+        private SoundSet soilBreaks = new SoundSet();
+
+        [Tooltip("Wood or leaves coming away, and a picked bush: a rustle.")]
+        [SerializeField]
+        private SoundSet plantBreaks = new SoundSet();
+
+        [Tooltip("What a hit gathered going into the pack: a soft pick-up.")]
+        [SerializeField]
+        private SoundSet gathered = new SoundSet();
 
         [Header("Actions")]
         [Tooltip("A finished recipe that trains Crafting (worktops: sticks, tools), or no skill.")]
@@ -91,12 +112,14 @@ namespace Clube.Game
             set => effectsOn = value;
         }
 
-        /// <summary>Plays a sound on a source, unless sound effects are off.</summary>
-        public void Play(SoundSet sound, AudioSource source, float volumeScale = 1f)
+        /// <summary>
+        /// Plays a sound on a source, unless sound effects are off, at the player's volume for its channel (GL276).
+        /// </summary>
+        public void Play(SoundSet sound, AudioSource source, float volumeScale = 1f, AudioChannel channel = AudioChannel.Effects)
         {
             if (effectsOn && sound != null)
             {
-                sound.Play(source, volumeScale);
+                sound.Play(source, volumeScale * SoundSettings.Gain(channel));
             }
         }
 
@@ -113,6 +136,30 @@ namespace Clube.Game
                     return crafted;
             }
         }
+
+        /// <summary>The sound of a material coming away after a hit (GL271), by its kind.</summary>
+        public SoundSet BreakOf(VoxelMaterial material)
+        {
+            if (material == null)
+            {
+                return soilBreaks;
+            }
+            switch (material.Kind)
+            {
+                case MaterialKind.Rock:
+                    return rockBreaks;
+                case MaterialKind.Plant:
+                    return plantBreaks;
+                default:
+                    return soilBreaks;
+            }
+        }
+
+        /// <summary>A picked bush's rustle.</summary>
+        public SoundSet Plants => plantBreaks;
+
+        /// <summary>Gathered things going into the pack.</summary>
+        public SoundSet Gathered => gathered;
 
         public SoundSet Sold => sold;
 
@@ -152,7 +199,7 @@ namespace Clube.Game
 
         /// <summary>
         /// The sound of a hit with a tool on a material: chisels always chisel; soft ground and
-        /// leaves sound like themselves whatever hits them; otherwise the tool's own sound.
+        /// leaves sound like themselves whatever hits them; a pick crunches into rock; otherwise the tool's own sound.
         /// </summary>
         public SoundSet HitWith(ToolDefinition tool, VoxelMaterial material = null)
         {
@@ -163,6 +210,10 @@ namespace Clube.Game
             if (material != null && material.IsSoft)
             {
                 return material.Kind == MaterialKind.Plant ? leafHits : soilHits;
+            }
+            if (material != null && material.Kind == MaterialKind.Rock && HeldToolMeshes.ShapeOf(tool) == HeldShape.Pick && pickRockHits.HasClips)
+            {
+                return pickRockHits;
             }
             foreach (ToolSound entry in toolHits)
             {

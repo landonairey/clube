@@ -430,7 +430,7 @@ New opens `NewGamePage` (mode: only World playable; world name, "Hello World" by
 name and loaded save into the scene; `GameScenes` names the scenes. In WorldLab, `GameSessionHost` (on World) is an
 `IWorldConfigOverride` (Core: changes `WorldView`'s play copy of its config in Awake) that sets the seed, restores a save and
 captures one; `PauseMenu` is Esc (closes an open player screen first; Back, Save and Exit, Exit Without Saving;
-`Time.timeScale` 0; Save and Exit asks for a name, filled in with `<world> - <mode> - <time>`; Graphics opens
+`Time.timeScale` 0; Save and Exit asks for a name, filled in with `<world> - <mode> - Day <##> - <time>` (GL260); Graphics opens
 `GraphicsSettingsPage`: field of view 60-120 and a frame rate limit, kept in PlayerPrefs by `GraphicsSettings` and applied by
 `GraphicsSettingsApplier` on World, in the Editor only for a menu game; the main menu caps unlimited at 60, GL209). A menu game starts as the player (`PlayerCameraToggle`). Saving (first pass of S1-S4) is `Core/Saving`:
 `GameSave` (plain data, ids not references), `GameSaveFile` (header plain, body gzipped, `SaveHeader.CurrentVersion` 2: names
@@ -466,13 +466,49 @@ broken bushes are saved (`GameSave.RemovedBushes`, save version 4). Wind: `Asset
 voxel leaves (`VoxelMaterial.WindSway`, `_MaterialSway` from `MaterialRegistry`) and the distant trees.
 Twenty-sixth pass (GL240-GL251, `Docs/20261030g clube-backlog.md`): a stump opens only once the wood above it is cleared
 (GL231 reverted). In the sphere modes a tool on ground it isn't made for (a shovel on stone) works only the sample under the
-dot. Gathered stacks blend only within 15 points of purity, a pure stack only with pure (`Inventory.MixTolerance`); stations
+dot. (GL245's purity tolerance was replaced by GL256, below.) Stations
 load the best stack first (`SlotsByQuality`); the merchant sells part items (`Inventory.RemoveAmount`). Slides last while C is
 held, up to 8 m, never up a steep rise. The sky: `SkyPositions` (Core/Sky) puts the sun (under the horizon at night) and the
 moon (its own 29.5-day orbit and phases); `DayNightCycle` lights from either, `MoonDisc` (`Clube/Moon`) draws the moon.
 The wooden chest (`StorageChest`, `ChestPanel`, `StorageCapacity`: 27 slots at 100% wood down to 5) is a placeable from
 100 wood at the stump. Birds: `BirdFlock` (Core/Fauna) and `BirdFlocks` on World. Gold shines (`VoxelMaterial.Shine`,
 `_MaterialShine` in `Clube/Terrain Materials`, glints in its texture). Silver and gold buns are called buttons.
+Twenty-seventh pass (GL252-GL264, `Docs/20261031 clube-backlog.md`): the sky. `CloudLayer` (on World) draws low-poly clouds (GL277:
+faceted puffs with flat bottoms, instanced over a wind-drifted grid round the camera, `Clube/Low Poly Clouds`), lit by the sun or
+moon as `DayNightCycle` gives it; `SunDisc` (`Clube/Sun`) draws the sun as a ball of light whose 12-sided outline shines through
+clouds in front of it, and the moon is a 12-sided faceted disc (GL278); wind and cover change with the game's days. `StarSky` (`Clube/Stars`)
+is turned by `DayNightCycle` once a sidereal day (`SkyPositions.SiderealAngle`). The moon is 2.16° and grows a quarter near
+the horizon (`SkyPositions.MoonIllusion`). Birds come every 10-30 s, 25-80 m off, 10-35 m over the ground. Draw order on
+the sky: stars (Transparent-450), moon (-400), clouds (-300). The lab HUD ends with the game time and day (GL259).
+Also in this pass (GL256-GL264): stacks mix again when digging and when dropped by hand (`Inventory.Combines`); only what
+comes out of a crafting station keeps apart from other qualities (`StacksApart`, `keepApart` on `Add`/`MoveTo`). Grass reaches
+64 m, thinning past 22 m, and grass ground takes the tufts' colour from afar (`GrassLawn`, `GrassLawnMap` round the focus,
+`Assets/Shaders/GrassLawn.hlsl` in the terrain, far terrain and grass shaders), so the tufts end without a line. Distant
+trees have four levels made from real `TreeShape` trees (`DistantTreeMeshes.BuildLevels`: every leaf ball to 220 m, leaf
+clusters to 520 m, crowns to 1100 m, one blob beyond; six variants per kind), cross-faded by dither in `Clube/Distant Trees`,
+in the voxel trees' texture colours. `SkyWeather` (Core/Sky) gives each sunrise and sunset a colour and strength and each day
+its cloud cover; `DayNightCycle` lights the clouds itself (`_CloudLightDir`, `_CloudLightColor`), by the sun a while after it
+leaves the land. The main menu reads "Extract, Refine, Craft, Build your World". Dahlias (GL265, `DahliaGrowth` on
+`GrassScatter`) grow rarely among the grass over about a third of gold nodes, a patch of a few flowers mostly of one colour. Birds come mostly
+in flocks (GL266). Any shader drawn in the world needs a DepthNormals pass (GL267): with SSAO the depth texture is built from
+them, and the clouds stop at it. Terrain relief, held tools and sound (GL268-GL272): `Clube/Terrain Materials` roughens
+rock and soil by `VoxelMaterial.Relief` (drawn only); `HeldToolView` (Game/Tools) holds and swings the tool; `ToolCooldown` puts
+a second between uses (hands and dawn a quarter quicker); `SoundSynth` (Core/Audio) makes every sound effect, written by *Clube →
+Audio → Generate sound effects*, and `AmbientSounds` (on World) plays wind, leaves and birds. Hits throw low-poly crumbs of the material (`HitDebris`, GL274); the
+stone pick is a stone lashed to a stick (GL273).
+Twenty-eighth pass (GL279-GL291, `Docs/20261101 clube-backlog.md`): a gradual hit gathers the volume the mesh lost
+(`RegionVolume` in Core/Volume, by the tetrahedra before and after; GL288), and the pickup notice shows what went in. Clouds
+come in four kinds (cumulus, cumulonimbus, stratus, cirrus) and drift by game time; the moon's phase edge is a polygon line.
+Tool tiers: hand axe 1, stone 2, copper 3, bronze 4; copper and bronze tools are mended by dropping their ingot on them
+(`ToolRepair`; a share of each mended hit is lost for good as quality, grey on the bar). Torches (`TorchDefinition`, an unlit
+and a lit item; `TorchBurner`, `PlacedTorch` in Game/Torches) burn by game time (`GameClockTicks`); charcoal is cooked from
+wood or sticks. The sleeping roll (`SleepingRoll`, `RestScreen`, `RestBlur` in Game/Rest; Clube.Game now references URP)
+rests 1-24 hours at one a second (`GameClock.Advance`). Placed objects keep a wear (save version 5). The chest is a crate.
+Slope ridges are generated into the density (GL293: `SlopeRidges` in the heightfield fill, by column gradient); the
+terrain shader adds only fine pitting in the shading (GL268).
+Torches light the terrain, grass and held items (GL294: `AdditionalLights.hlsl` in their shaders); a torch is held
+until B starts placing it. E also opens the inventory (GL298); fuel clicked at a fire goes to its fuel slot (GL299);
+right-click pulls half a station or chest slot (GL300). Next: GL302-GL305 (`Docs/20261102 clube-backlog.md`).
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 434cb56f54d6739459d80c3ea884e0e1, type: 3}
+  m_Name: Sleeping roll
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.PlaceableDefinition
+  id: sleeping-roll
+  displayName: Sleeping roll
+  icon: {fileID: 2800000, guid: d98231ddf7381614db8a7e1d452a40c9, type: 3}
+  maxStack: 1
+  unitVolume: 1
+  burnSeconds: 0
+  purityAs: {fileID: 0}
+  hidesContents: 0
+  prefab: {fileID: 7854643536770524401, guid: 285133e8568374f40bed56df93428099, type: 3}

@@ -15,6 +15,9 @@ Shader "Clube/Grass"
         _SwayHeight ("Reference height for the sway (m)", Float) = 0.3
         _FadeStart ("Shrinks from (m)", Float) = 20
         _FadeEnd ("Gone at (m)", Float) = 28
+        _ThinStart ("Thins out from (m)", Float) = 100000
+        _ThinMin ("Share left where it starts to shrink", Range(0.02, 1)) = 1
+        _LawnBlend ("Takes the far grass colour with distance", Range(0, 1)) = 0
         _StrawColor ("Straw colour", Color) = (0.78, 0.66, 0.36, 1)
         _StrawFrom ("Green up to (m tall)", Float) = 0.3
         _StrawAt ("Straw from (m tall)", Float) = 0.8
@@ -36,6 +39,9 @@ Shader "Clube/Grass"
             float _SwayHeight;
             float _FadeStart;
             float _FadeEnd;
+            float _ThinStart;
+            float _ThinMin;
+            float _LawnBlend;
             half4 _StrawColor;
             float _StrawFrom;
             float _StrawAt;
@@ -48,14 +54,30 @@ Shader "Clube/Grass"
             return length(float3(UNITY_MATRIX_M._m01, UNITY_MATRIX_M._m11, UNITY_MATRIX_M._m21));
         }
 
-        // Where a vertex stands: shrunk into the ground towards the edge of the drawn area, so it has no
-        // hard line, and swayed by the wind at its tip.
+        // The grass's colour seen from afar (GL257), globals set by GrassScatter, shared with the terrain shaders.
+        #include "Assets/Shaders/GrassLawn.hlsl"
+
+        // How far towards the far grass colour an instance at this distance has turned, 0-1.
+        float LawnShare(float distanceToCamera)
+        {
+            return saturate((distanceToCamera - _ThinStart) / max(_FadeEnd - _ThinStart, 0.01)) * _LawnBlend;
+        }
+
+        // Where a vertex stands: past _ThinStart fewer instances stand, those left wider to cover the same
+        // ground (GL257); towards the edge of the drawn area they shrink into the ground, so there's no hard
+        // line; and the wind sways the tip.
         float3 FloraPosition(float3 positionOS, float tip)
         {
             float3 positionWS = TransformObjectToWorld(positionOS);
             float3 rootWS = TransformObjectToWorld(float3(0, 0, 0));
-            float fade = 1.0 - saturate((distance(rootWS, _WorldSpaceCameraPos) - _FadeStart) / max(_FadeEnd - _FadeStart, 0.01));
-            positionWS = rootWS + (positionWS - rootWS) * fade;
+            float distanceToCamera = distance(rootWS, _WorldSpaceCameraPos);
+            float keep = lerp(1.0, _ThinMin, saturate((distanceToCamera - _ThinStart) / max(_FadeStart - _ThinStart, 0.01)));
+            float pick = frac(sin(dot(floor(rootWS.xz * 9.0), float2(12.9898, 78.233))) * 43758.5453);
+            float kept = pick < keep ? 1.0 : 0.0;
+            float fade = 1.0 - saturate((distanceToCamera - _FadeStart) / max(_FadeEnd - _FadeStart, 0.01));
+            float3 offset = (positionWS - rootWS) * fade * kept;
+            offset.xz *= min(rsqrt(max(keep, 0.01)), 2.5);
+            positionWS = rootWS + offset;
             float reach = clamp(InstanceHeight() / max(_SwayHeight, 0.01), 0.5, 4.0);
             positionWS.xz += WindSway(positionWS, _WindStrength * reach * tip, _WindSpeed);
             return positionWS;
@@ -73,10 +95,13 @@ Shader "Clube/Grass"
             #pragma fragment Fragment
             #pragma multi_compile_instancing
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+            #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
             #pragma multi_compile_fog
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Assets/Shaders/AdditionalLights.hlsl"
 
             struct Attributes
             {
@@ -107,6 +132,14 @@ Shader "Clube/Grass"
                 float straw = saturate((InstanceHeight() - _StrawFrom) / max(_StrawAt - _StrawFrom, 0.01)) * _StrawStrength;
                 half3 dry = _StrawColor.rgb * lerp(0.45, 1.0, input.color.a);
                 output.color = lerp(input.color.rgb, dry, straw) * _Tint.rgb;
+                // Far off, grass takes the colour the ground under it shows from afar, so the two meet without a line.
+                float3 rootWS = TransformObjectToWorld(float3(0, 0, 0));
+                float lawnShare = LawnShare(distance(rootWS, _WorldSpaceCameraPos));
+                if (lawnShare > 0.0)
+                {
+                    half3 lawn = GrassLawnAt(rootWS.xz) * lerp(0.75, 1.15, input.color.a);
+                    output.color = lerp(output.color, lawn, lawnShare);
+                }
                 output.fogFactor = ComputeFogFactor(output.positionCS.z);
                 return output;
             }
@@ -118,6 +151,8 @@ Shader "Clube/Grass"
                 // Thin blades and leaves let light through: both faces are lit, the far one a little less.
                 half facing = abs(dot(normalWS, mainLight.direction)) * 0.7 + 0.3;
                 half3 direct = mainLight.color * facing * mainLight.shadowAttenuation * mainLight.distanceAttenuation;
+                // Torches light the grass too (GL294).
+                direct += AdditionalDiffuse(input.positionWS, normalWS, input.positionCS);
                 half3 ambient = SampleSH(half3(0, 1, 0));
                 half3 color = input.color * (direct + ambient);
                 color = MixFog(color, input.fogFactor);
@@ -208,6 +243,57 @@ Shader "Clube/Grass"
             half Fragment() : SV_Target
             {
                 return 0;
+            }
+            ENDHLSL
+        }
+
+        // Depth and normals for the camera's depth texture: with SSAO on, URP builds it from this pass, and the clouds
+        // (Clube/Clouds) read it to stop behind what's in front of them; without it they drew over the grass and bushes.
+        Pass
+        {
+            Name "DepthNormals"
+            Tags { "LightMode" = "DepthNormals" }
+            Cull Off
+            ZWrite On
+
+            HLSLPROGRAM
+            #pragma vertex NormalsVertex
+            #pragma fragment NormalsFragment
+            #pragma multi_compile_instancing
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
+
+            struct Attributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
+                half4 color : COLOR;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct Varyings
+            {
+                float4 positionCS : SV_POSITION;
+                float3 normalWS : TEXCOORD0;
+            };
+
+            Varyings NormalsVertex(Attributes input)
+            {
+                UNITY_SETUP_INSTANCE_ID(input);
+                Varyings output;
+                output.positionCS = TransformWorldToHClip(FloraPosition(input.positionOS.xyz, input.color.a));
+                output.normalWS = TransformObjectToWorldNormal(input.normalOS);
+                return output;
+            }
+
+            half4 NormalsFragment(Varyings input) : SV_Target
+            {
+                float3 normalWS = normalize(input.normalWS);
+            #if defined(_GBUFFER_NORMALS_OCT)
+                float2 octahedral = PackNormalOctQuadEncode(normalWS);
+                return half4(PackFloat2To888(saturate(octahedral * 0.5 + 0.5)), 0.0);
+            #else
+                return half4(normalWS, 0.0);
+            #endif
             }
             ENDHLSL
         }

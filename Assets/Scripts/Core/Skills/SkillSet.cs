@@ -32,11 +32,11 @@ namespace Clube.Core
         /// <summary>Raised after any experience is gained.</summary>
         public event Action Changed;
 
-        /// <summary>Experience the first level costs (GL184).</summary>
-        public const float FirstLevelCost = 20f;
+        /// <summary>Experience the first level costs (GL184; 30 since GL289).</summary>
+        public const float FirstLevelCost = 30f;
 
-        /// <summary>How much more each level costs than the one before (GL184): 50% more.</summary>
-        public const float LevelCostGrowth = 1.5f;
+        /// <summary>How much more each level costs than the one before (GL184; 60% more since GL289).</summary>
+        public const float LevelCostGrowth = 1.6f;
 
         /// <summary>
         /// Total experience needed for a level (GL184): the first costs 20, and each after it 50% more than

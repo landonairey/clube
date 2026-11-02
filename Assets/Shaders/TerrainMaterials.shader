@@ -71,8 +71,58 @@ Shader "Clube/Terrain Materials"
             return positionWS;
         }
 
+        // How rough each material is drawn, 0-1 (GL268: rock 1, soft ground 0.35, plants 0), set from the registry.
+        float _MaterialRelief[64];
+
+        float Hash31(float3 p)
+        {
+            p = frac(p * float3(0.1031, 0.1030, 0.0973));
+            p += dot(p, p.yxz + 33.33);
+            return frac((p.x + p.y) * p.z);
+        }
+
+        // Smooth 3D value noise, 0-1.
+        float Noise3(float3 p)
+        {
+            float3 i = floor(p);
+            float3 f = frac(p);
+            f = f * f * (3.0 - 2.0 * f);
+            float a = Hash31(i), b = Hash31(i + float3(1, 0, 0)), c = Hash31(i + float3(0, 1, 0)), d = Hash31(i + float3(1, 1, 0));
+            float e = Hash31(i + float3(0, 0, 1)), g = Hash31(i + float3(1, 0, 1)), h = Hash31(i + float3(0, 1, 1)), k = Hash31(i + float3(1, 1, 1));
+            return lerp(lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y), lerp(lerp(e, g, f.x), lerp(h, k, f.x), f.y), f.z);
+        }
+
+        // How rough the surface is here: its materials' relief, by weight.
+        float ReliefOf(float3 ids, float3 weights)
+        {
+            float total = weights.x + weights.y + weights.z;
+            if (total <= 0.0)
+            {
+                return 0.0;
+            }
+            return (weights.x * _MaterialRelief[(int)ids.x] + weights.y * _MaterialRelief[(int)ids.y]
+                    + weights.z * _MaterialRelief[(int)ids.z]) / total;
+        }
+
+        // Where a terrain vertex is drawn: swayed if it's leaves. The ground's shape is all in the voxels (GL293: slope
+        // ridges are generated into the density); only the shading adds fine grooves (Bumped).
+        float3 ShapeTerrain(float3 positionWS, float3 ids, float3 weights)
+        {
+            return SwayLeaves(positionWS, ids, weights);
+        }
+
         // Global (GL102), not per material.
         float _HardMaterialEdges;
+
+        // Grass seen from afar (GL257, set by GrassScatter; _GrassLawnTo 0 when there's none): the grass material's
+        // ground takes on the colour of the blades standing on it (GrassLawnAt: green, straw in meadows, wheat), a little
+        // within the 3D grass and fully by the edge of it, so there's no line where the tufts end and the bare texture
+        // begins.
+        #include "Assets/Shaders/GrassLawn.hlsl"
+        float _GrassLawnLayer;
+        float _GrassLawnFrom;
+        float _GrassLawnTo;
+        float _GrassLawnNear;
 
         // Coarse terrain LOD (P7c, TerrainLodView), set on a copy of the material per level; 0 on the
         // world's own chunks. _LodClip 2: leave out the columns the world's chunks draw in
@@ -119,8 +169,11 @@ Shader "Clube/Terrain Materials"
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #pragma multi_compile_fog
+            #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Assets/Shaders/AdditionalLights.hlsl"
 
             TEXTURE2D_ARRAY(_Textures);
             SAMPLER(sampler_Textures);
@@ -154,7 +207,7 @@ Shader "Clube/Terrain Materials"
             Varyings Vertex(Attributes input)
             {
                 Varyings output;
-                output.positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
+                output.positionWS = ShapeTerrain(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 output.positionCS = TransformWorldToHClip(output.positionWS);
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.materialIds = input.materialIds;
@@ -208,6 +261,25 @@ Shader "Clube/Terrain Materials"
                 return alongX * axisWeights.x + alongY * axisWeights.y + alongZ * axisWeights.z;
             }
 
+            // Grass ground seen from afar (GL257): the colour of its blades, mottled as tufts are at a distance.
+            half3 Lawn(half3 albedo, float3 positionWS, int3 ids, float3 weights)
+            {
+                if (_GrassLawnTo <= 0.0)
+                {
+                    return albedo;
+                }
+                int layer = (int)_GrassLawnLayer;
+                float grass = (ids.x == layer ? weights.x : 0.0) + (ids.y == layer ? weights.y : 0.0) + (ids.z == layer ? weights.z : 0.0);
+                if (grass <= 0.001)
+                {
+                    return albedo;
+                }
+                float far = smoothstep(_GrassLawnFrom, _GrassLawnTo, distance(positionWS, _WorldSpaceCameraPos));
+                float mottle = ValueNoise(positionWS.xz * 1.3) * 0.45 + ValueNoise(positionWS.xz * 0.21) * 0.35 + ValueNoise(positionWS.xz * 0.05) * 0.2;
+                half3 lawn = GrassLawnAt(positionWS.xz) * (0.78 + 0.44 * mottle);
+                return lerp(albedo, lawn, grass * lerp(_GrassLawnNear, 1.0, far));
+            }
+
             half3 Albedo(Varyings input, float3 normalWS)
             {
                 float3 weights = input.materialWeights / max(dot(input.materialWeights, 1.0), 1e-5);
@@ -246,6 +318,7 @@ Shader "Clube/Terrain Materials"
                     }
                     // Brighter and darker patches tens of metres across, so even the breakup doesn't read as a pattern.
                     albedo *= 1.0 + _TintVariation * (ValueNoise(input.positionWS.xz * 0.04) * 2.0 - 1.0);
+                    albedo = Lawn(albedo, input.positionWS, ids, weights);
                 }
                 return albedo;
             }
@@ -277,11 +350,31 @@ Shader "Clube/Terrain Materials"
                 return shine * (lit * (sheen + glint * half3(1.0, 0.95, 0.75)) + skyGlint);
             }
 
+            // Fine relief in the shading (GL268): the normal tilted by the slope of a 3D noise about 30 cm across, so rock
+            // reads as pitted between its vertices. Only fine grain: the ground's shape, slope ridges included (GL293), is
+            // all in the voxels.
+            float3 Bumped(float3 positionWS, float3 normalWS, float relief)
+            {
+                if (relief <= 0.0)
+                {
+                    return normalWS;
+                }
+                const float step = 0.04;
+                float3 p = positionWS * 3.3;
+                float here = Noise3(p);
+                float3 slope = float3(Noise3(p + float3(step, 0, 0)), Noise3(p + float3(0, step, 0)), Noise3(p + float3(0, 0, step))) - here;
+                slope /= step;
+                // Only the part across the surface tilts it.
+                slope -= normalWS * dot(slope, normalWS);
+                return normalize(normalWS - slope * 0.22 * relief);
+            }
+
             half4 Fragment(Varyings input) : SV_Target
             {
                 ClipLod(input.positionWS);
                 float3 normalWS = normalize(input.normalWS);
                 half3 albedo = Albedo(input, normalWS);
+                normalWS = Bumped(input.positionWS, normalWS, ReliefOf(input.materialIds, input.materialWeights));
                 if (_LodClip > 0.5)
                 {
                     albedo *= _LodTint.rgb;
@@ -291,6 +384,8 @@ Shader "Clube/Terrain Materials"
                 half3 direct = mainLight.color * saturate(dot(normalWS, mainLight.direction))
                              * mainLight.shadowAttenuation * mainLight.distanceAttenuation;
                 half3 ambient = SampleSH(normalWS);
+                // Torches and other point lights (GL294).
+                direct += AdditionalDiffuse(input.positionWS, normalWS, input.positionCS);
 
                 half3 color = albedo * (direct + ambient);
                 float shine = ShineOf(input);
@@ -333,7 +428,7 @@ Shader "Clube/Terrain Materials"
 
             float4 ShadowVertex(Attributes input) : SV_POSITION
             {
-                float3 positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
+                float3 positionWS = ShapeTerrain(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
             #if _CASTING_PUNCTUAL_LIGHT_SHADOW
                 float3 lightDirection = normalize(_LightPosition - positionWS);
@@ -384,7 +479,7 @@ Shader "Clube/Terrain Materials"
             DepthVaryings DepthVertex(DepthAttributes input)
             {
                 DepthVaryings output;
-                output.positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
+                output.positionWS = ShapeTerrain(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 output.positionCS = TransformWorldToHClip(output.positionWS);
                 return output;
             }
@@ -427,7 +522,7 @@ Shader "Clube/Terrain Materials"
             Varyings NormalsVertex(Attributes input)
             {
                 Varyings output;
-                output.positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
+                output.positionWS = ShapeTerrain(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 output.positionCS = TransformWorldToHClip(output.positionWS);
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 return output;

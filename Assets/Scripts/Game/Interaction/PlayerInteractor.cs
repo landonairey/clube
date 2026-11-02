@@ -1,3 +1,4 @@
+using Clube.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -37,6 +38,9 @@ namespace Clube.Game
 
         public float Reach => reach;
 
+        private BushScatter bushes;
+        private WorldView bushesWorld;
+
         private void Awake()
         {
             player = GetComponent<PlayerController>();
@@ -75,13 +79,34 @@ namespace Clube.Game
                     continue;
                 }
                 nearest = hit.distance;
-                Target = hit.collider.GetComponentInParent<IInteractable>() ?? stumps?.Find(hit) ?? parcels?.Find(hit);
+                Target = hit.collider.GetComponentInParent<IInteractable>();
+                if (Target == null && !BushInFront(hit, head))
+                {
+                    Target = stumps?.Find(hit) ?? parcels?.Find(hit);
+                }
             }
 
             if (Target != null && interactAction != null && interactAction.action.WasPressedThisFrame())
             {
                 Target.Interact(this);
             }
+        }
+
+        // A bush stands in front of the ground hit (bushes have no collider, GL236): the ground's prompts (a stump, land
+        // to buy, "You don't own this land") are for what's behind it, so Attack picks the bush instead (GL281).
+        private bool BushInFront(RaycastHit hit, Transform head)
+        {
+            WorldView world = hit.collider.GetComponentInParent<WorldView>();
+            if (world == null)
+            {
+                return false;
+            }
+            if (bushes == null || bushesWorld != world)
+            {
+                bushesWorld = world;
+                bushes = world.GetComponent<BushScatter>();
+            }
+            return bushes != null && bushes.Raycast(new Ray(head.position, head.forward), hit.distance, out _, out _);
         }
 
         private void OnGUI()

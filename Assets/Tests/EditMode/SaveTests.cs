@@ -126,8 +126,9 @@ namespace Clube.Core.Tests
         public void SaveNames_DefaultAndFileName()
         {
             var time = new System.DateTime(2026, 10, 30, 15, 4, 59);
-            Assert.AreEqual("Hello World - World - 2026-10-30 15:04", SaveNames.DefaultSaveName("Hello World", "World", time));
-            Assert.AreEqual("Hello World - World - 2026-10-30 15:04", SaveNames.DefaultSaveName("  ", "World", time), "No name: the default world name.");
+            Assert.AreEqual("Hello World - World - Day 03 - 2026-10-30 15:04", SaveNames.DefaultSaveName("Hello World", "World", 3, time));
+            Assert.AreEqual("Hello World - World - Day 112 - 2026-10-30 15:04", SaveNames.DefaultSaveName("Hello World", "World", 112, time));
+            Assert.AreEqual("Hello World - World - Day 01 - 2026-10-30 15:04", SaveNames.DefaultSaveName("  ", "World", 1, time), "No name: the default world name.");
             Assert.AreEqual("Hello World - World - 2026-10-30 15-04.clubesave", SaveNames.FileNameFor("Hello World - World - 2026-10-30 15:04"));
             Assert.AreEqual("a-b-c.clubesave", SaveNames.FileNameFor(" a/b?c. "));
             Assert.AreEqual("Save.clubesave", SaveNames.FileNameFor("???".Replace("?", "")));

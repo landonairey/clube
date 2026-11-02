@@ -70,6 +70,13 @@ namespace Clube.Game
                     // Wear bar along the bottom: green when fresh, red when nearly gone.
                     // Against its full hits, so a tool of 60% quality starts with 60% of the bar (GL118).
                     float left = Mathf.Clamp01((float)(stack.MaxHits - stack.Wear) / ((ToolDefinition)stack.Item).MaxHits);
+                    // What repairs have lost for good (GL286) shows grey at the bar's end: it can't be mended back.
+                    float best = Mathf.Clamp01((float)stack.MaxHits / ((ToolDefinition)stack.Item).MaxHits);
+                    if (best < 0.995f)
+                    {
+                        float width = rect.width - 8f;
+                        Fill(new Rect(rect.x + 4f + width * best, rect.yMax - 8f, width * (1f - best), 4f), new Color(0.45f, 0.45f, 0.47f));
+                    }
                     var bar = new Rect(rect.x + 4f, rect.yMax - 8f, (rect.width - 8f) * left, 4f);
                     Fill(bar, Color.Lerp(new Color(0.85f, 0.2f, 0.15f), new Color(0.35f, 0.8f, 0.25f), left));
                 }

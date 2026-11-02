@@ -12,44 +12,40 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad5d835b9fc4b1347861cfe2f7db222b, type: 3}
   m_Name: PlayerSounds
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSounds
-  effectsOn: 0
+  effectsOn: 1
   stoneSteps:
     clips:
-    - {fileID: 8300000, guid: 27ec82fc9ed3d35438804e8d951e6aa3, type: 3}
-    - {fileID: 8300000, guid: ecf7b0fe8598acb49879c868af628bc0, type: 3}
-    - {fileID: 8300000, guid: 7eec74d8d059f314d951a8a9fd7bed42, type: 3}
-    - {fileID: 8300000, guid: c5f25fd62ddfe114cae64e45a9a563c5, type: 3}
-    - {fileID: 8300000, guid: 2eb163397324e154c8d827e05abfc5e6, type: 3}
+    - {fileID: 8300000, guid: 84ceaa6824b3e9a42a947cd59a7f5397, type: 3}
+    - {fileID: 8300000, guid: ca2f89fb246966d4e9c8cab10a18f675, type: 3}
+    - {fileID: 8300000, guid: 9d20d463a4d7bef47a03457d6929ea23, type: 3}
+    - {fileID: 8300000, guid: 12e96d3675da3d44db655cc2aff7f56e, type: 3}
     volume: 0.13
     pitchJitter: 0.08
     playAll: 0
   dirtSteps:
     clips:
-    - {fileID: 8300000, guid: ab87cbbb0a7fe384d945dc692ebc0ca3, type: 3}
-    - {fileID: 8300000, guid: 7596ab8b3e3b88c4988031de9dc48d69, type: 3}
-    - {fileID: 8300000, guid: 210a81ca6e1925f4ebed8aa94a059256, type: 3}
-    - {fileID: 8300000, guid: c5ba734072723654b9d37530427ebdb7, type: 3}
-    - {fileID: 8300000, guid: 5ee14065883db4c4abd4f1ffc161a937, type: 3}
+    - {fileID: 8300000, guid: 63ac5369390c5434d80734f4e36f85d6, type: 3}
+    - {fileID: 8300000, guid: 5dbd040d6bf83e64fbc78f6cb7289c1e, type: 3}
+    - {fileID: 8300000, guid: fcf8a84bf0d365240a57eda68e9aace0, type: 3}
+    - {fileID: 8300000, guid: a075c54ff2d0cd84ba816c223fa30c8b, type: 3}
     volume: 0.13
     pitchJitter: 0.08
     playAll: 0
   grassSteps:
     clips:
-    - {fileID: 8300000, guid: ab87cbbb0a7fe384d945dc692ebc0ca3, type: 3}
-    - {fileID: 8300000, guid: 7596ab8b3e3b88c4988031de9dc48d69, type: 3}
-    - {fileID: 8300000, guid: 210a81ca6e1925f4ebed8aa94a059256, type: 3}
-    - {fileID: 8300000, guid: c5ba734072723654b9d37530427ebdb7, type: 3}
-    - {fileID: 8300000, guid: 5ee14065883db4c4abd4f1ffc161a937, type: 3}
+    - {fileID: 8300000, guid: cc5866a786337d248b32313a61c7260d, type: 3}
+    - {fileID: 8300000, guid: cd45510b9f5c60442ae2de8a551f7c43, type: 3}
+    - {fileID: 8300000, guid: de092eb565a54ae4d9d298af5c5803fb, type: 3}
+    - {fileID: 8300000, guid: d5000caf253754449b9eff85d69f9ec1, type: 3}
     volume: 0.13
     pitchJitter: 0.08
     playAll: 0
   claySteps:
     clips:
-    - {fileID: 8300000, guid: b3316f7cc5103e045bb170ab364ed024, type: 3}
-    - {fileID: 8300000, guid: 05f5ea2d9114f1a42a0d9df7b23da68b, type: 3}
-    - {fileID: 8300000, guid: 23428b4ccd38b1d4eb55ebce1ec60061, type: 3}
-    - {fileID: 8300000, guid: 18e3c7aed6e687e428cd6a4571fd15ae, type: 3}
-    - {fileID: 8300000, guid: 1ae0a23700e8f794e929590802e2a836, type: 3}
+    - {fileID: 8300000, guid: 35ffd86d4a78c5540b20e743e5afbb0f, type: 3}
+    - {fileID: 8300000, guid: b414899662055574a86e5cef32eb88b4, type: 3}
+    - {fileID: 8300000, guid: a458b9519c409664e8ca1e785704a617, type: 3}
+    - {fileID: 8300000, guid: 81c07322aef7c4441a56247aafb0e7c8, type: 3}
     volume: 0.13
     pitchJitter: 0.08
     playAll: 0
@@ -57,88 +53,202 @@ MonoBehaviour:
   grass: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
   clay: {fileID: 11400000, guid: b167c5abf07b4be419155d7e54a546e6, type: 2}
   toolHits:
-  - tool: {fileID: 11400000, guid: 0cd0e3994cf57324687ce5035ec165d3, type: 2}
+  - tool: {fileID: 11400000, guid: 4d73f7764f9054f489c276538d90d6d6, type: 2}
     sound:
       clips:
-      - {fileID: 8300000, guid: de17aadeafbee044084d079788e2dd16, type: 3}
-      - {fileID: 8300000, guid: 84541ad9570fea947b63c3f0479cd68c, type: 3}
-      - {fileID: 8300000, guid: 087bf31e9c101644c9a1aba1c095e2fb, type: 3}
-      - {fileID: 8300000, guid: ff0552085fcd0ee42ae1ae83e902287b, type: 3}
-      - {fileID: 8300000, guid: 62c63d3792f73904d87530d223250ee0, type: 3}
+      - {fileID: 8300000, guid: ce466ad88f8159d44a0b9e96788d66f7, type: 3}
+      - {fileID: 8300000, guid: cef514ef3be7cf74d84a83cb05d263a9, type: 3}
+      - {fileID: 8300000, guid: 221c67d1b135cbb45bce35b8c0ac6164, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  - tool: {fileID: 11400000, guid: b0747403d8a47e04d950cedc0cc18003, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: 86995559ff73a1444a36efa113edc264, type: 3}
+      - {fileID: 8300000, guid: 201b66e29fd48d848b99c0a5f3af0aa0, type: 3}
+      - {fileID: 8300000, guid: e3898a6e9b9a8d843be94074ad62cb10, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  - tool: {fileID: 11400000, guid: 75884212da9ef2040ac6fa7449e6da69, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: 0b3fe07558da8384c8e087cd011b6d00, type: 3}
+      - {fileID: 8300000, guid: 3be405fb7bf5d6a47b603be5fb011a53, type: 3}
+      - {fileID: 8300000, guid: 8fc2add3e7f4dd64fb2d20f7b48cadb7, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  - tool: {fileID: 11400000, guid: d4b92ab0b8562f24f9e291f710d099c2, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: 87eebf88d2fc1f94a8c107fe4ec87fc8, type: 3}
+      - {fileID: 8300000, guid: 807cfee63a3d6164daa8fd78d02ca436, type: 3}
+      - {fileID: 8300000, guid: b1fd3a46f58e10840af85bec8805a274, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  - tool: {fileID: 11400000, guid: b41295084fb37454693bab6f100dfeb5, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: 86995559ff73a1444a36efa113edc264, type: 3}
+      - {fileID: 8300000, guid: 201b66e29fd48d848b99c0a5f3af0aa0, type: 3}
+      - {fileID: 8300000, guid: e3898a6e9b9a8d843be94074ad62cb10, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  - tool: {fileID: 11400000, guid: e03060fe9ac797745b8b656d593b7671, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: 0b3fe07558da8384c8e087cd011b6d00, type: 3}
+      - {fileID: 8300000, guid: 3be405fb7bf5d6a47b603be5fb011a53, type: 3}
+      - {fileID: 8300000, guid: 8fc2add3e7f4dd64fb2d20f7b48cadb7, type: 3}
       volume: 0.6
       pitchJitter: 0.1
       playAll: 0
   - tool: {fileID: 11400000, guid: a56a1ea3071fb444faf3aa4d3fba77a8, type: 2}
     sound:
       clips:
-      - {fileID: 8300000, guid: e563117c47cc69041af29d315dd90cb7, type: 3}
-      - {fileID: 8300000, guid: cdc98152cdded1045a3e4d69cb8ee410, type: 3}
-      - {fileID: 8300000, guid: b196cdb4d4156bd45b41790e2713280f, type: 3}
-      - {fileID: 8300000, guid: c49d4941d2b39e7429759d6900603b46, type: 3}
-      - {fileID: 8300000, guid: 282f57a5f85068541b1c307ee2cd2438, type: 3}
+      - {fileID: 8300000, guid: 86995559ff73a1444a36efa113edc264, type: 3}
+      - {fileID: 8300000, guid: 201b66e29fd48d848b99c0a5f3af0aa0, type: 3}
+      - {fileID: 8300000, guid: e3898a6e9b9a8d843be94074ad62cb10, type: 3}
       volume: 0.6
       pitchJitter: 0.1
       playAll: 0
-  - tool: {fileID: 11400000, guid: 950dfde7ea687974caddd2269cd51cd5, type: 2}
+  - tool: {fileID: 11400000, guid: 0cd0e3994cf57324687ce5035ec165d3, type: 2}
     sound:
       clips:
-      - {fileID: 8300000, guid: 449247a002f2cfe42b87a8ca30ede2a7, type: 3}
-      - {fileID: 8300000, guid: 8fac7a88d9967464ea71e4454b59c921, type: 3}
-      - {fileID: 8300000, guid: abc274d68f809874a8b84ecf98c9cbf6, type: 3}
-      - {fileID: 8300000, guid: cb2e3831abc7a3d499462ff6a60cc684, type: 3}
-      - {fileID: 8300000, guid: 6f21feca342d8f540be9467baabfc2de, type: 3}
+      - {fileID: 8300000, guid: 0578e655b693a9845b34d4597cdc2cfb, type: 3}
+      - {fileID: 8300000, guid: 344f333ecec096547bb30766c3874a50, type: 3}
+      - {fileID: 8300000, guid: 9df09339783eabf4691a6286b29f0713, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  - tool: {fileID: 11400000, guid: 5c26ed0b0bc9f364eb573719b28d57bf, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: 0b3fe07558da8384c8e087cd011b6d00, type: 3}
+      - {fileID: 8300000, guid: 3be405fb7bf5d6a47b603be5fb011a53, type: 3}
+      - {fileID: 8300000, guid: 8fc2add3e7f4dd64fb2d20f7b48cadb7, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  - tool: {fileID: 11400000, guid: 491e33a691a865b42bde1489ab967008, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: 87eebf88d2fc1f94a8c107fe4ec87fc8, type: 3}
+      - {fileID: 8300000, guid: 807cfee63a3d6164daa8fd78d02ca436, type: 3}
+      - {fileID: 8300000, guid: b1fd3a46f58e10840af85bec8805a274, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  - tool: {fileID: 11400000, guid: e8aba9307e44d824991fbeae5379a218, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: 0b3fe07558da8384c8e087cd011b6d00, type: 3}
+      - {fileID: 8300000, guid: 3be405fb7bf5d6a47b603be5fb011a53, type: 3}
+      - {fileID: 8300000, guid: 8fc2add3e7f4dd64fb2d20f7b48cadb7, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  - tool: {fileID: 11400000, guid: 9a2549f6e31e233418cbffff678c20ea, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: 935da7fb7b090054194bf11ee477dff0, type: 3}
+      - {fileID: 8300000, guid: 53f290319a3c39546b66582559186976, type: 3}
+      - {fileID: 8300000, guid: b06c58329946150409fdf068b06d3b5b, type: 3}
       volume: 0.6
       pitchJitter: 0.1
       playAll: 0
   - tool: {fileID: 11400000, guid: ec342cbb09055dd4ea2cce0b53812e2c, type: 2}
     sound:
       clips:
-      - {fileID: 8300000, guid: 4ebd294065bd9004aa8d3723a499c480, type: 3}
-      - {fileID: 8300000, guid: e7f89b5afcc9acb4e8eb7a7a32bcf8d6, type: 3}
-      - {fileID: 8300000, guid: b1a752c73b790194ab87336de08417bd, type: 3}
-      - {fileID: 8300000, guid: 7a491c87e2a58e54287a81c9fd870546, type: 3}
-      - {fileID: 8300000, guid: f802d33301cef60499122c19bd820312, type: 3}
-      - {fileID: 8300000, guid: e84c03a87dcfc73488557c3d41d79089, type: 3}
+      - {fileID: 8300000, guid: 86995559ff73a1444a36efa113edc264, type: 3}
+      - {fileID: 8300000, guid: 201b66e29fd48d848b99c0a5f3af0aa0, type: 3}
+      - {fileID: 8300000, guid: e3898a6e9b9a8d843be94074ad62cb10, type: 3}
+      volume: 0.6
+      pitchJitter: 0.1
+      playAll: 0
+  - tool: {fileID: 11400000, guid: 950dfde7ea687974caddd2269cd51cd5, type: 2}
+    sound:
+      clips:
+      - {fileID: 8300000, guid: 935da7fb7b090054194bf11ee477dff0, type: 3}
+      - {fileID: 8300000, guid: 53f290319a3c39546b66582559186976, type: 3}
+      - {fileID: 8300000, guid: b06c58329946150409fdf068b06d3b5b, type: 3}
       volume: 0.6
       pitchJitter: 0.1
       playAll: 0
   otherToolHits:
     clips:
-    - {fileID: 8300000, guid: 1e33382fcbdebcd488e78f53b5c7747d, type: 3}
-    - {fileID: 8300000, guid: 9a96d3692de43e84083ac6acf2671b90, type: 3}
-    - {fileID: 8300000, guid: d7660ed396a204b49be58078c0dfdfb5, type: 3}
-    - {fileID: 8300000, guid: c1da868dc1ab9e147a27908ce1bdc0ff, type: 3}
-    - {fileID: 8300000, guid: 1f0e4dd10407ffa47aadc316e699078a, type: 3}
+    - {fileID: 8300000, guid: 935da7fb7b090054194bf11ee477dff0, type: 3}
+    - {fileID: 8300000, guid: 53f290319a3c39546b66582559186976, type: 3}
+    - {fileID: 8300000, guid: b06c58329946150409fdf068b06d3b5b, type: 3}
     volume: 0.55
     pitchJitter: 0.1
     playAll: 0
   chiselHits:
     clips:
-    - {fileID: 8300000, guid: 8d12f6df6a75932408afa137558a2085, type: 3}
-    - {fileID: 8300000, guid: 7b54d7da23dd7114aa259f4d28f90423, type: 3}
-    - {fileID: 8300000, guid: 6299d9a4adca6204887047e469a398c3, type: 3}
-    - {fileID: 8300000, guid: cf1de0ec9ba8adf45a618662b3156bb1, type: 3}
-    - {fileID: 8300000, guid: 3826f5e86f060394bb54f6bef8529a66, type: 3}
+    - {fileID: 8300000, guid: ce466ad88f8159d44a0b9e96788d66f7, type: 3}
+    - {fileID: 8300000, guid: cef514ef3be7cf74d84a83cb05d263a9, type: 3}
+    - {fileID: 8300000, guid: 221c67d1b135cbb45bce35b8c0ac6164, type: 3}
     volume: 0.5
     pitchJitter: 0.1
     playAll: 0
+  pickRockHits:
+    clips:
+    - {fileID: 8300000, guid: 6b8dc0288cae1b3468aa1149d8d21a39, type: 3}
+    - {fileID: 8300000, guid: 88d8c89948f20c54a8b73cc78137a18c, type: 3}
+    - {fileID: 8300000, guid: a4abb4187e1646244990c3981fea3fc6, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
+    playAll: 0
   soilHits:
     clips:
-    - {fileID: 8300000, guid: b3316f7cc5103e045bb170ab364ed024, type: 3}
-    - {fileID: 8300000, guid: 05f5ea2d9114f1a42a0d9df7b23da68b, type: 3}
-    - {fileID: 8300000, guid: 23428b4ccd38b1d4eb55ebce1ec60061, type: 3}
-    - {fileID: 8300000, guid: 18e3c7aed6e687e428cd6a4571fd15ae, type: 3}
-    - {fileID: 8300000, guid: 1ae0a23700e8f794e929590802e2a836, type: 3}
+    - {fileID: 8300000, guid: 87eebf88d2fc1f94a8c107fe4ec87fc8, type: 3}
+    - {fileID: 8300000, guid: 807cfee63a3d6164daa8fd78d02ca436, type: 3}
+    - {fileID: 8300000, guid: b1fd3a46f58e10840af85bec8805a274, type: 3}
     volume: 0.5
     pitchJitter: 0.1
     playAll: 0
   leafHits:
     clips:
-    - {fileID: 8300000, guid: 1712bddf86a3ce949bffe9709a4342ff, type: 3}
-    - {fileID: 8300000, guid: 04500c4a3dd81d64ebe6287238e717fd, type: 3}
-    - {fileID: 8300000, guid: f0a01f61e29ba164ab1c9d0857314cb5, type: 3}
+    - {fileID: 8300000, guid: 410b9a9c17646aa4b8f6b34a80c7e4cf, type: 3}
+    - {fileID: 8300000, guid: 9fab606b11e66854e8b938f5c4a89ab3, type: 3}
+    - {fileID: 8300000, guid: ffe17244c64b9d94c9f2e59766c81cbe, type: 3}
     volume: 0.7
     pitchJitter: 0.1
+    playAll: 0
+  rockBreaks:
+    clips:
+    - {fileID: 8300000, guid: ed65104c2245a4e4a8cdab697ec36ad8, type: 3}
+    - {fileID: 8300000, guid: 85261b531245c294798409eea3fa1bb5, type: 3}
+    - {fileID: 8300000, guid: fb40728051665ad4eb515ed172f892dd, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
+    playAll: 0
+  soilBreaks:
+    clips:
+    - {fileID: 8300000, guid: 80fb928d19648d344b038752c664eb3c, type: 3}
+    - {fileID: 8300000, guid: bc987018eaf768e4dbb382ca99c9ed39, type: 3}
+    - {fileID: 8300000, guid: c66e83cc972fab1429aa86a4e674b75f, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
+    playAll: 0
+  plantBreaks:
+    clips:
+    - {fileID: 8300000, guid: 410b9a9c17646aa4b8f6b34a80c7e4cf, type: 3}
+    - {fileID: 8300000, guid: 9fab606b11e66854e8b938f5c4a89ab3, type: 3}
+    - {fileID: 8300000, guid: ffe17244c64b9d94c9f2e59766c81cbe, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
+    playAll: 0
+  gathered:
+    clips:
+    - {fileID: 8300000, guid: 0bf884656dff15b4d802cc3d376dd214, type: 3}
+    - {fileID: 8300000, guid: 73572286c9e5c7746a1d8faa2ee1f474, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
     playAll: 0
   crafted:
     clips:

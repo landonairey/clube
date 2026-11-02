@@ -27,6 +27,12 @@ namespace Clube.Game
             Days = System.Math.Max(0d, days);
         }
 
+        /// <summary>Moves the clock on by some days at once (resting, GL290).</summary>
+        public void Advance(double days)
+        {
+            Days += System.Math.Max(0d, days);
+        }
+
         public float DayLengthSeconds
         {
             get => dayLengthSeconds;

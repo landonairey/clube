@@ -48,7 +48,8 @@ Core/
   Voxels/        Chunk, IVoxelStorage + schemes (2G), VoxelMaterials (M10), VoxelArrayPool, VoxelBox
   World/         World (loaded chunks, borders, edit paths), WorldGrid (coordinates)
   Materials/     VoxelMaterial, MaterialRegistry (M9), TerrainLayers, MaterialCensus, MineralNotes (GL73)
-  Items/         ItemDefinition (O6), ToolDefinition (GL1), Inventory + ItemStack (GL6), Composition (GL32)
+  Items/         ItemDefinition (O6), ToolDefinition (GL1), Inventory + ItemStack (GL6), Composition (GL32),
+                 ToolRepair (mending with ingots, GL286), TorchDefinition (GL287)
   Crafting/      Recipe, CraftingStation (GL8; fixed batches GL61, fuel GL35)
   Economy/       Wallet, PriceList (GL12, GL13)
   Skills/        SkillSet: experience and levels per skill (GL47), MiningJournal (GL73)
@@ -58,7 +59,7 @@ Core/
     Heightmaps/  Heightmap import, HeightmapGenerator, HeightmapExport (K29)
     Noise/       PerlinNoise (struct), VoxelHash
     Fields/      the Burst shapes: IHeightField / IVolumeField structs
-    Fill/        generation jobs and the shared ChunkFillKernel
+    Fill/        generation jobs and the shared ChunkFillKernel; SlopeRidges (ridges down slopes in the density, GL293)
     Ores/        OreSpec, OreField (placement), OreRoll (the roll, shared)
     Trees/       TreeGeneration (settings), TreeField (placement), TreeShape (one tree), TreeStamp (into a chunk, GL30)
     Flora/       GrassGrowth (grass height, wheat fields, GL234-GL235), BushGrowth (where bushes grow, sizes, drops, GL236),
@@ -70,10 +71,13 @@ Core/
     Recording/   MeshingRecorder (A11)
   Editing/       TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5; slivers GL79), TerrainPile (I4), GroundDrying (GL34), ChiselStrike + FlatTop (GL87, GL88), IDensityField, IEditableTerrain
   Queries/       SurfaceRaycast, VoxelRaycast, SurfacePoints (GL4)
-  Volume/        VoxelVolume, ChunkVolume (V11, V12, K30)
+  Volume/        VoxelVolume, ChunkVolume (V11, V12, K30), RegionVolume (the mesh volume round some samples: what a hit gathers, GL288)
   Saving/        GameSave (plain data), GameSaveFile (versioned binary, S1), WorldSaving (edited chunks, S2), StackSaving (GL205), SaveNames (GL207)
-  Sky/           SkyPositions (the sun and the moon's orbit and phases, GL248)
+  Sky/           SkyPositions (the sun, the moon's orbit and phases, the stars' sidereal turn, GL248, GL253),
+                 SkyWeather (each
+                 sunset's colour and each day's cloud cover, GL262, GL263)
   Fauna/         BirdFlock (a group of birds flying a pattern, then leaving, GL250)
+  Audio/         SoundSynth (sound effects made in code, GL271)
   Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea, FarTerrainBuilder (far terrain levels),
                  TerrainLodRing + TerrainLodBuilder (coarse terrain levels, P7c), DistantTreeBuilder (GL162)
   Rendering/     WorldView, ChunkView, ChunkRenderer(+Pool), ChunkCollider, ChunkMeshBuilder, GrassScatter (GL67),
@@ -421,8 +425,10 @@ a 400 m area that is 5,600 of 35,000 chunk renderers, and about a sixth of the 5
 ### Distant trees (GL162)
 
 Past the world's chunks, trees aren't voxels: `DistantTreeView` (Rendering) draws every tree the
-voxel world would grow, out to 3 km, as instanced low-poly meshes (`DistantTreeMeshes`: birch or
-maple colours, a detailed mesh within 400 m and a plain one beyond).
+voxel world would grow, out to 3 km, as instanced low-poly meshes (`DistantTreeMeshes`, in the voxel
+trees' bark and leaf colours). Four levels of detail (GL258) are made from real trees (`TreeShape.Build` for six
+full-grown cells of each kind; each distant tree keeps its variant): every branch and leaf ball (to 220 m), a blob per
+leaf cluster (to 520 m), a crown of up to five blobs (to 1100 m), one blob beyond.
 
 - **Placement** (`DistantTreeBuilder`, Streaming) is the voxel trees' own: 128 m tiles round the
   focus, nearest first; each tile's candidate spots come from `TreeField.TryGetSpot` (the cell's
@@ -431,8 +437,10 @@ maple colours, a detailed mesh within 400 m and a plain one beyond).
   the voxel world would grow (`DistantTreeTests` checks they match cell for cell). Height and kind
   are `TreeShape.HeightOf` and `IsMaple`, the same rolls `TreeShape.Build` makes.
 - **Drawing**: a tile's matrices are made once, when it arrives; each frame copies only the tiles
-  in the main camera's view into the draw arrays (near or far mesh by the tile's distance, P17),
-  then one `RenderMeshInstanced` call per 1,023 trees. The `Clube/Distant
+  in the main camera's view into the draw arrays of every level whose band (with its fade) the tile reaches
+  into, then one `RenderMeshInstanced` call per 1,023 trees. Neighbouring levels cross-fade over 60 m: the shader keeps a
+  pixel of a level by the screen dither against each tree's own distance (`_FadeIn`, `_FadeOut` per draw), so between two
+  levels every pixel shows exactly one. The `Clube/Distant
   Trees` shader drops a tree in the vertex stage when its root stands on a chunk column the world
   draws in full (`ChunkCoverageMask`), where the voxel tree is. Trunks run on below the ground, so
   none floats over the coarse terrain, which sits a little low. Crowns are sized like the voxel

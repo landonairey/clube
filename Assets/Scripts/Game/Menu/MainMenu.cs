@@ -27,7 +27,7 @@ namespace Clube.Game
         private string title = "clube";
 
         [SerializeField]
-        private string subtitle = "Dig, smelt and build in a world of voxels";
+        private string subtitle = "Extract, Refine, Craft, Build your World";
 
         private MenuStyles styles;
         private NewGamePage newGame;

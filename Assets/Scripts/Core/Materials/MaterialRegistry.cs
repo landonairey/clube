@@ -25,6 +25,7 @@ namespace Clube.Core
         private static readonly int LayerRemapId = Shader.PropertyToID("_LayerRemap");
         private static readonly int MaterialSwayId = Shader.PropertyToID("_MaterialSway");
         private static readonly int MaterialShineId = Shader.PropertyToID("_MaterialShine");
+        private static readonly int MaterialReliefId = Shader.PropertyToID("_MaterialRelief");
 
         [SerializeField]
         private List<VoxelMaterial> materials = new List<VoxelMaterial>();
@@ -49,6 +50,7 @@ namespace Clube.Core
         private float[] layerRemap;
         private float[] sway;
         private float[] shine;
+        private float[] relief;
 
         /// <summary>Makes a registry in code (tests, tools); the game's registry is an asset.</summary>
         public static MaterialRegistry Create(params VoxelMaterial[] materials)
@@ -213,6 +215,21 @@ namespace Clube.Core
             Prepare(debugMaterial);
         }
 
+        /// <summary>
+        /// The material a material is drawn as (GL273): itself, or the one it's shown as while hidden (GL54: copper ore as
+        /// stone until the player can tell them apart), so effects of it give nothing away.
+        /// </summary>
+        public VoxelMaterial Shown(VoxelMaterial material)
+        {
+            if (material == null)
+            {
+                return null;
+            }
+            EnsureLookup();
+            VoxelMaterial shown = Get((byte)layerRemap[material.Id]);
+            return shown != null ? shown : material;
+        }
+
         // Array properties aren't saved with a material asset, so they're set before each use.
         private void Prepare(Material material)
         {
@@ -229,6 +246,7 @@ namespace Clube.Core
             material.SetFloatArray(LayerRemapId, layerRemap);
             material.SetFloatArray(MaterialSwayId, sway);
             material.SetFloatArray(MaterialShineId, shine);
+            material.SetFloatArray(MaterialReliefId, relief);
         }
 
         private void EnsureLookup()
@@ -242,6 +260,7 @@ namespace Clube.Core
             layerRemap = new float[MaxMaterials];
             sway = new float[MaxMaterials];
             shine = new float[MaxMaterials];
+            relief = new float[MaxMaterials];
             for (int i = 0; i < MaxMaterials; i++)
             {
                 layerRemap[i] = i;
@@ -261,6 +280,7 @@ namespace Clube.Core
                 colors[material.Id] = material.DebugColor;
                 sway[material.Id] = material.WindSway;
                 shine[material.Id] = material.Shine;
+                relief[material.Id] = material.Relief;
             }
         }
 

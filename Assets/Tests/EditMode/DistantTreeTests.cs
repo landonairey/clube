@@ -89,11 +89,31 @@ namespace Clube.Core.Tests
         [Test]
         public void Meshes_FaceOutwards()
         {
-            foreach (bool near in new[] { true, false })
+            // A small tree as TreeShape lays one out (GL258): a stump, a trunk of two segments, a branch, and two clusters
+            // of leaf balls, the last round the trunk's top; 10 m tall, rooted away from the origin.
+            var root = new Unity.Mathematics.float3(30f, 5f, -12f);
+            var up = new Unity.Mathematics.float3(0f, 1f, 0f);
+            var side = new Unity.Mathematics.float3(1f, 0f, 0f);
+            var parts = new System.Collections.Generic.List<TreePart>
             {
-                Mesh mesh = DistantTreeMeshes.Build(near, Color.white, Color.green);
+                TreePart.Segment(root - up * 0.3f, root + up * 0.4f, 0.4f, 0.35f, 1),
+                TreePart.Segment(root, root + up * 4f, 0.3f, 0.2f, 1),
+                TreePart.Segment(root + up * 4f, root + up * 8f, 0.2f, 0.1f, 1),
+                TreePart.Segment(root + up * 5f, root + up * 6.5f + side * 2f, 0.12f, 0.06f, 1),
+                TreePart.Ball(root + up * 6.8f + side * 2.2f, 0.8f, 2),
+                TreePart.Ball(root + up * 7.2f + side * 1.6f, 0.7f, 2),
+                TreePart.Ball(root + up * 8.4f, 1.1f, 2),
+                TreePart.Ball(root + up * 8.9f + side * 0.6f, 0.9f, 2),
+            };
+            Mesh[] levels = DistantTreeMeshes.BuildLevels(parts, (Vector3)root, 10f, Color.white, Color.green, "Test");
+            Assert.AreEqual(DistantTreeMeshes.Levels, levels.Length);
+            int previous = int.MaxValue;
+            foreach (Mesh mesh in levels)
+            {
                 try
                 {
+                    Assert.That(mesh.triangles.Length, Is.LessThanOrEqualTo(previous), "each level has no more triangles than the one before");
+                    previous = mesh.triangles.Length;
                     Vector3[] vertices = mesh.vertices;
                     Vector3[] normals = mesh.normals;
                     int[] triangles = mesh.triangles;

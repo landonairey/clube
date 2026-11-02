@@ -5,7 +5,8 @@ namespace Clube.Game
     /// <summary>
     /// Draws the moon (GL248): a disc far out along the moon's direction, facing the camera, shaded by the
     /// <c>Clube/Moon</c> shader as a ball lit from the sun's side, so its phase is whatever the angle between them makes
-    /// it. Pale by day, bright by night; the ground in front of it hides it. <see cref="DayNightCycle"/> tells it where
+    /// it. Pale by day, bright by night; the ground in front of it hides it. It looks bigger near the horizon, as the
+    /// real moon seems to (<see cref="AngularSizeAt"/>). <see cref="DayNightCycle"/> tells it where
     /// the moon and sun are each frame.
     /// </summary>
     public class MoonDisc : MonoBehaviour
@@ -17,9 +18,17 @@ namespace Clube.Game
         [SerializeField]
         private Material material;
 
-        [Tooltip("How wide the moon looks, in degrees (the real one is about 0.5).")]
+        [Tooltip("How wide the moon looks high in the sky, in degrees (the real one is about 0.5).")]
         [SerializeField, Range(0.2f, 6f)]
-        private float angularSize = 1.8f;
+        private float angularSize = 2.16f;
+
+        [Tooltip("How much bigger it looks on the horizon than high up (the moon illusion), as a share: 0.25 is a quarter bigger.")]
+        [SerializeField, Range(0f, 1f)]
+        private float horizonGrowth = 0.25f;
+
+        [Tooltip("How high the moon is, as the sine of its height, when it's back to its high-sky size.")]
+        [SerializeField, Range(0.05f, 1f)]
+        private float horizonBand = 0.4f;
 
         [Tooltip("How far out it's drawn, as a share of the camera's far plane.")]
         [SerializeField, Range(0.5f, 0.99f)]
@@ -66,6 +75,15 @@ namespace Clube.Game
             discRenderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
         }
 
+        /// <summary>
+        /// How wide the moon looks, in degrees, at a height (the sine of its angle over the horizon, GL254): its
+        /// high-sky size, growing smoothly by <see cref="horizonGrowth"/> as it comes down to the horizon.
+        /// </summary>
+        public float AngularSizeAt(float height)
+        {
+            return angularSize * Clube.Core.SkyPositions.MoonIllusion(height, horizonGrowth, horizonBand);
+        }
+
         private static Mesh BuildQuad()
         {
             var mesh = new Mesh { name = "Moon disc" };
@@ -88,7 +106,7 @@ namespace Clube.Game
             t.position = view.transform.position + direction * distance;
             // Facing the camera, its up kept towards the sky's up so the lit side turns as it should.
             t.rotation = Quaternion.LookRotation(direction, Mathf.Abs(direction.y) > 0.999f ? Vector3.forward : Vector3.up);
-            float size = 2f * distance * Mathf.Tan(angularSize * 0.5f * Mathf.Deg2Rad);
+            float size = 2f * distance * Mathf.Tan(AngularSizeAt(direction.y) * 0.5f * Mathf.Deg2Rad);
             t.localScale = new Vector3(size, size, size);
         }
 

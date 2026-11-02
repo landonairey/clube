@@ -179,14 +179,15 @@ namespace Clube.Core
 
         /// <summary>
         /// Moves what's left in the input slots into another inventory (the player's, GL60), as
-        /// much as fits; the rest stays. Returns how many items moved.
+        /// much as fits, each joining only a stack of its own quality there (GL256); the rest stays. Returns how many
+        /// items moved.
         /// </summary>
         public int ReturnInputs(Inventory to)
         {
             int moved = 0;
             for (int slot = 0; slot < Input.SlotCount; slot++)
             {
-                moved += Input.MoveTo(slot, to);
+                moved += Input.MoveTo(slot, to, keepApart: true);
             }
             return moved;
         }
@@ -224,7 +225,7 @@ namespace Clube.Core
                 ItemDefinition item = Input[slot].Item;
                 if (item != null && !recipe.Takes(item))
                 {
-                    Input.MoveTo(slot, from);
+                    Input.MoveTo(slot, from, keepApart: true);
                 }
             }
             int moved = 0;
@@ -236,7 +237,8 @@ namespace Clube.Core
                     moved += from.MoveItemTo(input.Item, missing, Input);
                 }
             }
-            // A full stack of each (GL140), onto what each input already holds so every input keeps its slot.
+            // A full stack of each (GL140), onto what each input already holds so every input keeps its slot; only stacks
+            // of the same quality, so a worse stack never tops up a refined one (GL256).
             foreach (ItemAmount input in recipe.Inputs)
             {
                 if (input.Item == null)
@@ -250,7 +252,7 @@ namespace Clube.Core
                     {
                         continue;
                     }
-                    int placed = stack.Count - Input.AddToStacks(stack.Item, stack.Count, stack.Contents, stack.Quality);
+                    int placed = stack.Count - Input.AddToStacks(stack.Item, stack.Count, stack.Contents, stack.Quality, keepApart: true);
                     moved += from.RemoveAt(slot, placed);
                 }
             }

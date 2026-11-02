@@ -9,7 +9,8 @@ namespace Clube.Game
     /// of 40 minutes, the sun up from 06:00 to 18:00 (20 minutes) and down for the other 20. The sun rises in the east,
     /// crosses the sky warm and low at the ends of the day, and goes down under the horizon (GL248). The moon has its own
     /// orbit (<see cref="SkyPositions"/>): a month of 29.5 days, rising about 50 minutes later each day, its phase the
-    /// angle between it and the sun, drawn by <see cref="MoonDisc"/>. The one directional light is the sun while it's up
+    /// angle between it and the sun, drawn by <see cref="MoonDisc"/>. The stars (<see cref="StarSky"/>) turn about the
+    /// celestial pole once a sidereal day and come out after sunset (GL253). The one directional light is the sun while it's up
     /// or just under, and the moon after dusk, as bright as its phase; the ambient light, fog and sky darken at night.
     /// The graphics popup can freeze the sky at an hour (<see cref="GraphicsSettings.FreezeDay"/>); the clock itself,
     /// and so drying and smelting, go on.
@@ -46,6 +47,14 @@ namespace Clube.Game
         [SerializeField]
         private MoonDisc moon;
 
+        [Tooltip("Draws the stars, turned with the sky (GL253). Optional.")]
+        [SerializeField]
+        private StarSky stars;
+
+        [Tooltip("Draws the sun as a low-poly ball of light (GL277), in place of the skybox's. Optional: without it the skybox draws it.")]
+        [SerializeField]
+        private SunDisc sunDisc;
+
         [Tooltip("How high the sun gets at noon, in degrees.")]
         [SerializeField, Range(10f, 90f)]
         private float noonElevation = 62f;
@@ -69,7 +78,21 @@ namespace Clube.Game
         [SerializeField, Range(0f, 1f)]
         private float nightAmbient = 0.3f;
 
+        [Tooltip("How strongly sunrises and sunsets take their colour (GL262): 0 the plain warm light every day, 1 as the day's weather has it.")]
+        [SerializeField, Range(0f, 2f)]
+        private float sunsetStrength = 1f;
+
+        private static readonly int SkyTintId = Shader.PropertyToID("_SkyTint");
+        private static readonly Color TwilightTint = new Color(0.4f, 0.4f, 0.75f);
+        private static readonly int AtmosphereId = Shader.PropertyToID("_AtmosphereThickness");
+        private static readonly int CloudLightDirId = Shader.PropertyToID("_CloudLightDir");
+        private static readonly int CloudLightColorId = Shader.PropertyToID("_CloudLightColor");
+
         private Material sky;
+        private Color skyTint = Color.gray;
+        private float atmosphere = 1f;
+        private CloudLayer clouds;
+        private WorldView world;
         private Material sceneSky;
         private Color ambientSky;
         private Color ambientEquator;
@@ -81,6 +104,9 @@ namespace Clube.Game
         private string sunDiscKeyword = "_SUNDISK_HIGH_QUALITY";
         private bool sunDiscShown = true;
 
+        /// <summary>The game's clock, or null.</summary>
+        public GameClock Clock => clock;
+
         /// <summary>The hour of day shown now, 0-24: the clock's, or the frozen hour.</summary>
         public float Hour => GraphicsSettings.FreezeDay ? GraphicsSettings.FrozenHour : ClockHour;
 
@@ -90,8 +116,8 @@ namespace Clube.Game
         /// <summary>How much daylight there is, 0 at night to 1 by day.</summary>
         public float Daylight { get; private set; } = 1f;
 
-        /// <summary>Days since a new moon, the clock's (or the frozen hour's on the clock's day).</summary>
-        public double MoonAge
+        /// <summary>Days on the clock, or the frozen hour's time on the clock's day.</summary>
+        public double Days
         {
             get
             {
@@ -100,9 +126,15 @@ namespace Clube.Game
                 {
                     days = System.Math.Floor(days) + (GraphicsSettings.FrozenHour - startHour) / 24d;
                 }
-                return days + startMoonAge;
+                return days;
             }
         }
+
+        /// <summary>The day the game is on by the clock, from 1; a day starts at midnight (GL259).</summary>
+        public int Day => (int)System.Math.Floor((clock != null ? clock.Days : 0d) + startHour / 24d) + 1;
+
+        /// <summary>Days since a new moon.</summary>
+        public double MoonAge => Days + startMoonAge;
 
         /// <summary>The moon's phase, 0-1 of its month: 0 new, 0.5 full (GL248).</summary>
         public float MoonPhase => SkyPositions.MoonPhase(MoonAge);
@@ -146,6 +178,8 @@ namespace Clube.Game
             {
                 sky = new Material(sceneSky) { name = sceneSky.name + " (day and night)" };
                 skyExposure = sky.HasProperty("_Exposure") ? sky.GetFloat("_Exposure") : 1f;
+                skyTint = sky.HasProperty(SkyTintId) ? sky.GetColor(SkyTintId) : Color.gray;
+                atmosphere = sky.HasProperty(AtmosphereId) ? sky.GetFloat(AtmosphereId) : 1f;
                 sunDiscKeyword = sky.IsKeywordEnabled("_SUNDISK_SIMPLE") ? "_SUNDISK_SIMPLE" : "_SUNDISK_HIGH_QUALITY";
                 sunDiscShown = true;
                 RenderSettings.skybox = sky;
@@ -170,11 +204,26 @@ namespace Clube.Game
             RenderSettings.ambientGroundColor = ambientGround;
             RenderSettings.ambientProbe = ambientProbe;
             RenderSettings.fogColor = fogColor;
+            Shader.SetGlobalVector(CloudLightColorId, Vector4.zero);
             if (sky != null)
             {
                 Destroy(sky);
                 sky = null;
             }
+        }
+
+        /// <summary>
+        /// The look of the sunrise or sunset nearest the hour (GL262): the morning's before noon, the evening's after,
+        /// with the clouds' cover now.
+        /// </summary>
+        public SunsetLook SunsetNow(float hour)
+        {
+            world ??= GetComponent<WorldView>();
+            clouds ??= GetComponent<CloudLayer>();
+            int seed = world != null && world.Config != null ? world.Config.Terrain.Seed : 0;
+            float cover = clouds != null && clouds.isActiveAndEnabled ? clouds.Coverage : 0.4f;
+            SunsetLook look = SkyWeather.Sunset(seed, Day, hour >= 12f, cover);
+            return new SunsetLook(look.Glow, Mathf.Clamp01(look.Vividness * sunsetStrength));
         }
 
         private void LateUpdate()
@@ -200,12 +249,23 @@ namespace Clube.Game
                               * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.02f, 0.12f, moonDirection.y))
                               * Mathf.Lerp(0.15f, 1f, illumination);
             bool sunsLight = sunHeight > -0.07f;
+
+            // Sunrise and sunset (GL262): today's colour, strongest with the sun at the horizon, gone by about 15° up or
+            // 10° under. The low sun lights the land in it, the sky takes a tint and a thicker haze, and the clouds catch
+            // it most of all, still lit from under the horizon after the land has gone dark.
+            SunsetLook look = SunsetNow(hour);
+            float twilight = sunHeight >= 0f
+                ? 1f - Mathf.SmoothStep(0f, 1f, sunHeight / 0.26f)
+                : 1f - Mathf.SmoothStep(0f, 1f, -sunHeight / 0.18f);
+            float glow = look.Vividness * twilight;
+            Color lowSun = Color.Lerp(lowSunColor, look.Glow, look.Vividness * 0.85f);
+            Color sunColour = Color.Lerp(lowSun, noonColor, Mathf.SmoothStep(0f, 1f, sunHeight * 2f));
             if (sun != null)
             {
                 if (sunsLight)
                 {
                     sun.transform.rotation = Quaternion.LookRotation(-sunDirection);
-                    sun.color = Color.Lerp(lowSunColor, noonColor, Mathf.SmoothStep(0f, 1f, sunHeight * 2f));
+                    sun.color = sunColour;
                     sun.intensity = dayIntensity * sunLight;
                 }
                 else
@@ -218,11 +278,26 @@ namespace Clube.Game
             if (sky != null)
             {
                 // The sky draws the sun's disc where the light comes from: none while the light is the moon's.
-                SetSunDisc(sunsLight);
+                // The skybox draws the sun only without a SunDisc, and only while the light is the sun's.
+                SetSunDisc(sunsLight && sunDisc == null);
             }
             if (moon != null)
             {
                 moon.Show(moonDirection, sunDirection, Daylight);
+            }
+            if (stars != null)
+            {
+                // The celestial frame: right ascension 0 and 90 on the equator, and the pole, where they are now.
+                // They come out once the sun is under the horizon, all of them by nautical dusk (12 degrees down).
+                double days = Days;
+                float latitude = Latitude;
+                // A bright moon high up washes out the fainter ones.
+                float night = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.02f, -0.2f, sunHeight))
+                              * (1f - 0.45f * illumination * Mathf.Clamp01(moonDirection.y * 2f));
+                stars.Show(compass * SkyPositions.Star(0f, 0f, days, hour, latitude),
+                    compass * SkyPositions.Star(90f, 0f, days, hour, latitude),
+                    compass * SkyPositions.Star(0f, 90f, days, hour, latitude),
+                    night);
             }
 
             // A bright moon lights the night a little more than a new one.
@@ -231,11 +306,38 @@ namespace Clube.Game
             RenderSettings.ambientEquatorColor = ambientEquator * ambient;
             RenderSettings.ambientGroundColor = ambientGround * ambient;
             RenderSettings.ambientProbe = ambientProbe * ambient;
-            RenderSettings.fogColor = Color.Lerp(fogColor * 0.15f, fogColor, Daylight);
+            Color fog = Color.Lerp(fogColor * 0.15f, fogColor, Daylight);
+            RenderSettings.fogColor = Color.Lerp(fog, look.Glow * fog.maxColorComponent * 1.4f, glow * 0.3f);
             if (sky != null && sky.HasProperty("_Exposure"))
             {
                 sky.SetFloat("_Exposure", Mathf.Lerp(0.18f, skyExposure, Daylight));
             }
+            if (sky != null && sky.HasProperty(SkyTintId))
+            {
+                // The procedural sky turns olive just after sunset under a thick atmosphere, whatever its tint; a thin one
+                // keeps the clear sky between the clouds a deep twilight blue, so the colour is the clouds' and the haze's.
+                sky.SetColor(SkyTintId, Color.Lerp(skyTint, TwilightTint, twilight * 0.5f));
+                sky.SetFloat(AtmosphereId, Mathf.Lerp(atmosphere, 0.75f, twilight));
+            }
+            LightClouds(sunDirection, sunHeight, sunColour, look, glow, moonDirection, moonLight);
+            if (sunDisc != null)
+            {
+                sunDisc.Show(sunDirection, sunColour, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.05f, 0.03f, sunHeight)));
+            }
+        }
+
+        // The clouds' light (GL262), for Clube/Clouds: the sun's while it can reach them, which at their height is a
+        // while after it has left the land, in the sunset's colour near the horizon; then the moon's.
+        private void LightClouds(Vector3 sunDirection, float sunHeight, Color sunColour, SunsetLook look, float glow, Vector3 moonDirection, float moonLight)
+        {
+            float sunOnClouds = dayIntensity * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.17f, 0.05f, sunHeight));
+            Color onClouds = Color.Lerp(sunColour, look.Glow, glow * 0.8f) * (1f + 0.6f * glow);
+            float moonOnClouds = moonIntensity * moonLight;
+            bool sunLights = sunOnClouds * onClouds.maxColorComponent >= moonOnClouds * moonColor.maxColorComponent;
+            Vector3 direction = sunLights ? sunDirection : moonDirection;
+            Color light = sunLights ? onClouds.linear * sunOnClouds : moonColor.linear * moonOnClouds;
+            Shader.SetGlobalVector(CloudLightDirId, direction.normalized);
+            Shader.SetGlobalVector(CloudLightColorId, new Vector4(light.r, light.g, light.b, 1f));
         }
 
         // The procedural skybox's sun disc is a keyword set (none, simple, high quality); the material is this cycle's copy.

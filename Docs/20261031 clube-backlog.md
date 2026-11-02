@@ -1,0 +1,33 @@
+# clube — Backlog (2026-10-31)
+
+Requests from 2026-10-31, kept as they were given (spelling tidied). They are organized in `Docs/clube-objectives.md`; the IDs below say where each went. Like the earlier backlogs, this file is a snapshot: change the objectives doc, not this.
+
+---
+
+- [ ] I don't see any birds: either increase the spawn chance or bring them closer to the ground. → **GL255**
+- [ ] Add volumetric clouds with scattering. Have patterns slowly meander overhead in the sky and have the sunlight and moonlight shine through them. → **GL252**
+- [ ] Add a night sky star box to the night time that has a slow rotation, roughly that of the Earth-moon-sun orbits. → **GL253**
+- [ ] Change the size of the moon in the sky: overall make it 20% bigger. As it approaches the horizon make it look an additional 25% bigger. → **GL254**
+- [ ] The "never mix materials" rule is too strict. Dragging and dropping two stacks of different quality together by hand should combine them. Digging or chopping should add to the current stack and mix the quality. The only time it matters not to mix them is when you pull a stack of material out of a crafting station. → **GL256**
+- [ ] Increase the render distance of the 3D grass on the surface and blend it into the LOD system, to suggest grass coverage at far distances. Avoid an obvious line between the 3D grass and an abrupt change to bright green terrain grass textures. → **GL257**
+- [ ] Bug: z-fighting on the black straps and wooden top of the wooden chest. → **GL264**
+- [ ] Tree LOD looks off: one lower-res model kicks in right after the render distance, and the same model is used for very far trees too. Add steps in resolution between the rendered trees and the low-poly model, to avoid a sharp transition between the rendered trees and the ones just outside them; things should blend together. Also match the low-poly trees' colours to the rendered trees, especially the leaves. → **GL258**
+- [ ] For debug, add the game time <hh:mm> and a day counter to the bottom of the debug box. → **GL259**
+- [ ] Add the day counter to the default save file name, as "Day <##>". → **GL260**
+- [ ] Change the description on the main splash screen to "Extract, Refine, Craft, Build your World". → **GL261**
+- [ ] Add varied colour to sunrises and sunsets: yellows, oranges, deep reds, pinks, purples. Vary them a little day to day; some not at all, some much more vivid than others. Cloud cover plays a role, with colour bouncing off the clouds for a more dramatic look. → **GL262**
+- [ ] Make cloud cover vary as well: some days barely anything, others more coverage. → **GL263**
+- [ ] Add dahlias to the 3D grass flora. They are rarer and sparsely generated, on the terrain surface above a gold node. → **GL265**
+- [ ] Bug: a bush on the ground is covered by distant clouds; 3D grass and distant trees are also covered by clouds that should be behind them. → **GL267**
+- [ ] Make it more common for larger flocks of birds to fly together. → **GL266**
+- [ ] Add a little noise to the terrain surface, especially the sloping stone faces of the mountains, to give a bit of 3D texturing on the voxel meshes. → **GL268**
+- [ ] Add low-poly models for hand gathering and all the tools, shown in the HUD, with mining, chopping and gathering swing animations. Tools are held in the right hand, on the right of the screen, with a gentle sway from breathing and the player's velocity. The hand swipes; picks drop vertically, stop at the target and recoil; chopping is similar but comes in at an angle. → **GL269**
+- [ ] A cooldown on tool use: 1 s between uses. Dawn gives an early-bird bonus, the cooldown 25% shorter. Hands are 25% quicker than tools. → **GL270**
+- [ ] Generate our own sound effects for footsteps, tools and material breaking/gathering. → **GL271**
+- [ ] Add bird chirping, an ambient wind breeze and soft rustling of tree leaves. → **GL272**
+- [ ] Make the dawn bonus last from 04:30 to 09:30. → **GL270**
+- [ ] (2026-11-01) The stone pick in hand should look like a primitive stone lashed to a stick, its head off one side only, as its icon; the bronze pickaxe can stay a real pickaxe. → **GL273**
+- [ ] (2026-11-01) Particle effects: low-poly crumbles of the material being collected. → **GL274**
+- [ ] (2026-11-01) Rename the "Graphics" settings button to "Video". Make the footsteps and the leaves' rustling a bit quieter. → **GL275**
+- [ ] (2026-11-01) An "Audio" settings menu next to Video, with sliders 0-100 for SFX (tool hits, use noises), Footsteps and Ambient (leaves, birds, wind), the default mix at 50. → **GL276**
+- [ ] (2026-11-01) Make the clouds, sun and moon low poly, to match the landscape: fluffy clouds that tie in with the low-poly leaves on the tree tops; the sun still a round ball of light, but a 12-sided outline shining through a cloud in front of it; the moon's phases and shape drawn with polygons. Sunrises and sunsets should still colour them. → **GL277**, **GL278**

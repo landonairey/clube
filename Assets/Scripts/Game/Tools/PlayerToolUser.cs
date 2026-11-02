@@ -52,6 +52,11 @@ namespace Clube.Game
         // The aimed voxel's corners holding ground, when a hit takes only the sample under the dot (GL154,
         // GL155): the hand looks among them for a loose stone to lift whole.
         private readonly List<Vector3Int> aimedCorners = new List<Vector3Int>();
+        private readonly List<Vector3Int> measuredSamples = new List<Vector3Int>();
+        private readonly List<PendingGather> pendingGathers = new List<PendingGather>();
+        private readonly RegionVolume regionVolume = new RegionVolume();
+        private float solidBefore;
+        private bool measuring;
         // The voxel's other corners a hand or hand axe hit mixes in (GL172).
         private readonly List<Vector3Int> mixTargets = new List<Vector3Int>();
         private readonly Dictionary<VoxelMaterial, float> owed = new Dictionary<VoxelMaterial, float>();
@@ -67,6 +72,7 @@ namespace Clube.Game
         private OreKnowledge knowledge;
         private PlayerSkills skills;
         private float nextHitTime;
+        private DayNightCycle dayNight;
         private string brokenName;
         private float brokenUntil;
         private BushScatter bushes;
@@ -206,8 +212,9 @@ namespace Clube.Game
             {
                 HasBush = true;
                 AimedBush = bush;
-                if (useAction != null && useAction.action.WasPressedThisFrame() && bushes.Pick(bush))
+                if (useAction != null && useAction.action.WasPressedThisFrame() && Time.time >= nextHitTime && bushes.Pick(bush))
                 {
+                    nextHitTime = Time.time + CooldownFor(tool);
                     BushPicked?.Invoke(bush);
                     waitForRelease = true;
                 }
@@ -442,7 +449,7 @@ namespace Clube.Game
             return ground != null && !tool.ReachesWideOn(ground);
         }
 
-        // On the press, then at the tool's rate while held.
+        // Once the last use's cooldown is over (GL270), on a press or while held.
         private bool ShouldHit(ToolDefinition tool)
         {
             if (useAction == null || targets.Count == 0)
@@ -450,12 +457,47 @@ namespace Clube.Game
                 return false;
             }
             InputAction action = useAction.action;
-            if (action.WasPressedThisFrame() || (action.IsPressed() && Time.time >= nextHitTime))
+            if (action.IsPressed() && Time.time >= nextHitTime)
             {
-                nextHitTime = Time.time + 1f / tool.HitsPerSecond;
+                nextHitTime = Time.time + CooldownFor(tool);
                 return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Seconds between uses of a tool now (GL270): a second, bare hands a quarter quicker, and everything a quarter
+        /// quicker again at dawn.
+        /// </summary>
+        public float CooldownFor(ToolDefinition tool)
+        {
+            return ToolCooldown.SecondsFor(tool == hand, Hour);
+        }
+
+        /// <summary>True at dawn, when tools are quicker (the early bird's bonus, GL270).</summary>
+        public bool EarlyBird => ToolCooldown.IsDawn(Hour);
+
+        /// <summary>How far through the wait after the last use, 0 just used to 1 ready.</summary>
+        public float Readiness
+        {
+            get
+            {
+                float wait = CooldownFor(Current);
+                return wait <= 0f ? 1f : Mathf.Clamp01(1f - (nextHitTime - Time.time) / wait);
+            }
+        }
+
+        // The hour of the day, from the world's sky; noon without one.
+        private float Hour
+        {
+            get
+            {
+                if (dayNight == null && worldView != null)
+                {
+                    dayNight = worldView.GetComponent<DayNightCycle>();
+                }
+                return dayNight != null ? dayNight.Hour : 12f;
+            }
         }
 
         private void Hit(ToolDefinition tool)
@@ -530,6 +572,11 @@ namespace Clube.Game
             {
                 return;
             }
+            if (measuring)
+            {
+                pendingGathers.Add(new PendingGather(sample, material, amount));
+                return;
+            }
             Composition contents = ContentsOf(new MinedSample(sample, material));
             gathering.Add(aimedTarget ?? material, material, amount, contents);
             minedOwed.TryGetValue(material, out float total);
@@ -540,6 +587,51 @@ namespace Clube.Game
                 RaiseMined(material, sample, contents);
             }
             minedOwed[material] = total;
+        }
+
+        // A gradual hit gathers what the mesh in the world lost (GL288), not how far it lowered each sample: deep inside a
+        // trunk a sample can fall a long way while the surface hardly moves. The samples' takes are held, the solid
+        // round them measured before and after by the tetrahedra (RegionVolume), and each take scaled so they add up to
+        // the volume that went, keeping the mix. What a hit lowers without moving the surface comes away later.
+        private void BeginMeasuring(World world, float iso)
+        {
+            measuredSamples.Clear();
+            measuredSamples.AddRange(targets);
+            measuredSamples.AddRange(aimedCorners);
+            solidBefore = regionVolume.SolidAround(world, measuredSamples, iso);
+            pendingGathers.Clear();
+            measuring = true;
+        }
+
+        private void HandOverMeasured(World world, float iso)
+        {
+            measuring = false;
+            float removed = Mathf.Max(0f, solidBefore - regionVolume.SolidAround(world, measuredSamples, iso));
+            float lowered = 0f;
+            foreach (PendingGather take in pendingGathers)
+            {
+                lowered += take.Amount;
+            }
+            float scale = lowered > 1e-6f ? removed / lowered : 0f;
+            foreach (PendingGather take in pendingGathers)
+            {
+                Gather(take.Sample, take.Material, take.Amount * scale);
+            }
+            pendingGathers.Clear();
+        }
+
+        private readonly struct PendingGather
+        {
+            public readonly Vector3Int Sample;
+            public readonly VoxelMaterial Material;
+            public readonly float Amount;
+
+            public PendingGather(Vector3Int sample, VoxelMaterial material, float amount)
+            {
+                Sample = sample;
+                Material = material;
+                Amount = amount;
+            }
         }
 
         // A hit in the sphere modes (GL96, GL106, GL107, GL109, GL112). The bare hand picks up a loose stone
@@ -574,12 +666,20 @@ namespace Clube.Game
                     aimedTarget = null;
                     TellWhyNot(tool, aimed);
                 }
+                if (collecting.SortByTarget)
+                {
+                    BeginMeasuring(world, iso);
+                }
                 done = collecting.SortByTarget
                     ? SphereStrike.LowerInto(world, targets, material => AmountFor(tool, hand, material, aimed), materials, Gather)
                     : SphereStrike.Lower(world, targets, material => AmountFor(tool, hand, material, aimed), materials, owed, collected, minedFrom);
                 if (collecting.SortByTarget && TakesAimedSample(tool) && done > 0)
                 {
                     MixInFromVoxel(tool, hand, aimed, materials);
+                }
+                if (collecting.SortByTarget)
+                {
+                    HandOverMeasured(world, iso);
                 }
             }
             else
@@ -673,6 +773,8 @@ namespace Clube.Game
                 case 2:
                     return "a stone tool";
                 case 3:
+                    return "a copper tool";
+                case 4:
                     return "a bronze tool";
                 default:
                     return $"a tier {tier} tool";

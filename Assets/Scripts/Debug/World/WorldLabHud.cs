@@ -7,7 +7,8 @@ namespace Clube.Debug
     /// WorldLab's heads-up display, top left: the frame rate; where the camera (the
     /// player, for now) is, as a world position, the voxel it's in (global coordinates),
     /// that voxel's chunk (M1) and its place inside the chunk; and the brush's running
-    /// totals of volume placed and dug out. A fixed number of lines, so it never resizes. F3 hides it (GL78).
+    /// totals of volume placed and dug out; last, the game time and the day (GL259). A fixed number of lines, so it never
+    /// resizes. F3 hides it (GL78).
     /// </summary>
     [RequireComponent(typeof(WorldView))]
     public class WorldLabHud : MonoBehaviour
@@ -21,6 +22,7 @@ namespace Clube.Debug
 
         private WorldView worldView;
         private TerrainBrushTool brush;
+        private Clube.Game.DayNightCycle dayNight;
         private GUIStyle style;
 
         private int windowFrames;
@@ -93,6 +95,12 @@ namespace Clube.Debug
                 text += $"\nBrushed    placed {brush.TotalVolumeAdded:0.0} u³ · dug {brush.TotalVolumeRemoved:0.0} u³ · " +
                         $"net {net:+0.0;-0.0;0.0} u³";
             }
+            // The game's time of day and day count (GL259), last.
+            dayNight ??= GetComponent<Clube.Game.DayNightCycle>();
+            if (dayNight != null)
+            {
+                text += $"\nGame time  {ClockText(dayNight.Hour)}  ·  Day {dayNight.Day}";
+            }
 
             var content = new GUIContent(text);
             var rect = new Rect(Margin, Margin, Width, style.CalcHeight(content, Width));
@@ -100,6 +108,13 @@ namespace Clube.Debug
             GUI.Label(rect, content, style);
             // The active quest goes under the box (GL216).
             Clube.Game.HudLayout.ReportTopLeft(rect.yMax);
+        }
+
+        /// <summary>An hour of the day, 0-24, as hh:mm.</summary>
+        public static string ClockText(float hour)
+        {
+            int minutes = Mathf.FloorToInt(Mathf.Repeat(hour, 24f) * 60f);
+            return $"{minutes / 60:00}:{minutes % 60:00}";
         }
     }
 }
