@@ -25,12 +25,32 @@ namespace Clube.Core
         [SerializeField]
         private bool show = true;
 
+        [Tooltip("Seconds between steps of the live water (GL313): water runs into a dug hole a sample a step.")]
+        [SerializeField, Range(0.02f, 0.5f)]
+        private float flowStepSeconds = 0.08f;
+
+        [Tooltip("Most water tiles rebuilt in a frame after the water changed.")]
+        [SerializeField, Range(1, 16)]
+        private int tilesPerFrame = 4;
+
         private WorldView worldView;
         private ITerrainGenerator builtFor;
-        private readonly List<GameObject> tiles = new List<GameObject>();
+        private WaterMap water;
+        // Per map cell: the water height drawn there, and the wet cell it takes its look from (-1: not drawn).
+        private float[] level;
+        private int[] from;
+        private int tilesAcross;
+        private readonly Dictionary<int, GameObject> tiles = new Dictionary<int, GameObject>();
+        private readonly HashSet<int> dirty = new HashSet<int>();
+        private readonly List<int> rebuilding = new List<int>();
+        private readonly TileMesh mesh = new TileMesh();
+        private float nextFlowStep;
 
         /// <summary>Triangles drawn, for tests and the lab.</summary>
         public int TriangleCount { get; private set; }
+
+        /// <summary>The water that answers digging and building (GL313); null until the world and its water exist.</summary>
+        public LiveWater Live { get; private set; }
 
         public bool Show
         {
@@ -43,15 +63,36 @@ namespace Clube.Core
             worldView = GetComponent<WorldView>();
         }
 
+        private void OnEnable()
+        {
+            worldView ??= GetComponent<WorldView>();
+            worldView.ChunkLoaded += OnChunkLoaded;
+        }
+
+        private void OnDisable()
+        {
+            worldView.ChunkLoaded -= OnChunkLoaded;
+        }
+
         private void LateUpdate()
         {
             ITerrainGenerator generator = worldView.Generator;
             if (generator != builtFor)
             {
                 builtFor = generator;
-                Rebuild(generator is HeightfieldGenerator heightfield ? heightfield.Water : default);
+                Reset(generator is HeightfieldGenerator heightfield ? heightfield.Water : default);
             }
-            foreach (GameObject tile in tiles)
+            if (water.IsCreated && worldView.World != null && (Live == null || Live.World != worldView.World))
+            {
+                StartLive();
+            }
+            if (Live != null && Time.time >= nextFlowStep)
+            {
+                nextFlowStep = Time.time + flowStepSeconds;
+                Live.Step();
+            }
+            RebuildDirty();
+            foreach (GameObject tile in tiles.Values)
             {
                 if (tile.activeSelf != show)
                 {
@@ -62,12 +103,13 @@ namespace Clube.Core
 
         private void OnDestroy()
         {
+            Live?.Dispose();
             Clear();
         }
 
         private void Clear()
         {
-            foreach (GameObject tile in tiles)
+            foreach (GameObject tile in tiles.Values)
             {
                 if (tile != null)
                 {
@@ -76,74 +118,219 @@ namespace Clube.Core
                 }
             }
             tiles.Clear();
+            dirty.Clear();
             TriangleCount = 0;
         }
 
-        private void Rebuild(WaterMap water)
+        private void Reset(WaterMap map)
         {
             Clear();
+            Live?.Dispose();
+            Live = null;
+            water = map;
             if (!water.IsCreated || material == null)
+            {
+                water = default;
+                return;
+            }
+            int2 size = water.Size;
+            level = new float[size.x * size.y];
+            from = new int[size.x * size.y];
+            for (int i = 0; i < from.Length; i++)
+            {
+                Recompute(i);
+            }
+            tilesAcross = (size.x + Tile - 1) / Tile;
+            int tilesDown = (size.y + Tile - 1) / Tile;
+            for (int t = 0; t < tilesAcross * tilesDown; t++)
+            {
+                dirty.Add(t);
+            }
+        }
+
+        private void StartLive()
+        {
+            Live?.Dispose();
+            Live = new LiveWater(worldView.World, water, worldView.Config.IsoLevel);
+            Live.CellChanged += OnCellChanged;
+        }
+
+        // A chunk loaded with edits near water (a saved game, or one streamed back in) gets its flooded holes back.
+        private void OnChunkLoaded(Vector3Int coord)
+        {
+            if (Live != null && worldView.World.IsEdited(coord))
+            {
+                Live.WakeChunk(coord);
+            }
+        }
+
+        // A cell's water changed: what it and the cells round it draw, and the tiles holding them.
+        private void OnCellChanged(int cell)
+        {
+            if (cell < 0)
             {
                 return;
             }
             int2 size = water.Size;
-            // Each drawn cell's water height and the wet cell it takes its look from (-1: not drawn).
-            var level = new float[size.x * size.y];
-            var from = new int[size.x * size.y];
-            for (int z = 0; z < size.y; z++)
+            int x = cell % size.x, z = cell / size.x;
+            for (int dz = -1; dz <= 1; dz++)
             {
-                for (int x = 0; x < size.x; x++)
+                for (int dx = -1; dx <= 1; dx++)
                 {
-                    int i = x + z * size.x;
-                    from[i] = -1;
-                    if (water.Kind[i] != 0)
+                    int nx = x + dx, nz = z + dz;
+                    if (nx >= 0 && nz >= 0 && nx < size.x && nz < size.y)
                     {
-                        from[i] = i;
-                        level[i] = water.Surface[i];
+                        Recompute(nx + nz * size.x);
+                        dirty.Add(nx / Tile + nz / Tile * tilesAcross);
+                    }
+                }
+            }
+        }
+
+        // What a cell draws: its own water when wet (and not built over), else the lowest water beside it, so the surface
+        // runs into the banks and the ground hides its edge.
+        private void Recompute(int i)
+        {
+            int2 size = water.Size;
+            from[i] = -1;
+            if (IsWater(i))
+            {
+                from[i] = i;
+                level[i] = water.Surface[i];
+                return;
+            }
+            int x = i % size.x, z = i / size.x;
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int nx = x + dx, nz = z + dz;
+                    if (nx < 0 || nz < 0 || nx >= size.x || nz >= size.y)
+                    {
                         continue;
                     }
-                    for (int dz = -1; dz <= 1; dz++)
+                    int j = nx + nz * size.x;
+                    if (IsWater(j) && (from[i] < 0 || water.Surface[j] < level[i]))
                     {
-                        for (int dx = -1; dx <= 1; dx++)
+                        from[i] = j;
+                        level[i] = water.Surface[j];
+                    }
+                }
+            }
+        }
+
+        private bool IsWater(int cell)
+        {
+            return water.Kind[cell] != 0 && (Live == null || !Live.IsFilled(cell));
+        }
+
+        private void RebuildDirty()
+        {
+            if (dirty.Count == 0 || !water.IsCreated)
+            {
+                return;
+            }
+            rebuilding.Clear();
+            foreach (int tile in dirty)
+            {
+                rebuilding.Add(tile);
+                if (rebuilding.Count >= tilesPerFrame && tiles.Count > 0)
+                {
+                    break;
+                }
+            }
+            foreach (int tile in rebuilding)
+            {
+                dirty.Remove(tile);
+                BuildTile(tile);
+            }
+        }
+
+        private void BuildTile(int tile)
+        {
+            int2 size = water.Size;
+            int tx = tile % tilesAcross * Tile, tz = tile / tilesAcross * Tile;
+            mesh.Clear();
+            columns.Clear();
+            for (int z = tz; z < Mathf.Min(tz + Tile, size.y); z++)
+            {
+                for (int x = tx; x < Mathf.Min(tx + Tile, size.x); x++)
+                {
+                    int i = x + z * size.x;
+                    if (from[i] >= 0)
+                    {
+                        AddCell(water, level, from, x, z, mesh);
+                    }
+                    else if (Live != null)
+                    {
+                        GatherFlooded(i);
+                    }
+                }
+            }
+            EmitFlooded(mesh);
+            if (tiles.TryGetValue(tile, out GameObject old))
+            {
+                TriangleCount -= old.GetComponent<MeshFilter>().sharedMesh.triangles.Length / 3;
+                Destroy(old.GetComponent<MeshFilter>().sharedMesh);
+                Destroy(old);
+                tiles.Remove(tile);
+            }
+            if (mesh.Triangles.Count > 0)
+            {
+                tiles[tile] = MakeTile(mesh);
+                TriangleCount += mesh.Triangles.Count / 3;
+            }
+        }
+
+        // Water that came into a cell the map has dry (GL313): a square per sample column, at the top of its water, and one
+        // more sample round each, so the surface runs into the sides of the hole.
+        private readonly Dictionary<Vector2Int, float> columns = new Dictionary<Vector2Int, float>();
+
+        private void GatherFlooded(int cell)
+        {
+            IReadOnlyCollection<Vector3Int> samples = Live.FloodedIn(cell);
+            if (samples == null || samples.Count == 0)
+            {
+                return;
+            }
+            foreach (Vector3Int sample in samples)
+            {
+                float top = Live.Flooded[sample];
+                for (int dz = -1; dz <= 1; dz++)
+                {
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        var column = new Vector2Int(sample.x + dx, sample.z + dz);
+                        bool own = dx == 0 && dz == 0;
+                        if (!columns.TryGetValue(column, out float drawn) || (own ? top > drawn : top < drawn))
                         {
-                            int nx = x + dx, nz = z + dz;
-                            if (nx < 0 || nz < 0 || nx >= size.x || nz >= size.y)
-                            {
-                                continue;
-                            }
-                            int j = nx + nz * size.x;
-                            if (water.Kind[j] != 0 && (from[i] < 0 || water.Surface[j] < level[i]))
-                            {
-                                from[i] = j;
-                                level[i] = water.Surface[j];
-                            }
+                            columns[column] = top;
                         }
                     }
                 }
             }
+        }
 
-            var mesh = new TileMesh();
-            for (int tz = 0; tz < size.y; tz += Tile)
+        private void EmitFlooded(TileMesh into)
+        {
+            if (Live == null || columns.Count == 0)
             {
-                for (int tx = 0; tx < size.x; tx += Tile)
+                return;
+            }
+            float voxel = Live.World.Grid.VoxelSize;
+            foreach (KeyValuePair<Vector2Int, float> column in columns)
+            {
+                float x0 = (column.Key.x - 0.5f) * voxel, z0 = (column.Key.y - 0.5f) * voxel;
+                int under = Live.CellOf(new Vector3(x0 + voxel * 0.5f, 0f, z0 + voxel * 0.5f));
+                if (under >= 0 && from[under] >= 0)
                 {
-                    mesh.Clear();
-                    for (int z = tz; z < Mathf.Min(tz + Tile, size.y); z++)
-                    {
-                        for (int x = tx; x < Mathf.Min(tx + Tile, size.x); x++)
-                        {
-                            if (from[x + z * size.x] >= 0)
-                            {
-                                AddCell(water, level, from, x, z, mesh);
-                            }
-                        }
-                    }
-                    if (mesh.Triangles.Count > 0)
-                    {
-                        tiles.Add(MakeTile(mesh));
-                        TriangleCount += mesh.Triangles.Count / 3;
-                    }
+                    continue;
                 }
+                Corner Point(float x, float z) => new Corner { Position = new Vector3(x, column.Value, z), Ripple = Vector4.zero };
+                Corner a = Point(x0, z0), b = Point(x0 + voxel, z0), c = Point(x0 + voxel, z0 + voxel), d = Point(x0, z0 + voxel);
+                var look = new Vector3(0f, 0f, (float)WaterKind.Lake);
+                into.Add(a, d, c, look);
+                into.Add(a, c, b, look);
             }
         }
 

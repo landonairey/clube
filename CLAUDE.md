@@ -519,7 +519,7 @@ banks and deep lake floors; `TreeField.TryGetSpot` keeps trees off. Jobs refuse 
 is `WaterMap.None` (empty arrays), never `default`. `WaterView` (on World) draws the water as flat triangles in the
 `Clube/Water` shader (bands downstream on rivers, random twinkles on lakes, GL309; ripples, each triangle cut into four in the shader and lake glimmers, GL312). Dirt and grass drop, sand also slides
 (`VoxelMaterial.Fall`): `GroundSettling` (Core/Editing) wakes on `World.DensityChanged` and `FallingGround` (on World) steps it
-(GL308). The water doesn't move when dug beside, and there's no swimming yet (GL311).
+(GL308). `LiveWater` (Core/Editing, stepped by `WaterView`) floods holes dug beside water and drops water where ground is placed (GL313); there's no swimming yet (GL311).
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
