@@ -517,7 +517,7 @@ cells: river cut, water surface and depth, kind, flow, distance to lake and rive
 `ChunkFillSettings.Water` lets `ChunkFillKernel.StampWaterBanks` lay sand (id 24, GL306) on beds and lake shores and clay on
 banks and deep lake floors; `TreeField.TryGetSpot` keeps trees off. Jobs refuse unassigned arrays even unread, so "no water"
 is `WaterMap.None` (empty arrays), never `default`. `WaterView` (on World) draws the water as flat triangles in the
-`Clube/Water` shader (bands downstream on rivers, random twinkles on lakes, GL309). Dirt and grass drop, sand also slides
+`Clube/Water` shader (bands downstream on rivers, random twinkles on lakes, GL309; ripples, each triangle cut into four in the shader and lake glimmers, GL312). Dirt and grass drop, sand also slides
 (`VoxelMaterial.Fall`): `GroundSettling` (Core/Editing) wakes on `World.DensityChanged` and `FallingGround` (on World) steps it
 (GL308). The water doesn't move when dug beside, and there's no swimming yet (GL311).
 

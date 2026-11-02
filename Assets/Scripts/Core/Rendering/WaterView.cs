@@ -7,11 +7,12 @@ namespace Clube.Core
 {
     /// <summary>
     /// Draws the rivers and lakes (GL309) of the <see cref="WorldView"/>'s ground (<see cref="HeightfieldGenerator.Water"/>):
-    /// a low-poly surface of flat triangles, two per metre cell, in tiles. Corners are shared, at the water's height there,
-    /// so rivers slope down their course and lakes lie level; every wet cell's ring of dry neighbours is drawn too, at the
-    /// water's height, at the lowest water beside it, so the surface runs into the banks and the ground hides its edge. Each triangle carries its centre,
-    /// the river's flow, whether it's river or lake and a random number for the <c>Clube/Water</c> shader's shimmer. The
-    /// water stands still in the data: digging doesn't move it.
+    /// a low-poly surface of flat triangles, two per metre cell, in tiles (the <c>Clube/Water</c> shader cuts each into four
+    /// for the drawing, GL312). Corners are shared, at the water's height there, so rivers slope down their course and lakes
+    /// lie level; every wet cell's ring of dry neighbours is drawn too, at the lowest water beside it, so the surface runs
+    /// into the banks and the ground hides its edge. Each triangle carries the river's flow and whether it's river or lake
+    /// for the shader's shimmer, and each corner the flow there for its ripples, which move the surface in the drawing only.
+    /// The water stands still in the data: digging doesn't move it.
     /// </summary>
     [RequireComponent(typeof(WorldView))]
     public sealed class WaterView : MonoBehaviour
@@ -121,107 +122,142 @@ namespace Clube.Core
                 }
             }
 
-            var vertices = new List<Vector3>();
-            var flows = new List<Vector2>();
-            var centres = new List<Vector2>();
-            var kinds = new List<Vector2>();
-            var triangles = new List<int>();
+            var mesh = new TileMesh();
             for (int tz = 0; tz < size.y; tz += Tile)
             {
                 for (int tx = 0; tx < size.x; tx += Tile)
                 {
-                    vertices.Clear();
-                    flows.Clear();
-                    centres.Clear();
-                    kinds.Clear();
-                    triangles.Clear();
+                    mesh.Clear();
                     for (int z = tz; z < Mathf.Min(tz + Tile, size.y); z++)
                     {
                         for (int x = tx; x < Mathf.Min(tx + Tile, size.x); x++)
                         {
-                            int i = x + z * size.x;
-                            if (from[i] < 0)
+                            if (from[x + z * size.x] >= 0)
                             {
-                                continue;
+                                AddCell(water, level, from, x, z, mesh);
                             }
-                            AddCell(water, level, from, x, z, vertices, flows, centres, kinds, triangles);
                         }
                     }
-                    if (triangles.Count > 0)
+                    if (mesh.Triangles.Count > 0)
                     {
-                        tiles.Add(MakeTile(vertices, flows, centres, kinds, triangles));
-                        TriangleCount += triangles.Count / 3;
+                        tiles.Add(MakeTile(mesh));
+                        TriangleCount += mesh.Triangles.Count / 3;
                     }
                 }
             }
         }
 
+        // A corner of the water: where it is, and for the shader's ripples the flow there and how much of it is river
+        // (both averaged over the cells round it, so neighbouring triangles ripple alike and the surface never cracks).
+        private struct Corner
+        {
+            public Vector3 Position;
+            public Vector4 Ripple;
+        }
+
         // Two triangles over a cell, the diagonal alternating like a checkerboard, so the facets don't line up.
-        private static void AddCell(WaterMap water, float[] level, int[] from, int x, int z, List<Vector3> vertices, List<Vector2> flows,
-            List<Vector2> centres, List<Vector2> kinds, List<int> triangles)
+        private static void AddCell(WaterMap water, float[] level, int[] from, int x, int z, TileMesh mesh)
         {
             int2 size = water.Size;
             float cell = water.CellSize;
-            Vector3 Corner(int cx, int cz)
+            Corner At(int cx, int cz)
             {
-                float sum = 0f;
+                float sum = 0f, river = 0f;
+                var flow = Vector2.zero;
                 int count = 0;
                 for (int dz = -1; dz <= 0; dz++)
                 {
                     for (int dx = -1; dx <= 0; dx++)
                     {
                         int nx = cx + dx, nz = cz + dz;
-                        if (nx >= 0 && nz >= 0 && nx < size.x && nz < size.y && from[nx + nz * size.x] >= 0)
+                        int n = nx + nz * size.x;
+                        if (nx >= 0 && nz >= 0 && nx < size.x && nz < size.y && from[n] >= 0)
                         {
-                            sum += level[nx + nz * size.x];
+                            sum += level[n];
+                            float2 f = water.Flow[from[n]];
+                            flow += new Vector2(f.x, f.y);
+                            river += water.Kind[from[n]] == (byte)WaterKind.River ? 1f : 0f;
                             count++;
                         }
                     }
                 }
-                return new Vector3(water.Origin.x + cx * cell, sum / Mathf.Max(1, count), water.Origin.y + cz * cell);
+                count = Mathf.Max(1, count);
+                return new Corner
+                {
+                    Position = new Vector3(water.Origin.x + cx * cell, sum / count, water.Origin.y + cz * cell),
+                    Ripple = new Vector4(flow.x / count, flow.y / count, river / count, 0f),
+                };
             }
 
-            Vector3 a = Corner(x, z), b = Corner(x + 1, z), c = Corner(x + 1, z + 1), d = Corner(x, z + 1);
+            Corner a = At(x, z), b = At(x + 1, z), c = At(x + 1, z + 1), d = At(x, z + 1);
             int source = from[x + z * size.x];
             float2 flow = water.Flow[source];
-            float kind = water.Kind[source];
+            var look = new Vector3(flow.x, flow.y, water.Kind[source]);
+            // The shader finds these same two triangles from the position, and cuts each into four (GL312).
             if (((x + z) & 1) == 0)
             {
-                AddTriangle(a, d, c, flow, kind, x, z, 0, vertices, flows, centres, kinds, triangles);
-                AddTriangle(a, c, b, flow, kind, x, z, 1, vertices, flows, centres, kinds, triangles);
+                mesh.Add(a, d, c, look);
+                mesh.Add(a, c, b, look);
             }
             else
             {
-                AddTriangle(a, d, b, flow, kind, x, z, 0, vertices, flows, centres, kinds, triangles);
-                AddTriangle(b, d, c, flow, kind, x, z, 1, vertices, flows, centres, kinds, triangles);
+                mesh.Add(a, d, b, look);
+                mesh.Add(b, d, c, look);
             }
         }
 
-        private static void AddTriangle(Vector3 p, Vector3 q, Vector3 r, float2 flow, float kind, int x, int z, int half,
-            List<Vector3> vertices, List<Vector2> flows, List<Vector2> centres, List<Vector2> kinds, List<int> triangles)
+        // One tile's vertex streams while it's built. Every triangle has its own three vertices, so its flow and kind are its own.
+        private sealed class TileMesh
         {
-            Vector3 centre = (p + q + r) / 3f;
-            float random = VoxelHash.Uniform(0, x, half, z, 0x57415445);
-            foreach (Vector3 corner in new[] { p, q, r })
+            public readonly List<Vector3> Vertices = new List<Vector3>();
+            /// <summary>UV0: the triangle's river flow (x, z), for the shimmer's direction.</summary>
+            public readonly List<Vector2> Flows = new List<Vector2>();
+            /// <summary>UV2: the triangle's kind (1 river, 2 lake).</summary>
+            public readonly List<Vector2> Kinds = new List<Vector2>();
+            /// <summary>UV3: the corner's flow (x, z) and river share, for the ripples.</summary>
+            public readonly List<Vector4> Ripples = new List<Vector4>();
+            public readonly List<int> Triangles = new List<int>();
+
+            public void Clear()
             {
-                triangles.Add(vertices.Count);
-                vertices.Add(corner);
-                flows.Add(new Vector2(flow.x, flow.y));
-                centres.Add(new Vector2(centre.x, centre.z));
-                kinds.Add(new Vector2(kind, random));
+                Vertices.Clear();
+                Flows.Clear();
+                Kinds.Clear();
+                Ripples.Clear();
+                Triangles.Clear();
+            }
+
+            /// <param name="look">The triangle's flow (x, y) and kind (z).</param>
+            public void Add(Corner p, Corner q, Corner r, Vector3 look)
+            {
+                Add(p, look);
+                Add(q, look);
+                Add(r, look);
+            }
+
+            private void Add(Corner corner, Vector3 look)
+            {
+                Triangles.Add(Vertices.Count);
+                Vertices.Add(corner.Position);
+                Ripples.Add(corner.Ripple);
+                Flows.Add(new Vector2(look.x, look.y));
+                Kinds.Add(new Vector2(look.z, 0f));
             }
         }
 
-        private GameObject MakeTile(List<Vector3> vertices, List<Vector2> flows, List<Vector2> centres, List<Vector2> kinds, List<int> triangles)
+        private GameObject MakeTile(TileMesh built)
         {
-            var mesh = new Mesh { name = "Water", indexFormat = vertices.Count > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16 };
-            mesh.SetVertices(vertices);
-            mesh.SetUVs(0, flows);
-            mesh.SetUVs(1, centres);
-            mesh.SetUVs(2, kinds);
-            mesh.SetTriangles(triangles, 0);
-            mesh.RecalculateBounds();
+            var mesh = new Mesh { name = "Water", indexFormat = built.Vertices.Count > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16 };
+            mesh.SetVertices(built.Vertices);
+            mesh.SetUVs(0, built.Flows);
+            mesh.SetUVs(2, built.Kinds);
+            mesh.SetUVs(3, built.Ripples);
+            mesh.SetTriangles(built.Triangles, 0);
             mesh.RecalculateNormals();
+            // Room for the ripples above and below the water.
+            Bounds bounds = mesh.bounds;
+            bounds.Expand(new Vector3(0f, 0.5f, 0f));
+            mesh.bounds = bounds;
             var tile = new GameObject("Water tile");
             tile.transform.SetParent(transform, false);
             tile.AddComponent<MeshFilter>().sharedMesh = mesh;
