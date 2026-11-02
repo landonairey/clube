@@ -26,11 +26,6 @@ namespace Clube.Game
         // The largest stump looked at, in samples; a safety stop for the search.
         private const int MaxSamples = 4096;
 
-        // How far under a trunk hit a stump is looked for (GL231), in samples: 10 at 0.25 m reaches 2.5 m down, so the
-        // trunk at eye height finds it; and how far to the side of the line down.
-        private const int StumpSearchDepth = 10;
-        private const int StumpSearchRadius = 2;
-
         private static readonly Vector3Int[] Neighbours = BuildNeighbours();
 
         [Tooltip("What can be made at a stump.")]
@@ -48,17 +43,6 @@ namespace Clube.Game
         /// <summary>The worktop under a ray hit on the terrain, or null when it isn't one.</summary>
         public IInteractable Find(RaycastHit hit)
         {
-            return Find(hit, out _);
-        }
-
-        /// <summary>
-        /// The worktop under a ray hit on the terrain, or null when it isn't one. A hit on the lower trunk of a tree finds
-        /// the stump under it (GL231), so it can be used without clearing the wood away first; <paramref name="onTrunk"/>
-        /// says so, and tools still chop the trunk.
-        /// </summary>
-        public IInteractable Find(RaycastHit hit, out bool onTrunk)
-        {
-            onTrunk = false;
             WorldView view = hit.collider.GetComponentInParent<WorldView>();
             if (view == null || !view.IsReady)
             {
@@ -85,7 +69,9 @@ namespace Clube.Game
                     for (int x = -1; x <= 1; x++)
                     {
                         Vector3Int sample = near + new Vector3Int(x, y, z);
-                        if (!IsWorktopSample(world, registry, view.Config.IsoLevel, sample))
+                        // Only a bare top counts (GL240): wood still standing on the stump keeps it from being used.
+                        if (!IsWorktopSample(world, registry, view.Config.IsoLevel, sample)
+                            || !IsOpenAbove(world, view.Config.IsoLevel, sample))
                         {
                             continue;
                         }
@@ -101,12 +87,7 @@ namespace Clube.Game
             }
             if (!found)
             {
-                // The trunk grows out of the stump and covers most of it at this voxel size: look under the wood.
-                if (!IsPlantNear(world, registry, view.Config.IsoLevel, near) || !FindStumpBelow(world, registry, view.Config.IsoLevel, near, out start))
-                {
-                    return null;
-                }
-                onTrunk = true;
+                return null;
             }
 
             Vector3Int key = LowestSample(world, registry, view.Config.IsoLevel, start);
@@ -128,58 +109,6 @@ namespace Clube.Game
                 stations[key] = station;
             }
             return station;
-        }
-
-        // Whether the hit is on a tree: a solid plant sample (wood) around it.
-        private static bool IsPlantNear(World world, MaterialRegistry registry, float iso, Vector3Int near)
-        {
-            for (int z = -1; z <= 1; z++)
-            {
-                for (int y = -1; y <= 1; y++)
-                {
-                    for (int x = -1; x <= 1; x++)
-                    {
-                        Vector3Int sample = near + new Vector3Int(x, y, z);
-                        float? density = world.GetDensity(sample);
-                        byte? id = world.GetMaterial(sample);
-                        if (density.HasValue && density.Value >= iso && id.HasValue && registry.Get(id.Value) is VoxelMaterial material
-                            && material.Category == VoxelMaterialCategory.Plant)
-                        {
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
-
-        // The nearest stump sample under a trunk hit: straight down first, within a little of the trunk's line.
-        private static bool FindStumpBelow(World world, MaterialRegistry registry, float iso, Vector3Int near, out Vector3Int stump)
-        {
-            for (int down = 0; down <= StumpSearchDepth; down++)
-            {
-                for (int ring = 0; ring <= StumpSearchRadius; ring++)
-                {
-                    for (int z = -ring; z <= ring; z++)
-                    {
-                        for (int x = -ring; x <= ring; x++)
-                        {
-                            if (Mathf.Max(Mathf.Abs(x), Mathf.Abs(z)) != ring)
-                            {
-                                continue;
-                            }
-                            Vector3Int sample = near + new Vector3Int(x, -down, z);
-                            if (IsWorktopSample(world, registry, iso, sample))
-                            {
-                                stump = sample;
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-            stump = default;
-            return false;
         }
 
         private Kind KindOf(byte? material)
@@ -229,6 +158,13 @@ namespace Clube.Game
                 return a.y < b.y;
             }
             return a.x != b.x ? a.x < b.x : a.z < b.z;
+        }
+
+        // Whether the sample over this one is air: the worktop's top is bare there.
+        private static bool IsOpenAbove(World world, float iso, Vector3Int sample)
+        {
+            float? above = world.GetDensity(sample + Vector3Int.up);
+            return !above.HasValue || above.Value < iso;
         }
 
         private static bool IsWorktopSample(World world, MaterialRegistry registry, float iso, Vector3Int sample)

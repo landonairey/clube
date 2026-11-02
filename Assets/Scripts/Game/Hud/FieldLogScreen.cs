@@ -42,6 +42,7 @@ namespace Clube.Game
         private InventoryScreen inventoryScreen;
         private StationPanel stationPanel;
         private MerchantPanel merchantPanel;
+        private ChestPanel chestPanel;
         private JournalScreen ores;
         private CraftingJournalScreen tools;
         private PlayerQuests quests;
@@ -60,6 +61,7 @@ namespace Clube.Game
             inventoryScreen = GetComponent<InventoryScreen>();
             stationPanel = GetComponent<StationPanel>();
             merchantPanel = GetComponent<MerchantPanel>();
+            chestPanel = GetComponent<ChestPanel>();
             ores = GetComponent<JournalScreen>();
             tools = GetComponent<CraftingJournalScreen>();
             quests = GetComponent<PlayerQuests>();
@@ -85,7 +87,8 @@ namespace Clube.Game
             // One screen at a time.
             bool otherOpen = (inventoryScreen != null && inventoryScreen.IsOpen)
                 || (stationPanel != null && stationPanel.IsOpen)
-                || (merchantPanel != null && merchantPanel.IsOpen);
+                || (merchantPanel != null && merchantPanel.IsOpen)
+                || (chestPanel != null && chestPanel.IsOpen);
             if (otherOpen)
             {
                 return;
@@ -222,7 +225,7 @@ namespace Clube.Game
         private void DrawSection(Rect area, int page, QuestLog log, string section)
         {
             questStyle ??= new GUIStyle(JournalBook.Text) { fontSize = 15, fontStyle = FontStyle.Italic };
-            doneStyle ??= new GUIStyle(questStyle) { normal = { textColor = new Color(JournalBook.Ink.r, JournalBook.Ink.g, JournalBook.Ink.b, 0.45f) } };
+            doneStyle ??= JournalBook.Inked(new GUIStyle(questStyle), new Color(JournalBook.Ink.r, JournalBook.Ink.g, JournalBook.Ink.b, 0.45f));
             Rect inner = JournalBook.Inner(area);
             int done = 0;
             int count = 0;

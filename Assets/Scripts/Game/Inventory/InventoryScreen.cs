@@ -26,6 +26,7 @@ namespace Clube.Game
         private PlayerController player;
         private StationPanel stationPanel;
         private MerchantPanel merchantPanel;
+        private ChestPanel chestPanel;
         private FieldLogScreen fieldLog;
         private readonly InventoryDrag drag = new InventoryDrag();
         private Rect trashSlot;
@@ -38,6 +39,7 @@ namespace Clube.Game
             player = GetComponent<PlayerController>();
             stationPanel = GetComponent<StationPanel>();
             merchantPanel = GetComponent<MerchantPanel>();
+            chestPanel = GetComponent<ChestPanel>();
             fieldLog = GetComponent<FieldLogScreen>();
         }
 
@@ -63,7 +65,7 @@ namespace Clube.Game
 
             // One screen at a time: not over a station's or a merchant's panel.
             bool otherOpen = (stationPanel != null && stationPanel.IsOpen) || (merchantPanel != null && merchantPanel.IsOpen)
-                || (fieldLog != null && fieldLog.IsOpen);
+                || (fieldLog != null && fieldLog.IsOpen) || (chestPanel != null && chestPanel.IsOpen);
             if (toggleAction != null && toggleAction.action.WasPressedThisFrame() && !otherOpen)
             {
                 SetOpen(!IsOpen);

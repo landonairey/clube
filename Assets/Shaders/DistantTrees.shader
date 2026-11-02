@@ -25,7 +25,20 @@ Shader "Clube/Distant Trees"
             float _Variation;
         CBUFFER_END
 
+        #include "Assets/Shaders/Wind.hlsl"
+
         TEXTURE2D(_CoverageMask);
+
+        // The crown sways in the wind with the voxel trees' leaves (Wind.hlsl): nothing below 0.45 of the height
+        // (the meshes are one unit tall), up to 2% of the height at the top.
+        float3 SwayCrown(float3 positionOS)
+        {
+            float3 positionWS = TransformObjectToWorld(positionOS);
+            float height = length(float3(UNITY_MATRIX_M._m01, UNITY_MATRIX_M._m11, UNITY_MATRIX_M._m21));
+            float crown = saturate((positionOS.y - 0.45) / 0.55);
+            positionWS.xz += WindSway(positionWS, 0.02 * height * crown, 0.9);
+            return positionWS;
+        }
 
         // True when the voxel world draws the column under this root itself.
         bool Covered(float3 root)
@@ -71,7 +84,7 @@ Shader "Clube/Distant Trees"
                 UNITY_SETUP_INSTANCE_ID(input);
                 Varyings output;
                 float3 root = TransformObjectToWorld(float3(0, 0, 0));
-                float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                float3 positionWS = SwayCrown(input.positionOS.xyz);
                 output.positionCS = TransformWorldToHClip(positionWS);
                 if (Covered(root))
                 {
@@ -121,7 +134,7 @@ Shader "Clube/Distant Trees"
             {
                 UNITY_SETUP_INSTANCE_ID(input);
                 float3 root = TransformObjectToWorld(float3(0, 0, 0));
-                return Covered(root) ? float4(2, 2, 2, 1) : TransformObjectToHClip(input.positionOS.xyz);
+                return Covered(root) ? float4(2, 2, 2, 1) : TransformWorldToHClip(SwayCrown(input.positionOS.xyz));
             }
 
             half DepthFragment() : SV_Target

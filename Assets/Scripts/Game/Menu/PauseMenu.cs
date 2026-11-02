@@ -30,6 +30,7 @@ namespace Clube.Game
         private FieldLogScreen fieldLog;
         private StationPanel stationPanel;
         private MerchantPanel merchantPanel;
+        private ChestPanel chestPanel;
         private string problem;
 
         // The save name being typed, while Save and Exit asks for one (GL207); null otherwise.
@@ -57,6 +58,7 @@ namespace Clube.Game
                 fieldLog = player.GetComponent<FieldLogScreen>();
                 stationPanel = player.GetComponent<StationPanel>();
                 merchantPanel = player.GetComponent<MerchantPanel>();
+                chestPanel = player.GetComponent<ChestPanel>();
             }
         }
 
@@ -120,6 +122,11 @@ namespace Clube.Game
             if (merchantPanel != null && merchantPanel.IsOpen)
             {
                 merchantPanel.Close();
+                return true;
+            }
+            if (chestPanel != null && chestPanel.IsOpen)
+            {
+                chestPanel.Close();
                 return true;
             }
             return false;

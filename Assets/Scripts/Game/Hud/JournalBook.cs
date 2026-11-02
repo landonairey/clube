@@ -188,14 +188,31 @@ namespace Clube.Game
             return texture;
         }
 
+        /// <summary>
+        /// Gives a style one ink colour in every state (GL243): the skin's label turns white under the mouse, which on the
+        /// pale page made the text vanish.
+        /// </summary>
+        public static GUIStyle Inked(GUIStyle style, Color colour)
+        {
+            style.normal.textColor = colour;
+            style.hover.textColor = colour;
+            style.active.textColor = colour;
+            style.focused.textColor = colour;
+            style.onNormal.textColor = colour;
+            style.onHover.textColor = colour;
+            style.onActive.textColor = colour;
+            style.onFocused.textColor = colour;
+            return style;
+        }
+
         // The styles are made inside OnGUI, where the skin exists.
         private static GUIStyle EnsureStyles(ref GUIStyle style)
         {
             if (title == null)
             {
-                title = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.BoldAndItalic, normal = { textColor = Ink } };
-                text = new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Italic, wordWrap = true, normal = { textColor = Ink } };
-                small = new GUIStyle(GUI.skin.label) { fontSize = 12, fontStyle = FontStyle.Italic, normal = { textColor = new Color(Ink.r, Ink.g, Ink.b, 0.7f) } };
+                title = Inked(new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.BoldAndItalic }, Ink);
+                text = Inked(new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Italic, wordWrap = true }, Ink);
+                small = Inked(new GUIStyle(GUI.skin.label) { fontSize = 12, fontStyle = FontStyle.Italic }, new Color(Ink.r, Ink.g, Ink.b, 0.7f));
             }
             return style;
         }

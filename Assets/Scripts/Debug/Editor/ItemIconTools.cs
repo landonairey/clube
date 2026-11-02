@@ -73,6 +73,7 @@ namespace Clube.Debug.Editor
             Write("bronze hatchet", "Bronze hatchet", PaintHatchet(Bronze, BronzeLight));
             Write("bronze shovel", "Bronze shovel", PaintShovel(Bronze, BronzeLight));
             Write("bronze chisel", "Bronze chisel", PaintChisel());
+            Write("wooden chest", "Wooden chest", PaintChest());
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Wrote item icons to {Folder}.");
         }
@@ -671,6 +672,50 @@ namespace Clube.Debug.Editor
                     }
                 }
             }
+        }
+
+        /// <summary>Writes only the wooden chest's icon (GL249), leaving the rest as they are.</summary>
+        [MenuItem("Clube/Items/Generate chest icon")]
+        public static void GenerateChestIcon()
+        {
+            Directory.CreateDirectory(Folder);
+            Write("wooden chest", "Wooden chest", PaintChest());
+            AssetDatabase.SaveAssets();
+        }
+
+        // A wooden chest seen from the front and a little above (GL249): the plank front, the lid's top leaning back,
+        // the right end in shadow, two iron bands over it and a latch.
+        private static Texture2D PaintChest()
+        {
+            Texture2D texture = Blank();
+            var front = new Color(0.55f, 0.36f, 0.2f);
+            var top = new Color(0.68f, 0.47f, 0.27f);
+            var end = new Color(0.4f, 0.25f, 0.13f);
+            var iron = new Color(0.36f, 0.36f, 0.38f);
+            var ironLight = new Color(0.6f, 0.6f, 0.63f);
+            var dark = new Color(0.2f, 0.12f, 0.06f);
+            float l = Size * 0.1f, r = Size * 0.76f, b = Size * 0.16f, t = Size * 0.6f, back = Size * 0.14f;
+            FillQuad(texture, new Vector2(l, b), new Vector2(r, b), new Vector2(r, t), new Vector2(l, t), front);
+            FillQuad(texture, new Vector2(l, t), new Vector2(r, t), new Vector2(r + back, t + back * 0.9f), new Vector2(l + back, t + back * 0.9f), top);
+            FillQuad(texture, new Vector2(r, b), new Vector2(r + back, b + back * 0.9f), new Vector2(r + back, t + back * 0.9f), new Vector2(r, t), end);
+            // Plank seams across the front, and the lid's edge.
+            for (int i = 1; i < 4; i++)
+            {
+                float y = b + (t - b) * i / 4f;
+                Line(texture, new Vector2(l, y), new Vector2(r, y), 1f, Color.Lerp(front, dark, 0.5f));
+            }
+            Line(texture, new Vector2(l, t - Size * 0.12f), new Vector2(r, t - Size * 0.12f), 2f, dark);
+            foreach (float share in new[] { 0.25f, 0.75f })
+            {
+                float x = Mathf.Lerp(l, r, share);
+                FillQuad(texture, new Vector2(x - 2.5f, b), new Vector2(x + 2.5f, b), new Vector2(x + 2.5f, t), new Vector2(x - 2.5f, t), iron);
+                FillQuad(texture, new Vector2(x - 2.5f, t), new Vector2(x + 2.5f, t), new Vector2(x + 2.5f + back, t + back * 0.9f), new Vector2(x - 2.5f + back, t + back * 0.9f), ironLight);
+            }
+            float mid = (l + r) * 0.5f;
+            FillQuad(texture, new Vector2(mid - 4f, t - Size * 0.2f), new Vector2(mid + 4f, t - Size * 0.2f), new Vector2(mid + 4f, t - Size * 0.07f), new Vector2(mid - 4f, t - Size * 0.07f), ironLight);
+            Outline(texture, dark);
+            texture.Apply();
+            return texture;
         }
 
         // Ore not yet told apart (GL54, GL75): the host rock's own texture, filled to the edges like

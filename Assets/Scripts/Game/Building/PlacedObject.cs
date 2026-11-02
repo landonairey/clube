@@ -5,7 +5,7 @@ namespace Clube.Game
 {
     /// <summary>
     /// Marks an object the player placed from an item (GL23), so it can be picked back up into
-    /// that item. A station gives its loaded and finished items back too.
+    /// that item. A station gives its loaded and finished items back too, a chest what it holds (GL249).
     /// </summary>
     public class PlacedObject : MonoBehaviour
     {
@@ -25,9 +25,15 @@ namespace Clube.Game
         public bool PickUpInto(Inventory inventory)
         {
             StationObject station = GetComponent<StationObject>();
-            if (!Fits(inventory, station))
+            StorageChest chest = GetComponent<StorageChest>();
+            if (!Fits(inventory, station, chest))
             {
                 return false;
+            }
+            if (chest != null)
+            {
+                // What's inside comes along (GL249).
+                MoveAll(chest.Storage, inventory);
             }
             if (station != null)
             {
@@ -50,13 +56,13 @@ namespace Clube.Game
         }
 
         // Checks on a copy, so a refused pickup leaves both inventories as they were.
-        private bool Fits(Inventory inventory, StationObject station)
+        private bool Fits(Inventory inventory, StationObject station, StorageChest chest)
         {
             var trial = new Inventory(inventory.SlotCount);
             for (int slot = 0; slot < inventory.SlotCount; slot++)
             {
                 ItemStack stack = inventory[slot];
-                if (!stack.IsEmpty && trial.Add(stack.Item, stack.Count) > 0)
+                if (!stack.IsEmpty && trial.Add(stack.Item, stack.Count, stack.Contents, stack.Wear, stack.Quality, stack.Part) > 0)
                 {
                     return false;
                 }
@@ -66,7 +72,11 @@ namespace Clube.Game
             {
                 return false;
             }
-            return Item == null || trial.Add(Item) == 0;
+            if (chest != null && !AddAll(chest.Storage, trial))
+            {
+                return false;
+            }
+            return Item == null || trial.Add(Item, 1, Contents, 0, Quality) == 0;
         }
 
         private static bool AddAll(Inventory from, Inventory to)
@@ -74,7 +84,7 @@ namespace Clube.Game
             for (int slot = 0; slot < from.SlotCount; slot++)
             {
                 ItemStack stack = from[slot];
-                if (!stack.IsEmpty && to.Add(stack.Item, stack.Count) > 0)
+                if (!stack.IsEmpty && to.Add(stack.Item, stack.Count, stack.Contents, stack.Wear, stack.Quality, stack.Part) > 0)
                 {
                     return false;
                 }

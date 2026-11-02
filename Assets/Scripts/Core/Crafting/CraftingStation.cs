@@ -243,10 +243,10 @@ namespace Clube.Core
                 {
                     continue;
                 }
-                for (int slot = 0; slot < from.SlotCount; slot++)
+                foreach (int slot in from.SlotsByQuality(input.Item))
                 {
                     ItemStack stack = from[slot];
-                    if (stack.Item != input.Item || stack.Count == 0)
+                    if (stack.Count == 0)
                     {
                         continue;
                     }

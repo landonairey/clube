@@ -47,6 +47,30 @@ Shader "Clube/Terrain Materials"
             float4 _LodTint;
         CBUFFER_END
 
+        #include "Assets/Shaders/Wind.hlsl"
+
+        // How far each material sways in the wind, 0-1 (the leaves, so the tops of the trees move). Set from the
+        // registry like the colours; not a material property.
+        float _MaterialSway[64];
+
+        // How much each material shines, 0-1 (GL251: gold), set from the registry like the sway.
+        float _MaterialShine[64];
+
+        // A vertex moved by the wind by as much as its materials sway: 7 cm for leaves. Leaves and the wood they
+        // meet share vertices at a seam and only the leaf side moves, so the strength stays small.
+        float3 SwayLeaves(float3 positionWS, float3 ids, float3 weights)
+        {
+            float total = weights.x + weights.y + weights.z;
+            if (total <= 0.0)
+            {
+                return positionWS;
+            }
+            float sway = (weights.x * _MaterialSway[(int)ids.x] + weights.y * _MaterialSway[(int)ids.y]
+                        + weights.z * _MaterialSway[(int)ids.z]) / total;
+            positionWS.xz += WindSway(positionWS, 0.07 * sway, 0.9);
+            return positionWS;
+        }
+
         // Global (GL102), not per material.
         float _HardMaterialEdges;
 
@@ -130,7 +154,7 @@ Shader "Clube/Terrain Materials"
             Varyings Vertex(Attributes input)
             {
                 Varyings output;
-                output.positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                output.positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 output.positionCS = TransformWorldToHClip(output.positionWS);
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.materialIds = input.materialIds;
@@ -226,6 +250,33 @@ Shader "Clube/Terrain Materials"
                 return albedo;
             }
 
+            // How much the materials here shine (GL251), by the ids shown (a hidden ore shows as the stone it hides in).
+            float ShineOf(Varyings input)
+            {
+                float3 weights = input.materialWeights / max(dot(input.materialWeights, 1.0), 1e-5);
+                int3 ids = (int3)round(input.materialIds);
+                ids = int3((int)_LayerRemap[ids.x], (int)_LayerRemap[ids.y], (int)_LayerRemap[ids.z]);
+                return weights.x * _MaterialShine[ids.x] + weights.y * _MaterialShine[ids.y] + weights.z * _MaterialShine[ids.z];
+            }
+
+            // A metal's light (GL251): a broad highlight in its own colour, and tiny flecks, a few centimetres across, each
+            // tilted its own way, that glint when the light and the eye line up with them, so the ore sparkles as you move.
+            half3 Glints(float3 positionWS, float3 normalWS, half3 albedo, Light light, float shine)
+            {
+                float3 view = GetWorldSpaceNormalizeViewDir(positionWS);
+                float3 halfway = normalize(light.direction + view);
+                half3 lit = light.color * light.shadowAttenuation * light.distanceAttenuation * saturate(dot(normalWS, light.direction));
+                half3 sheen = albedo * pow(saturate(dot(normalWS, halfway)), 24.0) * 1.6;
+                float3 cell = floor(positionWS * 28.0);
+                float h = frac(sin(dot(cell, float3(12.9898, 78.233, 37.719))) * 43758.5453);
+                float3 tilt = frac(sin(cell.yzx * float3(91.7, 47.3, 13.1) + h * 31.0) * 4375.85) - 0.5;
+                float3 fleck = normalize(normalWS + tilt * 0.9);
+                float glint = step(0.55, h) * pow(saturate(dot(fleck, halfway)), 140.0) * 5.0;
+                // A little sparkle even out of the sun, from the sky.
+                half3 skyGlint = SampleSH(normalWS) * step(0.9, h) * 0.6;
+                return shine * (lit * (sheen + glint * half3(1.0, 0.95, 0.75)) + skyGlint);
+            }
+
             half4 Fragment(Varyings input) : SV_Target
             {
                 ClipLod(input.positionWS);
@@ -242,6 +293,11 @@ Shader "Clube/Terrain Materials"
                 half3 ambient = SampleSH(normalWS);
 
                 half3 color = albedo * (direct + ambient);
+                float shine = ShineOf(input);
+                if (shine > 0.001)
+                {
+                    color += Glints(input.positionWS, normalWS, albedo, mainLight, shine);
+                }
                 color = MixFog(color, input.fogFactor);
                 return half4(color, 1.0);
             }
@@ -271,11 +327,13 @@ Shader "Clube/Terrain Materials"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS : NORMAL;
+                float3 materialIds : TEXCOORD2;
+                float3 materialWeights : TEXCOORD3;
             };
 
             float4 ShadowVertex(Attributes input) : SV_POSITION
             {
-                float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                float3 positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
             #if _CASTING_PUNCTUAL_LIGHT_SHADOW
                 float3 lightDirection = normalize(_LightPosition - positionWS);
@@ -316,10 +374,17 @@ Shader "Clube/Terrain Materials"
                 float3 positionWS : TEXCOORD0;
             };
 
-            DepthVaryings DepthVertex(float4 positionOS : POSITION)
+            struct DepthAttributes
+            {
+                float4 positionOS : POSITION;
+                float3 materialIds : TEXCOORD2;
+                float3 materialWeights : TEXCOORD3;
+            };
+
+            DepthVaryings DepthVertex(DepthAttributes input)
             {
                 DepthVaryings output;
-                output.positionWS = TransformObjectToWorld(positionOS.xyz);
+                output.positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 output.positionCS = TransformWorldToHClip(output.positionWS);
                 return output;
             }
@@ -348,6 +413,8 @@ Shader "Clube/Terrain Materials"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS : NORMAL;
+                float3 materialIds : TEXCOORD2;
+                float3 materialWeights : TEXCOORD3;
             };
 
             struct Varyings
@@ -360,7 +427,7 @@ Shader "Clube/Terrain Materials"
             Varyings NormalsVertex(Attributes input)
             {
                 Varyings output;
-                output.positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                output.positionWS = SwayLeaves(TransformObjectToWorld(input.positionOS.xyz), input.materialIds, input.materialWeights);
                 output.positionCS = TransformWorldToHClip(output.positionWS);
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 return output;

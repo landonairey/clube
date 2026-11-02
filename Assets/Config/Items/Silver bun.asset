@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Silver bun
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
   id: silver-bun
-  displayName: Silver bun
+  displayName: Silver button
   icon: {fileID: 2800000, guid: 21af94c094a38284e9fb4c6a147d40bb, type: 3}
   maxStack: 16
   unitVolume: 0.5
