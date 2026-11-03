@@ -560,7 +560,9 @@ P12a, P12b, WT2 (branch `p12/eroded-landscape`, `Docs/20261103j clube-backlog.md
 (`LandscapeHeight.WithSmoothMassifs`; the filter needs a smooth base: on ridged noise its gullies turn to noise and seams);
 panel Erosion section. Rivers start in its biggest gullies' valleys (`HeightfieldGenerator.ScheduleValleys`, `Hydrology` by
 steepest descent) and merge downstream into lakes. River water comes from the chunk's soil (`Chunk.SoilWater`, `LiveWater`
-`Draw`/`Soak`), kept full by `HoldSoilWaterFull` until there is rain. WorldLab still uses Landscape: pick ErodedLandscape
+`Draw`/`Soak`), kept full by `HoldSoilWaterFull` until there is rain (needs more playtesting). GL338: the merchant table skips
+and clears trees on its square. GL339: about 4% of boulders are large (`ChunkFillKernel.LargeBoulderRise`, up to 2.25 m;
+`ChunkFillSettings.ReachAbove`). WorldLab still uses Landscape: pick ErodedLandscape
 in the panel to see it. Height maps: `Docs/images/20261103 *`.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the

@@ -55,6 +55,15 @@ namespace Clube.Core
                                   + (LodScale <= 1f ? SlopeRidges.Reach(Layers) : 0f);
 
         /// <summary>
+        /// How far above the heightfield's surface, in metres, anything solid can stand: <see cref="RampReach"/>, and the large
+        /// surface boulders (GL339), whose height is in samples of <paramref name="voxelSize"/>.
+        /// </summary>
+        public float ReachAbove(float voxelSize)
+        {
+            return RampReach + (Layers.RockChance > 0f ? ChunkFillKernel.LargeBoulderHeight * voxelSize : 0f);
+        }
+
+        /// <summary>
         /// These settings for an LOD level <paramref name="scale"/> times coarser: the bands widen with
         /// it, and the small details (surface rocks, buried stones) that a coarse voxel can't show are off.
         /// </summary>

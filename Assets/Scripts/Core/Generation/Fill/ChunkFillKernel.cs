@@ -386,7 +386,62 @@ namespace Clube.Core
                     rise = math.max(rise, (int)math.round(BoulderRise * dome));
                 }
             }
-            return rise;
+            return math.max(rise, LargeBoulderRise(seed, column, chance));
+        }
+
+        /// <summary>Samples from the middle of the biggest large boulder to its edge (GL339).</summary>
+        public const int LargeBoulderRadius = 12;
+
+        /// <summary>Samples the biggest large boulder stands above the surface (GL339).</summary>
+        public const int LargeBoulderHeight = 9;
+
+        /// <summary>About this share of boulders are large ones (GL339).</summary>
+        public const float LargeBoulderShare = 0.04f;
+
+        /// <summary>Large boulders sit at most one to a square cell this many samples wide.</summary>
+        public const int LargeBoulderCell = 48;
+        // Each sits well inside its cell, so a column only looks at its own cell.
+        private const int LargeBoulderMargin = 15;
+        private const int LargeSalt = 0x4C524F43;
+
+        /// <summary>
+        /// How many samples a large boulder rises in a global column (GL339), 0 outside one: a rare true boulder, 8-12 samples in
+        /// radius with a lumpy outline, a dome up to <see cref="LargeBoulderHeight"/> tall. About <see cref="LargeBoulderShare"/>
+        /// of the boulders the rock chance gives are large.
+        /// </summary>
+        public static int LargeBoulderRise(int seed, int2 column, float chance)
+        {
+            if (chance <= 0f)
+            {
+                return 0;
+            }
+            var cell = new int2((int)math.floor(column.x / (float)LargeBoulderCell), (int)math.floor(column.y / (float)LargeBoulderCell));
+            float perCell = chance / BoulderOneIn * LargeBoulderCell * LargeBoulderCell * LargeBoulderShare;
+            if (VoxelHash.Uniform(seed, cell.x, 1, cell.y, LargeSalt) >= perCell)
+            {
+                return 0;
+            }
+            float size = VoxelHash.Uniform(seed, cell.x, 2, cell.y, LargeSalt);
+            float radius = math.lerp(8f, LargeBoulderRadius, size);
+            const int room = LargeBoulderCell - 2 * LargeBoulderMargin;
+            var centre = cell * LargeBoulderCell + LargeBoulderMargin + new int2(
+                (int)(VoxelHash.Uniform(seed, cell.x, 3, cell.y, LargeSalt) * room),
+                (int)(VoxelHash.Uniform(seed, cell.x, 4, cell.y, LargeSalt) * room));
+            float2 offset = column - centre;
+            float distance = math.length(offset);
+            if (distance > radius * 1.2f)
+            {
+                return 0;
+            }
+            // Three lobes round the edge, turned by the hash, so no two are the same round dome.
+            float phase = VoxelHash.Uniform(seed, cell.x, 5, cell.y, LargeSalt) * 2f * math.PI;
+            float edge = radius * (1f + 0.15f * math.sin(3f * math.atan2(offset.y, offset.x) + phase));
+            if (distance >= edge)
+            {
+                return 0;
+            }
+            float dome = math.sqrt(1f - distance * distance / (edge * edge));
+            return math.max(1, (int)math.round(LargeBoulderHeight * radius / LargeBoulderRadius * dome));
         }
 
         /// <summary>Samples from the middle of a boulder to its edge.</summary>

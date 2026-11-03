@@ -130,7 +130,7 @@ namespace Clube.Core
 
         public void Execute()
         {
-            if (Trees.Length == 0 && Grid.Bottom >= HeightRange[0].y + Settings.RampReach)
+            if (Trees.Length == 0 && Grid.Bottom >= HeightRange[0].y + Settings.ReachAbove(Grid.VoxelSize))
             {
                 Output.Summary[0] = ChunkFillKernel.AllAir(Settings.Layers);
                 return;

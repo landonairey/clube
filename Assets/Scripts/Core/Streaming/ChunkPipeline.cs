@@ -537,7 +537,7 @@ namespace Clube.Core
         // A chunk above the highest surface its terrain can have there: known without sampling.
         private bool IsAboveSurface(Vector3Int coord, ChunkSampleGrid chunkGrid)
         {
-            float clearance = fillSettings.RampReach;
+            float clearance = fillSettings.ReachAbove(chunkGrid.VoxelSize);
             switch (generator)
             {
                 case VolumeGenerator volume:
