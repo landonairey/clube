@@ -49,6 +49,9 @@ namespace Clube.Debug.Editor
         public static BuildReport Build()
         {
             Directory.CreateDirectory(Path.GetDirectoryName(Output));
+            // The texture array is gitignored (generated): rebuild it, so a fresh clone never ships a stale one
+            // missing the newest materials (sand once drew as the last layer, maple bark).
+            MaterialTextureTools.BuildTextureArrays();
             string version = Version();
             File.WriteAllText(BuildInfoAsset, version);
             AssetDatabase.ImportAsset(BuildInfoAsset);

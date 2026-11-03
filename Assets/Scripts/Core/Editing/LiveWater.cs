@@ -5,14 +5,15 @@ using UnityEngine;
 namespace Clube.Core
 {
     /// <summary>
-    /// Water that answers digging and building (GL313), over the generated rivers and lakes of a <see cref="WaterMap"/>.
-    /// A sample is water when it's air and either under the generated water's surface in a wet cell (the map's water), or
-    /// flooded: water came into it. Every density change in the <see cref="World"/> wakes the samples round it; an air
-    /// sample beside water and below that water's surface floods to that surface, and wakes its own neighbours, so water
-    /// runs into a dug hole a sample a step and fills it up to the level it came from (a lake is a source without end).
-    /// Ground put where water was takes its place: a flooded sample that turns solid is no longer water, and a wet cell of
-    /// the map whose ground is built up to its surface stops being water (<see cref="IsFilled"/>). Nothing here changes
-    /// the terrain; the water is only what the water view (Rendering) draws.
+    /// Water that moves (GL313, GL315): a cellular flow over the water stored per sample in the <see cref="World"/>
+    /// (<see cref="World.GetWater"/>, 0-1 per sample). Each step every awake sample's water first falls into the sample
+    /// below while there's room, the way water falls down a drop; what's left spreads sideways, sharing out with lower
+    /// neighbours, and only towards an edge with a drop under it when there is one, so a stream runs down the slope
+    /// instead of fanning out over a hilltop, and keeps going until it meets other water or fills a hollow. Water that
+    /// is too thin dries up. The generated rivers and lakes (<see cref="WaterFill"/>) are sources without end: their
+    /// samples are kept topped up to the map's level, so a hole dug beside a lake fills up to the lake's surface.
+    /// Ground put where water was takes its place: a sample that turns solid loses its water. Every density change
+    /// wakes the samples round it; a sample that changed wakes its own neighbours for the next step.
     /// </summary>
     public sealed class LiveWater : IDisposable
     {
@@ -21,15 +22,28 @@ namespace Clube.Core
             Vector3Int.up, Vector3Int.down, Vector3Int.right, Vector3Int.left, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
         };
 
+        private static readonly Vector3Int[] Sideways =
+        {
+            Vector3Int.right, Vector3Int.left, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
+        };
+
+        /// <summary>Less water than this, outside a source, dries up.</summary>
+        public const float MinAmount = 0.03f;
+
+        /// <summary>Thinner water than this doesn't spread sideways (it can still fall).</summary>
+        public const float MinSpread = 0.06f;
+
+        /// <summary>Sideways flow stops once neighbours are this close, so the water settles.</summary>
+        public const float SettleDifference = 0.015f;
+
         private readonly WaterMap map;
         private readonly float iso;
         private readonly float voxel;
-        private readonly Dictionary<Vector3Int, float> flooded = new Dictionary<Vector3Int, float>();
-        private readonly Dictionary<int, HashSet<Vector3Int>> floodedByCell = new Dictionary<int, HashSet<Vector3Int>>();
-        private readonly HashSet<int> filled = new HashSet<int>();
+        private readonly HashSet<Vector3Int> flowing = new HashSet<Vector3Int>();
         private HashSet<Vector3Int> awake = new HashSet<Vector3Int>();
         private HashSet<Vector3Int> stepping = new HashSet<Vector3Int>();
         private readonly List<Vector3Int> batch = new List<Vector3Int>();
+        private readonly List<Vector3Int> targets = new List<Vector3Int>();
 
         public LiveWater(World world, WaterMap map, float iso)
         {
@@ -42,29 +56,14 @@ namespace Clube.Core
 
         public World World { get; }
 
-        /// <summary>Most samples that can flood, so a tunnel dug from a lake can't flood without end.</summary>
-        public int MaxFlooded { get; set; } = 150000;
+        /// <summary>Most samples of moving (not generated) water, so a tunnel dug from a lake can't flood without end.</summary>
+        public int MaxFlowing { get; set; } = 150000;
 
-        /// <summary>A map cell (index) whose water changed: something to draw again.</summary>
-        public event Action<int> CellChanged;
-
-        /// <summary>Samples water came into, with the height of its surface there.</summary>
-        public IReadOnlyDictionary<Vector3Int, float> Flooded => flooded;
-
-        /// <summary>The flooded samples in a map cell, or null for none.</summary>
-        public IReadOnlyCollection<Vector3Int> FloodedIn(int cell)
-        {
-            return floodedByCell.TryGetValue(cell, out HashSet<Vector3Int> samples) ? samples : null;
-        }
+        /// <summary>Samples holding water that came from somewhere (not the generated rivers and lakes).</summary>
+        public IReadOnlyCollection<Vector3Int> Flowing => flowing;
 
         /// <summary>Samples waiting to be looked at.</summary>
         public int AwakeCount => awake.Count;
-
-        /// <summary>True when a wet cell of the map has been built up to its water's surface: no water is drawn there.</summary>
-        public bool IsFilled(int cell)
-        {
-            return filled.Contains(cell);
-        }
 
         /// <summary>Wakes a sample and the six round it.</summary>
         public void Wake(Vector3Int sample)
@@ -77,16 +76,21 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Wakes every sample of a chunk, when it's near water: a chunk loaded with edits (a saved game) gets its
-        /// flooded holes back this way.
+        /// Wakes every sample of a chunk that holds water or is near the map's water: a chunk loaded with edits (a saved
+        /// game, or one streamed back in) gets its flooded holes back this way.
         /// </summary>
         public void WakeChunk(Vector3Int coord)
         {
+            if (!World.TryGetChunk(coord, out Chunk chunk))
+            {
+                return;
+            }
             Vector3Int first = World.Grid.ChunkFirstSample(coord);
             Vector3Int size = World.Grid.ChunkSize;
             Vector3 middle = World.Grid.SampleToWorld(first + size / 2);
-            if (!map.TryCell(new Unity.Mathematics.float2(middle.x, middle.z), out int cell)
-                || (map.Kind[cell] == 0 && map.LakeDistance[cell] > size.x * voxel && map.RiverDistance[cell] > size.x * voxel))
+            bool near = map.IsCreated && map.TryCell(new Unity.Mathematics.float2(middle.x, middle.z), out int cell)
+                && (map.Kind[cell] != 0 || map.LakeDistance[cell] <= size.x * voxel || map.RiverDistance[cell] <= size.x * voxel);
+            if (!near && !chunk.HasWater)
             {
                 return;
             }
@@ -103,11 +107,9 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Looks at every awake sample, at most <paramref name="max"/> (the rest wait): floods air beside water, dries
-        /// flooded samples that turned solid. Returns how many samples changed. Water that came in wakes its neighbours for
-        /// the next step, so it spreads a sample a step.
+        /// Looks at every awake sample, at most <paramref name="max"/> (the rest wait). Returns how many samples changed.
         /// </summary>
-        public int Step(int max = 6000)
+        public int Step(int max = 5000)
         {
             if (awake.Count == 0)
             {
@@ -119,6 +121,8 @@ namespace Clube.Core
             awake = stepping;
             awake.Clear();
             stepping = now;
+            // Lowest first, so water lands before what's above it looks.
+            batch.Sort((a, b) => a.y.CompareTo(b.y));
             int changed = 0;
             for (int i = 0; i < batch.Count; i++)
             {
@@ -135,117 +139,225 @@ namespace Clube.Core
             return changed;
         }
 
-        /// <summary>The height of the water's surface over a sample, or null when the sample isn't water.</summary>
-        public float? LevelAt(Vector3Int sample)
+        /// <summary>How full of generated (source) water a sample is, 0 when none: the map's river or lake there.</summary>
+        public float SourceAt(Vector3Int sample)
         {
-            if (flooded.TryGetValue(sample, out float level))
-            {
-                return level;
-            }
-            Vector3 position = World.Grid.SampleToWorld(sample);
-            if (!map.TryCell(new Unity.Mathematics.float2(position.x, position.z), out int cell) || map.Kind[cell] == 0
-                || filled.Contains(cell) || position.y >= map.Surface[cell])
-            {
-                return null;
-            }
-            float? density = World.GetDensity(sample);
-            return density.HasValue && density.Value < iso ? map.Surface[cell] : (float?)null;
+            return WaterFill.GeneratedAt(map, World.Grid.SampleToWorld(sample), voxel);
         }
 
         private bool Look(Vector3Int sample)
         {
-            float? density = World.GetDensity(sample);
-            if (!density.HasValue)
+            if (!World.TryGetOwner(sample, out Chunk chunk, out Vector3Int local))
             {
                 return false;
             }
-            Vector3 position = World.Grid.SampleToWorld(sample);
-            int cell = CellOf(position);
-            bool changed = CheckFilled(cell);
-            if (density.Value >= iso)
+            float a = chunk.GetWater(local);
+            if (chunk.GetDensity(local) >= iso)
             {
                 // Ground where water was takes its place.
-                if (flooded.Remove(sample))
+                if (a > 0f)
                 {
-                    if (floodedByCell.TryGetValue(cell, out HashSet<Vector3Int> inCell))
-                    {
-                        inCell.Remove(sample);
-                    }
-                    CellChanged?.Invoke(cell);
+                    Set(sample, 0f, 0f);
+                    WakeAround(sample);
                     return true;
                 }
-                return changed;
+                return false;
             }
-            if (flooded.ContainsKey(sample) || flooded.Count >= MaxFlooded || LevelAt(sample).HasValue)
+            float source = SourceAt(sample);
+            float start = a;
+            if (source > a)
             {
-                return changed;
+                a = source;
             }
-            float best = float.NegativeInfinity;
-            foreach (Vector3Int step in Around)
+            if (a <= 0f)
             {
-                float? level = LevelAt(sample + step);
-                if (level.HasValue && level.Value > position.y && level.Value > best)
+                return false;
+            }
+
+            // Falls first, as much as fits below.
+            Vector3Int below = sample + Vector3Int.down;
+            bool belowOpen = IsOpen(below, out float underWater);
+            if (belowOpen && underWater < 1f)
+            {
+                float fall = Mathf.Min(a, 1f - underWater);
+                if (fall > 0.004f && CanFlowInto(below, underWater))
                 {
-                    best = level.Value;
+                    Set(below, underWater + fall, SourceAt(below));
+                    a = Mathf.Max(source, a - fall);
+                    WakeAround(below);
                 }
             }
-            if (float.IsNegativeInfinity(best))
+
+            // Then spreads sideways, from what's left, once it stands on something.
+            belowOpen = IsOpen(below, out underWater);
+            if (a >= MinSpread && (!belowOpen || underWater > 0.98f))
             {
-                return changed;
+                Spread(sample, ref a, source);
             }
-            flooded[sample] = best;
-            if (!floodedByCell.TryGetValue(cell, out HashSet<Vector3Int> samples))
+
+            if (source <= 0f && a < MinAmount)
             {
-                samples = new HashSet<Vector3Int>();
-                floodedByCell[cell] = samples;
+                a = 0f;
             }
-            samples.Add(sample);
-            foreach (Vector3Int step in Around)
+            if (Mathf.Abs(a - start) < 0.002f)
             {
-                awake.Add(sample + step);
+                return false;
             }
-            if (cell >= 0)
-            {
-                CellChanged?.Invoke(cell);
-            }
+            Set(sample, a, source);
+            WakeAround(sample);
             return true;
         }
 
-        // A wet cell of the map is filled once the ground at its middle, just under the water's surface, is solid.
-        private bool CheckFilled(int cell)
+        // Shares water with the lower neighbours beside it; when any of them is an edge with a drop under it, only with
+        // those, so the water heads downhill.
+        private void Spread(Vector3Int sample, ref float a, float source)
         {
-            if (cell < 0 || map.Kind[cell] == 0)
+            targets.Clear();
+            bool anyDrop = false;
+            foreach (Vector3Int step in Sideways)
+            {
+                Vector3Int next = sample + step;
+                if (!IsOpen(next, out float there) || there >= a - SettleDifference || !CanFlowInto(next, there))
+                {
+                    continue;
+                }
+                bool drop = IsOpen(next + Vector3Int.down, out float under) && under < 0.98f;
+                if (drop && !anyDrop)
+                {
+                    anyDrop = true;
+                    targets.Clear();
+                }
+                if (drop == anyDrop)
+                {
+                    targets.Add(next);
+                }
+            }
+            if (!anyDrop && targets.Count > 0 && TowardsDrop(sample))
+            {
+                anyDrop = true;
+            }
+            if (targets.Count == 0)
+            {
+                return;
+            }
+            float share = a;
+            foreach (Vector3Int next in targets)
+            {
+                IsOpen(next, out float there);
+                float give = Mathf.Min(1f - there, anyDrop ? share / (targets.Count + 1) : (share - there) / (targets.Count + 1));
+                if (give <= 0.004f)
+                {
+                    continue;
+                }
+                Set(next, there + give, SourceAt(next));
+                a = Mathf.Max(source, a - give);
+                WakeAround(next);
+            }
+        }
+
+        /// <summary>How far along the floor water looks for a drop to head for, like Minecraft's water.</summary>
+        public const int DropSearch = 5;
+
+        private readonly Queue<(Vector3Int sample, int first, int depth)> search = new Queue<(Vector3Int, int, int)>();
+        private readonly HashSet<Vector3Int> searched = new HashSet<Vector3Int>();
+
+        // Looks along the floor for the nearest drop within DropSearch samples; when there is one, keeps only the
+        // targets that start the shortest ways to it, so the water heads for the edge instead of spreading.
+        private bool TowardsDrop(Vector3Int sample)
+        {
+            search.Clear();
+            searched.Clear();
+            searched.Add(sample);
+            for (int i = 0; i < Sideways.Length; i++)
+            {
+                Vector3Int next = sample + Sideways[i];
+                if (targets.Contains(next))
+                {
+                    searched.Add(next);
+                    search.Enqueue((next, i, 1));
+                }
+            }
+            int found = -1;
+            int firsts = 0;
+            while (search.Count > 0)
+            {
+                (Vector3Int at, int first, int depth) = search.Dequeue();
+                if (found >= 0 && depth > found)
+                {
+                    break;
+                }
+                if (IsOpen(at + Vector3Int.down, out float under) && under < 0.98f)
+                {
+                    found = depth;
+                    firsts |= 1 << first;
+                    continue;
+                }
+                if (depth >= DropSearch)
+                {
+                    continue;
+                }
+                foreach (Vector3Int step in Sideways)
+                {
+                    Vector3Int next = at + step;
+                    if (searched.Add(next) && IsOpen(next, out _))
+                    {
+                        search.Enqueue((next, first, depth + 1));
+                    }
+                }
+            }
+            if (found < 0)
             {
                 return false;
             }
-            float cellSize = map.CellSize;
-            var middle = new Vector3(
-                map.Origin.x + (cell % map.Size.x + 0.5f) * cellSize,
-                map.Surface[cell] - voxel * 0.5f,
-                map.Origin.y + (cell / map.Size.x + 0.5f) * cellSize);
-            float? density = World.GetDensity(World.Grid.WorldToNearestSample(middle));
-            bool full = density.HasValue && density.Value >= iso;
-            bool was = filled.Contains(cell);
-            if (full == was)
+            for (int i = targets.Count - 1; i >= 0; i--)
             {
-                return false;
+                int direction = System.Array.IndexOf(Sideways, targets[i] - sample);
+                if ((firsts & (1 << direction)) == 0)
+                {
+                    targets.RemoveAt(i);
+                }
             }
-            if (full)
+            return targets.Count > 0;
+        }
+
+        // True when a sample is loaded air; its water comes back in amount.
+        private bool IsOpen(Vector3Int sample, out float amount)
+        {
+            if (World.TryGetOwner(sample, out Chunk chunk, out Vector3Int local) && chunk.GetDensity(local) < iso)
             {
-                filled.Add(cell);
+                amount = chunk.GetWater(local);
+                return true;
+            }
+            amount = 0f;
+            return false;
+        }
+
+        // New water can go in while there's room under the cap on moving water.
+        private bool CanFlowInto(Vector3Int sample, float amount)
+        {
+            return amount > 0f || flowing.Count < MaxFlowing;
+        }
+
+        private void Set(Vector3Int sample, float amount, float source)
+        {
+            World.SetWater(sample, amount);
+            if (amount > 0f && amount > source + 0.002f)
+            {
+                flowing.Add(sample);
             }
             else
             {
-                filled.Remove(cell);
+                flowing.Remove(sample);
             }
-            CellChanged?.Invoke(cell);
-            return true;
         }
 
-        /// <summary>The map cell holding a position, or -1 outside the map.</summary>
-        public int CellOf(Vector3 position)
+        private void WakeAround(Vector3Int sample)
         {
-            return map.TryCell(new Unity.Mathematics.float2(position.x, position.z), out int cell) ? cell : -1;
+            Wake(sample);
+            awake.Add(sample + Vector3Int.up + Vector3Int.right);
+            awake.Add(sample + Vector3Int.up + Vector3Int.left);
+            awake.Add(sample + Vector3Int.up + new Vector3Int(0, 0, 1));
+            awake.Add(sample + Vector3Int.up + new Vector3Int(0, 0, -1));
         }
 
         public void Dispose()

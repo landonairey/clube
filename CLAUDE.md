@@ -510,16 +510,23 @@ Torches light the terrain, grass and held items (GL294: `AdditionalLights.hlsl` 
 until B starts placing it. E also opens the inventory (GL298); fuel clicked at a fire goes to its fuel slot (GL299);
 right-click pulls half a station or chest slot (GL300). A swing at nothing whooshes, a refused hit errs (GL302);
 placed torches have a flickering flame (GL304); Ctrl-click at the merchant picks stacks to sell together (GL305).
-Thirtieth pass (GL306-GL311, `Docs/20261102b clube-backlog.md`): water and falling ground. `Hydrology` (Core/Generation/Water)
+Thirtieth pass (GL306-GL317, `Docs/20261102b clube-backlog.md`, `20261102c`): water and falling ground. `Hydrology` (Core/Generation/Water)
 drains the heightfield over `WaterGeneration.AreaSize` (640 m round the origin; start area kept dry) into a `WaterMap` (1 m
 cells: river cut, water surface and depth, kind, flow, distance to lake and river water), cached per world shape.
 `LandscapeHeight.Height` subtracts the cut, so river beds are in the terrain data and every height reader agrees;
 `ChunkFillSettings.Water` lets `ChunkFillKernel.StampWaterBanks` lay sand (id 24, GL306) on beds and lake shores and clay on
 banks and deep lake floors; `TreeField.TryGetSpot` keeps trees off. Jobs refuse unassigned arrays even unread, so "no water"
-is `WaterMap.None` (empty arrays), never `default`. `WaterView` (on World) draws the water as flat triangles in the
-`Clube/Water` shader (bands downstream on rivers, random twinkles on lakes, GL309; ripples, each triangle cut into four in the shader and lake glimmers, GL312). Dirt and grass drop, sand also slides
+is `WaterMap.None` (empty arrays), never `default`. Dirt and grass drop, sand also slides
 (`VoxelMaterial.Fall`): `GroundSettling` (Core/Editing) wakes on `World.DensityChanged` and `FallingGround` (on World) steps it
-(GL308). `LiveWater` (Core/Editing, stepped by `WaterView`) floods holes dug beside water and drops water where ground is placed (GL313); there's no swimming yet (GL311).
+(GL308). Water is voxel data (GL315): a byte per sample beside density and material (`Chunk.GetWater/SetWater`, null while
+dry, `WaterVersion`; `World.GetWater/SetWater` writes border copies, `World.TryGetOwner` is the quick per-sample lookup). `WaterView`
+(on World) fills each loaded chunk from the map (`WaterFill`), steps `LiveWater` (Core/Editing: falls first, spreads to lower
+neighbours, heads for the nearest drop within 5 samples, thin water dries, generated water is an endless source, ground replaces
+water; GL313, GL315), and draws each wet chunk's water with `WaterMesher` (Core/Meshing/Water: marching cubes, solid samples
+take the water beside them so the surface runs into banks) in `Clube/Water` (each triangle a facet: bands down runs, faster where
+steeper, slow twinkles on still water); past the drawn chunks it draws the map as flat sheets. `ChunkDebugView` marks water samples.
+Swimming (GL316): `PlayerSwimming` (from `WaterQuery`) sets `PlayerController.Submersion`; `UnderwaterTint` tints the screen.
+Torches burn with a `FlameCluster` of dancing low-poly tongues (GL314). `DemoBuild` rebuilds the gitignored texture array (GL317).
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

@@ -113,6 +113,39 @@ namespace Clube.Core
             return math.lerp(math.lerp(a, b, t.x), math.lerp(d, e, t.x), t.y);
         }
 
+        /// <summary>
+        /// The water's surface at a position in a wet cell, smoothly between the wet cells round it (so a river's surface
+        /// slopes evenly instead of stepping cell by cell); false on dry land (GL315).
+        /// </summary>
+        public bool TrySurfaceAt(float2 position, out float surface, out int cell)
+        {
+            surface = 0f;
+            if (!TryCell(position, out cell) || Kind[cell] == 0)
+            {
+                return false;
+            }
+            float2 p = (position - Origin) / CellSize - 0.5f;
+            int2 c = (int2)math.floor(p);
+            float2 t = p - c;
+            float sum = 0f, weight = 0f;
+            for (int dz = 0; dz <= 1; dz++)
+            {
+                for (int dx = 0; dx <= 1; dx++)
+                {
+                    int x = c.x + dx, z = c.y + dz;
+                    if (x < 0 || z < 0 || x >= Size.x || z >= Size.y || Kind[x + z * Size.x] == 0)
+                    {
+                        continue;
+                    }
+                    float w = (dx == 0 ? 1f - t.x : t.x) * (dz == 0 ? 1f - t.y : t.y) + 1e-4f;
+                    sum += Surface[x + z * Size.x] * w;
+                    weight += w;
+                }
+            }
+            surface = weight > 0f ? sum / weight : Surface[cell];
+            return true;
+        }
+
         private float At(NativeArray<float> values, int x, int z)
         {
             x = math.clamp(x, 0, Size.x - 1);

@@ -1,0 +1,270 @@
+using System.Collections.Generic;
+using Unity.Mathematics;
+using UnityEngine;
+
+namespace Clube.Core
+{
+    /// <summary>
+    /// The water's surface in a chunk (GL315): marching cubes over the water stored per sample (<see cref="World.GetWater"/>),
+    /// so the water has the terrain's own low-poly facets, a level surface on lakes and ponds, a sloping one down rivers,
+    /// and falling streams wrapped round. A sample's water maps to the field as 0.5 + half its amount (none: 0), so even a
+    /// thin stream shows. Solid samples take the water of the air beside or above them, so the surface runs on into the
+    /// banks (the ground hides its edge) and no face is drawn against the ground; triangles lying wholly inside the ground
+    /// are dropped. Every triangle has its own three vertices: the shader shades it flat and shimmers it as one facet.
+    /// </summary>
+    public sealed class WaterMesher
+    {
+        /// <summary>Less water than this isn't drawn.</summary>
+        public const float MinVisible = 0.02f;
+
+        private const float Iso = 0.5f;
+
+        private readonly List<Vector3> vertices = new List<Vector3>();
+        private readonly List<Vector2> flows = new List<Vector2>();
+        private readonly List<Vector4> looks = new List<Vector4>();
+        private readonly List<Vector4> ripples = new List<Vector4>();
+        private readonly List<int> triangles = new List<int>();
+        private float[] field;
+        private bool[] solid;
+        private Vector3Int padded;
+
+        /// <summary>Vertices of the last build, relative to the chunk's origin.</summary>
+        public List<Vector3> Vertices => vertices;
+
+        /// <summary>UV0: the facet's flow (x, z), its length the flow's speed (steeper runs faster).</summary>
+        public List<Vector2> Flows => flows;
+
+        /// <summary>UV1: the facet's centre in the world (x, y, z) and its kind (1 river, 2 still, 3 falling).</summary>
+        public List<Vector4> Looks => looks;
+
+        /// <summary>UV2: the river's flow (x, z) at the vertex and whether it's river, for the ripples.</summary>
+        public List<Vector4> Ripples => ripples;
+
+        public List<int> Triangles => triangles;
+
+        /// <summary>Builds a chunk's water surface into the lists. Returns false when there's nothing to draw.</summary>
+        public bool Build(World world, Vector3Int coord, float iso, in WaterMap map)
+        {
+            vertices.Clear();
+            flows.Clear();
+            looks.Clear();
+            ripples.Clear();
+            triangles.Clear();
+            WorldGrid grid = world.Grid;
+            Vector3Int size = grid.ChunkSize;
+            float voxel = grid.VoxelSize;
+            Vector3Int first = grid.ChunkFirstSample(coord);
+            Vector3 origin = grid.ChunkOrigin(coord);
+            if (!Gather(world, first, size, iso))
+            {
+                return false;
+            }
+
+            var corner = new float[8];
+            var cornerSolid = new bool[8];
+            var edgePoint = new Vector3[12];
+            var edgeInGround = new bool[12];
+            for (int z = 0; z < size.z; z++)
+            {
+                for (int y = 0; y < size.y; y++)
+                {
+                    for (int x = 0; x < size.x; x++)
+                    {
+                        int cube = 0;
+                        for (int c = 0; c < 8; c++)
+                        {
+                            int i = Index(x + MarchingCubesTables.CornerOffsets[c, 0] + 1, y + MarchingCubesTables.CornerOffsets[c, 1] + 1,
+                                z + MarchingCubesTables.CornerOffsets[c, 2] + 1);
+                            corner[c] = field[i];
+                            cornerSolid[c] = solid[i];
+                            if (corner[c] < Iso)
+                            {
+                                cube |= 1 << c;
+                            }
+                        }
+                        if (cube == 0 || cube == 255)
+                        {
+                            continue;
+                        }
+                        for (int e = 0; e < 12; e++)
+                        {
+                            int c0 = MarchingCubesTables.EdgeCorners[e, 0], c1 = MarchingCubesTables.EdgeCorners[e, 1];
+                            if ((corner[c0] < Iso) == (corner[c1] < Iso))
+                            {
+                                continue;
+                            }
+                            float t = (Iso - corner[c0]) / (corner[c1] - corner[c0]);
+                            var p0 = new Vector3(x + MarchingCubesTables.CornerOffsets[c0, 0], y + MarchingCubesTables.CornerOffsets[c0, 1], z + MarchingCubesTables.CornerOffsets[c0, 2]);
+                            var p1 = new Vector3(x + MarchingCubesTables.CornerOffsets[c1, 0], y + MarchingCubesTables.CornerOffsets[c1, 1], z + MarchingCubesTables.CornerOffsets[c1, 2]);
+                            edgePoint[e] = Vector3.Lerp(p0, p1, t) * voxel;
+                            edgeInGround[e] = cornerSolid[c0] && cornerSolid[c1];
+                        }
+                        for (int k = 0; k < 15 && MarchingCubesTables.Triangles[cube, k] >= 0; k += 3)
+                        {
+                            int e0 = MarchingCubesTables.Triangles[cube, k], e1 = MarchingCubesTables.Triangles[cube, k + 1], e2 = MarchingCubesTables.Triangles[cube, k + 2];
+                            if (edgeInGround[e0] && edgeInGround[e1] && edgeInGround[e2])
+                            {
+                                continue;
+                            }
+                            AddTriangle(edgePoint[e0], edgePoint[e1], edgePoint[e2], origin, map);
+                        }
+                    }
+                }
+            }
+            return triangles.Count > 0;
+        }
+
+        // Reads the chunk's samples and one more all round; false when none of them holds water.
+        private bool Gather(World world, Vector3Int first, Vector3Int size, float iso)
+        {
+            // Samples -1 .. size + 1 on each axis.
+            padded = size + new Vector3Int(3, 3, 3);
+            int count = padded.x * padded.y * padded.z;
+            if (field == null || field.Length != count)
+            {
+                field = new float[count];
+                solid = new bool[count];
+            }
+            var water = new float[count];
+            bool any = false;
+            for (int z = 0; z < padded.z; z++)
+            {
+                for (int y = 0; y < padded.y; y++)
+                {
+                    for (int x = 0; x < padded.x; x++)
+                    {
+                        int i = Index(x, y, z);
+                        Vector3Int sample = first + new Vector3Int(x - 1, y - 1, z - 1);
+                        if (world.TryGetOwner(sample, out Chunk chunk, out Vector3Int local))
+                        {
+                            solid[i] = chunk.GetDensity(local) >= iso;
+                            float amount = solid[i] ? 0f : chunk.GetWater(local);
+                            water[i] = amount >= MinVisible ? 0.5f + 0.5f * amount : 0f;
+                            any |= amount >= MinVisible;
+                        }
+                        else
+                        {
+                            solid[i] = false;
+                            water[i] = 0f;
+                        }
+                    }
+                }
+            }
+            if (!any)
+            {
+                return false;
+            }
+            // Solid samples take the most water of the air beside and above them.
+            for (int z = 0; z < padded.z; z++)
+            {
+                for (int y = 0; y < padded.y; y++)
+                {
+                    for (int x = 0; x < padded.x; x++)
+                    {
+                        int i = Index(x, y, z);
+                        if (!solid[i])
+                        {
+                            field[i] = water[i];
+                            continue;
+                        }
+                        float best = 0f;
+                        Take(x + 1, y, z, ref best, water);
+                        Take(x - 1, y, z, ref best, water);
+                        Take(x, y, z + 1, ref best, water);
+                        Take(x, y, z - 1, ref best, water);
+                        Take(x, y + 1, z, ref best, water);
+                        field[i] = best;
+                    }
+                }
+            }
+            return true;
+        }
+
+        private void Take(int x, int y, int z, ref float best, float[] water)
+        {
+            if (x < 0 || y < 0 || z < 0 || x >= padded.x || y >= padded.y || z >= padded.z)
+            {
+                return;
+            }
+            int i = Index(x, y, z);
+            if (!solid[i] && water[i] > best)
+            {
+                best = water[i];
+            }
+        }
+
+        private int Index(int x, int y, int z)
+        {
+            return x + padded.x * (y + padded.y * z);
+        }
+
+        private void AddTriangle(Vector3 a, Vector3 b, Vector3 c, Vector3 origin, in WaterMap map)
+        {
+            Vector3 normal = Vector3.Cross(b - a, c - a);
+            if (normal.sqrMagnitude < 1e-12f)
+            {
+                return;
+            }
+            normal.Normalize();
+            if (normal.y < 0f)
+            {
+                normal = -normal;
+            }
+            Vector3 centre = origin + (a + b + c) / 3f;
+            var horizontal = new Vector2(normal.x, normal.z);
+            float slope = normal.y > 0.05f ? horizontal.magnitude / normal.y : 10f;
+            float kind;
+            Vector2 along;
+            if (normal.y < 0.35f)
+            {
+                // A wall of falling water.
+                kind = 3f;
+                along = Vector2.zero;
+                slope = 3f;
+            }
+            else
+            {
+                bool river = false;
+                float2 riverFlow = float2.zero;
+                if (map.IsCreated && map.TryCell(new float2(centre.x, centre.z), out int cell) && map.Kind[cell] == (byte)WaterKind.River)
+                {
+                    river = true;
+                    riverFlow = map.Flow[cell];
+                }
+                if (river && math.lengthsq(riverFlow) > 1e-6f)
+                {
+                    along = new Vector2(riverFlow.x, riverFlow.y).normalized;
+                }
+                else
+                {
+                    // Downhill is where the surface leans.
+                    along = horizontal.sqrMagnitude > 1e-6f ? horizontal.normalized : Vector2.zero;
+                }
+                kind = river || slope > 0.04f ? 1f : 2f;
+            }
+            // Speed by slope: a gentle run creeps, a steep one races.
+            Vector2 flow = along * Mathf.Clamp(0.15f + slope * 6f, 0.15f, 3f);
+            var look = new Vector4(centre.x, centre.y, centre.z, kind);
+            foreach (Vector3 p in new[] { a, b, c })
+            {
+                triangles.Add(vertices.Count);
+                vertices.Add(p);
+                flows.Add(flow);
+                looks.Add(look);
+                ripples.Add(RippleAt(origin + p, map));
+            }
+        }
+
+        // The river's flow at a point and whether it's river, from the map alone, so every triangle sharing a corner
+        // ripples it alike and the surface never cracks.
+        private static Vector4 RippleAt(Vector3 position, in WaterMap map)
+        {
+            if (!map.IsCreated || !map.TryCell(new float2(position.x, position.z), out int cell) || map.Kind[cell] != (byte)WaterKind.River)
+            {
+                return Vector4.zero;
+            }
+            float2 f = map.Flow[cell];
+            return new Vector4(f.x, f.y, 1f, 0f);
+        }
+    }
+}

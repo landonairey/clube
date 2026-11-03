@@ -36,8 +36,6 @@ namespace Clube.Game
         private static readonly Color Patina = new Color(0.33f, 0.62f, 0.5f);
         private static readonly Color Charcoal = new Color(0.12f, 0.11f, 0.1f);
         // Alpha 0: Clube/Held Item draws it glowing, unlit (GL294).
-        private static readonly Color Flame = new Color(1f, 0.62f, 0.18f, 0f);
-        private static readonly Color FlameCore = new Color(1f, 0.92f, 0.55f, 0f);
 
         // A tool made of stone (a stone pick, hatchet or hammer), as against bronze or iron.
         private static bool IsStone(ToolDefinition tool)
@@ -178,8 +176,8 @@ namespace Clube.Game
         }
 
         /// <summary>
-        /// A torch held in the fist (GL287): a stick with a charred head bound on, and when lit a flame of a few bright
-        /// facets over it.
+        /// A torch held in the fist (GL287): a stick with a charred head bound on; when lit, HeldToolView stands a dancing
+        /// flame cluster (FlameCluster, GL314) on its head.
         /// </summary>
         public static Mesh BuildTorch(bool lit)
         {
@@ -189,11 +187,6 @@ namespace Clube.Game
             model.Prism(new Vector3(0f, -0.14f, 0f), new Vector3(0.005f, 0.34f, 0.03f), 0.018f, 0.016f, 5, Wood);
             model.Prism(new Vector3(0.005f, 0.3f, 0.027f), new Vector3(0.006f, 0.4f, 0.035f), 0.032f, 0.026f, 6, Charcoal);
             model.Box(new Vector3(0.005f, 0.3f, 0.027f), new Vector3(0.068f, 0.014f, 0.068f), Quaternion.identity, Cord);
-            if (lit)
-            {
-                model.Diamond(new Vector3(0.006f, 0.47f, 0.036f), new Vector3(0.03f, 0.08f, 0.03f), Flame);
-                model.Diamond(new Vector3(0.006f, 0.45f, 0.036f), new Vector3(0.017f, 0.05f, 0.017f), FlameCore);
-            }
             return model.Make(lit ? "Held lit torch" : "Held torch");
         }
 

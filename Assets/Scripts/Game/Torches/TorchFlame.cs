@@ -14,7 +14,7 @@ namespace Clube.Game
         private readonly GameObject holder;
         private readonly Light light;
         private readonly ParticleSystem smoke;
-        private readonly Transform flame;
+        private readonly FlameCluster flame;
         private readonly float intensity;
         private readonly float seed;
 
@@ -38,7 +38,7 @@ namespace Clube.Game
             }
             if (flameMaterial != null)
             {
-                flame = MakeFlame(holder, flameMaterial);
+                flame = new FlameCluster(holder.transform, new Vector3(0f, -0.12f, 0f), 0.22f, flameMaterial);
             }
         }
 
@@ -66,59 +66,7 @@ namespace Clube.Game
             light.intensity = intensity * flicker * Mathf.Clamp01(strength);
             if (flame != null)
             {
-                // The flame licks up and leans with the flicker (GL304), smaller as the torch burns low.
-                float size = Mathf.Lerp(0.6f, 1f, Mathf.Clamp01(strength));
-                float tall = 0.8f + 0.45f * Mathf.PerlinNoise(t * 1.3f, seed + 7f);
-                float wide = 0.85f + 0.2f * Mathf.PerlinNoise(seed + 3f, t * 1.7f);
-                flame.localScale = new Vector3(wide, tall, wide) * size;
-                flame.localRotation = Quaternion.Euler((Mathf.PerlinNoise(t, 1f) - 0.5f) * 14f, t * 40f, (Mathf.PerlinNoise(2f, t) - 0.5f) * 14f);
-            }
-        }
-
-        // A low-poly flame (GL304): two pointed, faceted cones, an outer orange one and an inner yellow core, standing on the
-        // torch head; it flickers by its scale in Flicker. Drawn in the flame material (Embers: glowing).
-        private static Transform MakeFlame(GameObject holder, Material material)
-        {
-            var go = new GameObject("Flame");
-            go.transform.SetParent(holder.transform, false);
-            go.transform.localPosition = new Vector3(0f, -0.12f, 0f);
-            var mesh = new Mesh { name = "Torch flame" };
-            var vertices = new System.Collections.Generic.List<Vector3>();
-            var colors = new System.Collections.Generic.List<Color>();
-            var triangles = new System.Collections.Generic.List<int>();
-            Cone(0.07f, 0.26f, 6, new Color(1f, 0.55f, 0.15f), vertices, colors, triangles);
-            Cone(0.04f, 0.17f, 5, new Color(1f, 0.9f, 0.45f), vertices, colors, triangles);
-            mesh.SetVertices(vertices);
-            mesh.SetColors(colors);
-            mesh.SetTriangles(triangles, 0);
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
-            go.AddComponent<MeshFilter>().sharedMesh = mesh;
-            var renderer = go.AddComponent<MeshRenderer>();
-            renderer.sharedMaterial = material;
-            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            return go.transform;
-        }
-
-        // A cone of flat faces, from a ring up to a point, closed underneath, each face its own vertices.
-        private static void Cone(float radius, float height, int sides, Color color, System.Collections.Generic.List<Vector3> vertices,
-            System.Collections.Generic.List<Color> colors, System.Collections.Generic.List<int> triangles)
-        {
-            var tip = new Vector3(0f, height, 0f);
-            for (int i = 0; i < sides; i++)
-            {
-                float a0 = i * Mathf.PI * 2f / sides, a1 = (i + 1) * Mathf.PI * 2f / sides;
-                var p0 = new Vector3(Mathf.Cos(a0) * radius, 0f, Mathf.Sin(a0) * radius);
-                var p1 = new Vector3(Mathf.Cos(a1) * radius, 0f, Mathf.Sin(a1) * radius);
-                foreach (Vector3[] face in new[] { new[] { p0, tip, p1 }, new[] { p1, Vector3.zero, p0 } })
-                {
-                    foreach (Vector3 p in face)
-                    {
-                        triangles.Add(vertices.Count);
-                        vertices.Add(p);
-                        colors.Add(color);
-                    }
-                }
+                flame.Animate(strength);
             }
         }
 

@@ -45,6 +45,7 @@ namespace Clube.Debug
             if (debugView != null)
             {
                 SetIfChanged(frame.ToggleField("Density samples", debugView.ShowSamples), debugView.ShowSamples, v => debugView.ShowSamples = v);
+                SetIfChanged(frame.ToggleField("Water samples", debugView.ShowWater), debugView.ShowWater, v => debugView.ShowWater = v);
                 var wireframe = (ChunkDebugView.Wireframe)frame.Toolbar("Chunk wireframe", (int)debugView.WireframeMode, WireframeNames);
                 if (wireframe != debugView.WireframeMode)
                 {

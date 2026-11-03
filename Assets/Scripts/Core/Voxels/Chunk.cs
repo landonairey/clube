@@ -33,6 +33,10 @@ namespace Clube.Core
         // the first voxel is carved, so most chunks never hold any.
         private byte[] carves;
 
+        // Water (GL315), per sample: how full of water it is, 0-255 for 0-1. Null until any sample holds water, so dry
+        // chunks hold none. Kept beside the densities, not in them: water is no ground, the mesher and colliders never see it.
+        private byte[] water;
+
         /// <summary>Creates a chunk with flat-array storage and every density at 0 (empty).</summary>
         public Chunk(Vector3Int voxelCount)
             : this(new FlatVoxelStorage(voxelCount + Vector3Int.one))
@@ -153,6 +157,48 @@ namespace Clube.Core
 
         /// <summary>True when any voxel in or next to the chunk is (or was) carved, so the mesher must look (GL92).</summary>
         public bool HasCarves => carves != null;
+
+        /// <summary>True while any sample holds water (GL315).</summary>
+        public bool HasWater => WaterCount > 0;
+
+        /// <summary>Samples holding any water.</summary>
+        public int WaterCount { get; private set; }
+
+        /// <summary>Goes up whenever the water changes, so its mesh knows to rebuild.</summary>
+        public int WaterVersion { get; private set; }
+
+        /// <summary>How full of water a sample is, 0-1 (GL315).</summary>
+        public float GetWater(Vector3Int sample)
+        {
+            return water != null ? water[Index(sample)] * (1f / 255f) : 0f;
+        }
+
+        /// <summary>
+        /// The water-edit path (GL315): sets how full of water a sample is, 0-1, stored to 1/255. Doesn't mark the chunk
+        /// dirty (its ground mesh stays); bumps <see cref="WaterVersion"/> instead. Returns true when it changed.
+        /// </summary>
+        public bool SetWater(Vector3Int sample, float amount)
+        {
+            byte value = (byte)Mathf.Clamp(Mathf.RoundToInt(amount * 255f), 0, 255);
+            if (water == null)
+            {
+                if (value == 0)
+                {
+                    return false;
+                }
+                water = new byte[SampleCount.x * SampleCount.y * SampleCount.z];
+            }
+            int index = Index(sample);
+            byte before = water[index];
+            if (before == value)
+            {
+                return false;
+            }
+            water[index] = value;
+            WaterCount += (value > 0 ? 1 : 0) - (before > 0 ? 1 : 0);
+            WaterVersion++;
+            return true;
+        }
 
         /// <summary>A sample's carve flags (<see cref="CarveFlags"/>): whether the voxel above it, and the one below it, are carved.</summary>
         public byte GetCarveFlags(Vector3Int sample)
@@ -291,6 +337,8 @@ namespace Clube.Core
             uniformDensity = 0f;
             materials.SetUniform(0);
             carves = null;
+            water = null;
+            WaterCount = 0;
         }
 
         /// <summary>Requests a rebuild without changing densities, e.g. after the iso level changes.</summary>

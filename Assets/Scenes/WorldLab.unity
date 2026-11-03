@@ -6053,6 +6053,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Core::Clube.Core.WaterView
   material: {fileID: 2100000, guid: 842257cf3c1f32044ab4a5739a08c2ed, type: 2}
   show: 1
+  flowStepSeconds: 0.06
+  chunksPerFrame: 6
+  tilesPerFrame: 4
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -6234,6 +6237,8 @@ GameObject:
   - component: {fileID: 1697135604}
   - component: {fileID: 1697135606}
   - component: {fileID: 1697135605}
+  - component: {fileID: 1697135608}
+  - component: {fileID: 1697135607}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -6309,6 +6314,10 @@ MonoBehaviour:
   slideDrag: 3
   maxSlideDistance: 8
   steepestSlideRise: 0.2
+  swimSpeed: 2.2
+  swimRise: 2.4
+  swimAcceleration: 6
+  climbOutSpeed: 5
 --- !u!143 &1697135564
 CharacterController:
   m_ObjectHideFlags: 0
@@ -7260,6 +7269,33 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.TorchBurner
   clock: {fileID: 0}
   smokeMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
+--- !u!114 &1697135607
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8ce5f31c45f152644bd115506e413630, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.UnderwaterTint
+  tint: {r: 0.12, g: 0.3, b: 0.33, a: 0.55}
+  edge: {r: 0.03, g: 0.1, b: 0.13, a: 0.8}
+--- !u!114 &1697135608
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 15eb1c7a63b4a8945b08206e2048b0df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSwimming
+  worldView: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -25,13 +25,16 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _Alpha: 0.8
+    - _Alpha: 0.68
     - _Bob: 0.035
-    - _FlowBand: 2.6
-    - _FlowSpeed: 1.4
+    - _FlowBand: 2.2
+    - _FlowSpeed: 0.45
+    - _Glimmer: 1
+    - _Ripple: 0.035
+    - _Twinkle: 0.05
     m_Colors:
-    - _Deep: {r: 0.10999996, g: 0.29999998, b: 0.52, a: 1}
-    - _Foam: {r: 0.93, g: 0.96999997, b: 1, a: 1}
-    - _Light: {r: 0.35999998, g: 0.63, b: 0.86, a: 1}
+    - _Deep: {r: 0.15, g: 0.3, b: 0.37, a: 1}
+    - _Foam: {r: 0.82, g: 0.87, b: 0.86, a: 1}
+    - _Light: {r: 0.33, g: 0.5, b: 0.55, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
