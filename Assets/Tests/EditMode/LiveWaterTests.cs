@@ -305,6 +305,21 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void HoleDugUnderWater_TakesItInOneStep()
+        {
+            // Water in a one-sample pit at y = 7 in ground up to y = 7; a shaft dug under it down to y = 1 (GL326).
+            DryWorld((x, y, z) => y <= 6 || (y == 7 && (x != 4 || z != 4)));
+            world.SetWater(new Vector3Int(4, 7, 4), 1f);
+            for (int y = 1; y <= 6; y++)
+            {
+                world.SetDensity(new Vector3Int(4, y, 4), 0f);
+            }
+            water.Step();
+            Assert.That(At(4, 1, 4), Is.EqualTo(1f).Within(0.01f), "the water drops to the bottom of the shaft at once");
+            Assert.That(At(4, 7, 4), Is.EqualTo(0f));
+        }
+
+        [Test]
         public void TrickleDownADiagonalSlope_RunsInOneVein()
         {
             // Ground falling both ways (x and z), so every sample has two ways down: the water keeps to one line rather

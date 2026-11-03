@@ -27,6 +27,9 @@ namespace Clube.Core
             Vector3Int.right, Vector3Int.left, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
         };
 
+        /// <summary>Most samples water falls through empty air in one step (GL326): 2 m at 0.25 m voxels.</summary>
+        public const int FallReach = 8;
+
         /// <summary>Less water than this doesn't move sideways at all (it can still fall).</summary>
         public const float MinAmount = 0.03f;
 
@@ -241,12 +244,24 @@ namespace Clube.Core
             bool belowOpen = IsOpen(below, out float underWater);
             if (belowOpen && underWater < 1f)
             {
-                float fall = Steps(Mathf.Min(a, 1f - underWater));
-                if (fall > 0.004f && CanFlowInto(below, underWater))
+                // Into empty air it drops up to FallReach samples at once (GL326), so water over a hole dug under it
+                // collapses into it straight away, like sand; through water already falling it goes a sample a step,
+                // so a waterfall stays one unbroken column.
+                Vector3Int into = below;
+                float there = underWater;
+                if (there <= 0f)
                 {
-                    Set(below, underWater + fall, SourceAt(below));
+                    for (int i = 1; i < FallReach && IsOpen(into + Vector3Int.down, out float next) && next <= 0f; i++)
+                    {
+                        into += Vector3Int.down;
+                    }
+                }
+                float fall = Steps(Mathf.Min(a, 1f - there));
+                if (fall > 0.004f && CanFlowInto(into, there))
+                {
+                    Set(into, there + fall, SourceAt(into));
                     a = Mathf.Max(source, a - fall);
-                    WakeAround(below);
+                    WakeAround(into);
                 }
             }
 

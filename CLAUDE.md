@@ -540,7 +540,7 @@ GL324: a pour sinks through water and fills no higher than a sample over the pud
 thin remainder along and thin water on the flat joins the wettest beside it (`LiveWater.Gather`), so no specks are left;
 the bulk load drops to `farLoadingBudgetMilliseconds` past the drawn columns; distant trees re-collect only when the view
 moves. GL325: downhill water takes one way (`LiveWater.PickPath`: wet first, then the deepest fall, then a place hash), so
-spills run in veins; water moves in whole 1/255 steps (`LiveWater.Steps`), since rounded moves made water out of nothing.
+spills run in veins; water moves in whole 1/255 steps (`LiveWater.Steps`), since rounded moves made water out of nothing. GL326: water drops up to `LiveWater.FallReach` (2 m) through empty air per step.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the
 Editor log; per-script markers aren't available without the profiler.
