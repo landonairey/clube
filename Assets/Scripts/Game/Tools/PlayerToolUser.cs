@@ -105,6 +105,9 @@ namespace Clube.Game
         /// <summary>Raised when an Attack press picks the bush aimed at (GL238): it's gone, and drops its leaves and sticks.</summary>
         public event Action<Bush> BushPicked;
 
+        /// <summary>Raised when Attack swings at nothing in reach (GL302): the swing and a whoosh, no hit.</summary>
+        public event Action<ToolDefinition> Missed;
+
         /// <summary>Whether the view is on a bush within reach, in front of the ground (GL238).</summary>
         public bool HasBush { get; private set; }
 
@@ -235,6 +238,12 @@ namespace Clube.Game
             if (ShouldHit(tool))
             {
                 Hit(tool);
+            }
+            else if (targets.Count == 0 && useAction != null && useAction.action.WasPressedThisFrame() && Time.time >= nextHitTime)
+            {
+                // Nothing in reach (the sky, ground too far): the tool still swings, through the air (GL302).
+                nextHitTime = Time.time + CooldownFor(tool);
+                Missed?.Invoke(tool);
             }
         }
 

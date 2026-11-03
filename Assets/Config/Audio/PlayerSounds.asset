@@ -250,6 +250,22 @@ MonoBehaviour:
     volume: 0.6
     pitchJitter: 0.08
     playAll: 0
+  swishes:
+    clips:
+    - {fileID: 8300000, guid: 49ef7f54aa19fe940928e3dda209bb24, type: 3}
+    - {fileID: 8300000, guid: 565bc9591eaf8ef4ca5374df9520ab3f, type: 3}
+    - {fileID: 8300000, guid: a610aa12e90bfc240ac04a35f626c4ef, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
+    playAll: 0
+  refusals:
+    clips:
+    - {fileID: 8300000, guid: 42f461ca0d1add545b70a8bc3d09b07b, type: 3}
+    - {fileID: 8300000, guid: 871a7c648cb6a1e4a8074d2817a2a699, type: 3}
+    - {fileID: 8300000, guid: 76be7fd1d258b544da6c3bc3c633d6aa, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
+    playAll: 0
   crafted:
     clips:
     - {fileID: 8300000, guid: 3495f7dd2e97f6142bc2aea0e3fe22db, type: 3}

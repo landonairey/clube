@@ -594,10 +594,10 @@ GL250 (ambient wildlife).
 - [x] **GL299** `Game` *(added 2026-11-02)* Clicking fuel (wood, sticks) at a fire sends it to the fuel slot first, and only what doesn't fit to the inputs; dragging it onto an input slot loads it there (for charcoal). *(Done 2026-11-02: `StationPanel.LoadClicked`.)*
 - [x] **GL300** `Game` *(added 2026-11-02)* Right-clicking a stack in a station or a chest pulls half of it into the player's inventory. *(Done 2026-11-02: `InventoryGridGui.RightClicked`, `PullHalf`.)*
 - [x] **GL301** `Game + Rendering` *(added 2026-11-02)* No more cumulonimbus towers; cirrus are long thin streaks; the stratus sheets have more faceted lumps; sheets and streaks are see-through. *(Done 2026-11-02: `CloudLayer`, `Clube/Low Poly Clouds` blend and opacity.)*
-- [ ] **GL302** `Game` *(added 2026-11-02)* Swinging at nothing still swings: a whoosh at the sky, a low "err" on what the tool can't work (a hand axe on a stump).
-- [ ] **GL303** `Core` *(added 2026-11-02)* A choppier, cracking wood-chop sound in place of the drum-like thunk.
-- [ ] **GL304** `Game` *(added 2026-11-02)* A low-poly flame on the placed torch that flickers (scale and colour), as the held one should.
-- [ ] **GL305** `Game` *(added 2026-11-02)* At the merchant, Ctrl-click highlights every stack of a material to sell them together; Ctrl-click adds or removes single stacks.
+- [x] **GL302** `Game` *(added 2026-11-02)* Swinging at nothing still swings: a whoosh at the sky, a low "err" on what the tool can't work (a hand axe on a stump). *(Done 2026-11-02: `PlayerToolUser.Missed` swings the held tool and plays a whoosh; `Blocked` plays the err; `SoundSynth.Whoosh`, `Err`.)*
+- [x] **GL303** `Core` *(added 2026-11-02)* A choppier, cracking wood-chop sound in place of the drum-like thunk. *(Done 2026-11-02: `HitSound.Chop` is a dry crack, splintering and a short knock.)*
+- [x] **GL304** `Game` *(added 2026-11-02)* A low-poly flame on the placed torch that flickers (scale and colour), as the held one should. *(Done 2026-11-02: `TorchFlame` builds two faceted cones in Embers and flickers their size and lean; the torch model has no flame of its own.)*
+- [x] **GL305** `Game` *(added 2026-11-02)* At the merchant, Ctrl-click highlights every stack of a material to sell them together; Ctrl-click adds or removes single stacks. *(Done 2026-11-02: `MerchantPanel` group, "Sell picked".)*
 
 ### Twenty-sixth pass *(added 2026-10-30, from `Docs/20261030g clube-backlog.md` — done)*
 Fixes from play, a storage chest, the moon, and a first look at fauna. GL248 is a further pass of PK4 (day/night) and

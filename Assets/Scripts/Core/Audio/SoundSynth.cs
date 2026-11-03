@@ -113,10 +113,14 @@ namespace Clube.Core
                     AddCrackles(samples, random, 0.01f, 0.2f, 12, 0.2f, 4000f);
                     break;
                 case HitSound.Chop:
-                    samples = new float[Samples(0.4f)];
-                    AddTone(samples, 0f, Range(random, 105f, 130f), 80f, 0.001f, 0.08f, 0.55f);
-                    AddNoise(samples, random, 0f, 0.001f, 0.06f, 0.55f, Band(Range(random, 450f, 650f), 1.1f));
-                    AddNoise(samples, random, 0f, 0.0004f, 0.008f, 0.4f, Band(2500f, 1f));
+                    // An axe biting wood (GL303): a sharp, dry crack as the edge goes in, the splintering of fibres
+                    // right after, and only a short, dull knock of the trunk under it, so it doesn't boom like a drum.
+                    samples = new float[Samples(0.35f)];
+                    AddNoise(samples, random, 0f, 0.0002f, 0.006f, 0.8f, Band(Range(random, 2200f, 3000f), 1.3f));
+                    AddNoise(samples, random, 0f, 0.0004f, 0.018f, 0.5f, Band(Range(random, 900f, 1300f), 1.6f));
+                    AddCrackles(samples, random, 0.004f, 0.07f, 26, 0.3f, 2600f);
+                    AddCrackles(samples, random, 0.02f, 0.12f, 10, 0.16f, 4200f);
+                    AddTone(samples, 0f, Range(random, 210f, 260f), 170f, 0.0008f, 0.018f, 0.28f);
                     break;
                 case HitSound.Scrape:
                     samples = new float[Samples(0.4f)];
@@ -153,6 +157,30 @@ namespace Clube.Core
                     break;
             }
             return Normalize(samples, 0.9f);
+        }
+
+        /// <summary>A swing through the air (GL302): a soft rush of wind rising and falling.</summary>
+        public static float[] Whoosh(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(0.32f)];
+            AddSweptNoise(samples, random, 0f, 0.3f, Range(random, 350f, 500f), Range(random, 1400f, 1900f), 0.5f);
+            AddNoise(samples, random, 0.05f, 0.08f, 0.06f, 0.25f, Low(600f));
+            return Normalize(samples, 0.7f);
+        }
+
+        /// <summary>A tool that can't work what it hit (GL302): a short, low "err" buzz, falling.</summary>
+        public static float[] Err(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(0.26f)];
+            float pitch = Range(random, 120f, 140f);
+            for (int harmonic = 1; harmonic <= 5; harmonic++)
+            {
+                AddTone(samples, 0f, pitch * harmonic, pitch * 0.85f * harmonic, 0.01f, 0.07f, 0.5f / harmonic);
+            }
+            AddNoise(samples, random, 0f, 0.005f, 0.05f, 0.12f, Band(pitch * 3f, 2f));
+            return Normalize(samples, 0.75f);
         }
 
         /// <summary>Rock coming away: a crumble of grit falling.</summary>

@@ -71,7 +71,6 @@ MeshRenderer:
   m_Materials:
   - {fileID: 2100000, guid: fbe0fe542a5bb55408c56851eaa3ff2a, type: 2}
   - {fileID: 2100000, guid: 6789e172ab46cdd48b763c13102461e4, type: 2}
-  - {fileID: 2100000, guid: 75a0724341c32194e83abb115701d2d1, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -142,3 +141,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlacedTorch
   flameAt: {x: 0, y: 1.15, z: 0}
   smokeMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
+  flameMaterial: {fileID: 2100000, guid: 75a0724341c32194e83abb115701d2d1, type: 2}

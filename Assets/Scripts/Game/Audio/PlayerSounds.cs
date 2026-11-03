@@ -83,6 +83,14 @@ namespace Clube.Game
         [SerializeField]
         private SoundSet gathered = new SoundSet();
 
+        [Tooltip("A swing at nothing in reach: a whoosh (GL302).")]
+        [SerializeField]
+        private SoundSet swishes = new SoundSet();
+
+        [Tooltip("A hit the tool can't make (a hand axe on a stump): a low err (GL302).")]
+        [SerializeField]
+        private SoundSet refusals = new SoundSet();
+
         [Header("Actions")]
         [Tooltip("A finished recipe that trains Crafting (worktops: sticks, tools), or no skill.")]
         [SerializeField]
@@ -160,6 +168,12 @@ namespace Clube.Game
 
         /// <summary>Gathered things going into the pack.</summary>
         public SoundSet Gathered => gathered;
+
+        /// <summary>A swing through the air (GL302).</summary>
+        public SoundSet Swish => swishes;
+
+        /// <summary>A hit that does nothing because the tool can't work it (GL302).</summary>
+        public SoundSet Refused => refusals;
 
         public SoundSet Sold => sold;
 
