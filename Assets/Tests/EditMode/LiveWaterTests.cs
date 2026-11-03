@@ -303,5 +303,37 @@ namespace Clube.Core.Tests
             Assert.That(specks, Is.EqualTo(0), "no film left behind on the steps");
             Assert.That(Total(), Is.EqualTo(1f).Within(0.02f), "the water is all still there");
         }
+
+        [Test]
+        public void TrickleDownADiagonalSlope_RunsInOneVein()
+        {
+            // Ground falling both ways (x and z), so every sample has two ways down: the water keeps to one line rather
+            // than fanning out over the slope (GL325).
+            DryWorld((x, y, z) => y <= 6 - (x + z) / 2);
+            world.SetWater(new Vector3Int(0, 7, 0), 1f);
+            water.Wake(new Vector3Int(0, 7, 0));
+            var wetColumns = new System.Collections.Generic.HashSet<Vector2Int>();
+            for (int i = 0; i < 2000 && water.AwakeCount > 0; i++)
+            {
+                water.Step();
+                for (int z = 0; z <= 8; z++)
+                {
+                    for (int x = 0; x <= 8; x++)
+                    {
+                        for (int y = 0; y <= 8; y++)
+                        {
+                            // The upper slope only: at the foot the water pools, as it should.
+                            if (x + z <= 8 && At(x, y, z) > 0f)
+                            {
+                                wetColumns.Add(new Vector2Int(x, z));
+                            }
+                        }
+                    }
+                }
+            }
+            // A vein down the upper slope crosses 9 columns (x + z from 0 to 8); a fan covers the 45 there.
+            Assert.That(wetColumns.Count, Is.LessThanOrEqualTo(13), "the water ran in a vein, not a fan");
+            Assert.That(Total(), Is.EqualTo(1f).Within(0.02f));
+        }
     }
 }

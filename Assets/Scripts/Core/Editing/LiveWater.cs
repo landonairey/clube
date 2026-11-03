@@ -241,7 +241,7 @@ namespace Clube.Core
             bool belowOpen = IsOpen(below, out float underWater);
             if (belowOpen && underWater < 1f)
             {
-                float fall = Mathf.Min(a, 1f - underWater);
+                float fall = Steps(Mathf.Min(a, 1f - underWater));
                 if (fall > 0.004f && CanFlowInto(below, underWater))
                 {
                     Set(below, underWater + fall, SourceAt(below));
@@ -305,15 +305,23 @@ namespace Clube.Core
             {
                 return;
             }
+            // Downhill, water holds together (GL325): it takes one way, not every lower one, so a spill runs in veins
+            // like rain down a window instead of fanning out. Only when that way is full does the rest find another.
+            if (anyDrop && targets.Count > 1)
+            {
+                Vector3Int path = PickPath();
+                targets.Clear();
+                targets.Add(path);
+            }
             float share = a;
             for (int t = 0; t < targets.Count; t++)
             {
                 Vector3Int next = targets[t];
                 IsOpen(next, out float there);
-                // Over an edge all of it goes (GL323), so a trickle stays together instead of leaving a thinning trail;
-                // heading for an edge further off it keeps a share; on the flat it evens out with the lower neighbours.
-                float give = Mathf.Min(1f - there, overEdge ? share / targets.Count
-                    : anyDrop ? share / (targets.Count + 1) : (share - there) / (targets.Count + 1));
+                // Downhill, over an edge or heading for one, all of it goes along its one way (GL323, GL325), so a
+                // trickle stays together: kept back, the rest found the way just wetted no lower than itself and started
+                // a second vein. On the flat it evens out with the lower neighbours.
+                float give = Mathf.Min(1f - there, anyDrop ? share / targets.Count : (share - there) / (targets.Count + 1));
                 // Heading downhill, a remainder too thin to move on its own goes too (GL324), so a trickle leaves no
                 // film behind it.
                 float rest = a - give - source;
@@ -336,9 +344,64 @@ namespace Clube.Core
                     there = under;
                     give = Mathf.Min(give, 1f - under);
                 }
+                give = Steps(give);
+                if (give <= 0f)
+                {
+                    continue;
+                }
                 Set(into, there + give, SourceAt(into));
                 a = Mathf.Max(source, a - give);
                 WakeAround(into);
+            }
+        }
+
+        // The one way downhill water takes (GL325): where water already runs (so streams gather into shared veins), then
+        // the deepest fall (the steepest way down), then a fixed hash of the place, so veins wander but never flicker
+        // between two ways.
+        private Vector3Int PickPath()
+        {
+            Vector3Int best = targets[0];
+            float bestScore = float.MinValue;
+            foreach (Vector3Int next in targets)
+            {
+                IsOpen(next, out float there);
+                float score = there > 0.004f ? 8f : 0f;
+                int fall = 0;
+                for (Vector3Int below = next + Vector3Int.down; fall < 4 && IsOpen(below, out float under); below += Vector3Int.down)
+                {
+                    if (fall == 0 && under > 0.004f)
+                    {
+                        score += 8f;
+                    }
+                    fall++;
+                }
+                score += fall + Hash01(next) * 0.9f;
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = next;
+                }
+            }
+            return best;
+        }
+
+        // Water is stored to 1/255 (Chunk.SetWater rounds). A move of a whole number of those steps changes both samples
+        // exactly; any other was rounded on each side, and the many small moves of a spill made water out of nothing
+        // (GL325: a 100-unit pour grew to 137).
+        private static float Steps(float amount)
+        {
+            return amount <= 0f ? 0f : Mathf.Floor(amount * 255f + 1e-3f) * (1f / 255f);
+        }
+
+        private static float Hash01(Vector3Int p)
+        {
+            unchecked
+            {
+                uint h = (uint)p.x * 73856093u ^ (uint)p.y * 19349663u ^ (uint)p.z * 83492791u;
+                h ^= h >> 13;
+                h *= 0x5bd1e995u;
+                h ^= h >> 15;
+                return (h & 0xFFFFFF) / 16777216f;
             }
         }
 
@@ -370,7 +433,7 @@ namespace Clube.Core
             {
                 return;
             }
-            float give = Mathf.Min(a, 1f - bestAmount);
+            float give = Steps(Mathf.Min(a, 1f - bestAmount));
             Set(best, bestAmount + give, SourceAt(best));
             a -= give;
             WakeAround(best);
