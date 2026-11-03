@@ -369,7 +369,7 @@ namespace Clube.Core
             // A lone trickle moves whole down its way; water with more coming in behind it is a stream (GL330), which
             // evens out with the sample ahead and keeps its depth. Moved whole too, a fed trench's water leapfrogged
             // along the floor as beads with dry floor between them.
-            bool whole = anyDrop && !IsFed(sample, targets);
+            bool whole = anyDrop && !IsFed(sample, targets, a);
             float share = a;
             for (int t = 0; t < targets.Count; t++)
             {
@@ -422,7 +422,9 @@ namespace Clube.Core
         }
 
         // True when more water comes in behind a sample: water above it, or beside it other than where it's going.
-        private bool IsFed(Vector3Int sample, List<Vector3Int> going)
+        // A neighbour feeds it only while it holds at least as much (GL332): thin leftovers side by side on a slope counted
+        // each other as feeding and crept down as films instead of running on.
+        private bool IsFed(Vector3Int sample, List<Vector3Int> going, float a)
         {
             if (IsOpen(sample + Vector3Int.up, out float above) && above > 0.004f)
             {
@@ -431,7 +433,7 @@ namespace Clube.Core
             foreach (Vector3Int step in Sideways)
             {
                 Vector3Int next = sample + step;
-                if (!going.Contains(next) && IsOpen(next, out float there) && there > 0.004f)
+                if (!going.Contains(next) && IsOpen(next, out float there) && there > 0.004f && there >= a)
                 {
                     return true;
                 }

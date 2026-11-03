@@ -190,6 +190,39 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Bucket_OnAMeadowHillside_RunsOffAndSettles()
+        {
+            // Ground falling 3 samples in 8 along +x (about 21°, the meadow by the start) down to a flat floor at y = 4.
+            Ground((x, z) => Mathf.Max(4, 26 - x * 3 / 8));
+            Pour(new Vector3(1.5f, 7f, 8f), 100);
+            Result result = Run(4000);
+            float foot = 0f;
+            int film = 0;
+            for (int z = 0; z <= Size; z++)
+            {
+                for (int x = 0; x <= Size; x++)
+                {
+                    for (int y = 5; y <= Height; y++)
+                    {
+                        float a = world.GetWater(new Vector3Int(x, y, z));
+                        if (x >= 52)
+                        {
+                            foot += a;
+                        }
+                        else if (a > 0f && y > 5)
+                        {
+                            film++;
+                        }
+                    }
+                }
+            }
+            Report($"100 units on a 3-in-8 slope (21°), {foot:0.0} units in its last 2 m and at its foot, {film} wet samples higher up", result);
+            Assert.That(result.Settled, "the water comes to rest");
+            Assert.That(result.Volume, Is.EqualTo(100f).Within(0.001f));
+            Assert.That(result.MinX, Is.GreaterThanOrEqualTo(52), "none is left on the slope above its last 2 m");
+        }
+
+        [Test]
         public void FedChannel_FillsAlongItsLength()
         {
             // A channel 2 samples wide along x at z 31-32, its floor falling 1 sample in 6; a spring at its head.
