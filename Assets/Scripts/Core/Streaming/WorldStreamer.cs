@@ -249,6 +249,7 @@ namespace Clube.Core
             }
             float chunkWidth = world.Grid.ChunkWorldSize.x;
             renderers.SetOverlayFocus(centre, settings.OverlayRadius > 0f ? Mathf.CeilToInt(settings.OverlayRadius / chunkWidth) : -1);
+            UpdateDrawRadius(centre.y);
             UpdateDrawCentre(new Vector2Int(centre.x, centre.z));
             phases.Area = Lap();
 
@@ -773,16 +774,46 @@ namespace Clube.Core
         public bool IsColumnDrawn(Vector2Int column)
         {
             int distance = settings.DetailDistance;
-            return distance <= 0 || !hasDrawCentre || IsWithin(column, drawCentre, distance) || world.HasEditsIn(column);
+            return distance <= 0 || !hasDrawCentre || IsWithin(column, drawCentre, DrawRadius) || world.HasEditsIn(column);
         }
 
         private static bool IsWithin(Vector2Int column, Vector2Int centre, int distance)
         {
+            if (distance < 0)
+            {
+                return false;
+            }
             int dx = column.x - centre.x;
             int dz = column.y - centre.y;
             return dx * dx + dz * dz <= distance * distance;
         }
 
+
+        private int drawRadius = -2;
+
+        /// <summary>
+        /// The detail distance shrunk by the focus's height over the world's top (GL323): the chunks within it in three
+        /// dimensions are drawn, so seen from far above, where a chunk is a pixel or two, none is and the coarse terrain
+        /// stands in (from 2 km up the world drew 10,000 chunk renderers, 5.5 million triangles). Below 0, none.
+        /// </summary>
+        public int DrawRadius => drawRadius < -1 ? settings.DetailDistance : drawRadius;
+
+        private void UpdateDrawRadius(int focusLayer)
+        {
+            int distance = settings.DetailDistance;
+            int above = Mathf.Max(0, focusLayer - settings.HeightInChunks);
+            int radius = above >= distance ? -1 : Mathf.FloorToInt(Mathf.Sqrt(distance * distance - above * above));
+            if (radius == drawRadius)
+            {
+                return;
+            }
+            drawRadius = radius;
+            if (distance > 0 && hasDrawCentre)
+            {
+                DrawVersion = ++drawVersions;
+                renderers.RefreshDrawn();
+            }
+        }
         // The focus column moved: switch the renderers of the columns that crossed the detail distance.
         private void UpdateDrawCentre(Vector2Int column)
         {
@@ -794,8 +825,8 @@ namespace Clube.Core
             bool hadCentre = hasDrawCentre;
             drawCentre = column;
             hasDrawCentre = true;
-            int distance = settings.DetailDistance;
-            if (distance <= 0)
+            int distance = DrawRadius;
+            if (settings.DetailDistance <= 0)
             {
                 return;
             }

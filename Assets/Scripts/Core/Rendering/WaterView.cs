@@ -55,8 +55,6 @@ namespace Clube.Core
         private readonly HashSet<int> dirtyTiles = new HashSet<int>();
         // Far tiles holding any water to draw.
         private readonly HashSet<int> wetTiles = new HashSet<int>();
-        // Per wet far tile, a hash of which of its columns the world draws, so a moved draw area rebuilds only tiles it changed.
-        private readonly Dictionary<int, ulong> tileSignatures = new Dictionary<int, ulong>();
         private readonly Dictionary<Vector3Int, GameObject> chunkMeshes = new Dictionary<Vector3Int, GameObject>();
         private readonly HashSet<Vector3Int> dirtyChunks = new HashSet<Vector3Int>();
         // Loaded chunks holding water.
@@ -153,12 +151,12 @@ namespace Clube.Core
             if (water.IsCreated && world != null && worldView.DrawVersion != drawVersion)
             {
                 drawVersion = worldView.DrawVersion;
-                MarkTilesWhoseColumnsChanged(world);
                 RecheckDrawnChunks(world);
             }
             budget.Restart();
             RebuildChunks();
             RebuildTiles();
+            UpdateFarClip(world);
             if (holder != null && holder.activeSelf != show)
             {
                 holder.SetActive(show);
@@ -166,8 +164,37 @@ namespace Clube.Core
             LastUpdateMilliseconds = (float)frameTimer.Elapsed.TotalMilliseconds;
         }
 
+
+        private static readonly int CoverageMaskId = Shader.PropertyToID("_CoverageMask");
+        private static readonly int CoverageId = Shader.PropertyToID("_Coverage");
+        private static readonly int ClipCoveredId = Shader.PropertyToID("_ClipCovered");
+        private ChunkCoverageMask coverage;
+        private Material farMaterial;
+
+        // The far sheets are clipped per pixel wherever the world draws a chunk column in full (GL323), like the far
+        // terrain: there the chunks' own water is drawn. So the sheets are built once and never stand in near the player.
+        private void UpdateFarClip(World world)
+        {
+            if (world == null || farMaterial == null)
+            {
+                return;
+            }
+            coverage ??= new ChunkCoverageMask(worldView, WorldView.MaxRenderDistance);
+            Vector3Int focusChunk = worldView.FocusChunk;
+            coverage.Update(new Vector2Int(focusChunk.x, focusChunk.z));
+            float chunkWidth = world.Grid.ChunkWorldSize.x;
+            Vector3 origin = worldView.transform.position;
+            farMaterial.SetTexture(CoverageMaskId, coverage.Texture);
+            farMaterial.SetVector(CoverageId, new Vector4(
+                origin.x + coverage.Origin.x * chunkWidth, origin.z + coverage.Origin.y * chunkWidth, chunkWidth, coverage.Size));
+        }
         private void OnDestroy()
         {
+            coverage?.Dispose();
+            if (farMaterial != null)
+            {
+                Destroy(farMaterial);
+            }
             if (Live != null)
             {
                 Live.World.DensityChanged -= OnDensityChanged;
@@ -226,8 +253,12 @@ namespace Clube.Core
             level = new float[size.x * size.y];
             from = new int[size.x * size.y];
             tilesAcross = (size.x + Tile - 1) / Tile;
+            if (farMaterial == null)
+            {
+                farMaterial = new Material(material) { name = material.name + " (far)" };
+                farMaterial.SetFloat(ClipCoveredId, 1f);
+            }
             wetTiles.Clear();
-            tileSignatures.Clear();
             for (int i = 0; i < from.Length; i++)
             {
                 Recompute(i);
@@ -304,7 +335,7 @@ namespace Clube.Core
                     dirtyChunks.Add(coord + step);
                 }
             }
-            MarkTileOf(coord);
+
         }
 
         private void OnChunkUnloaded(Vector3Int coord)
@@ -316,61 +347,7 @@ namespace Clube.Core
                 DestroyMeshObject(go);
                 chunkMeshes.Remove(coord);
             }
-            MarkTileOf(coord);
-        }
 
-        // When the drawn area moves, only the wet tiles where a column's drawn state changed are built again (a move
-        // across one chunk border changes only the ring's edge).
-        private void MarkTilesWhoseColumnsChanged(World world)
-        {
-            Vector3 chunkSize = world.Grid.ChunkWorldSize;
-            float tileSize = Tile * water.CellSize;
-            foreach (int tile in wetTiles)
-            {
-                float x0 = water.Origin.x + tile % tilesAcross * tileSize, z0 = water.Origin.y + tile / tilesAcross * tileSize;
-                int cx0 = Mathf.FloorToInt(x0 / chunkSize.x), cz0 = Mathf.FloorToInt(z0 / chunkSize.z);
-                int cx1 = Mathf.FloorToInt((x0 + tileSize) / chunkSize.x), cz1 = Mathf.FloorToInt((z0 + tileSize) / chunkSize.z);
-                ulong signature = 1469598103934665603UL;
-                for (int cz = cz0; cz <= cz1; cz++)
-                {
-                    for (int cx = cx0; cx <= cx1; cx++)
-                    {
-                        var column = new Vector2Int(cx, cz);
-                        bool drawn = world.LoadedColumns.ContainsKey(column) && worldView.IsColumnDrawn(column);
-                        signature = (signature ^ (drawn ? 1UL : 2UL)) * 1099511628211UL;
-                    }
-                }
-                if (!tileSignatures.TryGetValue(tile, out ulong before) || before != signature)
-                {
-                    tileSignatures[tile] = signature;
-                    dirtyTiles.Add(tile);
-                }
-            }
-        }
-
-        // A far tile only cares whether a column is loaded at all: it's drawn again when a column gets its first chunk
-        // or loses its last, not for every layer streaming in, and only if the tile holds any water.
-        private void MarkTileOf(Vector3Int coord)
-        {
-            World world = worldView.World;
-            if (!water.IsCreated || world == null)
-            {
-                return;
-            }
-            int layers = world.LoadedLayersIn(new Vector2Int(coord.x, coord.z));
-            if (layers > 1)
-            {
-                return;
-            }
-            Vector3 middle = world.Grid.ChunkOrigin(coord) + world.Grid.ChunkWorldSize * 0.5f;
-            if (water.TryCell(new float2(middle.x, middle.z), out int cell))
-            {
-                int tile = cell % water.Size.x / Tile + cell / water.Size.x / Tile * tilesAcross;
-                if (wetTiles.Contains(tile))
-                {
-                    dirtyTiles.Add(tile);
-                }
-            }
         }
 
         // Builds the dirty chunks' water nearest the focus first, until the frame's budget is spent. Chunks in columns
@@ -461,41 +438,22 @@ namespace Clube.Core
             mesh.SetUVs(3, mesher.Banks);
             mesh.SetTriangles(mesher.Triangles, 0);
             mesh.RecalculateNormals();
-            GameObject go = MakeMeshObject("Water chunk", mesh);
+            GameObject go = MakeMeshObject("Water chunk", mesh, material);
             go.transform.position = world.Grid.ChunkOrigin(coord);
             chunkMeshes[coord] = go;
             TriangleCount += mesher.Triangles.Count / 3;
         }
 
-        // What a far cell draws: its own water when wet, else the lowest water beside it, so the surface runs into the
-        // banks and the ground hides its edge.
+        // What a far cell draws: its own water when wet, nothing when dry (GL323: the dry ring drawn at the lowest water
+        // beside it stood as a skirt under the banks).
         private void Recompute(int i)
         {
-            int2 size = water.Size;
             from[i] = -1;
             if (water.Kind[i] != 0)
             {
                 from[i] = i;
                 level[i] = water.Surface[i];
                 return;
-            }
-            int x = i % size.x, z = i / size.x;
-            for (int dz = -1; dz <= 1; dz++)
-            {
-                for (int dx = -1; dx <= 1; dx++)
-                {
-                    int nx = x + dx, nz = z + dz;
-                    if (nx < 0 || nz < 0 || nx >= size.x || nz >= size.y)
-                    {
-                        continue;
-                    }
-                    int j = nx + nz * size.x;
-                    if (water.Kind[j] != 0 && (from[i] < 0 || water.Surface[j] < level[i]))
-                    {
-                        from[i] = j;
-                        level[i] = water.Surface[j];
-                    }
-                }
             }
         }
 
@@ -527,20 +485,12 @@ namespace Clube.Core
             int tx = tile % tilesAcross * Tile, tz = tile / tilesAcross * Tile;
             sheet.Clear();
             World world = worldView.World;
-            Vector3 chunkSize = world.Grid.ChunkWorldSize;
             for (int z = tz; z < Mathf.Min(tz + Tile, size.y); z++)
             {
                 for (int x = tx; x < Mathf.Min(tx + Tile, size.x); x++)
                 {
                     int i = x + z * size.x;
                     if (from[i] < 0)
-                    {
-                        continue;
-                    }
-                    // Where the world draws its chunks, their own water is drawn.
-                    float cx = water.Origin.x + (x + 0.5f) * water.CellSize, cz = water.Origin.y + (z + 0.5f) * water.CellSize;
-                    var column = new Vector2Int(Mathf.FloorToInt(cx / chunkSize.x), Mathf.FloorToInt(cz / chunkSize.z));
-                    if (world.LoadedColumns.ContainsKey(column) && worldView.IsColumnDrawn(column))
                     {
                         continue;
                     }
@@ -561,7 +511,7 @@ namespace Clube.Core
                 mesh.SetUVs(2, sheet.Ripples);
                 mesh.SetTriangles(sheet.Triangles, 0);
                 mesh.RecalculateNormals();
-                tiles[tile] = MakeMeshObject("Far water tile", mesh);
+                tiles[tile] = MakeMeshObject("Far water tile", mesh, farMaterial);
                 TriangleCount += sheet.Triangles.Count / 3;
             }
         }
@@ -654,7 +604,7 @@ namespace Clube.Core
             }
         }
 
-        private GameObject MakeMeshObject(string name, Mesh mesh)
+        private GameObject MakeMeshObject(string name, Mesh mesh, Material look)
         {
             // Room for the ripples above and below the water.
             Bounds bounds = mesh.bounds;
@@ -669,7 +619,7 @@ namespace Clube.Core
             go.transform.SetParent(holder.transform, false);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var renderer = go.AddComponent<MeshRenderer>();
-            renderer.sharedMaterial = material;
+            renderer.sharedMaterial = look;
             renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.receiveShadows = false;
             return go;

@@ -510,7 +510,7 @@ Torches light the terrain, grass and held items (GL294: `AdditionalLights.hlsl` 
 until B starts placing it. E also opens the inventory (GL298); fuel clicked at a fire goes to its fuel slot (GL299);
 right-click pulls half a station or chest slot (GL300). A swing at nothing whooshes, a refused hit errs (GL302);
 placed torches have a flickering flame (GL304); Ctrl-click at the merchant picks stacks to sell together (GL305).
-Thirtieth pass (GL306-GL322, `Docs/20261102b clube-backlog.md`, `20261102c`, `20261102d`, `20261103`): water and falling ground. `Hydrology` (Core/Generation/Water)
+Thirtieth pass (GL306-GL323, `Docs/20261102b clube-backlog.md`, `20261102c`, `20261102d`, `20261103`, `20261103b`): water and falling ground. `Hydrology` (Core/Generation/Water)
 drains the heightfield over `WaterGeneration.AreaSize` (640 m round the origin; start area kept dry) into a `WaterMap` (1 m
 cells: river cut, water surface and depth, kind, flow, distance to lake and river water), cached per world shape.
 `LandscapeHeight.Height` subtracts the cut, so river beds are in the terrain data and every height reader agrees;
@@ -533,6 +533,9 @@ and marks bank triangles for foam (UV3). GL319: the wooden bucket (`BucketDefini
 `WaterScoop`; `PlayerBucket` on Player, Attack scoops, Place pours). GL320: `Hydrology.ContainLakes/ContainRivers` hold water
 to the 1 m ground; `LiveWater` pours over edges straight down and works out from `LiveWater.Focus`. GL321: brick mix (sand +
 clay) fires into refractory brick (ground id 25), which builds the refractory furnace (heat 3). Clay falls (GL322).
+GL323: far water sheets are wet cells only, clipped by a coverage mask where chunks draw; water is never deleted; pours pool
+(`WaterScoop.Pour`); `WorldStreamer.DrawRadius` shrinks the drawn chunks with the focus's height over the world.
+Testing gotcha: pumping the World object's LateUpdate by hand from high up crashed the Editor (GPU out of memory) twice.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

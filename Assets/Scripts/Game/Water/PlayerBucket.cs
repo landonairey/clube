@@ -42,6 +42,9 @@ namespace Clube.Game
         private float pourHeld;
         private float pourCarry;
 
+        // How far across a pour spreads at once, in metres; the flow carries it on from there.
+        private const float PourReach = 3f;
+
         /// <summary>Raised with the units after a scoop (positive) or a pour (negative).</summary>
         public event System.Action<int> Moved;
 
@@ -133,7 +136,7 @@ namespace Clube.Game
                 return;
             }
             changed.Clear();
-            int poured = WaterScoop.Pour(worldView.World, pourAt, bucket.ScoopRadius, units, worldView.Config.IsoLevel, changed);
+            int poured = WaterScoop.Pour(worldView.World, pourAt, PourReach, units, worldView.Config.IsoLevel, changed);
             if (poured <= 0)
             {
                 return;

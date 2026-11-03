@@ -121,7 +121,7 @@ namespace Clube.Core.Tests
             int taken = WaterScoop.Take(world, new Vector3(1f, 3f, 4f), 1.5f, 4, null);
             Assert.That(taken, Is.EqualTo(4));
             Assert.That(Total(), Is.EqualTo(before - 4f).Within(0.05f));
-            int poured = WaterScoop.Pour(world, new Vector3(1f, 3f, 4f), 1.5f, 4, 0.5f, null);
+            int poured = WaterScoop.Pour(world, new Vector3(1f, 5f, 4f), 1.5f, 4, 0.5f, null);
             Assert.That(poured, Is.EqualTo(4));
             Assert.That(Total(), Is.EqualTo(before).Within(0.05f));
         }

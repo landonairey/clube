@@ -21,6 +21,9 @@ Shader "Clube/Water"
         _Glimmer ("Lake glimmer", Range(0, 3)) = 1.0
         _ShoreFoam ("Shore foam", Range(0, 1)) = 0.7
         _FoamSpeed ("Shore foam speed", Float) = 1.1
+        [HideInInspector] _ClipCovered ("Clip drawn chunk columns (far sheets)", Float) = 0
+        [HideInInspector] _CoverageMask ("Chunk coverage", 2D) = "black" {}
+        [HideInInspector] _Coverage ("Coverage origin, column width, size", Vector) = (0, 0, 1, 0)
     }
 
     SubShader
@@ -57,7 +60,10 @@ Shader "Clube/Water"
                 half _Glimmer;
                 half _ShoreFoam;
                 float _FoamSpeed;
+                float _ClipCovered;
+                float4 _Coverage;
             CBUFFER_END
+            TEXTURE2D(_CoverageMask);
 
             struct Attributes
             {
@@ -156,6 +162,14 @@ Shader "Clube/Water"
 
             half4 Fragment(Varyings input) : SV_Target
             {
+                // Far sheets (GL323) leave out the chunk columns the world draws, whose own water is drawn there.
+                if (_ClipCovered > 0.5)
+                {
+                    int2 texel = (int2)floor((input.positionWS.xz - _Coverage.xy) / _Coverage.z);
+                    int size = (int)_Coverage.w;
+                    bool inside = all(texel >= 0) && all(texel < size);
+                    clip(inside && LOAD_TEXTURE2D(_CoverageMask, texel).r > 0.5 ? -1.0 : 1.0);
+                }
                 float3 centre = input.look.xyz;
                 float kind = input.look.w;
                 float random = Hash(floor(centre * 64.0) / 64.0);

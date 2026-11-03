@@ -10,7 +10,7 @@ namespace Clube.Core
     /// below while there's room, the way water falls down a drop; what's left spreads sideways, sharing out with lower
     /// neighbours, and only towards an edge with a drop under it when there is one, so a stream runs down the slope
     /// instead of fanning out over a hilltop, and keeps going until it meets other water or fills a hollow. Water that
-    /// is too thin dries up. The generated rivers and lakes (<see cref="WaterFill"/>) are sources without end: their
+    /// is thin stays put rather than spreading further, and never vanishes: volume is kept (GL323). The generated rivers and lakes (<see cref="WaterFill"/>) are sources without end: their
     /// samples are kept topped up to the map's level, so a hole dug beside a lake fills up to the lake's surface.
     /// Ground put where water was takes its place: a sample that turns solid loses its water. Every density change
     /// wakes the samples round it; a sample that changed wakes its own neighbours for the next step.
@@ -27,7 +27,7 @@ namespace Clube.Core
             Vector3Int.right, Vector3Int.left, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
         };
 
-        /// <summary>Less water than this, outside a source, dries up.</summary>
+        /// <summary>Less water than this doesn't move sideways at all (it can still fall).</summary>
         public const float MinAmount = 0.03f;
 
         /// <summary>Thinner water than this doesn't spread sideways (it can still fall).</summary>
@@ -257,10 +257,6 @@ namespace Clube.Core
                 Spread(sample, ref a, source);
             }
 
-            if (source <= 0f && a < MinAmount)
-            {
-                a = 0f;
-            }
             if (Mathf.Abs(a - start) < 0.002f)
             {
                 return false;
@@ -308,7 +304,10 @@ namespace Clube.Core
             foreach (Vector3Int next in targets)
             {
                 IsOpen(next, out float there);
-                float give = Mathf.Min(1f - there, anyDrop ? share / (targets.Count + 1) : (share - there) / (targets.Count + 1));
+                // Over an edge all of it goes (GL323), so a trickle stays together instead of leaving a thinning trail;
+                // heading for an edge further off it keeps a share; on the flat it evens out with the lower neighbours.
+                float give = Mathf.Min(1f - there, overEdge ? share / targets.Count
+                    : anyDrop ? share / (targets.Count + 1) : (share - there) / (targets.Count + 1));
                 if (give <= 0.004f)
                 {
                     continue;

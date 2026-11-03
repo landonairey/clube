@@ -424,7 +424,9 @@ a 400 m area that is 5,600 of 35,000 chunk renderers, and about a sixth of the 5
 - **Who decides**: `WorldStreamer.IsColumnDrawn` (within the detail distance of the focus column,
   or holding an edited chunk: `World.HasEditsIn`, so a dug pit still shows from far away). The
   renderer pool applies it to every renderer it shows (`ChunkRendererPool.SetDrawRule`); when the
-  focus column moves only the columns that cross the edge are switched (`UpdateDrawCentre`).
+  focus column moves only the columns that cross the edge are switched (`UpdateDrawCentre`). The
+  radius shrinks with the focus's height over the world's top (`DrawRadius`, GL323): within the detail
+  distance in three dimensions, so from far above no chunk draws and the coarse terrain stands in.
 - **The coverage mask follows it**: a column counts as covered only while drawn, and the mask refills
   whenever `WorldView.DrawVersion` changes, so the coarse levels and the distant trees fill in exactly
   where the world stops drawing.

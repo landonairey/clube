@@ -52,8 +52,10 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Pours <paramref name="units"/> of water into the open (air) samples within <paramref name="radius"/> metres of
-        /// <paramref name="centre"/>, lowest first. Returns the units poured (less when there's no room).
+        /// Pours <paramref name="units"/> of water where <paramref name="centre"/> is, the way water settles (GL323): it
+        /// drops to the ground under the point, then fills the lowest open samples it can reach from there, out to
+        /// <paramref name="radius"/> metres across, so it pools into the hollows and spreads as a puddle instead of
+        /// standing as a ball round the point. Returns the units poured (less when there's no room).
         /// </summary>
         public static int Pour(World world, Vector3 centre, float radius, int units, float iso, List<Vector3Int> changed)
         {
@@ -61,26 +63,79 @@ namespace Clube.Core
             {
                 return 0;
             }
-            Gather(world, centre, radius, sample =>
+            WorldGrid grid = world.Grid;
+            Vector3Int start = grid.WorldToNearestSample(centre);
+            if (!IsRoom(world, start, iso))
             {
-                float? density = world.GetDensity(sample);
-                return density.HasValue && density.Value < iso && world.GetWater(sample) < 1f;
-            });
-            Found.Sort((a, b) => a.sample.y != b.sample.y ? a.sample.y.CompareTo(b.sample.y) : a.distance.CompareTo(b.distance));
+                return 0;
+            }
+            // Down to whatever holds it up.
+            for (int i = 0; i < 64 && IsOpen(world, start + Vector3Int.down, iso) && world.GetWater(start + Vector3Int.down) < 1f; i++)
+            {
+                start += Vector3Int.down;
+            }
+            Queue.Clear();
+            Seen.Clear();
+            Queue.Add(start);
+            Seen.Add(start);
+            float reach = radius / grid.VoxelSize;
             float left = units;
-            foreach ((Vector3Int sample, float _) in Found)
+            while (left > 1e-3f && Queue.Count > 0)
             {
-                if (left < 1e-3f)
+                // The lowest open sample found so far, nearest the start among equals.
+                int best = 0;
+                for (int i = 1; i < Queue.Count; i++)
                 {
-                    break;
+                    Vector3Int a = Queue[i], b = Queue[best];
+                    if (a.y < b.y || (a.y == b.y && Flat(a - start) < Flat(b - start)))
+                    {
+                        best = i;
+                    }
                 }
+                Vector3Int sample = Queue[best];
+                Queue.RemoveAt(best);
                 float there = world.GetWater(sample);
                 float put = Mathf.Min(1f - there, left);
-                world.SetWater(sample, there + put);
-                left -= put;
-                changed?.Add(sample);
+                if (put > 0f)
+                {
+                    world.SetWater(sample, there + put);
+                    left -= put;
+                    changed?.Add(sample);
+                }
+                foreach (Vector3Int step in Around)
+                {
+                    Vector3Int next = sample + step;
+                    if (Flat(next - start) <= reach * reach && Seen.Add(next) && IsRoom(world, next, iso))
+                    {
+                        Queue.Add(next);
+                    }
+                }
             }
             return units - Mathf.CeilToInt(left - 1e-3f);
+        }
+
+        private static readonly Vector3Int[] Around =
+        {
+            Vector3Int.down, Vector3Int.right, Vector3Int.left, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1), Vector3Int.up,
+        };
+
+        private static readonly List<Vector3Int> Queue = new List<Vector3Int>();
+        private static readonly HashSet<Vector3Int> Seen = new HashSet<Vector3Int>();
+
+        private static int Flat(Vector3Int d)
+        {
+            return d.x * d.x + d.z * d.z;
+        }
+
+        private static bool IsOpen(World world, Vector3Int sample, float iso)
+        {
+            float? density = world.GetDensity(sample);
+            return density.HasValue && density.Value < iso;
+        }
+
+        private static bool IsRoom(World world, Vector3Int sample, float iso)
+        {
+            return IsOpen(world, sample, iso) && world.GetWater(sample) < 1f;
         }
 
         private static void Gather(World world, Vector3 centre, float radius, System.Func<Vector3Int, bool> keep)
