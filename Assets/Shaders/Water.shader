@@ -2,7 +2,8 @@
 // terrain. Every triangle is one facet: it shades flat and shimmers as one, between a muted deep and light blue-green and
 // now and then a pale fleck. On running water the light bands move along the flow (UV0), quicker where the run is steeper
 // (the flow's length); on ponds and lakes facets twinkle slowly at random and now and then one glimmers; falling water
-// streams downwards. Ripples move the surface in the drawing only (the water's volume never changes): every vertex rises
+// streams downwards (GL318: still water no longer twinkles at random: its facets lighten as the ripples tip them, and
+// facets meeting the bank lap with foam, UV3). Ripples move the surface in the drawing only (the water's volume never changes): every vertex rises
 // and falls by waves from its place in the world and the river's flow there (UV2), the same for every triangle sharing
 // it, so the surface never cracks, and each facet's tilt follows.
 Shader "Clube/Water"
@@ -18,6 +19,8 @@ Shader "Clube/Water"
         _Twinkle ("Still water twinkle speed", Float) = 0.05
         _Ripple ("Ripple height (m)", Float) = 0.035
         _Glimmer ("Lake glimmer", Range(0, 3)) = 1.0
+        _ShoreFoam ("Shore foam", Range(0, 1)) = 0.7
+        _FoamSpeed ("Shore foam speed", Float) = 1.1
     }
 
     SubShader
@@ -52,6 +55,8 @@ Shader "Clube/Water"
                 float _Twinkle;
                 float _Ripple;
                 half _Glimmer;
+                half _ShoreFoam;
+                float _FoamSpeed;
             CBUFFER_END
 
             struct Attributes
@@ -60,6 +65,7 @@ Shader "Clube/Water"
                 float2 flow : TEXCOORD0;
                 float4 look : TEXCOORD1;
                 float4 ripple : TEXCOORD2;
+                float2 bank : TEXCOORD3;
             };
 
             struct Varyings
@@ -69,6 +75,7 @@ Shader "Clube/Water"
                 nointerpolation float2 flow : TEXCOORD1;
                 nointerpolation float4 look : TEXCOORD2;
                 float fog : TEXCOORD3;
+                nointerpolation float bank : TEXCOORD4;
             };
 
             float Hash(float3 p)
@@ -142,6 +149,7 @@ Shader "Clube/Water"
                 output.positionCS = TransformWorldToHClip(positionWS);
                 output.flow = input.flow;
                 output.look = input.look;
+                output.bank = input.bank.x;
                 output.fog = ComputeFogFactor(output.positionCS.z);
                 return output;
             }
@@ -151,29 +159,43 @@ Shader "Clube/Water"
                 float3 centre = input.look.xyz;
                 float kind = input.look.w;
                 float random = Hash(floor(centre * 64.0) / 64.0);
-                half3 shimmer = Shimmer(input.flow, centre, kind, random);
 
                 // Flat: the facet's own plane, ripples and all.
                 float3 normalWS = normalize(cross(ddy(input.positionWS), ddx(input.positionWS)));
                 normalWS *= kind > 2.5 ? 1.0 : sign(normalWS.y + 1e-5);
 
+                half3 shimmer;
+                if (kind > 1.5 && kind < 2.5)
+                {
+                    // Still water (GL318): no random flecks; a facet is lighter the more the rolling ripples tip it one
+                    // way, so the light moves with the waves, smoothly.
+                    float tip = dot(normalWS.xz, float2(0.6, 0.8)) / max(_Ripple * 3.0, 0.001);
+                    shimmer = lerp(_Deep.rgb, _Light.rgb, smoothstep(-0.1, 1.0, tip) * (0.8 + 0.2 * random));
+                }
+                else
+                {
+                    shimmer = Shimmer(input.flow, centre, kind, random);
+                }
+
+                // Foam where the water meets the bank (GL318): facets touching the ground whiten as small waves lap in.
+                float bank = input.bank;
+                if (bank > 0.5)
+                {
+                    float lap = sin(_Time.y * _FoamSpeed + dot(centre.xz, float2(0.7, 0.45)) * 1.8 + random * 2.0) * 0.5 + 0.5;
+                    float foam = smoothstep(0.3, 0.8, lap) * (0.55 + 0.45 * random);
+                    shimmer = lerp(shimmer, _Foam.rgb, foam * _ShoreFoam);
+                }
+
                 Light mainLight = GetMainLight();
                 half3 direct = mainLight.color * (saturate(dot(normalWS, mainLight.direction)) * 0.55 + 0.45);
                 half3 viewDir = normalize(GetWorldSpaceViewDir(input.positionWS));
-                half glint = pow(saturate(dot(reflect(-mainLight.direction, normalWS), viewDir)), 96.0);
-                // Lakes glimmer: now and then a facet flashes with the sun's (or moon's) light.
-                half flash = 0;
-                if (kind > 1.5 && kind < 2.5)
-                {
-                    float beat = frac(_Time.y * (0.08 + random * 0.2) + random * 31.0);
-                    flash = step(0.996, beat) * step(0.6, random) * _Glimmer;
-                    glint *= 1.0 + _Glimmer * 0.5;
-                }
+                // A soft glint, from the facet's tilt alone, so it moves with the ripples instead of flickering.
+                half glint = pow(saturate(dot(reflect(-mainLight.direction, normalWS), viewDir)), 24.0) * (0.12 + 0.08 * _Glimmer);
                 half3 ambient = SampleSH(half3(0, 1, 0));
                 direct += AdditionalDiffuse(input.positionWS, normalWS, input.positionCS);
-                half3 color = shimmer * (direct + ambient) + mainLight.color * (glint * 0.22 + flash * 0.5);
+                half3 color = shimmer * (direct + ambient) + mainLight.color * glint;
                 color = MixFog(color, input.fog);
-                return half4(color, saturate(_Alpha + glint * 0.15 + flash * 0.15));
+                return half4(color, saturate(_Alpha + glint * 0.3 + bank * 0.08));
             }
             ENDHLSL
         }

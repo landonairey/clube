@@ -454,6 +454,7 @@ namespace Clube.Core
             mesh.SetUVs(0, mesher.Flows);
             mesh.SetUVs(1, mesher.Looks);
             mesh.SetUVs(2, mesher.Ripples);
+            mesh.SetUVs(3, mesher.Banks);
             mesh.SetTriangles(mesher.Triangles, 0);
             mesh.RecalculateNormals();
             GameObject go = MakeMeshObject("Water chunk", mesh);

@@ -119,6 +119,8 @@ namespace Clube.Core
         [ReadOnly] public NativeArray<float2> HeightRange;
         public ChunkSampleGrid Grid;
         public ChunkFillSettings Settings;
+        // Metres off the water by which slope ridges come back in full (GL318).
+        private const float ShoreRidgeFade = 6f;
         [ReadOnly] public NativeArray<OreNodeData> Ores;
         [ReadOnly] public NativeArray<TreePart> Trees;
         public ChunkFillOutput Output;
@@ -164,7 +166,13 @@ namespace Clube.Core
                         float depth = Heights[column + x] - height;
                         if (ridges)
                         {
-                            depth += SlopeRidges.Offset(Grid.Position(x, y, z), gradients[x + count.x * z], Settings.Layers);
+                            // Not by the water (GL318): a gully in a lake's rim would leave the lake standing over it.
+                            float3 position = Grid.Position(x, y, z);
+                            float fade = Settings.Water.ShoreFade(position.xz, ShoreRidgeFade);
+                            if (fade > 0f)
+                            {
+                                depth += SlopeRidges.Offset(position, gradients[x + count.x * z], Settings.Layers) * fade;
+                            }
                         }
                         depths[row + x] = depth * depthScale;
                     }

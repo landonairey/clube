@@ -800,6 +800,45 @@ namespace Clube.Debug.Editor
             return texture;
         }
 
+        /// <summary>Writes only the wooden bucket's icon (GL319), leaving the rest as they are.</summary>
+        [MenuItem("Clube/Items/Generate bucket icon")]
+        public static void GenerateBucketIcon()
+        {
+            Directory.CreateDirectory(Folder);
+            Write("wooden bucket", "Wooden bucket", PaintBucket());
+            AssetDatabase.SaveAssets();
+        }
+
+        // A wooden bucket from the front and a little above: tapered staves, two dark hoops, water at the rim, a rope handle.
+        private static Texture2D PaintBucket()
+        {
+            Texture2D texture = Blank();
+            var stave = new Color(0.62f, 0.44f, 0.25f);
+            var staveLight = new Color(0.74f, 0.55f, 0.33f);
+            var hoop = new Color(0.22f, 0.2f, 0.19f);
+            var water = new Color(0.3f, 0.5f, 0.58f);
+            var rope = new Color(0.66f, 0.56f, 0.36f);
+            float bottom = Size * 0.1f, top = Size * 0.62f, half = Size * 0.22f, rim = Size * 0.3f, mid = Size * 0.5f;
+            FillQuad(texture, new Vector2(mid - half, bottom), new Vector2(mid + half, bottom), new Vector2(mid + rim, top), new Vector2(mid - rim, top), stave);
+            // Light staves, every other one.
+            for (int i = 0; i < 5; i += 2)
+            {
+                float a = -1f + i * 0.4f, b = a + 0.4f;
+                FillQuad(texture, new Vector2(mid + half * a, bottom), new Vector2(mid + half * b, bottom), new Vector2(mid + rim * b, top), new Vector2(mid + rim * a, top), staveLight);
+            }
+            foreach (float y in new[] { 0.2f, 0.52f })
+            {
+                float at = bottom + (top - bottom) * y, w = Mathf.Lerp(half, rim, y);
+                FillQuad(texture, new Vector2(mid - w - 1f, at), new Vector2(mid + w + 1f, at), new Vector2(mid + w + 1f, at + 3f), new Vector2(mid - w - 1f, at + 3f), hoop);
+            }
+            FillQuad(texture, new Vector2(mid - rim, top), new Vector2(mid + rim, top), new Vector2(mid + rim * 0.9f, top + 5f), new Vector2(mid - rim * 0.9f, top + 5f), water);
+            FillQuad(texture, new Vector2(mid - rim - 1f, top), new Vector2(mid - rim + 2f, top), new Vector2(mid - 2f, Size * 0.9f), new Vector2(mid - 4f, Size * 0.9f), rope);
+            FillQuad(texture, new Vector2(mid + rim - 2f, top), new Vector2(mid + rim + 1f, top), new Vector2(mid + 4f, Size * 0.9f), new Vector2(mid + 2f, Size * 0.9f), rope);
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
         /// <summary>Writes only the wooden chest's icon (GL249), leaving the rest as they are.</summary>
         [MenuItem("Clube/Items/Generate chest icon")]
         public static void GenerateChestIcon()

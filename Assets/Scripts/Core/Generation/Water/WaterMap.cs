@@ -142,8 +142,23 @@ namespace Clube.Core
                     weight += w;
                 }
             }
-            surface = weight > 0f ? sum / weight : Surface[cell];
+            // Never over the cell's own level: a river cell blended towards the cell above it stood as a slab over its bed.
+            surface = weight > 0f ? math.min(sum / weight, Surface[cell]) : Surface[cell];
             return true;
+        }
+
+        /// <summary>
+        /// 0 at the water and on its banks, rising to 1 by <paramref name="reach"/> metres off (GL318): slope ridges fade
+        /// out by the water, so a lake's rim stays where the drainage put it and the water never stands over a gully.
+        /// </summary>
+        public float ShoreFade(float2 position, float reach)
+        {
+            if (!IsCreated || !TryCell(position, out int cell))
+            {
+                return 1f;
+            }
+            float distance = math.min((int)LakeDistance[cell], (int)RiverDistance[cell]);
+            return math.smoothstep(1f, reach, distance);
         }
 
         private float At(NativeArray<float> values, int x, int z)

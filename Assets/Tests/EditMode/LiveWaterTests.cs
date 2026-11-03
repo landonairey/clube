@@ -93,6 +93,56 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void LakeBedLowerThanTheMapSays_HoldsNoDryPocket()
+        {
+            // The map puts the bed at 3.5 (depth 1); the ground is really at 1, so 2 and 3 must be water too (GL318).
+            for (int i = 0; i < 64; i++)
+            {
+                map.Depth[i] = map.Kind[i] != 0 ? 1f : 0f;
+            }
+            WaterFill.Fill(world, Vector3Int.zero, map, 0.5f);
+            Assert.That(At(1, 2, 4), Is.EqualTo(1f).Within(0.01f));
+        }
+
+        [Test]
+        public void ShoreLowerThanTheLake_IsUnderWater()
+        {
+            // The first dry column (x = 3) only reaches y = 3, under the lake's 4.5: the water runs on over it (GL318).
+            Shape((x, y, z) => y <= (x < 3 ? 1 : x == 3 ? 3 : 6));
+            WaterFill.Fill(world, Vector3Int.zero, map, 0.5f);
+            Assert.That(At(3, 4, 4), Is.EqualTo(1f).Within(0.01f));
+            Assert.That(At(4, 4, 4), Is.EqualTo(0f), "the bank beyond is ground");
+        }
+
+        [Test]
+        public void Bucket_ScoopsAndPoursTheSameVolume()
+        {
+            float before = Total();
+            int taken = WaterScoop.Take(world, new Vector3(1f, 3f, 4f), 1.5f, 4, null);
+            Assert.That(taken, Is.EqualTo(4));
+            Assert.That(Total(), Is.EqualTo(before - 4f).Within(0.05f));
+            int poured = WaterScoop.Pour(world, new Vector3(1f, 3f, 4f), 1.5f, 4, 0.5f, null);
+            Assert.That(poured, Is.EqualTo(4));
+            Assert.That(Total(), Is.EqualTo(before).Within(0.05f));
+        }
+
+        private float Total()
+        {
+            float sum = 0f;
+            for (int z = 0; z <= 8; z++)
+            {
+                for (int y = 0; y <= 8; y++)
+                {
+                    for (int x = 0; x <= 8; x++)
+                    {
+                        sum += At(x, y, z);
+                    }
+                }
+            }
+            return sum;
+        }
+
+        [Test]
         public void DugHoleBesideTheLake_FillsToTheLakesLevel()
         {
             world.SetDensity(new Vector3Int(3, 3, 4), 0f);

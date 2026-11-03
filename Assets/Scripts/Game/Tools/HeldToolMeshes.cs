@@ -190,6 +190,25 @@ namespace Clube.Game
             return model.Make(lit ? "Held lit torch" : "Held torch");
         }
 
+        /// <summary>
+        /// A wooden bucket held by its handle (GL319): the fist on a bent rope handle over a tapered, eight-sided body of
+        /// staves with two dark iron-coloured hoops.
+        /// </summary>
+        public static Mesh BuildBucket()
+        {
+            var model = new Builder();
+            model.Prism(new Vector3(0.06f, -0.2f, -0.5f), new Vector3(0.01f, -0.03f, -0.06f), 0.05f, 0.042f, 6, Sleeve);
+            model.Box(new Vector3(0f, 0f, 0f), new Vector3(0.085f, 0.075f, 0.09f), Quaternion.identity, Skin);
+            // The handle: a rope from the fist down to each side of the rim.
+            model.Prism(new Vector3(-0.01f, -0.01f, 0f), new Vector3(-0.1f, -0.13f, 0.02f), 0.007f, 0.007f, 4, Cord);
+            model.Prism(new Vector3(0.01f, -0.01f, 0f), new Vector3(0.1f, -0.13f, 0.02f), 0.007f, 0.007f, 4, Cord);
+            // The body: wider at the rim than the base.
+            model.Prism(new Vector3(0f, -0.36f, 0.02f), new Vector3(0f, -0.13f, 0.02f), 0.085f, 0.105f, 8, Wood);
+            model.Prism(new Vector3(0f, -0.33f, 0.02f), new Vector3(0f, -0.31f, 0.02f), 0.092f, 0.093f, 8, Charcoal);
+            model.Prism(new Vector3(0f, -0.18f, 0.02f), new Vector3(0f, -0.16f, 0.02f), 0.102f, 0.103f, 8, Charcoal);
+            return model.Make("Held bucket");
+        }
+
         /// <summary>Collects flat-shaded triangles.</summary>
         private sealed class Builder
         {

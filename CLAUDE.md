@@ -510,7 +510,7 @@ Torches light the terrain, grass and held items (GL294: `AdditionalLights.hlsl` 
 until B starts placing it. E also opens the inventory (GL298); fuel clicked at a fire goes to its fuel slot (GL299);
 right-click pulls half a station or chest slot (GL300). A swing at nothing whooshes, a refused hit errs (GL302);
 placed torches have a flickering flame (GL304); Ctrl-click at the merchant picks stacks to sell together (GL305).
-Thirtieth pass (GL306-GL317, `Docs/20261102b clube-backlog.md`, `20261102c`): water and falling ground. `Hydrology` (Core/Generation/Water)
+Thirtieth pass (GL306-GL319, `Docs/20261102b clube-backlog.md`, `20261102c`, `20261102d`): water and falling ground. `Hydrology` (Core/Generation/Water)
 drains the heightfield over `WaterGeneration.AreaSize` (640 m round the origin; start area kept dry) into a `WaterMap` (1 m
 cells: river cut, water surface and depth, kind, flow, distance to lake and river water), cached per world shape.
 `LandscapeHeight.Height` subtracts the cut, so river beds are in the terrain data and every height reader agrees;
@@ -527,6 +527,10 @@ take the water beside them so the surface runs into banks) in `Clube/Water` (eac
 steeper, slow twinkles on still water); past the drawn chunks it draws the map as flat sheets. `ChunkDebugView` marks water samples. Water work is time-budgeted (`buildBudgetMs` 1.5, `flowBudgetMs` 2.5; `WaterView.LastUpdateMilliseconds`; `Docs/benchmarks.md`).
 Swimming (GL316): `PlayerSwimming` (from `WaterQuery`) sets `PlayerController.Submersion`; `UnderwaterTint` tints the screen.
 Torches burn with a `FlameCluster` of dancing low-poly tongues (GL314). `DemoBuild` rebuilds the gitignored texture array (GL317).
+GL318: `WaterFill` fills to the real ground and runs lakes over low shores (dry cells only, across chunk faces); a cell's
+water never rises over its own level; slope ridges fade by water (`WaterMap.ShoreFade`); the mesher smooths thin runs
+and marks bank triangles for foam (UV3). GL319: the wooden bucket (`BucketDefinition`, water in `ItemStack.Wear`;
+`WaterScoop`; `PlayerBucket` on Player, Attack scoops, Place pours).
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

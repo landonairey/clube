@@ -43,6 +43,8 @@ namespace Clube.Core
         private HashSet<Vector3Int> awake = new HashSet<Vector3Int>();
         private HashSet<Vector3Int> stepping = new HashSet<Vector3Int>();
         private readonly List<Vector3Int> batch = new List<Vector3Int>();
+        private readonly List<Vector3Int> carry = new List<Vector3Int>();
+        private readonly HashSet<Vector3Int> carried = new HashSet<Vector3Int>();
         private readonly List<Vector3Int> targets = new List<Vector3Int>();
 
         public LiveWater(World world, WaterMap map, float iso)
@@ -63,7 +65,7 @@ namespace Clube.Core
         public IReadOnlyCollection<Vector3Int> Flowing => flowing;
 
         /// <summary>Samples waiting to be looked at.</summary>
-        public int AwakeCount => awake.Count;
+        public int AwakeCount => awake.Count + carry.Count;
 
         /// <summary>Wakes a sample and the six round it.</summary>
         public void Wake(Vector3Int sample)
@@ -113,7 +115,7 @@ namespace Clube.Core
         /// </summary>
         public int Step(int max = 5000, float budgetMs = 0f)
         {
-            if (awake.Count == 0)
+            if (awake.Count == 0 && carry.Count == 0)
             {
                 return 0;
             }
@@ -128,6 +130,15 @@ namespace Clube.Core
             stepping = now;
             // Lowest first, so water lands before what's above it looks.
             batch.Sort(ByHeight);
+            // What the last step had no time for goes first, so busy water low down never starves water higher up.
+            if (carry.Count > 0)
+            {
+                carried.Clear();
+                carried.UnionWith(carry);
+                batch.RemoveAll(sample => carried.Contains(sample));
+                batch.InsertRange(0, carry);
+                carry.Clear();
+            }
             int changed = 0;
             int done = batch.Count;
             for (int i = 0; i < batch.Count; i++)
@@ -144,7 +155,7 @@ namespace Clube.Core
             }
             for (int i = done; i < batch.Count; i++)
             {
-                awake.Add(batch[i]);
+                carry.Add(batch[i]);
             }
             return changed;
         }

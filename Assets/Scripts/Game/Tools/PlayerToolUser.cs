@@ -116,10 +116,10 @@ namespace Clube.Game
 
         /// <summary>
         /// The tool in hand: the selected hotbar slot's, or the hand. Null with neither, and while
-        /// a placeable item is selected (the hands are carrying it, GL23).
+        /// a placeable item or a bucket is selected (the hands are carrying it, GL23, GL319).
         /// </summary>
         public ToolDefinition Current => hotbar == null ? hand
-            : hotbar.SelectedStack.Item is PlaceableDefinition ? null
+            : hotbar.SelectedStack.Item is PlaceableDefinition || hotbar.SelectedStack.Item is BucketDefinition ? null
             : hotbar.ToolStack.Item is ToolDefinition tool ? tool
             : hand;
 

@@ -23,16 +23,19 @@ namespace Clube.Core
         private readonly List<Vector2> flows = new List<Vector2>();
         private readonly List<Vector4> looks = new List<Vector4>();
         private readonly List<Vector4> ripples = new List<Vector4>();
+        private readonly List<Vector2> banks = new List<Vector2>();
         private readonly List<int> triangles = new List<int>();
         private float[] field;
         private bool[] solid;
         private Vector3Int padded;
         private float[] water;
+        private float[] smoothed;
         private readonly Chunk[] around = new Chunk[27];
         private readonly float[] corner = new float[8];
         private readonly bool[] cornerSolid = new bool[8];
         private readonly Vector3[] edgePoint = new Vector3[12];
         private readonly bool[] edgeInGround = new bool[12];
+        private readonly bool[] edgeAtBank = new bool[12];
         // The padded rows holding any water: the cubes looked at are only those near them.
         private int lowRow;
         private int highRow;
@@ -49,6 +52,9 @@ namespace Clube.Core
         /// <summary>UV2: the river's flow (x, z) at the vertex and whether it's river, for the ripples.</summary>
         public List<Vector4> Ripples => ripples;
 
+        /// <summary>UV3: 1 on triangles meeting the bank, where the shader laps foam (GL318).</summary>
+        public List<Vector2> Banks => banks;
+
         public List<int> Triangles => triangles;
 
         /// <summary>Builds a chunk's water surface into the lists. Returns false when there's nothing to draw.</summary>
@@ -58,6 +64,7 @@ namespace Clube.Core
             flows.Clear();
             looks.Clear();
             ripples.Clear();
+            banks.Clear();
             triangles.Clear();
             WorldGrid grid = world.Grid;
             Vector3Int size = grid.ChunkSize;
@@ -101,6 +108,7 @@ namespace Clube.Core
                             var p1 = new Vector3(x + MarchingCubesTables.CornerOffsets[c1, 0], y + MarchingCubesTables.CornerOffsets[c1, 1], z + MarchingCubesTables.CornerOffsets[c1, 2]);
                             edgePoint[e] = Vector3.Lerp(p0, p1, t) * voxel;
                             edgeInGround[e] = cornerSolid[c0] && cornerSolid[c1];
+                            edgeAtBank[e] = cornerSolid[c0] || cornerSolid[c1];
                         }
                         for (int k = 0; k < 15 && MarchingCubesTables.Triangles[cube, k] >= 0; k += 3)
                         {
@@ -109,7 +117,8 @@ namespace Clube.Core
                             {
                                 continue;
                             }
-                            AddTriangle(edgePoint[e0], edgePoint[e1], edgePoint[e2], origin, map);
+                            bool bank = edgeAtBank[e0] || edgeAtBank[e1] || edgeAtBank[e2];
+                            AddTriangle(edgePoint[e0], edgePoint[e1], edgePoint[e2], origin, map, bank);
                         }
                     }
                 }
@@ -180,6 +189,7 @@ namespace Clube.Core
             {
                 return false;
             }
+            Smooth();
             // Solid samples take the most water of the air beside and above them.
             for (int z = 0; z < padded.z; z++)
             {
@@ -227,6 +237,67 @@ namespace Clube.Core
                 inChunk = local;
             }
         }
+
+        // Running water is uneven sample to sample (it moves in packets), which drew streams full of holes and spikes
+        // (GL318). For the drawing only: a dry or thin sample standing on something, with water on most of the open sides
+        // round it, is drawn as water; a lone thin sample with no water anywhere beside it isn't drawn at all.
+        private void Smooth()
+        {
+            smoothed ??= new float[water.Length];
+            if (smoothed.Length != water.Length)
+            {
+                smoothed = new float[water.Length];
+            }
+            System.Array.Copy(water, smoothed, water.Length);
+            int dx = 1, dy = padded.x, dz = padded.x * padded.y;
+            for (int z = 1; z < padded.z - 1; z++)
+            {
+                for (int y = 1; y < padded.y - 1; y++)
+                {
+                    for (int x = 1; x < padded.x - 1; x++)
+                    {
+                        int i = Index(x, y, z);
+                        float own = water[i];
+                        smoothed[i] = own;
+                        if (solid[i])
+                        {
+                            continue;
+                        }
+                        float sum = 0f;
+                        int open = 0, wet = 0;
+                        Neighbour(i + dx, ref sum, ref open, ref wet);
+                        Neighbour(i - dx, ref sum, ref open, ref wet);
+                        Neighbour(i + dz, ref sum, ref open, ref wet);
+                        Neighbour(i - dz, ref sum, ref open, ref wet);
+                        if (own <= 0f || own < 0.75f)
+                        {
+                            bool heldUp = solid[i - dy] || water[i - dy] > 0f;
+                            if (heldUp && open > 0 && wet >= 2 && sum / open * 0.95f >= Iso)
+                            {
+                                smoothed[i] = Mathf.Max(own, sum / open * 0.95f);
+                                continue;
+                            }
+                        }
+                        if (own > 0f && own < 0.75f && wet == 0 && water[i + dy] <= 0f && water[i - dy] <= 0f)
+                        {
+                            smoothed[i] = 0f;
+                        }
+                    }
+                }
+            }
+            (water, smoothed) = (smoothed, water);
+        }
+
+        private void Neighbour(int n, ref float sum, ref int open, ref int wet)
+        {
+            if (solid[n])
+            {
+                return;
+            }
+            open++;
+            sum += water[n];
+            wet += water[n] > 0f ? 1 : 0;
+        }
         private void Take(int x, int y, int z, ref float best, float[] water)
         {
             if (x < 0 || y < 0 || z < 0 || x >= padded.x || y >= padded.y || z >= padded.z)
@@ -245,7 +316,7 @@ namespace Clube.Core
             return x + padded.x * (y + padded.y * z);
         }
 
-        private void AddTriangle(Vector3 a, Vector3 b, Vector3 c, Vector3 origin, in WaterMap map)
+        private void AddTriangle(Vector3 a, Vector3 b, Vector3 c, Vector3 origin, in WaterMap map, bool bank)
         {
             Vector3 normal = Vector3.Cross(b - a, c - a);
             if (normal.sqrMagnitude < 1e-12f)
@@ -292,18 +363,19 @@ namespace Clube.Core
             // Speed by slope: a gentle run creeps, a steep one races.
             Vector2 flow = along * Mathf.Clamp(0.15f + slope * 6f, 0.15f, 3f);
             var look = new Vector4(centre.x, centre.y, centre.z, kind);
-            AddVertex(a, flow, look, origin, map);
-            AddVertex(b, flow, look, origin, map);
-            AddVertex(c, flow, look, origin, map);
+            AddVertex(a, flow, look, origin, map, bank);
+            AddVertex(b, flow, look, origin, map, bank);
+            AddVertex(c, flow, look, origin, map, bank);
         }
 
-        private void AddVertex(Vector3 p, Vector2 flow, Vector4 look, Vector3 origin, in WaterMap map)
+        private void AddVertex(Vector3 p, Vector2 flow, Vector4 look, Vector3 origin, in WaterMap map, bool bank)
         {
             triangles.Add(vertices.Count);
             vertices.Add(p);
             flows.Add(flow);
             looks.Add(look);
             ripples.Add(RippleAt(origin + p, map));
+            banks.Add(new Vector2(bank ? 1f : 0f, 0f));
         }
 
         // The river's flow at a point and whether it's river, from the map alone, so every triangle sharing a corner

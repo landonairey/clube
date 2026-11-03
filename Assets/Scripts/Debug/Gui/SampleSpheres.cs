@@ -103,14 +103,27 @@ namespace Clube.Debug
         /// <summary>Shades each sphere by its sample's density. Call after <see cref="SetGeometry"/>.</summary>
         public void SetDensities(Func<Vector3Int, float> densityAt, float opacity)
         {
+            SetDensities(densityAt, null, opacity);
+        }
+
+        /// <summary>
+        /// Shades each sphere by its sample's density, and a sample holding water (GL318) blue instead, brighter the fuller
+        /// it is and fully opaque, so the water shows in the same grid as the ground.
+        /// </summary>
+        public void SetDensities(Func<Vector3Int, float> densityAt, Func<Vector3Int, float> waterAt, float opacity)
+        {
             int perSphere = sphereVertices.Count;
             byte alpha = (byte)(Mathf.Clamp01(opacity) * 255f);
             colors.Clear();
             int total = Total(builtCount);
             for (int i = 0; i < total; i++)
             {
-                byte grey = (byte)(Mathf.Clamp01(densityAt(SampleAt(i, builtCount))) * 255f);
-                var color = new Color32(grey, grey, grey, alpha);
+                Vector3Int sample = SampleAt(i, builtCount);
+                float water = waterAt != null ? waterAt(sample) : 0f;
+                byte grey = (byte)(Mathf.Clamp01(densityAt(sample)) * 255f);
+                Color32 color = water > 0f
+                    ? (Color32)Color.Lerp(new Color(0.1f, 0.25f, 0.55f), new Color(0.3f, 0.7f, 1f), water)
+                    : new Color32(grey, grey, grey, alpha);
                 for (int v = 0; v < perSphere; v++)
                 {
                     colors.Add(color);

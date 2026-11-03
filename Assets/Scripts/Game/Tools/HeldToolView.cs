@@ -223,14 +223,16 @@ namespace Clube.Game
             }
             EnsureHeld();
             ToolDefinition tool = toolUser.Current;
-            bool visible = tool != null && player != null && player.enabled && !player.IsInMenu;
+            // A torch or a bucket selected is held in place of the hand (GL287, GL319).
+            ItemDefinition selected = hotbar != null ? hotbar.SelectedStack.Item : null;
+            bool carried = selected is TorchDefinition || selected is BucketDefinition;
+            bool visible = (tool != null || carried) && player != null && player.enabled && !player.IsInMenu;
             held.SetActive(visible);
             if (!visible)
             {
                 return;
             }
-            // A torch selected is held in place of the hand (GL287).
-            ItemDefinition item = hotbar != null && hotbar.SelectedStack.Item is TorchDefinition torch ? torch : tool;
+            ItemDefinition item = carried ? selected : tool;
             if (!shownSet || item != shown)
             {
                 shown = item;
@@ -324,7 +326,9 @@ namespace Clube.Game
         {
             if (!meshes.TryGetValue(item, out Mesh mesh))
             {
-                mesh = item is TorchDefinition torch ? HeldToolMeshes.BuildTorch(torch.IsLit) : HeldToolMeshes.Build(item as ToolDefinition);
+                mesh = item is TorchDefinition torch ? HeldToolMeshes.BuildTorch(torch.IsLit)
+                    : item is BucketDefinition ? HeldToolMeshes.BuildBucket()
+                    : HeldToolMeshes.Build(item as ToolDefinition);
                 meshes.Add(item, mesh);
             }
             return mesh;

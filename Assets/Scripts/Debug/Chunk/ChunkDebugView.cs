@@ -56,7 +56,7 @@ namespace Clube.Debug
         [SerializeField]
         private Wireframe wireframe = Wireframe.Outline;
 
-        [Tooltip("Mark every sample holding water (GL315) with a blue diamond, sized by how full it is.")]
+        [Tooltip("Colour the density samples holding water (GL315, GL318) blue in the same sample grid, brighter the fuller.")]
         [SerializeField]
         private bool showWater = true;
 
@@ -83,7 +83,6 @@ namespace Clube.Debug
         private SampleSpheres samples;
         private LabMeshObject outline;
         private LabMeshObject grid;
-        private LabMeshObject waterMarks;
         private Chunk waterChunk;
         private int waterVersion = -1;
         private Material ownedSampleMaterial;
@@ -160,7 +159,6 @@ namespace Clube.Debug
             }
             SetVisible(outline, false);
             SetVisible(grid, false);
-            SetVisible(waterMarks, false);
         }
 
         private void OnDestroy()
@@ -168,7 +166,6 @@ namespace Clube.Debug
             samples?.Dispose();
             outline?.Dispose();
             grid?.Dispose();
-            waterMarks?.Dispose();
             LabMeshObject.DestroyNow(ownedSampleMaterial);
             LabMeshObject.DestroyNow(ownedLineMaterial);
         }
@@ -192,7 +189,9 @@ namespace Clube.Debug
             Chunk current = target.Chunk;
             if (showWater && current != null && (current != waterChunk || current.WaterVersion != waterVersion))
             {
-                RefreshWater(current, target.VoxelSize);
+                waterChunk = current;
+                waterVersion = current.WaterVersion;
+                RefreshSamples(current, target.VoxelSize);
             }
 
             // Step-through draws the samples itself, coloured by step; this check is
@@ -240,7 +239,6 @@ namespace Clube.Debug
                 }
                 SetVisible(outline, false);
                 SetVisible(grid, false);
-                SetVisible(waterMarks, false);
                 return;
             }
 
@@ -248,7 +246,7 @@ namespace Clube.Debug
             RefreshOutline(chunk.VoxelCount, voxelSize);
             RefreshGrid(chunk.VoxelCount, voxelSize);
             RefreshSamples(chunk, voxelSize);
-            RefreshWater(chunk, voxelSize);
+
         }
 
         private bool WantsSamples()
@@ -271,70 +269,8 @@ namespace Clube.Debug
 
             samples ??= new SampleSpheres(transform, "Density Samples", SampleMaterial());
             samples.SetGeometry(chunk.SampleCount, voxelSize, cornerRadius);
-            samples.SetDensities(chunk.GetDensity, sampleOpacity);
+            samples.SetDensities(chunk.GetDensity, showWater ? chunk.GetWater : (System.Func<Vector3Int, float>)null, sampleOpacity);
             samples.Visible = WantsSamples();
-        }
-
-        // A blue diamond on every sample holding water (GL315), sized by how full it is, so the focused chunk shows which
-        // samples are water.
-        private void RefreshWater(Chunk chunk, float voxelSize)
-        {
-            waterChunk = chunk;
-            waterVersion = chunk.WaterVersion;
-            if (!showWater || !chunk.HasWater)
-            {
-                SetVisible(waterMarks, false);
-                return;
-            }
-            waterMarks ??= new LabMeshObject(transform, "Water Samples", SampleMaterial());
-            scratchVertices.Clear();
-            scratchIndices.Clear();
-            var colors = new List<Color>();
-            Vector3Int count = chunk.SampleCount;
-            float most = voxelSize * 0.32f;
-            for (int z = 0; z < count.z; z++)
-            {
-                for (int y = 0; y < count.y; y++)
-                {
-                    for (int x = 0; x < count.x; x++)
-                    {
-                        var sample = new Vector3Int(x, y, z);
-                        float amount = chunk.GetWater(sample);
-                        if (amount <= 0f)
-                        {
-                            continue;
-                        }
-                        Vector3 centre = (Vector3)sample * voxelSize;
-                        float r = most * Mathf.Lerp(0.35f, 1f, amount);
-                        var color = new Color(0.15f, 0.55f, 1f, 0.9f);
-                        int first = scratchVertices.Count;
-                        scratchVertices.Add(centre + Vector3.up * r);
-                        scratchVertices.Add(centre + Vector3.down * r);
-                        scratchVertices.Add(centre + Vector3.right * r);
-                        scratchVertices.Add(centre + Vector3.left * r);
-                        scratchVertices.Add(centre + Vector3.forward * r);
-                        scratchVertices.Add(centre + Vector3.back * r);
-                        for (int v = 0; v < 6; v++)
-                        {
-                            colors.Add(v == 0 ? Color.Lerp(color, Color.white, 0.4f) : color);
-                        }
-                        int[] faces = { 0, 4, 2, 0, 2, 5, 0, 5, 3, 0, 3, 4, 1, 2, 4, 1, 5, 2, 1, 3, 5, 1, 4, 3 };
-                        foreach (int f in faces)
-                        {
-                            scratchIndices.Add(first + f);
-                        }
-                    }
-                }
-            }
-            Mesh mesh = waterMarks.Mesh;
-            mesh.Clear();
-            mesh.indexFormat = scratchVertices.Count > ushort.MaxValue ? IndexFormat.UInt32 : IndexFormat.UInt16;
-            mesh.SetVertices(scratchVertices);
-            mesh.SetColors(colors);
-            mesh.SetTriangles(scratchIndices, 0);
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
-            waterMarks.Visible = true;
         }
 
         private void RefreshOutline(Vector3Int voxelCount, float voxelSize)

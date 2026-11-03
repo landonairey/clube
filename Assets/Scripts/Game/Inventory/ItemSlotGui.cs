@@ -65,6 +65,14 @@ namespace Clube.Game
                     GUI.Label(Inset(rect, 3f), stack.Count.ToString(), countStyle);
                 }
                 DrawPurity(rect, stack);
+                if (stack.Item is BucketDefinition bucket)
+                {
+                    // The water in a bucket (GL319): a blue bar, and the units in the corner.
+                    float full = (float)bucket.WaterIn(stack) / bucket.Capacity;
+                    Fill(new Rect(rect.x + 4f, rect.yMax - 8f, rect.width - 8f, 4f), new Color(0.2f, 0.2f, 0.22f));
+                    Fill(new Rect(rect.x + 4f, rect.yMax - 8f, (rect.width - 8f) * full, 4f), new Color(0.3f, 0.6f, 0.85f));
+                    GUI.Label(Inset(rect, 3f), bucket.WaterIn(stack).ToString(), countStyle);
+                }
                 if (stack.MaxHits > 0 && (stack.Wear > 0 || stack.Quality < 0.995f))
                 {
                     // Wear bar along the bottom: green when fresh, red when nearly gone.
