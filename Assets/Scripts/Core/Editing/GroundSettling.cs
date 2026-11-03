@@ -6,13 +6,14 @@ namespace Clube.Core
 {
     /// <summary>
     /// Ground that falls (GL308, GL327). A sample of a material that falls (<see cref="VoxelMaterial.Fall"/>) with air under it
-    /// moves down one sample a step, unless it's held: ground that can hang (<see cref="GroundHold"/>) stays while a way of at
-    /// most its overhang leads sideways, through solid samples in its own layer, to ground standing on a solid column
-    /// (dirt holds 2 samples out, rock 5, and rock a sample further for each solid sample over it, so a cave under thick rock
-    /// keeps its ceiling where a thin lip breaks off). Sand never hangs, and also slides down a side where the slope is
-    /// steeper than 45°. Ground that lets go keeps falling until it lands, rather than catching on a wall on the way down.
-    /// Only samples near a change are looked at: every density change wakes the samples round it, a sample dug out wakes the
-    /// whole sheet of overhanging ground above it, and every move wakes the ones round where it left and landed, so a
+    /// moves down one sample a step, unless it's held. Ground has a stability: 100% where it stands on a solid column, the
+    /// same as the sample it rests on, and its material's loss (<see cref="GroundHold.StabilityLoss"/>) less for each sample
+    /// it reaches out sideways or hangs under its neighbour; at 0% it lets go. Rock loses nothing, so it holds while it's
+    /// joined to standing ground at all (any cave ceiling joined to its walls) and only a piece cut off falls, as one; dirt
+    /// loses 34%, so it hangs two samples out; sand never hangs, and also slides down a side where the slope is steeper than
+    /// 45°. Ground that lets go keeps falling until it lands, rather than catching on a wall on the way down.
+    /// Only samples near a change are looked at: every density change wakes the samples round it, the loose ground joined
+    /// to a woken sample is measured as a whole, and every move wakes the ones round where it left and landed, so a
     /// dug-out bank crumbles and stops once everything rests. Moves swap the two samples' densities and materials through
     /// the world's edit path (A7), so the ground keeps its volume and chunk borders and meshes follow.
     /// </summary>
@@ -23,8 +24,16 @@ namespace Clube.Core
         /// <summary>Solid samples under a sample, straight down, that make it stand on the ground (3 m at 0.25 m voxels).</summary>
         public const int GroundDepth = 12;
 
-        /// <summary>Most samples of one overhanging sheet looked at in a step; past it the sheet is taken as held.</summary>
-        public const int MaxSheet = 4096;
+        /// <summary>
+        /// Most samples of loose ground (not standing) gathered round one that could hang in a step; past it the ground is
+        /// taken as held, being too big to be a loose piece.
+        /// </summary>
+        public const int MaxRegion = 4096;
+
+        private static readonly Vector3Int[] Around =
+        {
+            Vector3Int.up, Vector3Int.down, Vector3Int.right, Vector3Int.left, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
+        };
 
         private readonly GroundHold[] holds = new GroundHold[256];
         private readonly float iso;
@@ -33,12 +42,22 @@ namespace Clube.Core
         private readonly List<Vector3Int> batch = new List<Vector3Int>();
         private readonly HashSet<Vector3Int> falling = new HashSet<Vector3Int>();
         private readonly HashSet<Vector3Int> letGo = new HashSet<Vector3Int>();
-        private readonly HashSet<Vector3Int> sheetSeen = new HashSet<Vector3Int>();
+        private readonly HashSet<Vector3Int> regionSeen = new HashSet<Vector3Int>();
         private readonly Dictionary<Vector3Int, bool> standing = new Dictionary<Vector3Int, bool>();
-        private readonly List<Vector3Int> sheet = new List<Vector3Int>();
-        private readonly Dictionary<Vector3Int, int> reachOut = new Dictionary<Vector3Int, int>();
-        private readonly Queue<Vector3Int> frontier = new Queue<Vector3Int>();
+        private readonly List<Vector3Int> region = new List<Vector3Int>();
+        private readonly Dictionary<Vector3Int, int> stability = new Dictionary<Vector3Int, int>();
+        private readonly List<Vector3Int>[] buckets = NewBuckets();
         private int turn;
+
+        private static List<Vector3Int>[] NewBuckets()
+        {
+            var lists = new List<Vector3Int>[101];
+            for (int i = 0; i < lists.Length; i++)
+            {
+                lists[i] = new List<Vector3Int>();
+            }
+            return lists;
+        }
 
         /// <param name="fallOf">How each material id falls; none of them hangs (the GL308 behaviour).</param>
         public GroundSettling(World world, Func<byte, GroundFall> fallOf, float iso)
@@ -157,114 +176,104 @@ namespace Clube.Core
             return false;
         }
 
-        // Which awake samples that can hang have let go this step: for each sheet of overhanging ground (solid samples
-        // with air under them, joined sideways in one layer) holding an awake one, how far each of its samples is from
-        // ground standing on a column, counted out from that ground; a sample further than its reach lets go.
+        // Which samples have let go this step (GL327). For each awake sample that could hang, the solid ground joined to it
+        // is gathered, stopping at ground that stands (a solid column under it), which is 100% stable. Stability spreads
+        // out from there, highest first: resting on a sample keeps its stability, reaching out sideways or hanging under
+        // one costs the material's loss. Whatever ends at 0% (cut off from standing ground, or hanging too far out) lets go.
         private void FindLetGo()
         {
             letGo.Clear();
-            sheetSeen.Clear();
+            regionSeen.Clear();
             standing.Clear();
             foreach (Vector3Int sample in batch)
             {
-                if (sheetSeen.Contains(sample) || falling.Contains(sample) || !IsHangingCandidate(sample))
+                if (regionSeen.Contains(sample) || falling.Contains(sample) || !IsHangingCandidate(sample))
                 {
                     continue;
                 }
-                MeasureSheet(sample);
+                MeasureRegion(sample);
             }
         }
 
         private bool IsHangingCandidate(Vector3Int sample)
         {
-            if (!IsSolid(sample, out byte material) || !holds[material].CanHang || holds[material].Fall == GroundFall.Stays)
-            {
-                return false;
-            }
-            return IsAir(sample + Vector3Int.down);
+            return IsSolid(sample, out byte material) && holds[material].CanHang && IsAir(sample + Vector3Int.down);
         }
 
-        private void MeasureSheet(Vector3Int start)
+        private void MeasureRegion(Vector3Int start)
         {
-            // The sheet: every overhanging sample joined to this one in its layer.
-            sheet.Clear();
-            reachOut.Clear();
-            frontier.Clear();
-            sheetSeen.Add(start);
-            sheet.Add(start);
-            for (int i = 0; i < sheet.Count && sheet.Count < MaxSheet; i++)
+            region.Clear();
+            stability.Clear();
+            for (int i = 0; i <= 100; i++)
             {
-                foreach (Vector3Int side in Sides)
+                buckets[i].Clear();
+            }
+            regionSeen.Add(start);
+            region.Add(start);
+            for (int i = 0; i < region.Count; i++)
+            {
+                Vector3Int sample = region[i];
+                if (IsStanding(sample))
                 {
-                    Vector3Int next = sheet[i] + side;
-                    if (sheetSeen.Contains(next) || !IsSolid(next, out _) || !IsAir(next + Vector3Int.down))
+                    stability[sample] = 100;
+                    buckets[100].Add(sample);
+                    continue;
+                }
+                if (region.Count >= MaxRegion)
+                {
+                    // Too much loose ground to measure in a step: taken as held.
+                    return;
+                }
+                foreach (Vector3Int step in Around)
+                {
+                    Vector3Int next = sample + step;
+                    if (!regionSeen.Contains(next) && IsSolid(next, out _))
+                    {
+                        regionSeen.Add(next);
+                        region.Add(next);
+                    }
+                }
+            }
+            for (int level = 100; level > 0; level--)
+            {
+                List<Vector3Int> bucket = buckets[level];
+                for (int i = 0; i < bucket.Count; i++)
+                {
+                    Vector3Int from = bucket[i];
+                    if (stability[from] != level)
                     {
                         continue;
                     }
-                    sheetSeen.Add(next);
-                    sheet.Add(next);
-                }
-            }
-            if (sheet.Count >= MaxSheet)
-            {
-                // Too big to measure in a step: taken as held.
-                return;
-            }
-            // Out from the ground that stands: each sheet sample beside a standing one is 1 out, and so on.
-            foreach (Vector3Int sample in sheet)
-            {
-                foreach (Vector3Int side in Sides)
-                {
-                    Vector3Int next = sample + side;
-                    if (!reachOut.ContainsKey(sample) && IsStanding(next))
+                    foreach (Vector3Int step in Around)
                     {
-                        reachOut[sample] = 1;
-                        frontier.Enqueue(sample);
+                        Vector3Int to = from + step;
+                        if (!regionSeen.Contains(to) || !IsSolid(to, out byte material))
+                        {
+                            continue;
+                        }
+                        // Resting on it costs nothing; reaching out or hanging under it costs the material's loss.
+                        GroundHold hold = holds[material];
+                        int loss = step == Vector3Int.up || hold.Fall == GroundFall.Stays ? 0 : hold.StabilityLoss;
+                        int value = level - loss;
+                        if (value > 0 && (!stability.TryGetValue(to, out int known) || value > known))
+                        {
+                            stability[to] = value;
+                            buckets[value].Add(to);
+                        }
                     }
                 }
             }
-            while (frontier.Count > 0)
+            foreach (Vector3Int sample in region)
             {
-                Vector3Int sample = frontier.Dequeue();
-                int distance = reachOut[sample];
-                foreach (Vector3Int side in Sides)
-                {
-                    Vector3Int next = sample + side;
-                    if (sheetSeen.Contains(next) && !reachOut.ContainsKey(next) && IsSolid(next, out _) && IsAir(next + Vector3Int.down))
-                    {
-                        reachOut[next] = distance + 1;
-                        frontier.Enqueue(next);
-                    }
-                }
-            }
-            foreach (Vector3Int sample in sheet)
-            {
-                if (!IsSolid(sample, out byte material) || !holds[material].CanHang)
+                if (stability.ContainsKey(sample) || !IsSolid(sample, out byte material) || holds[material].Fall == GroundFall.Stays)
                 {
                     continue;
                 }
-                GroundHold hold = holds[material];
-                int reach = hold.Overhang + Mathf.Min(SolidAbove(sample, hold.ArchReach), hold.ArchReach);
-                if (!reachOut.TryGetValue(sample, out int distance) || distance > reach)
-                {
-                    letGo.Add(sample);
-                    awake.Add(sample);
-                }
+                letGo.Add(sample);
+                awake.Add(sample);
             }
         }
 
-        // Solid samples stacked straight over a sample, counted up to most.
-        private int SolidAbove(Vector3Int sample, int most)
-        {
-            int count = 0;
-            for (Vector3Int up = sample + Vector3Int.up; count < most && IsSolid(up, out _); up += Vector3Int.up)
-            {
-                count++;
-            }
-            return count;
-        }
-
-        // Ground that stands: solid, on a solid column GroundDepth samples deep (or reaching unloaded ground).
         private bool IsStanding(Vector3Int sample)
         {
             if (standing.TryGetValue(sample, out bool known))

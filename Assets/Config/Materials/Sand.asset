@@ -29,8 +29,7 @@ MonoBehaviour:
   windSway: 0
   shine: 0
   fall: 2
-  overhang: 0
-  archReach: 0
+  stabilityLoss: 100
   breaksInto: {fileID: 0}
   isWorktop: 0
   isSoft: 1

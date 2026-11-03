@@ -16,28 +16,25 @@ namespace Clube.Core
     }
 
     /// <summary>
-    /// How a material holds over air (GL327): how it falls once it lets go (<see cref="GroundFall"/>), how many samples out it
-    /// can hang held sideways by ground that stands on something, and how much further for each solid sample over it.
+    /// How a material holds over air (GL327): how it falls once it lets go (<see cref="GroundFall"/>), and the stability it
+    /// loses, in percent, for each sample it reaches out sideways or hangs under its neighbour. Ground standing on a solid
+    /// column is 100% stable, ground resting on a sample keeps that sample's stability, and ground at 0% falls.
     /// </summary>
     public readonly struct GroundHold
     {
-        public GroundHold(GroundFall fall, int overhang = 0, int archReach = 0)
+        public GroundHold(GroundFall fall, int stabilityLoss = 100)
         {
             Fall = fall;
-            Overhang = overhang;
-            ArchReach = archReach;
+            StabilityLoss = Mathf.Clamp(stabilityLoss, 0, 100);
         }
 
         public GroundFall Fall { get; }
 
-        /// <summary>Samples out over air it can hang; 0: it falls whenever there's air under it.</summary>
-        public int Overhang { get; }
-
-        /// <summary>Extra overhang for each solid sample stacked over it, up to this many (cave ceilings).</summary>
-        public int ArchReach { get; }
+        /// <summary>Percent lost per sample out or under: 0 holds while joined to the ground (rock), 100 never hangs (sand).</summary>
+        public int StabilityLoss { get; }
 
         /// <summary>Whether anything can hold it over air.</summary>
-        public bool CanHang => Overhang > 0 || ArchReach > 0;
+        public bool CanHang => Fall != GroundFall.Stays && StabilityLoss < 100;
     }
 
     /// <summary>How dropped material of a kind piles up (GL17).</summary>
@@ -157,15 +154,12 @@ namespace Clube.Core
         [SerializeField]
         private GroundFall fall;
 
-        [Tooltip("How many samples out it can hang over air before it falls (GL327): held sideways through solid ground to " +
-                 "ground standing on a solid column. 0: it falls whenever there's air under it (sand). Only for ground that falls.")]
-        [SerializeField, Range(0, 16)]
-        private int overhang;
-
-        [Tooltip("Extra overhang for each solid sample stacked over it, up to this many (GL327): thick rock arches over a cave " +
-                 "where a thin lip of it breaks off.")]
-        [SerializeField, Range(0, 16)]
-        private int archReach;
+        [Tooltip("Stability it loses, in percent, for each sample it reaches out sideways or hangs under its neighbour (GL327). " +
+                 "Ground standing on a solid column is 100% stable and ground resting on a sample keeps that sample's stability; " +
+                 "at 0% it falls. 0: it holds while it's joined to the ground at all (rock). 34: two samples out hold (dirt). " +
+                 "100: it falls whenever there's air under it (sand). Only for ground that falls.")]
+        [SerializeField, Range(0, 100)]
+        private int stabilityLoss = 100;
 
         [Tooltip("What a tool turns it into once broken (MF5, GL3), e.g. stone → cracked stone → loose stone. None: breaking it removes it and gives its drop.")]
         [SerializeField]
@@ -292,7 +286,7 @@ namespace Clube.Core
         public GroundFall Fall => fall;
 
         /// <summary>How it falls and how far it holds over air (GL327).</summary>
-        public GroundHold Hold => new GroundHold(fall, overhang, archReach);
+        public GroundHold Hold => new GroundHold(fall, stabilityLoss);
 
         /// <summary>
         /// How rough its surface is drawn, 0-1 (GL268): rock fully (bumps and cracks on stone faces), soft ground a little,

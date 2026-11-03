@@ -131,12 +131,12 @@ namespace Clube.Core.Tests
             Assert.That(world.GetDensity(new Vector3Int(4, 1, 4)), Is.EqualTo(1f));
         }
 
-        // GL327: dirt hangs 2 samples out, stone 5 and a sample more for each solid one over it (up to 10).
+        // GL327: dirt loses 34% a sample out (two hold), stone nothing (it holds while joined to standing ground).
         private static GroundHold HoldOf(byte id)
         {
-            return id == Dirt ? new GroundHold(GroundFall.Drops, 2)
-                : id == Stone ? new GroundHold(GroundFall.Drops, 5, 10)
-                : new GroundHold(GroundFall.Slides);
+            return id == Dirt ? new GroundHold(GroundFall.Drops, 34)
+                : id == Stone ? new GroundHold(GroundFall.Drops, 0)
+                : new GroundHold(GroundFall.Slides, 100);
         }
 
         // One 16³ chunk of 1 m samples, all air but a stone floor at y = 0 (the unloaded ground under it holds it up).
@@ -195,15 +195,29 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void StoneLip_HoldsFiveOut_TheSixthFalls()
+        public void StoneLip_HoldsWhileJoinedToTheWall()
         {
-            World world = Lip(Stone, 6);
+            World world = Lip(Stone, 12);
             using var settling = new GroundSettling(world, HoldOf, 0.5f);
-            settling.Wake(new Vector3Int(1, 4, 8));
+            settling.Wake(new Vector3Int(12, 4, 8));
             Settle(settling, 100);
-            Assert.That(world.GetDensity(new Vector3Int(5, 4, 8)), Is.EqualTo(1f), "five out holds");
-            Assert.That(world.GetDensity(new Vector3Int(6, 4, 8)), Is.LessThan(0.5f), "the sixth lets go");
-            Assert.That(world.GetDensity(new Vector3Int(6, 1, 8)), Is.EqualTo(1f));
+            Assert.That(world.GetDensity(new Vector3Int(12, 4, 8)), Is.EqualTo(1f), "rock joined to standing ground holds");
+        }
+
+        [Test]
+        public void FloatingStonePair_FallsTogether()
+        {
+            World world = Room();
+            Put(world, new Vector3Int(4, 5, 8), Stone);
+            Put(world, new Vector3Int(5, 5, 8), Stone);
+            Put(world, new Vector3Int(5, 6, 8), Stone);
+            using var settling = new GroundSettling(world, HoldOf, 0.5f);
+            settling.Wake(new Vector3Int(4, 5, 8));
+            Settle(settling, 100);
+            Assert.That(world.GetDensity(new Vector3Int(4, 1, 8)), Is.EqualTo(1f), "a piece joined to nothing falls");
+            Assert.That(world.GetDensity(new Vector3Int(5, 1, 8)), Is.EqualTo(1f));
+            Assert.That(world.GetDensity(new Vector3Int(5, 2, 8)), Is.EqualTo(1f), "keeping its shape");
+            Assert.That(world.GetDensity(new Vector3Int(4, 2, 8)), Is.LessThan(0.5f));
         }
 
         [Test]
@@ -256,25 +270,24 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void ThickRockCeiling_Holds_AThinOneFalls()
+        public void CaveCeiling_HoldsWhileJoinedToItsWalls_FallsWhenCutFree()
         {
-            // 13 wide: the middle is 7 from a wall, past stone's 5 but within 5 + the rock over it.
-            World thick = Tunnel(13, 4);
-            using (var settling = new GroundSettling(thick, HoldOf, 0.5f))
-            {
-                settling.Wake(new Vector3Int(7, 3, 8));
-                Settle(settling, 100);
-            }
-            Assert.That(thick.GetDensity(new Vector3Int(7, 3, 8)), Is.EqualTo(1f), "a cave under thick rock keeps its ceiling");
+            // A 14-wide cave under a ceiling one sample thick: rock joined to its walls holds at any span.
+            World world = Tunnel(14, 0);
+            using var settling = new GroundSettling(world, HoldOf, 0.5f);
+            settling.Wake(new Vector3Int(7, 3, 8));
+            Settle(settling, 100);
+            Assert.That(world.GetDensity(new Vector3Int(7, 3, 8)), Is.EqualTo(1f), "the ceiling holds");
 
-            World thin = Tunnel(13, 0);
-            using (var settling = new GroundSettling(thin, HoldOf, 0.5f))
+            // Cut along both walls: the slab is joined to nothing and drops whole.
+            for (int z = 0; z <= 16; z++)
             {
-                settling.Wake(new Vector3Int(7, 3, 8));
-                Settle(settling, 100);
+                world.SetDensity(new Vector3Int(1, 3, z), 0f);
+                world.SetDensity(new Vector3Int(14, 3, z), 0f);
             }
-            Assert.That(thin.GetDensity(new Vector3Int(7, 3, 8)), Is.LessThan(0.5f), "a thin slab breaks in the middle");
-            Assert.That(thin.GetDensity(new Vector3Int(3, 3, 8)), Is.EqualTo(1f), "but holds near the walls");
+            Settle(settling, 100);
+            Assert.That(world.GetDensity(new Vector3Int(7, 3, 8)), Is.LessThan(0.5f), "the cut-free slab falls");
+            Assert.That(world.GetDensity(new Vector3Int(7, 1, 8)), Is.EqualTo(1f), "and lands on the floor");
         }
 
         // A basin: a bowl round the middle of the area, so water drains in and stands as a lake.
