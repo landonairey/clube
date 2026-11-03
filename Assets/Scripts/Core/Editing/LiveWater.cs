@@ -30,11 +30,18 @@ namespace Clube.Core
         /// <summary>Most samples water falls through empty air in one step (GL326): 2 m at 0.25 m voxels.</summary>
         public const int FallReach = 8;
 
-        /// <summary>Less water than this doesn't move sideways at all (it can still fall).</summary>
-        public const float MinAmount = 0.03f;
+        /// <summary>One step of water, a sixteenth of a sample (GL332): the least a sample holds or a move carries.</summary>
+        public const float Quantum = 1f / Chunk.WaterLevels;
 
-        /// <summary>Thinner water than this doesn't spread sideways (it can still fall).</summary>
-        public const float MinSpread = 0.06f;
+        /// <summary>Less water than this doesn't move sideways at all (it can still fall).</summary>
+        public const float MinAmount = Quantum;
+
+        /// <summary>
+        /// Thinner water than this (two steps) doesn't spread over flat ground, and a spread never leaves a film thinner
+        /// than it, so a puddle stops at its edge instead of thinning out for ever (GL332); one step of water joins the
+        /// wettest water beside it.
+        /// </summary>
+        public const float MinSpread = 2f * Quantum;
 
         /// <summary>Sideways flow stops once neighbours are this close, so the water settles.</summary>
         public const float SettleDifference = 0.015f;
@@ -323,7 +330,9 @@ namespace Clube.Core
                 {
                     continue;
                 }
-                bool drop = IsOpen(next + Vector3Int.down, out float under) && under < 0.98f;
+                // A drop counts as downhill only where the ground falls steeply enough (GL332); a one-sample ledge in
+                // ground close to flat is just a step of the staircase the voxels make of it.
+                bool drop = IsOpen(next + Vector3Int.down, out float under) && under < 0.98f && IsSteep(sample, step, next);
                 if (drop && !anyDrop)
                 {
                     anyDrop = true;
@@ -352,6 +361,11 @@ namespace Clube.Core
                 targets.Clear();
                 targets.Add(path);
             }
+            // On the flat, lowest neighbour first, each evening out with what's left.
+            if (!anyDrop && targets.Count > 1)
+            {
+                targets.Sort(byWater ??= ByWater);
+            }
             // A lone trickle moves whole down its way; water with more coming in behind it is a stream (GL330), which
             // evens out with the sample ahead and keeps its depth. Moved whole too, a fed trench's water leapfrogged
             // along the floor as beads with dry floor between them.
@@ -364,11 +378,20 @@ namespace Clube.Core
                 // A trickle heading downhill, over an edge or for one, goes all along its one way (GL323, GL325), so it
                 // stays together: kept back, the rest found the way just wetted no lower than itself and started a
                 // second vein. A stream, and water on the flat, evens out with the lower neighbours.
-                float give = Mathf.Min(1f - there, whole ? share / targets.Count : (share - there) / (targets.Count + 1));
-                // Heading downhill, a remainder too thin to move on its own goes too (GL324), so a trickle leaves no
-                // film behind it.
+                // On the flat it evens out with one neighbour at a time, so neighbours end no more than a step apart
+                // (shared out in one go, whole steps rounded every share to nothing while three steps apart, GL332).
+                float give = Mathf.Min(1f - there, whole ? share / targets.Count : (a - there) / 2f);
+                // A step apart, evening out would only swap the two, so water stops there; but water pressed from above
+                // (more water over it, or a river's) pushes its last step on, so ponds and dug holes fill level to their
+                // source instead of a step lower for each sample away from it (GL332).
+                if (!whole && give < Quantum && a - there > Quantum * 0.5f && (source > 0f || IsOpen(sample + Vector3Int.up, out float pressing) && pressing > 0f))
+                {
+                    give = Mathf.Min(1f - there, Quantum);
+                }
+                // A trickle heading downhill takes a remainder too thin to move on its own along (GL324), so it leaves no
+                // film behind it; a fed stream keeps its film (GL332).
                 float rest = a - give - source;
-                if (anyDrop && t == targets.Count - 1 && rest > 0f && rest < MinSpread)
+                if (whole && t == targets.Count - 1 && rest > 0f && rest < MinSpread)
                 {
                     give = Mathf.Min(1f - there, give + rest);
                 }
@@ -446,12 +469,12 @@ namespace Clube.Core
             return best;
         }
 
-        // Water is stored to 1/255 (Chunk.SetWater rounds). A move of a whole number of those steps changes both samples
-        // exactly; any other was rounded on each side, and the many small moves of a spill made water out of nothing
-        // (GL325: a 100-unit pour grew to 137).
+        // Water is stored in sixteenths (Chunk.WaterLevels, GL332). A move of whole steps changes both samples exactly; any
+        // other was rounded on each side, and the many small moves of a spill made water out of nothing (GL325: a 100-unit
+        // pour grew to 137).
         private static float Steps(float amount)
         {
-            return amount <= 0f ? 0f : Mathf.Floor(amount * 255f + 1e-3f) * (1f / 255f);
+            return amount <= 0f ? 0f : Mathf.Floor(amount * Chunk.WaterLevels + 1e-3f) * Quantum;
         }
 
         private static float Hash01(Vector3Int p)
@@ -508,6 +531,66 @@ namespace Clube.Core
         /// <summary>How far along the floor water looks for a drop to head for, like Minecraft's water.</summary>
         public const int DropSearch = 5;
 
+        /// <summary>
+        /// The gentlest ground water runs down (GL332), as fall over distance across <see cref="SlopeSpan"/> samples ahead:
+        /// 0.25 is about 14°. Gentler ground counts as flat, where water evens out and stops in puddles once it's two steps
+        /// deep, even where the voxels make the ground a staircase of one-sample ledges. A drop of two samples or more
+        /// (a cliff) is always downhill.
+        /// </summary>
+        public float MinFlowSlope { get; set; } = 0.25f;
+
+        /// <summary>How far ahead the ground's slope is measured: 8 samples, 2 m at 0.25 m voxels.</summary>
+        public const int SlopeSpan = 8;
+
+        private Comparison<Vector3Int> byWater;
+
+        private int ByWater(Vector3Int a, Vector3Int b)
+        {
+            IsOpen(a, out float wa);
+            IsOpen(b, out float wb);
+            return wa.CompareTo(wb);
+        }
+
+        // True when water standing at sample, heading one step towards the drop at 'at', is going downhill: a cliff of two
+        // samples or more there, or ground falling at least MinFlowSlope over the span ahead.
+        private bool IsSteep(Vector3Int sample, Vector3Int step, Vector3Int at)
+        {
+            return FallUnder(at) >= 2 || Descent(sample, step) >= MinFlowSlope * SlopeSpan;
+        }
+
+        // How far the ground falls, in samples, along a direction from a sample of standing water, over the span ahead
+        // (the most it falls; stops at ground rising to the water's level).
+        private int Descent(Vector3Int sample, Vector3Int step)
+        {
+            int most = 0;
+            for (int k = 1; k <= SlopeSpan; k++)
+            {
+                Vector3Int column = sample + step * k;
+                if (!IsOpen(column, out _))
+                {
+                    break;
+                }
+                int fall = 0;
+                for (Vector3Int below = column + Vector3Int.down; fall < SlopeSpan && IsOpen(below, out _); below += Vector3Int.down)
+                {
+                    fall++;
+                }
+                most = Mathf.Max(most, fall);
+            }
+            return most;
+        }
+
+        // Open samples under a sample, at most 4: how deep the drop there is.
+        private int FallUnder(Vector3Int at)
+        {
+            int fall = 0;
+            for (Vector3Int below = at + Vector3Int.down; fall < 4 && IsOpen(below, out float under) && under < 0.98f; below += Vector3Int.down)
+            {
+                fall++;
+            }
+            return fall;
+        }
+
         private readonly Queue<(Vector3Int sample, int first, int depth)> search = new Queue<(Vector3Int, int, int)>();
         private readonly HashSet<Vector3Int> searched = new HashSet<Vector3Int>();
 
@@ -538,6 +621,12 @@ namespace Clube.Core
                 }
                 if (IsOpen(at + Vector3Int.down, out float under) && under < 0.98f)
                 {
+                    // Only ground falling at least MinFlowSlope is downhill (GL332): a drop too far off for its depth is
+                    // ground close to flat, where water stands in puddles instead of running.
+                    if (!IsSteep(sample, Sideways[first], at))
+                    {
+                        continue;
+                    }
                     found = depth;
                     firsts |= 1 << first;
                     continue;

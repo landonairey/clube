@@ -38,6 +38,10 @@ namespace Clube.Core
         [SerializeField, Range(0.5f, 10f)]
         private float flowBudgetMs = 2.5f;
 
+        [Tooltip("The gentlest ground water runs down, as fall over distance (0.25 is about 14°); gentler ground holds puddles (GL332).")]
+        [SerializeField, Range(0.05f, 1f)]
+        private float minFlowSlope = 0.25f;
+
         [Tooltip("Milliseconds a frame may spend building water meshes (chunks nearest first, then far tiles); at least one is built.")]
         [SerializeField, Range(0.25f, 8f)]
         private float buildBudgetMs = 1.5f;
@@ -133,6 +137,7 @@ namespace Clube.Core
                 {
                     Live.Focus = world.Grid.WorldToNearestSample(transform.InverseTransformPoint(worldView.Focus.position));
                 }
+                Live.MinFlowSlope = minFlowSlope;
                 Live.Step(budgetMs: flowBudgetMs);
             }
             if (world != null)

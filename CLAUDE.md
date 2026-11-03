@@ -549,6 +549,9 @@ GL329: `StationFire` (on the campfire and furnaces) brightens and flickers the G
 campfire also shows a `FlameCluster` and smoke. GL330: only a lone trickle moves whole downhill; water fed from behind
 (`LiveWater.IsFed`) evens out with the sample ahead, so a dug trench fills as one stream. GL331: ground changes wake the water
 flow only where there's water beside them (a big dry dig once left 200k samples sorted every step, 170 ms frames).
+GL332: water comes in sixteenths (`Chunk.WaterLevels`, `LiveWater.Quantum`); it spreads on the flat only while two steps deep,
+evens out one neighbour at a time, and water pressed from above pushes the last step; downhill needs `LiveWater.MinFlowSlope`
+(0.25) over 2 m ahead or a 2-sample cliff. `WaterScenarioTests` measure pours, slopes, a fed channel and a flood at game scale.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the
 Editor log; per-script markers aren't available without the profiler.

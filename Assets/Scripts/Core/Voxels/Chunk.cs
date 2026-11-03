@@ -33,7 +33,7 @@ namespace Clube.Core
         // the first voxel is carved, so most chunks never hold any.
         private byte[] carves;
 
-        // Water (GL315), per sample: how full of water it is, 0-255 for 0-1. Null until any sample holds water, so dry
+        // Water (GL315), per sample: how full of water it is, in sixteenths (0-16 for 0-1, GL332). Null until any sample holds water, so dry
         // chunks hold none. Kept beside the densities, not in them: water is no ground, the mesher and colliders never see it.
         private byte[] water;
 
@@ -158,6 +158,19 @@ namespace Clube.Core
         /// <summary>True when any voxel in or next to the chunk is (or was) carved, so the mesher must look (GL92).</summary>
         public bool HasCarves => carves != null;
 
+        /// <summary>
+        /// Steps a sample's water comes in (GL332): it holds 0-16 sixteenths. Whole steps make every move exact, so water is
+        /// never rounded into or out of being, and a puddle stops spreading once it's a sixteenth deep instead of thinning
+        /// on for ever.
+        /// </summary>
+        public const int WaterLevels = 16;
+
+        /// <summary>An amount of water rounded to the nearest step, as it's stored.</summary>
+        public static float QuantizeWater(float amount)
+        {
+            return Mathf.Clamp(Mathf.Round(amount * WaterLevels), 0f, WaterLevels) * (1f / WaterLevels);
+        }
+
         /// <summary>True while any sample holds water (GL315).</summary>
         public bool HasWater => WaterCount > 0;
 
@@ -170,16 +183,16 @@ namespace Clube.Core
         /// <summary>How full of water a sample is, 0-1 (GL315).</summary>
         public float GetWater(Vector3Int sample)
         {
-            return water != null ? water[Index(sample)] * (1f / 255f) : 0f;
+            return water != null ? water[Index(sample)] * (1f / WaterLevels) : 0f;
         }
 
         /// <summary>
-        /// The water-edit path (GL315): sets how full of water a sample is, 0-1, stored to 1/255. Doesn't mark the chunk
+        /// The water-edit path (GL315): sets how full of water a sample is, 0-1, rounded to the nearest sixteenth (GL332). Doesn't mark the chunk
         /// dirty (its ground mesh stays); bumps <see cref="WaterVersion"/> instead. Returns true when it changed.
         /// </summary>
         public bool SetWater(Vector3Int sample, float amount)
         {
-            byte value = (byte)Mathf.Clamp(Mathf.RoundToInt(amount * 255f), 0, 255);
+            byte value = (byte)Mathf.Clamp(Mathf.RoundToInt(amount * WaterLevels), 0, WaterLevels);
             if (water == null)
             {
                 if (value == 0)

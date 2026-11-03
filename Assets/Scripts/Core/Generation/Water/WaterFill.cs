@@ -36,7 +36,7 @@ namespace Clube.Core
             {
                 return 0f;
             }
-            return Mathf.Clamp01((surface - position.y) / voxelSize + 0.5f);
+            return Chunk.QuantizeWater((surface - position.y) / voxelSize + 0.5f);
         }
 
         /// <summary>
