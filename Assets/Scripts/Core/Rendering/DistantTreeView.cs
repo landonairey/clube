@@ -84,6 +84,10 @@ namespace Clube.Core
         private readonly MaterialPropertyBlock[] levelProperties = new MaterialPropertyBlock[Levels];
         private int syncedVersion = -1;
         private int drawnFrame = -1;
+        // What the last collect saw: the camera's pose and the tiles. While they're unchanged its lists are drawn again.
+        private Vector3 collectedAt;
+        private Quaternion collectedTurn;
+        private int collectedVersion = -1;
 
         // Each ready tile's trees as world matrices, made once when the tile arrives: a frame only
         // copies the tiles in view into the draw arrays.
@@ -400,7 +404,16 @@ namespace Clube.Core
                 return;
             }
             drawnFrame = Time.frameCount;
-            Collect();
+            Camera view = Camera.main;
+            Vector3 at = view != null ? view.transform.position : worldView.Focus.position;
+            Quaternion turn = view != null ? view.transform.rotation : Quaternion.identity;
+            if (collectedVersion != syncedVersion || at != collectedAt || turn != collectedTurn)
+            {
+                collectedVersion = syncedVersion;
+                collectedAt = at;
+                collectedTurn = turn;
+                Collect();
+            }
             float half = fadeWidth * 0.5f;
             for (int level = 0; level < Levels; level++)
             {
@@ -505,6 +518,7 @@ namespace Clube.Core
             builder = null;
             builtFor = null;
             syncedVersion = -1;
+            collectedVersion = -1;
             tileDraws.Clear();
             System.Array.Clear(counts, 0, counts.Length);
             TreeCount = 0;

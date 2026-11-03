@@ -235,5 +235,73 @@ namespace Clube.Core.Tests
             Assert.That(high, Is.LessThan(0.05f), "no water hangs in the air over the low ground");
             Assert.That(low, Is.GreaterThan(0.5f), "it lands on the low ground");
         }
+
+        // No lake: dry ground of the given shape and a flow with no sources.
+        private void DryWorld(System.Func<int, int, int, bool> solid)
+        {
+            Shape(solid);
+            for (int z = 0; z <= 8; z++)
+            {
+                for (int y = 0; y <= 8; y++)
+                {
+                    for (int x = 0; x <= 8; x++)
+                    {
+                        world.SetWater(new Vector3Int(x, y, z), 0f);
+                    }
+                }
+            }
+            water.Dispose();
+            map.Dispose();
+            map = default;
+            water = new LiveWater(world, default, 0.5f);
+        }
+
+        [Test]
+        public void HeldPour_PoolsInsteadOfStacking()
+        {
+            // Many small pours at one point with no flow between them, as holding Place does (GL324).
+            DryWorld((x, y, z) => y <= 1);
+            for (int i = 0; i < 30; i++)
+            {
+                Assert.That(WaterScoop.Pour(world, new Vector3(4f, 5f, 4f), 3f, 1, 0.5f, null), Is.EqualTo(1));
+            }
+            float above = 0f;
+            for (int z = 0; z <= 8; z++)
+            {
+                for (int x = 0; x <= 8; x++)
+                {
+                    for (int y = 4; y <= 8; y++)
+                    {
+                        above += At(x, y, z);
+                    }
+                }
+            }
+            Assert.That(above, Is.LessThan(0.01f), "30 units over a 3 m reach stay within two samples of the ground");
+            Assert.That(Total(), Is.EqualTo(30f).Within(0.05f));
+        }
+
+        [Test]
+        public void TrickleDownSteps_LeavesNoSpecks()
+        {
+            // Steps down from y = 6 at x = 0 to y = 2 at x = 8; one unit of water at the top.
+            DryWorld((x, y, z) => y <= 6 - x / 2);
+            world.SetWater(new Vector3Int(0, 7, 4), 1f);
+            water.Wake(new Vector3Int(0, 7, 4));
+            Settle(2000);
+            int specks = 0;
+            for (int z = 0; z <= 8; z++)
+            {
+                for (int y = 0; y <= 8; y++)
+                {
+                    for (int x = 0; x <= 8; x++)
+                    {
+                        float a = At(x, y, z);
+                        specks += a > 0f && a < LiveWater.MinSpread ? 1 : 0;
+                    }
+                }
+            }
+            Assert.That(specks, Is.EqualTo(0), "no film left behind on the steps");
+            Assert.That(Total(), Is.EqualTo(1f).Within(0.02f), "the water is all still there");
+        }
     }
 }

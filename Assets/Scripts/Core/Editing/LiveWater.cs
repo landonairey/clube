@@ -252,9 +252,14 @@ namespace Clube.Core
 
             // Then spreads sideways, from what's left, once it stands on something.
             belowOpen = IsOpen(below, out underWater);
-            if (a >= MinAmount && (!belowOpen || underWater > 0.98f))
+            bool standing = !belowOpen || underWater > 0.98f;
+            if (a >= MinAmount && standing)
             {
                 Spread(sample, ref a, source);
+            }
+            if (standing && a > 0f && a < MinSpread && source <= 0f)
+            {
+                Gather(sample, ref a);
             }
 
             if (Mathf.Abs(a - start) < 0.002f)
@@ -301,14 +306,24 @@ namespace Clube.Core
                 return;
             }
             float share = a;
-            foreach (Vector3Int next in targets)
+            for (int t = 0; t < targets.Count; t++)
             {
+                Vector3Int next = targets[t];
                 IsOpen(next, out float there);
                 // Over an edge all of it goes (GL323), so a trickle stays together instead of leaving a thinning trail;
                 // heading for an edge further off it keeps a share; on the flat it evens out with the lower neighbours.
                 float give = Mathf.Min(1f - there, overEdge ? share / targets.Count
                     : anyDrop ? share / (targets.Count + 1) : (share - there) / (targets.Count + 1));
-                if (give <= 0.004f)
+                // Heading downhill, a remainder too thin to move on its own goes too (GL324), so a trickle leaves no
+                // film behind it.
+                float rest = a - give - source;
+                if (anyDrop && t == targets.Count - 1 && rest > 0f && rest < MinSpread)
+                {
+                    give = Mathf.Min(1f - there, give + rest);
+                }
+                // On the flat, water spreads only into a sample it leaves with some depth, so a puddle's edge never
+                // thins into specks.
+                if (give <= 0.004f || (!anyDrop && there + give < MinSpread))
                 {
                     continue;
                 }
@@ -325,6 +340,45 @@ namespace Clube.Core
                 a = Mathf.Max(source, a - give);
                 WakeAround(into);
             }
+        }
+
+        // Water too thin to spread joins the wettest standing water beside it (GL324), so what a spill leaves on the flat
+        // gathers into puddles instead of lying about as specks. Ties go one fixed way, so two specks never swap back and
+        // forth.
+        private void Gather(Vector3Int sample, ref float a)
+        {
+            Vector3Int best = sample;
+            float bestAmount = a;
+            foreach (Vector3Int step in Sideways)
+            {
+                Vector3Int next = sample + step;
+                if (!IsOpen(next, out float there) || there <= 0f || there >= 1f)
+                {
+                    continue;
+                }
+                if (IsOpen(next + Vector3Int.down, out float under) && under <= 0.98f)
+                {
+                    continue;
+                }
+                if (there > bestAmount || (there == bestAmount && Before(next, best)))
+                {
+                    best = next;
+                    bestAmount = there;
+                }
+            }
+            if (best == sample)
+            {
+                return;
+            }
+            float give = Mathf.Min(a, 1f - bestAmount);
+            Set(best, bestAmount + give, SourceAt(best));
+            a -= give;
+            WakeAround(best);
+        }
+
+        private static bool Before(Vector3Int a, Vector3Int b)
+        {
+            return a.x != b.x ? a.x < b.x : a.z < b.z;
         }
 
         /// <summary>How far along the floor water looks for a drop to head for, like Minecraft's water.</summary>

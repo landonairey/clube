@@ -536,6 +536,12 @@ clay) fires into refractory brick (ground id 25), which builds the refractory fu
 GL323: far water sheets are wet cells only, clipped by a coverage mask where chunks draw; water is never deleted; pours pool
 (`WaterScoop.Pour`); `WorldStreamer.DrawRadius` shrinks the drawn chunks with the focus's height over the world.
 Testing gotcha: pumping the World object's LateUpdate by hand from high up crashed the Editor (GPU out of memory) twice.
+GL324: a pour sinks through water and fills no higher than a sample over the puddle's surface; downhill water takes its
+thin remainder along and thin water on the flat joins the wettest beside it (`LiveWater.Gather`), so no specks are left;
+the bulk load drops to `farLoadingBudgetMilliseconds` past the drawn columns; distant trees re-collect only when the view
+moves. To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
+category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the
+Editor log; per-script markers aren't available without the profiler.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

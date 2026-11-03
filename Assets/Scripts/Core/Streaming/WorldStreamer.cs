@@ -29,6 +29,13 @@ namespace Clube.Core
         /// </summary>
         public float LoadingBudgetMilliseconds;
 
+        /// <summary>
+        /// The budget while the bulk load has moved on past the drawn chunks (<see cref="DetailDistance"/>) to the hidden
+        /// ones beyond, which the coarse terrain stands in for (GL324): the game plays smoothly while they load. 0 or less
+        /// keeps the loading budget to the end.
+        /// </summary>
+        public float FarLoadingBudgetMilliseconds;
+
         /// <summary>Whether chunks get colliders (M6).</summary>
         public bool Colliders;
 
@@ -225,6 +232,11 @@ namespace Clube.Core
         /// <summary>True while the area loads in bulk, with the larger loading budget (see <see cref="StreamingSettings.LoadingBudgetMilliseconds"/>).</summary>
         public bool IsLoading => bulkLoading;
 
+        // True once the bulk load has started every drawn column and is on to the hidden ones past the detail distance.
+        private bool IsLoadingHiddenOnly =>
+            settings.FarLoadingBudgetMilliseconds > 0f && settings.DetailDistance > 0 && hasDrawCentre
+            && (loadCursor >= wantedColumns.Count || !IsWithin(wantedColumns[loadCursor], drawCentre, DrawRadius + 1));
+
         private int MaxJobsInFlight => settings.MaxJobsInFlight > 0 ? settings.MaxJobsInFlight : Mathf.Max(4, JobsUtility.JobWorkerCount * 2);
 
         /// <summary>One frame of streaming around <paramref name="focus"/> (relative to the world origin). Call from Update.</summary>
@@ -234,7 +246,7 @@ namespace Clube.Core
             lapStart = 0;
             StreamingPhases phases = default;
             budget = bulkLoading && settings.LoadingBudgetMilliseconds > settings.FrameBudgetMilliseconds
-                ? settings.LoadingBudgetMilliseconds
+                ? (IsLoadingHiddenOnly ? Mathf.Max(settings.FarLoadingBudgetMilliseconds, settings.FrameBudgetMilliseconds) : settings.LoadingBudgetMilliseconds)
                 : settings.FrameBudgetMilliseconds;
 
             pipeline.Poll();

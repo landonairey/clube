@@ -54,8 +54,9 @@ namespace Clube.Core
         /// <summary>
         /// Pours <paramref name="units"/> of water where <paramref name="centre"/> is, the way water settles (GL323): it
         /// drops to the ground under the point, then fills the lowest open samples it can reach from there, out to
-        /// <paramref name="radius"/> metres across, so it pools into the hollows and spreads as a puddle instead of
-        /// standing as a ball round the point. Returns the units poured (less when there's no room).
+        /// <paramref name="radius"/> metres across and no more than a sample above where it landed, so it pools into the
+        /// hollows and spreads as a puddle instead of standing as a ball or a wall. Returns the units poured (less when
+        /// there's no room).
         /// </summary>
         public static int Pour(World world, Vector3 centre, float radius, int units, float iso, List<Vector3Int> changed)
         {
@@ -65,22 +66,30 @@ namespace Clube.Core
             }
             WorldGrid grid = world.Grid;
             Vector3Int start = grid.WorldToNearestSample(centre);
-            if (!IsRoom(world, start, iso))
+            if (!IsOpen(world, start, iso))
             {
                 return 0;
             }
-            // Down to whatever holds it up.
-            for (int i = 0; i < 64 && IsOpen(world, start + Vector3Int.down, iso) && world.GetWater(start + Vector3Int.down) < 1f; i++)
+            // Down through air and water to the ground (GL324): stopping on water stacked each small pour of a held
+            // pour on the last, into a column.
+            for (int i = 0; i < 256 && IsOpen(world, start + Vector3Int.down, iso); i++)
             {
                 start += Vector3Int.down;
             }
+            // Then up to the water's surface there: the pour fills no higher than a sample over it.
+            Vector3Int surface = start;
+            for (int i = 0; i < 256 && IsOpen(world, surface, iso) && world.GetWater(surface) >= 1f; i++)
+            {
+                surface += Vector3Int.up;
+            }
+            int top = surface.y + 1;
             Queue.Clear();
             Seen.Clear();
             Queue.Add(start);
             Seen.Add(start);
             float reach = radius / grid.VoxelSize;
             float left = units;
-            while (left > 1e-3f && Queue.Count > 0)
+            while (left > 1e-3f && Queue.Count > 0 && Seen.Count < MaxLooked)
             {
                 // The lowest open sample found so far, nearest the start among equals.
                 int best = 0;
@@ -105,7 +114,10 @@ namespace Clube.Core
                 foreach (Vector3Int step in Around)
                 {
                     Vector3Int next = sample + step;
-                    if (Flat(next - start) <= reach * reach && Seen.Add(next) && IsRoom(world, next, iso))
+                    // Through the water already there, and no higher than a sample over its surface (GL324): on a slope
+                    // the lowest samples in reach are at its downhill rim, where the water stood as a wall; the flow
+                    // carries it on from a low puddle instead.
+                    if (next.y <= top && Flat(next - start) <= reach * reach && Seen.Add(next) && IsOpen(world, next, iso))
                     {
                         Queue.Add(next);
                     }
@@ -119,6 +131,9 @@ namespace Clube.Core
             Vector3Int.down, Vector3Int.right, Vector3Int.left, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1), Vector3Int.up,
         };
 
+        // Most samples one pour looks through (a pour into a lake would otherwise search all of it in reach).
+        private const int MaxLooked = 4000;
+
         private static readonly List<Vector3Int> Queue = new List<Vector3Int>();
         private static readonly HashSet<Vector3Int> Seen = new HashSet<Vector3Int>();
 
@@ -131,11 +146,6 @@ namespace Clube.Core
         {
             float? density = world.GetDensity(sample);
             return density.HasValue && density.Value < iso;
-        }
-
-        private static bool IsRoom(World world, Vector3Int sample, float iso)
-        {
-            return IsOpen(world, sample, iso) && world.GetWater(sample) < 1f;
         }
 
         private static void Gather(World world, Vector3 centre, float radius, System.Func<Vector3Int, bool> keep)
