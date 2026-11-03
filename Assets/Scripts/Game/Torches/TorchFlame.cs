@@ -34,7 +34,7 @@ namespace Clube.Game
             light.intensity = intensity;
             if (smokeMaterial != null)
             {
-                smoke = MakeSmoke(holder, smokeMaterial);
+                smoke = MakeSmoke(holder.transform, new Vector3(0f, 0.08f, 0f), smokeMaterial);
             }
             if (flameMaterial != null)
             {
@@ -70,12 +70,12 @@ namespace Clube.Game
             }
         }
 
-        // Thin grey wisps rising and spreading from the flame, in the world, so a moving torch leaves a trail.
-        private static ParticleSystem MakeSmoke(GameObject holder, Material material)
+        /// <summary>Thin grey wisps rising and spreading from a flame, in the world, so a moving torch leaves a trail.</summary>
+        public static ParticleSystem MakeSmoke(Transform parent, Vector3 at, Material material)
         {
             var go = new GameObject("Smoke");
-            go.transform.SetParent(holder.transform, false);
-            go.transform.localPosition = new Vector3(0f, 0.08f, 0f);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = at;
             var particles = go.AddComponent<ParticleSystem>();
             particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             go.GetComponent<ParticleSystemRenderer>().sharedMaterial = material;

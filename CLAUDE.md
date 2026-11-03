@@ -545,6 +545,10 @@ GL327 (first pass of SM1): ground has a stability: 100% on a 3 m solid column, t
 `VoxelMaterial.stabilityLoss` per sample out or hanging (rock 0%: holds while joined to standing ground, so cave ceilings
 hold and only cut-off pieces fall, whole; dirt/grass/clay 34%: two out; sand 100%); at 0% it falls (`GroundSettling`,
 `GroundHold`). GL328 (crushed ground) is open.
+GL329: `StationFire` (on the campfire and furnaces) brightens and flickers the Glow light while the station smelts; the
+campfire also shows a `FlameCluster` and smoke. GL330: only a lone trickle moves whole downhill; water fed from behind
+(`LiveWater.IsFed`) evens out with the sample ahead, so a dug trench fills as one stream. GL331: ground changes wake the water
+flow only where there's water beside them (a big dry dig once left 200k samples sorted every step, 170 ms frames).
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the
 Editor log; per-script markers aren't available without the profiler.

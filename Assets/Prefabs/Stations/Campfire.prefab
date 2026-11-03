@@ -201,6 +201,7 @@ GameObject:
   - component: {fileID: 4903786179241846693}
   - component: {fileID: 423415346032570738}
   - component: {fileID: 8917457592478872214}
+  - component: {fileID: 2781153100326116204}
   m_Layer: 0
   m_Name: Campfire
   m_TagString: Untagged
@@ -324,3 +325,21 @@ MonoBehaviour:
   placementPreview: {fileID: 290408104078311090}
   glowsOn: {fileID: 11400000, guid: cf152efb35813624a9fcb26da0602f3f, type: 2}
   glowMaterial: {fileID: 2100000, guid: 94d949f7105d17241946f94d2b77bff5, type: 2}
+--- !u!114 &2781153100326116204
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5762353483625990904}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a275a867b5fb8624ab69192a71f37305, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.StationFire
+  glow: {fileID: 2679432642202095682}
+  workingBoost: 1.6
+  flameMaterial: {fileID: 2100000, guid: d578650619eba4e498c80599e6a05b45, type: 2}
+  smokeMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
+  flameAt: {x: 0, y: 0.08, z: 0}
+  flameHeight: 0.4

@@ -350,5 +350,35 @@ namespace Clube.Core.Tests
             Assert.That(wetColumns.Count, Is.LessThanOrEqualTo(13), "the water ran in a vein, not a fan");
             Assert.That(Total(), Is.EqualTo(1f).Within(0.02f));
         }
+
+        [Test]
+        public void FedTrench_RunsWithoutGaps()
+        {
+            // A trench one sample wide along x at z = 4, its floor stepping down one sample at x = 5, fed at x = 0 every
+            // step like a river (GL330): the water runs along the floor as one stream, never as beads with dry floor
+            // between them.
+            DryWorld((x, y, z) => z != 4 ? y <= 7 : y <= (x < 5 ? 3 : 2));
+            for (int i = 0; i < 120; i++)
+            {
+                world.SetWater(new Vector3Int(0, 4, 4), 1f);
+                world.SetWater(new Vector3Int(0, 5, 4), 1f);
+                water.Wake(new Vector3Int(0, 4, 4));
+                water.Wake(new Vector3Int(0, 5, 4));
+                water.Step();
+                int front = 0;
+                for (int x = 0; x <= 8; x++)
+                {
+                    if (At(x, x < 5 ? 4 : 3, 4) > 0f)
+                    {
+                        front = x;
+                    }
+                }
+                for (int x = 0; x <= front; x++)
+                {
+                    Assert.That(At(x, x < 5 ? 4 : 3, 4), Is.GreaterThan(0f), $"step {i}: the floor at x = {x} is dry behind the front at {front}");
+                }
+            }
+            Assert.That(At(7, 3, 4), Is.GreaterThan(0.5f), "the stream reaches the far end and fills it");
+        }
     }
 }

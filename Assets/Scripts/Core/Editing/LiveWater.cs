@@ -57,7 +57,7 @@ namespace Clube.Core
             this.map = map;
             this.iso = iso;
             voxel = world.Grid.VoxelSize;
-            world.DensityChanged += Wake;
+            world.DensityChanged += OnGroundChanged;
         }
 
         public World World { get; }
@@ -79,6 +79,30 @@ namespace Clube.Core
             {
                 awake.Add(sample + step);
             }
+        }
+
+        // Ground dug or built: only water beside the change can move because of it, so dry ground wakes nothing (digging
+        // a big pit once woke hundreds of thousands of dry samples, and sorting them each step cost 150 ms a frame).
+        private void OnGroundChanged(Vector3Int sample)
+        {
+            if (HasWater(sample))
+            {
+                Wake(sample);
+                return;
+            }
+            foreach (Vector3Int step in Around)
+            {
+                if (HasWater(sample + step))
+                {
+                    Wake(sample);
+                    return;
+                }
+            }
+        }
+
+        private bool HasWater(Vector3Int sample)
+        {
+            return World.TryGetOwner(sample, out Chunk chunk, out Vector3Int local) && chunk.HasWater && chunk.GetWater(local) > 0f;
         }
 
         /// <summary>
@@ -328,15 +352,19 @@ namespace Clube.Core
                 targets.Clear();
                 targets.Add(path);
             }
+            // A lone trickle moves whole down its way; water with more coming in behind it is a stream (GL330), which
+            // evens out with the sample ahead and keeps its depth. Moved whole too, a fed trench's water leapfrogged
+            // along the floor as beads with dry floor between them.
+            bool whole = anyDrop && !IsFed(sample, targets);
             float share = a;
             for (int t = 0; t < targets.Count; t++)
             {
                 Vector3Int next = targets[t];
                 IsOpen(next, out float there);
-                // Downhill, over an edge or heading for one, all of it goes along its one way (GL323, GL325), so a
-                // trickle stays together: kept back, the rest found the way just wetted no lower than itself and started
-                // a second vein. On the flat it evens out with the lower neighbours.
-                float give = Mathf.Min(1f - there, anyDrop ? share / targets.Count : (share - there) / (targets.Count + 1));
+                // A trickle heading downhill, over an edge or for one, goes all along its one way (GL323, GL325), so it
+                // stays together: kept back, the rest found the way just wetted no lower than itself and started a
+                // second vein. A stream, and water on the flat, evens out with the lower neighbours.
+                float give = Mathf.Min(1f - there, whole ? share / targets.Count : (share - there) / (targets.Count + 1));
                 // Heading downhill, a remainder too thin to move on its own goes too (GL324), so a trickle leaves no
                 // film behind it.
                 float rest = a - give - source;
@@ -368,6 +396,24 @@ namespace Clube.Core
                 a = Mathf.Max(source, a - give);
                 WakeAround(into);
             }
+        }
+
+        // True when more water comes in behind a sample: water above it, or beside it other than where it's going.
+        private bool IsFed(Vector3Int sample, List<Vector3Int> going)
+        {
+            if (IsOpen(sample + Vector3Int.up, out float above) && above > 0.004f)
+            {
+                return true;
+            }
+            foreach (Vector3Int step in Sideways)
+            {
+                Vector3Int next = sample + step;
+                if (!going.Contains(next) && IsOpen(next, out float there) && there > 0.004f)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // The one way downhill water takes (GL325): where water already runs (so streams gather into shared veins), then
@@ -566,7 +612,7 @@ namespace Clube.Core
 
         public void Dispose()
         {
-            World.DensityChanged -= Wake;
+            World.DensityChanged -= OnGroundChanged;
         }
     }
 }
