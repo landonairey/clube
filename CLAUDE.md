@@ -564,6 +564,9 @@ steepest descent) and merge downstream into lakes. River water comes from the ch
 and clears trees on its square, and is placed again when the world regenerates (GL341). Large boulders (GL342) are 3D shapes
 from `BoulderField` (Generation/Rocks), 4-12 m, faceted, often overhanging, stamped as `TreePart.Boulder` with the trees.
 Grass reaches the drawn terrain (`WorldView.DrawnDistance`, GL340). The world labs default to ErodedLandscape (GL343). AR1: palette idea.
+GL344 felling: `PlayerToolUser.Chopped` → `TreeFeller` (Game/Tools, on Player) → `TreeFelling.FindSevered` (Core/Editing: wood cut off
+from the ground through wood, plus the leaves nearer to it) → a mesh from a scratch chunk → `FallingLimb` tips it to the player's right
+(cardinal), dust, then `TreeFelling.Land` (turned 90° about the cut, dropped per column, wood under a quarter of the leaves).
 Height maps: `Docs/images/20261103 *`.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the

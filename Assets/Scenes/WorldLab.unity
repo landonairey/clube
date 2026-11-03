@@ -5539,6 +5539,7 @@ MonoBehaviour:
   renderDistance: 16
   frameBudgetMilliseconds: 3
   loadingBudgetMilliseconds: 30
+  farLoadingBudgetMilliseconds: 8
   overlayRadius: 32
   detailDistance: 24
   maxJobsInFlight: 0
@@ -5721,6 +5722,7 @@ MonoBehaviour:
   grass: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
   material: {fileID: 2100000, guid: bebf70da50c2fd042afe43cc4a285452, type: 2}
   radius: 64
+  reachDrawnTerrain: 1
   thinFrom: 22
   thinTo: 0.2
   fadeLength: 16
@@ -6055,6 +6057,7 @@ MonoBehaviour:
   show: 1
   flowStepSeconds: 0.06
   flowBudgetMs: 2.5
+  minFlowSlope: 0.25
   buildBudgetMs: 1.5
 --- !u!1 &1429470163
 GameObject:
@@ -6240,6 +6243,7 @@ GameObject:
   - component: {fileID: 1697135608}
   - component: {fileID: 1697135607}
   - component: {fileID: 1697135609}
+  - component: {fileID: 1697135610}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -7318,6 +7322,23 @@ MonoBehaviour:
   pourAction: {fileID: 9082728051176153063, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   reach: 4
   holdDelay: 0.3
+--- !u!114 &1697135610
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfe65f025f153bb4983f6df670fc3b28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.TreeFeller
+  worldView: {fileID: 1350119460}
+  toolUser: {fileID: 1697135569}
+  view: {fileID: 371098496}
+  dustMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
+  dustColour: {r: 0.62, g: 0.55, b: 0.45, a: 0.75}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
