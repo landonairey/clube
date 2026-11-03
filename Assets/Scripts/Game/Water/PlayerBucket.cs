@@ -37,6 +37,7 @@ namespace Clube.Game
         private PlayerController player;
         private PlayerInventory inventory;
         private Hotbar hotbar;
+        private PlayerToolUser toolUser;
         private WaterView water;
         private readonly List<Vector3Int> changed = new List<Vector3Int>();
         private float pourHeld;
@@ -56,6 +57,7 @@ namespace Clube.Game
             player = GetComponent<PlayerController>();
             inventory = GetComponent<PlayerInventory>();
             hotbar = GetComponent<Hotbar>();
+            toolUser = GetComponent<PlayerToolUser>();
             if (worldView == null)
             {
                 worldView = FindAnyObjectByType<WorldView>();
@@ -117,7 +119,9 @@ namespace Clube.Game
                 return;
             }
             changed.Clear();
-            int taken = WaterScoop.Take(worldView.World, waterAt, bucket.ScoopRadius, room, changed);
+            // The same area of impact as a shovel hit (GL335): every sample of water in it is emptied.
+            float radius = toolUser != null ? toolUser.Collecting.ToolRadius : bucket.ScoopRadius;
+            int taken = WaterScoop.Take(worldView.World, waterAt, radius, room, changed);
             if (taken <= 0)
             {
                 return;

@@ -40,6 +40,20 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// How full of river water a sample is kept, 0-1 (GL333): rivers are fed from upstream without end; lakes and ponds
+        /// are not, so their water is only what was generated and a bucket can empty them. 0 off a river.
+        /// </summary>
+        public static float RiverAt(in WaterMap map, Vector3 position, float voxelSize)
+        {
+            if (!map.IsCreated || !map.TrySurfaceAt(new float2(position.x, position.z), out float surface, out int cell)
+                || map.Kind[cell] != (byte)WaterKind.River)
+            {
+                return 0f;
+            }
+            return Chunk.QuantizeWater((surface - position.y) / voxelSize + 0.5f);
+        }
+
+        /// <summary>
         /// Fills a newly loaded chunk's air samples with the map's water. Returns the samples filled. Cheap for chunks
         /// nowhere near water: their footprint's cells are checked first.
         /// </summary>

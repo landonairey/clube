@@ -10,10 +10,30 @@ namespace Clube.Core
     /// they dry into, through the world's edit path (A7). Ground that generated as clay stays clay;
     /// only what's put down dries. Time is in in-game days, from whatever clock the caller keeps.
     /// </summary>
-    /// <remarks>Not saved yet (S2): drying in progress is lost with the world.</remarks>
+    /// <remarks>Wet ground doesn't dry (GL334): while water touches a sample its clock stops, so clay dropped in a pond
+    /// stays clay until the water leaves it.</remarks>
     public sealed class GroundDrying
     {
         private readonly List<Drying> waiting = new List<Drying>();
+        private double? lastUpdate;
+
+        private static readonly Vector3Int[] Around =
+        {
+            Vector3Int.zero, Vector3Int.up, Vector3Int.down, Vector3Int.right, Vector3Int.left, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
+        };
+
+        /// <summary>True when water is in the sample or any of the six beside it (GL334).</summary>
+        public static bool IsWet(World world, Vector3Int sample)
+        {
+            foreach (Vector3Int step in Around)
+            {
+                if (world.GetWater(sample + step) > 0f)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         /// <summary>Samples still drying.</summary>
         public int Count => waiting.Count;
@@ -45,6 +65,20 @@ namespace Clube.Core
         /// </summary>
         public int Update(World world, double now, float isoLevel = 0.5f)
         {
+            // Wet samples' clocks stop: their time to dry moves on by the time that passed.
+            double passed = lastUpdate.HasValue ? System.Math.Max(0.0, now - lastUpdate.Value) : 0.0;
+            lastUpdate = now;
+            if (passed > 0.0)
+            {
+                for (int i = 0; i < waiting.Count; i++)
+                {
+                    Drying wet = waiting[i];
+                    if (IsWet(world, wet.Sample))
+                    {
+                        waiting[i] = new Drying(wet.Sample, wet.Material, wet.ReadyAt + passed);
+                    }
+                }
+            }
             int dried = 0;
             for (int i = waiting.Count - 1; i >= 0; i--)
             {

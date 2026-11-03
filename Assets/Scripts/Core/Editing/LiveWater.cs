@@ -10,8 +10,9 @@ namespace Clube.Core
     /// below while there's room, the way water falls down a drop; what's left spreads sideways, sharing out with lower
     /// neighbours, and only towards an edge with a drop under it when there is one, so a stream runs down the slope
     /// instead of fanning out over a hilltop, and keeps going until it meets other water or fills a hollow. Water that
-    /// is thin stays put rather than spreading further, and never vanishes: volume is kept (GL323). The generated rivers and lakes (<see cref="WaterFill"/>) are sources without end: their
-    /// samples are kept topped up to the map's level, so a hole dug beside a lake fills up to the lake's surface.
+    /// is thin stays put rather than spreading further, and never vanishes: volume is kept (GL323). Generated rivers (<see cref="WaterFill"/>) hold their level without end, topped up from
+    /// upstream and carrying any excess away (GL333); lakes and ponds are finite water, so a bucket can empty them, and a
+    /// hole dug beside one fills from it, lowering it.
     /// Ground put where water was takes its place: a sample that turns solid loses its water. Every density change
     /// wakes the samples round it; a sample that changed wakes its own neighbours for the next step.
     /// </summary>
@@ -235,10 +236,13 @@ namespace Clube.Core
             return chunk != null;
         }
 
-        /// <summary>How full of generated (source) water a sample is, 0 when none: the map's river or lake there.</summary>
+        /// <summary>
+        /// How full of source water a sample is kept, 0 when none: a river there (GL333). Lakes and ponds are finite water,
+        /// so they can be emptied, and water poured into them settles instead of being topped back to a fixed level.
+        /// </summary>
         public float SourceAt(Vector3Int sample)
         {
-            return WaterFill.GeneratedAt(map, World.Grid.SampleToWorld(sample), voxel);
+            return WaterFill.RiverAt(map, World.Grid.SampleToWorld(sample), voxel);
         }
 
         private bool Look(Vector3Int sample)
@@ -261,7 +265,10 @@ namespace Clube.Core
             }
             float source = SourceAt(sample);
             float start = a;
-            if (source > a)
+            // A river keeps its level both ways (GL333): topped up from upstream, and anything over its level is carried
+            // off downstream. Kept, a poured step over the level was handed on across the surface for ever, and enough
+            // pours filled the flow's budget so that new water stopped moving.
+            if (source > 0f)
             {
                 a = source;
             }

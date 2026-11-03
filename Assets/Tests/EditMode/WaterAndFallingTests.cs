@@ -344,6 +344,54 @@ namespace Clube.Core.Tests
             }
         }
 
+        // A steep valley falling 0.4 m a metre along x (22°), its sides rising across z: a mountain stream runs down it.
+        private sealed class SteepValley : HeightfieldGenerator<SteepValleyHeight>
+        {
+            public SteepValley() : base(new SteepValleyHeight()) { }
+        }
+
+        private struct SteepValleyHeight : IHeightField
+        {
+            public float Height(float x, float z)
+            {
+                return 80f - x * 0.4f + Mathf.Abs(z) * 0.3f;
+            }
+        }
+
+        [Test]
+        public void SteepStream_HasWaterAllAlongIt()
+        {
+            // GL336: every river cell fills the first sample over its bed, so a steep stream has no dry gaps.
+            var settings = new WaterGeneration { AreaSize = 192f, RiverArea = 300f };
+            WaterMap map = Hydrology.Build(new SteepValley(), settings, default);
+            try
+            {
+                int rivers = 0, dry = 0;
+                for (int c = 0; c < map.Kind.Length; c++)
+                {
+                    if (map.Kind[c] != (byte)WaterKind.River)
+                    {
+                        continue;
+                    }
+                    rivers++;
+                    float x = map.Origin.x + (c % map.Size.x + 0.5f) * map.CellSize;
+                    float z = map.Origin.y + (c / map.Size.x + 0.5f) * map.CellSize;
+                    float ground = map.Surface[c] - map.Depth[c];
+                    float firstAir = (Mathf.Floor(ground / 0.25f) + 1f) * 0.25f;
+                    if (WaterFill.GeneratedAt(map, new Vector3(x, firstAir, z), 0.25f) <= 0f)
+                    {
+                        dry++;
+                    }
+                }
+                Assert.That(rivers, Is.GreaterThan(20), "the valley grows a stream");
+                Assert.That(dry, Is.EqualTo(0), $"{dry} of {rivers} river cells hold no water");
+            }
+            finally
+            {
+                map.Dispose();
+            }
+        }
+
         [Test]
         public void WaterMap_GivesSandOnALakeBed()
         {

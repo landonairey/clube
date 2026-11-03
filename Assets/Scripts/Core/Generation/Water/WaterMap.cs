@@ -47,6 +47,9 @@ namespace Clube.Core
         /// <summary>What <see cref="MaterialAt"/> gives where the layer's material stays.</summary>
         public const byte Keep = 255;
 
+        /// <summary>The least water a river cell stands over its bed, in metres (GL336): over a voxel at 0.25 m voxels.</summary>
+        public const float MinRiverDepth = 0.3f;
+
         private static WaterMap none;
 
         /// <summary>
@@ -144,6 +147,12 @@ namespace Clube.Core
             }
             // Never over the cell's own level: a river cell blended towards the cell above it stood as a slab over its bed.
             surface = weight > 0f ? math.min(sum / weight, Surface[cell]) : Surface[cell];
+            // But a river always has some water over its bed (GL336): held down to the bank beside it, a steep stream's
+            // water sat under half a voxel deep, and those stretches filled no sample at all, leaving gaps.
+            if (Kind[cell] == (byte)WaterKind.River)
+            {
+                surface = math.max(surface, Surface[cell] - Depth[cell] + MinRiverDepth);
+            }
             return true;
         }
 

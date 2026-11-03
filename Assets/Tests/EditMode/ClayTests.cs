@@ -87,6 +87,38 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Drying_WaitsWhileTheClayIsWet()
+        {
+            // Clay dropped under water doesn't dry (GL334); its clock runs again once the water is gone.
+            VoxelMaterial brick = VoxelMaterial.Create(14, "Brick");
+            VoxelMaterial clay = VoxelMaterial.Create(13, "Clay").WithDrying(brick, 2f);
+            var world = new World(new Vector3Int(8, 8, 8), 1f);
+            world.Load(Vector3Int.zero, null);
+            try
+            {
+                var sample = new Vector3Int(2, 1, 2);
+                world.SetMaterial(sample, clay.Id);
+                world.SetDensity(sample, 1f);
+                world.SetWater(sample + Vector3Int.up, 1f);
+                var drying = new GroundDrying();
+                drying.Add(new[] { sample }, clay, now: 10.0);
+                drying.Update(world, 10.0);
+                Assert.AreEqual(0, drying.Update(world, 13.0), "Three days under water and it's still clay.");
+                Assert.AreEqual(clay.Id, world.GetMaterial(sample));
+
+                world.SetWater(sample + Vector3Int.up, 0f);
+                Assert.AreEqual(0, drying.Update(world, 14.9));
+                Assert.AreEqual(1, drying.Update(world, 15.0), "Two dry days after the water left, it's brick.");
+                Assert.AreEqual(brick.Id, world.GetMaterial(sample));
+            }
+            finally
+            {
+                Object.DestroyImmediate(clay);
+                Object.DestroyImmediate(brick);
+            }
+        }
+
+        [Test]
         public void Drying_IgnoresMaterialsThatDontDry()
         {
             VoxelMaterial stone = VoxelMaterial.Create(0, "Stone");

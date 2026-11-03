@@ -143,6 +143,78 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void PourIntoTheLake_ComesToRest()
+        {
+            // Small pours onto the lake, as a held bucket does (GL333): the flow must go quiet, not hand the poured water on
+            // across the surface for ever.
+            float before = Total();
+            var changed = new System.Collections.Generic.List<Vector3Int>();
+            for (int i = 0; i < 4; i++)
+            {
+                changed.Clear();
+                Assert.That(WaterScoop.Pour(world, new Vector3(1f, 6f, 2f + i), 1.5f, 3, 0.5f, changed), Is.EqualTo(3));
+                foreach (Vector3Int sample in changed)
+                {
+                    water.Wake(sample);
+                }
+            }
+            Settle(3000);
+            Assert.That(water.AwakeCount, Is.EqualTo(0), "the water comes to rest");
+            Assert.That(Total(), Is.EqualTo(before + 12f).Within(0.01f), "and the lake keeps what was poured");
+        }
+
+        [Test]
+        public void ScoopingTheLake_LowersIt()
+        {
+            // A lake is finite water (GL333): what a bucket takes doesn't flow back in from nowhere.
+            float before = Total();
+            var changed = new System.Collections.Generic.List<Vector3Int>();
+            for (int i = 0; i < 5; i++)
+            {
+                changed.Clear();
+                Assert.That(WaterScoop.Take(world, new Vector3(1f, 3.5f, 4f), 1.5f, 4, changed), Is.EqualTo(4));
+                foreach (Vector3Int sample in changed)
+                {
+                    water.Wake(sample);
+                }
+                Settle(3000);
+            }
+            Assert.That(Total(), Is.EqualTo(before - 20f).Within(0.01f));
+        }
+
+        [Test]
+        public void LakeWithARiverOut_DrainsOnlyToTheRiversLevel()
+        {
+            // A river leaves the lake along z = 4 (x 3-7, its bed at y = 3), its water 0.2 under the lake's (GL333). Lakes are
+            // finite, so once disturbed the lake runs into the river, but a river keeps its level: the lake drops to it and
+            // stops, rather than draining away.
+            for (int x = 3; x <= 7; x++)
+            {
+                for (int y = 4; y <= 6; y++)
+                {
+                    world.SetDensity(new Vector3Int(x, y, 4), 0f);
+                }
+                int cell = x + 4 * 8;
+                map.Kind[cell] = (byte)WaterKind.River;
+                map.Surface[cell] = Level - 0.2f;
+                map.Depth[cell] = Level - 0.2f - 3.5f;
+            }
+            WaterFill.Fill(world, Vector3Int.zero, map, 0.5f);
+            water.Dispose();
+            water = new LiveWater(world, map, 0.5f);
+            for (int z = 0; z <= 8; z++)
+            {
+                water.Wake(new Vector3Int(2, 4, z));
+            }
+            Settle(5000);
+            Assert.That(water.AwakeCount, Is.EqualTo(0), "the flow comes to rest");
+            float river = water.SourceAt(new Vector3Int(3, 4, 4));
+            Assert.That(At(1, 4, 0), Is.GreaterThanOrEqualTo(river - LiveWater.Quantum - 0.001f), "the lake's top drops no lower than the river");
+            Assert.That(At(2, 4, 4), Is.LessThan(1f), "next to the outflow it ran off down to the river's level");
+            Assert.That(At(1, 3, 0), Is.EqualTo(1f).Within(0.001f), "and the lake under it is still full");
+        }
+
+        [Test]
         public void DugHoleBesideTheLake_FillsToTheLakesLevel()
         {
             world.SetDensity(new Vector3Int(3, 3, 4), 0f);

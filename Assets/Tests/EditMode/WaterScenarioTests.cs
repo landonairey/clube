@@ -223,6 +223,53 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void BucketDump_RunsDownAHillsideAsOneStream()
+        {
+            // A full bucket dumped at the top of a 21° slope (GL337): as it runs down, the wet stretch along the slope should
+            // stay in one piece instead of breaking into separate clumps with dry ground between them.
+            Ground((x, z) => Mathf.Max(4, 26 - x * 3 / 8));
+            Pour(new Vector3(1.5f, 7f, 8f), 100);
+            int worstGaps = 0, worstAt = 0;
+            for (int step = 1; step <= 600 && water.AwakeCount > 0; step++)
+            {
+                water.Step();
+                if (step % 10 != 0)
+                {
+                    continue;
+                }
+                // Columns along x with any water on the slope (x < 56, above the floor), and the dry ones between them.
+                int first = -1, last = -1, wet = 0;
+                for (int x = 0; x < 56; x++)
+                {
+                    bool any = false;
+                    for (int z = 0; z <= Size && !any; z++)
+                    {
+                        for (int y = 5; y <= Height && !any; y++)
+                        {
+                            any = world.GetWater(new Vector3Int(x, y, z)) > 0f;
+                        }
+                    }
+                    if (any)
+                    {
+                        first = first < 0 ? x : first;
+                        last = x;
+                        wet++;
+                    }
+                }
+                int gaps = first < 0 ? 0 : last - first + 1 - wet;
+                if (gaps > worstGaps)
+                {
+                    worstGaps = gaps;
+                    worstAt = step;
+                }
+            }
+            Result result = Run(4000);
+            Report($"Bucket dump down a 21° slope: worst {worstGaps} dry columns inside the wet stretch (step {worstAt})", result);
+            Assert.That(result.Volume, Is.EqualTo(100f).Within(0.001f));
+            Assert.That(worstGaps, Is.LessThanOrEqualTo(3), "the stream stays in one piece down the slope");
+        }
+
+        [Test]
         public void FedChannel_FillsAlongItsLength()
         {
             // A channel 2 samples wide along x at z 31-32, its floor falling 1 sample in 6; a spring at its head.

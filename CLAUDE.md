@@ -552,6 +552,9 @@ flow only where there's water beside them (a big dry dig once left 200k samples 
 GL332: water comes in sixteenths (`Chunk.WaterLevels`, `LiveWater.Quantum`); it spreads on the flat only while two steps deep,
 evens out one neighbour at a time, and water pressed from above pushes the last step; downhill needs `LiveWater.MinFlowSlope`
 (0.25) over 2 m ahead or a 2-sample cliff. `WaterScenarioTests` measure pours, slopes, a fed channel and a flood at game scale.
+GL333: only rivers are sources (`WaterFill.RiverAt`), holding their level both ways; lakes and ponds are finite. GL334: wet clay
+doesn't dry or steam (`GroundDrying.IsWet`). GL335: the bucket scoops the shovel's sphere (`CollectingSettings.ToolRadius`).
+GL336: rivers stand at least `WaterMap.MinRiverDepth` over their bed. GL337 (clumps on hills) and WT1 (moisture) are open.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the
 Editor log; per-script markers aren't available without the profiler.

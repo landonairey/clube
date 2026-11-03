@@ -15,7 +15,8 @@ namespace Clube.Core
 
         /// <summary>
         /// Takes up to <paramref name="most"/> units of water from the samples within <paramref name="radius"/> metres of
-        /// <paramref name="centre"/>, nearest first. Returns the units taken (rounded down; any fraction stays in the water).
+        /// <paramref name="centre"/>, nearest first, emptying each sample it takes from (GL335). Returns the units taken (rounded
+        /// down: the fraction goes back into the furthest sample taken from, so the middle of the scoop is left empty).
         /// </summary>
         public static int Take(World world, Vector3 centre, float radius, int most, List<Vector3Int> changed)
         {
@@ -25,6 +26,7 @@ namespace Clube.Core
             }
             Gather(world, centre, radius, sample => world.GetWater(sample) > 0f);
             float taken = 0f;
+            int used = 0;
             foreach ((Vector3Int sample, float _) in Found)
             {
                 float room = most - taken;
@@ -36,12 +38,13 @@ namespace Clube.Core
                 float take = Mathf.Min(there, room);
                 world.SetWater(sample, there - take);
                 taken += take;
+                used++;
                 changed?.Add(sample);
             }
             int whole = Mathf.FloorToInt(taken + 1e-3f);
-            // Gives the fraction back to the first sample it can, so no water is lost.
+            // Gives the fraction back, furthest out first, so no water is lost.
             float rest = taken - whole;
-            for (int i = 0; i < Found.Count && rest > 1e-4f; i++)
+            for (int i = used - 1; i >= 0 && rest > 1e-4f; i--)
             {
                 float there = world.GetWater(Found[i].sample);
                 float put = Mathf.Min(1f - there, rest);
