@@ -50,18 +50,25 @@ namespace Clube.Core
                 for (int x = 0; x < count.x; x++)
                 {
                     Vector3 column = grid.SampleToWorld(first + new Vector3Int(x, 0, z));
-                    if (!map.TrySurfaceAt(new float2(column.x, column.z), out _, out _))
+                    if (!map.TrySurfaceAt(new float2(column.x, column.z), out float surface, out int cell))
                     {
                         continue;
                     }
+                    // The same as GeneratedAt, with the column's surface worked out once.
+                    float lowest = map.Surface[cell] - map.Depth[cell] - voxel * 1.5f;
                     for (int y = 0; y < count.y; y++)
                     {
+                        float height = column.y + y * voxel;
+                        if (height < lowest || height > surface + voxel * 0.5f)
+                        {
+                            continue;
+                        }
                         var local = new Vector3Int(x, y, z);
                         if (chunk.GetDensity(local) >= iso)
                         {
                             continue;
                         }
-                        float amount = GeneratedAt(map, grid.SampleToWorld(first + local), voxel);
+                        float amount = Mathf.Clamp01((surface - height) / voxel + 0.5f);
                         if (amount > 0f && chunk.SetWater(local, Mathf.Max(amount, chunk.GetWater(local))))
                         {
                             filled++;

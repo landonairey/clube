@@ -573,7 +573,9 @@ it, and when it's done. None needs the big picture changed. Measure with
     sample through `Chunk.GetDensity`; read the storage's bytes in a Burst job.
 13. **Water in jobs.** `WaterMesher` (marching cubes over a chunk's water) and
     `LiveWater` (the flow) are managed and run on the main thread; a lake loading
-    meshes a few wet chunks a frame (`WaterView.chunksPerFrame`), and a big spill
+    meshes wet chunks within `WaterView.buildBudgetMs` (1.5 ms, nearest first, drawn columns
+    only), and a big spill steps within `flowBudgetMs` (2.5 ms; about 2 µs a sample in the
+    Editor, so ~1,200 samples a step) and moves more slowly. A big spill
     keeps thousands of samples awake. Mesh water in a Burst job beside the
     terrain's, and step the flow per chunk. *Measure:* `WaterView` frame time while
     a lake loads and while a dug channel drains. *Done when:* `LiveWaterTests`

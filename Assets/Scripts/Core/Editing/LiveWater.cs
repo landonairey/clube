@@ -107,14 +107,19 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Looks at every awake sample, at most <paramref name="max"/> (the rest wait). Returns how many samples changed.
+        /// Looks at awake samples, lowest first, at most <paramref name="max"/>, and when <paramref name="budgetMs"/> is
+        /// above 0 only for that long (a big spill then moves more slowly rather than stalling the frame); the rest wait.
+        /// Returns how many samples changed.
         /// </summary>
-        public int Step(int max = 5000)
+        public int Step(int max = 5000, float budgetMs = 0f)
         {
             if (awake.Count == 0)
             {
                 return 0;
             }
+            timer.Restart();
+            ownerCoord = new Vector3Int(int.MinValue, 0, 0);
+            ownerChunk = null;
             batch.Clear();
             batch.AddRange(awake);
             HashSet<Vector3Int> now = awake;
@@ -122,21 +127,47 @@ namespace Clube.Core
             awake.Clear();
             stepping = now;
             // Lowest first, so water lands before what's above it looks.
-            batch.Sort((a, b) => a.y.CompareTo(b.y));
+            batch.Sort(ByHeight);
             int changed = 0;
+            int done = batch.Count;
             for (int i = 0; i < batch.Count; i++)
             {
-                if (i >= max)
+                if (i >= max || (budgetMs > 0f && (i & 63) == 63 && timer.Elapsed.TotalMilliseconds > budgetMs))
                 {
-                    awake.Add(batch[i]);
-                    continue;
+                    done = i;
+                    break;
                 }
                 if (Look(batch[i]))
                 {
                     changed++;
                 }
             }
+            for (int i = done; i < batch.Count; i++)
+            {
+                awake.Add(batch[i]);
+            }
             return changed;
+        }
+
+        private static readonly Comparison<Vector3Int> ByHeight = (a, b) => a.y.CompareTo(b.y);
+        private readonly System.Diagnostics.Stopwatch timer = new System.Diagnostics.Stopwatch();
+        // The last chunk looked up, kept for one step (no chunk unloads during a step): most lookups are its neighbours.
+        private Vector3Int ownerCoord;
+        private Chunk ownerChunk;
+
+        private bool Owner(Vector3Int sample, out Chunk chunk, out Vector3Int local)
+        {
+            Vector3Int size = World.Grid.ChunkSize;
+            var coord = new Vector3Int(
+                WorldGrid.FloorDiv(sample.x, size.x), WorldGrid.FloorDiv(sample.y, size.y), WorldGrid.FloorDiv(sample.z, size.z));
+            local = sample - Vector3Int.Scale(coord, size);
+            if (coord != ownerCoord || ownerChunk == null)
+            {
+                ownerCoord = coord;
+                World.TryGetChunk(coord, out ownerChunk);
+            }
+            chunk = ownerChunk;
+            return chunk != null;
         }
 
         /// <summary>How full of generated (source) water a sample is, 0 when none: the map's river or lake there.</summary>
@@ -147,7 +178,7 @@ namespace Clube.Core
 
         private bool Look(Vector3Int sample)
         {
-            if (!World.TryGetOwner(sample, out Chunk chunk, out Vector3Int local))
+            if (!Owner(sample, out Chunk chunk, out Vector3Int local))
             {
                 return false;
             }
@@ -323,7 +354,7 @@ namespace Clube.Core
         // True when a sample is loaded air; its water comes back in amount.
         private bool IsOpen(Vector3Int sample, out float amount)
         {
-            if (World.TryGetOwner(sample, out Chunk chunk, out Vector3Int local) && chunk.GetDensity(local) < iso)
+            if (Owner(sample, out Chunk chunk, out Vector3Int local) && chunk.GetDensity(local) < iso)
             {
                 amount = chunk.GetWater(local);
                 return true;

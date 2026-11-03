@@ -524,7 +524,7 @@ dry, `WaterVersion`; `World.GetWater/SetWater` writes border copies, `World.TryG
 neighbours, heads for the nearest drop within 5 samples, thin water dries, generated water is an endless source, ground replaces
 water; GL313, GL315), and draws each wet chunk's water with `WaterMesher` (Core/Meshing/Water: marching cubes, solid samples
 take the water beside them so the surface runs into banks) in `Clube/Water` (each triangle a facet: bands down runs, faster where
-steeper, slow twinkles on still water); past the drawn chunks it draws the map as flat sheets. `ChunkDebugView` marks water samples.
+steeper, slow twinkles on still water); past the drawn chunks it draws the map as flat sheets. `ChunkDebugView` marks water samples. Water work is time-budgeted (`buildBudgetMs` 1.5, `flowBudgetMs` 2.5; `WaterView.LastUpdateMilliseconds`; `Docs/benchmarks.md`).
 Swimming (GL316): `PlayerSwimming` (from `WaterQuery`) sets `PlayerController.Submersion`; `UnderwaterTint` tints the screen.
 Torches burn with a `FlameCluster` of dancing low-poly tongues (GL314). `DemoBuild` rebuilds the gitignored texture array (GL317).
 

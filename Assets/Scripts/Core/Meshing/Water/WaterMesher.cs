@@ -27,6 +27,15 @@ namespace Clube.Core
         private float[] field;
         private bool[] solid;
         private Vector3Int padded;
+        private float[] water;
+        private readonly Chunk[] around = new Chunk[27];
+        private readonly float[] corner = new float[8];
+        private readonly bool[] cornerSolid = new bool[8];
+        private readonly Vector3[] edgePoint = new Vector3[12];
+        private readonly bool[] edgeInGround = new bool[12];
+        // The padded rows holding any water: the cubes looked at are only those near them.
+        private int lowRow;
+        private int highRow;
 
         /// <summary>Vertices of the last build, relative to the chunk's origin.</summary>
         public List<Vector3> Vertices => vertices;
@@ -53,20 +62,14 @@ namespace Clube.Core
             WorldGrid grid = world.Grid;
             Vector3Int size = grid.ChunkSize;
             float voxel = grid.VoxelSize;
-            Vector3Int first = grid.ChunkFirstSample(coord);
             Vector3 origin = grid.ChunkOrigin(coord);
-            if (!Gather(world, first, size, iso))
+            if (!Gather(world, coord, size, iso))
             {
                 return false;
             }
-
-            var corner = new float[8];
-            var cornerSolid = new bool[8];
-            var edgePoint = new Vector3[12];
-            var edgeInGround = new bool[12];
             for (int z = 0; z < size.z; z++)
             {
-                for (int y = 0; y < size.y; y++)
+                for (int y = Mathf.Max(0, lowRow - 3); y < Mathf.Min(size.y, highRow + 1); y++)
                 {
                     for (int x = 0; x < size.x; x++)
                     {
@@ -114,8 +117,9 @@ namespace Clube.Core
             return triangles.Count > 0;
         }
 
-        // Reads the chunk's samples and one more all round; false when none of them holds water.
-        private bool Gather(World world, Vector3Int first, Vector3Int size, float iso)
+        // Reads the chunk's samples and one more all round; false when none of them holds water. The 27 chunks round it
+        // are looked up once, not per sample.
+        private bool Gather(World world, Vector3Int coord, Vector3Int size, float iso)
         {
             // Samples -1 .. size + 1 on each axis.
             padded = size + new Vector3Int(3, 3, 3);
@@ -124,29 +128,51 @@ namespace Clube.Core
             {
                 field = new float[count];
                 solid = new bool[count];
+                water = new float[count];
             }
-            var water = new float[count];
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        world.TryGetChunk(coord + new Vector3Int(dx, dy, dz), out Chunk next);
+                        around[dx + 1 + 3 * (dy + 1 + 3 * (dz + 1))] = next;
+                    }
+                }
+            }
             bool any = false;
+            lowRow = int.MaxValue;
+            highRow = -1;
             for (int z = 0; z < padded.z; z++)
             {
+                Side(z - 1, size.z, out int cz, out int lz);
                 for (int y = 0; y < padded.y; y++)
                 {
+                    Side(y - 1, size.y, out int cy, out int ly);
                     for (int x = 0; x < padded.x; x++)
                     {
+                        Side(x - 1, size.x, out int cx, out int lx);
                         int i = Index(x, y, z);
-                        Vector3Int sample = first + new Vector3Int(x - 1, y - 1, z - 1);
-                        if (world.TryGetOwner(sample, out Chunk chunk, out Vector3Int local))
-                        {
-                            solid[i] = chunk.GetDensity(local) >= iso;
-                            float amount = solid[i] ? 0f : chunk.GetWater(local);
-                            water[i] = amount >= MinVisible ? 0.5f + 0.5f * amount : 0f;
-                            any |= amount >= MinVisible;
-                        }
-                        else
+                        Chunk chunk = around[cx + 1 + 3 * (cy + 1 + 3 * (cz + 1))];
+                        if (chunk == null)
                         {
                             solid[i] = false;
                             water[i] = 0f;
+                            continue;
                         }
+                        var local = new Vector3Int(lx, ly, lz);
+                        float amount = chunk.HasWater ? chunk.GetWater(local) : 0f;
+                        solid[i] = chunk.GetDensity(local) >= iso;
+                        if (solid[i] || amount < MinVisible)
+                        {
+                            water[i] = 0f;
+                            continue;
+                        }
+                        water[i] = 0.5f + 0.5f * amount;
+                        any = true;
+                        lowRow = Mathf.Min(lowRow, y);
+                        highRow = Mathf.Max(highRow, y);
                     }
                 }
             }
@@ -180,6 +206,27 @@ namespace Clube.Core
             return true;
         }
 
+
+        // Which neighbouring chunk (-1, 0, 1) a local sample index falls in along one axis, and its index there. The
+        // chunk's own border samples (0 and size) are its own.
+        private static void Side(int local, int size, out int chunk, out int inChunk)
+        {
+            if (local < 0)
+            {
+                chunk = -1;
+                inChunk = local + size;
+            }
+            else if (local > size)
+            {
+                chunk = 1;
+                inChunk = local - size;
+            }
+            else
+            {
+                chunk = 0;
+                inChunk = local;
+            }
+        }
         private void Take(int x, int y, int z, ref float best, float[] water)
         {
             if (x < 0 || y < 0 || z < 0 || x >= padded.x || y >= padded.y || z >= padded.z)
@@ -245,14 +292,18 @@ namespace Clube.Core
             // Speed by slope: a gentle run creeps, a steep one races.
             Vector2 flow = along * Mathf.Clamp(0.15f + slope * 6f, 0.15f, 3f);
             var look = new Vector4(centre.x, centre.y, centre.z, kind);
-            foreach (Vector3 p in new[] { a, b, c })
-            {
-                triangles.Add(vertices.Count);
-                vertices.Add(p);
-                flows.Add(flow);
-                looks.Add(look);
-                ripples.Add(RippleAt(origin + p, map));
-            }
+            AddVertex(a, flow, look, origin, map);
+            AddVertex(b, flow, look, origin, map);
+            AddVertex(c, flow, look, origin, map);
+        }
+
+        private void AddVertex(Vector3 p, Vector2 flow, Vector4 look, Vector3 origin, in WaterMap map)
+        {
+            triangles.Add(vertices.Count);
+            vertices.Add(p);
+            flows.Add(flow);
+            looks.Add(look);
+            ripples.Add(RippleAt(origin + p, map));
         }
 
         // The river's flow at a point and whether it's river, from the map alone, so every triangle sharing a corner
