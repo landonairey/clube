@@ -7,7 +7,7 @@ namespace Clube.Game
     /// A merchant's table standing at a fixed place in the world (GL38): once the chunk column
     /// there has loaded, levels one build square of ground under it and puts the table on it.
     /// The leveling goes through <see cref="World.SetDensity"/> like any edit, so it's kept with
-    /// the chunk and the borders agree. Done once per run.
+    /// the chunk and the borders agree. Done once per world: a regenerated world gets the table placed again.
     /// </summary>
     /// <remarks>
     /// The square is a cell of the build grid inside the chunk at x = 0, z = 0, so one chunk
@@ -35,11 +35,24 @@ namespace Clube.Game
 
         private bool done;
 
+        // The world the table was placed in: a regenerated world (another generator or seed) is new ground, so the table
+        // is placed again on it (GL341).
+        private World placedIn;
+
         /// <summary>The table once placed, or null.</summary>
         public GameObject Table { get; private set; }
 
         private void Update()
         {
+            if (done && worldView != null && worldView.World != placedIn)
+            {
+                if (Table != null)
+                {
+                    Destroy(Table);
+                    Table = null;
+                }
+                done = false;
+            }
             if (done || worldView == null || !worldView.IsReady || tablePrefab == null)
             {
                 return;
@@ -49,6 +62,7 @@ namespace Clube.Game
                 return;
             }
             done = true;
+            placedIn = worldView.World;
             Place();
         }
 

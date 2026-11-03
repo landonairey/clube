@@ -167,6 +167,32 @@ namespace Clube.Core
             return trees != null ? trees.CollectJobParts(grid.Bounds, allocator) : new NativeArray<TreePart>(0, allocator);
         }
 
+        private static readonly List<TreePart> Gathered = new List<TreePart>();
+
+        /// <summary>
+        /// The tree parts and large boulders (GL342) reaching a chunk, as one array of parts stamped after the terrain (empty,
+        /// not default, when there are none). Main thread only.
+        /// </summary>
+        public static NativeArray<TreePart> CollectTrees(TreeField trees, BoulderField boulders, ChunkSampleGrid grid, Allocator allocator)
+        {
+            if (boulders == null)
+            {
+                return CollectTrees(trees, grid, allocator);
+            }
+            Gathered.Clear();
+            if (trees != null)
+            {
+                trees.CollectParts(grid.Bounds, Gathered);
+            }
+            boulders.CollectParts(grid.Bounds, Gathered, TreeField.GatherMargin);
+            var parts = new NativeArray<TreePart>(Gathered.Count, allocator, NativeArrayOptions.UninitializedMemory);
+            for (int i = 0; i < Gathered.Count; i++)
+            {
+                parts[i] = Gathered[i];
+            }
+            return parts;
+        }
+
         // Schedules and completes every job, leaving the output for the caller to read and dispose.
         private static ChunkFillOutput Run(
             ITerrainGenerator generator, ChunkSampleGrid grid, TerrainLayers layers, OreField ores, TreeField trees, DensityFormat format)

@@ -91,9 +91,16 @@ namespace Clube.Core
         [SerializeField]
         private Material material;
 
-        [Tooltip("Grass grows within this many metres of the focus.")]
+        [Tooltip("Grass grows within this many metres of the focus (unless it reaches the drawn terrain).")]
         [SerializeField, Min(4f)]
         private float radius = 64f;
+
+        [Tooltip("Grass reaches as far as the voxel terrain is drawn, where the surface rocks end too (GL340), instead of the radius.")]
+        [SerializeField]
+        private bool reachDrawnTerrain = true;
+
+        // The radius as set, kept while radius follows the drawn terrain; NaN until first read.
+        private float configuredRadius = float.NaN;
 
         [Tooltip("Past this many metres fewer tufts stand, the ones left wider, so far grass costs less (GL257).")]
         [SerializeField, Min(0f)]
@@ -318,6 +325,17 @@ namespace Clube.Core
             if (!worldView.IsReady || worldView.Focus == null || grass == null || material == null)
             {
                 return;
+            }
+            // Out to where the chunks (and their rocks) are drawn; the coarse terrain past it shows the lawn colour (GL340).
+            if (float.IsNaN(configuredRadius))
+            {
+                configuredRadius = radius;
+            }
+            float reach = reachDrawnTerrain ? Mathf.Max(16f, worldView.DrawnDistance) : configuredRadius;
+            if (!Mathf.Approximately(reach, radius))
+            {
+                radius = reach;
+                scanPending = true;
             }
             // The chunks are looked over only when something changed: a new mesh, the focus moving a
             // metre, or the last look running out of time.

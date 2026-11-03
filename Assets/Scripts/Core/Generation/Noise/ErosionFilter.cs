@@ -310,7 +310,14 @@ namespace Clube.Core
                     uint h = math.hash(new int3((int)cell.x + i, (int)cell.y + j, (int)seed));
                     var pivot = new float2(h & 0xffff, h >> 16) * (0.5f / 65535f);
                     float2 fromPivot = within - offset - pivot;
-                    float weight = math.max(0f, math.exp(-math.dot(fromPivot, fromPivot) * 2f) - 0.01111f);
+                    float distanceSquared = math.dot(fromPivot, fromPivot);
+                    // The weight is 0 from 1.5 cells out (exp(-4.5) = 0.0111): about half the 16 cells, skipped before the
+                    // exp and sincos.
+                    if (distanceSquared >= 2.25f)
+                    {
+                        continue;
+                    }
+                    float weight = math.max(0f, math.exp(-distanceSquared * 2f) - 0.01111f);
                     weightSum += weight;
                     float wave = math.dot(fromPivot, sideDirection) + 0.5f * math.PI;
                     math.sincos(wave, out float sin, out float cos);

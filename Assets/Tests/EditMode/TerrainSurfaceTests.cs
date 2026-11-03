@@ -160,10 +160,6 @@ namespace Clube.Core.Tests
                 for (int x = -200; x < 200; x++)
                 {
                     var column = new int2(x, z);
-                    if (ChunkFillKernel.LargeBoulderRise(3, column, 0.05f) > 0)
-                    {
-                        continue;
-                    }
                     int rise = ChunkFillKernel.RockRise(3, column, 0.05f);
                     tallest = System.Math.Max(tallest, rise);
                     if (rise == ChunkFillKernel.BoulderRise)
@@ -176,48 +172,9 @@ namespace Clube.Core.Tests
                     }
                 }
             }
-            Assert.AreEqual(ChunkFillKernel.BoulderRise, tallest, "Away from large boulders, a boulder is the tallest rock.");
+            Assert.AreEqual(ChunkFillKernel.BoulderRise, tallest);
             Assert.Greater(boulders, 0, "Some columns are a boulder's middle.");
             Assert.Greater(starts, boulders, "Small rocks are the common kind.");
-        }
-
-        [Test]
-        public void LargeBoulders_AreRare_AndMuchBiggerThanBoulders()
-        {
-            // Count small boulders by their middles (each dome has 9 columns at its full BoulderRise) and large boulders by the
-            // cells holding one, over a wide area.
-            const float chance = 0.01f;
-            int boulderMiddles = 0;
-            int largeColumns = 0;
-            int tallest = 0;
-            var largeCells = new System.Collections.Generic.HashSet<int2>();
-            for (int z = -600; z < 600; z++)
-            {
-                for (int x = -600; x < 600; x++)
-                {
-                    var column = new int2(x, z);
-                    int large = ChunkFillKernel.LargeBoulderRise(7, column, chance);
-                    tallest = System.Math.Max(tallest, large);
-                    if (large > 0)
-                    {
-                        largeCells.Add(new int2((int)math.floor(x / (float)ChunkFillKernel.LargeBoulderCell),
-                            (int)math.floor(z / (float)ChunkFillKernel.LargeBoulderCell)));
-                    }
-                    if (large > ChunkFillKernel.BoulderRise)
-                    {
-                        largeColumns++;
-                    }
-                    else if (large == 0 && ChunkFillKernel.RockRise(7, column, chance) == ChunkFillKernel.BoulderRise)
-                    {
-                        boulderMiddles++;
-                    }
-                }
-            }
-            Assert.That(tallest, Is.GreaterThan(2 * ChunkFillKernel.BoulderRise), "Large boulders stand well over boulders.");
-            Assert.That(largeColumns, Is.GreaterThan(0), "Some large boulders exist.");
-            float share = largeCells.Count / (boulderMiddles / 9f);
-            Assert.That(share, Is.InRange(0.01f, 0.07f), $"Large boulders are a few percent of boulders ({largeCells.Count} against {boulderMiddles / 9} boulders).");
-            Assert.That(ChunkFillKernel.LargeBoulderRise(7, new int2(10, 10), 0f), Is.EqualTo(0), "No rocks, no large boulders.");
         }
     }
 }
