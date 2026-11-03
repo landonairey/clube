@@ -44,6 +44,23 @@ namespace Clube.Core
 
         /// <summary>The ground's height at each of <paramref name="points"/> (x, z), spread over the workers.</summary>
         public abstract JobHandle SchedulePointHeights(NativeArray<float2> points, NativeArray<float> heights, JobHandle dependsOn = default);
+
+        /// <summary>True when the ground knows its valleys (<see cref="ScheduleValleys"/>): the eroded landscape's gullies, where rivers start.</summary>
+        public virtual bool HasValleys => false;
+
+        /// <summary>
+        /// How deep in a valley each of <paramref name="points"/> lies: below 0 in the biggest gullies, 0 on flat land
+        /// (P12). Only for grounds that <see cref="HasValleys"/>; others write 0.
+        /// </summary>
+        public virtual JobHandle ScheduleValleys(NativeArray<float2> points, NativeArray<float> valleys, JobHandle dependsOn = default)
+        {
+            dependsOn.Complete();
+            for (int i = 0; i < valleys.Length; i++)
+            {
+                valleys[i] = 0f;
+            }
+            return default;
+        }
     }
 
     /// <summary>

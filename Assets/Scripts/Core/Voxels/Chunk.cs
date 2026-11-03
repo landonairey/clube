@@ -171,6 +171,13 @@ namespace Clube.Core
             return Mathf.Clamp(Mathf.Round(amount * WaterLevels), 0f, WaterLevels) * (1f / WaterLevels);
         }
 
+        /// <summary>
+        /// Water held in the chunk's soil (WT1), in samples' worth: what its rivers top up from. NaN until the water flow
+        /// first draws on it, which fills it to its capacity. Can go over the capacity when water soaks back in from a
+        /// river over its level. Not saved yet: a chunk loaded again starts full.
+        /// </summary>
+        public float SoilWater { get; set; } = float.NaN;
+
         /// <summary>True while any sample holds water (GL315).</summary>
         public bool HasWater => WaterCount > 0;
 

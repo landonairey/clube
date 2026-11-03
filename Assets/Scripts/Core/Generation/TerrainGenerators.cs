@@ -66,6 +66,24 @@ namespace Clube.Core
                     UnityEngine.Rect dry = settings.StartArea.Enabled ? settings.StartArea.Area : default;
                     return land.WithWater(Hydrology.For(shape, land, settings.Water, BanksFor(settings), dry));
                 }
+                case TerrainGeneratorType.ErodedLandscape:
+                {
+                    var land = new LandscapeHeight(
+                        settings.Seed, settings.SurfaceLevel, settings.Amplitude, settings.FeatureSize, settings.MountainCoverage,
+                        settings.Erosion.BaseOctaves, settings.Lacunarity, settings.Persistence,
+                        new DistantRanges(settings.DistantRangeHeight, settings.DistantRangeWidth, settings.DistantRangeStart)).WithSmoothMassifs();
+                    var eroded = new ErodedLandscapeGenerator(new ErodedLandscapeHeight(
+                        land, settings.Erosion.ToFilter(settings.Seed), settings.SurfaceLevel, settings.Amplitude));
+                    if (!settings.Water.Enabled)
+                    {
+                        return eroded;
+                    }
+                    string shape = $"eroded|{settings.Seed}|{settings.SurfaceLevel}|{settings.Amplitude}|{settings.FeatureSize}|"
+                        + $"{settings.MountainCoverage}|{settings.Octaves}|{settings.Lacunarity}|{settings.Persistence}|"
+                        + $"{settings.DistantRangeHeight}|{settings.DistantRangeWidth}|{settings.DistantRangeStart}|{settings.Erosion.Key}";
+                    UnityEngine.Rect dry = settings.StartArea.Enabled ? settings.StartArea.Area : default;
+                    return eroded.WithWater(Hydrology.For(shape, eroded, settings.Water, BanksFor(settings), dry, settings.Erosion.MinPondArea));
+                }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(settings.Generator), settings.Generator, null);
             }

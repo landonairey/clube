@@ -138,6 +138,9 @@ namespace Clube.Core
                     Live.Focus = world.Grid.WorldToNearestSample(transform.InverseTransformPoint(worldView.Focus.position));
                 }
                 Live.MinFlowSlope = minFlowSlope;
+                WaterGeneration settings = worldView.Config.Terrain.Water;
+                Live.SoilWater = settings.SoilWater;
+                Live.HoldSoilWaterFull = settings.HoldSoilWaterFull;
                 Live.Step(budgetMs: flowBudgetMs);
             }
             if (world != null)

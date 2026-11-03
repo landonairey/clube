@@ -31,9 +31,10 @@ namespace Clube.Core
 
         /// <summary>
         /// The water map for a world shape, worked out on first use. <paramref name="key"/> must change
-        /// whenever the ground's shape does. Areas in <paramref name="keepDry"/> get no lake or river.
+        /// whenever the ground's shape does. Areas in <paramref name="keepDry"/> get no lake or river, and hollows
+        /// covering less than <paramref name="minLakeArea"/> square metres hold none (the eroded land's small pits).
         /// </summary>
-        public static WaterMap For(string key, HeightfieldGenerator ground, WaterGeneration settings, WaterBanks banks, Rect keepDry)
+        public static WaterMap For(string key, HeightfieldGenerator ground, WaterGeneration settings, WaterBanks banks, Rect keepDry, float minLakeArea = 0f)
         {
             if (!hooked)
             {
@@ -41,13 +42,13 @@ namespace Clube.Core
                 AppDomain.CurrentDomain.DomainUnload += (_, __) => DisposeAll();
                 Application.quitting += DisposeAll;
             }
-            key = key + "|" + settings.Key + "|" + keepDry;
+            key = key + "|" + settings.Key + "|" + keepDry + "|" + minLakeArea;
             if (Cache.TryGetValue(key, out WaterMap map))
             {
                 map.Banks = banks;
                 return map;
             }
-            map = Build(ground, settings, keepDry);
+            map = Build(ground, settings, keepDry, minLakeArea);
             map.Banks = banks;
             Cache[key] = map;
             CacheOrder.Add(key);
@@ -78,7 +79,7 @@ namespace Clube.Core
         };
 
         /// <summary>Works out the water over the area (uncached; the caller owns the result).</summary>
-        public static WaterMap Build(HeightfieldGenerator ground, WaterGeneration settings, Rect keepDry)
+        public static WaterMap Build(HeightfieldGenerator ground, WaterGeneration settings, Rect keepDry, float minLakeArea = 0f)
         {
             float area = settings.AreaSize;
             float flowCell = settings.FlowCellSize;
@@ -172,13 +173,21 @@ namespace Clube.Core
                         }
                     }
                 }
-                if (deepest >= settings.LakeMinDepth && basin.Count >= 2 && !touchesDry)
+                if (deepest >= settings.LakeMinDepth && basin.Count >= 2 && basin.Count * flowCell * flowCell >= minLakeArea && !touchesDry)
                 {
                     foreach (int c in basin)
                     {
                         lakeLevel[c] = filled[c];
                     }
                 }
+            }
+
+            // Eroded land (P12): water off a slope takes the steepest way down, so it follows the gullies the erosion
+            // cut; the flood's own links (whichever neighbour reached a cell first) wander across them.
+            bool valleys = settings.ValleyRivers && ground.HasValleys;
+            if (valleys)
+            {
+                SteepestDescent(filled, drainsTo, n, flowCell);
             }
 
             // 3. Land draining through each cell, highest cells first.
@@ -191,6 +200,21 @@ namespace Clube.Core
                 if (drainsTo[c] >= 0)
                 {
                     drained[drainsTo[c]] += drained[c];
+                }
+            }
+
+            // Which cells carry a river: enough land drains through them, or (eroded land) a river started upstream in
+            // a gully's valley and runs down from there, into lakes and other rivers.
+            var river = new bool[n * n];
+            float[] valley = valleys ? Valleys(ground, origin, flowCell, n) : null;
+            for (int k = order.Count - 1; k >= 0; k--)
+            {
+                int c = order[k];
+                river[c] |= drained[c] >= settings.RiverArea
+                    || (valley != null && valley[c] < -settings.ValleyDepth && drained[c] >= settings.ValleyHeadArea);
+                if (river[c] && drainsTo[c] >= 0)
+                {
+                    river[drainsTo[c]] = true;
                 }
             }
 
@@ -226,7 +250,7 @@ namespace Clube.Core
             for (int c = 0; c < n * n; c++)
             {
                 int p = drainsTo[c];
-                if (p < 0 || drained[c] < settings.RiverArea || (IsLake(lakeLevel, c) && IsLake(lakeLevel, p)))
+                if (p < 0 || !river[c] || (IsLake(lakeLevel, c) && IsLake(lakeLevel, p)))
                 {
                     continue;
                 }
@@ -261,11 +285,17 @@ namespace Clube.Core
                         float half = math.lerp(halfA, halfB, t);
                         float deep = math.lerp(deepA, deepB, t);
                         float top = math.lerp(topA, topB, t);
+                        int i = x + z * size;
+                        // Eroded land: the straight line between nodes floats over a steep gully's convex floor, where no
+                        // water stood and streams came out dashed; there the bed follows the ground under it.
+                        if (valleys && distance < half)
+                        {
+                            top = math.min(top, fine[i]);
+                        }
                         float bed = top - deep;
                         float shape = distance < half
                             ? bed + deep * (distance / half) * (distance / half)
                             : top + (distance - half);
-                        int i = x + z * size;
                         if (shape < target[i])
                         {
                             target[i] = shape;
@@ -533,6 +563,62 @@ namespace Clube.Core
             {
                 points.Dispose();
                 heights.Dispose();
+            }
+        }
+
+        private static float[] Valleys(HeightfieldGenerator ground, float2 origin, float cell, int n)
+        {
+            var points = new NativeArray<float2>(n * n, Allocator.TempJob);
+            var valleys = new NativeArray<float>(n * n, Allocator.TempJob);
+            try
+            {
+                for (int i = 0; i < points.Length; i++)
+                {
+                    points[i] = origin + (new float2(i % n, i / n) + 0.5f) * cell;
+                }
+                ground.ScheduleValleys(points, valleys).Complete();
+                return valleys.ToArray();
+            }
+            finally
+            {
+                points.Dispose();
+                valleys.Dispose();
+            }
+        }
+
+        // Points each cell on a slope at its steepest lower neighbour (by filled height, per metre). Cells in filled
+        // hollows (lakes, flats) keep the flood's link. The receiver is always lower, so it was reached earlier in the
+        // flood's order and highest-first accumulation still visits every cell before the one it drains to.
+        private static void SteepestDescent(float[] filled, int[] drainsTo, int n, float cell)
+        {
+            for (int c = 0; c < n * n; c++)
+            {
+                if (drainsTo[c] < 0)
+                {
+                    continue;
+                }
+                int cx = c % n, cz = c / n;
+                int best = -1;
+                float steepest = 0f;
+                foreach (int2 d in Neighbours)
+                {
+                    int x = cx + d.x, z = cz + d.y;
+                    if (x < 0 || z < 0 || x >= n || z >= n)
+                    {
+                        continue;
+                    }
+                    int j = x + z * n;
+                    float drop = (filled[c] - filled[j]) / (cell * math.length(new float2(d)));
+                    if (drop > steepest + 1e-5f)
+                    {
+                        steepest = drop;
+                        best = j;
+                    }
+                }
+                if (best >= 0)
+                {
+                    drainsTo[c] = best;
+                }
             }
         }
 

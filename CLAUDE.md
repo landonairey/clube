@@ -555,6 +555,13 @@ evens out one neighbour at a time, and water pressed from above pushes the last 
 GL333: only rivers are sources (`WaterFill.RiverAt`), holding their level both ways; lakes and ponds are finite. GL334: wet clay
 doesn't dry or steam (`GroundDrying.IsWet`). GL335: the bucket scoops the shovel's sphere (`CollectingSettings.ToolRadius`).
 GL336: rivers stand at least `WaterMap.MinRiverDepth` over their bed. GL337 (clumps on hills) and WT1 (moisture) are open.
+P12a, P12b, WT2 (branch `p12/eroded-landscape`, `Docs/20261103j clube-backlog.md`): the ErodedLandscape generator runs
+`ErosionFilter` (Generation/Noise, after runevision's erosion filter) over Landscape with smooth massifs
+(`LandscapeHeight.WithSmoothMassifs`; the filter needs a smooth base: on ridged noise its gullies turn to noise and seams);
+panel Erosion section. Rivers start in its biggest gullies' valleys (`HeightfieldGenerator.ScheduleValleys`, `Hydrology` by
+steepest descent) and merge downstream into lakes. River water comes from the chunk's soil (`Chunk.SoilWater`, `LiveWater`
+`Draw`/`Soak`), kept full by `HoldSoilWaterFull` until there is rain. WorldLab still uses Landscape: pick ErodedLandscape
+in the panel to see it. Height maps: `Docs/images/20261103 *`.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the
 Editor log; per-script markers aren't available without the profiler.

@@ -26,5 +26,8 @@ namespace Clube.Core
 
         /// <summary>Plains, foothills and ridged mountains at a real scale, from several noise fields (GL26).</summary>
         Landscape,
+
+        /// <summary>Landscape with branching gullies and ridges eroded into its mountains, and rivers starting in their valleys (P12).</summary>
+        ErodedLandscape,
     }
 }
