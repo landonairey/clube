@@ -313,10 +313,164 @@ namespace Clube.Core
                 }
             }
 
+            // The lakes were found on the coarse grid, which misses narrow dips in their rims: held to the fine ground, a
+            // lake drains to its lowest rim and a river to its lowest bank, so neither stands as a wall over lower ground (GL320).
+            ContainLakes(map, size);
+            ContainRivers(map, size);
+
             // 5. Distances to water, for the shores and banks.
             Distances(map.Kind, WaterKind.Lake, size, map.LakeDistance);
             Distances(map.Kind, WaterKind.River, size, map.RiverDistance);
             return map;
+        }
+
+        private static readonly int[] Steps = { 1, -1, 0, 0 };
+        private static readonly int[] StepsZ = { 0, 0, 1, -1 };
+
+        private static float GroundOf(in WaterMap map, int cell)
+        {
+            return map.Surface[cell] - map.Depth[cell];
+        }
+
+        private static void MakeDry(WaterMap map, int cell)
+        {
+            float ground = GroundOf(map, cell);
+            map.Kind[cell] = (byte)WaterKind.Dry;
+            map.Surface[cell] = ground;
+            map.Depth[cell] = 0f;
+            map.Flow[cell] = float2.zero;
+        }
+
+        // Each lake (cells of one level, side by side) is lowered to the lowest dry ground on its rim when that is under
+        // its level: the water would spill there. Cells left over the new level dry up. Rivers and other lakes on the rim
+        // are its outlets and inlets, not leaks.
+        private static void ContainLakes(WaterMap map, int size)
+        {
+            var seen = new bool[size * size];
+            var lake = new List<int>();
+            var queue = new Queue<int>();
+            for (int start = 0; start < seen.Length; start++)
+            {
+                if (seen[start] || map.Kind[start] != (byte)WaterKind.Lake)
+                {
+                    continue;
+                }
+                float level = map.Surface[start];
+                lake.Clear();
+                queue.Enqueue(start);
+                seen[start] = true;
+                while (queue.Count > 0)
+                {
+                    int c = queue.Dequeue();
+                    lake.Add(c);
+                    for (int k = 0; k < 4; k++)
+                    {
+                        int x = c % size + Steps[k], z = c / size + StepsZ[k];
+                        if (x < 0 || z < 0 || x >= size || z >= size)
+                        {
+                            continue;
+                        }
+                        int n = x + z * size;
+                        if (!seen[n] && map.Kind[n] == (byte)WaterKind.Lake && Mathf.Abs(map.Surface[n] - level) < 0.01f)
+                        {
+                            seen[n] = true;
+                            queue.Enqueue(n);
+                        }
+                    }
+                }
+                for (int pass = 0; pass < 4 && lake.Count > 0; pass++)
+                {
+                    float spill = float.PositiveInfinity;
+                    foreach (int c in lake)
+                    {
+                        for (int k = 0; k < 4; k++)
+                        {
+                            int x = c % size + Steps[k], z = c / size + StepsZ[k];
+                            if (x < 0 || z < 0 || x >= size || z >= size)
+                            {
+                                continue;
+                            }
+                            int n = x + z * size;
+                            if (map.Kind[n] != (byte)WaterKind.Dry)
+                            {
+                                continue;
+                            }
+                            float ground = GroundOf(map, n);
+                            if (ground < level - 0.02f)
+                            {
+                                spill = Mathf.Min(spill, ground);
+                            }
+                        }
+                    }
+                    if (float.IsPositiveInfinity(spill))
+                    {
+                        break;
+                    }
+                    level = spill;
+                    for (int i = lake.Count - 1; i >= 0; i--)
+                    {
+                        int c = lake[i];
+                        float ground = GroundOf(map, c);
+                        if (ground >= level - 0.05f)
+                        {
+                            MakeDry(map, c);
+                            lake.RemoveAt(i);
+                            continue;
+                        }
+                        map.Surface[c] = level;
+                        map.Depth[c] = level - ground;
+                    }
+                }
+            }
+        }
+
+        // A river cell beside dry ground lower than its water is lowered to that ground (or dries), a few times over, so
+        // the change can run on along the river.
+        private static void ContainRivers(WaterMap map, int size)
+        {
+            for (int pass = 0; pass < 3; pass++)
+            {
+                bool changed = false;
+                for (int c = 0; c < size * size; c++)
+                {
+                    if (map.Kind[c] != (byte)WaterKind.River)
+                    {
+                        continue;
+                    }
+                    float level = map.Surface[c];
+                    float lowest = level;
+                    for (int k = 0; k < 4; k++)
+                    {
+                        int x = c % size + Steps[k], z = c / size + StepsZ[k];
+                        if (x < 0 || z < 0 || x >= size || z >= size)
+                        {
+                            continue;
+                        }
+                        int n = x + z * size;
+                        if (map.Kind[n] == (byte)WaterKind.Dry)
+                        {
+                            lowest = Mathf.Min(lowest, GroundOf(map, n));
+                        }
+                    }
+                    if (lowest >= level - 0.05f)
+                    {
+                        continue;
+                    }
+                    changed = true;
+                    float ground = GroundOf(map, c);
+                    if (lowest <= ground + 0.05f)
+                    {
+                        MakeDry(map, c);
+                        continue;
+                    }
+                    map.Surface[c] = lowest;
+                    map.Depth[c] = lowest - ground;
+                }
+                if (!changed)
+                {
+                    break;
+                }
+            }
         }
 
         private static bool IsLake(float[] lakeLevel, int cell)

@@ -800,6 +800,43 @@ namespace Clube.Debug.Editor
             return texture;
         }
 
+        /// <summary>Writes the brick mix and refractory brick icons (GL321), leaving the rest as they are.</summary>
+        [MenuItem("Clube/Items/Generate refractory brick icons")]
+        public static void GenerateRefractoryIcons()
+        {
+            Directory.CreateDirectory(Folder);
+            // Sand worked into clay: the clay lump, paler and sandier, flecked with grains.
+            Texture2D mix = Tinted(PaintClay(), new Color(1.22f, 1.45f, 1.5f));
+            var random = new System.Random(29);
+            for (int i = 0; i < 90; i++)
+            {
+                int x = random.Next(Size), y = random.Next(Size);
+                Color pixel = mix.GetPixel(x, y);
+                if (pixel.a > 0.5f)
+                {
+                    mix.SetPixel(x, y, Color.Lerp(pixel, new Color(0.95f, 0.9f, 0.75f), 0.7f));
+                }
+            }
+            mix.Apply();
+            Write("brick mix", "Brick mix", mix);
+            // Fired sand and clay: the brick's shape in a pale buff.
+            Write("refractory brick", "Refractory brick", Tinted(PaintBrick(), new Color(1.18f, 1.95f, 2.3f)));
+            AssetDatabase.SaveAssets();
+        }
+
+        private static Texture2D Tinted(Texture2D texture, Color tint)
+        {
+            Color[] pixels = texture.GetPixels();
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                Color p = pixels[i];
+                pixels[i] = new Color(Mathf.Clamp01(p.r * tint.r), Mathf.Clamp01(p.g * tint.g), Mathf.Clamp01(p.b * tint.b), p.a);
+            }
+            texture.SetPixels(pixels);
+            texture.Apply();
+            return texture;
+        }
+
         /// <summary>Writes only the wooden bucket's icon (GL319), leaving the rest as they are.</summary>
         [MenuItem("Clube/Items/Generate bucket icon")]
         public static void GenerateBucketIcon()

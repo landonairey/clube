@@ -96,6 +96,7 @@ namespace Clube.Debug.Editor
                 { "maple leaves", (new Color(0.46f, 0.3f, 0.16f), new Color(0.61f, 0.45f, 0.25f), null, Wear.Leaves) },
                 // Sand (GL308): pale, fine-grained, on river and lake beds and shores.
                 { "sand", (new Color(0.78f, 0.70f, 0.52f), new Color(0.86f, 0.79f, 0.62f), null, Wear.Whole) },
+                { "refractory brick", (new Color(0.84f, 0.72f, 0.54f), new Color(0.9f, 0.8f, 0.62f), null, Wear.Bricks) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]

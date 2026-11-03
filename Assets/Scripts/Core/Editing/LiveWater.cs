@@ -45,6 +45,7 @@ namespace Clube.Core
         private readonly List<Vector3Int> batch = new List<Vector3Int>();
         private readonly List<Vector3Int> carry = new List<Vector3Int>();
         private readonly HashSet<Vector3Int> carried = new HashSet<Vector3Int>();
+        private Comparison<Vector3Int> byNearness;
         private readonly List<Vector3Int> targets = new List<Vector3Int>();
 
         public LiveWater(World world, WaterMap map, float iso)
@@ -128,17 +129,21 @@ namespace Clube.Core
             awake = stepping;
             awake.Clear();
             stepping = now;
-            // Lowest first, so water lands before what's above it looks.
-            batch.Sort(ByHeight);
-            // What the last step had no time for goes first, so busy water low down never starves water higher up.
+            // What the last step had no time for joins in; then nearest the focus first, lowest first (ByNearness).
             if (carry.Count > 0)
             {
                 carried.Clear();
-                carried.UnionWith(carry);
-                batch.RemoveAll(sample => carried.Contains(sample));
-                batch.InsertRange(0, carry);
+                carried.UnionWith(batch);
+                foreach (Vector3Int sample in carry)
+                {
+                    if (carried.Add(sample))
+                    {
+                        batch.Add(sample);
+                    }
+                }
                 carry.Clear();
             }
+            batch.Sort(byNearness ??= ByNearness);
             int changed = 0;
             int done = batch.Count;
             for (int i = 0; i < batch.Count; i++)
@@ -160,7 +165,22 @@ namespace Clube.Core
             return changed;
         }
 
-        private static readonly Comparison<Vector3Int> ByHeight = (a, b) => a.y.CompareTo(b.y);
+        // Nearest the focus first (in 8 m bands), so a long spill far off never holds up the water by the player; lowest
+        // first within a band, so water lands before what's above it looks.
+        private int ByNearness(Vector3Int a, Vector3Int b)
+        {
+            int da = Band(a), db = Band(b);
+            return da != db ? da.CompareTo(db) : a.y.CompareTo(b.y);
+        }
+
+        private int Band(Vector3Int sample)
+        {
+            Vector3Int d = sample - Focus;
+            return (Mathf.Abs(d.x) + Mathf.Abs(d.y) + Mathf.Abs(d.z)) / 32;
+        }
+
+        /// <summary>The sample the flow works out from first: the player's (set each frame by the water view).</summary>
+        public Vector3Int Focus { get; set; }
         private readonly System.Diagnostics.Stopwatch timer = new System.Diagnostics.Stopwatch();
         // The last chunk looked up, kept for one step (no chunk unloads during a step): most lookups are its neighbours.
         private Vector3Int ownerCoord;
@@ -232,7 +252,7 @@ namespace Clube.Core
 
             // Then spreads sideways, from what's left, once it stands on something.
             belowOpen = IsOpen(below, out underWater);
-            if (a >= MinSpread && (!belowOpen || underWater > 0.98f))
+            if (a >= MinAmount && (!belowOpen || underWater > 0.98f))
             {
                 Spread(sample, ref a, source);
             }
@@ -274,11 +294,13 @@ namespace Clube.Core
                     targets.Add(next);
                 }
             }
+            bool overEdge = anyDrop;
             if (!anyDrop && targets.Count > 0 && TowardsDrop(sample))
             {
                 anyDrop = true;
             }
-            if (targets.Count == 0)
+            // Thin water only follows a drop downhill; it spreads out over flat ground only while it has some depth.
+            if (targets.Count == 0 || (!anyDrop && a < MinSpread))
             {
                 return;
             }
@@ -291,9 +313,18 @@ namespace Clube.Core
                 {
                     continue;
                 }
-                Set(next, there + give, SourceAt(next));
+                // Over an edge the water goes straight down the face (GL320): into the open sample under the edge,
+                // rather than out into the air beside the edge first, where it stood as a floating lip a step.
+                Vector3Int into = next;
+                if (overEdge && IsOpen(next + Vector3Int.down, out float under) && under < 1f)
+                {
+                    into = next + Vector3Int.down;
+                    there = under;
+                    give = Mathf.Min(give, 1f - under);
+                }
+                Set(into, there + give, SourceAt(into));
                 a = Mathf.Max(source, a - give);
-                WakeAround(next);
+                WakeAround(into);
             }
         }
 

@@ -32,6 +32,11 @@ namespace Clube.Debug.Editor
         private const string BrickRecipe = "Assets/Config/Recipes/Build brick furnace.asset";
         private const string BrickIcon = "Assets/Textures/Items/brick furnace.png";
         private const string BrickLook = "Assets/Materials/Stations/Brick.mat";
+        private const string RefractoryPrefab = "Assets/Prefabs/Stations/Refractory Furnace.prefab";
+        private const string RefractoryItem = "Assets/Config/Items/Refractory furnace.asset";
+        private const string RefractoryRecipe = "Assets/Config/Recipes/Build refractory furnace.asset";
+        private const string RefractoryIcon = "Assets/Textures/Items/refractory furnace.png";
+        private const string RefractoryLook = "Assets/Materials/Stations/Refractory brick.mat";
 
         private const float ClayHeat = 1.5f;
         private const int ClayUnlockLevel = 5;
@@ -39,6 +44,10 @@ namespace Clube.Debug.Editor
         // The brick furnace outdoes the clay one (GL229): hotter, so faster on the same fuel.
         private const float BrickHeat = 2.25f;
         private const int BrickUnlockLevel = 6;
+
+        // The refractory furnace (GL321, HF7's brick of sand and clay) outdoes the brick one again.
+        private const float RefractoryHeat = 3f;
+        private const int RefractoryUnlockLevel = 7;
 
         [MenuItem("Clube/Models/Build furnaces")]
         public static void Build()
@@ -69,6 +78,18 @@ namespace Clube.Debug.Editor
             ItemDefinition brickFurnace = FurnaceItem(BrickItem, "brick-furnace", "Brick furnace", BrickIcon, new Color(1.3f, 0.7f, 0.6f), BrickPrefab);
             CopyIfMissing(ClayRecipe, BrickRecipe);
             SetCost(BrickRecipe, brickItem, cost, BrickUnlockLevel, brickFurnace);
+
+            // The refractory furnace (GL321): the brick one's copy, built of refractory bricks (fired sand and clay).
+            var refractory = AssetDatabase.LoadAssetAtPath<VoxelMaterial>("Assets/Config/Materials/Refractory brick.asset");
+            var refractoryItem = AssetDatabase.LoadAssetAtPath<ItemDefinition>("Assets/Config/Items/Refractory brick.asset");
+            if (refractory != null && refractoryItem != null)
+            {
+                CopyIfMissing(BrickPrefab, RefractoryPrefab);
+                Configure(RefractoryPrefab, "Refractory furnace", RefractoryHeat, refractory, Look(RefractoryLook, new Color(0.86f, 0.74f, 0.55f)), stamp);
+                ItemDefinition refractoryFurnace = FurnaceItem(RefractoryItem, "refractory-furnace", "Refractory furnace", RefractoryIcon, new Color(1.5f, 1.35f, 1.05f), RefractoryPrefab);
+                CopyIfMissing(BrickRecipe, RefractoryRecipe);
+                SetCost(RefractoryRecipe, refractoryItem, cost, RefractoryUnlockLevel, refractoryFurnace);
+            }
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Built the stone, clay and brick furnaces ({LowPolyModels.FurnaceParts().Count} samples each, built for {cost}).");
         }

@@ -131,6 +131,10 @@ namespace Clube.Core
             if (Live != null && Time.time >= nextFlowStep)
             {
                 nextFlowStep = Time.time + flowStepSeconds;
+                if (worldView.Focus != null)
+                {
+                    Live.Focus = world.Grid.WorldToNearestSample(transform.InverseTransformPoint(worldView.Focus.position));
+                }
                 Live.Step(budgetMs: flowBudgetMs);
             }
             if (world != null)
