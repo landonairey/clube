@@ -26,6 +26,11 @@ MonoBehaviour:
   toolTier: 1
   requiredSkill: 0
   requiredLevel: 0
+  windSway: 0
+  shine: 0
+  fall: 1
+  overhang: 5
+  archReach: 10
   breaksInto: {fileID: 11400000, guid: debe2c5e9edbed84dab39106277c66dc, type: 2}
   isWorktop: 0
   isSoft: 0

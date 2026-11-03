@@ -4,9 +4,9 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// Lets dirt, grass and sand fall (GL308): runs a <see cref="GroundSettling"/> on the world of the
-    /// <see cref="WorldView"/> beside it, a step every <see cref="stepSeconds"/>, so undermined ground
-    /// drops a sample (a quarter metre at the game's voxel size) a step and sand runs down steep slopes.
+    /// Lets the ground fall (GL308, GL327): runs a <see cref="GroundSettling"/> on the world of the
+    /// <see cref="WorldView"/> beside it, a step every <see cref="stepSeconds"/>, so ground hanging further out than its
+    /// material holds drops a sample (a quarter metre at the game's voxel size) a step and sand runs down steep slopes.
     /// </summary>
     [RequireComponent(typeof(WorldView))]
     public sealed class FallingGround : MonoBehaviour
@@ -42,7 +42,7 @@ namespace Clube.Game
             {
                 settling?.Dispose();
                 MaterialRegistry materials = worldView.Config.Materials;
-                settling = new GroundSettling(world, id => materials != null && materials.Get(id) != null ? materials.Get(id).Fall : GroundFall.Stays,
+                settling = new GroundSettling(world, id => materials != null && materials.Get(id) != null ? materials.Get(id).Hold : default,
                     worldView.Config.IsoLevel);
             }
             if (Time.time < nextStep)

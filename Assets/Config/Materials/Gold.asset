@@ -28,6 +28,9 @@ MonoBehaviour:
   requiredLevel: 0
   windSway: 0
   shine: 1
+  fall: 1
+  overhang: 5
+  archReach: 10
   breaksInto: {fileID: 0}
   isWorktop: 0
   isSoft: 0

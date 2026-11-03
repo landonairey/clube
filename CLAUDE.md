@@ -541,6 +541,9 @@ thin remainder along and thin water on the flat joins the wettest beside it (`Li
 the bulk load drops to `farLoadingBudgetMilliseconds` past the drawn columns; distant trees re-collect only when the view
 moves. GL325: downhill water takes one way (`LiveWater.PickPath`: wet first, then the deepest fall, then a place hash), so
 spills run in veins; water moves in whole 1/255 steps (`LiveWater.Steps`), since rounded moves made water out of nothing. GL326: water drops up to `LiveWater.FallReach` (2 m) through empty air per step.
+GL327 (first pass of SM1): ground hangs over air up to its `VoxelMaterial.overhang` (sand 0, dirt/grass/clay 2, rock and brick 5)
+sideways to ground on a 3 m solid column, plus `archReach` (rock: a sample per solid one over it, up to 10, so cave
+ceilings hold); `GroundSettling` measures each overhanging sheet once a step (`GroundHold`). GL328 (crushed ground) is open.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the
 Editor log; per-script markers aren't available without the profiler.

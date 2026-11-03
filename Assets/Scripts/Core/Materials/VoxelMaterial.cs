@@ -5,7 +5,7 @@ namespace Clube.Core
     /// <summary>How ground of a material moves under gravity (GL308).</summary>
     public enum GroundFall
     {
-        /// <summary>It stays where it is (rock, clay, plants).</summary>
+        /// <summary>It stays where it is (plants, stumps, carved flat rock).</summary>
         Stays,
 
         /// <summary>It falls straight down into air below it (dirt, grass).</summary>
@@ -13,6 +13,31 @@ namespace Clube.Core
 
         /// <summary>It falls, and slides down sideways where the slope is steeper than 45° (sand).</summary>
         Slides,
+    }
+
+    /// <summary>
+    /// How a material holds over air (GL327): how it falls once it lets go (<see cref="GroundFall"/>), how many samples out it
+    /// can hang held sideways by ground that stands on something, and how much further for each solid sample over it.
+    /// </summary>
+    public readonly struct GroundHold
+    {
+        public GroundHold(GroundFall fall, int overhang = 0, int archReach = 0)
+        {
+            Fall = fall;
+            Overhang = overhang;
+            ArchReach = archReach;
+        }
+
+        public GroundFall Fall { get; }
+
+        /// <summary>Samples out over air it can hang; 0: it falls whenever there's air under it.</summary>
+        public int Overhang { get; }
+
+        /// <summary>Extra overhang for each solid sample stacked over it, up to this many (cave ceilings).</summary>
+        public int ArchReach { get; }
+
+        /// <summary>Whether anything can hold it over air.</summary>
+        public bool CanHang => Overhang > 0 || ArchReach > 0;
     }
 
     /// <summary>How dropped material of a kind piles up (GL17).</summary>
@@ -131,6 +156,16 @@ namespace Clube.Core
         [Tooltip("Whether it falls when nothing holds it up (GL308): dirt and grass drop straight down, sand also slides off slopes steeper than 45°.")]
         [SerializeField]
         private GroundFall fall;
+
+        [Tooltip("How many samples out it can hang over air before it falls (GL327): held sideways through solid ground to " +
+                 "ground standing on a solid column. 0: it falls whenever there's air under it (sand). Only for ground that falls.")]
+        [SerializeField, Range(0, 16)]
+        private int overhang;
+
+        [Tooltip("Extra overhang for each solid sample stacked over it, up to this many (GL327): thick rock arches over a cave " +
+                 "where a thin lip of it breaks off.")]
+        [SerializeField, Range(0, 16)]
+        private int archReach;
 
         [Tooltip("What a tool turns it into once broken (MF5, GL3), e.g. stone → cracked stone → loose stone. None: breaking it removes it and gives its drop.")]
         [SerializeField]
@@ -255,6 +290,9 @@ namespace Clube.Core
 
         /// <summary>Whether it falls when nothing holds it up (GL308).</summary>
         public GroundFall Fall => fall;
+
+        /// <summary>How it falls and how far it holds over air (GL327).</summary>
+        public GroundHold Hold => new GroundHold(fall, overhang, archReach);
 
         /// <summary>
         /// How rough its surface is drawn, 0-1 (GL268): rock fully (bumps and cracks on stone faces), soft ground a little,
