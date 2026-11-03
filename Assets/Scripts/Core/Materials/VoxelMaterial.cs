@@ -2,6 +2,41 @@ using UnityEngine;
 
 namespace Clube.Core
 {
+    /// <summary>How ground of a material moves under gravity (GL308).</summary>
+    public enum GroundFall
+    {
+        /// <summary>It stays where it is (plants, stumps, carved flat rock).</summary>
+        Stays,
+
+        /// <summary>It falls straight down into air below it (dirt, grass).</summary>
+        Drops,
+
+        /// <summary>It falls, and slides down sideways where the slope is steeper than 45° (sand).</summary>
+        Slides,
+    }
+
+    /// <summary>
+    /// How a material holds over air (GL327): how it falls once it lets go (<see cref="GroundFall"/>), and the stability it
+    /// loses, in percent, for each sample it reaches out sideways or hangs under its neighbour. Ground standing on a solid
+    /// column is 100% stable, ground resting on a sample keeps that sample's stability, and ground at 0% falls.
+    /// </summary>
+    public readonly struct GroundHold
+    {
+        public GroundHold(GroundFall fall, int stabilityLoss = 100)
+        {
+            Fall = fall;
+            StabilityLoss = Mathf.Clamp(stabilityLoss, 0, 100);
+        }
+
+        public GroundFall Fall { get; }
+
+        /// <summary>Percent lost per sample out or under: 0 holds while joined to the ground (rock), 100 never hangs (sand).</summary>
+        public int StabilityLoss { get; }
+
+        /// <summary>Whether anything can hold it over air.</summary>
+        public bool CanHang => Fall != GroundFall.Stays && StabilityLoss < 100;
+    }
+
     /// <summary>How dropped material of a kind piles up (GL17).</summary>
     public enum PileShape
     {
@@ -114,6 +149,17 @@ namespace Clube.Core
         [Tooltip("How much it shines, 0-1 (GL251: gold glints, so it's told from chalcopyrite): a metallic highlight and sparkles in the Clube/Terrain Materials shader.")]
         [SerializeField, Range(0f, 1f)]
         private float shine;
+
+        [Tooltip("Whether it falls when nothing holds it up (GL308): dirt and grass drop straight down, sand also slides off slopes steeper than 45°.")]
+        [SerializeField]
+        private GroundFall fall;
+
+        [Tooltip("Stability it loses, in percent, for each sample it reaches out sideways or hangs under its neighbour (GL327). " +
+                 "Ground standing on a solid column is 100% stable and ground resting on a sample keeps that sample's stability; " +
+                 "at 0% it falls. 0: it holds while it's joined to the ground at all (rock). 34: two samples out hold (dirt). " +
+                 "100: it falls whenever there's air under it (sand). Only for ground that falls.")]
+        [SerializeField, Range(0, 100)]
+        private int stabilityLoss = 100;
 
         [Tooltip("What a tool turns it into once broken (MF5, GL3), e.g. stone → cracked stone → loose stone. None: breaking it removes it and gives its drop.")]
         [SerializeField]
@@ -235,6 +281,12 @@ namespace Clube.Core
 
         /// <summary>How much it shines, 0-1 (GL251): gold does, the rest of the ground is matt.</summary>
         public float Shine => shine;
+
+        /// <summary>Whether it falls when nothing holds it up (GL308).</summary>
+        public GroundFall Fall => fall;
+
+        /// <summary>How it falls and how far it holds over air (GL327).</summary>
+        public GroundHold Hold => new GroundHold(fall, stabilityLoss);
 
         /// <summary>
         /// How rough its surface is drawn, 0-1 (GL268): rock fully (bumps and cracks on stone faces), soft ground a little,

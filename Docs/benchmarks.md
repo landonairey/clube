@@ -706,3 +706,17 @@ WorldLab with a 400 m fixed area at render distance 64, everything loaded (35,09
 | Render, from 140 m up | 5.5 ms | 1.3 ms |
 
 The 20 fps seen standing still is most likely the 19 million triangles drawn every frame, shadows too (streaming was idle); not confirmed on the GPU. Past 96 m the coarse terrain's 1 m voxels and the distant tree meshes stand in for the hidden chunks.
+
+## Water in the voxel data (GL315, 2026-11-02)
+
+WorldLab (300 m fixed area, 4 voxels/m), Editor, Play mode, `WaterView.LastUpdateMilliseconds` while the world streams for 40 s, and `LiveWater.Step` after a 4.5 m channel was dug out of a lake on a mountainside (about 10,000 samples awake, 5,000 flowing).
+
+| | First version | After the fixes |
+|---|---|---|
+| Water mesh, per wet chunk | 2.18 ms | 0.99 ms (27-chunk lookup once, only rows near water) |
+| Fill from the map, per wet chunk | 0.92 ms | 0.18 ms (surface once per column) |
+| `WaterView` per frame while streaming | 7.2 ms avg | 0.36 ms avg, p95 2.3 ms, worst 4.9 ms |
+| `WaterView` per frame, settled | 0.4-4 ms (far tiles rebuilt on every layer load) | 0.001 ms |
+| Flow step during the spill | 9.7-21 ms (unbounded) | 2.9 ms (2.5 ms budget), every 0.06 s |
+
+The fixes: meshes are built nearest first within 1.5 ms a frame and only for drawn columns (past them the far sheets show the water); far tiles rebuild only when a column first loads or its drawn state changes; the flow step has a time budget and caches its chunk lookup. Next step is optimization target 13 in `architecture.md` (water in Burst jobs).

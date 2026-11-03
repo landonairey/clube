@@ -231,6 +231,15 @@ namespace Clube.Core
             spot = new Vector2(
                 (cell.x + Mathf.Lerp(CellMargin, 1f - CellMargin, VoxelHash.Uniform(seed, cell.x, 0, cell.y, CellSalt + 1))) * size,
                 (cell.y + Mathf.Lerp(CellMargin, 1f - CellMargin, VoxelHash.Uniform(seed, cell.x, 0, cell.y, CellSalt + 2))) * size);
+            // Nothing grows in rivers and lakes or on their sand (GL307).
+            if (generator is HeightfieldGenerator heightfield && heightfield.Water.TryCell(spot, out int wet))
+            {
+                WaterMap water = heightfield.Water;
+                if (water.Kind[wet] != 0 || water.LakeDistance[wet] <= water.Banks.ShoreSand + 1f || water.RiverDistance[wet] <= 2)
+                {
+                    return false;
+                }
+            }
             return true;
         }
 

@@ -510,6 +510,54 @@ Torches light the terrain, grass and held items (GL294: `AdditionalLights.hlsl` 
 until B starts placing it. E also opens the inventory (GL298); fuel clicked at a fire goes to its fuel slot (GL299);
 right-click pulls half a station or chest slot (GL300). A swing at nothing whooshes, a refused hit errs (GL302);
 placed torches have a flickering flame (GL304); Ctrl-click at the merchant picks stacks to sell together (GL305).
+Thirtieth pass (GL306-GL323, `Docs/20261102b clube-backlog.md`, `20261102c`, `20261102d`, `20261103`, `20261103b`): water and falling ground. `Hydrology` (Core/Generation/Water)
+drains the heightfield over `WaterGeneration.AreaSize` (640 m round the origin; start area kept dry) into a `WaterMap` (1 m
+cells: river cut, water surface and depth, kind, flow, distance to lake and river water), cached per world shape.
+`LandscapeHeight.Height` subtracts the cut, so river beds are in the terrain data and every height reader agrees;
+`ChunkFillSettings.Water` lets `ChunkFillKernel.StampWaterBanks` lay sand (id 24, GL306) on beds and lake shores and clay on
+banks and deep lake floors; `TreeField.TryGetSpot` keeps trees off. Jobs refuse unassigned arrays even unread, so "no water"
+is `WaterMap.None` (empty arrays), never `default`. Dirt and grass drop, sand also slides
+(`VoxelMaterial.Fall`): `GroundSettling` (Core/Editing) wakes on `World.DensityChanged` and `FallingGround` (on World) steps it
+(GL308). Water is voxel data (GL315): a byte per sample beside density and material (`Chunk.GetWater/SetWater`, null while
+dry, `WaterVersion`; `World.GetWater/SetWater` writes border copies, `World.TryGetOwner` is the quick per-sample lookup). `WaterView`
+(on World) fills each loaded chunk from the map (`WaterFill`), steps `LiveWater` (Core/Editing: falls first, spreads to lower
+neighbours, heads for the nearest drop within 5 samples, thin water dries, generated water is an endless source, ground replaces
+water; GL313, GL315), and draws each wet chunk's water with `WaterMesher` (Core/Meshing/Water: marching cubes, solid samples
+take the water beside them so the surface runs into banks) in `Clube/Water` (each triangle a facet: bands down runs, faster where
+steeper, slow twinkles on still water); past the drawn chunks it draws the map as flat sheets. `ChunkDebugView` marks water samples. Water work is time-budgeted (`buildBudgetMs` 1.5, `flowBudgetMs` 2.5; `WaterView.LastUpdateMilliseconds`; `Docs/benchmarks.md`).
+Swimming (GL316): `PlayerSwimming` (from `WaterQuery`) sets `PlayerController.Submersion`; `UnderwaterTint` tints the screen.
+Torches burn with a `FlameCluster` of dancing low-poly tongues (GL314). `DemoBuild` rebuilds the gitignored texture array (GL317).
+GL318: `WaterFill` fills to the real ground and runs lakes over low shores (dry cells only, across chunk faces); a cell's
+water never rises over its own level; slope ridges fade by water (`WaterMap.ShoreFade`); the mesher smooths thin runs
+and marks bank triangles for foam (UV3). GL319: the wooden bucket (`BucketDefinition`, water in `ItemStack.Wear`;
+`WaterScoop`; `PlayerBucket` on Player, Attack scoops, Place pours). GL320: `Hydrology.ContainLakes/ContainRivers` hold water
+to the 1 m ground; `LiveWater` pours over edges straight down and works out from `LiveWater.Focus`. GL321: brick mix (sand +
+clay) fires into refractory brick (ground id 25), which builds the refractory furnace (heat 3). Clay falls (GL322).
+GL323: far water sheets are wet cells only, clipped by a coverage mask where chunks draw; water is never deleted; pours pool
+(`WaterScoop.Pour`); `WorldStreamer.DrawRadius` shrinks the drawn chunks with the focus's height over the world.
+Testing gotcha: pumping the World object's LateUpdate by hand from high up crashed the Editor (GPU out of memory) twice.
+GL324: a pour sinks through water and fills no higher than a sample over the puddle's surface; downhill water takes its
+thin remainder along and thin water on the flat joins the wettest beside it (`LiveWater.Gather`), so no specks are left;
+the bulk load drops to `farLoadingBudgetMilliseconds` past the drawn columns; distant trees re-collect only when the view
+moves. GL325: downhill water takes one way (`LiveWater.PickPath`: wet first, then the deepest fall, then a place hash), so
+spills run in veins; water moves in whole 1/255 steps (`LiveWater.Steps`), since rounded moves made water out of nothing. GL326: water drops up to `LiveWater.FallReach` (2 m) through empty air per step.
+GL327 (first pass of SM1): ground has a stability: 100% on a 3 m solid column, the same resting on a sample, less
+`VoxelMaterial.stabilityLoss` per sample out or hanging (rock 0%: holds while joined to standing ground, so cave ceilings
+hold and only cut-off pieces fall, whole; dirt/grass/clay 34%: two out; sand 100%); at 0% it falls (`GroundSettling`,
+`GroundHold`). GL328 (crushed ground) is open.
+GL329: `StationFire` (on the campfire and furnaces) brightens and flickers the Glow light while the station smelts; the
+campfire also shows a `FlameCluster` and smoke. GL330: only a lone trickle moves whole downhill; water fed from behind
+(`LiveWater.IsFed`) evens out with the sample ahead, so a dug trench fills as one stream. GL331: ground changes wake the water
+flow only where there's water beside them (a big dry dig once left 200k samples sorted every step, 170 ms frames).
+GL332: water comes in sixteenths (`Chunk.WaterLevels`, `LiveWater.Quantum`); it spreads on the flat only while two steps deep,
+evens out one neighbour at a time, and water pressed from above pushes the last step; downhill needs `LiveWater.MinFlowSlope`
+(0.25) over 2 m ahead or a 2-sample cliff. `WaterScenarioTests` measure pours, slopes, a fed channel and a flood at game scale.
+GL333: only rivers are sources (`WaterFill.RiverAt`), holding their level both ways; lakes and ponds are finite. GL334: wet clay
+doesn't dry or steam (`GroundDrying.IsWet`). GL335: the bucket scoops the shovel's sphere (`CollectingSettings.ToolRadius`).
+GL336: rivers stand at least `WaterMap.MinRiverDepth` over their bed. GL337 (clumps on hills) and WT1 (moisture) are open.
+To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
+category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the
+Editor log; per-script markers aren't available without the profiler.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for

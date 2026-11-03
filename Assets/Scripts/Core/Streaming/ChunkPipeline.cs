@@ -63,7 +63,7 @@ namespace Clube.Core
             this.ores = ores;
             this.trees = trees;
             this.createStorage = createStorage;
-            fillSettings = ChunkGenerator.SettingsFor(layers, ores, format, start);
+            fillSettings = ChunkGenerator.SettingsFor(layers, ores, format, start, generator);
         }
 
         /// <summary>

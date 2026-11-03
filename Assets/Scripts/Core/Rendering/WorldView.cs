@@ -58,6 +58,11 @@ namespace Clube.Core
         [SerializeField, Range(0.5f, 100f)]
         private float loadingBudgetMilliseconds = 30f;
 
+        [Tooltip("The budget once the first load is on to the hidden chunks past the detail distance (the coarse terrain " +
+                 "stands in for them), so the game plays smoothly meanwhile. 0: the loading budget to the end.")]
+        [SerializeField, Range(0f, 100f)]
+        private float farLoadingBudgetMilliseconds = 8f;
+
         [Tooltip("How far from the focus, horizontally in metres, chunks draw the overlay materials (every chunk material after the first). " +
                  "Each overlay is a second pass over every triangle, so far chunks skip it. 0: every chunk.")]
         [SerializeField, Min(0f)]
@@ -365,6 +370,7 @@ namespace Clube.Core
                 MaxJobsInFlight = maxJobsInFlight,
                 FrameBudgetMilliseconds = frameBudgetMilliseconds,
                 LoadingBudgetMilliseconds = loadingBudgetMilliseconds,
+                FarLoadingBudgetMilliseconds = farLoadingBudgetMilliseconds,
                 OverlayRadius = overlayRadius,
                 Colliders = chunkColliders,
                 ColliderRadius = colliderRadius,

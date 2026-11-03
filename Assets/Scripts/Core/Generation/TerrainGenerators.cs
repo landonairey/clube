@@ -5,6 +5,25 @@ namespace Clube.Core
     /// <summary>Builds the generator a <see cref="TerrainSettings"/> selects (K9), once per fill.</summary>
     public static class TerrainGenerators
     {
+        /// <summary>The sand and clay laid by rivers and lakes (GL307).</summary>
+        public static WaterBanks BanksFor(TerrainSettings settings)
+        {
+            WaterGeneration water = settings.Water;
+            VoxelMaterial clay = settings.Layers?.Clay;
+            return new WaterBanks
+            {
+                Sand = water.Sand != null ? water.Sand.Id : (byte)0,
+                Clay = clay != null ? clay.Id : (byte)0,
+                SandDepth = water.Sand != null ? water.SandDepth : 0f,
+                ClayDepth = clay != null ? water.ClayDepth : 0f,
+                ClayFloorDepth = water.ClayFloorDepth,
+                ShoreSand = water.ShoreSand,
+                BankClay = water.BankClay,
+                BankClayCover = water.BankClayCover,
+                PatchSize = 3f,
+            };
+        }
+
         /// <exception cref="InvalidOperationException">
         /// The heightmap generator is selected but no usable heightmap is assigned.
         /// </exception>
@@ -33,10 +52,20 @@ namespace Clube.Core
                         ?? throw new InvalidOperationException("The heightmap generator needs a heightmap image or RAW file.");
                     return new HeightmapGenerator(heightmap, settings.SurfaceLevel, settings.Amplitude, settings.HeightmapUnitsPerPixel);
                 case TerrainGeneratorType.Landscape:
-                    return new LandscapeGenerator(
+                {
+                    var land = new LandscapeGenerator(
                         settings.Seed, settings.SurfaceLevel, settings.Amplitude, settings.FeatureSize, settings.MountainCoverage,
                         settings.Octaves, settings.Lacunarity, settings.Persistence,
                         new DistantRanges(settings.DistantRangeHeight, settings.DistantRangeWidth, settings.DistantRangeStart));
+                    if (!settings.Water.Enabled)
+                    {
+                        return land;
+                    }
+                    string shape = $"landscape|{settings.Seed}|{settings.SurfaceLevel}|{settings.Amplitude}|{settings.FeatureSize}|"
+                        + $"{settings.MountainCoverage}|{settings.Octaves}|{settings.Lacunarity}|{settings.Persistence}";
+                    UnityEngine.Rect dry = settings.StartArea.Enabled ? settings.StartArea.Area : default;
+                    return land.WithWater(Hydrology.For(shape, land, settings.Water, BanksFor(settings), dry));
+                }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(settings.Generator), settings.Generator, null);
             }

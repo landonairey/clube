@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d59954c0fdd2f5d4c9594a66c55f0fc1, type: 3}
+  m_Name: Sand
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.VoxelMaterial
+  id: 24
+  displayName: Sand
+  category: 0
+  albedo: {fileID: 2800000, guid: 720e810cf5ade0e4aab07bd4e26dc8ab, type: 3}
+  debugColor: {r: 0.82, g: 0.74, b: 0.55, a: 1}
+  hardness: 1
+  drop: {fileID: 11400000, guid: 6ab4c2c5efef23f45be465e08251c172, type: 2}
+  pileShape: 0
+  reposeAngle: 34
+  pickUpPieceSize: 0
+  pickedFromPiles: 0
+  toolTier: 0
+  requiredSkill: 0
+  requiredLevel: 0
+  windSway: 0
+  shine: 0
+  fall: 2
+  stabilityLoss: 100
+  breaksInto: {fileID: 0}
+  isWorktop: 0
+  isSoft: 1
+  driesInto: {fileID: 0}
+  dryingDays: 2
+  notes:
+    Hardness: 
+    Luster: 
+    Colour: 
+    Feel: 

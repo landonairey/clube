@@ -56,6 +56,10 @@ namespace Clube.Debug
         [SerializeField]
         private Wireframe wireframe = Wireframe.Outline;
 
+        [Tooltip("Colour the density samples holding water (GL315, GL318) blue in the same sample grid, brighter the fuller.")]
+        [SerializeField]
+        private bool showWater = true;
+
         [Tooltip("Colour of the chunk's bounding box.")]
         [SerializeField]
         private Color outlineColor = new Color(0.6f, 0.6f, 0.6f);
@@ -79,6 +83,8 @@ namespace Clube.Debug
         private SampleSpheres samples;
         private LabMeshObject outline;
         private LabMeshObject grid;
+        private Chunk waterChunk;
+        private int waterVersion = -1;
         private Material ownedSampleMaterial;
         private Material ownedLineMaterial;
 
@@ -99,6 +105,17 @@ namespace Clube.Debug
             }
         }
 
+
+        /// <summary>Mark the samples holding water (GL315).</summary>
+        public bool ShowWater
+        {
+            get => showWater;
+            set
+            {
+                showWater = value;
+                refreshRequested = true;
+            }
+        }
         /// <summary>How much of the wireframe to draw.</summary>
         public Wireframe WireframeMode
         {
@@ -168,6 +185,15 @@ namespace Clube.Debug
                 Refresh();
             }
 
+            // The water moves on its own: redraw its marks when the chunk's water changed.
+            Chunk current = target.Chunk;
+            if (showWater && current != null && (current != waterChunk || current.WaterVersion != waterVersion))
+            {
+                waterChunk = current;
+                waterVersion = current.WaterVersion;
+                RefreshSamples(current, target.VoxelSize);
+            }
+
             // Step-through draws the samples itself, coloured by step; this check is
             // per frame because the mode can be switched at any time.
             if (samples != null)
@@ -220,6 +246,7 @@ namespace Clube.Debug
             RefreshOutline(chunk.VoxelCount, voxelSize);
             RefreshGrid(chunk.VoxelCount, voxelSize);
             RefreshSamples(chunk, voxelSize);
+
         }
 
         private bool WantsSamples()
@@ -242,7 +269,7 @@ namespace Clube.Debug
 
             samples ??= new SampleSpheres(transform, "Density Samples", SampleMaterial());
             samples.SetGeometry(chunk.SampleCount, voxelSize, cornerRadius);
-            samples.SetDensities(chunk.GetDensity, sampleOpacity);
+            samples.SetDensities(chunk.GetDensity, showWater ? chunk.GetWater : (System.Func<Vector3Int, float>)null, sampleOpacity);
             samples.Visible = WantsSamples();
         }
 

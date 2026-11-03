@@ -45,7 +45,7 @@ and never the other way round.
 ```
 Core/
   Config/        WorldConfig (A2), ChunkSizing (M25)
-  Voxels/        Chunk, IVoxelStorage + schemes (2G), VoxelMaterials (M10), VoxelArrayPool, VoxelBox
+  Voxels/        Chunk (also water per sample, GL315), IVoxelStorage + schemes (2G), VoxelMaterials (M10), VoxelArrayPool, VoxelBox
   World/         World (loaded chunks, borders, edit paths), WorldGrid (coordinates)
   Materials/     VoxelMaterial, MaterialRegistry (M9), TerrainLayers, MaterialCensus, MineralNotes (GL73)
   Items/         ItemDefinition (O6), ToolDefinition (GL1), Inventory + ItemStack (GL6), Composition (GL32),
@@ -60,6 +60,8 @@ Core/
     Noise/       PerlinNoise (struct), VoxelHash
     Fields/      the Burst shapes: IHeightField / IVolumeField structs
     Fill/        generation jobs and the shared ChunkFillKernel; SlopeRidges (ridges down slopes in the density, GL293)
+    Water/       WaterGeneration (settings), Hydrology (drains the heightfield), WaterMap (rivers and lakes as job data, GL307),
+                 WaterFill (the map's water into a loaded chunk's samples, GL315)
     Ores/        OreSpec, OreField (placement), OreRoll (the roll, shared)
     Trees/       TreeGeneration (settings), TreeField (placement), TreeShape (one tree), TreeStamp (into a chunk, GL30)
     Flora/       GrassGrowth (grass height, wheat fields, GL234-GL235), BushGrowth (where bushes grow, sizes, drops, GL236),
@@ -68,9 +70,10 @@ Core/
     Managed/     ChunkMesher and its strategies, the managed material pass: labs, step-through (A11)
     Jobs/        ChunkMeshJob: the Burst mesh build the world runs; CarvedVoxels: walls round chiselled voxels (GL92)
     Far/         FarTerrainGrid (one clipmap level), FarTerrainMeshJob (its mesh): the far terrain (P7a)
+    Water/       WaterMesher: marching cubes over a chunk's water samples (managed, per wet chunk, GL315)
     Recording/   MeshingRecorder (A11)
-  Editing/       TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5; slivers GL79), TerrainPile (I4), GroundDrying (GL34), ChiselStrike + FlatTop (GL87, GL88), IDensityField, IEditableTerrain
-  Queries/       SurfaceRaycast, VoxelRaycast, SurfacePoints (GL4)
+  Editing/       TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5; slivers GL79), TerrainPile (I4), GroundDrying (GL34), ChiselStrike + FlatTop (GL87, GL88), GroundSettling (falling dirt and sand, GL308), LiveWater (the water's cellular flow: falls, runs downhill, fills dug holes, GL313, GL315), WaterScoop (the bucket, GL319), IDensityField, IEditableTerrain
+  Queries/       SurfaceRaycast, VoxelRaycast, SurfacePoints (GL4), WaterQuery (what's under water: swimming, GL316)
   Volume/        VoxelVolume, ChunkVolume (V11, V12, K30), RegionVolume (the mesh volume round some samples: what a hit gathers, GL288)
   Saving/        GameSave (plain data), GameSaveFile (versioned binary, S1), WorldSaving (edited chunks, S2), StackSaving (GL205), SaveNames (GL207)
   Sky/           SkyPositions (the sun, the moon's orbit and phases, the stars' sidereal turn, GL248, GL253),
@@ -108,6 +111,14 @@ copy of their shared border samples; `World` keeps every copy identical (M2).
   renderer and no collider either (five in six chunks have no surface at all).
 - **Materials** (`VoxelMaterials`) are uniform until a sample differs, the same
   idea.
+- **Water** (GL315) is a byte per sample (0-1 full), null until a sample holds
+  any. It's not ground: the terrain mesher and colliders never see it, and a
+  water change bumps `Chunk.WaterVersion` instead of marking the chunk dirty.
+  `World.SetWater` writes every border copy. The generated rivers and lakes are
+  written in as a chunk loads (`WaterFill`); `LiveWater` moves the rest, a
+  managed cellular flow over the awake samples (main thread, `WaterView` steps it).
+  Flowing water isn't saved yet (GL311): an edited chunk near water is woken whole
+  on load and fills again.
 - **Memory** for byte densities and material ids comes from `VoxelArrayPool`
   and goes back when the world drops a chunk (`Chunk.Release`), so a streamed
   world stops allocating once it has warmed up. *Don't use a chunk after
@@ -413,7 +424,9 @@ a 400 m area that is 5,600 of 35,000 chunk renderers, and about a sixth of the 5
 - **Who decides**: `WorldStreamer.IsColumnDrawn` (within the detail distance of the focus column,
   or holding an edited chunk: `World.HasEditsIn`, so a dug pit still shows from far away). The
   renderer pool applies it to every renderer it shows (`ChunkRendererPool.SetDrawRule`); when the
-  focus column moves only the columns that cross the edge are switched (`UpdateDrawCentre`).
+  focus column moves only the columns that cross the edge are switched (`UpdateDrawCentre`). The
+  radius shrinks with the focus's height over the world's top (`DrawRadius`, GL323): within the detail
+  distance in three dimensions, so from far above no chunk draws and the coarse terrain stands in.
 - **The coverage mask follows it**: a column counts as covered only while drawn, and the mask refills
   whenever `WorldView.DrawVersion` changes, so the coarse levels and the distant trees fill in exactly
   where the world stops drawing.
@@ -560,6 +573,15 @@ it, and when it's done. None needs the big picture changed. Measure with
     query each time). Cache per chunk column, or collect per column once.
 12. **Lab census in a job.** `MaterialCensus.Count` (ore readout, X-ray) reads every
     sample through `Chunk.GetDensity`; read the storage's bytes in a Burst job.
+13. **Water in jobs.** `WaterMesher` (marching cubes over a chunk's water) and
+    `LiveWater` (the flow) are managed and run on the main thread; a lake loading
+    meshes wet chunks within `WaterView.buildBudgetMs` (1.5 ms, nearest first, drawn columns
+    only), and a big spill steps within `flowBudgetMs` (2.5 ms; about 2 µs a sample in the
+    Editor, so ~1,200 samples a step) and moves more slowly. A big spill
+    keeps thousands of samples awake. Mesh water in a Burst job beside the
+    terrain's, and step the flow per chunk. *Measure:* `WaterView` frame time while
+    a lake loads and while a dug channel drains. *Done when:* `LiveWaterTests`
+    pass and neither costs over 1 ms a frame.
 
 When one of these is done, move it into `benchmarks.md` with its numbers and
 delete it here.

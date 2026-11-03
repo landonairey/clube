@@ -41,6 +41,7 @@ namespace Clube.Core
         // Loaded chunks that became dirty since they were last collected (CollectDirty); a chunk may
         // have been cleaned since, so readers check.
         private readonly HashSet<Vector3Int> dirty = new HashSet<Vector3Int>();
+        private readonly HashSet<Vector3Int> waterChanged = new HashSet<Vector3Int>();
         private readonly List<Vector3Int> scratchChunks = new List<Vector3Int>();
         // The box of chunk coordinates anything was ever loaded in (it only grows, until Clear): rays
         // walk the chunk grid inside it, so a cast costs the same whatever the world size.
@@ -76,6 +77,9 @@ namespace Clube.Core
         {
             return loadedColumns.TryGetValue(column, out int layers) ? layers : 0;
         }
+
+        /// <summary>A global sample's density was changed through <see cref="SetDensity"/> (GL308: falling ground wakes up by it).</summary>
+        public event Action<Vector3Int> DensityChanged;
 
         /// <summary>Chunks touched by any edit, loaded or kept in memory.</summary>
         public int EditedCount => edited.Count;
@@ -302,6 +306,7 @@ namespace Clube.Core
             loaded.Clear();
             loadedColumns.Clear();
             dirty.Clear();
+            waterChanged.Clear();
             anyLoaded = false;
             anyCarved = false;
             editedUnloaded.Clear();
@@ -351,6 +356,10 @@ namespace Clube.Core
             {
                 UncarveAround(sample);
             }
+            if (changed > 0)
+            {
+                DensityChanged?.Invoke(sample);
+            }
             return changed;
         }
 
@@ -388,6 +397,48 @@ namespace Clube.Core
                     MarkEdited(coord);
                 }
             }
+        }
+
+        /// <summary>
+        /// The chunk that owns a global sample (the one it's the lowest corner side of) and the sample's place in it, a
+        /// quick lookup for code that reads many samples (the water's flow and mesher). False when that chunk isn't loaded.
+        /// </summary>
+        public bool TryGetOwner(Vector3Int sample, out Chunk chunk, out Vector3Int local)
+        {
+            Vector3Int size = Grid.ChunkSize;
+            var coord = new Vector3Int(
+                WorldGrid.FloorDiv(sample.x, size.x), WorldGrid.FloorDiv(sample.y, size.y), WorldGrid.FloorDiv(sample.z, size.z));
+            local = sample - Vector3Int.Scale(coord, size);
+            return loaded.TryGetValue(coord, out chunk);
+        }
+
+        /// <summary>How full of water a global sample is, 0-1 (GL315); 0 when not loaded.</summary>
+        public float GetWater(Vector3Int sample)
+        {
+            return TryGetOwner(sample, out Chunk chunk, out Vector3Int local) ? chunk.GetWater(local) : 0f;
+        }
+
+        /// <summary>
+        /// The world's water-edit path (GL315): writes every loaded copy of a global sample, like <see cref="SetDensity"/>,
+        /// so water meets across chunk borders. Chunks whose water changed wait in <see cref="CollectWaterChanged"/>.
+        /// </summary>
+        public void SetWater(Vector3Int sample, float amount)
+        {
+            Grid.ChunksContainingSample(sample, scratchChunks);
+            foreach (Vector3Int coord in scratchChunks)
+            {
+                if (loaded.TryGetValue(coord, out Chunk chunk) && chunk.SetWater(Grid.GlobalToLocal(sample, coord), amount))
+                {
+                    waterChanged.Add(coord);
+                }
+            }
+        }
+
+        /// <summary>Moves the chunks whose water changed since the last call into <paramref name="into"/>.</summary>
+        public void CollectWaterChanged(List<Vector3Int> into)
+        {
+            into.AddRange(waterChanged);
+            waterChanged.Clear();
         }
 
         /// <summary>True when a voxel (by its lowest corner, a global sample) is carved out (GL92); false when not loaded.</summary>

@@ -29,6 +29,13 @@ namespace Clube.Core
         /// </summary>
         public float LoadingBudgetMilliseconds;
 
+        /// <summary>
+        /// The budget while the bulk load has moved on past the drawn chunks (<see cref="DetailDistance"/>) to the hidden
+        /// ones beyond, which the coarse terrain stands in for (GL324): the game plays smoothly while they load. 0 or less
+        /// keeps the loading budget to the end.
+        /// </summary>
+        public float FarLoadingBudgetMilliseconds;
+
         /// <summary>Whether chunks get colliders (M6).</summary>
         public bool Colliders;
 
@@ -225,6 +232,11 @@ namespace Clube.Core
         /// <summary>True while the area loads in bulk, with the larger loading budget (see <see cref="StreamingSettings.LoadingBudgetMilliseconds"/>).</summary>
         public bool IsLoading => bulkLoading;
 
+        // True once the bulk load has started every drawn column and is on to the hidden ones past the detail distance.
+        private bool IsLoadingHiddenOnly =>
+            settings.FarLoadingBudgetMilliseconds > 0f && settings.DetailDistance > 0 && hasDrawCentre
+            && (loadCursor >= wantedColumns.Count || !IsWithin(wantedColumns[loadCursor], drawCentre, DrawRadius + 1));
+
         private int MaxJobsInFlight => settings.MaxJobsInFlight > 0 ? settings.MaxJobsInFlight : Mathf.Max(4, JobsUtility.JobWorkerCount * 2);
 
         /// <summary>One frame of streaming around <paramref name="focus"/> (relative to the world origin). Call from Update.</summary>
@@ -234,7 +246,7 @@ namespace Clube.Core
             lapStart = 0;
             StreamingPhases phases = default;
             budget = bulkLoading && settings.LoadingBudgetMilliseconds > settings.FrameBudgetMilliseconds
-                ? settings.LoadingBudgetMilliseconds
+                ? (IsLoadingHiddenOnly ? Mathf.Max(settings.FarLoadingBudgetMilliseconds, settings.FrameBudgetMilliseconds) : settings.LoadingBudgetMilliseconds)
                 : settings.FrameBudgetMilliseconds;
 
             pipeline.Poll();
@@ -249,6 +261,7 @@ namespace Clube.Core
             }
             float chunkWidth = world.Grid.ChunkWorldSize.x;
             renderers.SetOverlayFocus(centre, settings.OverlayRadius > 0f ? Mathf.CeilToInt(settings.OverlayRadius / chunkWidth) : -1);
+            UpdateDrawRadius(centre.y);
             UpdateDrawCentre(new Vector2Int(centre.x, centre.z));
             phases.Area = Lap();
 
@@ -773,16 +786,46 @@ namespace Clube.Core
         public bool IsColumnDrawn(Vector2Int column)
         {
             int distance = settings.DetailDistance;
-            return distance <= 0 || !hasDrawCentre || IsWithin(column, drawCentre, distance) || world.HasEditsIn(column);
+            return distance <= 0 || !hasDrawCentre || IsWithin(column, drawCentre, DrawRadius) || world.HasEditsIn(column);
         }
 
         private static bool IsWithin(Vector2Int column, Vector2Int centre, int distance)
         {
+            if (distance < 0)
+            {
+                return false;
+            }
             int dx = column.x - centre.x;
             int dz = column.y - centre.y;
             return dx * dx + dz * dz <= distance * distance;
         }
 
+
+        private int drawRadius = -2;
+
+        /// <summary>
+        /// The detail distance shrunk by the focus's height over the world's top (GL323): the chunks within it in three
+        /// dimensions are drawn, so seen from far above, where a chunk is a pixel or two, none is and the coarse terrain
+        /// stands in (from 2 km up the world drew 10,000 chunk renderers, 5.5 million triangles). Below 0, none.
+        /// </summary>
+        public int DrawRadius => drawRadius < -1 ? settings.DetailDistance : drawRadius;
+
+        private void UpdateDrawRadius(int focusLayer)
+        {
+            int distance = settings.DetailDistance;
+            int above = Mathf.Max(0, focusLayer - settings.HeightInChunks);
+            int radius = above >= distance ? -1 : Mathf.FloorToInt(Mathf.Sqrt(distance * distance - above * above));
+            if (radius == drawRadius)
+            {
+                return;
+            }
+            drawRadius = radius;
+            if (distance > 0 && hasDrawCentre)
+            {
+                DrawVersion = ++drawVersions;
+                renderers.RefreshDrawn();
+            }
+        }
         // The focus column moved: switch the renderers of the columns that crossed the detail distance.
         private void UpdateDrawCentre(Vector2Int column)
         {
@@ -794,8 +837,8 @@ namespace Clube.Core
             bool hadCentre = hasDrawCentre;
             drawCentre = column;
             hasDrawCentre = true;
-            int distance = settings.DetailDistance;
-            if (distance <= 0)
+            int distance = DrawRadius;
+            if (settings.DetailDistance <= 0)
             {
                 return;
             }

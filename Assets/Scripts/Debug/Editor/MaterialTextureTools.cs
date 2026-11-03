@@ -94,6 +94,9 @@ namespace Clube.Debug.Editor
                 // Maple (GL150, GL168): the old brown bark, and autumn leaves, a muted amber with a little red.
                 { "maple wood", (new Color(0.36f, 0.25f, 0.16f), new Color(0.48f, 0.35f, 0.23f), null, Wear.Bark) },
                 { "maple leaves", (new Color(0.46f, 0.3f, 0.16f), new Color(0.61f, 0.45f, 0.25f), null, Wear.Leaves) },
+                // Sand (GL308): pale, fine-grained, on river and lake beds and shores.
+                { "sand", (new Color(0.78f, 0.70f, 0.52f), new Color(0.86f, 0.79f, 0.62f), null, Wear.Whole) },
+                { "refractory brick", (new Color(0.84f, 0.72f, 0.54f), new Color(0.9f, 0.8f, 0.62f), null, Wear.Bricks) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]
@@ -216,6 +219,22 @@ namespace Clube.Debug.Editor
             foreach (KeyValuePair<string, (Color Base, Color Mix, Color? Fleck, Wear Wear)> entry in Placeholders)
             {
                 if (entry.Key == "gold")
+                {
+                    WritePlaceholder(entry.Key, entry.Value, seed);
+                    return;
+                }
+                seed++;
+            }
+        }
+
+        /// <summary>Writes one material's placeholder again, with the seed its place in the list gives it; rebuild the texture array after.</summary>
+        public static void Regenerate(string key)
+        {
+            Directory.CreateDirectory(PlaceholderFolder);
+            int seed = 1;
+            foreach (KeyValuePair<string, (Color Base, Color Mix, Color? Fleck, Wear Wear)> entry in Placeholders)
+            {
+                if (entry.Key == key)
                 {
                     WritePlaceholder(entry.Key, entry.Value, seed);
                     return;

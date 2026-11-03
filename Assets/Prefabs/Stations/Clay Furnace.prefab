@@ -110,6 +110,7 @@ GameObject:
   - component: {fileID: 4903786179241846693}
   - component: {fileID: 8073203352125683687}
   - component: {fileID: 7186557604979164913}
+  - component: {fileID: 8448157405543706840}
   m_Layer: 0
   m_Name: Clay Furnace
   m_TagString: Untagged
@@ -178,6 +179,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ab01fde72466eb541a3a9790e3f6770d, type: 2}
   - {fileID: 11400000, guid: 5494c424192226542928114696f6423b, type: 2}
   - {fileID: 11400000, guid: 2ea129385f04d4e4191060b48a63ffdf, type: 2}
+  - {fileID: 11400000, guid: fbf7d632198dfe54cbfe905e7230c704, type: 2}
   - {fileID: 11400000, guid: f4da6991b017a7945abfa36571cdec99, type: 2}
   - {fileID: 11400000, guid: 920c30d37746a7f45924e18044f271f0, type: 2}
   - {fileID: 11400000, guid: 8072c269a6427d146a7e5d0577b45068, type: 2}
@@ -487,6 +489,24 @@ MonoBehaviour:
   placementPreview: {fileID: 7791455706736034627}
   glowsOn: {fileID: 0}
   glowMaterial: {fileID: 0}
+--- !u!114 &8448157405543706840
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5762353483625990904}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a275a867b5fb8624ab69192a71f37305, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.StationFire
+  glow: {fileID: 7006900072523468969}
+  workingBoost: 1.6
+  flameMaterial: {fileID: 0}
+  smokeMaterial: {fileID: 0}
+  flameAt: {x: 0, y: 0.05, z: 0}
+  flameHeight: 0.45
 --- !u!1 &7791455706736034627
 GameObject:
   m_ObjectHideFlags: 0

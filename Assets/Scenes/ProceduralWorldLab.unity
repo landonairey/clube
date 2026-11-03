@@ -5437,6 +5437,8 @@ GameObject:
   - component: {fileID: 1350119478}
   - component: {fileID: 1350119480}
   - component: {fileID: 1350119481}
+  - component: {fileID: 1350119483}
+  - component: {fileID: 1350119482}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -5978,6 +5980,37 @@ MonoBehaviour:
   glowSize: 16
   size: 4.5
   distanceShare: 0.93
+--- !u!114 &1350119482
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 996535754489a154d8379d1126e29772, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.FallingGround
+  stepSeconds: 0.06
+  maxMovesPerStep: 1500
+--- !u!114 &1350119483
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 469ce04ad93e32742aff016bee04291d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.WaterView
+  material: {fileID: 2100000, guid: 842257cf3c1f32044ab4a5739a08c2ed, type: 2}
+  show: 1
+  flowStepSeconds: 0.06
+  flowBudgetMs: 2.5
+  buildBudgetMs: 1.5
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -6158,6 +6191,9 @@ GameObject:
   - component: {fileID: 1697135603}
   - component: {fileID: 1697135605}
   - component: {fileID: 1697135604}
+  - component: {fileID: 1697135607}
+  - component: {fileID: 1697135606}
+  - component: {fileID: 1697135608}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -6233,6 +6269,10 @@ MonoBehaviour:
   slideDrag: 3
   maxSlideDistance: 8
   steepestSlideRise: 0.2
+  swimSpeed: 2.2
+  swimRise: 2.4
+  swimAcceleration: 6
+  climbOutSpeed: 5
 --- !u!143 &1697135564
 CharacterController:
   m_ObjectHideFlags: 0
@@ -6627,7 +6667,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3f9e228f10fb98e44a8816bc33a794c1, type: 2}
   - {fileID: 11400000, guid: ce272991d7e38a645a6a4134ffda0a02, type: 2}
   - {fileID: 11400000, guid: 5ec8e0ac578bb0e4db7dae5132312b4d, type: 2}
+  - {fileID: 0}
   - {fileID: 11400000, guid: 6fadc24742a123946b249fca8b1a81a3, type: 2}
+  - {fileID: 11400000, guid: 63359869219cf39449672313b6798328, type: 2}
   - {fileID: 11400000, guid: 3b915b6e75ae6fe4883f76455350ed82, type: 2}
   - {fileID: 11400000, guid: d60685b224db7664a9af1c897162e558, type: 2}
   - {fileID: 11400000, guid: 6e1d0ec0bd2d48440b2b96a163e7b96b, type: 2}
@@ -6773,6 +6815,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a1a8b63791d70f54190b6343ce8d31c7, type: 2}
   - {fileID: 11400000, guid: 7a96a8cb02a57304a8d2a5b1c1339e05, type: 2}
   - {fileID: 11400000, guid: 2ea129385f04d4e4191060b48a63ffdf, type: 2}
+  - {fileID: 11400000, guid: fbf7d632198dfe54cbfe905e7230c704, type: 2}
   - {fileID: 11400000, guid: 11bf46a8c1805cd4eac3acc2979164d7, type: 2}
   - {fileID: 11400000, guid: 0cc14a90c9118824c9750cb5063469e9, type: 2}
   - {fileID: 11400000, guid: 156d1364227dd3849be2085d299fe75d, type: 2}
@@ -6811,6 +6854,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1545fc905bf6a404d8cb4bfc44a83b27, type: 2}
   - {fileID: 11400000, guid: 882189830830a7e439fb72c867040d03, type: 2}
   - {fileID: 11400000, guid: 5ec8e0ac578bb0e4db7dae5132312b4d, type: 2}
+  - {fileID: 0}
   - {fileID: 11400000, guid: 6fadc24742a123946b249fca8b1a81a3, type: 2}
   - {fileID: 11400000, guid: eccc62bfc479f654bae3f198c751dae2, type: 2}
   - {fileID: 11400000, guid: 8010ff67b533dd24d8e25d72182905cf, type: 2}
@@ -7172,6 +7216,50 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.TorchBurner
   clock: {fileID: 0}
   smokeMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
+--- !u!114 &1697135606
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8ce5f31c45f152644bd115506e413630, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.UnderwaterTint
+  tint: {r: 0.12, g: 0.3, b: 0.33, a: 0.55}
+  edge: {r: 0.03, g: 0.1, b: 0.13, a: 0.8}
+--- !u!114 &1697135607
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 15eb1c7a63b4a8945b08206e2048b0df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSwimming
+  worldView: {fileID: 0}
+--- !u!114 &1697135608
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8499ea11b645184584a66c8d60ab220, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerBucket
+  worldView: {fileID: 1350119460}
+  scoopAction: {fileID: 1120369429361536294, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  pourAction: {fileID: 9082728051176153063, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  reach: 4
+  holdDelay: 0.3
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

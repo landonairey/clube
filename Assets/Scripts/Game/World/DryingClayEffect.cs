@@ -7,7 +7,7 @@ namespace Clube.Game
     /// <summary>
     /// Wisps of steam over clay drying on the ground (GL228), so it's plain the pile is still curing into brick: a
     /// few faint puffs a second rise from the top of what <see cref="DroppedGroundDrying"/> is waiting on, and stop
-    /// when it's dry. Only samples with air above them steam, and only near the camera.
+    /// when it's dry. Only samples with air above them and no water by them steam, and only near the camera.
     /// </summary>
     [RequireComponent(typeof(ParticleSystem))]
     public class DryingClayEffect : MonoBehaviour
@@ -109,7 +109,8 @@ namespace Clube.Game
             foreach (var (sample, _, _) in drying.Drying.Waiting)
             {
                 float above = world.GetDensity(sample + Vector3Int.up) ?? 0f;
-                if (above >= iso)
+                // Wet clay doesn't dry, so it doesn't steam (GL334).
+                if (above >= iso || GroundDrying.IsWet(world, sample))
                 {
                     continue;
                 }

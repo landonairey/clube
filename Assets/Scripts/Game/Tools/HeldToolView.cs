@@ -104,6 +104,7 @@ namespace Clube.Game
         private GameObject held;
         private MeshFilter filter;
         private Material instance;
+        private FlameCluster flame;
         private ItemDefinition shown;
         private Hotbar hotbar;
         private bool shownSet;
@@ -222,19 +223,22 @@ namespace Clube.Game
             }
             EnsureHeld();
             ToolDefinition tool = toolUser.Current;
-            bool visible = tool != null && player != null && player.enabled && !player.IsInMenu;
+            // A torch or a bucket selected is held in place of the hand (GL287, GL319).
+            ItemDefinition selected = hotbar != null ? hotbar.SelectedStack.Item : null;
+            bool carried = selected is TorchDefinition || selected is BucketDefinition;
+            bool visible = (tool != null || carried) && player != null && player.enabled && !player.IsInMenu;
             held.SetActive(visible);
             if (!visible)
             {
                 return;
             }
-            // A torch selected is held in place of the hand (GL287).
-            ItemDefinition item = hotbar != null && hotbar.SelectedStack.Item is TorchDefinition torch ? torch : tool;
+            ItemDefinition item = carried ? selected : tool;
             if (!shownSet || item != shown)
             {
                 shown = item;
                 shownSet = true;
                 filter.sharedMesh = MeshFor(item);
+                ShowFlame(item is TorchDefinition lit && lit.IsLit);
             }
 
             // The swing, eased between its keyframes.
@@ -264,6 +268,10 @@ namespace Clube.Game
             Transform t = held.transform;
             t.localPosition = restPosition + offset;
             t.localRotation = Quaternion.Euler(restTurn + turn);
+            if (flame != null && flame.Shown && hotbar != null && hotbar.SelectedStack.Item is TorchDefinition burning)
+            {
+                flame.Animate(Mathf.Lerp(0.55f, 1f, burning.Left(hotbar.SelectedStack) * 4f));
+            }
         }
 
         private static void Sample(Key[] keys, float time, out Vector3 offset, out Vector3 turn)
@@ -301,11 +309,26 @@ namespace Clube.Game
             renderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
         }
 
+        // A lit torch's flame: the dancing cluster on the torch head (GL314), in the held material (vertex alpha 0 glows).
+        private void ShowFlame(bool lit)
+        {
+            if (lit && flame == null)
+            {
+                flame = new FlameCluster(held.transform, new Vector3(0.006f, 0.405f, 0.035f), 0.085f, instance);
+            }
+            if (flame != null)
+            {
+                flame.Shown = lit;
+            }
+        }
+
         private Mesh MeshFor(ItemDefinition item)
         {
             if (!meshes.TryGetValue(item, out Mesh mesh))
             {
-                mesh = item is TorchDefinition torch ? HeldToolMeshes.BuildTorch(torch.IsLit) : HeldToolMeshes.Build(item as ToolDefinition);
+                mesh = item is TorchDefinition torch ? HeldToolMeshes.BuildTorch(torch.IsLit)
+                    : item is BucketDefinition ? HeldToolMeshes.BuildBucket()
+                    : HeldToolMeshes.Build(item as ToolDefinition);
                 meshes.Add(item, mesh);
             }
             return mesh;

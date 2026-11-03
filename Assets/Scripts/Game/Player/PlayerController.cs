@@ -104,6 +104,26 @@ namespace Clube.Game
         private float steepestSlideRise = 0.2f;
 
         // How long a slide carries on over a bump or a dip it leaves the ground on, in seconds (GL247).
+        [Tooltip("Swimming speed (GL316), metres per second; Sprint swims faster.")]
+        [SerializeField, Min(0.5f)]
+        private float swimSpeed = 2.2f;
+
+        [Tooltip("How fast Jump swims up and Crouch dives while swimming, metres per second.")]
+        [SerializeField, Min(0.5f)]
+        private float swimRise = 2.4f;
+
+        [Tooltip("How quickly the swimmer's speed follows the keys: water drags.")]
+        [SerializeField, Min(0.5f)]
+        private float swimAcceleration = 6f;
+
+        [Tooltip("The upward push for climbing out onto a bank: Jump held against it at the surface.")]
+        [SerializeField, Min(0f)]
+        private float climbOutSpeed = 5f;
+
+        // Swimming starts with this much of the body under water and ends below the lower share, so it doesn't flicker.
+        private const float SwimStart = 0.55f;
+        private const float SwimEnd = 0.35f;
+
         private const float SlideAirTime = 0.25f;
 
         // A slide never goes faster than this many times its start (downhill).
@@ -141,6 +161,32 @@ namespace Clube.Game
         public Transform Head => head;
 
         public bool IsGrounded => Body.isGrounded;
+
+        private float submersion;
+
+        /// <summary>
+        /// How much of the body is under water, 0-1 (GL316), set each frame by <see cref="PlayerSwimming"/>. Swimming starts
+        /// once over half is under and stops once less than a third is.
+        /// </summary>
+        public float Submersion
+        {
+            get => submersion;
+            set
+            {
+                submersion = Mathf.Clamp01(value);
+                if (submersion >= SwimStart)
+                {
+                    IsSwimming = true;
+                }
+                else if (submersion < SwimEnd)
+                {
+                    IsSwimming = false;
+                }
+            }
+        }
+
+        /// <summary>True while swimming (GL316).</summary>
+        public bool IsSwimming { get; private set; }
 
         /// <summary>True while the capsule is lower than standing: crouching or sliding (GL219).</summary>
         public bool IsCrouching => currentHeight < standingHeight - 0.01f;
@@ -276,6 +322,11 @@ namespace Clube.Game
         private void Move(Vector2 input)
         {
             bool isSprinting = sprintAction != null && sprintAction.action.IsPressed();
+            if (IsSwimming)
+            {
+                Swim(input, isSprinting);
+                return;
+            }
             InputAction crouch = Crouch;
             bool crouchPressed = crouch != null && !isInMenu && crouch.WasPressedThisFrame();
             bool crouchHeld = crouch != null && !isInMenu && crouch.IsPressed();
@@ -365,6 +416,52 @@ namespace Clube.Game
             if ((hits & CollisionFlags.Above) != 0 && fallSpeed < 0f)
             {
                 fallSpeed = 0f;
+            }
+        }
+
+        // One frame of swimming (GL316): Move swims where the player looks (looking down and forward dives), Jump swims up and
+        // Crouch down, and with neither the body floats with its head at the surface. Water drags, so the speed follows the
+        // keys gently. Jump held against a bank at the surface pushes up and out.
+        private void Swim(Vector2 input, bool isSprinting)
+        {
+            slideSpeed = 0f;
+            UpdateCrouch(false);
+            Transform look = head != null ? head : transform;
+            float speed = swimSpeed * (isSprinting ? 1.4f : 1f);
+            Vector3 wish = (transform.right * input.x + look.forward * input.y) * speed;
+            if (wish.sqrMagnitude > speed * speed)
+            {
+                wish = wish.normalized * speed;
+            }
+            InputAction crouch = Crouch;
+            bool up = jumpAction != null && !isInMenu && jumpAction.action.IsPressed();
+            bool down = crouch != null && !isInMenu && crouch.IsPressed();
+            if (up)
+            {
+                wish.y = Mathf.Max(wish.y, 0f) + swimRise;
+            }
+            else if (down)
+            {
+                wish.y = Mathf.Min(wish.y, 0f) - swimRise;
+            }
+            else if (input.y == 0f)
+            {
+                // Floats: rises while the head is under, settles with the shoulders at the surface.
+                wish.y = submersion > 0.8f ? 0.9f : submersion < 0.65f ? -0.5f : 0f;
+            }
+
+            Vector3 current = velocity + Vector3.down * fallSpeed;
+            current = Vector3.MoveTowards(current, wish, swimAcceleration * Time.deltaTime);
+            CollisionFlags hits = Body.Move(current * Time.deltaTime);
+            if (up && (hits & CollisionFlags.Sides) != 0 && submersion < 0.9f)
+            {
+                current.y = Mathf.Max(current.y, climbOutSpeed);
+            }
+            velocity = new Vector3(current.x, 0f, current.z);
+            fallSpeed = -current.y;
+            if (Body.isGrounded)
+            {
+                lastGroundedTime = Time.time;
             }
         }
 
