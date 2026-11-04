@@ -1244,6 +1244,9 @@ Not scheduled. Revisit once Chapters 3 and 5 are working.
 - **PK19 Weather cycle.** *(added 2026-10-05)* Rain, snow, fog and wind changing over time.
   - Pairs with day/night (PK4) and seasons (PK18). Could affect travel, outdoor work, fire and fuel (6D), and water levels (PK8).
 
+- **PK20 Phasing shaker rhythm as background music.** *(added 2026-11-04)* Background music after the sixth pattern shift of Steve Reich's *Clapping Music*, played on shakers: one steady part, a second part on the same 12-beat figure shifted six beats against it, looping. Pairs with the procedural sound (`SoundSynth`, GL271) and the ambient bed (`AmbientSounds`), and with evolving music (PK15).
+  - *Clapping Music* is a copyrighted piece, so write our own figure that phases the same way rather than copying its pattern, or license it.
+
 ---
 
 ## Open questions
