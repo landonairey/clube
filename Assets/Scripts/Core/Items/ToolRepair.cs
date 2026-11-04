@@ -32,6 +32,53 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// The tool fully mended by one repair item (GL360, at the flat rock): no wear left, and its quality lowered for what
+        /// was lost for good, the same share per hit mended as a repair in the field.
+        /// </summary>
+        public static ItemStack FullyRepaired(ItemStack tool)
+        {
+            var definition = (ToolDefinition)tool.Item;
+            float lost = tool.Wear * definition.WearLostPerRepair / definition.MaxHits;
+            float quality = Math.Max(0.05f, tool.Quality - lost);
+            return new ItemStack(tool.Item, tool.Count, tool.Contents, 0, quality, tool.Part);
+        }
+
+        /// <summary>
+        /// Fully mends the tool in <paramref name="toolSlot"/> of <paramref name="inventory"/> with one of the repair items in
+        /// <paramref name="itemSlot"/> (GL360). Returns true when it did.
+        /// </summary>
+        public static bool RepairFully(Inventory inventory, int toolSlot, int itemSlot)
+        {
+            if (!CanRepair(inventory[toolSlot], inventory[itemSlot].Item) || inventory[itemSlot].Count <= 0)
+            {
+                return false;
+            }
+            inventory.Set(toolSlot, FullyRepaired(inventory[toolSlot]));
+            inventory.RemoveAt(itemSlot, 1);
+            return true;
+        }
+
+        /// <summary>The slots of a tool with wear and the item that mends it, both in the inventory; false when there's no such pair.</summary>
+        public static bool FindPair(Inventory inventory, out int toolSlot, out int itemSlot)
+        {
+            for (int t = 0; t < inventory.SlotCount; t++)
+            {
+                for (int i = 0; i < inventory.SlotCount; i++)
+                {
+                    if (i != t && CanRepair(inventory[t], inventory[i].Item) && inventory[i].Count > 0)
+                    {
+                        toolSlot = t;
+                        itemSlot = i;
+                        return true;
+                    }
+                }
+            }
+            toolSlot = -1;
+            itemSlot = -1;
+            return false;
+        }
+
+        /// <summary>
         /// Mends the tool in <paramref name="toolSlot"/> with the repair items in <paramref name="itemSlot"/>, one at a time
         /// until it's whole, the items run out or <paramref name="most"/> are used. Returns how many were used.
         /// </summary>

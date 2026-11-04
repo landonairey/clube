@@ -567,6 +567,12 @@ Grass reaches the drawn terrain (`WorldView.DrawnDistance`, GL340). The world la
 GL344 felling: `PlayerToolUser.Chopped` → `TreeFeller` (Game/Tools, on Player) → `TreeFelling.FindSevered` (Core/Editing: wood cut off
 from the ground through wood, plus the leaves nearer to it) → a mesh from a scratch chunk → `FallingLimb` tips it to the player's right
 (cardinal), dust, then `TreeFelling.Land` (turned 90° about the cut, dropped per column, wood under a tenth of the leaves).
+GL349-GL371 (`Docs/20261103o clube-backlog.md`): landed wood keeps its density, and a cut piece that already lies there drops
+straight (`TreeFeller`); leaves land as their `VoxelMaterial.FallenForm` (ids 26, 27: no sway) and rot away 10% an in-game
+hour (`FallenLeaves` on World). A finished run that doesn't fit the output waits (`CraftingStation.OutputFits`); the flat rock
+mends a tool fully with one ingot (`ToolRepair.RepairFully`); `ItemStack.MinLoosePart` (0.05) clears specks. Torches go in the
+open voxel before the aimed face (`PlayerBuilder.BuildTorch`). `CampfireBounce` knocks the player back (`PlayerController.Knockback`).
+`InteractHighlight` (on Player) outlines the interact target with `Clube/Interact Outline`. Tab no longer opens the inventory.
 Height maps: `Docs/images/20261103 *`.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the

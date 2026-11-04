@@ -14,6 +14,11 @@ namespace Clube.Core
         /// <summary>Parts smaller than this count as nothing.</summary>
         public const float PartEpsilon = 1e-3f;
 
+        /// <summary>
+        /// A stack with no whole items and less than this of one is nothing (GL363): it would show as "0.0", so it's gone instead.
+        /// </summary>
+        public const float MinLoosePart = 0.05f;
+
         /// <summary>The best quality a stack can have (GL151): 1 is ordinary, more is better than ordinary.</summary>
         public const float MaxQuality = 2f;
 
@@ -22,7 +27,7 @@ namespace Clube.Core
 
         public ItemStack(ItemDefinition item, int count, Composition contents = null, int wear = 0, float quality = 1f, float part = 0f)
         {
-            Item = count > 0 || part > PartEpsilon ? item : null;
+            Item = count > 0 || part >= MinLoosePart ? item : null;
             Count = Item != null && count > 0 ? count : 0;
             Part = Item != null && part > PartEpsilon ? System.Math.Min(part, 1f - PartEpsilon) : 0f;
             Contents = Item != null ? contents : null;

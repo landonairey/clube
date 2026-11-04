@@ -22,6 +22,8 @@ namespace Clube.Game
         // Seconds between looks at the inventory.
         private const float CheckInterval = 0.25f;
         private const float CoinGoal = 10000f;
+        private const float FirstCoinGoal = 1000f;
+        private const int LandlordParcels = 10;
         private const float FurnaceQualityGoal = 0.9f;
         private const float NoticeSeconds = 4f;
 
@@ -59,8 +61,10 @@ namespace Clube.Game
             log.Add("flat-rock-ingot", "Craft Bronze Ingot on Flat Rock", MainSection);
             log.Add("flat-rock-pick", "Craft Bronze Pick on Flat Rock", MainSection);
             log.Add("sell", "Sell an item to the merchant", SideSection);
-            log.Add("coins", "Have 10k coins", SideSection);
+            log.Add("coins-1k", "Have 1k coins", SideSection);
             log.Add("parcel", "Buy another parcel of land", SideSection);
+            log.Add("coins", "Have 10k coins", SideSection);
+            log.Add("landlord", "Landlord: own 10 parcels of land", SideSection);
             log.Add("clay-furnace", "Build a clay furnace of over 90% quality", SideSection);
             log.Add("smelt-crushed", "Smelt crushed ore into a bun", SideSection);
             log.Add("find-gold", "Find gold!", SideSection);
@@ -148,6 +152,14 @@ namespace Clube.Game
             }
             nextCheck = Time.unscaledTime + CheckInterval;
             CheckInventory();
+            if (wallet != null && wallet.Wallet != null && wallet.Wallet.Coins >= FirstCoinGoal)
+            {
+                Log.Complete("coins-1k");
+            }
+            if (parcels != null && parcels.Parcels != null && parcels.Parcels.Owned.Count >= LandlordParcels)
+            {
+                Log.Complete("landlord");
+            }
             if (wallet != null && wallet.Wallet != null && wallet.Wallet.Coins >= CoinGoal)
             {
                 Log.Complete("coins");

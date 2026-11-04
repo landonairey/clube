@@ -116,6 +116,29 @@ namespace Clube.Game
         }
 
         /// <summary>
+        /// The slot of a grid drawn by <see cref="DrawGrid"/> nearest a point, when the point is on it or within
+        /// <paramref name="reach"/> pixels of it; -1 otherwise (GL367: dragging inside a chest).
+        /// </summary>
+        public static int GridSlotNear(Vector2 topLeft, Inventory items, Vector2 point, float reach)
+        {
+            int nearest = -1;
+            float nearestDistance = float.MaxValue;
+            for (int slot = 0; slot < items.SlotCount; slot++)
+            {
+                var rect = new Rect(topLeft.x + (slot % Columns) * (SlotSize + Gap), topLeft.y + (slot / Columns) * (SlotSize + Gap), SlotSize, SlotSize);
+                float dx = Mathf.Max(rect.xMin - point.x, 0f, point.x - rect.xMax);
+                float dy = Mathf.Max(rect.yMin - point.y, 0f, point.y - rect.yMax);
+                float distance = dx * dx + dy * dy;
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearest = slot;
+                }
+            }
+            return nearestDistance <= reach * reach ? nearest : -1;
+        }
+
+        /// <summary>
         /// The player's slot nearest a point, when the point is on it or within
         /// <paramref name="reach"/> pixels of it; -1 otherwise. A drop in the gap between two slots
         /// still lands on the closer one.
@@ -295,7 +318,29 @@ namespace Clube.Game
             {
                 text += $"\nFuel: burns {stack.Item.BurnSeconds * stack.Quality:0.#} s each";
             }
+            // A tool's health, and what it has lost for good (GL360): hits left of the hits it can have now, and the hits
+            // gone from a new one's (repairs and a poorer make).
+            if (stack.Item is ToolDefinition tool && tool.MaxHits > 0)
+            {
+                int left = Mathf.Max(0, stack.MaxHits - stack.Wear);
+                int lost = Mathf.Max(0, tool.MaxHits - stack.MaxHits);
+                text += $"\nHealth {left} / {stack.MaxHits} hits";
+                text += $"\nPermanent damage {lost} hits ({lost * 100f / tool.MaxHits:0}%)";
+            }
+            // What the merchant pays (GL366).
+            if (ItemSlotGui.Prices != null && ItemSlotGui.Prices.TryGetLot(stack.Item, out _, out _))
+            {
+                float each = ItemSlotGui.Prices.PriceOf(stack, Mathf.Min(1f, stack.Amount));
+                float all = ItemSlotGui.Prices.PriceOf(stack, stack.Amount);
+                text += stack.Amount > 1f ? $"\nValue {FormatCoins(each)} each, {FormatCoins(all)} all" : $"\nValue {FormatCoins(all)}";
+            }
             return text;
+        }
+
+        // Coins to two places at most: "50c", "0.1c", "0.001c".
+        private static string FormatCoins(float coins)
+        {
+            return coins >= 0.01f || coins == 0f ? $"{coins:0.##}c" : $"{coins:0.###}c";
         }
 
         private static int BackpackRows(PlayerInventory player)

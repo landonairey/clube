@@ -26,6 +26,15 @@ namespace Clube.Game
 
         public PriceList Prices => prices;
 
+        private void Awake()
+        {
+            // Tooltips show what the merchant pays (GL366).
+            if (prices != null)
+            {
+                ItemSlotGui.Prices = prices;
+            }
+        }
+
         public IReadOnlyList<ItemPrice> Offers => offers;
 
         public string Prompt => $"Trade with {displayName.ToLowerInvariant()}";

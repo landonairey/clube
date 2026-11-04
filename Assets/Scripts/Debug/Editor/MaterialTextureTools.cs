@@ -64,6 +64,7 @@ namespace Clube.Debug.Editor
         // Chalcopyrite reads coppery orange next to gold's yellow (GL346; was brass yellow, 0.86, 0.72, 0.22).
         internal static readonly Color ChalcopyriteFleck = new Color(0.90f, 0.52f, 0.16f);
         private static readonly Color MalachiteFleck = new Color(0.48f, 0.66f, 0.30f);
+        private const float MalachiteFleckScale = 1.7f;
 
         // Natural colours for the placeholders: a base, a second colour mixed in by noise, for
         // ores the colour of the flecks scattered through stone, and how broken it looks (GL3).
@@ -98,6 +99,9 @@ namespace Clube.Debug.Editor
                 // Sand (GL308): pale, fine-grained, on river and lake beds and shores.
                 { "sand", (new Color(0.78f, 0.70f, 0.52f), new Color(0.86f, 0.79f, 0.62f), null, Wear.Whole) },
                 { "refractory brick", (new Color(0.84f, 0.72f, 0.54f), new Color(0.9f, 0.8f, 0.62f), null, Wear.Bricks) },
+                // Fallen leaves (GL350): the leaves' colours, a little duller, lying still.
+                { "fallen leaves", (new Color(0.24f, 0.31f, 0.2f), new Color(0.38f, 0.44f, 0.3f), null, Wear.Leaves) },
+                { "fallen maple leaves", (new Color(0.44f, 0.3f, 0.17f), new Color(0.57f, 0.43f, 0.26f), null, Wear.Leaves) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]
@@ -261,7 +265,9 @@ namespace Clube.Debug.Editor
         private static void WritePlaceholder(string key, (Color Base, Color Mix, Color? Fleck, Wear Wear) entry, int seed)
         {
             string path = $"{PlaceholderFolder}/{key}.png";
-            Texture2D texture = Paint(entry.Base, entry.Mix, entry.Fleck, entry.Wear, seed);
+            // Malachite's specks are bigger (GL354), so its picture reads apart from plain stone.
+            float fleckScale = key.EndsWith("malachite") ? MalachiteFleckScale : 1f;
+            Texture2D texture = Paint(entry.Base, entry.Mix, entry.Fleck, entry.Wear, seed, fleckScale);
             if (key == "gold" && entry.Fleck.HasValue)
             {
                 // Gold shines (GL251), so it reads apart from chalcopyrite's duller brass.
@@ -321,7 +327,7 @@ namespace Clube.Debug.Editor
             pixels[i] = Color.Lerp(pixels[i], colour, amount);
         }
 
-        private static Texture2D Paint(Color baseColor, Color mix, Color? fleck, Wear wear, int seed)
+        private static Texture2D Paint(Color baseColor, Color mix, Color? fleck, Wear wear, int seed, float fleckScale = 1f)
         {
             // Broken stages show per voxel, so they get the finer texture.
             int size = wear == Wear.Whole || wear == Wear.Bark ? PlaceholderSize : DetailSize;
@@ -349,7 +355,7 @@ namespace Clube.Debug.Editor
                 {
                     int cx = random.Next(size);
                     int cy = random.Next(size);
-                    int radius = Mathf.Max(1, Mathf.RoundToInt((1 + random.Next(3)) * Mathf.Sqrt(scale)));
+                    int radius = Mathf.Max(1, Mathf.RoundToInt((1 + random.Next(3)) * Mathf.Sqrt(scale) * fleckScale));
                     for (int dy = -radius; dy <= radius; dy++)
                     {
                         for (int dx = -radius; dx <= radius; dx++)

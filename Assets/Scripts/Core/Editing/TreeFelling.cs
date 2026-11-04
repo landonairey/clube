@@ -8,7 +8,13 @@ namespace Clube.Core
     {
         private readonly HashSet<byte> wood = new HashSet<byte>();
         private readonly HashSet<byte> leaves = new HashSet<byte>();
+        private readonly HashSet<byte> fallen = new HashSet<byte>();
+        private readonly Dictionary<byte, byte> fallsAs = new Dictionary<byte, byte>();
 
+        /// <summary>
+        /// Trees of these woods and leaves; each leaf material's <see cref="VoxelMaterial.FallenForm"/> counts as leaves too, and is
+        /// what it lands as (GL350).
+        /// </summary>
         public TreeMaterials(IEnumerable<VoxelMaterial> woods, IEnumerable<VoxelMaterial> leafs)
         {
             foreach (VoxelMaterial material in woods)
@@ -20,11 +26,30 @@ namespace Clube.Core
             }
             foreach (VoxelMaterial material in leafs)
             {
-                if (material != null)
+                if (material == null)
                 {
-                    leaves.Add(material.Id);
+                    continue;
+                }
+                leaves.Add(material.Id);
+                if (material.FallenForm != null)
+                {
+                    leaves.Add(material.FallenForm.Id);
+                    fallen.Add(material.FallenForm.Id);
+                    fallsAs[material.Id] = material.FallenForm.Id;
                 }
             }
+        }
+
+        /// <summary>What a leaf material lands as after felling (GL350): its fallen form, or itself.</summary>
+        public byte FallenFor(byte id)
+        {
+            return fallsAs.TryGetValue(id, out byte form) ? form : id;
+        }
+
+        /// <summary>True for fallen leaves (GL350): leaves that landed after felling, which decay.</summary>
+        public bool IsFallenLeaves(byte id)
+        {
+            return fallen.Contains(id);
         }
 
         /// <summary>Wood and leaves by material id.</summary>
@@ -385,6 +410,11 @@ namespace Clube.Core
         /// </summary>
         public static Vector3Int Turn(Vector3Int offset, Vector3Int direction)
         {
+            if (direction == Vector3Int.zero)
+            {
+                // No turn: wood that already lies down just drops (GL349).
+                return offset;
+            }
             int along = offset.x * direction.x + offset.z * direction.z;
             return new Vector3Int(
                 offset.x - along * direction.x + offset.y * direction.x,
@@ -397,31 +427,37 @@ namespace Clube.Core
         /// dropped down its column, which is searched for ground (solid and not tree) up to <paramref name="searchDepth"/>
         /// samples below the turned limb. Each column takes all its wood first, then <see cref="LeafPacking"/> of its leaves
         /// (at most <see cref="MaxLeafPile"/> deep), from the ground up; a sample
-        /// already holding standing wood is passed over, leaves there are replaced. Returns the samples placed.
+        /// already holding standing wood is passed over, leaves there are replaced. Each sample keeps its own density, so landed
+        /// wood is no harder to chop than it was standing (GL349); leaves land as their fallen kind
+        /// (<see cref="TreeMaterials.FallenFor"/>, GL350). A <paramref name="direction"/> of zero drops the limb straight down;
+        /// <paramref name="leafPacking"/> 1 keeps every leaf. Where wood and leaves landed is added to
+        /// <paramref name="landedWood"/> and <paramref name="landedLeaves"/> when given. Returns the samples placed.
         /// </summary>
-        public static int Land(World world, FelledLimb limb, Vector3Int direction, TreeMaterials trees, float iso, int searchDepth = 160)
+        public static int Land(
+            World world, FelledLimb limb, Vector3Int direction, TreeMaterials trees, float iso, int searchDepth = 160,
+            float leafPacking = LeafPacking, List<Vector3Int> landedWood = null, List<Vector3Int> landedLeaves = null)
         {
-            var columns = new Dictionary<Vector2Int, List<(int Y, bool Wood, byte Material)>>();
+            var columns = new Dictionary<Vector2Int, List<(int Y, bool Wood, byte Material, float Density)>>();
             foreach (FelledSample sample in limb.Solid)
             {
                 Vector3Int turned = limb.Pivot + Turn(sample.Sample - limb.Pivot, direction);
                 var column = new Vector2Int(turned.x, turned.z);
-                if (!columns.TryGetValue(column, out List<(int, bool, byte)> list))
+                if (!columns.TryGetValue(column, out List<(int, bool, byte, float)> list))
                 {
-                    list = new List<(int, bool, byte)>();
+                    list = new List<(int, bool, byte, float)>();
                     columns[column] = list;
                 }
-                list.Add((turned.y, sample.IsWood, sample.Material));
+                list.Add((turned.y, sample.IsWood, sample.Material, sample.Density));
             }
 
             int placed = 0;
-            foreach (KeyValuePair<Vector2Int, List<(int Y, bool Wood, byte Material)>> pair in columns)
+            foreach (KeyValuePair<Vector2Int, List<(int Y, bool Wood, byte Material, float Density)>> pair in columns)
             {
-                List<(int Y, bool Wood, byte Material)> list = pair.Value;
+                List<(int Y, bool Wood, byte Material, float Density)> list = pair.Value;
                 // Wood first, then leaves; each kept in its order from the bottom of the turned limb.
                 list.Sort((a, b) => a.Wood != b.Wood ? (a.Wood ? -1 : 1) : a.Y.CompareTo(b.Y));
                 int top = int.MinValue;
-                foreach ((int y, _, _) in list)
+                foreach ((int y, _, _, _) in list)
                 {
                     top = Mathf.Max(top, y);
                 }
@@ -433,13 +469,13 @@ namespace Clube.Core
                 // Leaves crush as they land: a column keeps a share of them, never deeper than MaxLeafPile, so the pile lies
                 // flat instead of standing as deep as the crown was wide. Every sample of wood is kept.
                 int leaves = 0;
-                foreach ((_, bool wood, _) in list)
+                foreach ((_, bool wood, _, _) in list)
                 {
                     leaves += wood ? 0 : 1;
                 }
-                int keptLeaves = Mathf.Min(MaxLeafPile, Mathf.CeilToInt(leaves * LeafPacking));
+                int keptLeaves = leafPacking >= 1f ? leaves : Mathf.Min(MaxLeafPile, Mathf.CeilToInt(leaves * leafPacking));
                 int leafIndex = 0;
-                foreach ((_, bool wood, byte material) in list)
+                foreach ((_, bool wood, byte material, float density) in list)
                 {
                     if (!wood)
                     {
@@ -461,8 +497,9 @@ namespace Clube.Core
                     {
                         break;
                     }
-                    world.SetDensity(sample, 1f);
-                    world.SetMaterial(sample, material);
+                    world.SetDensity(sample, Mathf.Max(iso, density));
+                    world.SetMaterial(sample, wood ? material : trees.FallenFor(material));
+                    (wood ? landedWood : landedLeaves)?.Add(sample);
                     placed++;
                     at = sample.y + 1;
                 }

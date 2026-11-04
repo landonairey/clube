@@ -91,6 +91,10 @@ namespace Clube.Game
         [SerializeField, Min(0f)]
         private float refineExperience = 0.1f;
 
+        [Tooltip("Blacksmithing experience each refining pass gives too (GL362): a little, for working the stone.")]
+        [SerializeField, Min(0f)]
+        private float refineSmithingExperience = 0.02f;
+
         private PlayerController player;
         private PlayerInventory inventory;
         private PlayerSkills skills;
@@ -191,6 +195,7 @@ namespace Clube.Game
                 items.Add(drop, whole, Composition.From(new Content(picked.Material, 1f)), 0, 1f, Mathf.Max(0f, picked.Fraction - whole));
             }
             skills?.Skills.Award(SkillType.Crafting, refineExperience);
+            skills?.Skills.Award(SkillType.Blacksmithing, refineSmithingExperience);
             Message?.Invoke(refined.IsEmpty
                 ? $"Nothing of the {held.Item.DisplayName.ToLowerInvariant()} was left"
                 : $"Picked over the {held.Item.DisplayName.ToLowerInvariant()}: {refined.Quality * 100f:0}% now");
@@ -309,6 +314,16 @@ namespace Clube.Game
         // The crosshair on boulder material, within reach, in a piece too big to be a loose stone.
         private bool AimsAtBoulder()
         {
+            return TryGetAimedBoulder(out _);
+        }
+
+        /// <summary>
+        /// The boulder sample under the crosshair within reach (boulder material in a piece too big to be a loose stone), for
+        /// the interact outline (GL368); false when the crosshair isn't on one.
+        /// </summary>
+        public bool TryGetAimedBoulder(out Vector3Int boulder)
+        {
+            boulder = default;
             Transform head = player.Head != null ? player.Head : transform;
             if (!worldView.Raycast(new Ray(head.position, head.forward), out WorldHit hit)
                 || (worldView.transform.TransformPoint(hit.Point) - head.position).sqrMagnitude > reach * reach)
@@ -338,7 +353,12 @@ namespace Clube.Game
                     found = sample;
                 }
             }
-            return found.HasValue && !ToolStrike.IsSmallPiece(world, found.Value, world.GetMaterial(found.Value).Value, loosePieceSize, iso);
+            if (!found.HasValue || ToolStrike.IsSmallPiece(world, found.Value, world.GetMaterial(found.Value).Value, loosePieceSize, iso))
+            {
+                return false;
+            }
+            boulder = found.Value;
+            return true;
         }
     }
 }

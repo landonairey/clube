@@ -31,6 +31,17 @@ namespace Clube.Game
         [SerializeField, Range(0f, 1f)]
         private float leavesVolume = 0.18f;
 
+        [Tooltip("Felling (GL350): each tree felled near the listener takes this much off the leaves' rustle (the rustle is worked out from where trees grew, so a felled one would rustle on).")]
+        [SerializeField]
+        private TreeFeller feller;
+
+        [SerializeField, Range(0f, 1f)]
+        private float rustlePerFelledTree = 0.2f;
+
+        // Where felled trees stood, in the world view's space; a limb of this much wood or more counts as a tree.
+        private const int TreeWood = 40;
+        private readonly System.Collections.Generic.List<Vector3> felledTrees = new System.Collections.Generic.List<Vector3>();
+
         [Tooltip("Seconds between bird calls by day, at random within this range; a third of it at dawn.")]
         [SerializeField]
         private Vector2 birdSeconds = new Vector2(4f, 14f);
@@ -48,6 +59,30 @@ namespace Clube.Game
         private TreeField coverOf;
         private float nextBird;
         private float treeLevel;
+
+        private void OnEnable()
+        {
+            if (feller != null)
+            {
+                feller.Felled += OnFelled;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (feller != null)
+            {
+                feller.Felled -= OnFelled;
+            }
+        }
+
+        private void OnFelled(FelledLimb limb)
+        {
+            if (limb.WoodCount >= TreeWood && world != null && world.World != null)
+            {
+                felledTrees.Add(world.World.Grid.SampleToWorld(limb.Pivot));
+            }
+        }
 
         private void Awake()
         {
@@ -133,7 +168,15 @@ namespace Clube.Game
                 coverOf = world.Trees;
             }
             Vector3 local = world.transform.InverseTransformPoint(point);
-            return cover.At(local.x, local.z);
+            float level = cover.At(local.x, local.z);
+            foreach (Vector3 felled in felledTrees)
+            {
+                if ((new Vector2(felled.x - local.x, felled.z - local.z)).sqrMagnitude < 18f * 18f)
+                {
+                    level -= rustlePerFelledTree;
+                }
+            }
+            return Mathf.Max(0f, level);
         }
 
         private static void Play(AudioSource source, float volume)

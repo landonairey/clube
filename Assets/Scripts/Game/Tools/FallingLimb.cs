@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
 
@@ -21,6 +22,7 @@ namespace Clube.Game
         private Vector3Int direction;
         private Material dustMaterial;
         private Color dustColour;
+        private System.Action<List<Vector3Int>, List<Vector3Int>> onLandedCallback;
         private Transform body;
         private Mesh mesh;
         private Vector3 pivotStart;
@@ -33,7 +35,7 @@ namespace Clube.Game
         /// <summary>Starts the fall. <paramref name="origin"/> is where the mesh's corner sits, in the world view's space.</summary>
         public void Begin(
             WorldView view, FelledLimb felled, TreeMaterials treeMaterials, Mesh limbMesh, Vector3 origin, Material[] materials,
-            Vector3Int fallDirection, Material dust, Color dustTint)
+            Vector3Int fallDirection, Material dust, Color dustTint, System.Action<List<Vector3Int>, List<Vector3Int>> onLanded = null)
         {
             worldView = view;
             limb = felled;
@@ -41,6 +43,7 @@ namespace Clube.Game
             direction = fallDirection;
             dustMaterial = dust;
             dustColour = dustTint;
+            onLandedCallback = onLanded;
             mesh = limbMesh;
 
             WorldGrid grid = view.World.Grid;
@@ -95,7 +98,10 @@ namespace Clube.Game
         private void Land()
         {
             landed = true;
-            TreeFelling.Land(worldView.World, limb, direction, trees, worldView.Config.IsoLevel);
+            var wood = new List<Vector3Int>();
+            var leaves = new List<Vector3Int>();
+            TreeFelling.Land(worldView.World, limb, direction, trees, worldView.Config.IsoLevel, landedWood: wood, landedLeaves: leaves);
+            onLandedCallback?.Invoke(wood, leaves);
             Dust();
         }
 

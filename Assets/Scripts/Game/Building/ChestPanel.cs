@@ -27,6 +27,7 @@ namespace Clube.Game
         private PlayerController player;
         private int openedFrame;
         private readonly InventoryDrag drag = new InventoryDrag();
+        private readonly InventoryDrag chestDrag = new InventoryDrag();
 
         /// <summary>The chest open, or null when closed.</summary>
         public StorageChest Current { get; private set; }
@@ -53,6 +54,7 @@ namespace Clube.Game
         {
             Current = chest;
             drag.Reset();
+            chestDrag.Reset();
             openedFrame = Time.frameCount;
             if (player != null)
             {
@@ -102,29 +104,43 @@ namespace Clube.Game
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
             float y = panel.y + Padding;
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   {chest.SlotCount} slots   (E to close)");
+            GUI.Label(new Rect(x, y, width - 140f - Padding * 2f, 20f), $"{Current.DisplayName}   {chest.SlotCount} slots   (E to close)");
+            // Sort the chest the way the inventory sorts (GL357).
+            if (GUI.Button(new Rect(panel.xMax - Padding - 110f, y - 2f, 110f, 22f), "Sort chest"))
+            {
+                chest.Sort(0, chest.SlotCount);
+            }
             y += 24f;
 
+            // The chest's slots take drags too (GL367): moved, split and stacked inside it, or dragged out to your items.
+            var chestTopLeft = new Vector2(x, y);
             var chestArea = new Rect(x, y, InventoryGridGui.RowWidth, InventoryGridGui.GridHeight(chest));
-            int taken = InventoryGridGui.DrawGrid(new Vector2(x, y), chest);
-            if (taken >= 0)
-            {
-                chest.MoveTo(taken, items);
-            }
-            InventoryGridGui.PullHalf(chest, items, false);
             y += chestArea.height + 16f;
-
             GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Your items: click to store (Shift half, Ctrl one), drag onto the chest, right-click to split");
             y += 22f;
             var grid = new Vector2(x, y);
+            var playerArea = new Rect(grid.x, grid.y, InventoryGridGui.RowWidth, InventoryGridGui.PlayerHeight(inventory));
+
+            InventoryDragResult inChest = chestDrag.HandleGrid(chest, chestTopLeft);
+            if (inChest.Kind == InventoryDragKind.Clicked
+                || (inChest.Kind == InventoryDragKind.DroppedOutside && playerArea.Contains(inChest.Position)))
+            {
+                chest.MoveTo(inChest.Slot, items, inChest.Count);
+            }
             InventoryDragResult mouse = drag.Handle(inventory, grid);
             if (mouse.Kind == InventoryDragKind.Clicked
                 || (mouse.Kind == InventoryDragKind.DroppedOutside && chestArea.Contains(mouse.Position)))
             {
                 items.MoveTo(mouse.Slot, chest, mouse.Count);
             }
+            InventoryGridGui.DrawGrid(chestTopLeft, chest, chestDrag.Pressed);
+            InventoryGridGui.PullHalf(chest, items, false);
             InventoryGridGui.DrawPlayer(grid, inventory, drag.Pressed);
-            if (drag.IsDragging)
+            if (chestDrag.IsDragging)
+            {
+                chestDrag.DrawCarried(chest);
+            }
+            else if (drag.IsDragging)
             {
                 drag.DrawCarried(items);
             }

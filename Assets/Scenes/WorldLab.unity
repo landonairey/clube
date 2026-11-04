@@ -5442,6 +5442,7 @@ GameObject:
   - component: {fileID: 1350119484}
   - component: {fileID: 1350119486}
   - component: {fileID: 1350119485}
+  - component: {fileID: 1350119487}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -6009,6 +6010,8 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 916b43354c38e8c4aa51cf171f0e85e2, type: 3}
   windVolume: {x: 0.12, y: 0.35}
   leavesVolume: 0.18
+  feller: {fileID: 1697135610}
+  rustlePerFelledTree: 0.2
   birdSeconds: {x: 4, y: 14}
   birdVolume: 0.35
 --- !u!114 &1350119484
@@ -6059,6 +6062,20 @@ MonoBehaviour:
   flowBudgetMs: 2.5
   minFlowSlope: 0.25
   buildBudgetMs: 1.5
+--- !u!114 &1350119487
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b0d05c6ee1991c489607fa2253dd44f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.FallenLeaves
+  worldView: {fileID: 1350119460}
+  clock: {fileID: 1350119469}
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -6244,6 +6261,7 @@ GameObject:
   - component: {fileID: 1697135607}
   - component: {fileID: 1697135609}
   - component: {fileID: 1697135610}
+  - component: {fileID: 1697135611}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -6342,7 +6360,7 @@ CharacterController:
   m_Enabled: 1
   serializedVersion: 3
   m_Height: 1.8
-  m_Radius: 0.35
+  m_Radius: 0.3
   m_SlopeLimit: 50
   m_StepOffset: 0.4
   m_SkinWidth: 0.04
@@ -6994,6 +7012,7 @@ MonoBehaviour:
   secondsPerVolume: 0.25
   refineVolume: 1
   refineExperience: 0.1
+  refineSmithingExperience: 0.02
 --- !u!114 &1697135593
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7262,7 +7281,7 @@ MonoBehaviour:
   clock: {fileID: 0}
   dayNight: {fileID: 0}
   closeAction: {fileID: 1781555164194001046, guid: 052faaac586de48259a63d0c4782560b, type: 3}
-  secondsPerHour: 1
+  secondsPerHour: 0.5
   blurSeconds: 0.6
 --- !u!114 &1697135606
 MonoBehaviour:
@@ -7339,6 +7358,23 @@ MonoBehaviour:
   view: {fileID: 371098496}
   dustMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
   dustColour: {r: 0.62, g: 0.55, b: 0.45, a: 0.75}
+  fallenLeaves: {fileID: 1350119487}
+--- !u!114 &1697135611
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 593292365af90f244834a835974118dd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.InteractHighlight
+  interactor: {fileID: 1697135574}
+  worldView: {fileID: 1350119460}
+  bashing: {fileID: 1697135592}
+  outline: {fileID: 2100000, guid: 84d2e2cdbce2c774cb23034c780c2013, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

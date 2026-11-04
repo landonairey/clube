@@ -183,6 +183,16 @@ namespace Clube.Core
             return Normalize(samples, 0.75f);
         }
 
+        /// <summary>Touching the campfire (GL356): a short hiss of steam with crackles, dying away.</summary>
+        public static float[] Sizzle(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(0.5f)];
+            AddNoise(samples, random, 0f, 0.008f, 0.1f, 0.35f, Band(Range(random, 4800f, 6500f), 1.2f));
+            AddCrackles(samples, random, 0f, 0.35f, 50, 0.3f, 4200f);
+            return Normalize(samples, 0.7f);
+        }
+
         /// <summary>Rock coming away: a crumble of grit falling.</summary>
         public static float[] Crumble(int seed)
         {

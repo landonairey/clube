@@ -82,6 +82,11 @@ namespace Clube.Game
             if (!station.WorksUnattended)
             {
                 station.ReturnInputs(inventory.Inventory);
+                // And what it made (GL352): leaving a worktop, anvil or flat rock takes everything along.
+                if (!station.Output[0].IsEmpty)
+                {
+                    station.Output.MoveTo(0, inventory.Inventory, keepApart: true);
+                }
             }
             CollectUnstackable(station);
             Current = null;
@@ -292,6 +297,16 @@ namespace Clube.Game
         // The smelting bar, or the anvil's Strike button, between input and output.
         private static void DrawWork(Rect area, CraftingStation station)
         {
+            // The flat rock mends a tool with its ingot (GL360): a tool and its repair item in the inputs.
+            if (station.Kind == StationKind.FlatRock && ToolRepair.FindPair(station.Input, out int toolSlot, out int itemSlot))
+            {
+                string ingot = station.Input[itemSlot].Item.DisplayName;
+                if (GUI.Button(new Rect(area.x, area.y + 8f, area.width, area.height - 16f), $"Repair (1 {ingot})"))
+                {
+                    ToolRepair.RepairFully(station.Input, toolSlot, itemSlot);
+                }
+                return;
+            }
             bool strikes = station.Active != null ? station.Active.Work == RecipeWork.Strikes : station.Ready(RecipeWork.Strikes) != null;
             if (strikes)
             {

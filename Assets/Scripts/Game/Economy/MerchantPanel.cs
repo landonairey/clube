@@ -162,6 +162,10 @@ namespace Clube.Game
             {
                 DrawGroup(items, prices, x, y);
                 y += SellRowHeight + 6f;
+                // With a group picked, the only sale is the group's (GL358): the one-stack row's price read as the total.
+                DrawOffers(x, y, width - Padding * 2f);
+                InventoryGridGui.DrawTooltip();
+                return;
             }
 
             ItemStack chosen = selected >= 0 ? items[selected] : ItemStack.Empty;

@@ -255,6 +255,16 @@ namespace Clube.Core
                     int placed = stack.Count - Input.AddToStacks(stack.Item, stack.Count, stack.Contents, stack.Quality, keepApart: true);
                     moved += from.RemoveAt(slot, placed);
                 }
+                // The part of an item a stack had over its whole ones goes along with them (GL371: 6.07 gold buttons all go
+                // in, not 6 with 0.07 left behind).
+                for (int slot = 0; slot < from.SlotCount; slot++)
+                {
+                    ItemStack rest = from[slot];
+                    if (rest.Item == input.Item && rest.Count == 0 && rest.Part > 0f)
+                    {
+                        from.MoveTo(slot, Input, keepApart: true);
+                    }
+                }
             }
             return moved;
         }
@@ -344,6 +354,11 @@ namespace Clube.Core
                 {
                     break;
                 }
+                // A finished run waiting for room in the output (GL359): nothing to do until it's taken.
+                if (done + 1e-4f >= Active.Amount && !OutputFits(Active))
+                {
+                    break;
+                }
                 if (BurnsFuel && !IsBurning && !Ignite())
                 {
                     break;
@@ -427,7 +442,16 @@ namespace Clube.Core
         public bool OutputFits(Recipe recipe)
         {
             ItemStack waiting = Output[0];
-            return waiting.IsEmpty || (waiting.Item == recipe.Output.Item && waiting.Space >= (int)Math.Ceiling(recipe.Output.Count * YieldOf(recipe) - 1e-4f));
+            if (waiting.IsEmpty)
+            {
+                return true;
+            }
+            // The same item, with room, and at the quality this run would make (GL359: an ingot hammered after a Blacksmithing
+            // level-up is better than the ones waiting, doesn't stack with them, and was lost).
+            Composition madeOf = recipe.Output.Item is PlaceableDefinition ? InputContents(recipe) : null;
+            return waiting.Item == recipe.Output.Item
+                && Inventory.Stacks(waiting, recipe.Output.Item, madeOf, OutputQuality(recipe))
+                && waiting.Space >= (int)Math.Ceiling(recipe.Output.Count * YieldOf(recipe) - 1e-4f);
         }
 
         /// <summary>
@@ -496,6 +520,14 @@ namespace Clube.Core
             done += amount;
             if (done + 1e-4f >= Active.Amount)
             {
+                // Done, but its result has nowhere to go: it waits, inputs and all, until the output is taken (GL359). Taking
+                // them first and adding a result that didn't fit lost both.
+                if (!OutputFits(Active))
+                {
+                    done = Active.Amount;
+                    Changed?.Invoke();
+                    return;
+                }
                 // Finished: the inputs turn into the result.
                 Recipe finished = Active;
                 Active = null;
@@ -556,10 +588,17 @@ namespace Clube.Core
             {
                 chosen = null;
             }
-            if (Active != null && (!Active.HasInputs(Input) || !OutputFits(Active)))
+            bool finishedWaiting = Active != null && done + 1e-4f >= Active.Amount;
+            if (Active != null && (!Active.HasInputs(Input) || (!OutputFits(Active) && !finishedWaiting)))
             {
                 Active = null;
                 done = 0f;
+            }
+            else if (finishedWaiting && OutputFits(Active))
+            {
+                // A run that finished while the output was full completes as soon as it's taken (GL359).
+                Work(0f);
+                return;
             }
             Changed?.Invoke();
         }
