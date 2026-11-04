@@ -119,6 +119,38 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Water_StartsTheDryingOver()
+        {
+            // Clay most of the way dry, touched by water for a moment, needs its whole drying time again (GL347).
+            VoxelMaterial brick = VoxelMaterial.Create(14, "Brick");
+            VoxelMaterial clay = VoxelMaterial.Create(13, "Clay").WithDrying(brick, 2f);
+            var world = new World(new Vector3Int(8, 8, 8), 1f);
+            world.Load(Vector3Int.zero, null);
+            try
+            {
+                var sample = new Vector3Int(2, 1, 2);
+                world.SetMaterial(sample, clay.Id);
+                world.SetDensity(sample, 1f);
+                var drying = new GroundDrying();
+                drying.Add(new[] { sample }, clay, now: 10.0);
+                Assert.AreEqual(0, drying.Update(world, 11.8), "Nearly dry.");
+
+                world.SetWater(sample + Vector3Int.right, 1f);
+                drying.Update(world, 11.9);
+                world.SetWater(sample + Vector3Int.right, 0f);
+                Assert.AreEqual(0, drying.Update(world, 12.5), "Past its first time to dry, but the water reset it.");
+                Assert.AreEqual(0, drying.Update(world, 13.8));
+                Assert.AreEqual(1, drying.Update(world, 13.9), "Two days from the last moment it was wet, it's brick.");
+                Assert.AreEqual(brick.Id, world.GetMaterial(sample));
+            }
+            finally
+            {
+                Object.DestroyImmediate(clay);
+                Object.DestroyImmediate(brick);
+            }
+        }
+
+        [Test]
         public void Drying_IgnoresMaterialsThatDontDry()
         {
             VoxelMaterial stone = VoxelMaterial.Create(0, "Stone");

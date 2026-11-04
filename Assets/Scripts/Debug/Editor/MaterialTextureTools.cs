@@ -61,7 +61,8 @@ namespace Clube.Debug.Editor
 
         private static readonly Color StoneBase = new Color(0.45f, 0.45f, 0.47f);
         private static readonly Color StoneMix = new Color(0.60f, 0.60f, 0.62f);
-        private static readonly Color ChalcopyriteFleck = new Color(0.86f, 0.72f, 0.22f);
+        // Chalcopyrite reads coppery orange next to gold's yellow (GL346; was brass yellow, 0.86, 0.72, 0.22).
+        internal static readonly Color ChalcopyriteFleck = new Color(0.90f, 0.52f, 0.16f);
         private static readonly Color MalachiteFleck = new Color(0.48f, 0.66f, 0.30f);
 
         // Natural colours for the placeholders: a base, a second colour mixed in by noise, for
@@ -225,6 +226,20 @@ namespace Clube.Debug.Editor
                 }
                 seed++;
             }
+        }
+
+        /// <summary>
+        /// Writes chalcopyrite's three stages and its crushed-ore icon again in its current colour (GL346), and rebuilds the
+        /// texture array; nothing else changes.
+        /// </summary>
+        [MenuItem("Clube/Materials/Regenerate chalcopyrite textures")]
+        public static void RegenerateChalcopyrite()
+        {
+            Regenerate("chalcopyrite");
+            Regenerate("cracked chalcopyrite");
+            Regenerate("loose chalcopyrite");
+            ItemIconTools.WriteCrushedChalcopyrite();
+            BuildTextureArrays();
         }
 
         /// <summary>Writes one material's placeholder again, with the seed its place in the list gives it; rebuild the texture array after.</summary>
