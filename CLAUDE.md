@@ -566,7 +566,7 @@ from `BoulderField` (Generation/Rocks), 4-12 m, faceted, often overhanging, stam
 Grass reaches the drawn terrain (`WorldView.DrawnDistance`, GL340). The world labs default to ErodedLandscape (GL343). AR1: palette idea.
 GL344 felling: `PlayerToolUser.Chopped` → `TreeFeller` (Game/Tools, on Player) → `TreeFelling.FindSevered` (Core/Editing: wood cut off
 from the ground through wood, plus the leaves nearer to it) → a mesh from a scratch chunk → `FallingLimb` tips it to the player's right
-(cardinal), dust, then `TreeFelling.Land` (turned 90° about the cut, dropped per column, wood under a quarter of the leaves).
+(cardinal), dust, then `TreeFelling.Land` (turned 90° about the cut, dropped per column, wood under a tenth of the leaves).
 Height maps: `Docs/images/20261103 *`.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the

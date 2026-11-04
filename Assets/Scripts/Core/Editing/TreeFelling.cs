@@ -108,7 +108,7 @@ namespace Clube.Core
         public const int MaxLeafReach = 20;
 
         /// <summary>Share of a column's leaves that lands: the rest crush away, so a fallen crown lies flat.</summary>
-        public const float LeafPacking = 0.25f;
+        public const float LeafPacking = 0.1f;
 
         /// <summary>Deepest a landed column's leaves lie, in samples (1.5 m at 0.25 m voxels).</summary>
         public const int MaxLeafPile = 6;
