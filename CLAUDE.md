@@ -578,6 +578,7 @@ Outline`, mask and rim materials made in `InteractHighlight.Awake`); a model's "
 it (the merchant table's). Smelted metal keeps slag (`CraftingStation.SmeltPurity`, `SlagCarried`: ore share, heat, Smelting),
 so a bun's quality is its purity; hammering drives out half the slag (`ForgedQuality`). Crushing keeps volume (the crushed
 ore is the rest of the item). `PlayerController.Knockback` keeps its hop on the frame it starts.
+GL379: `GrassScatter` thins far tufts on the CPU (tufts sorted by a hashed pick, a far chunk sends the share it keeps) and resumes its chunk scan where it stopped; `InstanceBatches` passes each batch's bounds.
 Height maps: `Docs/images/20261103 *`.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the

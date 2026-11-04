@@ -47,6 +47,13 @@ namespace Clube.Core
         private const int SaltDahlia = 6;
         private const int SaltDahliaStray = 7;
         private const int SaltDahliaColour = 8;
+        private const int SaltThin = 9;
+
+        // Blades in the tuft drawn past thinFrom, where a blade is a pixel or two (GL379).
+        private const int FarTuftBlades = 3;
+
+        // Repack the drawn tufts once the focus has moved this far, in metres, so each chunk's thinned share follows it (GL379).
+        private const float RebatchDistance = 2f;
 
         private static readonly int StrawStrengthProperty = Shader.PropertyToID("_StrawStrength");
 
@@ -151,6 +158,7 @@ namespace Clube.Core
         private readonly Stack<Scattered> spare = new Stack<Scattered>();
         private readonly List<Vector3Int> dropped = new List<Vector3Int>();
         private readonly InstanceBatches grassBatches = new InstanceBatches();
+        private readonly InstanceBatches farGrassBatches = new InstanceBatches();
         private readonly InstanceBatches wheatBatches = new InstanceBatches();
         private readonly InstanceBatches[] dahliaBatches = new InstanceBatches[DahliaGrowth.Colours];
         private readonly List<OreNode> dahliaNodes = new List<OreNode>();
@@ -167,11 +175,15 @@ namespace Clube.Core
         private TreeCover cover;
         private TreeField coverOf;
         private Mesh tuft;
+        private Mesh farTuft;
         private Mesh wheat;
         private readonly Mesh[] dahliaMeshes = new Mesh[DahliaGrowth.Colours];
         private MaterialPropertyBlock dahliaProperties;
         private MaterialPropertyBlock properties;
         private bool batchesDirty;
+        private Vector3 batchedFrom;
+        private Vector3Int sweepCentre = new Vector3Int(int.MinValue, 0, 0);
+        private int sweepNext;
         private bool scanPending = true;
         private Vector3 scannedFrom;
         private Vector3Int[] reachOffsets;
@@ -182,6 +194,11 @@ namespace Clube.Core
         {
             public readonly List<Matrix4x4> Grass = new List<Matrix4x4>();
             public readonly List<Matrix4x4> Wheat = new List<Matrix4x4>();
+
+            // Each tuft's thinning pick (0-1) while scattering; the tufts are then sorted by it, so a far chunk draws the
+            // first share of its list and the same tufts stay as the share grows or shrinks (GL379).
+            public readonly List<(float Pick, Matrix4x4 Matrix)> GrassPicks = new List<(float, Matrix4x4)>();
+            public readonly List<(float Pick, Matrix4x4 Matrix)> WheatPicks = new List<(float, Matrix4x4)>();
             public readonly List<Matrix4x4>[] Dahlias = NewLists();
 
             private static List<Matrix4x4>[] NewLists()
@@ -195,10 +212,35 @@ namespace Clube.Core
             }
             public bool Drawn;
 
+            // The chunk's centre in the world, for its distance when the batches are packed.
+            public Vector3 Centre;
+
+            // Sorts the tufts by their thinning pick into the drawn lists (GL379).
+            public void Order()
+            {
+                Sort(GrassPicks, Grass);
+                Sort(WheatPicks, Wheat);
+            }
+
+            private static void Sort(List<(float Pick, Matrix4x4 Matrix)> picks, List<Matrix4x4> into)
+            {
+                picks.Sort(ByPick);
+                into.Clear();
+                foreach ((float _, Matrix4x4 matrix) in picks)
+                {
+                    into.Add(matrix);
+                }
+                picks.Clear();
+            }
+
+            private static readonly System.Comparison<(float Pick, Matrix4x4 Matrix)> ByPick = (a, b) => a.Pick.CompareTo(b.Pick);
+
             public void Clear()
             {
                 Grass.Clear();
                 Wheat.Clear();
+                GrassPicks.Clear();
+                WheatPicks.Clear();
                 foreach (List<Matrix4x4> dahlias in Dahlias)
                 {
                     dahlias.Clear();
@@ -208,6 +250,15 @@ namespace Clube.Core
 
         /// <summary>Tufts drawn last frame, grass and wheat, for the lab readouts.</summary>
         public int TuftCount { get; private set; }
+
+        /// <summary>Milliseconds the last LateUpdate took, and its parts: looking over the chunks, the far grass colours, the draw (GL379).</summary>
+        public float LastUpdateMilliseconds { get; private set; }
+
+        public float LastScanMilliseconds { get; private set; }
+
+        public float LastLawnMilliseconds { get; private set; }
+
+        public float LastDrawMilliseconds { get; private set; }
 
         /// <summary>Wheat stalks among them.</summary>
         public int WheatCount { get; private set; }
@@ -239,6 +290,7 @@ namespace Clube.Core
         {
             worldView = GetComponent<WorldView>();
             tuft = BuildTuft();
+            farTuft = BuildTuft(FarTuftBlades, 0.07f * 7f / FarTuftBlades * 0.6f, "Far grass tuft");
             wheat = BuildWheat();
             dahliaProperties = new MaterialPropertyBlock();
             for (int i = 0; i < DahliaGrowth.Colours; i++)
@@ -284,6 +336,10 @@ namespace Clube.Core
             {
                 Destroy(wheat);
             }
+            if (farTuft != null)
+            {
+                Destroy(farTuft);
+            }
             foreach (Mesh mesh in dahliaMeshes)
             {
                 if (mesh != null)
@@ -295,10 +351,14 @@ namespace Clube.Core
 
         private void OnChunkMeshed(Vector3Int coord, ChunkRenderer chunkRenderer)
         {
-            scanPending = true;
             if (!tufts.TryGetValue(coord, out Scattered scattered))
             {
-                // Not scattered yet: the scan grows it once it's in reach.
+                // Not scattered yet: the scan grows it once it's in reach. Only a chunk within reach calls for a scan: the
+                // world meshes chunks far off all the time, and each scan cost about 4 ms (GL379).
+                if (chunkRenderer != null && worldView.Focus != null)
+                {
+                    scanPending |= Distance(chunkRenderer, worldView.Focus.position) <= radius * radius;
+                }
                 return;
             }
 
@@ -340,12 +400,21 @@ namespace Clube.Core
             // The chunks are looked over only when something changed: a new mesh, the focus moving a
             // metre, or the last look running out of time.
             Vector3 focus = worldView.Focus.position;
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
             if (scanPending || (focus - scannedFrom).sqrMagnitude > 1f)
             {
                 Scan(focus);
             }
+            long scanned = System.Diagnostics.Stopwatch.GetTimestamp();
             UpdateLawn(focus);
-            Draw();
+            long lawned = System.Diagnostics.Stopwatch.GetTimestamp();
+            Draw(focus);
+            long drawn = System.Diagnostics.Stopwatch.GetTimestamp();
+            float toMs = 1000f / System.Diagnostics.Stopwatch.Frequency;
+            LastScanMilliseconds = (scanned - started) * toMs;
+            LastLawnMilliseconds = (lawned - scanned) * toMs;
+            LastDrawMilliseconds = (drawn - lawned) * toMs;
+            LastUpdateMilliseconds = (drawn - started) * toMs;
         }
 
         // The far grass colours (GL257): worked out from the tufts' own colours and the material's straw, and mapped
@@ -417,17 +486,25 @@ namespace Clube.Core
             clock.Restart();
             World world = worldView.World;
             Vector3Int centre = world.Grid.WorldToChunk(worldView.transform.InverseTransformPoint(focus));
-            foreach (Vector3Int offset in ReachOffsets(world.Grid.ChunkWorldSize))
+            Vector3Int[] offsets = ReachOffsets(world.Grid.ChunkWorldSize);
+            // A look that ran out of time goes on from where it stopped while the focus stays in the same chunk (GL379): starting
+            // over, it spent its time on the near chunks already done and never reached the far ones, so it ran every frame.
+            int first = centre == sweepCentre ? Mathf.Clamp(sweepNext, 0, offsets.Length) : 0;
+            sweepCentre = centre;
+            bool grewOne = false;
+            for (int i = first; i < offsets.Length; i++)
             {
-                Vector3Int coord = centre + offset;
+                Vector3Int coord = centre + offsets[i];
                 if (tufts.ContainsKey(coord)
                     || !worldView.Renderers.TryGetValue(coord, out ChunkRenderer chunkRenderer)
                     || Distance(chunkRenderer, focus) > near)
                 {
                     continue;
                 }
-                if (clock.Elapsed.TotalMilliseconds > scatterMilliseconds)
+                // At least one chunk grows each look, so a look always gets somewhere.
+                if (grewOne && clock.Elapsed.TotalMilliseconds > scatterMilliseconds)
                 {
+                    sweepNext = i;
                     scanPending = true;
                     return;
                 }
@@ -436,7 +513,9 @@ namespace Clube.Core
                 scattered.Drawn = true;
                 tufts.Add(coord, scattered);
                 batchesDirty = true;
+                grewOne = true;
             }
+            sweepNext = 0;
         }
 
         private void Drop(Vector3Int coord)
@@ -465,7 +544,11 @@ namespace Clube.Core
                 {
                     for (int dx = -reach.x; dx <= reach.x; dx++)
                     {
-                        offsets.Add(new Vector3Int(dx, dy, dz));
+                        // Only the sphere the scan can use (a chunk centre within the radius): the cube had twice as many.
+                        if (Vector3.Scale(new Vector3(dx, dy, dz), chunkSize).magnitude <= radius + chunkSize.magnitude)
+                        {
+                            offsets.Add(new Vector3Int(dx, dy, dz));
+                        }
                     }
                 }
             }
@@ -501,6 +584,7 @@ namespace Clube.Core
             }
             spots.Clear();
             ground.Find(chunkRenderer, grass, minUp, 1f / Mathf.Sqrt(density), 0, SaltX, SaltZ, 0f, spots);
+            scattered.Centre = chunkRenderer.Transform.position + worldView.World.Grid.ChunkWorldSize * 0.5f;
 
             TreeCover trees = CoverOf(worldView.Trees);
             int seed = worldView.Config.Terrain.Seed;
@@ -534,15 +618,16 @@ namespace Clube.Core
                 if (wheatHere > 0f && VoxelHash.Uniform(0, ix, 0, iz, SaltWheat) < wheatHere)
                 {
                     float tall = growth.WheatHeightFor(roll);
-                    scattered.Wheat.Add(Matrix4x4.TRS(spot.Position, rotation, new Vector3(tall * 0.8f, tall, tall * 0.8f)));
+                    scattered.WheatPicks.Add((VoxelHash.Uniform(0, ix, 0, iz, SaltThin), Matrix4x4.TRS(spot.Position, rotation, new Vector3(tall * 0.8f, tall, tall * 0.8f))));
                     continue;
                 }
                 float baseSize = Mathf.Lerp(height.x, height.y, roll);
                 float scale = growth.HeightScale(forest, local.y);
                 // Taller grass is a little wider, but mostly it reaches up.
                 float width = baseSize * Mathf.Sqrt(scale);
-                scattered.Grass.Add(Matrix4x4.TRS(spot.Position, rotation, new Vector3(width, baseSize * scale, width)));
+                scattered.GrassPicks.Add((VoxelHash.Uniform(0, ix, 0, iz, SaltThin), Matrix4x4.TRS(spot.Position, rotation, new Vector3(width, baseSize * scale, width))));
             }
+            scattered.Order();
         }
 
         // How thick the trees stand, from the world's tree field (made again if the world gets a new one).
@@ -556,7 +641,7 @@ namespace Clube.Core
             return cover;
         }
 
-        private void Draw()
+        private void Draw(Vector3 focus)
         {
             // The fade is set per draw, not on the shared material asset.
             float fadeStart = Mathf.Max(radius - fadeLength, thinFrom + 1f);
@@ -577,11 +662,12 @@ namespace Clube.Core
                 receiveShadows = true,
                 layer = gameObject.layer,
             };
-            if (batchesDirty)
+            if (batchesDirty || (focus - batchedFrom).sqrMagnitude > RebatchDistance * RebatchDistance)
             {
-                RebuildBatches();
+                RebuildBatches(focus);
             }
             grassBatches.Draw(parameters, tuft);
+            farGrassBatches.Draw(parameters, farTuft);
             wheatBatches.Draw(parameters, wheat);
 
             // Dahlias: their own colours (no drying to straw, no far grass colour) and never thinned out.
@@ -598,22 +684,31 @@ namespace Clube.Core
             }
         }
 
-        // Packs every drawn chunk's tufts into the batches, kept until the tufts change.
-        private void RebuildBatches()
+        // Packs every drawn chunk's tufts into the batches, kept until the tufts change or the focus moves a couple of metres.
+        // A far chunk sends only the share of its tufts the thinning keeps at its nearest edge (GL379): the tufts are sorted by
+        // their pick, so that's the start of its list. Sending every tuft and dropping most in the shader cost about 9 ms a
+        // frame in the Editor.
+        private void RebuildBatches(Vector3 focus)
         {
             batchesDirty = false;
+            batchedFrom = focus;
             grassBatches.Clear();
+            farGrassBatches.Clear();
             wheatBatches.Clear();
             foreach (InstanceBatches batch in dahliaBatches)
             {
                 batch.Clear();
             }
+            float halfDiagonal = worldView.World.Grid.ChunkWorldSize.magnitude * 0.5f;
+            float fadeStart = Mathf.Max(radius - fadeLength, thinFrom + 1f);
             foreach (Scattered scattered in tufts.Values)
             {
                 if (scattered.Drawn)
                 {
-                    grassBatches.AddRange(scattered.Grass);
-                    wheatBatches.AddRange(scattered.Wheat);
+                    float nearest = Mathf.Max(0f, Vector3.Distance(scattered.Centre, focus) - halfDiagonal);
+                    float keep = Mathf.Lerp(1f, thinTo, Mathf.Clamp01((nearest - thinFrom) / Mathf.Max(fadeStart - thinFrom, 0.01f)));
+                    (nearest > thinFrom ? farGrassBatches : grassBatches).AddRange(scattered.Grass, Mathf.CeilToInt(scattered.Grass.Count * keep));
+                    wheatBatches.AddRange(scattered.Wheat, Mathf.CeilToInt(scattered.Wheat.Count * keep));
                     for (int i = 0; i < DahliaGrowth.Colours; i++)
                     {
                         dahliaBatches[i].AddRange(scattered.Dahlias[i]);
@@ -625,7 +720,7 @@ namespace Clube.Core
             {
                 DahliaCount += batch.Count;
             }
-            TuftCount = grassBatches.Count + wheatBatches.Count + DahliaCount;
+            TuftCount = grassBatches.Count + farGrassBatches.Count + wheatBatches.Count + DahliaCount;
             WheatCount = wheatBatches.Count;
         }
 
@@ -636,11 +731,10 @@ namespace Clube.Core
             spare.Push(scattered);
         }
 
-        // One tuft, 1 m tall before scaling: seven thin blades leaning out from the middle,
+        // One tuft, 1 m tall before scaling: seven thin blades leaning out from the middle (three wider ones far off, GL379),
         // dark at the root and light at the tip (alpha: how far up, for the wind).
-        private static Mesh BuildTuft()
+        private static Mesh BuildTuft(int blades = 7, float width = 0.07f, string name = "Grass tuft")
         {
-            const int blades = 7;
             var positions = new List<Vector3>();
             var colors = new List<Color>();
             var normalsOut = new List<Vector3>();
@@ -655,9 +749,9 @@ namespace Clube.Core
                 var side = new Vector3(-outward.z, 0f, outward.x);
                 float lean = 0.15f + (float)random.NextDouble() * 0.3f;
                 float tall = 0.7f + (float)random.NextDouble() * 0.3f;
-                Blade(outward * 0.06f, side * 0.07f, outward * lean + Vector3.up * tall, outward, root, tip, positions, colors, normalsOut, indices);
+                Blade(outward * 0.06f, side * width, outward * lean + Vector3.up * tall, outward, root, tip, positions, colors, normalsOut, indices);
             }
-            return Make("Grass tuft", positions, colors, normalsOut, indices);
+            return Make(name, positions, colors, normalsOut, indices);
         }
 
         // Wheat, 1 m tall before scaling: a sheaf of thin stalks, each with a grain head of two
