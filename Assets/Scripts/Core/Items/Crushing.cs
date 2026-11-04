@@ -4,8 +4,8 @@ namespace Clube.Core
 {
     /// <summary>
     /// Crushing ore on a boulder (GL148): the ore minerals stay, and half of everything else (the stone
-    /// and soil it was mined with) is knocked away as crushed stone. One item of raw ore makes one item of
-    /// crushed ore, richer in its mineral, which smelts at a better yield (GL128) and sells for more (GL130).
+    /// and soil it was mined with) is knocked away as crushed stone. One item of raw ore makes the rest of an item of
+    /// crushed ore (GL377), richer in its mineral, which smelts to purer metal and sells for more (GL130).
     /// Plain data.
     /// </summary>
     public static class Crushing

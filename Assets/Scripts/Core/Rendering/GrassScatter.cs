@@ -102,17 +102,17 @@ namespace Clube.Core
         // The radius as set, kept while radius follows the drawn terrain; NaN until first read.
         private float configuredRadius = float.NaN;
 
-        [Tooltip("Past this many metres fewer tufts stand, the ones left wider, so far grass costs less (GL257).")]
+        [Tooltip("Past this many metres fewer tufts stand, the ones left wider and taller, so far grass costs less (GL257, GL378).")]
         [SerializeField, Min(0f)]
-        private float thinFrom = 22f;
+        private float thinFrom = 40f;
 
         [Tooltip("The share of tufts still standing where they start to shrink into the ground at the edge.")]
         [SerializeField, Range(0.02f, 1f)]
-        private float thinTo = 0.2f;
+        private float thinTo = 0.35f;
 
         [Tooltip("Metres over which the tufts shrink into the ground at the edge of the radius.")]
         [SerializeField, Min(1f)]
-        private float fadeLength = 16f;
+        private float fadeLength = 8f;
 
         [Tooltip("How light grass looks from afar against its blades' colours (GL257): under 1 for the shade between them.")]
         [SerializeField, Range(0.3f, 1.5f)]

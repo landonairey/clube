@@ -149,6 +149,7 @@ namespace Clube.Game
 
         // A knockback (GL356: the campfire) carries the player until this time, whatever Move says.
         private float knockbackUntil;
+        private bool knockbackLiftPending;
         // Freed by FreeCursor; a menu frees it separately (isInMenu).
         private bool isCursorFree;
         private bool isInMenu;
@@ -269,6 +270,8 @@ namespace Clube.Game
             fallSpeed = -Mathf.Abs(lift);
             slideSpeed = 0f;
             knockbackUntil = Time.time + seconds;
+            // Still on the ground this frame: keep the hop instead of settling it (GL375).
+            knockbackLiftPending = lift > 0f;
         }
 
         public void Teleport(Vector3 position)
@@ -388,7 +391,14 @@ namespace Clube.Game
                 {
                     SlideOn();
                 }
-                fallSpeed = GroundedFallSpeed;
+                if (knockbackLiftPending)
+                {
+                    knockbackLiftPending = false;
+                }
+                else
+                {
+                    fallSpeed = GroundedFallSpeed;
+                }
                 lastGroundedTime = Time.time;
                 if (jumpHeld)
                 {

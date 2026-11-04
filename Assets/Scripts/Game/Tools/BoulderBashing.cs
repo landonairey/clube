@@ -260,16 +260,19 @@ namespace Clube.Game
             Composition crushed = Crushing.Crush(held.Contents, out float knockedOff);
             MaterialRegistry materials = worldView.Config.Materials;
             float quality = crushed != null && materials != null ? materials.Quality(crushed, crush.Raw) : held.Quality;
+            // What's knocked off goes: the crushed ore is the rest of the item, so its mineral stays what it was (GL377;
+            // keeping a whole item made copper out of nothing).
+            float left = amount * (1f - knockedOff);
+            int whole = (int)Mathf.Floor(left + 1e-4f);
             if (held.Count >= 1)
             {
                 items.RemoveAt(slot, 1);
-                items.Add(crush.Crushed, 1, crushed, 0, quality);
             }
             else
             {
                 items.TakeAll(slot);
-                items.Add(crush.Crushed, 0, crushed, 0, quality, amount);
             }
+            items.Add(crush.Crushed, whole, crushed, 0, quality, Mathf.Max(0f, left - whole));
             if (crushedStone != null && knockedOff > 0f)
             {
                 items.Add(crushedStone, 0, null, 0, 1f, knockedOff * amount);

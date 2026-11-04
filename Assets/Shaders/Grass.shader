@@ -76,7 +76,10 @@ Shader "Clube/Grass"
             float kept = pick < keep ? 1.0 : 0.0;
             float fade = 1.0 - saturate((distanceToCamera - _FadeStart) / max(_FadeEnd - _FadeStart, 0.01));
             float3 offset = (positionWS - rootWS) * fade * kept;
-            offset.xz *= min(rsqrt(max(keep, 0.01)), 2.5);
+            // Survivors stand taller as well as wider, so far grass still reads as grass (GL378).
+            float widen = min(rsqrt(max(keep, 0.01)), 2.5);
+            offset.xz *= widen;
+            offset.y *= lerp(1.0, widen, 0.5);
             positionWS = rootWS + offset;
             float reach = clamp(InstanceHeight() / max(_SwayHeight, 0.01), 0.5, 4.0);
             positionWS.xz += WindSway(positionWS, _WindStrength * reach * tip, _WindSpeed);

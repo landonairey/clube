@@ -67,6 +67,12 @@ namespace Clube.Core
         /// </summary>
         public SkillSet Learner { get; set; }
 
+        /// <summary>Of the rock in a smelt, the share that stays in the bun in a furnace of heat 1 (GL377).</summary>
+        public const float BaseSlag = 0.15f;
+
+        /// <summary>Of the slag in metal, the share hammering it drives out (GL377).</summary>
+        public const float ForgingSlagRemoved = 0.5f;
+
         public StationKind Kind { get; }
 
         /// <summary>The recipes it can make.</summary>
@@ -498,19 +504,49 @@ namespace Clube.Core
             return count > 0 ? total / count : recipe.TypicalGrade;
         }
 
-        // How good the result is: smelted metal comes out pure (GL128), a smith's work is no better than the
-        // smith (GL129) nor its inputs, and anything else is as good as its inputs (GL118).
+        /// <summary>
+        /// Of the rock in a smelt, the share that stays in the bun as slag (GL377): 15% in a furnace of heat 1, less in a
+        /// hotter one, and up to 60% less again by Smelting 10. So a bun is only pure from pure ore, and richer ore, a
+        /// hotter furnace and a better smelter all make a purer bun.
+        /// </summary>
+        public static float SlagCarried(float heat, int smeltingLevel)
+        {
+            float skill = 1f - 0.06f * Math.Min(10, Math.Max(0, smeltingLevel));
+            return BaseSlag / Math.Max(0.25f, heat) * skill;
+        }
+
+        /// <summary>How pure a smelt's metal is from ore whose mineral share is <paramref name="concentration"/> (GL377).</summary>
+        public static float SmeltPurity(float concentration, float heat, int smeltingLevel)
+        {
+            float mineral = Math.Max(0f, Math.Min(1f, concentration));
+            float slag = (1f - mineral) * SlagCarried(heat, smeltingLevel);
+            return mineral + slag > 0f ? mineral / (mineral + slag) : 1f;
+        }
+
+        /// <summary>
+        /// How good a hammered result is (GL129, GL377): hammering drives out half the slag left in the metal, and nothing
+        /// comes out better than the smith (<see cref="SmithingQuality"/>).
+        /// </summary>
+        public static float ForgedQuality(float inputQuality, int blacksmithingLevel)
+        {
+            float driven = 1f - (1f - Math.Min(1f, inputQuality)) * (1f - ForgingSlagRemoved);
+            return Math.Min(Math.Max(inputQuality, driven), SmithingQuality(blacksmithingLevel));
+        }
+
+        // How good the result is: smelted metal is as pure as its ore lets it be (GL377), a smith's work is no better than the
+        // smith (GL129) though it drives out slag, and anything else is as good as its inputs (GL118).
         private float OutputQuality(Recipe recipe)
         {
             if (recipe.Extracts != null)
             {
-                return 1f;
+                int smelting = Learner != null ? Learner.Level(SkillType.Smelting) : 0;
+                return SmeltPurity(Concentration(recipe), Heat, smelting);
             }
             float quality = InputQuality(recipe) * recipe.QualityFactor;
             if (recipe.ExperienceSkill == SkillType.Blacksmithing)
             {
                 int level = Learner != null ? Learner.Level(SkillType.Blacksmithing) : 0;
-                quality = Math.Min(quality, SmithingQuality(level));
+                quality = Math.Min(recipe.QualityFactor * ForgedQuality(InputQuality(recipe), level), SmithingQuality(level));
             }
             return quality;
         }

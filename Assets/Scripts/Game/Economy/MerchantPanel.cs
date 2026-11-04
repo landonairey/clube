@@ -279,7 +279,8 @@ namespace Clube.Game
             selected = -1;
         }
 
-        // Ctrl-click (GL305): the first picks every stack of that item; later ones add a stack to the group or take it out.
+        // Ctrl-click (GL305, GL374): adds the clicked stack to the group, with the stack already highlighted, or takes it out.
+        // Only the stacks clicked are picked, never every stack of the item.
         private void PickForGroup(Inventory items, int slot)
         {
             if (items[slot].IsEmpty)
@@ -288,13 +289,11 @@ namespace Clube.Game
             }
             if (group.Count == 0)
             {
-                for (int i = 0; i < items.SlotCount; i++)
+                if (selected >= 0 && selected < items.SlotCount && selected != slot && !items[selected].IsEmpty)
                 {
-                    if (!items[i].IsEmpty && items[i].Item == items[slot].Item)
-                    {
-                        group.Add(i);
-                    }
+                    group.Add(selected);
                 }
+                group.Add(slot);
             }
             else if (!group.Remove(slot))
             {

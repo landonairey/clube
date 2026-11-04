@@ -380,9 +380,9 @@ namespace Clube.Core.Tests
         }
 
         // GL128, GL192: a smelt's count is what pure mineral gives, so ore yields its mineral share of it and never
-        // more than the count; smelted metal is pure whatever the ore's purity.
+        // more than the count; only pure ore smelts to pure metal (GL377).
         [Test]
-        public void Yield_FollowsOreConcentration_AndSmeltedMetalIsPure()
+        public void Yield_FollowsOreConcentration_AndOnlyPureOreMakesPureMetal()
         {
             VoxelMaterial mineral = VoxelMaterial.Create(3, "Chalcopyrite", VoxelMaterialCategory.Ore);
             VoxelMaterial rock = VoxelMaterial.Create(0, "Stone");
@@ -395,7 +395,8 @@ namespace Clube.Core.Tests
                 Assert.AreEqual(0.4f, furnace.YieldOf(smelt), 1e-4f);
                 furnace.Tick(6f);
                 Assert.AreEqual(0.4f, furnace.Output[0].Amount, 1e-4f);
-                Assert.AreEqual(1f, furnace.Output[0].Quality, 1e-4f, "Impurity costs yield, not quality.");
+                // GL377: 15% of the rock stays as slag in a furnace of heat 1, so 0.4 / (0.4 + 0.6 * 0.15).
+                Assert.AreEqual(0.4f / 0.49f, furnace.Output[0].Quality, 1e-4f, "Impure ore makes an impure bun.");
 
                 Composition lean = Composition.From(new Content(mineral, 0.1f), new Content(rock, 0.9f));
                 furnace.Input.Add(ore, 8, lean);
@@ -404,6 +405,8 @@ namespace Clube.Core.Tests
                 furnace.Input.Remove(ore, furnace.Input.Count(ore));
                 furnace.Input.Add(ore, 8, Composition.From(new Content(mineral, 1f)));
                 Assert.AreEqual(1f, furnace.YieldOf(smelt), 1e-4f, "Pure mineral makes the full count, no more.");
+                Assert.AreEqual(1f, CraftingStation.SmeltPurity(1f, 1f, 0), 1e-4f, "Only pure ore makes a pure bun.");
+                Assert.Greater(CraftingStation.SmeltPurity(0.4f, 3f, 10), CraftingStation.SmeltPurity(0.4f, 1f, 0), "A hotter furnace and a better smelter make purer metal.");
             }
             finally
             {
@@ -433,7 +436,7 @@ namespace Clube.Core.Tests
             {
                 anvil.Strike();
             }
-            Assert.AreEqual(0.9f, anvil.Output[0].Quality, 1e-4f, "A master smith keeps the bun's quality.");
+            Assert.AreEqual(0.95f, anvil.Output[0].Quality, 1e-4f, "A master smith drives out half the slag (GL377).");
             Assert.AreEqual(0.75f, CraftingStation.SmithingQuality(5), 1e-4f);
         }
 

@@ -44,7 +44,7 @@ namespace Clube.Game
 
         [Tooltip("Seconds between bird calls by day, at random within this range; a third of it at dawn.")]
         [SerializeField]
-        private Vector2 birdSeconds = new Vector2(4f, 14f);
+        private Vector2 birdSeconds = new Vector2(8f, 28f);
 
         [SerializeField, Range(0f, 1f)]
         private float birdVolume = 0.35f;

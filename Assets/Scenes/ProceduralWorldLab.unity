@@ -5536,6 +5536,7 @@ MonoBehaviour:
   renderDistance: 16
   frameBudgetMilliseconds: 3
   loadingBudgetMilliseconds: 30
+  farLoadingBudgetMilliseconds: 8
   overlayRadius: 32
   detailDistance: 24
   maxJobsInFlight: 0
@@ -5718,9 +5719,10 @@ MonoBehaviour:
   grass: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
   material: {fileID: 2100000, guid: bebf70da50c2fd042afe43cc4a285452, type: 2}
   radius: 64
-  thinFrom: 22
-  thinTo: 0.2
-  fadeLength: 16
+  reachDrawnTerrain: 1
+  thinFrom: 40
+  thinTo: 0.35
+  fadeLength: 8
   lawnShade: 0.6
   lawnNear: 0.55
   density: 6
@@ -5960,9 +5962,15 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 72ac502e9aa967649af93b2c9178c738, type: 3}
   - {fileID: 8300000, guid: 4eacf1aa58d19e44b84cbd9f850accb9, type: 3}
   - {fileID: 8300000, guid: 916b43354c38e8c4aa51cf171f0e85e2, type: 3}
+  - {fileID: 8300000, guid: 48cf47fdce5204c4eb1e59dd62382861, type: 3}
+  - {fileID: 8300000, guid: 496cbca4ce1f89f489e3d696b1db6bf0, type: 3}
+  - {fileID: 8300000, guid: 5cde3f37818a54c44b1449dec8031e94, type: 3}
+  - {fileID: 8300000, guid: d9ec7c290bc9ce44fa8a62ded6497a9e, type: 3}
   windVolume: {x: 0.12, y: 0.35}
   leavesVolume: 0.18
-  birdSeconds: {x: 4, y: 14}
+  feller: {fileID: 0}
+  rustlePerFelledTree: 0.2
+  birdSeconds: {x: 8, y: 28}
   birdVolume: 0.35
 --- !u!114 &1350119481
 MonoBehaviour:
@@ -6010,6 +6018,7 @@ MonoBehaviour:
   show: 1
   flowStepSeconds: 0.06
   flowBudgetMs: 2.5
+  minFlowSlope: 0.25
   buildBudgetMs: 1.5
 --- !u!1 &1429470163
 GameObject:
@@ -6944,6 +6953,7 @@ MonoBehaviour:
   secondsPerVolume: 0.25
   refineVolume: 1
   refineExperience: 0.1
+  refineSmithingExperience: 0.02
 --- !u!114 &1697135593
 MonoBehaviour:
   m_ObjectHideFlags: 0

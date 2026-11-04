@@ -266,6 +266,57 @@ namespace Clube.Core
             return Normalize(samples, 0.7f);
         }
 
+
+        /// <summary>
+        /// Other birds' calls (GL376), by the seed: a two-note whistle falling like a cuckoo's or a dove's, a warble (quick
+        /// notes rocking up and down), or a rising run of three or four notes.
+        /// </summary>
+        public static float[] Call(int seed)
+        {
+            var random = new Random(seed);
+            int style = random.Next(3);
+            float[] samples = new float[Samples(1.6f)];
+            float at = 0.03f;
+            if (style == 0)
+            {
+                float high = Range(random, 1500f, 2300f);
+                float fall = Range(random, 0.72f, 0.84f);
+                int phrases = random.Next(1, 3);
+                for (int p = 0; p < phrases; p++)
+                {
+                    AddSweep(samples, at, 0.22f, high * 1.03f, high, 0.8f);
+                    AddSweep(samples, at + 0.32f, 0.3f, high * fall * 1.02f, high * fall * 0.97f, 0.75f);
+                    at += 0.8f;
+                }
+            }
+            else if (style == 1)
+            {
+                float centre = Range(random, 2400f, 3600f);
+                float swing = centre * Range(random, 0.12f, 0.25f);
+                int notes = random.Next(10, 17);
+                for (int n = 0; n < notes; n++)
+                {
+                    float length = Range(random, 0.045f, 0.07f);
+                    bool up = n % 2 == 0;
+                    AddSweep(samples, at, length, up ? centre - swing : centre + swing, up ? centre + swing : centre - swing, Range(random, 0.55f, 0.8f));
+                    at += length * 0.85f;
+                }
+            }
+            else
+            {
+                float note = Range(random, 1800f, 2600f);
+                float step = Range(random, 1.12f, 1.25f);
+                int notes = random.Next(3, 5);
+                for (int n = 0; n < notes; n++)
+                {
+                    float length = Range(random, 0.1f, 0.16f);
+                    AddSweep(samples, at, length, note * 0.95f, note * 1.08f, 0.7f);
+                    at += length + Range(random, 0.06f, 0.1f);
+                    note *= step;
+                }
+            }
+            return Normalize(samples, 0.7f);
+        }
         /// <summary>A breeze that loops without a seam: low rushing noise in slow gusts, with a faint whistle on top.</summary>
         public static float[] WindLoop(float seconds, int seed)
         {

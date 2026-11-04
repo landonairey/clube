@@ -5,14 +5,19 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// A thin white outline round whatever the player can use under the crosshair, within reach (GL368): the merchant's
-    /// table, a chest, a sleeping roll (their meshes), and the things built of voxels: a stump or flat rock, a furnace or
-    /// campfire, a boulder. A voxel thing's outline is a mesh of just its samples, built like the terrain's
-    /// (<see cref="ChunkMeshBuilder"/>), kept while it stays aimed at and rebuilt now and then in case it was mined. Drawn
-    /// with the Clube/Interact Outline shader. On the Player.
+    /// A pixel-thin white outline round whatever the player can use under the crosshair, within reach (GL368, GL372): the
+    /// merchant's table, a chest, a sleeping roll (their meshes), and the things built of voxels: a stump or flat rock, a
+    /// furnace or campfire, a boulder. A voxel thing's outline is a mesh of just its samples, built like the terrain's
+    /// (<see cref="ChunkMeshBuilder"/>), kept while it stays aimed at and rebuilt now and then in case it was mined. A model
+    /// with a child named <see cref="OutlineShapeName"/> is outlined by that mesh instead of its own (the merchant table's
+    /// shape fills the gaps between its posts, so only its outer boundary is drawn). Drawn with the Clube/Interact Outline
+    /// shader: a stencil mask of every mesh first, then the rim outside it. On the Player.
     /// </summary>
     public class InteractHighlight : MonoBehaviour
     {
+        /// <summary>The child whose mesh, when a model has one, is outlined in place of the model's own meshes.</summary>
+        public const string OutlineShapeName = "Outline shape";
+
         // Largest connected piece of boulder material that counts as a boulder: a mountain's stone isn't outlined.
         private const int MaxBoulderSamples = 6000;
 
@@ -33,10 +38,12 @@ namespace Clube.Game
         [SerializeField]
         private BoulderBashing bashing;
 
-        [Tooltip("The Clube/Interact Outline material.")]
+        [Tooltip("The Clube/Interact Outline material (the rim); the stencil mask is made from it.")]
         [SerializeField]
         private Material outline;
 
+        private Material rim;
+        private Material mask;
         private StumpWorktops stumps;
         private object shownFor;
         private float builtAt;
@@ -46,10 +53,33 @@ namespace Clube.Game
         private readonly HashSet<Vector3Int> seen = new HashSet<Vector3Int>();
         private readonly Stack<Vector3Int> pending = new Stack<Vector3Int>();
         private readonly List<MeshFilter> filters = new List<MeshFilter>();
+        private readonly List<(Mesh mesh, Matrix4x4 matrix)> draws = new List<(Mesh, Matrix4x4)>();
+        private readonly Dictionary<Mesh, Mesh> smoothed = new Dictionary<Mesh, Mesh>();
+
+        private void Awake()
+        {
+            stumps = GetComponent<StumpWorktops>();
+            if (outline == null)
+            {
+                return;
+            }
+            // Both drawn in the transparent queue, the mask first, so every mesh of the target is masked before any rim.
+            rim = new Material(outline) { name = "Interact outline rim", renderQueue = 3051 };
+            rim.SetFloat("_StencilComp", (float)UnityEngine.Rendering.CompareFunction.NotEqual);
+            rim.SetFloat("_StencilPass", (float)UnityEngine.Rendering.StencilOp.Keep);
+            rim.SetFloat("_ZTest", (float)UnityEngine.Rendering.CompareFunction.LessEqual);
+            rim.SetFloat("_ColorMask", 15f);
+            mask = new Material(outline) { name = "Interact outline mask", renderQueue = 3050 };
+            mask.SetFloat("_WidthPixels", 0f);
+            mask.SetFloat("_StencilComp", (float)UnityEngine.Rendering.CompareFunction.Always);
+            mask.SetFloat("_StencilPass", (float)UnityEngine.Rendering.StencilOp.Replace);
+            mask.SetFloat("_ZTest", (float)UnityEngine.Rendering.CompareFunction.Always);
+            mask.SetFloat("_ColorMask", 0f);
+        }
 
         private void LateUpdate()
         {
-            if (outline == null || worldView == null || !worldView.IsReady || interactor == null)
+            if (rim == null || worldView == null || !worldView.IsReady || interactor == null)
             {
                 return;
             }
@@ -65,7 +95,6 @@ namespace Clube.Game
                     DrawVoxels(component, structure.Stamped);
                     return;
                 }
-                stumps ??= worldView.GetComponentInChildren<StumpWorktops>();
                 if (stumps != null && component.transform.parent == stumps.transform)
                 {
                     DrawVoxels(component, stumps.LastPiece);
@@ -85,18 +114,32 @@ namespace Clube.Game
         private void DrawMeshes(Component component)
         {
             shownFor = component;
-            component.GetComponentsInChildren(false, filters);
-            foreach (MeshFilter filter in filters)
+            draws.Clear();
+            Transform shape = component.transform.Find(OutlineShapeName);
+            if (shape != null && shape.TryGetComponent(out MeshFilter shapeFilter) && shapeFilter.sharedMesh != null)
             {
-                // Not the placement preview child that some prefabs carry.
-                if (filter.sharedMesh == null || filter.name.Contains("preview") || !filter.TryGetComponent(out MeshRenderer meshRenderer) || !meshRenderer.enabled)
+                draws.Add((Smoothed(shapeFilter.sharedMesh), shape.localToWorldMatrix));
+            }
+            else
+            {
+                component.GetComponentsInChildren(false, filters);
+                foreach (MeshFilter filter in filters)
                 {
-                    continue;
+                    // Not the placement preview child that some prefabs carry.
+                    if (filter.sharedMesh == null || filter.name.Contains("preview") || !filter.TryGetComponent(out MeshRenderer meshRenderer) || !meshRenderer.enabled)
+                    {
+                        continue;
+                    }
+                    draws.Add((Smoothed(filter.sharedMesh), filter.transform.localToWorldMatrix));
                 }
-                for (int submesh = 0; submesh < filter.sharedMesh.subMeshCount; submesh++)
-                {
-                    Graphics.RenderMesh(new RenderParams(outline), filter.sharedMesh, submesh, filter.transform.localToWorldMatrix);
-                }
+            }
+            foreach ((Mesh mesh, Matrix4x4 matrix) in draws)
+            {
+                Graphics.RenderMesh(new RenderParams(mask), mesh, 0, matrix);
+            }
+            foreach ((Mesh mesh, Matrix4x4 matrix) in draws)
+            {
+                Graphics.RenderMesh(new RenderParams(rim), mesh, 0, matrix);
             }
         }
 
@@ -195,7 +238,8 @@ namespace Clube.Game
             {
                 Destroy(voxelMesh);
             }
-            voxelMesh = builder.Mesh;
+            voxelMesh = SmoothCopy(builder.Mesh);
+            Destroy(builder.Mesh);
             voxelOrigin = world.Grid.SampleToWorld(first);
         }
 
@@ -206,7 +250,57 @@ namespace Clube.Game
                 return;
             }
             Matrix4x4 matrix = worldView.transform.localToWorldMatrix * Matrix4x4.Translate(voxelOrigin);
-            Graphics.RenderMesh(new RenderParams(outline), voxelMesh, 0, matrix);
+            Graphics.RenderMesh(new RenderParams(mask), voxelMesh, 0, matrix);
+            Graphics.RenderMesh(new RenderParams(rim), voxelMesh, 0, matrix);
+        }
+
+        // A copy of a mesh in one submesh, with each vertex's normal the average over every vertex at its place: a flat-shaded
+        // box's corners then push out together, so the rim has no gaps at the corners.
+        private Mesh Smoothed(Mesh source)
+        {
+            if (smoothed.TryGetValue(source, out Mesh copy) && copy != null)
+            {
+                return copy;
+            }
+            copy = SmoothCopy(source);
+            smoothed[source] = copy;
+            return copy;
+        }
+
+        private static Mesh SmoothCopy(Mesh source)
+        {
+            Vector3[] vertices = source.vertices;
+            Vector3[] normals = source.normals;
+            if (normals == null || normals.Length != vertices.Length)
+            {
+                source.RecalculateNormals();
+                normals = source.normals;
+            }
+            var sums = new Dictionary<Vector3Int, Vector3>();
+            var keys = new Vector3Int[vertices.Length];
+            for (int i = 0; i < vertices.Length; i++)
+            {
+                keys[i] = Vector3Int.RoundToInt(vertices[i] * 10000f);
+                sums.TryGetValue(keys[i], out Vector3 sum);
+                sums[keys[i]] = sum + normals[i];
+            }
+            var smooth = new Vector3[vertices.Length];
+            for (int i = 0; i < vertices.Length; i++)
+            {
+                smooth[i] = sums[keys[i]].normalized;
+            }
+            var indices = new List<int>();
+            for (int submesh = 0; submesh < source.subMeshCount; submesh++)
+            {
+                indices.AddRange(source.GetTriangles(submesh));
+            }
+            var copy = new Mesh { name = source.name + " (outline)" };
+            copy.indexFormat = vertices.Length > 65535 ? UnityEngine.Rendering.IndexFormat.UInt32 : UnityEngine.Rendering.IndexFormat.UInt16;
+            copy.vertices = vertices;
+            copy.normals = smooth;
+            copy.SetTriangles(indices, 0);
+            copy.bounds = source.bounds;
+            return copy;
         }
 
         private void OnDestroy()
@@ -214,6 +308,18 @@ namespace Clube.Game
             if (voxelMesh != null)
             {
                 Destroy(voxelMesh);
+            }
+            foreach (Mesh copy in smoothed.Values)
+            {
+                if (copy != null)
+                {
+                    Destroy(copy);
+                }
+            }
+            if (rim != null)
+            {
+                Destroy(rim);
+                Destroy(mask);
             }
         }
     }

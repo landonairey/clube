@@ -71,6 +71,11 @@ namespace Clube.Debug.Editor
             {
                 Write("Bird", v, SoundSynth.Chirp(400 + v));
             }
+            // Other kinds of bird (GL376).
+            for (int v = 0; v < 4; v++)
+            {
+                Write("Bird", 8 + v, SoundSynth.Call(420 + v));
+            }
             Write("Wind loop", 0, SoundSynth.WindLoop(14f, 500));
             Write("Leaves loop", 0, SoundSynth.LeavesLoop(9f, 510));
             AssetDatabase.Refresh();

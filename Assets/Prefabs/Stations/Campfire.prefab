@@ -246,8 +246,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.6, y: 0.3, z: 0.6}
-  m_Center: {x: 0, y: 0.15, z: 0}
+  m_Size: {x: 0.6, y: 0.15, z: 0.6}
+  m_Center: {x: 0, y: 0.075, z: 0}
 --- !u!114 &4903786179241846693
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -357,7 +357,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.CampfireBounce
   radius: 0.75
-  pushSpeed: 5
-  lift: 3
+  maxFeetHeight: 0.35
+  pushSpeed: 2.5
+  lift: 3.5
   pushSeconds: 0.35
   volume: 0.6

@@ -573,6 +573,11 @@ hour (`FallenLeaves` on World). A finished run that doesn't fit the output waits
 mends a tool fully with one ingot (`ToolRepair.RepairFully`); `ItemStack.MinLoosePart` (0.05) clears specks. Torches go in the
 open voxel before the aimed face (`PlayerBuilder.BuildTorch`). `CampfireBounce` knocks the player back (`PlayerController.Knockback`).
 `InteractHighlight` (on Player) outlines the interact target with `Clube/Interact Outline`. Tab no longer opens the inventory.
+GL372-GL378 (`Docs/20261104 clube-backlog.md`): the interact outline is a stencil-masked 1.5-pixel rim (`Clube/Interact
+Outline`, mask and rim materials made in `InteractHighlight.Awake`); a model's "Outline shape" child replaces its meshes for
+it (the merchant table's). Smelted metal keeps slag (`CraftingStation.SmeltPurity`, `SlagCarried`: ore share, heat, Smelting),
+so a bun's quality is its purity; hammering drives out half the slag (`ForgedQuality`). Crushing keeps volume (the crushed
+ore is the rest of the item). `PlayerController.Knockback` keeps its hop on the frame it starts.
 Height maps: `Docs/images/20261103 *`.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the

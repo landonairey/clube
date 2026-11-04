@@ -23,12 +23,22 @@ namespace Clube.Debug.Editor
             Save("Furnace", Furnace());
             Save("Anvil", Anvil());
             Save("Merchant Table", MerchantTable());
+            Save("Merchant Table outline", MerchantTableOutline());
             Save("Campfire", Campfire());
             Save("Campfire stamp", CampfireStamp());
             Save("Furnace stamp", FurnaceStamp());
             Save("Wooden Chest", WoodenChest());
             AssetDatabase.SaveAssets();
             UnityEngine.Debug.Log($"Built station models in {Folder}.");
+        }
+
+        /// <summary>Rebuilds just the merchant table and its outline shape (GL373).</summary>
+        [MenuItem("Clube/Models/Build merchant table")]
+        public static void BuildMerchantTable()
+        {
+            Save("Merchant Table", MerchantTable());
+            Save("Merchant Table outline", MerchantTableOutline());
+            AssetDatabase.SaveAssets();
         }
 
         // Submeshes: 0 stone, 1 embers. A squat kiln of two tapering courses, a chimney, and
@@ -149,24 +159,56 @@ namespace Clube.Debug.Editor
             return model.Build("Wooden Chest");
         }
 
-        // Submeshes: 0 wood, 1 cloth. A plank table on four legs, two posts at the back
-        // holding a canopy that slopes down over the front, and a crate on the table.
+        // Submeshes: 0 wood, 1 cloth. A plank table on four legs, two posts each side holding a canopy that slopes up
+        // towards the front, and a crate on the table. The posts reach the canopy's underside (GL373).
         private static Mesh MerchantTable()
         {
             var model = new ModelBuilder(2);
-            model.Box(0, new Vector3(0f, 0.86f, 0f), new Vector3(1.7f, 0.08f, 0.8f));
+            MerchantTableParts(model, 0, 1);
+            return model.Build("Merchant Table");
+        }
+
+        // The merchant table's outline shape (GL373): the table with the open space between its posts filled in, so the
+        // interact outline follows only its outer boundary, not the windows. Never drawn.
+        private static Mesh MerchantTableOutline()
+        {
+            var model = new ModelBuilder(1);
+            MerchantTableParts(model, 0, 0);
+            const float halfWidth = 0.785f;
+            const float halfDepth = 0.455f;
+            model.Box(0, new Vector3(0f, 1.375f, 0f), new Vector3(halfWidth * 2f, 0.99f, halfDepth * 2f));
+            Quaternion tilt = Quaternion.Euler(MerchantCanopyTilt, 0f, 0f);
+            model.Box(0, new Vector3(0f, MerchantCanopyY, 0f) + tilt * new Vector3(0f, -0.13f, 0f), new Vector3(halfWidth * 2f, 0.2f, halfDepth * 2f), tilt);
+            return model.Build("Merchant Table outline");
+        }
+
+        private const float MerchantCanopyY = 1.98f;
+        private const float MerchantCanopyTilt = -10f;
+
+        private static void MerchantTableParts(ModelBuilder model, int wood, int cloth)
+        {
+            model.Box(wood, new Vector3(0f, 0.86f, 0f), new Vector3(1.7f, 0.08f, 0.8f));
             foreach (float x in new[] { -0.75f, 0.75f })
             {
                 foreach (float z in new[] { -0.32f, 0.32f })
                 {
-                    model.Box(0, new Vector3(x, 0.41f, z), new Vector3(0.08f, 0.82f, 0.08f));
+                    model.Box(wood, new Vector3(x, 0.41f, z), new Vector3(0.08f, 0.82f, 0.08f));
                 }
-                model.Box(0, new Vector3(x, 1.05f, -0.42f), new Vector3(0.07f, 2.1f, 0.07f));
-                model.Box(0, new Vector3(x, 0.95f, 0.42f), new Vector3(0.06f, 1.9f, 0.06f));
+                foreach (float z in new[] { -0.42f, 0.42f })
+                {
+                    float top = MerchantCanopyUnderside(z) + 0.01f;
+                    model.Box(wood, new Vector3(x, top * 0.5f, z), new Vector3(0.07f, top, 0.07f));
+                }
             }
-            model.Box(1, new Vector3(0f, 1.98f, 0f), new Vector3(1.9f, 0.05f, 1.15f), Quaternion.Euler(-10f, 0f, 0f));
-            model.Box(0, new Vector3(-0.45f, 1.07f, -0.1f), new Vector3(0.35f, 0.34f, 0.35f));
-            return model.Build("Merchant Table");
+            model.Box(cloth, new Vector3(0f, MerchantCanopyY, 0f), new Vector3(1.9f, 0.05f, 1.15f), Quaternion.Euler(MerchantCanopyTilt, 0f, 0f));
+            model.Box(wood, new Vector3(-0.45f, 1.07f, -0.1f), new Vector3(0.35f, 0.34f, 0.35f));
+        }
+
+        // The height of the canopy's underside over z (it is 0.05 thick, turned about x).
+        private static float MerchantCanopyUnderside(float z)
+        {
+            float slope = -Mathf.Tan(MerchantCanopyTilt * Mathf.Deg2Rad);
+            return MerchantCanopyY + z * slope - 0.025f / Mathf.Cos(MerchantCanopyTilt * Mathf.Deg2Rad);
         }
 
         // Submeshes: 0 stone, 1 embers, 2 wood. A ring of stones round a bed of embers, with

@@ -14,13 +14,17 @@ namespace Clube.Game
         [SerializeField, Min(0.1f)]
         private float radius = 0.75f;
 
+        [Tooltip("How high over the ember bed the feet can be and still touch the fire, in metres; higher, a jump clears it.")]
+        [SerializeField, Min(0f)]
+        private float maxFeetHeight = 0.35f;
+
         [Tooltip("How fast the player is thrown back, in metres a second.")]
         [SerializeField, Min(0f)]
-        private float pushSpeed = 5f;
+        private float pushSpeed = 2.5f;
 
         [Tooltip("The hop up, in metres a second.")]
         [SerializeField, Min(0f)]
-        private float lift = 3f;
+        private float lift = 3.5f;
 
         [Tooltip("How long the push carries the player, in seconds.")]
         [SerializeField, Min(0.05f)]
@@ -47,9 +51,11 @@ namespace Clube.Game
             {
                 return;
             }
-            Vector3 offset = player.transform.position - transform.position;
+            // The player's feet: a jump over the fire clears it (GL375).
+            Vector3 feet = player.TryGetComponent(out CharacterController body) ? new Vector3(player.transform.position.x, body.bounds.min.y, player.transform.position.z) : player.transform.position;
+            Vector3 offset = feet - transform.position;
             var across = new Vector3(offset.x, 0f, offset.z);
-            if (across.sqrMagnitude > radius * radius || offset.y < -0.5f || offset.y > 1.5f)
+            if (across.sqrMagnitude > radius * radius || offset.y < -0.5f || offset.y > maxFeetHeight)
             {
                 return;
             }
