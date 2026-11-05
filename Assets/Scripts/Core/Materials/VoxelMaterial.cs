@@ -169,6 +169,10 @@ namespace Clube.Core
         [SerializeField]
         private VoxelMaterial breaksInto;
 
+        [Tooltip("Builds as whole square voxels (GL411: boards): a tap of Drop puts down one flat-faced cube on the aimed voxel instead of a rounded sample.")]
+        [SerializeField]
+        private bool buildsSquare;
+
         [Tooltip("A worktop (GL36): the player can use it where it stands, like a station, e.g. a tree stump.")]
         [SerializeField]
         private bool isWorktop;
@@ -241,6 +245,9 @@ namespace Clube.Core
         /// <summary>True when the player can work at it where it stands (GL36), like a stump.</summary>
         public bool IsWorktop => isWorktop;
 
+        /// <summary>Builds as whole square voxels (GL411: boards; <see cref="SquareVoxels"/>).</summary>
+        public bool BuildsSquare => buildsSquare;
+
         /// <summary>True for soft ground (GL39): tools made for hard material only hit one voxel of it.</summary>
         public bool IsSoft => isSoft;
 
@@ -304,9 +311,9 @@ namespace Clube.Core
 
         /// <summary>
         /// How rough its surface is drawn, 0-1 (GL268): rock fully (bumps and cracks on stone faces), soft ground a little,
-        /// plants not at all (the shader moves and shades the surface by it; the voxels are unchanged).
+        /// plants not at all (the shader moves and shades the surface by it; the voxels are unchanged). Sawn boards (GL411) are smooth.
         /// </summary>
-        public float Relief => Kind == MaterialKind.Rock ? 1f : Kind == MaterialKind.Soil ? 0.35f : 0f;
+        public float Relief => buildsSquare ? 0f : Kind == MaterialKind.Rock ? 1f : Kind == MaterialKind.Soil ? 0.35f : 0f;
 
         /// <summary>Sets what it takes to work it (GL145, GL152), for materials made in code (tests).</summary>
         public VoxelMaterial WithToolTier(int tier, SkillType skill = SkillType.None, int level = 0)

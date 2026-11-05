@@ -185,6 +185,9 @@ Shader "Clube/Terrain Materials"
             // (copper ore shown as stone). Set from the registry like the colours.
             float _LayerRemap[64];
 
+            // 1 for materials whose texture must stay square to the grid (GL411: boards), so the tiling isn't broken up.
+            float _MaterialRegular[64];
+
             struct Attributes
             {
                 float4 positionOS : POSITION;
@@ -241,7 +244,7 @@ Shader "Clube/Terrain Materials"
             half3 SampleBroken(float2 uv, float layer)
             {
                 half3 first = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, uv, layer).rgb;
-                if (_Breakup <= 0.0)
+                if (_Breakup <= 0.0 || _MaterialRegular[(int)layer] > 0.5)
                 {
                     return first;
                 }
