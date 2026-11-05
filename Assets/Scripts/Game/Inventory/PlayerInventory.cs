@@ -98,6 +98,15 @@ namespace Clube.Game
             }
         }
 
+        /// <summary>Shows what came in some other way than the tools (GL387: crushing on a boulder) in the pickup notices.</summary>
+        public void Notify(ItemDefinition item, float amount)
+        {
+            if (item != null && amount > ItemStack.PartEpsilon)
+            {
+                Added?.Invoke(item, amount);
+            }
+        }
+
         // What the tools gather comes in as stacks, with their contents and quality.
         private void OnCollected(ItemStack collected)
         {

@@ -12,14 +12,14 @@ namespace Clube.Core.Tests
         [Test]
         public void ARunWhoseResultDoesntFit_Waits_AndNothingIsLost()
         {
-            // GL359: ingots of another quality wait in the output; the next bun's ingot can't join them.
+            // GL359: something else waits in the output (GL385: ingots of another quality now blend in), so the next run waits.
             ItemDefinition bun = ItemDefinition.Create("bronze-bun", "Bronze bun", 16);
             ItemDefinition ingot = ItemDefinition.Create("bronze-ingot", "Bronze ingot", 16);
             Recipe hammer = Recipe.Create(StationKind.FlatRock, new ItemAmount(ingot, 1), RecipeWork.Strikes, 2f, new ItemAmount(bun, 1));
             try
             {
                 var station = new CraftingStation(StationKind.FlatRock, new[] { hammer });
-                station.Output.Add(ingot, 2, null, 0, 0.5f);
+                station.Output.Add(bun, 2, null, 0, 0.5f);
                 station.Input.Add(bun, 4);
                 for (int i = 0; i < 10; i++)
                 {
@@ -40,7 +40,7 @@ namespace Clube.Core.Tests
                     }
                 }
                 Assert.AreEqual(0, station.Input.Count(bun));
-                Assert.AreEqual(4, station.Output[0].Count + bag.Count(ingot) - 2, "Four buns, four new ingots.");
+                Assert.AreEqual(4, station.Output[0].Count + bag.Count(ingot), "Four buns, four new ingots.");
             }
             finally
             {

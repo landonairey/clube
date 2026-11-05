@@ -6266,6 +6266,7 @@ GameObject:
   - component: {fileID: 1697135609}
   - component: {fileID: 1697135610}
   - component: {fileID: 1697135611}
+  - component: {fileID: 1697135612}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -6916,7 +6917,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b41c6e81fd9d1964287e10b24e4537bc, type: 2}
   - {fileID: 11400000, guid: ab01fde72466eb541a3a9790e3f6770d, type: 2}
   - {fileID: 11400000, guid: f4da6991b017a7945abfa36571cdec99, type: 2}
+  - {fileID: 11400000, guid: 9f36d869842179e46914be8a41f33b7d, type: 2}
   - {fileID: 11400000, guid: 920c30d37746a7f45924e18044f271f0, type: 2}
+  - {fileID: 11400000, guid: 179eb7d029ba37049871ae5c98c544cb, type: 2}
   - {fileID: 11400000, guid: 9942e589f4b57e44d8376e7127be3de7, type: 2}
   - {fileID: 11400000, guid: c088dfedb8df22540be8f0fedbc11ea9, type: 2}
   - {fileID: 11400000, guid: 39e8504355d58004f9c3987f635a0511, type: 2}
@@ -7009,6 +7012,10 @@ MonoBehaviour:
     Crushed: {fileID: 11400000, guid: 5a86064ddd2bb7e4f8f439df059c404a, type: 2}
   - Raw: {fileID: 11400000, guid: 1e3311289ece4ce428134389e92a4e43, type: 2}
     Crushed: {fileID: 11400000, guid: 0009a74da2fcc9c418d567adad1cc958, type: 2}
+  - Raw: {fileID: 11400000, guid: 77d0fe700a4ca9f439cd43a5d6581c2d, type: 2}
+    Crushed: {fileID: 11400000, guid: 0f38f79b98b5d804581a43b8813ab590, type: 2}
+  - Raw: {fileID: 11400000, guid: 4273b1a1d0181c84a8fd5cdb5377de07, type: 2}
+    Crushed: {fileID: 11400000, guid: 86cf1409cbba3694bb4897daff8b45b9, type: 2}
   crushedStone: {fileID: 11400000, guid: e6ec90f8b46ea6747b89bbc179234604, type: 2}
   crushSkill: 3
   crushLevel: 2
@@ -7379,6 +7386,25 @@ MonoBehaviour:
   worldView: {fileID: 1350119460}
   bashing: {fileID: 1697135592}
   outline: {fileID: 2100000, guid: 84d2e2cdbce2c774cb23034c780c2013, type: 2}
+--- !u!114 &1697135612
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61283e2e119c62141bdf9f639c147cba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerWaterSounds
+  sounds: {fileID: 11400000, guid: a0d526c704e75e74a9b485c3484f305f, type: 2}
+  source: {fileID: 1697135596}
+  dropletMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
+  inDepth: 0.12
+  outDepth: 0.04
+  strideLength: 1.4
+  minSpeed: 0.6
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

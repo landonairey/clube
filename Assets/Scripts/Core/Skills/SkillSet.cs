@@ -12,6 +12,7 @@ namespace Clube.Core
         Mining,
         Smelting,
         Blacksmithing,
+        Prospecting,
     }
 
     /// <summary>

@@ -82,7 +82,10 @@ namespace Clube.Game
                 Target = hit.collider.GetComponentInParent<IInteractable>();
                 if (Target == null && !BushInFront(hit, head))
                 {
-                    Target = stumps?.Find(hit) ?? parcels?.Find(hit);
+                    // The ground samples of a campfire or furnace are the station too (GL391).
+                    TerrainStructure structure = TerrainStructure.FindAt(hit.collider.GetComponentInParent<WorldView>(), hit.point);
+                    Target = structure != null ? structure.GetComponent<IInteractable>() : null;
+                    Target ??= stumps?.Find(hit) ?? parcels?.Find(hit);
                 }
             }
 

@@ -117,6 +117,19 @@ namespace Clube.Game
         [SerializeField]
         private SoundSet knapped = new SoundSet();
 
+        [Header("Water (GL397)")]
+        [Tooltip("Going into water.")]
+        [SerializeField]
+        private SoundSet splash = new SoundSet();
+
+        [Tooltip("Striding through water.")]
+        [SerializeField]
+        private SoundSet wade = new SoundSet();
+
+        [Tooltip("Coming out of water.")]
+        [SerializeField]
+        private SoundSet emerge = new SoundSet();
+
         /// <summary>Whether any sound effect plays (the lab panel's Sound section).</summary>
         public bool EffectsOn
         {
@@ -184,6 +197,12 @@ namespace Clube.Game
         public SoundSet Placed => placed;
 
         public SoundSet Knapped => knapped;
+
+        public SoundSet Splash => splash;
+
+        public SoundSet Wade => wade;
+
+        public SoundSet Emerge => emerge;
 
         public SoundSet ParcelBought => parcelBought;
 

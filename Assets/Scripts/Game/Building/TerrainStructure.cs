@@ -123,6 +123,50 @@ namespace Clube.Game
             IsStanding = false;
         }
 
+        private static readonly List<TerrainStructure> Placed = new List<TerrainStructure>();
+
+        private void OnEnable()
+        {
+            Placed.Add(this);
+        }
+
+        private void OnDisable()
+        {
+            Placed.Remove(this);
+        }
+
+        /// <summary>
+        /// The standing structure with one of its samples within about a voxel of a point on the ground (GL391): looking at
+        /// any of a campfire's ring stones, or the stone at a furnace's foot, is looking at the campfire or furnace. Null
+        /// for plain ground.
+        /// </summary>
+        public static TerrainStructure FindAt(WorldView world, Vector3 point)
+        {
+            if (world == null || world.World == null || Placed.Count == 0)
+            {
+                return null;
+            }
+            WorldGrid grid = world.World.Grid;
+            Vector3 local = world.transform.InverseTransformPoint(point);
+            float reach = grid.VoxelSize * 1.5f;
+            float reach2 = reach * reach;
+            foreach (TerrainStructure structure in Placed)
+            {
+                if (!structure.IsStanding || structure.worldView != world)
+                {
+                    continue;
+                }
+                foreach (Vector3Int sample in structure.stamped)
+                {
+                    if ((grid.SampleToWorld(sample) - local).sqrMagnitude <= reach2)
+                    {
+                        return structure;
+                    }
+                }
+            }
+            return null;
+        }
+
         private void OnDestroy()
         {
             Destroy(glowMesh);

@@ -57,6 +57,7 @@ namespace Clube.Debug.Editor
             Write("crushed cassiterite", "Crushed cassiterite", PaintGravel(new Color(0.5f, 0.5f, 0.52f), new Color(0.22f, 0.15f, 0.1f)));
             Write("crushed chalcopyrite", "Crushed chalcopyrite", PaintGravel(new Color(0.5f, 0.5f, 0.52f), MaterialTextureTools.ChalcopyriteFleck));
             Write("crushed malachite", "Crushed malachite", PaintGravel(new Color(0.5f, 0.5f, 0.52f), new Color(0.48f, 0.66f, 0.3f)));
+            WriteCrushedPreciousOres();
             Write("leaves", "Leaves", PaintLeaf());
             Write("clay", "Clay", PaintClay());
             Write("brick", "Brick", PaintBrick());
@@ -82,6 +83,13 @@ namespace Clube.Debug.Editor
         internal static void WriteCrushedChalcopyrite()
         {
             Write("crushed chalcopyrite", "Crushed chalcopyrite", PaintGravel(new Color(0.5f, 0.5f, 0.52f), MaterialTextureTools.ChalcopyriteFleck));
+        }
+
+        /// <summary>Writes the crushed silver and gold ore icons (GL389).</summary>
+        public static void WriteCrushedPreciousOres()
+        {
+            Write("crushed silver ore", "Crushed silver ore", PaintGravel(new Color(0.5f, 0.5f, 0.52f), new Color(0.86f, 0.87f, 0.9f)));
+            Write("crushed gold ore", "Crushed gold ore", PaintGravel(new Color(0.5f, 0.5f, 0.52f), new Color(0.95f, 0.75f, 0.2f)));
         }
 
         private static void Write(string file, string item, Texture2D texture)

@@ -42,6 +42,11 @@ namespace Clube.Core
                 changed?.Add(sample);
             }
             int whole = Mathf.FloorToInt(taken + 1e-3f);
+            if (whole == 0 && taken > 1e-3f)
+            {
+                // A speck under one unit (GL396) comes up whole, as one unit, or it could never be scooped.
+                return 1;
+            }
             // Gives the fraction back, furthest out first, so no water is lost.
             float rest = taken - whole;
             for (int i = used - 1; i >= 0 && rest > 1e-4f; i--)

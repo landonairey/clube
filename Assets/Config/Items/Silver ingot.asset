@@ -15,7 +15,7 @@ MonoBehaviour:
   id: silver-ingot
   displayName: Silver ingot
   icon: {fileID: 2800000, guid: f973805c24cba3448bd9a0b74ba806eb, type: 3}
-  maxStack: 16
+  maxStack: 32
   unitVolume: 0.4
   burnSeconds: 0
   purityAs: {fileID: 0}

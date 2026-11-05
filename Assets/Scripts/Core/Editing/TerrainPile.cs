@@ -85,6 +85,54 @@ namespace Clube.Core
         /// </summary>
         public static IReadOnlyList<Vector3Int> LastFilled => Filled;
 
+        /// <summary>
+        /// Puts one sample of <paramref name="material"/> exactly where the player aims (GL394: a tap of Drop builds a stone
+        /// bridge across a gap a sample at a time): the air sample nearest <paramref name="point"/> (relative to the world
+        /// origin), stepping back along <paramref name="towardViewer"/> past solid ones, if it touches solid ground on a
+        /// face. False when there's no such sample (nothing to hold onto, or not loaded).
+        /// </summary>
+        public static bool PlaceOne(World world, Vector3 point, Vector3 towardViewer, byte material, float isoLevel)
+        {
+            Filled.Clear();
+            float voxel = world.Grid.VoxelSize;
+            Vector3 step = towardViewer.normalized * voxel * 0.25f;
+            for (int i = 0; i < 9; i++, point += step)
+            {
+                Vector3Int sample = world.Grid.WorldToNearestSample(point);
+                float? density = world.GetDensity(sample);
+                if (!density.HasValue)
+                {
+                    return false;
+                }
+                if (density.Value >= isoLevel)
+                {
+                    continue;
+                }
+                if (!TouchesSolid(world, sample, isoLevel))
+                {
+                    return false;
+                }
+                world.SetMaterial(sample, material);
+                world.SetDensity(sample, 1f);
+                Filled.Add(sample);
+                return true;
+            }
+            return false;
+        }
+
+        private static bool TouchesSolid(World world, Vector3Int sample, float isoLevel)
+        {
+            foreach (Vector3Int face in Faces)
+            {
+                float? density = world.GetDensity(sample + face);
+                if (density.HasValue && density.Value >= isoLevel)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         /// <summary>Places a 40° cone (soft ground). See <see cref="Place(World, Vector3, byte, int, float, PileSettings)"/>.</summary>
         public static int Place(World world, Vector3 point, byte material, int count, float isoLevel)
         {

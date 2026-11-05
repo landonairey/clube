@@ -185,7 +185,17 @@ namespace Clube.Game
             MaterialRegistry materials = worldView.Config.Materials;
             ItemStack held = items[slot];
             pickedOut.Clear();
-            ItemStack refined = Refining.Pass(held, materials, refineVolume, pickedOut);
+            ItemStack refined = Refining.Pass(held, materials, refineVolume, pickedOut, UnityEngine.Random.value, UnityEngine.Random.value, out bool failed);
+            // Crushed ore is prospecting work (GL388); anything else picked over is crafting.
+            bool prospecting = held.Item.PurityAs != null;
+            skills?.Skills.Award(prospecting ? SkillType.Prospecting : SkillType.Crafting, refineExperience);
+            skills?.Skills.Award(SkillType.Blacksmithing, refineSmithingExperience);
+            if (failed)
+            {
+                // The purer the stack, the more passes find nothing to pick out (GL386).
+                Message?.Invoke($"Found nothing to pick out of the {held.Item.DisplayName.ToLowerInvariant()} ({held.Quality * 100f:0}%)");
+                return;
+            }
             items.Replace(slot, refined);
             foreach (Content picked in pickedOut)
             {
@@ -196,9 +206,8 @@ namespace Clube.Game
                 }
                 int whole = (int)(picked.Fraction + 1e-4f);
                 items.Add(drop, whole, Composition.From(new Content(picked.Material, 1f)), 0, 1f, Mathf.Max(0f, picked.Fraction - whole));
+                inventory.Notify(drop, picked.Fraction);
             }
-            skills?.Skills.Award(SkillType.Crafting, refineExperience);
-            skills?.Skills.Award(SkillType.Blacksmithing, refineSmithingExperience);
             Message?.Invoke(refined.IsEmpty
                 ? $"Nothing of the {held.Item.DisplayName.ToLowerInvariant()} was left"
                 : $"Picked over the {held.Item.DisplayName.ToLowerInvariant()}: {refined.Quality * 100f:0}% now");
@@ -277,11 +286,14 @@ namespace Clube.Game
                 items.TakeAll(slot);
             }
             items.Add(crush.Crushed, whole, crushed, 0, quality, Mathf.Max(0f, left - whole));
+            inventory.Notify(crush.Crushed, left);
             if (crushedStone != null && knockedOff > 0f)
             {
                 items.Add(crushedStone, 0, null, 0, 1f, knockedOff * amount);
+                inventory.Notify(crushedStone, knockedOff * amount);
             }
-            skills?.Skills.Award(crushSkill, crushExperience);
+            // Crushing needs Mining (crushSkill) but trains Prospecting (GL388).
+            skills?.Skills.Award(SkillType.Prospecting, crushExperience);
             Message?.Invoke($"Crushed into {crush.Crushed.DisplayName.ToLowerInvariant()} ({quality * 100f:0}%)");
             return true;
         }

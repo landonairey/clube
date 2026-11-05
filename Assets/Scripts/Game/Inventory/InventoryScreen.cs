@@ -72,8 +72,23 @@ namespace Clube.Game
                 return;
             }
 
+            // E in the field log, or the log's key (Q) here, switches between the two (GL384).
+            bool interactPressed = interactAction != null && interactAction.action.WasPressedThisFrame();
+            if (fieldLog != null && fieldLog.IsOpen && interactPressed)
+            {
+                fieldLog.Close();
+                SetOpen(true);
+                return;
+            }
+            if (IsOpen && fieldLog != null && fieldLog.ToggleAction != null && fieldLog.ToggleAction.WasPressedThisFrame())
+            {
+                SetOpen(false);
+                fieldLog.Open(fieldLog.Current);
+                return;
+            }
+
             // One screen at a time: not over a station's or a merchant's panel.
-            bool otherOpen = (stationPanel != null && stationPanel.IsOpen) || (merchantPanel != null && merchantPanel.IsOpen)
+            bool otherOpen =(stationPanel != null && stationPanel.IsOpen) || (merchantPanel != null && merchantPanel.IsOpen)
                 || (fieldLog != null && fieldLog.IsOpen) || (chestPanel != null && chestPanel.IsOpen) || (rest != null && rest.IsOpen);
             if (toggleAction != null && toggleAction.action.WasPressedThisFrame() && !otherOpen)
             {

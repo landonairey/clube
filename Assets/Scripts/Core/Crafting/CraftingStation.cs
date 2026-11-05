@@ -441,6 +441,15 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// True for a result that joins what's waiting in the output at any quality, blending by amount (GL385): materials
+        /// (buns, ingots, charcoal), not tools or things to build.
+        /// </summary>
+        public static bool BlendsInOutput(ItemDefinition item)
+        {
+            return item != null && item.MaxStack > 1 && !(item is PlaceableDefinition) && !(item is ToolDefinition);
+        }
+
+        /// <summary>
         /// True when the recipe's result fits on what's already waiting in <see cref="Output"/>:
         /// an empty slot, or the same item with room for the whole count. A different item there
         /// (tin buns left in the campfire) holds the recipe back until it's taken.
@@ -454,7 +463,14 @@ namespace Clube.Core
             }
             // The same item, with room, and at the quality this run would make (GL359: an ingot hammered after a Blacksmithing
             // level-up is better than the ones waiting, doesn't stack with them, and was lost).
-            Composition madeOf = recipe.Output.Item is PlaceableDefinition ? InputContents(recipe) : null;
+            ItemDefinition item = recipe.Output.Item;
+            if (BlendsInOutput(item))
+            {
+                // Materials blend whatever their quality (GL385: each smelt's purity differs, and buns of 0.94 then 0.95
+                // jammed the furnace at 1.75).
+                return Inventory.Combines(waiting, item) && item.MaxStack - waiting.Amount + 1e-4f >= recipe.Output.Count * YieldOf(recipe);
+            }
+            Composition madeOf = item is PlaceableDefinition ? InputContents(recipe) : null;
             return waiting.Item == recipe.Output.Item
                 && Inventory.Stacks(waiting, recipe.Output.Item, madeOf, OutputQuality(recipe))
                 && waiting.Space >= (int)Math.Ceiling(recipe.Output.Count * YieldOf(recipe) - 1e-4f);
@@ -578,7 +594,7 @@ namespace Clube.Core
                     Input.Remove(input.Item, input.Count);
                 }
                 int whole = (int)Math.Floor(made + 1e-4f);
-                Output.Add(finished.Output.Item, whole, madeOf, 0, quality, made - whole);
+                Output.Add(finished.Output.Item, whole, madeOf, 0, quality, made - whole, anyQuality: BlendsInOutput(finished.Output.Item));
                 Completed?.Invoke(finished);
             }
             Changed?.Invoke();

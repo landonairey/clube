@@ -5,7 +5,7 @@ namespace Clube.Game
     /// <summary>
     /// A fire station's fire while it works (GL329): when the <see cref="StationObject"/> beside it is smelting (a recipe
     /// running, and burning fuel if it needs fuel), its glow light shines brighter and flickers, and a campfire also shows
-    /// the torch's dancing flame (<see cref="FlameCluster"/>) and smoke. Idle, the glow is steady at its set intensity.
+    /// the torch's dancing flame (<see cref="FlameCluster"/>) and smoke. Idle, the glow is off (GL392).
     /// </summary>
     [RequireComponent(typeof(StationObject))]
     public sealed class StationFire : MonoBehaviour
@@ -76,7 +76,9 @@ namespace Clube.Game
             {
                 float t = Time.time * 9f + seed;
                 float flicker = 0.78f + 0.16f * Mathf.PerlinNoise(t, seed) + 0.06f * Mathf.Sin(t * 2.3f) + 0.04f * Mathf.Sin(t * 6.1f);
-                glow.intensity = working ? baseIntensity * workingBoost * flicker : baseIntensity;
+                // Off while idle (GL392): a cold furnace doesn't glow.
+                glow.enabled = working;
+                glow.intensity = baseIntensity * workingBoost * flicker;
             }
             if (flame != null)
             {

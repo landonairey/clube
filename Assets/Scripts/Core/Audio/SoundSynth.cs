@@ -227,6 +227,61 @@ namespace Clube.Core
             return Normalize(samples, 0.85f);
         }
 
+
+        /// <summary>
+        /// Jumping or wading into water (GL397): a low plunge, a burst of white water, then droplets pattering back down.
+        /// </summary>
+        public static float[] Splash(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(0.9f)];
+            AddNoise(samples, random, 0f, 0.003f, 0.06f, 0.45f, Low(380f));
+            AddTone(samples, 0f, Range(random, 110f, 140f), Range(random, 60f, 75f), 0.004f, 0.07f, 0.35f);
+            AddNoise(samples, random, 0.005f, 0.004f, 0.12f, 0.5f, Band(Range(random, 1600f, 2200f), 0.6f));
+            AddNoise(samples, random, 0.01f, 0.01f, 0.2f, 0.25f, Band(Range(random, 4500f, 6000f), 0.8f));
+            AddDrops(samples, random, 0.12f, 0.6f, 22, 0.3f);
+            return Normalize(samples, 0.8f);
+        }
+
+        /// <summary>
+        /// A stride through water (GL397): a slosh rushing past the legs, the water parting and closing, with a few drips.
+        /// </summary>
+        public static float[] Wade(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(0.6f)];
+            AddSweptNoise(samples, random, 0f, 0.4f, Range(random, 250f, 350f), Range(random, 900f, 1300f), 0.4f);
+            AddNoise(samples, random, 0.05f, 0.06f, 0.12f, 0.2f, Band(Range(random, 2500f, 3200f), 0.7f));
+            AddNoise(samples, random, 0.02f, 0.08f, 0.15f, 0.25f, Low(260f));
+            AddDrops(samples, random, 0.2f, 0.35f, 5, 0.18f);
+            return Normalize(samples, 0.65f);
+        }
+
+        /// <summary>
+        /// Climbing out of water (GL397): a sucking pull as the legs break free, then water streaming and dripping off.
+        /// </summary>
+        public static float[] Emerge(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(1f)];
+            AddSweptNoise(samples, random, 0f, 0.25f, Range(random, 1400f, 1800f), Range(random, 350f, 450f), 0.4f);
+            AddTone(samples, 0.03f, Range(random, 240f, 300f), Range(random, 520f, 640f), 0.01f, 0.06f, 0.2f);
+            AddNoise(samples, random, 0.15f, 0.05f, 0.25f, 0.18f, Band(Range(random, 3000f, 4000f), 0.6f));
+            AddDrops(samples, random, 0.2f, 0.75f, 16, 0.22f);
+            return Normalize(samples, 0.7f);
+        }
+
+        // Water droplets: tiny bright "plips", each a short rising tone, scattered over a span and thinning out.
+        private static void AddDrops(float[] samples, Random random, float at, float span, int count, float level)
+        {
+            for (int d = 0; d < count; d++)
+            {
+                float when = at + span * (float)Math.Pow(random.NextDouble(), 1.4);
+                float fade = 1f - (when - at) / Math.Max(span, 1e-4f) * 0.6f;
+                float pitch = Range(random, 900f, 2200f);
+                AddTone(samples, when, pitch, pitch * Range(random, 1.5f, 2.2f), 0.001f, Range(random, 0.008f, 0.018f), level * fade * Range(random, 0.4f, 1f));
+            }
+        }
         /// <summary>Soft ground coming away: a thud of earth.</summary>
         public static float[] Thud(int seed)
         {

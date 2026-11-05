@@ -50,7 +50,12 @@ namespace Clube.Game
         private GUIStyle questStyle;
         private GUIStyle doneStyle;
 
+        private int openedFrame = -1;
+
         public bool IsOpen { get; private set; }
+
+        /// <summary>The key that opens and closes the log (Q); the inventory switches to the log on it (GL384).</summary>
+        public InputAction ToggleAction => toggleAction != null ? toggleAction.action : null;
 
         /// <summary>The journal showing, or shown last.</summary>
         public Page Current { get; private set; } = Page.Quests;
@@ -89,8 +94,9 @@ namespace Clube.Game
                 || (stationPanel != null && stationPanel.IsOpen)
                 || (merchantPanel != null && merchantPanel.IsOpen)
                 || (chestPanel != null && chestPanel.IsOpen);
-            if (otherOpen)
+            if (otherOpen || openedFrame == Time.frameCount)
             {
+                // Not on the frame the inventory switched to the log, or the same Q would close it again.
                 return;
             }
             if (toggleAction != null && toggleAction.action.WasPressedThisFrame())
@@ -121,6 +127,7 @@ namespace Clube.Game
         public void Open(Page page)
         {
             IsOpen = true;
+            openedFrame = Time.frameCount;
             Show(page);
             if (player != null)
             {

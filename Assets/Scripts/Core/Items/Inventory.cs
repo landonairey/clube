@@ -72,8 +72,12 @@ namespace Clube.Core
             return !stack.IsEmpty && stack.Item == item && item.MaxStack > 1;
         }
 
-        private static bool Joins(ItemStack stack, ItemDefinition item, Composition contents, float quality, bool keepApart)
+        private static bool Joins(ItemStack stack, ItemDefinition item, Composition contents, float quality, bool keepApart, bool anyQuality = false)
         {
+            if (anyQuality)
+            {
+                return Combines(stack, item);
+            }
             return keepApart ? StacksApart(stack, item, quality) : Stacks(stack, item, contents, quality);
         }
 
@@ -84,7 +88,8 @@ namespace Clube.Core
         /// <param name="contents">What the items are made of (mixed ore, GL32); a stack topped up with them blends its contents by volume.</param>
         /// <param name="part">A part item on top (GL136), added to a stack it stacks with or put in a slot of its own.</param>
         /// <param name="keepApart">Only onto stacks of the same quality (<see cref="StacksApart"/>, GL256): out of a station.</param>
-        public int Add(ItemDefinition item, int count = 1, Composition contents = null, int wear = 0, float quality = 1f, float part = 0f, bool keepApart = false)
+        /// <param name="anyQuality">Onto any stack of the item, blending qualities by amount (GL385: a furnace's buns, each run a little purer or not).</param>
+        public int Add(ItemDefinition item, int count = 1, Composition contents = null, int wear = 0, float quality = 1f, float part = 0f, bool keepApart = false, bool anyQuality = false)
         {
             count = Math.Max(0, count);
             if (item == null || (count == 0 && part <= ItemStack.PartEpsilon))
@@ -95,7 +100,7 @@ namespace Clube.Core
             int left = count;
             for (int i = 0; i < slots.Length && left > 0; i++)
             {
-                if (Joins(slots[i], item, contents, quality, keepApart) && slots[i].Space > 0 && Fits(i, item))
+                if (Joins(slots[i], item, contents, quality, keepApart, anyQuality) && slots[i].Space > 0 && Fits(i, item))
                 {
                     int moved = Math.Min(left, slots[i].Space);
                     slots[i] = TopUp(slots[i], moved, contents, quality);
@@ -111,7 +116,7 @@ namespace Clube.Core
                     left -= moved;
                 }
             }
-            bool partAdded = part > ItemStack.PartEpsilon && AddPart(item, part, contents, quality, keepApart);
+            bool partAdded = part > ItemStack.PartEpsilon && AddPart(item, part, contents, quality, keepApart, anyQuality);
 
             if (left != count || partAdded)
             {
@@ -366,18 +371,16 @@ namespace Clube.Core
             }
 
             ItemStack moving = slots[from];
-            if (Combines(slots[to], moving.Item) && (slots[to].Space > 0 || moving.Count == 0))
+            float room = RoomFor(slots[to]);
+            if (Combines(slots[to], moving.Item) && room > ItemStack.PartEpsilon)
             {
-                int moved = Math.Min(moving.Count, slots[to].Space);
-                slots[to] = TopUp(slots[to], moved, moving.Contents, moving.Quality);
-                slots[from] = moving.WithCount(moving.Count - moved);
-                if (slots[from].Count == 0 && slots[from].Part > 0f)
-                {
-                    // Everything whole went: the part goes with it.
-                    slots[from] = ItemStack.Empty;
-                    slots[to] = WithPart(slots[to], moving.Part, out ItemStack spill);
-                    slots[from] = spill;
-                }
+                // By amount, parts included (GL390): 1.05 buns dropped on 15.24 fill it to 16 and leave 0.29 behind.
+                ItemStack target = slots[to];
+                float taken = Math.Min(moving.Amount, room);
+                Composition blended = Composition.Blend(target.Contents, target.Amount, moving.Contents, taken);
+                float quality = (target.Quality * target.Amount + moving.Quality * taken) / (target.Amount + taken);
+                slots[to] = OfAmount(target.Item, target.Amount + taken, blended, 0, quality);
+                slots[from] = OfAmount(moving.Item, moving.Amount - taken, moving.Contents, moving.Wear, moving.Quality);
             }
             else if (Fits(from, slots[to].Item))
             {
@@ -388,6 +391,15 @@ namespace Clube.Core
                 return;
             }
             Changed?.Invoke();
+        }
+
+        // A stack holding an amount of an item, whole and part, never over its MaxStack.
+        private static ItemStack OfAmount(ItemDefinition item, float amount, Composition contents, int wear, float quality)
+        {
+            amount = Math.Min(amount, item.MaxStack);
+            int whole = (int)Math.Floor(amount + ItemStack.PartEpsilon);
+            float part = Math.Max(0f, amount - whole);
+            return new ItemStack(item, whole, contents, wear, quality, part);
         }
 
         /// <summary>
@@ -645,12 +657,12 @@ namespace Clube.Core
         // Adds a part item (GL136) onto stacks it stacks with, as far as each has room (GL188: a stack fills to exactly
         // its MaxStack, parts included), making a whole one when the parts pass 1; the rest goes in an empty slot.
         // False when none of it found a place.
-        private bool AddPart(ItemDefinition item, float part, Composition contents, float quality, bool keepApart)
+        private bool AddPart(ItemDefinition item, float part, Composition contents, float quality, bool keepApart, bool anyQuality = false)
         {
             float left = part;
             for (int i = 0; i < slots.Length && left > ItemStack.PartEpsilon; i++)
             {
-                if (!Joins(slots[i], item, contents, quality, keepApart) || !Fits(i, item))
+                if (!Joins(slots[i], item, contents, quality, keepApart, anyQuality) || !Fits(i, item))
                 {
                     continue;
                 }

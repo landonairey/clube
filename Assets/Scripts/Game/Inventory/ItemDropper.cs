@@ -86,7 +86,7 @@ namespace Clube.Game
                 pressedAt = Time.time;
                 owed = 0f;
                 pour = default;
-                Drop(1, ref pour);
+                Drop(1, ref pour, exact: true);
             }
             else if (action.IsPressed() && Time.time - pressedAt >= holdSeconds)
             {
@@ -113,7 +113,8 @@ namespace Clube.Game
         /// onto the pile <paramref name="into"/> began (a new one when it's <c>default</c>), which
         /// stays where it began wherever the player looks after. Returns how many went.
         /// </summary>
-        public int Drop(int count, ref PilePour into)
+        /// <param name="exact">A tap (GL394): one item goes exactly on the aimed sample when there's one in reach, not onto a pile.</param>
+        public int Drop(int count, ref PilePour into, bool exact = false)
         {
             int slot = hotbar.SelectedSlot;
             if (slot < 0)
@@ -148,7 +149,11 @@ namespace Clube.Game
             var grid = new BuildGrid(worldView.Config.BuildCellSize);
             int wanted = Mathf.Min(count, stack.Count);
             int placed;
-            if (IsMixed(stack, material))
+            if (exact && !into.Started && wanted >= 1 && PlaceAtAim(stack, material, materials))
+            {
+                placed = 1;
+            }
+            else if (IsMixed(stack, material))
             {
                 placed = PourMixed(stack.Contents, materials, material, grid, ref into, point, wanted);
             }
@@ -169,6 +174,33 @@ namespace Clube.Game
             // A pile at the feet, or a big one spreading under them, can bury the player.
             LiftOutOfGround();
             return placed;
+        }
+
+        // One sample, exactly on the aimed spot (GL394), of the stack's material (a mixed stack's picked at random by share).
+        private bool PlaceAtAim(ItemStack stack, VoxelMaterial material, MaterialRegistry materials)
+        {
+            Transform head = player.Head != null ? player.Head : transform;
+            if (!worldView.Raycast(new Ray(head.position, head.forward), out WorldHit hit))
+            {
+                return false;
+            }
+            Vector3 hitWorld = worldView.transform.TransformPoint(hit.Point);
+            if ((hitWorld - head.position).sqrMagnitude > reach * reach)
+            {
+                return false;
+            }
+            if (IsMixed(stack, material))
+            {
+                VoxelMaterial part = Pick(stack.Contents, UnityEngine.Random.value) ?? material;
+                material = materials.PlacedFrom(part.FinalDrop) ?? part;
+            }
+            Vector3 toward = worldView.transform.InverseTransformDirection(-head.forward);
+            if (!TerrainPile.PlaceOne(worldView.World, hit.Point, toward, material.Id, worldView.Config.IsoLevel))
+            {
+                return false;
+            }
+            Piled?.Invoke(material, TerrainPile.LastFilled);
+            return true;
         }
 
         // A gathered stack holding more than its own material (GL120: grass with some dirt). Ore keeps
