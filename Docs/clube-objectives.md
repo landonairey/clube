@@ -1135,18 +1135,18 @@ Builds on the game clock (GL34's `GameClock`) and the day/night cycle (PK4).
 ### 7A — NPCs
 Crude models and simple behaviours are fine. The point is towns and trade feeling alive, not detailed characters.
 
-- [ ] **NP1** `Game` Placeholder NPC model (capsule or low-poly) with simple animation.
-- [ ] **NP2** `Core` Basic behaviours: idle, walk between points, work at a station, stand at a market stall.
+- [ ] **NP1** `Game` Placeholder NPC model (capsule or low-poly) with simple animation. *(2026-11-04: first pass GL404, the town's shopkeepers.)*
+- [ ] **NP2** `Core` Basic behaviours: idle, walk between points, work at a station, stand at a market stall. *(2026-11-04: first pass GL405, GL406.)*
 - [ ] **NP3** `Core` NPC roles: merchant, smith, miner, villager.
 - [ ] **NP4** `Game` Talk/interact prompt reusing the interaction system (I3).
 
 ### 7B — Settlement generation
 Villages and towns are placed where the natural resources would support them.
 
-- [ ] **ST1** `Core` Region scoring: sample the ore probability field (O1–O4) near the surface without generating voxels, plus terrain flatness and water access, to score each world region by resources and potential wealth.
+- [ ] **ST1** `Core` *(2026-11-04: first pass GL399, one town site.)* Region scoring: sample the ore probability field (O1–O4) near the surface without generating voxels, plus terrain flatness and water access, to score each world region by resources and potential wealth.
 - [ ] **ST2** `Core` Specialization from dominant resources, e.g. good coal + iron near the surface → small camp specializing in blacksmithing and weaponry.
 - [ ] **ST3** `Core` Size from wealth: water + basic ores + gold pockets → larger town with more merchants.
-- [ ] **ST4** `Core` Settlement tiers: camp → village → town, each with a set of buildings, NPC count, and merchant slots.
+- [ ] **ST4** `Core` Settlement tiers: camp → village → town, each with a set of buildings, NPC count, and merchant slots. *(2026-11-04: first pass GL400, one walled town of five shops.)*
 - [ ] **ST5** `Core` Deterministic from seed, using the same world-cell approach as ore centroids (O2), so settlements exist before their chunks are loaded.
 - [ ] **ST6** `Core` Flatten/clear terrain under building footprints.
 - [ ] **ST7** `Lab` Map overlay showing region scores, chosen settlement sites, and why each specialization was picked.
@@ -1162,7 +1162,7 @@ Villages and towns are placed where the natural resources would support them.
 - [ ] **TR1** `Core` Per-town supply and demand: towns sell what they specialize in cheaply and pay more for what they lack.
 - [ ] **TR2** `Core` Prices respond to trade: selling a lot of one item in a town lowers its price there over time.
 - [ ] **TR3** `Core` Currency, possibly silver and gold coin (ties to precious metal refining, PR5).
-- [ ] **TR4** `Game` Buy/sell UI with merchant NPCs, showing the town's prices.
+- [ ] **TR4** `Game` Buy/sell UI with merchant NPCs, showing the town's prices. *(2026-11-04: first pass GL401, GL404.)*
 - [ ] **TR5** `Core` Item quality (CR3) affects sale price.
 - [ ] **TR6** `Core` *(backlog)* Ore value from contained metal: value is the weight of the valuable element locked in the mineral (PR2 species), with the amount of ore measured as volume from marching cubes extraction (I5, V11).
 - [ ] **TR7** `Core + Game` *(added 2026-10-12)* Player-owned shop: the player sets up a shop that sells to locals or travellers. What's on display adds an appearance bonus (fine linens and carpets, TX5; high-quality goods, CR3) that nudges the average selling price up. Part of EC2's venture.
