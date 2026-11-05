@@ -55,6 +55,9 @@ namespace Clube.Core
 
         // Repack the drawn tufts once the focus has moved this far, in metres, so each chunk's thinned share follows it (GL379).
         private const float RebatchDistance = 2f;
+        // How often newly grown grass is batched in (GL416): rebuilding and uploading every tuft's matrix each frame
+        // the world streamed cost about 3 ms a frame. Edits still rebuild the same frame.
+        private const float GrowBatchSeconds = 0.25f;
 
         private static readonly int StrawStrengthProperty = Shader.PropertyToID("_StrawStrength");
 
@@ -158,6 +161,12 @@ namespace Clube.Core
         private readonly Dictionary<Vector3Int, Scattered> tufts = new Dictionary<Vector3Int, Scattered>();
         private readonly Stack<Scattered> spare = new Stack<Scattered>();
         private readonly List<Vector3Int> dropped = new List<Vector3Int>();
+        // The tufts' matrices, read by Clube/Grass from a GPU buffer (GL416).
+        private static readonly int InstanceMatricesId = Shader.PropertyToID("_InstanceMatrices");
+
+        // Chunks round the focus with no grass yet, by distance (the scan's list, kept to save allocating it).
+        private readonly List<(float Distance, Vector3Int Coord, ChunkRenderer Renderer)> waiting = new List<(float, Vector3Int, ChunkRenderer)>();
+
         private readonly InstanceBatches grassBatches = new InstanceBatches();
         private readonly InstanceBatches farGrassBatches = new InstanceBatches();
         private readonly InstanceBatches wheatBatches = new InstanceBatches();
@@ -185,13 +194,13 @@ namespace Clube.Core
         private MaterialPropertyBlock properties;
         private bool batchesDirty;
         private Vector3 batchedFrom;
-        private Vector3Int sweepCentre = new Vector3Int(int.MinValue, 0, 0);
-        private int sweepNext;
         private bool scanPending = true;
         private Vector3 scannedFrom;
-        private Vector3Int[] reachOffsets;
-        private float reachOffsetsRadius;
-        private Vector3 reachOffsetsChunk;
+        // Grass grown or shown since the last batch rebuild: picked up within GrowBatchSeconds, not every frame (GL416).
+        private bool grownDirty;
+        private float batchedAt;
+        private int waitingNext;
+        private bool waitingUnsorted;
 
         private sealed class Scattered
         {
@@ -330,6 +339,18 @@ namespace Clube.Core
 
         private void OnDestroy()
         {
+            grassBatches.Dispose();
+            farGrassBatches.Dispose();
+            wheatBatches.Dispose();
+            foreach (InstanceBatches batch in dahliaBatches)
+            {
+                batch?.Dispose();
+            }
+            DestroyMeshes();
+        }
+
+        private void DestroyMeshes()
+        {
             lawnMap.Dispose();
             if (tuft != null)
             {
@@ -360,11 +381,15 @@ namespace Clube.Core
         {
             if (!tufts.TryGetValue(coord, out Scattered scattered))
             {
-                // Not scattered yet: the scan grows it once it's in reach. Only a chunk within reach calls for a scan: the
-                // world meshes chunks far off all the time, and each scan cost about 4 ms (GL379).
+                // Not scattered yet: it joins the chunks waiting to grow if it's in reach (GL416), without a full look.
                 if (chunkRenderer != null && worldView.Focus != null)
                 {
-                    scanPending |= Distance(chunkRenderer, worldView.Focus.position) <= radius * radius;
+                    float distance = Distance(chunkRenderer, worldView.Focus.position);
+                    if (distance <= radius * radius)
+                    {
+                        waiting.Add((distance, coord, chunkRenderer));
+                        waitingUnsorted = true;
+                    }
                 }
                 return;
             }
@@ -412,6 +437,7 @@ namespace Clube.Core
             {
                 Scan(focus);
             }
+            Grow();
             long scanned = System.Diagnostics.Stopwatch.GetTimestamp();
             UpdateLawn(focus);
             long lawned = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -479,7 +505,7 @@ namespace Clube.Core
                 if (drawn != pair.Value.Drawn)
                 {
                     pair.Value.Drawn = drawn;
-                    batchesDirty = true;
+                    grownDirty = true;
                 }
             }
             foreach (Vector3Int coord in dropped)
@@ -487,42 +513,65 @@ namespace Clube.Core
                 Drop(coord);
             }
 
-            // And grows on the chunks round the focus that have none yet, nearest first (GL163). Only the
-            // chunks round the focus are looked at (GL108): walking every loaded renderer ran out of time on
-            // the old, far ones in a streamed world before reaching the new ones by the player.
-            clock.Restart();
-            World world = worldView.World;
-            Vector3Int centre = world.Grid.WorldToChunk(worldView.transform.InverseTransformPoint(focus));
-            Vector3Int[] offsets = ReachOffsets(world.Grid.ChunkWorldSize);
-            // A look that ran out of time goes on from where it stopped while the focus stays in the same chunk (GL379): starting
-            // over, it spent its time on the near chunks already done and never reached the far ones, so it ran every frame.
-            int first = centre == sweepCentre ? Mathf.Clamp(sweepNext, 0, offsets.Length) : 0;
-            sweepCentre = centre;
-            bool grewOne = false;
-            for (int i = first; i < offsets.Length; i++)
+            // And grows on the chunks round the focus that have none yet, nearest first (GL163). Only the chunks with a mesh
+            // are looked at, and those already grown are passed over at once (GL416): walking every chunk offset within the
+            // radius (some 58 000 at 96 m) cost about 4 ms each time the focus moved a metre.
+            waiting.Clear();
+            waitingNext = 0;
+            foreach (KeyValuePair<Vector3Int, ChunkRenderer> pair in worldView.Renderers)
             {
-                Vector3Int coord = centre + offsets[i];
-                if (tufts.ContainsKey(coord)
-                    || !worldView.Renderers.TryGetValue(coord, out ChunkRenderer chunkRenderer)
-                    || Distance(chunkRenderer, focus) > near)
+                if (tufts.ContainsKey(pair.Key))
                 {
                     continue;
                 }
-                // At least one chunk grows each look, so a look always gets somewhere.
+                float distance = Distance(pair.Value, focus);
+                if (distance <= near)
+                {
+                    waiting.Add((distance, pair.Key, pair.Value));
+                }
+            }
+            waitingUnsorted = true;
+        }
+
+        // Grows the waiting chunks nearest first within the frame's time, at least one a frame so it always gets
+        // somewhere. Between full looks, chunks meshed within reach join the list (GL416): while the world streams, a
+        // chunk meshes nearly every frame, and a full look over every renderer each time cost the exe 9 ms a frame.
+        private void Grow()
+        {
+            if (waitingNext >= waiting.Count)
+            {
+                return;
+            }
+            if (waitingUnsorted)
+            {
+                waiting.RemoveRange(0, waitingNext);
+                waitingNext = 0;
+                waiting.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+                waitingUnsorted = false;
+            }
+            clock.Restart();
+            bool grewOne = false;
+            while (waitingNext < waiting.Count)
+            {
                 if (grewOne && clock.Elapsed.TotalMilliseconds > scatterMilliseconds)
                 {
-                    sweepNext = i;
-                    scanPending = true;
                     return;
+                }
+                (float _, Vector3Int coord, ChunkRenderer chunkRenderer) = waiting[waitingNext++];
+                // Grown already (listed twice), or its renderer has gone back to the pool since.
+                if (tufts.ContainsKey(coord) || !worldView.Renderers.TryGetValue(coord, out ChunkRenderer current) || current != chunkRenderer)
+                {
+                    continue;
                 }
                 Scattered scattered = spare.Count > 0 ? spare.Pop() : new Scattered();
                 Scatter(chunkRenderer, scattered);
                 scattered.Drawn = true;
                 tufts.Add(coord, scattered);
-                batchesDirty = true;
+                grownDirty = true;
                 grewOne = true;
             }
-            sweepNext = 0;
+            waiting.Clear();
+            waitingNext = 0;
         }
 
         private void Drop(Vector3Int coord)
@@ -533,37 +582,6 @@ namespace Clube.Core
                 batchesDirty |= scattered.Drawn;
                 Recycle(scattered);
             }
-        }
-
-        // The chunk offsets within the radius, nearest first, kept until the radius or chunk size changes.
-        private Vector3Int[] ReachOffsets(Vector3 chunkSize)
-        {
-            if (reachOffsets != null && reachOffsetsRadius == radius && reachOffsetsChunk == chunkSize)
-            {
-                return reachOffsets;
-            }
-            var reach = new Vector3Int(
-                Mathf.CeilToInt(radius / chunkSize.x), Mathf.CeilToInt(radius / chunkSize.y), Mathf.CeilToInt(radius / chunkSize.z));
-            var offsets = new List<Vector3Int>();
-            for (int dy = -reach.y; dy <= reach.y; dy++)
-            {
-                for (int dz = -reach.z; dz <= reach.z; dz++)
-                {
-                    for (int dx = -reach.x; dx <= reach.x; dx++)
-                    {
-                        // Only the sphere the scan can use (a chunk centre within the radius): the cube had twice as many.
-                        if (Vector3.Scale(new Vector3(dx, dy, dz), chunkSize).magnitude <= radius + chunkSize.magnitude)
-                        {
-                            offsets.Add(new Vector3Int(dx, dy, dz));
-                        }
-                    }
-                }
-            }
-            offsets.Sort((a, b) => Vector3.Scale(a, chunkSize).sqrMagnitude.CompareTo(Vector3.Scale(b, chunkSize).sqrMagnitude));
-            reachOffsets = offsets.ToArray();
-            reachOffsetsRadius = radius;
-            reachOffsetsChunk = chunkSize;
-            return reachOffsets;
         }
 
         // Squared distance from the focus to the chunk's centre.
@@ -669,16 +687,17 @@ namespace Clube.Core
                 receiveShadows = true,
                 layer = gameObject.layer,
             };
-            if (batchesDirty || (focus - batchedFrom).sqrMagnitude > RebatchDistance * RebatchDistance)
+            if (batchesDirty || (focus - batchedFrom).sqrMagnitude > RebatchDistance * RebatchDistance
+                || (grownDirty && Time.unscaledTime - batchedAt >= GrowBatchSeconds))
             {
                 RebuildBatches(focus);
             }
-            grassBatches.Draw(parameters, tuft);
+            grassBatches.DrawFromBuffer(parameters, tuft, InstanceMatricesId);
             // Far grass draws without its depth passes (GL380): at that range it adds nothing to the ambient occlusion.
             RenderParams farParameters = parameters;
             farParameters.material = FarMaterial();
-            farGrassBatches.Draw(farParameters, farTuft);
-            wheatBatches.Draw(parameters, wheat);
+            farGrassBatches.DrawFromBuffer(farParameters, farTuft, InstanceMatricesId);
+            wheatBatches.DrawFromBuffer(parameters, wheat, InstanceMatricesId);
 
             // Dahlias: their own colours (no drying to straw, no far grass colour) and never thinned out.
             dahliaProperties.SetFloat(FadeStart, fadeStart);
@@ -690,7 +709,7 @@ namespace Clube.Core
             parameters.matProps = dahliaProperties;
             for (int i = 0; i < DahliaGrowth.Colours; i++)
             {
-                dahliaBatches[i].Draw(parameters, dahliaMeshes[i]);
+                dahliaBatches[i].DrawFromBuffer(parameters, dahliaMeshes[i], InstanceMatricesId);
             }
         }
 
@@ -701,6 +720,8 @@ namespace Clube.Core
         private void RebuildBatches(Vector3 focus)
         {
             batchesDirty = false;
+            grownDirty = false;
+            batchedAt = Time.unscaledTime;
             batchedFrom = focus;
             grassBatches.Clear();
             farGrassBatches.Clear();
