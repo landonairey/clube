@@ -606,6 +606,18 @@ to the nearest tin, copper, silver and gold nodes (heads inside or up to 10 m ou
 walks down one and takes a sample of the node every 6 s (`NodeMining`). Keepers walk 3D routes over the terrain (`TownContext`).
 Sign words use `Clube/World Text` (the built-in font material shows through walls). Board textures stay straight in the terrain
 shader (`_MaterialRegular`).
+Third pass (GL416-GL426, `Docs/20261105b clube-backlog.md`, the first playtest): 60 fps at 1440p (GL416): the grass draws from a
+GPU buffer of matrices (`InstanceBatches.DrawFromBuffer`, procedural instancing in `Clube/Grass`), newly meshed chunks join a
+waiting list rather than calling a full look, and new grass is batched in 4 times a second. Measure the built game with
+`clube.exe -townbench -screen-width 2560 -screen-height 1440` (`TownBenchmark`, writes `townbench.txt`; the exe segfaults on quit,
+after writing it). The wall is one solid band of Loose stone 0.9 m high (`TownStructures.StampWall`); stairs are a 4 m spiral with
+landings, every side whole (steps shorter than the capsule's radius stuck the player); pads sit on the voxel grid. The anvil,
+furnace, sleeping rolls and counter items are copies of the game's own models (`ModelCopy`: meshes and colliders, no scripts;
+tools via `HeldToolMeshes.Build(tool, withHand: false)`); the prospector shows square ore blocks in the terrain. Shafts are lit by
+everlasting torches (`PlacedTorch.Everlasting`, `PlacedObject.Fixed`); torches are 3/4 their old height. Real trees and a woodpile
+of wood logs by the lumber shop (`TownPlan.LumberYard`, written by `PartStamp` in Core/Editing). The town is grass. Keepers buy
+from a purse (`ITrader.Purse`) of 525 coins a day. `TownSite` writes the town once, checking for the blacksmith's oak floor
+(`IsWritten`).
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the
 Editor log; per-script markers aren't available without the profiler.

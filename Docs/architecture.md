@@ -93,7 +93,8 @@ Core/
                  TerrainLodRing + TerrainLodBuilder (coarse terrain levels, P7c), DistantTreeBuilder (GL162)
   Rendering/     WorldView, ChunkView, ChunkRenderer(+Pool), ChunkCollider, ChunkMeshBuilder, GrassScatter (GL67),
                  FarTerrainView + ChunkCoverageMask (P7a), TerrainLodView (P7c), DistantTreeView + DistantTreeMeshes (GL162)
-                 BushScatter + BushMeshes (GL236), GrassyGround (flora spots on the built meshes) and InstanceBatches,
+                 BushScatter + BushMeshes (GL236), GrassyGround (flora spots on the built meshes) and InstanceBatches
+                 (the grass draws its batches from one GPU buffer each, GL416),
                  shared by the grass and the bushes
 ```
 
@@ -602,6 +603,11 @@ it, and when it's done. None needs the big picture changed. Measure with
     (`World.SetCarved`) checks eight voxels per corner. Write
     per chunk (a bulk path on `World` that raises one event per chunk), or spread the rows over frames once rebuilds
     are deferred. *Measure:* `TownSite.LevelMilliseconds`. *Done when:* under 50 ms, or no frame over 20 ms.
+
+15. **The town's frame spikes.** After GL416 the town runs at 11.4 ms a frame settled, but about 4% of frames
+    pass 16.7 ms (worst 36 ms) and the grass's full look (every renderer, each metre the focus moves) still peaks
+    at 14 ms. Distant trees cost a steady 1.9 ms. *Measure:* `clube.exe -townbench` at 1440p (`townbench.txt`).
+    *Done when:* the last 10 s have no frame over 20 ms.
 
 When one of these is done, move it into `benchmarks.md` with its numbers and
 delete it here.
