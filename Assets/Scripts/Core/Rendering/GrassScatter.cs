@@ -49,8 +49,9 @@ namespace Clube.Core
         private const int SaltDahliaColour = 8;
         private const int SaltThin = 9;
 
-        // Blades in the tuft drawn past thinFrom, where a blade is a pixel or two (GL379).
-        private const int FarTuftBlades = 3;
+        // Past thinFrom each instance is a clump of this many small tufts (GL380): a quarter as many instances for the same
+        // grass, since many tiny instances cost more than their few triangles.
+        private const int FarClumpTufts = 4;
 
         // Repack the drawn tufts once the focus has moved this far, in metres, so each chunk's thinned share follows it (GL379).
         private const float RebatchDistance = 2f;
@@ -176,6 +177,8 @@ namespace Clube.Core
         private TreeField coverOf;
         private Mesh tuft;
         private Mesh farTuft;
+        private Material farMaterial;
+        private Material farMaterialFrom;
         private Mesh wheat;
         private readonly Mesh[] dahliaMeshes = new Mesh[DahliaGrowth.Colours];
         private MaterialPropertyBlock dahliaProperties;
@@ -290,7 +293,7 @@ namespace Clube.Core
         {
             worldView = GetComponent<WorldView>();
             tuft = BuildTuft();
-            farTuft = BuildTuft(FarTuftBlades, 0.07f * 7f / FarTuftBlades * 0.6f, "Far grass tuft");
+            farTuft = BuildClump();
             wheat = BuildWheat();
             dahliaProperties = new MaterialPropertyBlock();
             for (int i = 0; i < DahliaGrowth.Colours; i++)
@@ -339,6 +342,10 @@ namespace Clube.Core
             if (farTuft != null)
             {
                 Destroy(farTuft);
+            }
+            if (farMaterial != null)
+            {
+                Destroy(farMaterial);
             }
             foreach (Mesh mesh in dahliaMeshes)
             {
@@ -667,7 +674,10 @@ namespace Clube.Core
                 RebuildBatches(focus);
             }
             grassBatches.Draw(parameters, tuft);
-            farGrassBatches.Draw(parameters, farTuft);
+            // Far grass draws without its depth passes (GL380): at that range it adds nothing to the ambient occlusion.
+            RenderParams farParameters = parameters;
+            farParameters.material = FarMaterial();
+            farGrassBatches.Draw(farParameters, farTuft);
             wheatBatches.Draw(parameters, wheat);
 
             // Dahlias: their own colours (no drying to straw, no far grass colour) and never thinned out.
@@ -707,7 +717,14 @@ namespace Clube.Core
                 {
                     float nearest = Mathf.Max(0f, Vector3.Distance(scattered.Centre, focus) - halfDiagonal);
                     float keep = Mathf.Lerp(1f, thinTo, Mathf.Clamp01((nearest - thinFrom) / Mathf.Max(fadeStart - thinFrom, 0.01f)));
-                    (nearest > thinFrom ? farGrassBatches : grassBatches).AddRange(scattered.Grass, Mathf.CeilToInt(scattered.Grass.Count * keep));
+                    if (nearest > thinFrom)
+                    {
+                        farGrassBatches.AddRange(scattered.Grass, Mathf.CeilToInt(scattered.Grass.Count * keep / FarClumpTufts));
+                    }
+                    else
+                    {
+                        grassBatches.AddRange(scattered.Grass, Mathf.CeilToInt(scattered.Grass.Count * keep));
+                    }
                     wheatBatches.AddRange(scattered.Wheat, Mathf.CeilToInt(scattered.Wheat.Count * keep));
                     for (int i = 0; i < DahliaGrowth.Colours; i++)
                     {
@@ -720,7 +737,7 @@ namespace Clube.Core
             {
                 DahliaCount += batch.Count;
             }
-            TuftCount = grassBatches.Count + farGrassBatches.Count + wheatBatches.Count + DahliaCount;
+            TuftCount = grassBatches.Count + farGrassBatches.Count * FarClumpTufts + wheatBatches.Count + DahliaCount;
             WheatCount = wheatBatches.Count;
         }
 
@@ -752,6 +769,48 @@ namespace Clube.Core
                 Blade(outward * 0.06f, side * width, outward * lean + Vector3.up * tall, outward, root, tip, positions, colors, normalsOut, indices);
             }
             return Make(name, positions, colors, normalsOut, indices);
+        }
+
+        // The far grass instance (GL380): four small three-blade tufts spread over about a metre, as one mesh.
+        private static Mesh BuildClump()
+        {
+            var positions = new List<Vector3>();
+            var colors = new List<Color>();
+            var normalsOut = new List<Vector3>();
+            var indices = new List<int>();
+            var random = new System.Random(13);
+            Vector3[] spots = { new Vector3(0f, 0f, 0f), new Vector3(0.42f, 0f, 0.12f), new Vector3(-0.18f, 0f, 0.4f), new Vector3(-0.3f, 0f, -0.33f) };
+            foreach (Vector3 spot in spots)
+            {
+                float size = 0.8f + (float)random.NextDouble() * 0.25f;
+                for (int i = 0; i < 3; i++)
+                {
+                    float angle = (i + (float)random.NextDouble() * 0.6f) / 3f * Mathf.PI * 2f;
+                    var outward = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+                    var side = new Vector3(-outward.z, 0f, outward.x);
+                    float lean = 0.15f + (float)random.NextDouble() * 0.3f;
+                    float tall = (0.7f + (float)random.NextDouble() * 0.3f) * size;
+                    Blade(spot + outward * 0.05f, side * 0.09f, spot + outward * lean + Vector3.up * tall, outward, TuftRoot, TuftTip, positions, colors, normalsOut, indices);
+                }
+            }
+            return Make("Far grass clump", positions, colors, normalsOut, indices);
+        }
+
+        // A copy of the grass material without its depth passes, for the far clumps (GL380).
+        private Material FarMaterial()
+        {
+            if (farMaterial == null || farMaterialFrom != material)
+            {
+                if (farMaterial != null)
+                {
+                    Destroy(farMaterial);
+                }
+                farMaterial = new Material(material) { name = material.name + " (far)" };
+                farMaterial.SetShaderPassEnabled("DepthOnly", false);
+                farMaterial.SetShaderPassEnabled("DepthNormals", false);
+                farMaterialFrom = material;
+            }
+            return farMaterial;
         }
 
         // Wheat, 1 m tall before scaling: a sheaf of thin stalks, each with a grain head of two

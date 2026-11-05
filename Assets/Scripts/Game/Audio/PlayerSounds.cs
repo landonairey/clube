@@ -113,6 +113,10 @@ namespace Clube.Game
         [SerializeField]
         private SoundSet parcelBought = new SoundSet();
 
+        [Tooltip("A stone knapped into a hand axe on a boulder (GL381).")]
+        [SerializeField]
+        private SoundSet knapped = new SoundSet();
+
         /// <summary>Whether any sound effect plays (the lab panel's Sound section).</summary>
         public bool EffectsOn
         {
@@ -178,6 +182,8 @@ namespace Clube.Game
         public SoundSet Sold => sold;
 
         public SoundSet Placed => placed;
+
+        public SoundSet Knapped => knapped;
 
         public SoundSet ParcelBought => parcelBought;
 

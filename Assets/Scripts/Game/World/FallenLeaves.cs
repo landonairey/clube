@@ -15,6 +15,9 @@ namespace Clube.Game
         /// <summary>Chance a fallen leaf sample decays in an in-game hour.</summary>
         public const float DecayChancePerHour = 0.1f;
 
+        // How far down a fallen leaf that dropped is looked for, in samples.
+        private const int MaxFallSamples = 24;
+
         [SerializeField]
         private WorldView worldView;
 
@@ -80,8 +83,17 @@ namespace Clube.Game
                 }
                 if (density.Value < iso || !trees.IsFallenLeaves(world.GetMaterial(sample) ?? 0))
                 {
-                    lying.RemoveAt(i);
-                    continue;
+                    // Fallen leaves drop like dirt (GL382): one that fell is followed down to where it lies now.
+                    if (TryFindBelow(world, iso, sample, out Vector3Int landed))
+                    {
+                        lying[i] = landed;
+                        sample = landed;
+                    }
+                    else
+                    {
+                        lying.RemoveAt(i);
+                        continue;
+                    }
                 }
                 if (random.NextDouble() >= keep)
                 {
@@ -89,6 +101,28 @@ namespace Clube.Game
                     lying.RemoveAt(i);
                 }
             }
+        }
+
+        // The first solid sample under an emptied one, within a few metres, if it's fallen leaves nobody else follows.
+        private bool TryFindBelow(World world, float iso, Vector3Int from, out Vector3Int landed)
+        {
+            for (int down = 1; down <= MaxFallSamples; down++)
+            {
+                Vector3Int below = from + Vector3Int.down * down;
+                float? density = world.GetDensity(below);
+                if (!density.HasValue)
+                {
+                    break;
+                }
+                if (density.Value < iso)
+                {
+                    continue;
+                }
+                landed = below;
+                return trees.IsFallenLeaves(world.GetMaterial(below) ?? 0) && !lying.Contains(below);
+            }
+            landed = default;
+            return false;
         }
     }
 }

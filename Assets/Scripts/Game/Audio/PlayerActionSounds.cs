@@ -20,6 +20,7 @@ namespace Clube.Game
         private MerchantPanel merchant;
         private PlayerBuilder builder;
         private PlayerParcels parcels;
+        private BoulderBashing bashing;
 
         private void Awake()
         {
@@ -27,6 +28,7 @@ namespace Clube.Game
             merchant = GetComponent<MerchantPanel>();
             builder = GetComponent<PlayerBuilder>();
             parcels = GetComponent<PlayerParcels>();
+            bashing = GetComponent<BoulderBashing>();
         }
 
         private void OnEnable()
@@ -47,6 +49,10 @@ namespace Clube.Game
             {
                 parcels.Bought += OnParcelBought;
             }
+            if (bashing != null)
+            {
+                bashing.HandAxeMade += OnKnapped;
+            }
         }
 
         private void OnDisable()
@@ -66,6 +72,10 @@ namespace Clube.Game
             if (parcels != null)
             {
                 parcels.Bought -= OnParcelBought;
+            }
+            if (bashing != null)
+            {
+                bashing.HandAxeMade -= OnKnapped;
             }
         }
 
@@ -93,6 +103,14 @@ namespace Clube.Game
             if (sounds != null)
             {
                 sounds.Play(sounds.Placed, source);
+            }
+        }
+
+        private void OnKnapped()
+        {
+            if (sounds != null)
+            {
+                sounds.Play(sounds.Knapped, source);
             }
         }
 

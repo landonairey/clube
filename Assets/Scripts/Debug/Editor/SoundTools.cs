@@ -55,6 +55,7 @@ namespace Clube.Debug.Editor
             for (int v = 0; v < 3; v++)
             {
                 Write("Crumble", v, SoundSynth.Crumble(300 + v));
+                Write("Chip", v, SoundSynth.Chip(360 + v));
                 Write("Thud", v, SoundSynth.Thud(310 + v));
                 Write("Rustle", v, SoundSynth.Rustle(320 + v));
             }
@@ -110,6 +111,7 @@ namespace Clube.Debug.Editor
                 SetClips(so, "gathered", Clips("Pickup"));
                 SetClips(so, "swishes", Clips("Whoosh"));
                 SetClips(so, "refusals", Clips("Err"));
+                SetClips(so, "knapped", Clips("Chip"));
 
                 // A hit sound for every tool, by its kind.
                 var tools = new List<ToolDefinition>();

@@ -29,8 +29,8 @@ MonoBehaviour:
   windSway: 0
   fallenForm: {fileID: 0}
   shine: 0
-  fall: 0
-  stabilityLoss: 100
+  fall: 1
+  stabilityLoss: 34
   breaksInto: {fileID: 0}
   isWorktop: 0
   isSoft: 1

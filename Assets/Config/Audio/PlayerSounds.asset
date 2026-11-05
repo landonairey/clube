@@ -317,3 +317,11 @@ MonoBehaviour:
     volume: 0.7
     pitchJitter: 0
     playAll: 1
+  knapped:
+    clips:
+    - {fileID: 8300000, guid: 5021ff502361ac74a91e2bfe53a10b62, type: 3}
+    - {fileID: 8300000, guid: 3c3bb7e48b5fae847817a96704030df6, type: 3}
+    - {fileID: 8300000, guid: fbdba8e82417bb54baba8106ec41cc2b, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
+    playAll: 0

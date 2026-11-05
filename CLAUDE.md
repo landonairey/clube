@@ -579,6 +579,7 @@ it (the merchant table's). Smelted metal keeps slag (`CraftingStation.SmeltPurit
 so a bun's quality is its purity; hammering drives out half the slag (`ForgedQuality`). Crushing keeps volume (the crushed
 ore is the rest of the item). `PlayerController.Knockback` keeps its hop on the frame it starts.
 GL379: `GrassScatter` thins far tufts on the CPU (tufts sorted by a hashed pick, a far chunk sends the share it keeps) and resumes its chunk scan where it stopped; `InstanceBatches` passes each batch's bounds.
+GL380-GL383: far grass is four-tuft clumps drawn without depth passes (`GrassScatter.FarMaterial`); fallen leaves drop like dirt and `FallenLeaves` follows them down; `SoundSynth.Chip` plays on `BoulderBashing.HandAxeMade`.
 Height maps: `Docs/images/20261103 *`.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the

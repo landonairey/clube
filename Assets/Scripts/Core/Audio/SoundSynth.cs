@@ -206,6 +206,27 @@ namespace Clube.Core
             return Normalize(samples, 0.85f);
         }
 
+        /// <summary>
+        /// Stone knapped on stone (GL381): three or four sharp strikes a moment apart, each a bright crack with a short stony
+        /// tock under it and a few flakes skittering off.
+        /// </summary>
+        public static float[] Chip(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(0.9f)];
+            int strikes = random.Next(3, 5);
+            float at = 0.01f;
+            for (int i = 0; i < strikes; i++)
+            {
+                float level = Range(random, 0.7f, 1f);
+                AddNoise(samples, random, at, 0.0003f, 0.008f, 0.9f * level, Band(Range(random, 2600f, 3800f), 2.2f));
+                AddTone(samples, at, Range(random, 900f, 1250f), Range(random, 650f, 850f), 0.0005f, 0.025f, 0.35f * level);
+                AddCrackles(samples, random, at + 0.01f, 0.08f, 12, 0.18f * level, 4500f);
+                at += Range(random, 0.17f, 0.24f);
+            }
+            return Normalize(samples, 0.85f);
+        }
+
         /// <summary>Soft ground coming away: a thud of earth.</summary>
         public static float[] Thud(int seed)
         {

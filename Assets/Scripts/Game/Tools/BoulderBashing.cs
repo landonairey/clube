@@ -105,6 +105,9 @@ namespace Clube.Game
         /// <summary>Raised with what a bash did, or why it couldn't ("Made a hand axe", "Crushing ore needs Mining 2").</summary>
         public event Action<string> Message;
 
+        /// <summary>A stone was knapped into a hand axe (GL381), for its sound.</summary>
+        public event Action HandAxeMade;
+
         /// <summary>True when Place would bash this frame: a stone or crushable ore in hand, aimed at a boulder within reach.</summary>
         public bool CanBash => (HoldsSomethingToBash(out _, out _) || HoldsSomethingToRefine(out _)) && AimsAtBoulder();
 
@@ -247,6 +250,7 @@ namespace Clube.Game
                 items.Add(handAxe, 1);
                 skills?.Skills.Award(SkillType.Crafting, handAxeExperience);
                 Message?.Invoke($"Knocked the stone into a {handAxe.DisplayName.ToLowerInvariant()}");
+                HandAxeMade?.Invoke();
                 return true;
             }
             if (skills != null && !skills.Skills.Has(crushSkill, crushLevel))
