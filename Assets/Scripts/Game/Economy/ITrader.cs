@@ -28,6 +28,9 @@ namespace Clube.Game
         /// <summary>Where they are: the screen closes when the player walks away, or they do.</summary>
         Vector3 Position { get; }
 
+        /// <summary>The coins they have to buy with (GL426: a shopkeeper's 525 a day); null for no limit (the merchant table).</summary>
+        Wallet Purse { get; }
+
         /// <summary>False once they stop trading (a shop closing), which closes the screen.</summary>
         bool IsTrading { get; }
     }

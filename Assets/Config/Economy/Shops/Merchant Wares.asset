@@ -50,9 +50,9 @@ MonoBehaviour:
   trains: 
   coinsPerExperience: 2
   displayed:
-  - {fileID: 11400000, guid: da484e758e746c7499d8857c26737e70, type: 2}
   - {fileID: 11400000, guid: 781da9aaba956e543b3c7da3e7b05bee, type: 2}
-  - {fileID: 11400000, guid: 4843d7b7f1c8d204baec0cd100bc7a91, type: 2}
-  - {fileID: 11400000, guid: 6942444238c904f45ae591e148df29a1, type: 2}
+  - {fileID: 11400000, guid: 4d73f7764f9054f489c276538d90d6d6, type: 2}
   - {fileID: 11400000, guid: 4deb51d79b8d11b43afd2b9a9f938789, type: 2}
+  - {fileID: 11400000, guid: 4843d7b7f1c8d204baec0cd100bc7a91, type: 2}
+  - {fileID: 11400000, guid: da484e758e746c7499d8857c26737e70, type: 2}
   colour: {r: 0.5, g: 0.28, b: 0.55, a: 1}

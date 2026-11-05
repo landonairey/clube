@@ -46,6 +46,9 @@ namespace Clube.Game
 
         public bool IsTrading => isActiveAndEnabled;
 
+        // The merchant table buys without limit.
+        public Wallet Purse => null;
+
         public string Prompt => $"Trade with {displayName.ToLowerInvariant()}";
 
         public void Interact(PlayerInteractor by)

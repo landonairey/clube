@@ -69,6 +69,8 @@ namespace Clube.Game
         private bool placed;
         private bool sweeping;
         private float lastHour;
+        private float dailyCoins;
+        private int purseDay;
 
         /// <summary>The shop this keeper keeps.</summary>
         public ShopSpecialty Shop => shop;
@@ -86,12 +88,15 @@ namespace Clube.Game
         public int Mined { get; private set; }
 
         /// <summary>Sets the keeper up for a shop in the town; called once, before the first frame.</summary>
-        public void Setup(ShopSpecialty shop, PriceList master, ShopHours hours, DayNightCycle clock, TownContext town, Material material, int seed)
+        public void Setup(ShopSpecialty shop, PriceList master, ShopHours hours, DayNightCycle clock, TownContext town, Material material, int seed, float dailyCoins = 525f)
         {
             this.shop = shop;
             this.hours = hours;
             this.clock = clock;
             this.town = town;
+            this.dailyCoins = dailyCoins;
+            Purse = new Wallet(dailyCoins);
+            purseDay = clock != null ? clock.Day : 0;
             prices = shop.BuyingPrices(master);
             offers = shop.Offers(master);
             plot = TownLayout.PlotOf(shop.Kind);
@@ -122,6 +127,9 @@ namespace Clube.Game
         public Vector3 Position => transform.position;
 
         public bool IsTrading => AtCounter;
+
+        /// <summary>The coins the keeper has to buy with today (GL426): back to the day's amount each morning.</summary>
+        public Wallet Purse { get; private set; }
 
         // IClosableInteractable.
 
@@ -166,6 +174,13 @@ namespace Clube.Game
                 return;
             }
             float hour = Hour;
+            // A new day: the purse is full again (GL426).
+            int day = clock != null ? clock.Day : 0;
+            if (day != purseDay)
+            {
+                purseDay = day;
+                Purse = new Wallet(dailyCoins);
+            }
             activity = hours.At(hour);
             Place wanted = activity == KeeperActivity.Counter ? Place.Counter
                 : activity == KeeperActivity.Sleep ? Place.Bed

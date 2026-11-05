@@ -39,6 +39,8 @@ namespace Clube.Game
         private GUIStyle countStyle;
         private PlayerSkills skills;
         private Vector2 offerScroll;
+        private string refusal;
+        private float refusalUntil;
 
         /// <summary>The trader being used, or null when closed.</summary>
         public ITrader Current { get; private set; }
@@ -102,7 +104,15 @@ namespace Clube.Game
             {
                 return 0;
             }
-            int sold = Current.Prices.Sell(item, count, inventory.Inventory, wallet.Wallet);
+            // Into a holding wallet first, so a trader with a purse (GL426) pays only what they have.
+            if (Current.Purse != null && Current.Prices.TryGetLot(item, out int coins, out int lot)
+                && !CanPay(Mathf.Min(count, inventory.Inventory.Count(item)) / lot * coins * inventory.Inventory.QualityOf(item)))
+            {
+                return 0;
+            }
+            var earned = new Wallet();
+            int sold = Current.Prices.Sell(item, count, inventory.Inventory, earned);
+            Pay(earned.Coins);
             if (sold > 0)
             {
                 Sold?.Invoke(sold);
@@ -144,7 +154,11 @@ namespace Clube.Game
             GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   (E to close)");
             GUI.Label(new Rect(panel.xMax - Padding - 160f, y, 160f, 20f), $"Your coins: {Wallet.Format(wallet.Wallet.Coins)}");
             y += 24f;
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Click one of your items to see what they pay for it.");
+            // What the trader has left to buy with today (GL426), or why a sale was refused.
+            string note = Time.unscaledTime < refusalUntil ? refusal
+                : Current.Purse != null ? $"Click one of your items to see what they pay. They have {Wallet.Format(Current.Purse.Coins)} to buy with today."
+                : "Click one of your items to see what they pay for it.";
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), note);
             y += 22f;
 
             // While a group is picked only its stacks are lit (GL310): the last Ctrl-clicked slot may have just left it.
@@ -232,6 +246,25 @@ namespace Clube.Game
             InventoryGridGui.DrawTooltip();
         }
 
+        // The trader can pay this many coins today (GL426); a trader with no purse always can.
+        private bool CanPay(float coins)
+        {
+            if (Current.Purse == null || Current.Purse.Coins + 1e-3f >= coins)
+            {
+                return true;
+            }
+            refusal = $"{Current.DisplayName} has only {Wallet.Format(Current.Purse.Coins)} left today";
+            refusalUntil = Time.unscaledTime + 3f;
+            return false;
+        }
+
+        // Coins from the trader's purse (if they have one) to the player.
+        private void Pay(float coins)
+        {
+            Current.Purse?.Spend(Mathf.Min(coins, Current.Purse.Coins));
+            wallet.Wallet.Earn(coins);
+        }
+
         // Coins to two places at most: "50c", "0.1c", "0.001c".
         private static string FormatCoins(float coins)
         {
@@ -299,7 +332,11 @@ namespace Clube.Game
                 inventory.Inventory.Remove(offer.Item, lot - left);
                 return;
             }
-            if (!wallet.Wallet.Spend(offer.Coins))
+            if (wallet.Wallet.Spend(offer.Coins))
+            {
+                Current.Purse?.Earn(offer.Coins);
+            }
+            else
             {
                 inventory.Inventory.Remove(offer.Item, lot);
             }
@@ -344,8 +381,12 @@ namespace Clube.Game
                 return;
             }
             float earned = Current.Prices.PriceOf(stack, stack.Amount);
+            if (!CanPay(earned))
+            {
+                return;
+            }
             items.TakeAll(slot);
-            wallet.Wallet.Earn(earned);
+            Pay(earned);
             Sold?.Invoke(Mathf.Max(1, stack.Count));
             selected = -1;
         }
@@ -417,7 +458,7 @@ namespace Clube.Game
             GUI.Label(new Rect(x, y + 4f, 360f, 40f),
                 $"{group.Count} stack{(group.Count == 1 ? "" : "s")} picked: {FormatAmount(amount)} in all\nCtrl-click: one stack in or out; Ctrl+Shift: all of an item");
             GUI.enabled = coins > 0f;
-            if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), $"Sell picked\n{FormatCoins(coins)}"))
+            if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), $"Sell picked\n{FormatCoins(coins)}") && CanPay(coins))
             {
                 foreach (int slot in new System.Collections.Generic.List<int>(group))
                 {
@@ -459,8 +500,12 @@ namespace Clube.Game
             // Any amount sells, a part item included (GL246); a price that isn't a whole coin pays its part of one (GL199).
             float sold = Mathf.Min(amount, stack.Amount);
             float earned = Current.Prices.PriceOf(stack, sold);
+            if (!CanPay(earned))
+            {
+                return;
+            }
             sold = items.RemoveAmount(slot, sold);
-            wallet.Wallet.Earn(earned);
+            Pay(earned);
             if (sold > 0f)
             {
                 Sold?.Invoke(Mathf.Max(1, Mathf.FloorToInt(sold)));

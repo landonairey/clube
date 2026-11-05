@@ -37,10 +37,5 @@ MonoBehaviour:
   sellMarkup: 1.5
   trains: 06000000
   coinsPerExperience: 2
-  displayed:
-  - {fileID: 11400000, guid: 4273b1a1d0181c84a8fd5cdb5377de07, type: 2}
-  - {fileID: 11400000, guid: 77d0fe700a4ca9f439cd43a5d6581c2d, type: 2}
-  - {fileID: 11400000, guid: abc86bcbe8361da41bd3f644418bc0a3, type: 2}
-  - {fileID: 11400000, guid: 1e3311289ece4ce428134389e92a4e43, type: 2}
-  - {fileID: 11400000, guid: 9feabda89ca47d5479fc62960a078576, type: 2}
+  displayed: []
   colour: {r: 0.22, g: 0.32, b: 0.6, a: 1}
