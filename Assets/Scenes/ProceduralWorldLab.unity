@@ -5442,15 +5442,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: aac6d08fec8f7dd458da04d36161f48f, type: 2}
   prices: {fileID: 11400000, guid: 44577251d34951d40bd1ac9b329bc569, type: 2}
   material: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
+  textMaterial: {fileID: 2100000, guid: e9c1e17c90ccf8b4e922e9392fda6ee5, type: 2}
   hours:
     Open: 9
     Close: 17
     Sleep: 18
     Wake: 6
   maxDistance: 1000
-  keepFromSpawn: 70
   waterWaitSeconds: 30
   pathMaterial: Loose stone
+  groundMaterial: Dirt
+  searchBudgetMilliseconds: 4
 --- !u!4 &870862399
 Transform:
   m_ObjectHideFlags: 0

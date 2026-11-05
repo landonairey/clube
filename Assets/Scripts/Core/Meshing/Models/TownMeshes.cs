@@ -3,16 +3,15 @@ using UnityEngine;
 namespace Clube.Core
 {
     /// <summary>
-    /// Low-poly models of the town (GL400, GL405), made in code as vertex-coloured meshes for <c>Clube/Low Poly</c>: the
-    /// cobblestone wall, the gate's leaves, the shops and the props the keepers' chores use. The wall is in the town's frame
-    /// (<see cref="TownLayout"/>), everything else in its own: origin on the ground at its centre, front facing +z.
+    /// Low-poly models of the town (GL400, GL405, GL414), made in code as vertex-coloured meshes for <c>Clube/Low Poly</c>:
+    /// the gate's leaves, signs, lanterns and the props the keepers' chores use. The wall, the shops and the shafts are
+    /// terrain (<see cref="TownStructures"/>). Each model is in its own frame: origin on the ground at its centre, front facing +z.
     /// </summary>
     public static class TownMeshes
     {
         private static readonly Color Timber = new Color(0.55f, 0.4f, 0.25f);
         private static readonly Color DarkTimber = new Color(0.36f, 0.25f, 0.15f);
         private static readonly Color Plank = new Color(0.62f, 0.47f, 0.3f);
-        private static readonly Color Thatch = new Color(0.58f, 0.48f, 0.27f);
         private static readonly Color Stone = new Color(0.52f, 0.51f, 0.5f);
         private static readonly Color Iron = new Color(0.27f, 0.28f, 0.3f);
         private static readonly Color Ember = new Color(1f, 0.45f, 0.12f);
@@ -21,87 +20,6 @@ namespace Clube.Core
         private static readonly Color Cloth = new Color(0.55f, 0.35f, 0.3f);
         private static readonly Color Blanket = new Color(0.42f, 0.36f, 0.55f);
         private static readonly Color Paper = new Color(0.86f, 0.8f, 0.66f);
-
-        // Courses of cobbles up the wall, and the range of a cobble's length along it.
-        private const float CourseHeight = 0.4f;
-        private const float MinCobble = 0.45f;
-        private const float MaxCobble = 0.85f;
-
-        /// <summary>
-        /// The town wall (GL400) in the town's frame: courses of uneven cobbles round the square, a darker capping course,
-        /// and two tall pillars either side of the gate's gap in the -z wall. Seeded, so a town's wall always looks the same.
-        /// </summary>
-        public static Mesh Wall(int seed)
-        {
-            var model = new LowPolyMeshBuilder();
-            var random = new System.Random(seed);
-            float outer = TownLayout.OuterHalf;
-            float inner = TownLayout.InnerHalf;
-            float middle = (outer + inner) * 0.5f;
-            float thickness = TownLayout.WallThickness;
-            float gate = TownLayout.GateWidth * 0.5f;
-            const float Pillar = 1.5f;
-
-            // The far and near walls run the full width; the sides fit between them.
-            WallRun(model, random, new Vector2(-outer, middle), new Vector2(outer, middle), thickness);
-            WallRun(model, random, new Vector2(-outer, -middle), new Vector2(-gate - Pillar, -middle), thickness);
-            WallRun(model, random, new Vector2(gate + Pillar, -middle), new Vector2(outer, -middle), thickness);
-            WallRun(model, random, new Vector2(-middle, -inner), new Vector2(-middle, inner), thickness);
-            WallRun(model, random, new Vector2(middle, -inner), new Vector2(middle, inner), thickness);
-
-            foreach (float side in new[] { -1f, 1f })
-            {
-                float x = side * (gate + Pillar * 0.5f);
-                for (float y = 0f; y < TownLayout.WallHeight + 0.6f; y += CourseHeight)
-                {
-                    Color tint = Stone * (0.82f + (float)random.NextDouble() * 0.22f);
-                    model.Block(new Vector3(x, y, -middle), new Vector3(Pillar - 0.04f, CourseHeight - 0.03f, thickness + 0.3f), tint);
-                }
-                model.Block(new Vector3(x, TownLayout.WallHeight + 0.6f, -middle), new Vector3(Pillar + 0.15f, 0.18f, thickness + 0.45f), Stone * 0.7f);
-            }
-            return model.Make("Town wall");
-        }
-
-        // One straight run of wall from a to b (along x or z), course by course; joints are staggered by the random lengths.
-        private static void WallRun(LowPolyMeshBuilder model, System.Random random, Vector2 a, Vector2 b, float thickness)
-        {
-            Vector2 along = b - a;
-            float length = along.magnitude;
-            if (length < 0.01f)
-            {
-                return;
-            }
-            Vector2 dir = along / length;
-            bool alongX = Mathf.Abs(dir.x) > 0.5f;
-            int courses = Mathf.CeilToInt(TownLayout.WallHeight / CourseHeight);
-            for (int course = 0; course < courses; course++)
-            {
-                float y = course * CourseHeight;
-                float height = Mathf.Min(CourseHeight, TownLayout.WallHeight - y);
-                float t = 0f;
-                while (t < length - 0.01f)
-                {
-                    float piece = Mathf.Min(length - t, Mathf.Lerp(MinCobble, MaxCobble, (float)random.NextDouble()));
-                    Vector2 centre = a + dir * (t + piece * 0.5f);
-                    // Each cobble sits a touch in or out of the face and leaves a thin mortar joint round it.
-                    float bulge = ((float)random.NextDouble() - 0.5f) * 0.08f;
-                    Color tint = Stone * (0.75f + (float)random.NextDouble() * 0.3f);
-                    tint.r *= 1f + ((float)random.NextDouble() - 0.5f) * 0.08f;
-                    Vector3 size = alongX
-                        ? new Vector3(piece - 0.05f, height - 0.04f, thickness + bulge)
-                        : new Vector3(thickness + bulge, height - 0.04f, piece - 0.05f);
-                    model.Block(new Vector3(centre.x, y, centre.y), size, tint);
-                    t += piece;
-                }
-            }
-            // The mortar behind the cobbles, so the joints never show light through.
-            Vector2 mid = (a + b) * 0.5f;
-            Vector3 core = alongX ? new Vector3(length, TownLayout.WallHeight, thickness - 0.12f) : new Vector3(thickness - 0.12f, TownLayout.WallHeight, length);
-            model.Block(new Vector3(mid.x, 0f, mid.y), core, Stone * 0.45f);
-            // The capping course: flat, darker slabs a little wider than the wall.
-            Vector3 cap = alongX ? new Vector3(length, 0.16f, thickness + 0.2f) : new Vector3(thickness + 0.2f, 0.16f, length);
-            model.Block(new Vector3(mid.x, TownLayout.WallHeight, mid.y), cap, Stone * 0.68f);
-        }
 
         /// <summary>
         /// One leaf of the wooden gate (GL400): vertical planks with two cross rails and a brace, hinged at the origin and
@@ -128,51 +46,36 @@ namespace Clube.Core
             return model.Make("Town gate leaf");
         }
 
-        /// <summary>
-        /// A shop (GL400) in its own frame: a plank floor, timber walls on three sides, a thatched gable roof, an open front
-        /// with a counter across it, and an awning and sign board in the shop's colour.
-        /// </summary>
-        public static Mesh Shop(Color colour)
+        /// <summary>A shop's sign board (GL400): a plank in a frame of the shop's colour, its face towards +z, centred on the origin.</summary>
+        public static Mesh SignBoard(Color colour)
         {
             var model = new LowPolyMeshBuilder();
-            float w = TownLayout.ShopWidth * 0.5f;
-            float d = TownLayout.ShopDepth * 0.5f;
-            float h = TownLayout.ShopHeight;
-            model.Block(new Vector3(0f, 0f, 0f), new Vector3(w * 2f, 0.1f, d * 2f), Plank * 0.9f);
-            // Back and sides: plank walls between posts.
-            model.Block(new Vector3(0f, 0f, -d + 0.1f), new Vector3(w * 2f, h, 0.2f), Timber);
-            model.Block(new Vector3(-w + 0.1f, 0f, 0f), new Vector3(0.2f, h, d * 2f), Timber * 0.95f);
-            model.Block(new Vector3(w - 0.1f, 0f, 0.35f), new Vector3(0.2f, h, d * 2f - 0.7f), Timber * 0.95f);
-            foreach (float x in new[] { -w + 0.12f, w - 0.12f })
-            {
-                foreach (float z in new[] { -d + 0.12f, d - 0.12f })
-                {
-                    model.Block(new Vector3(x, 0f, z), new Vector3(0.26f, h + 0.05f, 0.26f), DarkTimber);
-                }
-            }
-            model.Block(new Vector3(0f, h - 0.2f, d - 0.12f), new Vector3(w * 2f, 0.24f, 0.24f), DarkTimber);
-            // The roof: a gable along x, its ends filled in.
-            const float Rise = 1.2f;
-            model.GableRoof(new Vector3(0f, h, 0f), w * 2f + 0.5f, d * 2f + 0.8f, Rise, 0.14f, Thatch);
-            foreach (float x in new[] { -w + 0.1f, w - 0.1f })
-            {
-                var centre = new Vector3(x, h + Rise * 0.4f, 0f);
-                model.Triangle(new Vector3(x, h, -d), new Vector3(x, h, d), new Vector3(x, h + Rise, 0f), centre - Vector3.right * Mathf.Sign(x), Timber * 0.88f);
-                model.Triangle(new Vector3(x, h, d), new Vector3(x, h, -d), new Vector3(x, h + Rise, 0f), centre + Vector3.right * Mathf.Sign(x), Timber * 0.88f);
-            }
-            // The counter: a plank front and a lighter top.
-            float counter = TownLayout.CounterHeight;
-            model.Block(new Vector3(0f, 0f, TownLayout.CounterZ), new Vector3(TownLayout.CounterLength, counter - 0.08f, 0.55f), Timber * 0.85f);
-            model.Block(new Vector3(0f, counter - 0.08f, TownLayout.CounterZ), new Vector3(TownLayout.CounterLength + 0.2f, 0.08f, 0.7f), Plank * 1.1f);
-            // The awning: a sloping strip of cloth over the front, in the shop's colour, with a pale stripe.
-            model.Box(new Vector3(0f, h - 0.15f, d + 0.45f), new Vector3(w * 2f + 0.3f, 0.06f, 1f), Quaternion.Euler(18f, 0f, 0f), colour);
-            model.Box(new Vector3(0f, h - 0.33f, d + 0.93f), new Vector3(w * 2f + 0.3f, 0.2f, 0.04f), Quaternion.identity, Color.Lerp(colour, Color.white, 0.5f));
-            // The sign board over the counter.
-            model.Block(new Vector3(0f, h + 0.05f, d + 0.02f), new Vector3(2.6f, 0.62f, 0.08f), colour * 0.75f);
-            model.Block(new Vector3(0f, h + 0.1f, d + 0.06f), new Vector3(2.4f, 0.5f, 0.04f), Color.Lerp(Plank, Color.white, 0.25f));
-            // A shelf on the back wall.
-            model.Block(new Vector3(-1.4f, 1.4f, -d + 0.4f), new Vector3(2.6f, 0.06f, 0.45f), Plank);
-            return model.Make("Shop");
+            model.Box(new Vector3(0f, 0.2f, 0f), new Vector3(2.4f, 0.5f, 0.06f), Quaternion.identity, colour * 0.8f);
+            model.Box(new Vector3(0f, 0.2f, 0.02f), new Vector3(2.24f, 0.38f, 0.04f), Quaternion.identity, Color.Lerp(Plank, Color.white, 0.3f));
+            // Two short chains up to the lintel.
+            model.Box(new Vector3(-0.95f, 0.5f, 0f), new Vector3(0.03f, 0.12f, 0.03f), Quaternion.identity, Iron);
+            model.Box(new Vector3(0.95f, 0.5f, 0f), new Vector3(0.03f, 0.12f, 0.03f), Quaternion.identity, Iron);
+            return model.Make("Sign board");
+        }
+
+        /// <summary>A signpost (GL414): a post with a board at head height, its face towards +z.</summary>
+        public static Mesh SignPost()
+        {
+            var model = new LowPolyMeshBuilder();
+            model.Prism(new Vector3(0f, -0.3f, 0f), new Vector3(0f, 1.9f, 0f), 0.06f, 0.05f, 6, DarkTimber);
+            model.Box(new Vector3(0f, 1.62f, 0f), new Vector3(1.05f, 0.34f, 0.05f), Quaternion.identity, Plank * 1.1f);
+            return model.Make("Sign post");
+        }
+
+        /// <summary>A lantern (GL414): an iron hood and base round a glowing core, hung from a short chain; origin at the top.</summary>
+        public static Mesh Lantern()
+        {
+            var model = new LowPolyMeshBuilder();
+            model.Box(new Vector3(0f, 0.1f, 0f), new Vector3(0.025f, 0.2f, 0.025f), Quaternion.identity, Iron);
+            model.Prism(new Vector3(0f, -0.02f, 0f), new Vector3(0f, 0.04f, 0f), 0.11f, 0.03f, 6, Iron);
+            model.Prism(new Vector3(0f, -0.2f, 0f), new Vector3(0f, -0.02f, 0f), 0.07f, 0.07f, 6, Ember * 1.2f);
+            model.Prism(new Vector3(0f, -0.24f, 0f), new Vector3(0f, -0.2f, 0f), 0.1f, 0.1f, 6, Iron);
+            return model.Make("Lantern");
         }
 
         /// <summary>A sleeping roll (GL406): a flat blanket along x with a rolled pillow at the +x end.</summary>

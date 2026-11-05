@@ -26,6 +26,9 @@ namespace Clube.Core
         /// <summary>Metres between the sites tried.</summary>
         public float Step = 8f;
 
+        /// <summary>A point on the grid of sites tried: sites lie at it plus whole steps (GL408: the centres of land parcels).</summary>
+        public Vector2 GridOrigin;
+
         /// <summary>
         /// The ores to be near, one group each (tin; copper; silver; gold): a group is near when any of its materials' nodes is.
         /// </summary>
@@ -51,7 +54,7 @@ namespace Clube.Core
     /// <summary>The site picked for a town (GL399), and why: how far it is from each ore group and from water.</summary>
     public readonly struct TownPlacement
     {
-        public TownPlacement(Vector2 centre, float ground, float rise, float score, float waterDistance, float[] oreDistances)
+        public TownPlacement(Vector2 centre, float ground, float rise, float score, float waterDistance, float[] oreDistances, Vector3[] oreNodes = null)
         {
             Centre = centre;
             Ground = ground;
@@ -59,6 +62,7 @@ namespace Clube.Core
             Score = score;
             WaterDistance = waterDistance;
             OreDistances = oreDistances;
+            OreNodes = oreNodes;
         }
 
         /// <summary>False when no site in the area qualified.</summary>
@@ -81,6 +85,9 @@ namespace Clube.Core
 
         /// <summary>Metres to the nearest node of each ore group, in the request's order (infinity for none).</summary>
         public float[] OreDistances { get; }
+
+        /// <summary>The nearest node of each ore group (its centre), in the request's order; null for a group with none (GL414).</summary>
+        public Vector3[] OreNodes { get; }
     }
 
     /// <summary>
@@ -127,9 +134,9 @@ namespace Clube.Core
         private readonly OreField ores;
         private readonly WaterMap water;
         private readonly Rect area;
-        private readonly List<Vector2>[] nodes;
+        private readonly List<Vector3>[] nodes;
         private readonly List<Vector3Int> oreCells = new List<Vector3Int>();
-        private readonly List<(float score, Vector2 centre, float water, float[] ore)> candidates = new List<(float, Vector2, float, float[])>();
+        private readonly List<(float score, Vector2 centre, float water, float[] ore, Vector3[] near)> candidates = new List<(float, Vector2, float, float[], Vector3[])>();
         private readonly System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
         private WaterDistance waterDistance;
         private int phase;
@@ -154,10 +161,10 @@ namespace Clube.Core
                 a = Intersect(a, mapArea);
             }
             area = a;
-            nodes = new List<Vector2>[request.OreGroups.Count];
+            nodes = new List<Vector3>[request.OreGroups.Count];
             for (int g = 0; g < nodes.Length; g++)
             {
-                nodes[g] = new List<Vector2>();
+                nodes[g] = new List<Vector3>();
             }
         }
 
@@ -250,7 +257,7 @@ namespace Clube.Core
                 {
                     if (Array.IndexOf(request.OreGroups[g], node.Material) >= 0)
                     {
-                        nodes[g].Add(new Vector2(node.Centre.x, node.Centre.z));
+                        nodes[g].Add(node.Centre);
                     }
                 }
             }
@@ -261,9 +268,9 @@ namespace Clube.Core
         {
             float halfFootprint = request.Footprint * 0.5f;
             float step = Mathf.Max(1f, request.Step);
-            for (float z = area.yMin; z <= area.yMax + 1e-3f; z += step)
+            for (float z = FirstOnGrid(area.yMin, request.GridOrigin.y, step); z <= area.yMax + 1e-3f; z += step)
             {
-                for (float x = area.xMin; x <= area.xMax + 1e-3f; x += step)
+                for (float x = FirstOnGrid(area.xMin, request.GridOrigin.x, step); x <= area.xMax + 1e-3f; x += step)
                 {
                     var centre = new Vector2(x, z);
                     float fromSpawn = Vector2.Distance(centre, request.Spawn);
@@ -278,10 +285,11 @@ namespace Clube.Core
                         continue;
                     }
                     var oreDistances = new float[nodes.Length];
+                    var near = new Vector3[nodes.Length];
                     float score = 0f;
                     for (int g = 0; g < nodes.Length; g++)
                     {
-                        oreDistances[g] = Nearest(nodes[g], centre);
+                        oreDistances[g] = Nearest(nodes[g], centre, out near[g]);
                         score += Mathf.Max(0f, Mathf.Min(oreDistances[g], Missing) - request.OreNear);
                     }
                     if (waterDistance != null)
@@ -290,7 +298,7 @@ namespace Clube.Core
                     }
                     // A little for the walk from the spawn, so of two equal sites the nearer wins.
                     score += fromSpawn * 0.01f;
-                    candidates.Add((score, centre, wet, oreDistances));
+                    candidates.Add((score, centre, wet, oreDistances, near));
                 }
             }
             candidates.Sort((a, b) => a.score != b.score ? a.score.CompareTo(b.score)
@@ -315,7 +323,7 @@ namespace Clube.Core
             float score = candidate.score + rise * request.RiseWeight;
             if (!best.Found || score < best.Score)
             {
-                best = new TownPlacement(candidate.centre, ground, rise, score, candidate.water, candidate.ore);
+                best = new TownPlacement(candidate.centre, ground, rise, score, candidate.water, candidate.ore, candidate.near);
             }
         }
 
@@ -326,14 +334,27 @@ namespace Clube.Core
             return Rect.MinMaxRect(xMin, yMin, xMax, yMax);
         }
 
-        private static float Nearest(List<Vector2> points, Vector2 at)
+        // The horizontal distance to the nearest of the points, and which it is.
+        private static float Nearest(List<Vector3> points, Vector2 at, out Vector3 nearest)
         {
             float bestDistance = float.PositiveInfinity;
-            foreach (Vector2 point in points)
+            nearest = default;
+            foreach (Vector3 point in points)
             {
-                bestDistance = Mathf.Min(bestDistance, (point - at).sqrMagnitude);
+                float distance = (new Vector2(point.x, point.z) - at).sqrMagnitude;
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    nearest = point;
+                }
             }
             return Mathf.Sqrt(bestDistance);
+        }
+
+        // The first grid line at or after a value: the origin plus whole steps.
+        private static float FirstOnGrid(float from, float origin, float step)
+        {
+            return origin + Mathf.Ceil((from - origin) / step - 1e-4f) * step;
         }
 
         // The ground across the footprint, sampled on a 5 x 5 grid: its middle height and how much it rises; false when

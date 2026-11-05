@@ -178,6 +178,109 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Parcel_Locked_CantBeBoughtOrGranted()
+        {
+            var parcels = new LandParcels(32f, 100, 50);
+            parcels.Grant(new Vector2Int(0, 0));
+            var town = new Vector2Int(1, 0);
+            Assert.IsTrue(parcels.IsBuyable(town), "beside owned land");
+            Assert.IsTrue(parcels.Lock(town));
+            Assert.IsFalse(parcels.IsBuyable(town), "the town's land is never for sale");
+            Assert.IsFalse(parcels.Grant(town));
+            Assert.IsFalse(parcels.TryBuy(town, new Wallet(10000f)));
+            Assert.IsFalse(parcels.IsOwned(town));
+        }
+
+        [Test]
+        public void Town_FitsInOneParcel()
+        {
+            Assert.LessOrEqual(TownLayout.OuterHalf, TownLayout.ParcelSize * 0.5f);
+            foreach (TownLayout.ShopPlot plot in TownLayout.Shops)
+            {
+                Rect pad = plot.PadRect;
+                Assert.LessOrEqual(Mathf.Max(Mathf.Abs(pad.xMin), Mathf.Abs(pad.xMax), Mathf.Abs(pad.yMin), Mathf.Abs(pad.yMax)), TownLayout.InnerHalf, $"{plot.Kind}'s pad inside the wall");
+            }
+        }
+
+        [Test]
+        public void ShaftHeads_FourFit_ClearOfShopsAndPathsAndEachOther()
+        {
+            var towards = new List<Vector2> { new Vector2(30f, 0f), new Vector2(-30f, 0f), new Vector2(0f, 30f), new Vector2(5f, -30f) };
+            List<Vector2> heads = TownLayout.ShaftHeads(towards);
+            Assert.AreEqual(4, heads.Count);
+            for (int i = 0; i < heads.Count; i++)
+            {
+                Assert.IsFalse(TownLayout.IsPath(heads[i]), "not on a path");
+                foreach (TownLayout.ShopPlot plot in TownLayout.Shops)
+                {
+                    Assert.IsFalse(plot.PadRect.Contains(heads[i]), "not on a shop's pad");
+                }
+                for (int j = i + 1; j < heads.Count; j++)
+                {
+                    Assert.Greater((heads[i] - heads[j]).magnitude, TownLayout.ShaftHeadRadius * 2f, "stairwells apart");
+                }
+                // Each goes the way of its node.
+                Assert.Greater(Vector2.Dot(heads[i].normalized, towards[i].normalized), 0.2f);
+            }
+        }
+
+        [Test]
+        public void ShaftPath_StepsDownToTheNode_NoSteeperThanTheStair()
+        {
+            var node = new Vector3(20f, 4f, 3f);
+            List<Vector3> path = TownStructures.ShaftPath(Vector2.zero, node, (x, z) => 20f);
+            Assert.AreEqual(20f, path[0].y, 1e-3f, "starts at the surface");
+            Assert.AreEqual(node.y - 1f, path[path.Count - 1].y, 1e-3f, "ends level with the node");
+            for (int i = 1; i < path.Count; i++)
+            {
+                Vector3 step = path[i] - path[i - 1];
+                float run = new Vector2(step.x, step.z).magnitude;
+                Assert.LessOrEqual(-step.y, run * 0.5f + 1e-3f, "never steeper than the stair");
+                Assert.LessOrEqual(step.y, 1e-3f, "never climbs on the way down");
+            }
+            Vector3 end = path[path.Count - 1];
+            Assert.Less(new Vector2(end.x - node.x, end.z - node.z).magnitude, 1.2f, "the drift reaches the node's face");
+        }
+
+        [Test]
+        public void SquareBlock_IsSolid_WithItsNeighboursCarved()
+        {
+            var world = new World(new Vector3Int(16, 16, 16), 0.25f, samples => new ByteVoxelStorage(samples));
+            world.Load(Vector3Int.zero, null);
+            var voxel = new Vector3Int(5, 5, 5);
+            SquareVoxels.Build(world, new Dictionary<Vector3Int, byte> { { voxel, 28 } }, 0.5f);
+            for (int corner = 0; corner < 8; corner++)
+            {
+                var sample = voxel + new Vector3Int(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1);
+                Assert.AreEqual(1f, world.GetDensity(sample).Value, 0.01f);
+                Assert.AreEqual(28, world.GetMaterial(sample).Value);
+            }
+            Assert.IsFalse(world.IsCarved(voxel));
+            Assert.IsTrue(world.IsCarved(voxel + Vector3Int.right), "faces are flat: the voxels round it are carved");
+            Assert.IsTrue(world.IsCarved(voxel + Vector3Int.one), "corners too");
+        }
+
+        [Test]
+        public void Shop_HasACounter_AndRoomBehindItAndAtItsEnd()
+        {
+            const float Voxel = 0.25f;
+            var cells = new HashSet<Vector3Int>();
+            foreach ((Vector3 centre, TownStructures.ShopPart _) in TownStructures.ShopVoxels(Voxel))
+            {
+                cells.Add(Vector3Int.FloorToInt(centre / Voxel));
+            }
+            bool Solid(float x, float y, float z) => cells.Contains(Vector3Int.FloorToInt(new Vector3(x, y, z) / Voxel));
+            float floor = TownLayout.FloorHeight;
+            Assert.IsTrue(Solid(0f, floor + 0.5f, TownLayout.CounterZ - 0.1f), "a counter across the front");
+            Assert.IsFalse(Solid(TownLayout.CounterSpot.x, floor + 1f, TownLayout.CounterSpot.y), "room for the keeper behind it");
+            Assert.IsFalse(Solid(TownLayout.InsideDoor.x, floor + 1f, TownLayout.InsideDoor.y), "a way past its end");
+            Assert.IsFalse(Solid(TownLayout.BedCentre.x, floor + 0.3f, TownLayout.BedCentre.y), "room for the bed");
+            Assert.IsTrue(Solid(0f, floor + 2f, -TownLayout.ShopDepth * 0.5f + 0.1f), "a back wall");
+            Assert.IsTrue(Solid(0f, 0.1f, 0f), "a floor");
+            Assert.IsFalse(Solid(0f, floor + 1.5f, TownLayout.ShopDepth * 0.5f - 0.6f), "an open front");
+        }
+
+        [Test]
         public void Leveling_RaisesTheGroundToTheTargetHeight()
         {
             var world = new World(new Vector3Int(16, 16, 16), 1f, samples => new ByteVoxelStorage(samples));

@@ -5,10 +5,10 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// Puts the town together as game objects (GL400, GL403, GL405) under a root standing on the town's levelled ground,
-    /// turned so the gate faces the player's spawn: the cobblestone wall with its colliders, the gate, the five shops with
-    /// their signs, sleeping rolls and counter displays, the props of the keepers' chores, and a keeper per shop. Positions
-    /// come from <see cref="TownLayout"/>, models from <see cref="TownMeshes"/>.
+    /// Puts the town's game objects together (GL400, GL403, GL405, GL414) under its root, from its <see cref="TownPlan"/>:
+    /// the gate, each shop's sign, sleeping roll and counter display, the props of the keepers' chores, a sign and lanterns
+    /// for each mine shaft, and a keeper per shop. The wall, the shops and the shafts themselves are terrain, written by
+    /// <see cref="TownSite"/>; everything here stands at the height of the ground or floor under it.
     /// </summary>
     public static class TownBuilder
     {
@@ -20,35 +20,57 @@ namespace Clube.Game
             public Material Material;
             public DayNightCycle Clock;
             public ShopHours Hours;
-            public int Seed;
+            public TownContext Town;
+
+            /// <summary>The Clube/World Text material sign words are drawn with; the font's own when null.</summary>
+            public Material TextMaterial;
+
+            /// <summary>The ore group names for the shaft signs, in the plan's group order (tin, copper, silver, gold).</summary>
+            public IReadOnlyList<string> OreNames;
         }
 
-        /// <summary>Builds the town under <paramref name="root"/>, whose position and turn are the town's.</summary>
-        public static List<Shopkeeper> Build(Transform root, Parts parts)
+        /// <summary>Builds the town's objects under its root.</summary>
+        public static List<Shopkeeper> Build(Parts parts)
         {
             var keepers = new List<Shopkeeper>();
-            BuildWall(root, parts);
-            BuildGate(root, parts);
+            BuildGate(parts);
             foreach (ShopSpecialty shop in parts.Shops)
             {
                 if (shop != null)
                 {
-                    keepers.Add(BuildShop(root, shop, parts));
+                    keepers.Add(BuildShop(shop, parts));
                 }
             }
-            BuildChoreProps(root, parts);
+            BuildChoreProps(parts);
+            BuildShafts(parts);
             return keepers;
         }
 
-        private static GameObject Model(string name, Transform parent, Mesh mesh, Material material, Vector2 at, float yaw, float y = 0f)
+        // A model at a point of the world's local metres, turned about y in the world's frame.
+        private static GameObject Model(string name, Transform parent, Mesh mesh, Material material, Vector3 local, float yaw, TownContext town)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
-            go.transform.localPosition = new Vector3(at.x, y, at.y);
-            go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
-            go.AddComponent<MeshFilter>().sharedMesh = mesh;
-            go.AddComponent<MeshRenderer>().sharedMaterial = material;
+            go.transform.SetPositionAndRotation(town.ToScene(local), town.SceneRotation(yaw));
+            if (mesh != null)
+            {
+                go.AddComponent<MeshFilter>().sharedMesh = mesh;
+                go.AddComponent<MeshRenderer>().sharedMaterial = material;
+            }
             return go;
+        }
+
+        // A point of the town's frame at a height, in the world's local metres.
+        private static Vector3 At(TownPlan plan, Vector2 town, float height)
+        {
+            Vector2 world = plan.ToWorld(town);
+            return new Vector3(world.x, height, world.y);
+        }
+
+        // On the land as generated, where the town keeps its shape (the square, GL413).
+        private static Vector3 OnGround(TownPlan plan, Vector2 town)
+        {
+            return At(plan, town, plan.GroundAt(town));
         }
 
         private static void Box(GameObject on, Vector3 centre, Vector3 size)
@@ -58,61 +80,59 @@ namespace Clube.Game
             box.size = size;
         }
 
-        private static void BuildWall(Transform root, Parts parts)
+        private static void BuildGate(Parts parts)
         {
-            GameObject wall = Model("Wall", root, TownMeshes.Wall(parts.Seed), parts.Material, Vector2.zero, 0f);
-            float h = TownLayout.WallHeight;
-            float outer = TownLayout.OuterHalf;
-            float inner = TownLayout.InnerHalf;
-            float middle = (outer + inner) * 0.5f;
-            float t = TownLayout.WallThickness;
-            float gate = TownLayout.GateWidth * 0.5f;
-            Box(wall, new Vector3(0f, h * 0.5f, middle), new Vector3(outer * 2f, h, t));
-            Box(wall, new Vector3(-middle, h * 0.5f, 0f), new Vector3(t, h, inner * 2f));
-            Box(wall, new Vector3(middle, h * 0.5f, 0f), new Vector3(t, h, inner * 2f));
-            float sideLength = outer - gate;
-            Box(wall, new Vector3(-(gate + sideLength * 0.5f), h * 0.5f, -middle), new Vector3(sideLength, h, t));
-            Box(wall, new Vector3(gate + sideLength * 0.5f, h * 0.5f, -middle), new Vector3(sideLength, h, t));
-        }
-
-        private static void BuildGate(Transform root, Parts parts)
-        {
+            TownPlan plan = parts.Town.Plan;
             float middle = (TownLayout.OuterHalf + TownLayout.InnerHalf) * 0.5f;
-            var gate = new GameObject("Gate");
-            gate.transform.SetParent(root, false);
-            gate.transform.localPosition = new Vector3(0f, 0f, -middle);
+            GameObject gate = Model("Gate", parts.Town.Root, null, null, At(plan, new Vector2(0f, -middle), plan.GateGround), plan.Yaw, parts.Town);
             gate.AddComponent<TownGate>().Build(parts.Material);
         }
 
-        private static Shopkeeper BuildShop(Transform root, ShopSpecialty shop, Parts parts)
+        private static Shopkeeper BuildShop(ShopSpecialty shop, Parts parts)
         {
+            TownContext town = parts.Town;
+            TownPlan plan = town.Plan;
             TownLayout.ShopPlot plot = TownLayout.PlotOf(shop.Kind);
-            GameObject building = Model(shop.ShopName, root, TownMeshes.Shop(shop.Colour), parts.Material, plot.Centre, plot.Yaw);
-            float w = TownLayout.ShopWidth * 0.5f;
-            float d = TownLayout.ShopDepth * 0.5f;
-            float h = TownLayout.ShopHeight;
-            Box(building, new Vector3(0f, h * 0.5f, -d + 0.1f), new Vector3(w * 2f, h, 0.2f));
-            Box(building, new Vector3(-w + 0.1f, h * 0.5f, 0f), new Vector3(0.2f, h, d * 2f));
-            Box(building, new Vector3(w - 0.1f, h * 0.5f, 0.35f), new Vector3(0.2f, h, d * 2f - 0.7f));
-            Box(building, new Vector3(0f, TownLayout.CounterHeight * 0.5f, TownLayout.CounterZ), new Vector3(TownLayout.CounterLength + 0.2f, TownLayout.CounterHeight, 0.7f));
-            Box(building, new Vector3(0f, h + 0.6f, 0f), new Vector3(w * 2f + 0.5f, 0.4f, d * 2f + 0.8f));
+            float floor = plan.FloorHeight(shop.Kind);
+            float yaw = plan.Yaw + plot.Yaw;
+            var root = new GameObject(shop.ShopName).transform;
+            root.SetParent(town.Root, false);
+            root.SetPositionAndRotation(town.ToScene(At(plan, plot.Centre, floor)), town.SceneRotation(yaw));
 
-            Sign(building.transform, shop.ShopName, new Vector3(0f, h + 0.36f, d + 0.1f));
-            Model("Sleeping roll", building.transform, TownMeshes.SleepingRoll(), parts.Material, TownLayout.BedCentre, 0f, 0.1f);
-            Display(building.transform, shop, parts);
+            float d = TownLayout.ShopDepth * 0.5f;
+            // The sign hangs under the lintel over the open front.
+            GameObject sign = Local("Sign", root, TownMeshes.SignBoard(shop.Colour), parts.Material, new Vector3(0f, TownLayout.ShopHeight - 0.45f, d + 0.06f));
+            Text(sign.transform, shop.ShopName, new Vector3(0f, 0.2f, 0.045f), parts.TextMaterial);
+            Local("Sleeping roll", root, TownMeshes.SleepingRoll(), parts.Material, new Vector3(TownLayout.BedCentre.x, 0f, TownLayout.BedCentre.y));
+            Display(root, shop, parts);
 
             var keeperObject = new GameObject($"{shop.ShopName} keeper");
-            keeperObject.transform.SetParent(root, false);
+            keeperObject.transform.SetParent(town.Root, false);
             Shopkeeper keeper = keeperObject.AddComponent<Shopkeeper>();
-            keeper.Setup(shop, parts.Prices, parts.Hours, parts.Clock, root, parts.Material, parts.Seed + (int)shop.Kind * 977);
+            keeper.Setup(shop, parts.Prices, parts.Hours, parts.Clock, town, parts.Material, plan.Seed + (int)shop.Kind * 977);
             return keeper;
         }
 
-        // The shop's name on its sign board, facing out of the front.
-        private static void Sign(Transform building, string text, Vector3 at)
+        // A model in a shop's (or any parent's) own frame.
+        private static GameObject Local(string name, Transform parent, Mesh mesh, Material material, Vector3 at, float yaw = 0f)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = at;
+            go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+            if (mesh != null)
+            {
+                go.AddComponent<MeshFilter>().sharedMesh = mesh;
+                go.AddComponent<MeshRenderer>().sharedMaterial = material;
+            }
+            return go;
+        }
+
+        // Words on a sign, facing out of its front (+z).
+        private static void Text(Transform parent, string text, Vector3 at, Material material, float width = 2.1f)
         {
             var go = new GameObject("Sign text");
-            go.transform.SetParent(building, false);
+            go.transform.SetParent(parent, false);
             go.transform.localPosition = at;
             go.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
             var mesh = go.AddComponent<TextMesh>();
@@ -120,25 +140,29 @@ namespace Clube.Game
             mesh.font = font;
             mesh.text = text;
             mesh.fontSize = 64;
-            mesh.characterSize = 0.045f;
+            mesh.characterSize = 0.04f;
             mesh.anchor = TextAnchor.MiddleCenter;
             mesh.alignment = TextAlignment.Center;
             mesh.color = new Color(0.22f, 0.14f, 0.08f);
-            go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
-            // Long names shrink to fit the board.
-            float width = mesh.GetComponent<MeshRenderer>().bounds.size.x;
-            if (width > 2.3f)
+            if (material != null)
             {
-                go.transform.localScale = Vector3.one * (2.3f / width);
+                material.mainTexture = font.material.mainTexture;
+            }
+            go.GetComponent<MeshRenderer>().sharedMaterial = material != null ? material : font.material;
+            float measured = go.GetComponent<MeshRenderer>().bounds.size.x;
+            if (measured > width)
+            {
+                go.transform.localScale = Vector3.one * (width / measured);
             }
         }
 
         // Example wares on the counter (GL403), spread along it and turned a little each.
-        private static void Display(Transform building, ShopSpecialty shop, Parts parts)
+        private static void Display(Transform shopRoot, ShopSpecialty shop, Parts parts)
         {
             IReadOnlyList<ItemDefinition> items = shop.Displayed;
             int count = Mathf.Min(items.Count, 5);
-            var random = new System.Random(parts.Seed + (int)shop.Kind * 31);
+            var random = new System.Random(parts.Town.Plan.Seed + (int)shop.Kind * 31);
+            float half = TownLayout.CounterLength * 0.5f - 0.25f;
             for (int i = 0; i < count; i++)
             {
                 Mesh mesh = DisplayItemMeshes.For(items[i]);
@@ -146,47 +170,88 @@ namespace Clube.Game
                 {
                     continue;
                 }
-                float x = count == 1 ? 0f : Mathf.Lerp(-1.9f, 1.9f, i / (float)(count - 1));
-                float z = TownLayout.CounterZ + ((float)random.NextDouble() - 0.5f) * 0.25f;
+                float x = count == 1 ? 0f : Mathf.Lerp(-half, half, i / (float)(count - 1));
+                float z = TownLayout.CounterZ - 0.25f + ((float)random.NextDouble() - 0.5f) * 0.15f;
                 float yaw = ((float)random.NextDouble() - 0.5f) * 50f;
-                Model($"Display {items[i].DisplayName}", building, mesh, parts.Material, new Vector2(x, z), yaw, TownLayout.CounterHeight);
+                Local($"Display {items[i].DisplayName}", shopRoot, mesh, parts.Material, new Vector3(x, TownLayout.CounterHeight, z), yaw);
             }
         }
 
-        private static void BuildChoreProps(Transform root, Parts parts)
+        private static void BuildChoreProps(Parts parts)
         {
+            TownContext town = parts.Town;
+            TownPlan plan = town.Plan;
             var props = new GameObject("Props").transform;
-            props.SetParent(root, false);
+            props.SetParent(town.Root, false);
             Material m = parts.Material;
+            float yaw = plan.Yaw;
 
-            GameObject furnace = Model("Furnace", props, TownMeshes.Furnace(), m, TownLayout.Furnace, 180f);
+            GameObject furnace = Model("Furnace", props, TownMeshes.Furnace(), m, OnGround(plan, TownLayout.Furnace), yaw + 180f, town);
             Box(furnace, new Vector3(0f, 1.1f, 0f), new Vector3(1.5f, 2.2f, 1.5f));
-            GameObject anvil = Model("Anvil", props, TownMeshes.Anvil(), m, TownLayout.Anvil, 0f);
+            GameObject anvil = Model("Anvil", props, TownMeshes.Anvil(), m, OnGround(plan, TownLayout.Anvil), yaw, town);
             Box(anvil, new Vector3(0f, 0.45f, 0f), new Vector3(0.6f, 0.9f, 0.45f));
 
-            GameObject pile = Model("Woodpile", props, TownMeshes.Woodpile(parts.Seed), m, TownLayout.Woodpile, 0f);
+            GameObject pile = Model("Woodpile", props, TownMeshes.Woodpile(plan.Seed), m, OnGround(plan, TownLayout.Woodpile), yaw, town);
             Box(pile, new Vector3(0f, 0.45f, 0f), new Vector3(1.3f, 0.9f, 2.3f));
-            Model("Seat", props, TownMeshes.Stump(), m, TownLayout.Seat, 0f);
+            Model("Seat", props, TownMeshes.Stump(), m, OnGround(plan, TownLayout.Seat), yaw, town);
             for (int i = 0; i < TownLayout.Trees.Length; i++)
             {
-                GameObject tree = Model("Tree", props, TownMeshes.Tree(parts.Seed + i * 13), m, TownLayout.Trees[i], i * 70f);
+                GameObject tree = Model("Tree", props, TownMeshes.Tree(plan.Seed + i * 13), m, OnGround(plan, TownLayout.Trees[i]), yaw + i * 70f, town);
                 var trunk = tree.AddComponent<CapsuleCollider>();
                 trunk.center = new Vector3(0f, 2f, 0f);
                 trunk.height = 4f;
                 trunk.radius = 0.25f;
             }
 
-            GameObject bench = Model("Bench", props, TownMeshes.Bench(), m, TownLayout.Bench, 0f);
+            GameObject bench = Model("Bench", props, TownMeshes.Bench(), m, OnGround(plan, TownLayout.Bench), yaw, town);
             Box(bench, new Vector3(0f, 0.22f, 0f), new Vector3(0.4f, 0.44f, 1.6f));
-            Model("Beer table", props, TownMeshes.Table(new Vector2(0.7f, 0.7f), 0.75f), m, TownLayout.BeerTable, 0f);
 
             Color[] ores =
             {
                 DisplayItemMeshes.ColourOf("cassiterite"), DisplayItemMeshes.ColourOf("chalcopyrite"),
                 DisplayItemMeshes.ColourOf("malachite"), DisplayItemMeshes.ColourOf("silver"), DisplayItemMeshes.ColourOf("gold"),
             };
-            GameObject display = Model("Ore display", props, TownMeshes.DisplayTable(ores, parts.Seed), m, TownLayout.DisplayTable, 0f);
+            GameObject display = Model("Ore display", props, TownMeshes.DisplayTable(ores, plan.Seed), m, OnGround(plan, TownLayout.DisplayTable), yaw, town);
             Box(display, new Vector3(0f, 0.43f, 0f), new Vector3(0.8f, 0.86f, 2.2f));
+        }
+
+        // A signpost at each shaft's head naming its ore, and lanterns down the stairs and at the face (GL414).
+        private static void BuildShafts(Parts parts)
+        {
+            TownContext town = parts.Town;
+            TownPlan plan = town.Plan;
+            var shafts = new GameObject("Shafts").transform;
+            shafts.SetParent(town.Root, false);
+            Mesh post = TownMeshes.SignPost();
+            Mesh lantern = TownMeshes.Lantern();
+            foreach (TownShaft shaft in plan.Shafts)
+            {
+                string name = parts.OreNames != null && shaft.Group < parts.OreNames.Count ? parts.OreNames[shaft.Group] : "Ore";
+                var root = new GameObject($"{name} mine").transform;
+                root.SetParent(shafts, false);
+                // The post stands at the stairwell's corner, its board facing the way down.
+                Vector2 corner = shaft.Head + new Vector2(-TownLayout.ShaftHeadRadius + 0.2f, -TownLayout.ShaftHeadRadius + 0.2f);
+                GameObject sign = Model("Sign", root, post, parts.Material, OnGround(plan, corner), plan.Yaw + 45f, town);
+                Text(sign.transform, $"{name} mine", new Vector3(0f, 1.62f, 0.03f), parts.TextMaterial, 0.95f);
+                // Lanterns hung over every other turn of the stair and at the face, each with a small warm light.
+                List<Vector3> path = shaft.Path;
+                for (int i = 1; i < path.Count; i++)
+                {
+                    if (i % 2 == 1 || i == path.Count - 1)
+                    {
+                        Vector3 at = path[i] + Vector3.up * (TownStructures.ShaftHeight - 0.35f);
+                        GameObject hung = Model("Lantern", root, lantern, parts.Material, at, 0f, town);
+                        var light = new GameObject("Light").AddComponent<Light>();
+                        light.transform.SetParent(hung.transform, false);
+                        light.transform.localPosition = new Vector3(0f, -0.15f, 0f);
+                        light.type = LightType.Point;
+                        light.range = 6f;
+                        light.intensity = 1.6f;
+                        light.color = new Color(1f, 0.72f, 0.4f);
+                        light.shadows = LightShadows.None;
+                    }
+                }
+            }
         }
     }
 }

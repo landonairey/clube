@@ -17,6 +17,7 @@ namespace Clube.Game
         Examine,
         Read,
         Whittle,
+        Mine,
     }
 
     /// <summary>
@@ -150,6 +151,18 @@ namespace Clube.Game
                     head.localRotation = Quaternion.Euler(20f, 0f, 0f);
                     break;
                 }
+                case KeeperPose.Mine:
+                {
+                    // Both hands on the pick: up over the shoulder, then down into the face.
+                    float beat = Mathf.Repeat(t * 0.7f, 1f);
+                    float up = beat < 0.7f ? beat / 0.7f : 1f - (beat - 0.7f) / 0.3f;
+                    armRight.localRotation = Quaternion.Euler(-60f - up * 100f, 0f, -12f);
+                    armLeft.localRotation = Quaternion.Euler(-55f - up * 90f, 0f, 14f);
+                    torso.localRotation = Quaternion.Euler(14f - up * 10f, 0f, 0f);
+                    legLeft.localRotation = Quaternion.Euler(-12f, 0f, 0f);
+                    legRight.localRotation = Quaternion.Euler(10f, 0f, 0f);
+                    break;
+                }
                 case KeeperPose.Stoke:
                 {
                     float push = Mathf.Sin(t * 2.2f) * 0.5f + 0.5f;
@@ -236,7 +249,7 @@ namespace Clube.Game
         // The prop is out only for the chore it belongs to.
         private static bool PropShown(KeeperPose pose)
         {
-            return pose == KeeperPose.Hammer || pose == KeeperPose.Sweep || pose == KeeperPose.Drink || pose == KeeperPose.Read
+            return pose == KeeperPose.Hammer || pose == KeeperPose.Mine || pose == KeeperPose.Sweep || pose == KeeperPose.Drink || pose == KeeperPose.Read
                 || pose == KeeperPose.Whittle;
         }
 
@@ -354,9 +367,10 @@ namespace Clube.Game
                     model.Box(new Vector3(0f, -0.82f, 0.5f), new Vector3(0.3f, 0.12f, 0.08f), Quaternion.Euler(-28f, 0f, 0f), new Color(0.75f, 0.65f, 0.38f));
                     break;
                 case ShopKind.Mining:
-                    // A mug of beer, foam on top.
-                    model.Prism(new Vector3(0f, -0.03f, 0.05f), new Vector3(0f, 0.09f, 0.05f), 0.045f, 0.045f, 7, new Color(0.5f, 0.36f, 0.22f));
-                    model.Prism(new Vector3(0f, 0.09f, 0.05f), new Vector3(0f, 0.11f, 0.05f), 0.042f, 0.04f, 7, new Color(0.95f, 0.92f, 0.82f));
+                    // A pick (GL415): a handle forward out of the fist and an iron head across its end.
+                    model.Prism(new Vector3(0f, 0f, -0.05f), new Vector3(0f, 0f, 0.55f), 0.017f, 0.015f, 5, Wood);
+                    model.Prism(new Vector3(0f, -0.02f, 0.56f), new Vector3(0f, 0.2f, 0.53f), 0.026f, 0.006f, 4, Iron);
+                    model.Prism(new Vector3(0f, 0.02f, 0.56f), new Vector3(0f, -0.17f, 0.54f), 0.024f, 0.008f, 4, Iron);
                     break;
                 case ShopKind.Prospector:
                     // A small closed book.

@@ -61,6 +61,12 @@ namespace Clube.Core
 
             /// <summary>The material of the flat rectangle's top layer where it isn't paved (trodden dirt), or null to keep what's there.</summary>
             public VoxelMaterial Ground;
+
+            /// <summary>
+            /// Keep the land's shape (GL413: the town's square): the rectangle follows <see cref="Natural"/> instead of
+            /// <see cref="Height"/>, so only what stands on it (trees, rocks) is cleared and its top layer is paved or covered.
+            /// </summary>
+            public bool FollowGround;
         }
 
         /// <summary>Levels an area: trees on it are cleared, then each column is set to its flat or ramped height.</summary>
@@ -86,7 +92,7 @@ namespace Clube.Core
                     Vector3 column = grid.SampleToWorld(new Vector3Int(x, 0, z));
                     float beyond = Beyond(area, column.x, column.z);
                     float ground = natural.At(column.x, column.z);
-                    float target = area.Height;
+                    float target = area.FollowGround ? ground : area.Height;
                     if (beyond > 0f)
                     {
                         if (area.Ramp <= 0f || area.Natural == null)
@@ -105,7 +111,7 @@ namespace Clube.Core
                     int y0 = grid.WorldToNearestSample(new Vector3(column.x, bottom, column.z)).y;
                     int y1 = grid.WorldToNearestSample(new Vector3(column.x, top, column.z)).y;
                     // Ground already within a hair of its height keeps its shape: only its surface material changes.
-                    bool keepShape = area.Natural != null && Mathf.Abs(target - ground) < KeepShapeWithin;
+                    bool keepShape = area.Natural != null && (area.FollowGround || Mathf.Abs(target - ground) < KeepShapeWithin);
                     int air = 0;
                     for (int y = y0; y <= y1 + headroom; y++)
                     {
@@ -280,8 +286,9 @@ namespace Clube.Core
                 {
                     Vector3 column = grid.SampleToWorld(new Vector3Int(x, 0, z));
                     float ground = natural.At(column.x, column.z);
-                    float bottom = Mathf.Min(ground, area.Height) - grid.VoxelSize;
-                    float top = Mathf.Max(ground, area.Height) + TrunkBand;
+                    float level = area.FollowGround ? ground : area.Height;
+                    float bottom = Mathf.Min(ground, level) - grid.VoxelSize;
+                    float top = Mathf.Max(ground, level) + TrunkBand;
                     int y0 = grid.WorldToNearestSample(new Vector3(column.x, bottom, column.z)).y;
                     int y1 = grid.WorldToNearestSample(new Vector3(column.x, top, column.z)).y;
                     floorY = Mathf.Min(floorY, y0);
