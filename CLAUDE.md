@@ -587,6 +587,15 @@ crushed ore train the new Prospecting skill. Crushed silver and gold ore. A camp
 (`TerrainStructure.FindAt`); idle stations don't glow. A tap of Drop places one sample on the aimed spot (`TerrainPile.PlaceOne`).
 Bucket capacity follows quality (`BucketDefinition.CapacityOf`). `PlayerWaterSounds` splashes, sloshes and drips.
 Height maps: `Docs/images/20261103 *`.
+Town center (GL399-GL407, `Docs/20261104d clube-backlog.md`, `20261104e`; branch `gl399/town-center`): a "Town" object in both
+world labs (`TownSite`, Game/Town) searches for a site near tin, copper, silver and gold nodes and water (`TownSiteSearch` in
+Core/Generation/Settlements, 4 ms a frame; inside the fixed area, or within 1 km of the spawn), builds the town (`TownBuilder`:
+`TownLayout` plan, `TownMeshes` models in `Clube/Low Poly`, built with `LowPolyMeshBuilder`, Core/Meshing/Models) with its gate
+facing the spawn, and levels it once its chunks load (`GroundLeveling`, Core/Editing: dirt between cobbled paths, `TownLayout.IsPath`).
+Five shops (`ShopSpecialty` assets in `Assets/Config/Economy/Shops/`, prices from the one merchant list, 1.5x to buy, wares 2x)
+each have a `Shopkeeper`: an `ITrader` for `MerchantPanel` (lessons for coins, `SkillTraining`) and an `IClosableInteractable`
+(a notice while shut), following `ShopHours` (counter 9-17, chores, asleep 18-6) by the `DayNightCycle`; `KeeperFigure` poses
+the body in code. Nothing about the town is saved; it follows from the seed and the clock. `TownGate` opens with E.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the
 Editor log; per-script markers aren't available without the profiler.
