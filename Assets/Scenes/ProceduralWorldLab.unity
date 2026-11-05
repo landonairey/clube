@@ -5451,7 +5451,13 @@ MonoBehaviour:
   maxDistance: 1000
   waterWaitSeconds: 30
   pathMaterial: Loose stone
-  groundMaterial: Dirt
+  groundMaterial: Grass
+  wallMaterial: Loose stone
+  anvilPrefab: {fileID: 7924627653153371950, guid: f4f48a5ed3c219846ad797edb3c8e8f9, type: 3}
+  furnacePrefab: {fileID: 5762353483625990904, guid: 2ad44317c98e3ee4db6993561dbc9b54, type: 3}
+  torchPrefab: {fileID: 7166874474169212171, guid: 032319acc9bb9eb44a1eb17a0eeea3cc, type: 3}
+  sleepingRollPrefab: {fileID: 7854643536770524401, guid: 285133e8568374f40bed56df93428099, type: 3}
+  dailyCoins: 525
   searchBudgetMilliseconds: 4
 --- !u!4 &870862399
 Transform:

@@ -26,7 +26,7 @@ namespace Clube.Game
         public void Build(Material material)
         {
             float half = TownLayout.GateWidth * 0.5f;
-            float height = TownLayout.WallHeight - 0.3f;
+            float height = TownLayout.GateHeight;
             Mesh leaf = TownMeshes.GateLeaf(half, height);
             left = Leaf("Left leaf", new Vector3(-half, 0f, 0f), 0f, leaf, material, half, height);
             right = Leaf("Right leaf", new Vector3(half, 0f, 0f), 180f, leaf, material, half, height);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace Clube.Core
@@ -39,18 +40,19 @@ namespace Clube.Core
         private readonly Dictionary<ShopKind, float> padHeights = new Dictionary<ShopKind, float>();
         private readonly Func<float, float, float> natural;
 
-        public TownPlan(TownPlacement site, float yaw, Func<float, float, float> natural, int seed)
+        public TownPlan(TownPlacement site, float yaw, Func<float, float, float> natural, int seed, float voxel = 0.25f)
         {
             Site = site;
             Centre = site.Centre;
             Yaw = yaw;
             this.natural = natural;
+            Voxel = Mathf.Max(0.01f, voxel);
             Seed = seed;
             foreach (TownLayout.ShopPlot plot in TownLayout.Shops)
             {
                 padHeights[plot.Kind] = PadHeightFor(plot);
             }
-            Stones = TownStructures.WallStones(seed, p => GroundAt(p), ToWorld, yaw);
+            Stones = TownStructures.GatePillars(p => GroundAt(p), ToWorld, yaw);
             Shafts = PlanShafts();
         }
 
@@ -64,7 +66,10 @@ namespace Clube.Core
 
         public int Seed { get; }
 
-        /// <summary>The wall's stones (GL409).</summary>
+        /// <summary>The world's voxel size: pads and floors sit on its grid.</summary>
+        public float Voxel { get; }
+
+        /// <summary>The gate pillars' stones (GL409); the rest of the wall is solid (GL422).</summary>
         public List<WallStone> Stones { get; }
 
         /// <summary>The shafts dug to the ore nodes (GL414), one per ore group with a node.</summary>
@@ -117,7 +122,8 @@ namespace Clube.Core
                 }
             }
             heights.Sort();
-            return heights[heights.Count / 2];
+            // On the voxel grid (GL417), so the board floor's top is exactly a voxel over it and what stands on it isn't sunk.
+            return Mathf.Round(heights[heights.Count / 2] / Voxel) * Voxel;
         }
 
         private List<TownShaft> PlanShafts()
@@ -146,6 +152,52 @@ namespace Clube.Core
                 shafts.Add(new TownShaft(groups[i], heads[i], node, TownStructures.ShaftPath(head, node, natural)));
             }
             return shafts;
+        }
+
+        /// <summary>The trees in the corner by the lumber shop, young ones of the world's own kinds (small enough for the corner), and
+        /// the woodpile: logs of birch lying along it in a stack (GL423). Parts in the world's local metres.</summary>
+        public List<TreePart> LumberYard(TreeGeneration trees)
+        {
+            var parts = new List<TreePart>();
+            int seed = Seed;
+            int cell = 0;
+            foreach (Vector2 spot in TownLayout.Trees)
+            {
+                // A tree of the world's own making from a cell of its own, a young one so it fits the corner.
+                for (int tries = 0; tries < 200; tries++, cell++)
+                {
+                    var treeCell = new Vector2Int(90000 + cell, 90000 + seed % 1000);
+                    float height = TreeShape.HeightOf(seed, treeCell, trees);
+                    if (height < 4.5f || height > 6.5f)
+                    {
+                        continue;
+                    }
+                    Vector2 world = this.ToWorld(spot);
+                    var root = new float3(world.x, this.GroundAt(spot), world.y);
+                    TreeShape.Build(seed, treeCell, root, trees, parts);
+                    cell++;
+                    break;
+                }
+            }
+            // The woodpile: four rows of logs, each row one fewer, lying along the pile.
+            const float Radius = 0.22f;
+            const float Length = 2.2f;
+            Vector2 pile = TownLayout.Woodpile;
+            float ground = this.GroundAt(pile);
+            for (int row = 0; row < 4; row++)
+            {
+                int logs = 4 - row;
+                for (int i = 0; i < logs; i++)
+                {
+                    // A gap between logs, so each shows as its own log.
+                    float across = (i - (logs - 1) * 0.5f) * Radius * 2.5f;
+                    float up = ground + Radius + row * Radius * 2.2f;
+                    Vector2 a = this.ToWorld(pile + new Vector2(across, -Length * 0.5f));
+                    Vector2 b = this.ToWorld(pile + new Vector2(across, Length * 0.5f));
+                    parts.Add(TreePart.Segment(new float3(a.x, up, a.y), new float3(b.x, up, b.y), Radius, Radius, trees.Wood.Id));
+                }
+            }
+            return parts;
         }
 
         /// <summary>

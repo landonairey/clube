@@ -243,6 +243,57 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void ShaftStair_SidesAreWhole_SoEveryStepIsDeeperThanThePlayer()
+        {
+            // GL418: a part side made steps a quarter of a metre deep, less than the capsule's radius, and the player stuck.
+            var node = new Vector3(12f, 3f, -9f);
+            List<Vector3> path = TownStructures.ShaftPath(new Vector2(1f, 2f), node, (x, z) => 21.3f);
+            for (int i = 1; i < path.Count - 1; i++)
+            {
+                Vector3 step = path[i] - path[i - 1];
+                Assert.AreEqual(TownStructures.SpiralHalf * 2f, new Vector2(step.x, step.z).magnitude, 1e-3f, $"side {i} is a whole side");
+            }
+        }
+
+        [Test]
+        public void Plan_PadsSitOnTheVoxelGrid()
+        {
+            // GL417: a pad off the grid left floors (and the beds on them) part sunk.
+            var site = new TownPlacement(new Vector2(40f, 40f), 10f, 0.5f, 0f, 20f, new float[4]);
+            var plan = new TownPlan(site, 0f, (x, z) => 10f + 0.137f * x + 0.05f * z, 7, 0.25f);
+            foreach (TownLayout.ShopPlot plot in TownLayout.Shops)
+            {
+                float steps = plan.PadHeight(plot.Kind) / 0.25f;
+                Assert.AreEqual(Mathf.Round(steps), steps, 1e-3f, $"{plot.Kind}'s pad");
+            }
+        }
+
+        [Test]
+        public void Wall_IsASolidBand_WithAGapForTheGate()
+        {
+            // GL422: one solid band about half the player's height, open where the gate stands.
+            var world = new World(new Vector3Int(16, 16, 16), 0.5f, samples => new ByteVoxelStorage(samples));
+            for (int z = 0; z < 5; z++)
+            {
+                for (int x = 0; x < 5; x++)
+                {
+                    world.Load(new Vector3Int(x, 0, z), null);
+                }
+            }
+            var centre = new Vector2(20f, 20f);
+            TownStructures.StampWall(world, w => w - centre, t => 2f, centre, 1, 0.5f);
+            float middle = (TownLayout.InnerHalf + TownLayout.OuterHalf) * 0.5f;
+            float DensityAt(Vector2 town, float y) =>
+                world.GetDensity(world.Grid.WorldToNearestSample(new Vector3(centre.x + town.x, y, centre.y + town.y))).Value;
+            foreach (Vector2 side in new[] { new Vector2(middle, 3f), new Vector2(-middle, -5f), new Vector2(2f, middle), new Vector2(-8f, -middle) })
+            {
+                Assert.Greater(DensityAt(side, 2.5f), 0.5f, $"solid at {side}");
+                Assert.Less(DensityAt(side, 2f + TownLayout.WallHeight + 0.6f), 0.5f, $"no higher than the wall at {side}");
+            }
+            Assert.Less(DensityAt(new Vector2(0f, -middle), 2.5f), 0.5f, "the gate's gap");
+        }
+
+        [Test]
         public void SquareBlock_IsSolid_WithItsNeighboursCarved()
         {
             var world = new World(new Vector3Int(16, 16, 16), 0.25f, samples => new ByteVoxelStorage(samples));

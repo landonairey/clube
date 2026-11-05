@@ -20,10 +20,13 @@ namespace Clube.Core
         public const float InnerHalf = 14.5f;
 
         /// <summary>How thick the wall of stones is.</summary>
-        public const float WallThickness = 1.25f;
+        public const float WallThickness = 1f;
 
-        /// <summary>How tall the wall stands over the ground under it, about.</summary>
-        public const float WallHeight = 2.3f;
+        /// <summary>How tall the wall stands over the ground under it: about half the player's height (GL422).</summary>
+        public const float WallHeight = 0.9f;
+
+        /// <summary>How tall the gate's leaves are (GL422: the gate and its pillars stay as they were).</summary>
+        public const float GateHeight = 2f;
 
         /// <summary>The gate's opening, in metres.</summary>
         public const float GateWidth = 3.6f;
@@ -229,7 +232,7 @@ namespace Clube.Core
         }
 
         /// <summary>The room a shaft head's square stairwell takes (GL414): its spiral reaches this far from its centre.</summary>
-        public const float ShaftHeadRadius = 2.3f;
+        public const float ShaftHeadRadius = 2.8f;
 
         /// <summary>How far outside the wall a shaft head may be, in metres.</summary>
         public const float ShaftReachOutside = 10f;

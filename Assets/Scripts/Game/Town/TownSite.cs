@@ -58,9 +58,30 @@ namespace Clube.Game
         [SerializeField]
         private string pathMaterial = "Loose stone";
 
-        [Tooltip("The material of the trodden ground inside the walls, between the paths.")]
+        [Tooltip("The material of the ground inside the walls, between the paths (GL425: grass).")]
         [SerializeField]
-        private string groundMaterial = "Dirt";
+        private string groundMaterial = "Grass";
+
+        [Tooltip("The material of the town wall (GL422).")]
+        [SerializeField]
+        private string wallMaterial = "Loose stone";
+
+        [Tooltip("The game's own anvil, furnace, torch and sleeping roll, whose looks the town copies (GL417, GL419, GL421).")]
+        [SerializeField]
+        private GameObject anvilPrefab;
+
+        [SerializeField]
+        private GameObject furnacePrefab;
+
+        [SerializeField]
+        private GameObject torchPrefab;
+
+        [SerializeField]
+        private GameObject sleepingRollPrefab;
+
+        [Tooltip("Coins each shopkeeper has to buy with, every day (GL426).")]
+        [SerializeField, Min(0f)]
+        private float dailyCoins = 525f;
 
         [Tooltip("Milliseconds a frame the site search may take (GL399).")]
         [SerializeField, Range(0.5f, 20f)]
@@ -289,7 +310,7 @@ namespace Clube.Game
         {
             float yaw = TownLayout.GateYawTowards(Site.Centre, spawnPoint);
             int seed = worldView.Ores != null ? worldView.Ores.Seed : 0;
-            Plan = new TownPlan(Site, yaw, Natural, seed);
+            Plan = new TownPlan(Site, yaw, Natural, seed, worldView.World.Grid.VoxelSize);
             Parcel = new Vector2Int(Mathf.FloorToInt(Site.Centre.x / ParcelSize), Mathf.FloorToInt(Site.Centre.y / ParcelSize));
             var root = new GameObject("Town").transform;
             root.SetParent(transform, false);
@@ -311,6 +332,11 @@ namespace Clube.Game
                 Town = context,
                 OreNames = oreNames,
                 TextMaterial = textMaterial,
+                AnvilPrefab = anvilPrefab,
+                FurnacePrefab = furnacePrefab,
+                TorchPrefab = torchPrefab,
+                SleepingRollPrefab = sleepingRollPrefab,
+                DailyCoins = dailyCoins,
             });
         }
 
@@ -380,18 +406,25 @@ namespace Clube.Game
             }
         }
 
+        // The town is in the terrain when the blacksmith's board floor is (GL416): looking for any edited chunk under the
+        // footprint, as before, found the water's fill there on a new game and left the town unwritten.
+        private bool IsWritten(World world, VoxelMaterial oak, float iso)
+        {
+            if (oak == null)
+            {
+                return false;
+            }
+            TownLayout.ShopPlot plot = TownLayout.PlotOf(ShopKind.Blacksmith);
+            Vector2 centre = Plan.ToWorld(plot.Centre);
+            Vector3Int sample = world.Grid.WorldToNearestSample(new Vector3(centre.x, Plan.FloorHeight(ShopKind.Blacksmith), centre.y));
+            return world.TryGetOwner(sample, out Chunk chunk, out Vector3Int local)
+                && chunk.GetDensity(local) >= iso && chunk.GetMaterial(local) == oak.Id;
+        }
+
         private void Level()
         {
             levelled = true;
             World world = worldView.World;
-            foreach (Vector2Int column in FootprintColumns())
-            {
-                if (world.HasEditsIn(column))
-                {
-                    // A save brought this ground back as it was left: the town is in it already.
-                    return;
-                }
-            }
             WorldConfig config = worldView.Config;
             MaterialRegistry materials = config.Materials;
             float iso = config.IsoLevel;
@@ -401,6 +434,11 @@ namespace Clube.Game
             VoxelMaterial oak = materials != null ? materials.Find("Oak boards") : null;
             VoxelMaterial maple = materials != null ? materials.Find("Maple boards") : null;
             TownPlan plan = Plan;
+            if (IsWritten(world, oak, iso))
+            {
+                // A save brought the town back as it was left: it's in the terrain already.
+                return;
+            }
             float started = Time.realtimeSinceStartup;
 
             // 1. The square as the land lies (GL413): trees and rocks cleared, the paths cobbled, dirt between.
@@ -444,7 +482,12 @@ namespace Clube.Game
                 SquareVoxels.Carve(world, TownStructures.ShaftVoxels(world, shaft.Path, iso), materials, stone, iso);
             }
 
-            // 4. The wall of stones (GL409).
+            // 4. The wall (GL422): a solid band of loose stone half the player's height, and the gate's stone pillars (GL409).
+            VoxelMaterial wall = materials != null ? materials.Find(wallMaterial) : null;
+            if (wall != null)
+            {
+                TownStructures.StampWall(world, w => plan.ToTown(w), t => plan.GroundAt(t), Site.Centre, wall.Id, iso);
+            }
             if (stone != null)
             {
                 TownStructures.StampStones(world, plan.Stones, stone.Id, iso);
@@ -461,8 +504,45 @@ namespace Clube.Game
                     SquareVoxels.Build(world, plan.ShopBlocks(plot.Kind, world.Grid.VoxelSize, stone.Id, boards, trim), iso);
                 }
             }
+            // 6. Real trees and a woodpile of wood by the lumber shop (GL423).
+            TreeGeneration trees = config.Terrain.Trees;
+            if (trees != null && trees.Wood != null)
+            {
+                PartStamp.Write(world, plan.LumberYard(trees), iso);
+            }
+
+            // 7. Real ore on the prospectors' counter (GL424): a block of each of the town's ores.
+            WriteOreSamples(world, plan, iso);
+
             LevelMilliseconds = (Time.realtimeSinceStartup - started) * 1000f;
             UnityEngine.Debug.Log($"TownSite: wrote the town into the terrain in {LevelMilliseconds:0} ms ({plan.Shafts.Count} shafts).");
+        }
+
+        // A block of each of the town's ores standing along the prospectors' counter (GL424): real ore voxels, square
+        // (SquareVoxels), so they sit on the counter as cubes rather than lumps running into it.
+        private void WriteOreSamples(World world, TownPlan plan, float iso)
+        {
+            var ores = new List<byte>();
+            foreach (HashSet<byte> group in groupOres.Values)
+            {
+                ores.AddRange(group);
+            }
+            if (ores.Count == 0)
+            {
+                return;
+            }
+            TownLayout.ShopPlot plot = TownLayout.PlotOf(ShopKind.Prospector);
+            float voxel = world.Grid.VoxelSize;
+            float centreY = plan.FloorHeight(ShopKind.Prospector) + TownLayout.CounterHeight + voxel * 0.5f;
+            float half = TownLayout.CounterLength * 0.5f - 0.5f;
+            var blocks = new Dictionary<Vector3Int, byte>();
+            for (int i = 0; i < ores.Count; i++)
+            {
+                float x = ores.Count == 1 ? 0f : Mathf.Lerp(-half, half, i / (float)(ores.Count - 1));
+                Vector2 at = plan.ToWorld(plot.ToTown(new Vector2(x, TownLayout.CounterZ - 0.25f)));
+                blocks[Vector3Int.FloorToInt(new Vector3(at.x, centreY, at.y) / voxel)] = ores[i];
+            }
+            SquareVoxels.Build(world, blocks, iso);
         }
     }
 }

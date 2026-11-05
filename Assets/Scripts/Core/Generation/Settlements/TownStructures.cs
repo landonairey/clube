@@ -37,81 +37,86 @@ namespace Clube.Core
             Trim,
         }
 
-        // --- The wall (GL409) ---
+        // --- The wall (GL409, GL422) ---
 
         /// <summary>
-        /// The wall's stones round the square, in the town's frame (x, z) with heights from <paramref name="groundAt"/>
-        /// (town frame → height): courses of uneven stones two across, each standing on the ground under it, so the wall
-        /// follows the land; tall stacks either side of the gate. Seeded, so a town's wall is always the same.
+        /// The gate's pillars (GL409): big squarish stones stacked a little over 2.5 m either side of the gate, each on the
+        /// ground under it, in the world's local metres. The rest of the wall is solid (<see cref="StampWall"/>, GL422).
         /// </summary>
-        public static List<WallStone> WallStones(int seed, Func<Vector2, float> groundAt, Func<Vector2, Vector2> toWorld, float worldYaw)
+        public static List<WallStone> GatePillars(Func<Vector2, float> groundAt, Func<Vector2, Vector2> toWorld, float worldYaw)
         {
             var stones = new List<WallStone>();
-            var random = new System.Random(seed);
-            float inner = TownLayout.InnerHalf;
-            float outer = TownLayout.OuterHalf;
-            float middle = (inner + outer) * 0.5f;
+            float middle = (TownLayout.InnerHalf + TownLayout.OuterHalf) * 0.5f;
             float gate = TownLayout.GateWidth * 0.5f;
-            const float Pillar = 0.9f;
-
-            void Run(Vector2 a, Vector2 b)
-            {
-                Vector2 along = b - a;
-                float length = along.magnitude;
-                if (length < 0.2f)
-                {
-                    return;
-                }
-                Vector2 dir = along / length;
-                var across = new Vector2(-dir.y, dir.x);
-                float runYaw = Mathf.Atan2(dir.x, dir.y) * Mathf.Rad2Deg - 90f;
-                float course = 0f;
-                int courses = 4;
-                for (int k = 0; k < courses; k++)
-                {
-                    // Each course starts half a stone on from the one below, so the joints don't line up.
-                    float t = k % 2 == 0 ? 0f : 0.35f;
-                    while (t < length - 0.15f)
-                    {
-                        float piece = Mathf.Min(length - t, 0.55f + (float)random.NextDouble() * 0.35f);
-                        Vector2 mid = a + dir * (t + piece * 0.5f);
-                        for (int side = -1; side <= 1; side += 2)
-                        {
-                            Vector2 at = mid + across * (side * TownLayout.WallThickness * 0.24f + ((float)random.NextDouble() - 0.5f) * 0.06f);
-                            float height = 0.22f + (float)random.NextDouble() * 0.06f;
-                            float ground = groundAt(at);
-                            course = ground + 0.12f + k * 0.5f + height + ((float)random.NextDouble() - 0.5f) * 0.06f;
-                            Vector2 world = toWorld(at);
-                            // A little short of the next stone and of uneven depth, so crevices show between them.
-                            float depth = TownLayout.WallThickness * (0.22f + (float)random.NextDouble() * 0.12f);
-                            var radii = new Vector3(piece * 0.5f - 0.03f, height - 0.01f, depth);
-                            float yaw = worldYaw + runYaw + ((float)random.NextDouble() - 0.5f) * 10f;
-                            stones.Add(new WallStone(new Vector3(world.x, course, world.y), radii, yaw));
-                        }
-                        t += piece;
-                    }
-                }
-            }
-
-            Run(new Vector2(-outer, middle), new Vector2(outer, middle));
-            Run(new Vector2(-middle, -inner), new Vector2(-middle, inner));
-            Run(new Vector2(middle, -inner), new Vector2(middle, inner));
-            Run(new Vector2(-outer, -middle), new Vector2(-gate - Pillar, -middle));
-            Run(new Vector2(gate + Pillar, -middle), new Vector2(outer, -middle));
-            // The gate's pillars: big squarish stones stacked a little higher than the wall.
             foreach (float side in new[] { -1f, 1f })
             {
-                var at = new Vector2(side * (gate + Pillar * 0.5f), -middle);
+                var at = new Vector2(side * (gate + PillarWidth * 0.5f), -middle);
                 float ground = groundAt(at);
                 Vector2 world = toWorld(at);
                 for (int k = 0; k < 6; k++)
                 {
                     float y = ground + 0.25f + k * 0.48f;
-                    var radii = new Vector3(Pillar * 0.5f, 0.27f, TownLayout.WallThickness * 0.55f);
+                    var radii = new Vector3(PillarWidth * 0.5f, 0.27f, 0.7f);
                     stones.Add(new WallStone(new Vector3(world.x, y, world.y), radii, worldYaw + (k % 2) * 8f - 4f));
                 }
             }
             return stones;
+        }
+
+        /// <summary>The width of each gate pillar along the wall, in metres.</summary>
+        public const float PillarWidth = 0.9f;
+
+        /// <summary>
+        /// Writes the town wall into the world (GL422): a solid band of <paramref name="material"/> (loose stone) round the
+        /// square, <see cref="TownLayout.WallHeight"/> over the ground under it, so it follows the land, with flat faces and
+        /// a gap for the gate between its pillars. Never lowers ground.
+        /// </summary>
+        public static void StampWall(World world, Func<Vector2, Vector2> toTown, Func<Vector2, float> groundAt, Vector2 centre, byte material, float iso)
+        {
+            WorldGrid grid = world.Grid;
+            float middle = (TownLayout.InnerHalf + TownLayout.OuterHalf) * 0.5f;
+            float half = TownLayout.WallThickness * 0.5f;
+            float gap = TownLayout.GateWidth * 0.5f + PillarWidth * 0.5f;
+            float reach = TownLayout.OuterHalf + 1f;
+            Vector3Int low = grid.WorldToNearestSample(new Vector3(centre.x - reach, 0f, centre.y - reach));
+            Vector3Int high = grid.WorldToNearestSample(new Vector3(centre.x + reach, 0f, centre.y + reach));
+            for (int z = low.z; z <= high.z; z++)
+            {
+                for (int x = low.x; x <= high.x; x++)
+                {
+                    Vector3 column = grid.SampleToWorld(new Vector3Int(x, 0, z));
+                    Vector2 town = toTown(new Vector2(column.x, column.z));
+                    // How far inside the ring's band the column is, across it.
+                    float far = Mathf.Max(Mathf.Abs(town.x), Mathf.Abs(town.y));
+                    float inside = half - Mathf.Abs(far - middle);
+                    if (inside < -grid.VoxelSize || (town.y < 0f && Mathf.Abs(town.y) > Mathf.Abs(town.x) && Mathf.Abs(town.x) < gap))
+                    {
+                        continue;
+                    }
+                    float ground = groundAt(town);
+                    float top = ground + TownLayout.WallHeight;
+                    int y0 = grid.WorldToNearestSample(new Vector3(column.x, ground - 1f, column.z)).y;
+                    int y1 = grid.WorldToNearestSample(new Vector3(column.x, top + 1.25f, column.z)).y;
+                    for (int y = y0; y <= y1; y++)
+                    {
+                        var sample = new Vector3Int(x, y, z);
+                        float depth = Mathf.Min(top - grid.SampleToWorld(sample).y, inside);
+                        float density = TerrainDensity.FromDepth(depth);
+                        if (!world.TryGetOwner(sample, out Chunk chunk, out Vector3Int local))
+                        {
+                            continue;
+                        }
+                        if (density > chunk.GetDensity(local) + 1.5f / 255f)
+                        {
+                            world.SetDensity(sample, density);
+                        }
+                        if (density >= iso)
+                        {
+                            world.SetMaterial(sample, material);
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -255,55 +260,69 @@ namespace Clube.Core
         public const float ShaftWidth = 1.25f;
         public const float ShaftHeight = 2.4f;
 
-        // The spiral's centre line runs round a square this far out from the head, and drops this much per metre walked.
-        private const float SpiralHalf = 1.5f;
-        private const float Slope = 0.5f;
+        // The spiral's centre line runs round a square this far out from the head, and drops this much per metre walked
+        // (GL418: with a landing at each corner, each side climbs a metre over steps about 0.7 m deep, deeper than the player's
+        // radius; the first stair's steps by the corners came out a quarter metre deep and the player stuck on them).
+        public const float SpiralHalf = 2f;
+        private const float Slope = 0.25f;
 
         /// <summary>
         /// A shaft's floor line (GL414), in the world's local metres: a square spiral stair from the surface at the head,
-        /// down round a central pillar until it's level with the node, then a level drift straight to the node's face.
-        /// <paramref name="groundAt"/> gives the land's height at (x, z).
+        /// down round a central pillar until it's level with the node, then a level drift straight to the node's face. The
+        /// spiral starts at whichever corner makes it end at the corner nearest the node, so the drift leads away from the
+        /// stair instead of cutting back under its lowest flight (GL418). <paramref name="groundAt"/> gives the land's height
+        /// at (x, z).
         /// </summary>
         public static List<Vector3> ShaftPath(Vector2 head, Vector3 node, Func<float, float, float> groundAt)
         {
+            var nodeXZ = new Vector2(node.x, node.z);
+            List<Vector3> best = null;
+            float bestDistance = float.PositiveInfinity;
+            for (int start = 0; start < 4; start++)
+            {
+                List<Vector3> spiral = Spiral(head, node.y - 1f, start, groundAt);
+                Vector3 end = spiral[spiral.Count - 1];
+                float distance = (new Vector2(end.x, end.z) - nodeXZ).sqrMagnitude;
+                if (distance < bestDistance)
+                {
+                    best = spiral;
+                    bestDistance = distance;
+                }
+            }
+            // The drift: level, straight to the node, stopping short of its centre so the ore is the face.
+            Vector3 last = best[best.Count - 1];
+            Vector2 toNode = nodeXZ - new Vector2(last.x, last.z);
+            if (toNode.magnitude > 1.2f)
+            {
+                Vector2 face = nodeXZ - toNode.normalized * 0.9f;
+                best.Add(new Vector3(face.x, last.y, face.y));
+            }
+            return best;
+        }
+
+        // The spiral stair from a corner of the head's square down to a floor level, turning the same way whatever the start.
+        private static List<Vector3> Spiral(Vector2 head, float target, int start, Func<float, float, float> groundAt)
+        {
             var path = new List<Vector3>();
-            float target = node.y - 1f;
             Vector2[] corners =
             {
                 head + new Vector2(-SpiralHalf, -SpiralHalf), head + new Vector2(SpiralHalf, -SpiralHalf),
                 head + new Vector2(SpiralHalf, SpiralHalf), head + new Vector2(-SpiralHalf, SpiralHalf),
             };
-            Vector2 at = corners[0];
+            Vector2 at = corners[start];
             float floor = groundAt(at.x, at.y);
             path.Add(new Vector3(at.x, floor, at.y));
-            int corner = 1;
+            int corner = start + 1;
             // Round and down until level with the node (a few hundred metres at most, for safety).
             for (int i = 0; i < 400 && floor > target + 0.01f; i++)
             {
                 Vector2 next = corners[corner % 4];
-                float length = (next - at).magnitude;
-                float drop = length * Slope;
-                if (floor - drop <= target)
-                {
-                    // Level with the node part way along this side.
-                    float part = (floor - target) / drop;
-                    at = Vector2.Lerp(at, next, part);
-                    floor = target;
-                    path.Add(new Vector3(at.x, floor, at.y));
-                    break;
-                }
+                float drop = (next - at).magnitude * Slope;
                 at = next;
-                floor -= drop;
+                // The last side is whole too, dropping only what's left, so its steps keep their depth (GL418).
+                floor = Mathf.Max(target, floor - drop);
                 path.Add(new Vector3(at.x, floor, at.y));
                 corner++;
-            }
-            // The drift: level, straight to the node, stopping short of its centre so the ore is the face.
-            var nodeXZ = new Vector2(node.x, node.z);
-            Vector2 toNode = nodeXZ - at;
-            if (toNode.magnitude > 1.2f)
-            {
-                Vector2 end = nodeXZ - toNode.normalized * 0.9f;
-                path.Add(new Vector3(end.x, floor, end.y));
             }
             return path;
         }
@@ -331,7 +350,9 @@ namespace Clube.Core
                 // A little past each end, so corners are carved out square.
                 for (float t = -half; t <= length + half; t += size * 0.5f)
                 {
-                    float f = Mathf.Lerp(a.y, b.y, Mathf.Clamp01(t / length));
+                    // Level over the landing at each end (the passage's half width), sloping between (GL418).
+                    float climb = Mathf.Max(length - ShaftWidth, 1e-3f);
+                    float f = Mathf.Lerp(a.y, b.y, Mathf.Clamp01((t - half) / climb));
                     Vector3 centre = a + flat / length * t;
                     for (float o = -half; o <= half + 1e-3f; o += size * 0.5f)
                     {

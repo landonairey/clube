@@ -42,6 +42,7 @@ namespace Clube.Game
             if (name.Contains("tin") || name.Contains("cassiterite")) return new Color(0.55f, 0.52f, 0.48f);
             if (name.Contains("charcoal")) return new Color(0.12f, 0.11f, 0.1f);
             if (name.Contains("maple")) return new Color(0.6f, 0.35f, 0.2f);
+            if (name.Contains("oak")) return new Color(0.7f, 0.53f, 0.33f);
             if (name.Contains("wood") || name.Contains("stick")) return Wood;
             if (name.Contains("clay") || name.Contains("brick")) return new Color(0.68f, 0.38f, 0.26f);
             return Stone;
@@ -71,6 +72,14 @@ namespace Clube.Game
                 Color rock = Color.Lerp(Stone, colour, name.Contains("crushed") ? 0.5f : 0.7f);
                 model.Diamond(new Vector3(0f, 0.06f, 0f), new Vector3(0.08f, 0.06f, 0.07f), rock);
                 model.Diamond(new Vector3(0.09f, 0.04f, 0.04f), new Vector3(0.05f, 0.04f, 0.05f), rock * 0.9f);
+            }
+            else if (name.Contains("boards"))
+            {
+                // A short stack of sawn planks (GL411).
+                for (int i = 0; i < 3; i++)
+                {
+                    model.Box(new Vector3(0f, 0.025f + i * 0.05f, (i - 1) * 0.01f), new Vector3(0.4f, 0.045f, 0.11f), Quaternion.Euler(0f, i * 4f, 0f), colour * (0.95f + i * 0.04f));
+                }
             }
             else if (name.Contains("wood") || name.Contains("charcoal"))
             {

@@ -63,7 +63,8 @@ namespace Clube.Core
         {
             var model = new LowPolyMeshBuilder();
             model.Prism(new Vector3(0f, -0.3f, 0f), new Vector3(0f, 1.9f, 0f), 0.06f, 0.05f, 6, DarkTimber);
-            model.Box(new Vector3(0f, 1.62f, 0f), new Vector3(1.05f, 0.34f, 0.05f), Quaternion.identity, Plank * 1.1f);
+            // Wide enough for "Copper mine" and "Silver mine" (GL420).
+            model.Box(new Vector3(0f, 1.62f, 0f), new Vector3(1.5f, 0.34f, 0.05f), Quaternion.identity, Plank * 1.1f);
             return model.Make("Sign post");
         }
 
