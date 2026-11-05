@@ -350,7 +350,8 @@ namespace Clube.Game
             Transform head = player.Head != null ? player.Head : transform;
             if (Physics.Raycast(head.position, head.forward, out RaycastHit hit, reach, ~0, QueryTriggerInteraction.Ignore))
             {
-                return hit.collider.GetComponentInParent<PlacedObject>();
+                PlacedObject placed = hit.collider.GetComponentInParent<PlacedObject>();
+                return placed != null && !placed.Fixed ? placed : null;
             }
             return null;
         }

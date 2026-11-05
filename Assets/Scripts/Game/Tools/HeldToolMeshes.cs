@@ -93,14 +93,17 @@ namespace Clube.Game
         }
 
         /// <summary>The model of a tool held in the fist (the bare fist for the hand).</summary>
-        public static Mesh Build(ToolDefinition tool)
+        public static Mesh Build(ToolDefinition tool, bool withHand = true)
         {
             HeldShape shape = ShapeOf(tool);
             Color head = HeadColourOf(tool);
             var model = new LowPolyMeshBuilder();
             // The forearm, back and down to the bottom right of the view, and the fist round the grip.
-            model.Prism(new Vector3(0.06f, -0.2f, -0.5f), new Vector3(0.01f, -0.03f, -0.06f), 0.05f, 0.042f, 6, Sleeve);
-            model.Box(new Vector3(0f, 0f, 0f), new Vector3(0.085f, 0.075f, 0.09f), Quaternion.identity, Skin);
+            if (withHand)
+            {
+                model.Prism(new Vector3(0.06f, -0.2f, -0.5f), new Vector3(0.01f, -0.03f, -0.06f), 0.05f, 0.042f, 6, Sleeve);
+                model.Box(new Vector3(0f, 0f, 0f), new Vector3(0.085f, 0.075f, 0.09f), Quaternion.identity, Skin);
+            }
             switch (shape)
             {
                 case HeldShape.Hand:
@@ -183,11 +186,14 @@ namespace Clube.Game
         /// A torch held in the fist (GL287): a stick with a charred head bound on; when lit, HeldToolView stands a dancing
         /// flame cluster (FlameCluster, GL314) on its head.
         /// </summary>
-        public static Mesh BuildTorch(bool lit)
+        public static Mesh BuildTorch(bool lit, bool withHand = true)
         {
             var model = new LowPolyMeshBuilder();
-            model.Prism(new Vector3(0.06f, -0.2f, -0.5f), new Vector3(0.01f, -0.03f, -0.06f), 0.05f, 0.042f, 6, Sleeve);
-            model.Box(new Vector3(0f, 0f, 0f), new Vector3(0.085f, 0.075f, 0.09f), Quaternion.identity, Skin);
+            if (withHand)
+            {
+                model.Prism(new Vector3(0.06f, -0.2f, -0.5f), new Vector3(0.01f, -0.03f, -0.06f), 0.05f, 0.042f, 6, Sleeve);
+                model.Box(new Vector3(0f, 0f, 0f), new Vector3(0.085f, 0.075f, 0.09f), Quaternion.identity, Skin);
+            }
             model.Prism(new Vector3(0f, -0.14f, 0f), new Vector3(0.005f, 0.34f, 0.03f), 0.018f, 0.016f, 5, Wood);
             model.Prism(new Vector3(0.005f, 0.3f, 0.027f), new Vector3(0.006f, 0.4f, 0.035f), 0.032f, 0.026f, 6, Charcoal);
             model.Box(new Vector3(0.005f, 0.3f, 0.027f), new Vector3(0.068f, 0.014f, 0.068f), Quaternion.identity, Cord);
@@ -198,11 +204,14 @@ namespace Clube.Game
         /// A wooden bucket held by its handle (GL319): the fist on a bent rope handle over a tapered, eight-sided body of
         /// staves with two dark iron-coloured hoops.
         /// </summary>
-        public static Mesh BuildBucket()
+        public static Mesh BuildBucket(bool withHand = true)
         {
             var model = new LowPolyMeshBuilder();
-            model.Prism(new Vector3(0.06f, -0.2f, -0.5f), new Vector3(0.01f, -0.03f, -0.06f), 0.05f, 0.042f, 6, Sleeve);
-            model.Box(new Vector3(0f, 0f, 0f), new Vector3(0.085f, 0.075f, 0.09f), Quaternion.identity, Skin);
+            if (withHand)
+            {
+                model.Prism(new Vector3(0.06f, -0.2f, -0.5f), new Vector3(0.01f, -0.03f, -0.06f), 0.05f, 0.042f, 6, Sleeve);
+                model.Box(new Vector3(0f, 0f, 0f), new Vector3(0.085f, 0.075f, 0.09f), Quaternion.identity, Skin);
+            }
             // The handle: a rope from the fist down to each side of the rim.
             model.Prism(new Vector3(-0.01f, -0.01f, 0f), new Vector3(-0.1f, -0.13f, 0.02f), 0.007f, 0.007f, 4, Cord);
             model.Prism(new Vector3(0.01f, -0.01f, 0f), new Vector3(0.1f, -0.13f, 0.02f), 0.007f, 0.007f, 4, Cord);
