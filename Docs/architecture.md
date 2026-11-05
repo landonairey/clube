@@ -66,7 +66,9 @@ Core/
                  WaterFill (the map's water into a loaded chunk's samples, GL315)
     Ores/        OreSpec, OreField (placement), OreRoll (the roll, shared)
     Trees/       TreeGeneration (settings), TreeField (placement), TreeShape (one tree), TreeStamp (into a chunk, GL30)
-    Settlements/ TownSiteSearch + TownSiteFinder (where the town stands: near ores and water, from the seed, in steps, GL399),
+    Settlements/ TownSiteSearch + TownSiteFinder (where the town stands: a parcel near ores and water, from the seed, in steps, GL399),
+                 TownPlan (one town worked out once: frame, shop pads, wall stones, mine shafts, GL408-GL414), TownStructures
+                 (the shapes: wall stones, a shop's voxels, a shaft's stair line and passage),
                  TownLayout (the town's plan: wall, gate, shop plots, keeper spots, cobbled paths, GL400, GL405, GL407)
     Flora/       GrassGrowth (grass height, wheat fields, GL234-GL235), BushGrowth (where bushes grow, sizes, drops, GL236),
                  TreeCover (how thick the grown trees stand round a place)
@@ -78,7 +80,7 @@ Core/
     Recording/   MeshingRecorder (A11)
     Models/      LowPolyMeshBuilder (flat, vertex-coloured models from boxes and prisms: held tools, the town, GL269, GL400),
                  TownMeshes (the town's wall, gate, shops and props, drawn with `Clube/Low Poly`)
-  Editing/       GroundLeveling (flat ground with a ramp, trees cut down, paths paved: the town and merchant table, GL38, GL400), TreeFelling (cut-off limbs and how they land, GL344), TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5; slivers GL79), TerrainPile (I4), GroundDrying (GL34), ChiselStrike + FlatTop (GL87, GL88), GroundSettling (falling dirt and sand, GL308), LiveWater (the water's cellular flow: falls, runs downhill, fills dug holes, GL313, GL315), WaterScoop (the bucket, GL319), IDensityField, IEditableTerrain
+  Editing/       GroundLeveling (flat ground with a ramp, or the land as it lies, trees cut down, paths paved: the town and merchant table, GL38, GL400, GL413), SquareVoxels (square blocks and flat-walled tunnels on the chisel's carving: boards, shops, shafts, GL411-GL414), NodeMining (one ore sample at a time, the miner, GL415), TreeFelling (cut-off limbs and how they land, GL344), TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5; slivers GL79), TerrainPile (I4), GroundDrying (GL34), ChiselStrike + FlatTop (GL87, GL88), GroundSettling (falling dirt and sand, GL308), LiveWater (the water's cellular flow: falls, runs downhill, fills dug holes, GL313, GL315), WaterScoop (the bucket, GL319), IDensityField, IEditableTerrain
   Queries/       SurfaceRaycast, VoxelRaycast, SurfacePoints (GL4), WaterQuery (what's under water: swimming, GL316)
   Volume/        VoxelVolume, ChunkVolume (V11, V12, K30), RegionVolume (the mesh volume round some samples: what a hit gathers, GL288)
   Saving/        GameSave (plain data), GameSaveFile (versioned binary, S1), WorldSaving (edited chunks, S2), StackSaving (GL205), SaveNames (GL207)
@@ -528,7 +530,7 @@ Notes for upcoming chapters, so new code lands in the right layer.
 | **ST1 settlement scoring, U1 mini map** | `Generation/` queries | Column heights and `OreField.NodesInCell` answer "what's here" without generating voxels. `TownSiteSearch` (GL399) is the first: it scores a grid of sites by distance to ore nodes and water, but only places nodes in the ore cells between the ground and the deepest ore (`OreField.NodesInCellUncached`, `MaxNodeDepth`): placing a node samples the terrain per try, and a whole-height survey of a 550 m square took 6 s. It runs 4 ms a frame. Several towns (ST3-ST5) would score regions the same way. |
 | **PK9/PK10 falling terrain, PK11 explosives** | `Editing/` | Everything goes through the A7 edit path; the streamer rebuilds whatever it dirties in the same frame (`MaxEditsPerFrame` caps a huge blast; the rest follow next frame). |
 | **PK17 building, walls and floors** | `World/BuildGrid` (Core) for the cells; placing in `Clube.Game/Building` | `PlayerBuilder` places any `PlaceableDefinition` (an item with a prefab) on a build cell, and `PlacedObject` turns it back into the item. Hard-material piles already fill build cells (`TerrainPile` with `PileShape.Block`, GL17), so blocks of terrain and placed objects share one grid. Saving placed objects joins P6/S1. |
-| **NPCs, towns (7A, 7B)** | `Clube.Game` (behaviour), Core for anything simulated off screen | First pass (GL399-GL407): one town, `Game/Town/`. `TownSite` (on its own object) searches, builds with `TownBuilder` (game objects from `TownMeshes`) and levels with `GroundLeveling` once the chunks under it load (0.9 s once, in the Editor; see §8). `Shopkeeper` is an `ITrader` (the trade screen works for it and the merchant table) and an `IClosableInteractable` (a notice while the shop is shut); it follows `ShopHours` from the `DayNightCycle` and walks `TownLayout`'s spots by the shop door; `KeeperFigure` poses a blocky body in code. Nothing about the town is saved: it follows from the seed and the clock, and its levelled ground is in the edited chunks. Raycasts against data (`World.Raycast`) work without colliders, for anything far from the player. |
+| **NPCs, towns (7A, 7B)** | `Clube.Game` (behaviour), Core for anything simulated off screen | First pass (GL399-GL407): one town, `Game/Town/`. `TownSite` (on its own object) searches, builds with `TownBuilder` (game objects from `TownMeshes`) and levels with `GroundLeveling` once the chunks under it load (0.9 s once, in the Editor; see §8). Second pass (GL408-GL415): the town fills one locked parcel and is terrain (`TownPlan` once, then the square, pads, shafts, wall stones and stone-and-board shops written in that order; 1.5 s once); keepers walk 3D routes over it through `TownContext` (a data raycast for the ground, exact stair lines in the shafts). `Shopkeeper` is an `ITrader` (the trade screen works for it and the merchant table) and an `IClosableInteractable` (a notice while the shop is shut); it follows `ShopHours` from the `DayNightCycle` and walks `TownLayout`'s spots by the shop door; `KeeperFigure` poses a blocky body in code. Nothing about the town is saved: it follows from the seed and the clock, and its levelled ground is in the edited chunks. Raycasts against data (`World.Raycast`) work without colliders, for anything far from the player. |
 
 ---
 
@@ -592,10 +594,12 @@ it, and when it's done. None needs the big picture changed. Measure with
     a lake loads and while a dug channel drains. *Done when:* `LiveWaterTests`
     pass and neither costs over 1 ms a frame.
 
-14. **Level the town without a hitch.** `GroundLeveling.Level` for the town (`TownSite`, GL400) writes
-    about 180k samples through `World.SetDensity` in one frame when the chunks under the town first load: 0.9 s in the
+14. **Write the town without a hitch.** `TownSite.Level` (GL400, GL408-GL414) writes the square, pads, shafts, wall stones and
+    shops in one frame when the chunks under the town first load: 1.5 s in the Editor (2026-11-05). The first pass's levelling alone
+    wrote about 180k samples through `World.SetDensity` in one frame when the chunks under the town first load: 0.9 s in the
     Editor (was 5.4 s before it read through `World.TryGetOwner`, compared byte-stored densities within a step and left
-    ground within 12 cm of its height alone). Each write raises `DensityChanged` for the settling and the water. Write
+    ground within 12 cm of its height alone). Each write raises `DensityChanged` for the settling and the water; carving
+    (`World.SetCarved`) checks eight voxels per corner. Write
     per chunk (a bulk path on `World` that raises one event per chunk), or spread the rows over frames once rebuilds
     are deferred. *Measure:* `TownSite.LevelMilliseconds`. *Done when:* under 50 ms, or no frame over 20 ms.
 

@@ -596,6 +596,16 @@ Five shops (`ShopSpecialty` assets in `Assets/Config/Economy/Shops/`, prices fro
 each have a `Shopkeeper`: an `ITrader` for `MerchantPanel` (lessons for coins, `SkillTraining`) and an `IClosableInteractable`
 (a notice while shut), following `ShopHours` (counter 9-17, chores, asleep 18-6) by the `DayNightCycle`; `KeeperFigure` poses
 the body in code. Nothing about the town is saved; it follows from the seed and the clock. `TownGate` opens with E.
+Second pass (GL408-GL415, `Docs/20261105 clube-backlog.md`): the town fills one 32 m land parcel (sites on parcel centres),
+locked (`LandParcels.Lock`: never bought, so never dug). `TownPlan` (Core/Generation/Settlements) works out the frame, each shop's
+pad height, the wall's stones and the mine shafts once; `TownStructures` has their shapes. The wall is marching-cubes stones
+stamped into the terrain; the shops are square voxels of stone and Oak/Maple boards (materials 28, 29, `VoxelMaterial.BuildsSquare`;
+`SquareVoxels` in Core/Editing: a block's corners solid and the voxels round it carved, GL92's flat walls; the player places boards
+the same way with a tap of Drop); only the shops' pads are levelled, the square keeps the land's shape. Four stair shafts spiral down
+to the nearest tin, copper, silver and gold nodes (heads inside or up to 10 m outside the wall), lit by lanterns; after work the miner
+walks down one and takes a sample of the node every 6 s (`NodeMining`). Keepers walk 3D routes over the terrain (`TownContext`).
+Sign words use `Clube/World Text` (the built-in font material shows through walls). Board textures stay straight in the terrain
+shader (`_MaterialRegular`).
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the
 Editor log; per-script markers aren't available without the profiler.
