@@ -5,10 +5,10 @@ using UnityEngine.InputSystem;
 namespace Clube.Game
 {
     /// <summary>
-    /// The screen for trading at a <see cref="MerchantTable"/> (GL14, GL20; first pass of TR4):
+    /// The screen for trading with an <see cref="ITrader"/>, the merchant table or a town shopkeeper (GL14, GL20, GL401; first pass of TR4):
     /// the player's inventory in slots like the hotbar, with the merchant's price on every
     /// stack it buys; pick a stack and sell one, all of it, or a part set on a slider (GL57). The player's coins show at the
-    /// bottom. Frees the cursor while open;
+    /// bottom, then what the trader sells and the lessons they give (GL402). Frees the cursor while open;
     /// Interact (E) closes it, as does walking away.
     /// </summary>
     [RequireComponent(typeof(PlayerInventory), typeof(PlayerWallet))]
@@ -37,20 +37,26 @@ namespace Clube.Game
         // How much "Sell part" sells: whole items, or to the hundredth for a part item (GL246).
         private float splitAmount = 1f;
         private GUIStyle countStyle;
+        private PlayerSkills skills;
+        private Vector2 offerScroll;
 
-        /// <summary>The table being used, or null when closed.</summary>
-        public MerchantTable Current { get; private set; }
+        /// <summary>The trader being used, or null when closed.</summary>
+        public ITrader Current { get; private set; }
 
         public bool IsOpen => Current != null;
 
         /// <summary>Raised after a sale, with how many items went.</summary>
         public event System.Action<int> Sold;
 
+        /// <summary>Raised after a lesson is bought (GL402), with the skill trained.</summary>
+        public event System.Action<SkillType> Trained;
+
         private void Awake()
         {
             inventory = GetComponent<PlayerInventory>();
             wallet = GetComponent<PlayerWallet>();
             player = GetComponent<PlayerController>();
+            skills = GetComponent<PlayerSkills>();
         }
 
         private void OnEnable()
@@ -63,11 +69,12 @@ namespace Clube.Game
             Close();
         }
 
-        public void Open(MerchantTable table)
+        public void Open(ITrader table)
         {
             Current = table;
             selected = -1;
             group.Clear();
+            offerScroll = Vector2.zero;
             openedFrame = Time.frameCount;
             if (player != null)
             {
@@ -111,8 +118,8 @@ namespace Clube.Game
             }
             // The press that opened the panel mustn't close it in the same frame.
             bool closePressed = Time.frameCount != openedFrame && closeAction != null && closeAction.action.WasPressedThisFrame();
-            bool tooFar = (Current.transform.position - transform.position).sqrMagnitude > closeDistance * closeDistance;
-            if (closePressed || tooFar || (player != null && !player.enabled))
+            bool tooFar = (Current.Position - transform.position).sqrMagnitude > closeDistance * closeDistance;
+            if (closePressed || tooFar || !Current.IsTrading || (player != null && !player.enabled))
             {
                 Close();
             }
@@ -128,7 +135,7 @@ namespace Clube.Game
             Inventory items = inventory.Inventory;
             PriceList prices = Current.Prices;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
-            float offerRows = Current.Offers.Count > 0 ? Current.Offers.Count * (RowHeight + 4f) + 28f : 0f;
+            float offerRows = OffersHeight() + TrainingHeight();
             float height = Padding * 2f + 24f + 22f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + SellRowHeight + 6f + offerRows + (group.Count > 0 ? SellRowHeight + 6f : 0f);
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
@@ -137,7 +144,7 @@ namespace Clube.Game
             GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   (E to close)");
             GUI.Label(new Rect(panel.xMax - Padding - 160f, y, 160f, 20f), $"Your coins: {Wallet.Format(wallet.Wallet.Coins)}");
             y += 24f;
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Click one of your items to see what the merchant pays for it.");
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Click one of your items to see what they pay for it.");
             y += 22f;
 
             // While a group is picked only its stacks are lit (GL310): the last Ctrl-clicked slot may have just left it.
@@ -167,7 +174,8 @@ namespace Clube.Game
                 DrawGroup(items, prices, x, y);
                 y += SellRowHeight + 6f;
                 // With a group picked, the only sale is the group's (GL358): the one-stack row's price read as the total.
-                DrawOffers(x, y, width - Padding * 2f);
+                y = DrawOffers(x, y, width - Padding * 2f);
+                DrawTraining(x, y, width - Padding * 2f);
                 InventoryGridGui.DrawTooltip();
                 return;
             }
@@ -176,7 +184,7 @@ namespace Clube.Game
             bool buys = !chosen.IsEmpty && prices.TryGetLot(chosen.Item, out _, out _);
             string what = chosen.IsEmpty ? "Pick a stack to sell"
                 : buys ? $"{chosen.Item.DisplayName}: {FormatCoins(prices.PriceOf(chosen, 1))} each"
-                : $"The merchant doesn't buy {chosen.Item.DisplayName}";
+                : $"{Current.DisplayName} doesn't buy {chosen.Item.DisplayName}";
             GUI.Label(new Rect(x, y + 4f, 260f, 20f), what);
             GUI.enabled = buys;
             string oneLabel = "Sell 1" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, Mathf.Min(1f, chosen.Amount)))}" : "");
@@ -219,7 +227,8 @@ namespace Clube.Game
             }
             GUI.enabled = true;
             y += SellRowHeight + 6f;
-            DrawOffers(x, y, width - Padding * 2f);
+            y = DrawOffers(x, y, width - Padding * 2f);
+            DrawTraining(x, y, width - Padding * 2f);
             InventoryGridGui.DrawTooltip();
         }
 
@@ -229,41 +238,99 @@ namespace Clube.Game
             return coins >= 0.01f || coins == 0f ? $"{coins:0.##}c" : $"{coins:0.###}c";
         }
 
-        // What the merchant sells: one button per offer, greyed out when the player can't pay or has no room.
-        private void DrawOffers(float x, float y, float width)
+        // Rows of offers shown at once; more scroll (the wares shop sells everything, GL401).
+        private const int VisibleOfferRows = 5;
+
+        private int OfferRows => (Current.Offers.Count + 1) / 2;
+
+        private float OffersHeight()
+        {
+            return Current.Offers.Count == 0 ? 0f : 24f + Mathf.Min(OfferRows, VisibleOfferRows) * (RowHeight + 4f) + 4f;
+        }
+
+        private float TrainingHeight()
+        {
+            return Current.Trains.Count == 0 ? 0f : 24f + Current.Trains.Count * (RowHeight + 4f) + 4f;
+        }
+
+        // What the trader sells, two buttons to a row and scrolling past a few rows: each buys one lot (e.g. 2 sticks),
+        // greyed out when the player can't pay. Returns the y under it.
+        private float DrawOffers(float x, float y, float width)
         {
             if (Current.Offers.Count == 0)
             {
-                return;
+                return y;
             }
             GUI.Label(new Rect(x, y, width, 20f), "For sale");
             y += 24f;
-            foreach (ItemPrice offer in Current.Offers)
+            float rowStep = RowHeight + 4f;
+            float shown = Mathf.Min(OfferRows, VisibleOfferRows) * rowStep;
+            bool scrolls = OfferRows > VisibleOfferRows;
+            float inner = scrolls ? width - 18f : width;
+            float button = (inner - 6f) * 0.5f;
+            offerScroll = GUI.BeginScrollView(new Rect(x, y, width, shown), offerScroll, new Rect(0f, 0f, inner, OfferRows * rowStep));
+            for (int i = 0; i < Current.Offers.Count; i++)
             {
+                ItemPrice offer = Current.Offers[i];
                 if (offer.Item == null)
                 {
                     continue;
                 }
+                int lot = offer.Lot;
+                string what = lot > 1 ? $"{lot} {offer.Item.DisplayName}" : offer.Item.DisplayName;
                 GUI.enabled = wallet.Wallet.Coins >= offer.Coins;
-                if (GUI.Button(new Rect(x, y, 260f, RowHeight), $"Buy {offer.Item.DisplayName}  ({offer.Coins}c)"))
+                if (GUI.Button(new Rect(i % 2 * (button + 6f), i / 2 * rowStep, button, RowHeight), $"Buy {what}  ({offer.Coins}c)"))
                 {
                     Buy(offer);
                 }
                 GUI.enabled = true;
-                y += RowHeight + 4f;
             }
+            GUI.EndScrollView();
+            return y + shown + 4f;
         }
 
-        // Pays for one item and puts it in the inventory; a full inventory refuses the sale.
+        // Pays for one lot and puts it in the inventory; a full inventory refuses the sale.
         private void Buy(ItemPrice offer)
         {
-            if (inventory.Inventory.Add(offer.Item, 1) > 0)
+            int lot = offer.Lot;
+            int left = inventory.Inventory.Add(offer.Item, lot);
+            if (left > 0)
             {
+                inventory.Inventory.Remove(offer.Item, lot - left);
                 return;
             }
             if (!wallet.Wallet.Spend(offer.Coins))
             {
-                inventory.Inventory.Remove(offer.Item, 1);
+                inventory.Inventory.Remove(offer.Item, lot);
+            }
+        }
+
+        // Lessons (GL402): one button per skill the trader teaches, raising it a level for coins in proportion to the
+        // experience the level still needs.
+        private void DrawTraining(float x, float y, float width)
+        {
+            if (Current.Trains.Count == 0 || skills == null)
+            {
+                return;
+            }
+            GUI.Label(new Rect(x, y, width, 20f), "Lessons");
+            y += 24f;
+            SkillSet set = skills.Skills;
+            foreach (SkillType skill in Current.Trains)
+            {
+                int level = set.Level(skill);
+                int cost = SkillTraining.Cost(set, skill, Current.CoinsPerExperience);
+                bool top = cost <= 0;
+                GUI.enabled = !top && wallet.Wallet.Coins >= cost;
+                string label = top ? $"{skill}: level {level}, nothing left to teach"
+                    : $"Train {skill} to level {level + 1}  ({cost}c, {SkillTraining.ExperienceToNext(set, skill):0} xp)";
+                if (GUI.Button(new Rect(x, y, width, RowHeight), label)
+                    && SkillTraining.Train(set, wallet.Wallet, skill, Current.CoinsPerExperience))
+                {
+                    Trained?.Invoke(skill);
+                }
+                GUI.enabled = true;
+                y += RowHeight + 4f;
             }
         }
 

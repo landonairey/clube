@@ -5264,6 +5264,69 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
+--- !u!1 &782721298
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 782721300}
+  - component: {fileID: 782721299}
+  m_Layer: 0
+  m_Name: Town
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &782721299
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 782721298}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a3dbf3e4ed038e4d89b17b037d20c26, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.TownSite
+  worldView: {fileID: 1350119460}
+  spawn: {fileID: 1697135565}
+  shops:
+  - {fileID: 11400000, guid: 244269084ce68ff4c8cecd2a3289a028, type: 2}
+  - {fileID: 11400000, guid: d4ee4c644acc8b9469cf03a651ae8d47, type: 2}
+  - {fileID: 11400000, guid: 857a686822d187947bf04ad6725331ce, type: 2}
+  - {fileID: 11400000, guid: af7dcaacaf887ea49b6c4ee014678c78, type: 2}
+  - {fileID: 11400000, guid: aac6d08fec8f7dd458da04d36161f48f, type: 2}
+  prices: {fileID: 11400000, guid: 44577251d34951d40bd1ac9b329bc569, type: 2}
+  material: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
+  hours:
+    Open: 9
+    Close: 17
+    Sleep: 18
+    Wake: 6
+  maxDistance: 1000
+  keepFromSpawn: 70
+  waterWaitSeconds: 30
+  pathMaterial: Loose stone
+--- !u!4 &782721300
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 782721298}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &817266636
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7414,3 +7477,4 @@ SceneRoots:
   - {fileID: 1350119461}
   - {fileID: 1697135565}
   - {fileID: 979859994}
+  - {fileID: 782721300}

@@ -102,7 +102,7 @@ namespace Clube.Game
                 {
                     SetOpen(false);
                 }
-                else if ((interactor == null || interactor.Target == null || interactor.Target is INoticeOnly) && (player == null || !player.MenuClosedThisFrame))
+                else if ((interactor == null || interactor.Target == null || PlayerInteractor.IsNotice(interactor.Target)) && (player == null || !player.MenuClosedThisFrame))
                 {
                     SetOpen(true);
                 }

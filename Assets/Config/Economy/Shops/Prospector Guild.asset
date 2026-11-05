@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c64db18f989530a41ae24d12d4f92644, type: 3}
+  m_Name: Prospector Guild
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.ShopSpecialty
+  kind: 4
+  shopName: Prospector Guild
+  keeperName: the prospector
+  buysEverything: 0
+  buys:
+  - {fileID: 11400000, guid: abc86bcbe8361da41bd3f644418bc0a3, type: 2}
+  - {fileID: 11400000, guid: 9feabda89ca47d5479fc62960a078576, type: 2}
+  - {fileID: 11400000, guid: 1e3311289ece4ce428134389e92a4e43, type: 2}
+  - {fileID: 11400000, guid: 77d0fe700a4ca9f439cd43a5d6581c2d, type: 2}
+  - {fileID: 11400000, guid: 4273b1a1d0181c84a8fd5cdb5377de07, type: 2}
+  - {fileID: 11400000, guid: ed8c8b48636509843aaf87e527e02009, type: 2}
+  - {fileID: 11400000, guid: 5a86064ddd2bb7e4f8f439df059c404a, type: 2}
+  - {fileID: 11400000, guid: 0009a74da2fcc9c418d567adad1cc958, type: 2}
+  - {fileID: 11400000, guid: 0f38f79b98b5d804581a43b8813ab590, type: 2}
+  - {fileID: 11400000, guid: 86cf1409cbba3694bb4897daff8b45b9, type: 2}
+  - {fileID: 11400000, guid: e6ec90f8b46ea6747b89bbc179234604, type: 2}
+  sells:
+  - {fileID: 11400000, guid: a56a1ea3071fb444faf3aa4d3fba77a8, type: 2}
+  - {fileID: 11400000, guid: 9a2549f6e31e233418cbffff678c20ea, type: 2}
+  - {fileID: 11400000, guid: 4d73f7764f9054f489c276538d90d6d6, type: 2}
+  - {fileID: 11400000, guid: 781da9aaba956e543b3c7da3e7b05bee, type: 2}
+  - {fileID: 11400000, guid: da484e758e746c7499d8857c26737e70, type: 2}
+  sellMarkup: 1.5
+  trains: 06000000
+  coinsPerExperience: 2
+  displayed:
+  - {fileID: 11400000, guid: 4273b1a1d0181c84a8fd5cdb5377de07, type: 2}
+  - {fileID: 11400000, guid: 77d0fe700a4ca9f439cd43a5d6581c2d, type: 2}
+  - {fileID: 11400000, guid: abc86bcbe8361da41bd3f644418bc0a3, type: 2}
+  - {fileID: 11400000, guid: 1e3311289ece4ce428134389e92a4e43, type: 2}
+  - {fileID: 11400000, guid: 9feabda89ca47d5479fc62960a078576, type: 2}
+  colour: {r: 0.22, g: 0.32, b: 0.6, a: 1}

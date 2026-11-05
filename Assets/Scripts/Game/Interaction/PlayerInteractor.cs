@@ -89,7 +89,7 @@ namespace Clube.Game
                 }
             }
 
-            if (Target != null && interactAction != null && interactAction.action.WasPressedThisFrame())
+            if (Target != null && !IsNotice(Target) && interactAction != null && interactAction.action.WasPressedThisFrame())
             {
                 Target.Interact(this);
             }
@@ -112,6 +112,12 @@ namespace Clube.Game
             return bushes != null && bushes.Raycast(new Ray(head.position, head.forward), hit.distance, out _, out _);
         }
 
+        // A notice (GL179), or something that can't be used just now (GL404: a shop that's shut): no key, and E does nothing.
+        public static bool IsNotice(IInteractable target)
+        {
+            return target is INoticeOnly || (target is IClosableInteractable closable && !closable.IsAvailable);
+        }
+
         private void OnGUI()
         {
             if (Target == null || !player.enabled || player.IsCursorFree)
@@ -120,7 +126,7 @@ namespace Clube.Game
             }
             promptStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 16 };
             // A notice (GL179) is shown without the key: pressing it does nothing.
-            string prompt = Target is INoticeOnly ? Target.Prompt : $"E  {Target.Prompt}";
+            string prompt = IsNotice(Target) ? Target.Prompt : $"E  {Target.Prompt}";
             GUI.Label(new Rect(0f, Screen.height * 0.5f + 24f, Screen.width, 24f), prompt, promptStyle);
         }
     }

@@ -10,7 +10,7 @@ namespace Clube.Game
     /// <see cref="MerchantPanel"/>. Placed by hand for now; merchants in towns come with 7C.
     /// Needs a collider on it or a child so <see cref="PlayerInteractor"/> can target it.
     /// </summary>
-    public class MerchantTable : MonoBehaviour, IInteractable
+    public class MerchantTable : MonoBehaviour, IInteractable, ITrader
     {
         [SerializeField]
         private string displayName = "Merchant";
@@ -36,6 +36,15 @@ namespace Clube.Game
         }
 
         public IReadOnlyList<ItemPrice> Offers => offers;
+
+        // A plain merchant teaches nothing (GL402 is the town's shopkeepers).
+        public IReadOnlyList<SkillType> Trains => System.Array.Empty<SkillType>();
+
+        public float CoinsPerExperience => 0f;
+
+        public Vector3 Position => transform.position;
+
+        public bool IsTrading => isActiveAndEnabled;
 
         public string Prompt => $"Trade with {displayName.ToLowerInvariant()}";
 
