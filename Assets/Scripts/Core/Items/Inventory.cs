@@ -735,9 +735,9 @@ namespace Clube.Core
             {
                 return stack;
             }
-            Composition blended = Composition.Blend(stack.Contents, stack.Count, contents, added);
-            // Quality blends by count too (GL118); only gathered mixes differ here (GL131).
-            float mixed = (stack.Quality * stack.Count + quality * added) / (stack.Count + added);
+            Composition blended = Composition.Blend(stack.Contents, stack.Amount, contents, added);
+            // Quality blends by amount too, a part item included (GL118, GL385).
+            float mixed = (stack.Quality * stack.Amount + quality * added) / (stack.Amount + added);
             return new ItemStack(stack.Item, stack.Count + added, blended, 0, mixed, stack.Part);
         }
     }

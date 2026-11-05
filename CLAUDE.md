@@ -580,6 +580,12 @@ so a bun's quality is its purity; hammering drives out half the slag (`ForgedQua
 ore is the rest of the item). `PlayerController.Knockback` keeps its hop on the frame it starts.
 GL379: `GrassScatter` thins far tufts on the CPU (tufts sorted by a hashed pick, a far chunk sends the share it keeps) and resumes its chunk scan where it stopped; `InstanceBatches` passes each batch's bounds.
 GL380-GL383: far grass is four-tuft clumps drawn without depth passes (`GrassScatter.FarMaterial`); fallen leaves drop like dirt and `FallenLeaves` follows them down; `SoundSynth.Chip` plays on `BoulderBashing.HandAxeMade`.
+GL384-GL398 (`Docs/20261104c clube-backlog.md`): Q and E switch between the field log and the inventory. Buns and ingots stack to 32;
+a station's output blends qualities by amount (`CraftingStation.BlendsInOutput`), and a dragged stack moves onto another by amount,
+parts included. Refining takes one impurity a pass and fails more the purer the stack (`Refining.FailChance`); crushing and refining
+crushed ore train the new Prospecting skill. Crushed silver and gold ore. A campfire's or furnace's ground samples target the station
+(`TerrainStructure.FindAt`); idle stations don't glow. A tap of Drop places one sample on the aimed spot (`TerrainPile.PlaceOne`).
+Bucket capacity follows quality (`BucketDefinition.CapacityOf`). `PlayerWaterSounds` splashes, sloshes and drips.
 Height maps: `Docs/images/20261103 *`.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the

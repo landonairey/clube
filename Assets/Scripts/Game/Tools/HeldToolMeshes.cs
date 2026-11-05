@@ -145,9 +145,9 @@ namespace Clube.Game
                 case HeldShape.Chisel:
                     // As its icon (GL398): a rounded wooden handle, a dark ferrule, and a bronze blade flaring from a narrow
                     // neck to a wide, bright bevelled edge.
-                    model.Prism(new Vector3(0f, -0.115f, 0.011f), new Vector3(0f, -0.09f, 0.015f), 0.011f, 0.02f, 6, Wood * 0.92f);
-                    model.Prism(new Vector3(0f, -0.09f, 0.015f), new Vector3(0f, 0.1f, 0.04f), 0.02f, 0.018f, 6, Wood);
-                    model.Prism(new Vector3(0f, 0.098f, 0.04f), new Vector3(0f, 0.125f, 0.044f), 0.022f, 0.022f, 6, head * 0.68f);
+                    model.Prism(new Vector3(0f, -0.115f, 0.011f), new Vector3(0f, -0.09f, 0.015f), 0.014f, 0.026f, 6, Wood * 0.72f);
+                    model.Prism(new Vector3(0f, -0.09f, 0.015f), new Vector3(0f, 0.1f, 0.04f), 0.026f, 0.024f, 6, Wood * 0.8f);
+                    model.Prism(new Vector3(0f, 0.098f, 0.04f), new Vector3(0f, 0.125f, 0.044f), 0.028f, 0.028f, 6, head * 0.6f);
                     model.Blade(new Vector3(0f, 0.125f, 0.044f), new Vector3(0f, 0.235f, 0.06f), 0.016f, 0.044f, 0.012f, 0.007f, head);
                     model.Blade(new Vector3(0f, 0.235f, 0.06f), new Vector3(0f, 0.255f, 0.063f), 0.044f, 0.046f, 0.007f, 0.0015f, head * 1.3f);
                     break;
