@@ -28,6 +28,7 @@ namespace Clube.Core
         private int octaves;
         private float lacunarity;
         private float persistence;
+        private bool smoothMassifs;
         private DistantRanges distant;
         private WaterMap water;
 
@@ -51,6 +52,19 @@ namespace Clube.Core
             this.octaves = math.clamp(octaves, 1, 8);
             this.lacunarity = math.max(1f, lacunarity);
             this.persistence = math.saturate(persistence);
+            smoothMassifs = false;
+        }
+
+        /// <summary>
+        /// The same land with smooth massifs in place of the ridged mountains (P12), for the erosion filter to cut its own
+        /// ridges into: it steers its gullies by the slope, which flips across ridged noise's knife-edge crests (seams and
+        /// steps there) and wanders on its fine ridges (gullies turned to noise). <c>octaves</c> then sets the massifs' detail.
+        /// </summary>
+        public LandscapeHeight WithSmoothMassifs()
+        {
+            LandscapeHeight smooth = this;
+            smooth.smoothMassifs = true;
+            return smooth;
         }
 
         /// <summary>The same land with river beds cut into it (GL307).</summary>
@@ -87,7 +101,9 @@ namespace Clube.Core
             float hills = math.smoothstep(threshold - 0.2f, threshold + 0.05f, mask);
 
             float ridgeScale = 1f / featureSize;
-            float ridges = Ridged(wx * ridgeScale + 71.3f, wz * ridgeScale + 47.9f, octaves);
+            float peaks = smoothMassifs
+                ? Massifs(wx * ridgeScale / 1.3f + 71.3f, wz * ridgeScale / 1.3f + 47.9f)
+                : Ridged(wx * ridgeScale + 71.3f, wz * ridgeScale + 47.9f, octaves);
             // Peaks vary across a range: some summits stand well above their neighbours.
             float massifScale = 1f / (featureSize * 2.5f);
             float massif = 0.45f + 0.55f * math.saturate(Fractal(wx * massifScale + 57.1f, wz * massifScale + 21.4f, 2, 2f, 0.5f) + 0.5f);
@@ -98,7 +114,7 @@ namespace Clube.Core
             return level
                 + plains * math.min(3f, mountainHeight * 0.03f)
                 + hills * (rolling * 0.5f + 0.5f) * mountainHeight * 0.12f
-                + mountains * massif * ridges * mountainHeight
+                + mountains * (smoothMassifs ? peaks : massif * peaks) * mountainHeight
                 + DistantHeight(x, z);
         }
 
@@ -165,6 +181,17 @@ namespace Clube.Core
             }
             // Drop the floor so valleys cut down between the crests.
             return math.saturate((sum / total - 0.15f) / 0.7f);
+        }
+
+        // Smooth massifs, 0 to about 1: broad bumps from a few gentle octaves, squared so peaks stand out of wide lower
+        // ground. No crests, folds or clamps, so the slope (which steers the erosion's gullies) never flips.
+        private float Massifs(float x, float z)
+        {
+            float bumps = 0.55f + 0.9f * Fractal(x, z, octaves, 2f, 0.3f);
+            // A soft floor (softplus) instead of a clamp at 0: a clamp's crease became a cliff edge under the erosion.
+            const float softness = 0.06f;
+            bumps = softness * math.log(1f + math.exp(bumps / softness));
+            return bumps * bumps;
         }
     }
 

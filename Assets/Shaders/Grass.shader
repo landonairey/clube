@@ -63,7 +63,7 @@ Shader "Clube/Grass"
             return saturate((distanceToCamera - _ThinStart) / max(_FadeEnd - _ThinStart, 0.01)) * _LawnBlend;
         }
 
-        // Where a vertex stands: past _ThinStart fewer instances stand, those left wider to cover the same
+        // Where a vertex stands: past _ThinStart GrassScatter sends fewer instances (GL379), so those left are wider to cover the same
         // ground (GL257); towards the edge of the drawn area they shrink into the ground, so there's no hard
         // line; and the wind sways the tip.
         float3 FloraPosition(float3 positionOS, float tip)
@@ -72,11 +72,12 @@ Shader "Clube/Grass"
             float3 rootWS = TransformObjectToWorld(float3(0, 0, 0));
             float distanceToCamera = distance(rootWS, _WorldSpaceCameraPos);
             float keep = lerp(1.0, _ThinMin, saturate((distanceToCamera - _ThinStart) / max(_FadeStart - _ThinStart, 0.01)));
-            float pick = frac(sin(dot(floor(rootWS.xz * 9.0), float2(12.9898, 78.233))) * 43758.5453);
-            float kept = pick < keep ? 1.0 : 0.0;
             float fade = 1.0 - saturate((distanceToCamera - _FadeStart) / max(_FadeEnd - _FadeStart, 0.01));
-            float3 offset = (positionWS - rootWS) * fade * kept;
-            offset.xz *= min(rsqrt(max(keep, 0.01)), 2.5);
+            float3 offset = (positionWS - rootWS) * fade;
+            // Survivors stand taller as well as wider, so far grass still reads as grass (GL378).
+            float widen = min(rsqrt(max(keep, 0.01)), 2.5);
+            offset.xz *= widen;
+            offset.y *= lerp(1.0, widen, 0.5);
             positionWS = rootWS + offset;
             float reach = clamp(InstanceHeight() / max(_SwayHeight, 0.01), 0.5, 4.0);
             positionWS.xz += WindSway(positionWS, _WindStrength * reach * tip, _WindSpeed);

@@ -113,7 +113,7 @@ namespace Clube.Game
         private void Scoop(BucketDefinition bucket)
         {
             ItemStack stack = hotbar.SelectedStack;
-            int room = bucket.Capacity - bucket.WaterIn(stack);
+            int room = bucket.CapacityOf(stack) - bucket.WaterIn(stack);
             if (room <= 0 || !Aim(out Vector3 waterAt, out _, true))
             {
                 return;
@@ -194,12 +194,38 @@ namespace Clube.Game
                 if (density.HasValue && density.Value >= iso)
                 {
                     pourAt = worldView.transform.InverseTransformPoint(last);
+                    if (needWater && WaterNear(world, pourAt))
+                    {
+                        // A film or speck of water on the ground, thinner than the ray's step (GL396): scoop round it.
+                        waterAt = pourAt;
+                        return true;
+                    }
                     return !needWater;
                 }
                 last = point;
             }
             pourAt = worldView.transform.InverseTransformPoint(pourAt);
             return !needWater;
+        }
+
+        // Any water in the samples round a point (relative to the world origin), one sample out.
+        private static bool WaterNear(World world, Vector3 local)
+        {
+            Vector3Int centre = world.Grid.WorldToNearestSample(local);
+            for (int z = -1; z <= 1; z++)
+            {
+                for (int y = -1; y <= 1; y++)
+                {
+                    for (int x = -1; x <= 1; x++)
+                    {
+                        if (world.GetWater(centre + new Vector3Int(x, y, z)) > 0f)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
         }
     }
 }

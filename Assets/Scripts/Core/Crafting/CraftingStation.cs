@@ -67,6 +67,12 @@ namespace Clube.Core
         /// </summary>
         public SkillSet Learner { get; set; }
 
+        /// <summary>Of the rock in a smelt, the share that stays in the bun in a furnace of heat 1 (GL377).</summary>
+        public const float BaseSlag = 0.15f;
+
+        /// <summary>Of the slag in metal, the share hammering it drives out (GL377).</summary>
+        public const float ForgingSlagRemoved = 0.5f;
+
         public StationKind Kind { get; }
 
         /// <summary>The recipes it can make.</summary>
@@ -255,6 +261,16 @@ namespace Clube.Core
                     int placed = stack.Count - Input.AddToStacks(stack.Item, stack.Count, stack.Contents, stack.Quality, keepApart: true);
                     moved += from.RemoveAt(slot, placed);
                 }
+                // The part of an item a stack had over its whole ones goes along with them (GL371: 6.07 gold buttons all go
+                // in, not 6 with 0.07 left behind).
+                for (int slot = 0; slot < from.SlotCount; slot++)
+                {
+                    ItemStack rest = from[slot];
+                    if (rest.Item == input.Item && rest.Count == 0 && rest.Part > 0f)
+                    {
+                        from.MoveTo(slot, Input, keepApart: true);
+                    }
+                }
             }
             return moved;
         }
@@ -344,6 +360,11 @@ namespace Clube.Core
                 {
                     break;
                 }
+                // A finished run waiting for room in the output (GL359): nothing to do until it's taken.
+                if (done + 1e-4f >= Active.Amount && !OutputFits(Active))
+                {
+                    break;
+                }
                 if (BurnsFuel && !IsBurning && !Ignite())
                 {
                     break;
@@ -420,6 +441,15 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// True for a result that joins what's waiting in the output at any quality, blending by amount (GL385): materials
+        /// (buns, ingots, charcoal), not tools or things to build.
+        /// </summary>
+        public static bool BlendsInOutput(ItemDefinition item)
+        {
+            return item != null && item.MaxStack > 1 && !(item is PlaceableDefinition) && !(item is ToolDefinition);
+        }
+
+        /// <summary>
         /// True when the recipe's result fits on what's already waiting in <see cref="Output"/>:
         /// an empty slot, or the same item with room for the whole count. A different item there
         /// (tin buns left in the campfire) holds the recipe back until it's taken.
@@ -427,7 +457,23 @@ namespace Clube.Core
         public bool OutputFits(Recipe recipe)
         {
             ItemStack waiting = Output[0];
-            return waiting.IsEmpty || (waiting.Item == recipe.Output.Item && waiting.Space >= (int)Math.Ceiling(recipe.Output.Count * YieldOf(recipe) - 1e-4f));
+            if (waiting.IsEmpty)
+            {
+                return true;
+            }
+            // The same item, with room, and at the quality this run would make (GL359: an ingot hammered after a Blacksmithing
+            // level-up is better than the ones waiting, doesn't stack with them, and was lost).
+            ItemDefinition item = recipe.Output.Item;
+            if (BlendsInOutput(item))
+            {
+                // Materials blend whatever their quality (GL385: each smelt's purity differs, and buns of 0.94 then 0.95
+                // jammed the furnace at 1.75).
+                return Inventory.Combines(waiting, item) && item.MaxStack - waiting.Amount + 1e-4f >= recipe.Output.Count * YieldOf(recipe);
+            }
+            Composition madeOf = item is PlaceableDefinition ? InputContents(recipe) : null;
+            return waiting.Item == recipe.Output.Item
+                && Inventory.Stacks(waiting, recipe.Output.Item, madeOf, OutputQuality(recipe))
+                && waiting.Space >= (int)Math.Ceiling(recipe.Output.Count * YieldOf(recipe) - 1e-4f);
         }
 
         /// <summary>
@@ -474,19 +520,49 @@ namespace Clube.Core
             return count > 0 ? total / count : recipe.TypicalGrade;
         }
 
-        // How good the result is: smelted metal comes out pure (GL128), a smith's work is no better than the
-        // smith (GL129) nor its inputs, and anything else is as good as its inputs (GL118).
+        /// <summary>
+        /// Of the rock in a smelt, the share that stays in the bun as slag (GL377): 15% in a furnace of heat 1, less in a
+        /// hotter one, and up to 60% less again by Smelting 10. So a bun is only pure from pure ore, and richer ore, a
+        /// hotter furnace and a better smelter all make a purer bun.
+        /// </summary>
+        public static float SlagCarried(float heat, int smeltingLevel)
+        {
+            float skill = 1f - 0.06f * Math.Min(10, Math.Max(0, smeltingLevel));
+            return BaseSlag / Math.Max(0.25f, heat) * skill;
+        }
+
+        /// <summary>How pure a smelt's metal is from ore whose mineral share is <paramref name="concentration"/> (GL377).</summary>
+        public static float SmeltPurity(float concentration, float heat, int smeltingLevel)
+        {
+            float mineral = Math.Max(0f, Math.Min(1f, concentration));
+            float slag = (1f - mineral) * SlagCarried(heat, smeltingLevel);
+            return mineral + slag > 0f ? mineral / (mineral + slag) : 1f;
+        }
+
+        /// <summary>
+        /// How good a hammered result is (GL129, GL377): hammering drives out half the slag left in the metal, and nothing
+        /// comes out better than the smith (<see cref="SmithingQuality"/>).
+        /// </summary>
+        public static float ForgedQuality(float inputQuality, int blacksmithingLevel)
+        {
+            float driven = 1f - (1f - Math.Min(1f, inputQuality)) * (1f - ForgingSlagRemoved);
+            return Math.Min(Math.Max(inputQuality, driven), SmithingQuality(blacksmithingLevel));
+        }
+
+        // How good the result is: smelted metal is as pure as its ore lets it be (GL377), a smith's work is no better than the
+        // smith (GL129) though it drives out slag, and anything else is as good as its inputs (GL118).
         private float OutputQuality(Recipe recipe)
         {
             if (recipe.Extracts != null)
             {
-                return 1f;
+                int smelting = Learner != null ? Learner.Level(SkillType.Smelting) : 0;
+                return SmeltPurity(Concentration(recipe), Heat, smelting);
             }
             float quality = InputQuality(recipe) * recipe.QualityFactor;
             if (recipe.ExperienceSkill == SkillType.Blacksmithing)
             {
                 int level = Learner != null ? Learner.Level(SkillType.Blacksmithing) : 0;
-                quality = Math.Min(quality, SmithingQuality(level));
+                quality = Math.Min(recipe.QualityFactor * ForgedQuality(InputQuality(recipe), level), SmithingQuality(level));
             }
             return quality;
         }
@@ -496,6 +572,14 @@ namespace Clube.Core
             done += amount;
             if (done + 1e-4f >= Active.Amount)
             {
+                // Done, but its result has nowhere to go: it waits, inputs and all, until the output is taken (GL359). Taking
+                // them first and adding a result that didn't fit lost both.
+                if (!OutputFits(Active))
+                {
+                    done = Active.Amount;
+                    Changed?.Invoke();
+                    return;
+                }
                 // Finished: the inputs turn into the result.
                 Recipe finished = Active;
                 Active = null;
@@ -510,7 +594,7 @@ namespace Clube.Core
                     Input.Remove(input.Item, input.Count);
                 }
                 int whole = (int)Math.Floor(made + 1e-4f);
-                Output.Add(finished.Output.Item, whole, madeOf, 0, quality, made - whole);
+                Output.Add(finished.Output.Item, whole, madeOf, 0, quality, made - whole, anyQuality: BlendsInOutput(finished.Output.Item));
                 Completed?.Invoke(finished);
             }
             Changed?.Invoke();
@@ -556,10 +640,17 @@ namespace Clube.Core
             {
                 chosen = null;
             }
-            if (Active != null && (!Active.HasInputs(Input) || !OutputFits(Active)))
+            bool finishedWaiting = Active != null && done + 1e-4f >= Active.Amount;
+            if (Active != null && (!Active.HasInputs(Input) || (!OutputFits(Active) && !finishedWaiting)))
             {
                 Active = null;
                 done = 0f;
+            }
+            else if (finishedWaiting && OutputFits(Active))
+            {
+                // A run that finished while the output was full completes as soon as it's taken (GL359).
+                Work(0f);
+                return;
             }
             Changed?.Invoke();
         }

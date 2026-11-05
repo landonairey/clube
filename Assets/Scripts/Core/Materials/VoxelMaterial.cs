@@ -146,6 +146,10 @@ namespace Clube.Core
         [SerializeField, Range(0f, 1f)]
         private float windSway;
 
+        [Tooltip("What it becomes when a felled tree lands (GL350): leaves turn to fallen leaves, which lie still and decay. Empty: it stays as it is.")]
+        [SerializeField]
+        private VoxelMaterial fallenForm;
+
         [Tooltip("How much it shines, 0-1 (GL251: gold glints, so it's told from chalcopyrite): a metallic highlight and sparkles in the Clube/Terrain Materials shader.")]
         [SerializeField, Range(0f, 1f)]
         private float shine;
@@ -278,6 +282,16 @@ namespace Clube.Core
 
         /// <summary>How far it sways in the wind, 0-1: leaves sway, the ground does not.</summary>
         public float WindSway => windSway;
+
+        /// <summary>What it becomes when a felled tree lands (GL350), or null to stay as it is.</summary>
+        public VoxelMaterial FallenForm => fallenForm;
+
+        /// <summary>Sets <see cref="FallenForm"/> (tests).</summary>
+        public VoxelMaterial WithFallenForm(VoxelMaterial form)
+        {
+            fallenForm = form;
+            return this;
+        }
 
         /// <summary>How much it shines, 0-1 (GL251): gold does, the rest of the ground is matt.</summary>
         public float Shine => shine;

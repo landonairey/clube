@@ -7,7 +7,7 @@ namespace Clube.Game
     /// A merchant's table standing at a fixed place in the world (GL38): once the chunk column
     /// there has loaded, levels one build square of ground under it and puts the table on it.
     /// The leveling goes through <see cref="World.SetDensity"/> like any edit, so it's kept with
-    /// the chunk and the borders agree. Done once per run.
+    /// the chunk and the borders agree. Done once per world: a regenerated world gets the table placed again.
     /// </summary>
     /// <remarks>
     /// The square is a cell of the build grid inside the chunk at x = 0, z = 0, so one chunk
@@ -35,11 +35,24 @@ namespace Clube.Game
 
         private bool done;
 
+        // The world the table was placed in: a regenerated world (another generator or seed) is new ground, so the table
+        // is placed again on it (GL341).
+        private World placedIn;
+
         /// <summary>The table once placed, or null.</summary>
         public GameObject Table { get; private set; }
 
         private void Update()
         {
+            if (done && worldView != null && worldView.World != placedIn)
+            {
+                if (Table != null)
+                {
+                    Destroy(Table);
+                    Table = null;
+                }
+                done = false;
+            }
             if (done || worldView == null || !worldView.IsReady || tablePrefab == null)
             {
                 return;
@@ -49,6 +62,7 @@ namespace Clube.Game
                 return;
             }
             done = true;
+            placedIn = worldView.World;
             Place();
         }
 
@@ -81,12 +95,14 @@ namespace Clube.Game
             float iso = worldView.Config.IsoLevel;
             float voxel = grid.VoxelSize;
             Vector3 centre = CellCentre();
-            float ground = GroundHeight(world, centre, iso, worldView.Config.WorldHeightInChunks);
-            VoxelMaterial grass = worldView.Config.Materials != null ? worldView.Config.Materials.Find("Grass") : null;
-            VoxelMaterial dirt = worldView.Config.Materials != null ? worldView.Config.Materials.Find("Dirt") : null;
+            MaterialRegistry materials = worldView.Config.Materials;
+            float ground = GroundHeight(world, materials, centre, iso, worldView.Config.WorldHeightInChunks);
+            VoxelMaterial grass = materials != null ? materials.Find("Grass") : null;
+            VoxelMaterial dirt = materials != null ? materials.Find("Dirt") : null;
 
             // The square, and one sample around it for the ramp.
             float half = worldView.Config.BuildCellSize * 0.5f + voxel;
+            ClearTrees(world, materials, centre, half, ground, iso);
             Vector3Int low = grid.WorldToNearestSample(new Vector3(centre.x - half, ground - Fill, centre.z - half));
             Vector3Int high = grid.WorldToNearestSample(new Vector3(centre.x + half, ground + Headroom, centre.z + half));
             for (int z = low.z; z <= high.z; z++)
@@ -119,9 +135,69 @@ namespace Clube.Game
             Table.name = "Merchant table (spawn)";
         }
 
-        // The surface height at a point: the highest solid sample of its column, and where between it
-        // and the air above the density crosses the iso level.
-        private static float GroundHeight(World world, Vector3 point, float iso, int heightInChunks)
+        // Most plant samples a tree is cleared by: well over the biggest generated tree.
+        private const int MaxTreeSamples = 60000;
+
+        private static bool IsPlant(World world, MaterialRegistry materials, Vector3Int sample)
+        {
+            byte? id = world.GetMaterial(sample);
+            return materials != null && id.HasValue && materials.Get(id.Value) is VoxelMaterial material
+                && material.Kind == MaterialKind.Plant;
+        }
+
+        // Trees are terrain data (GL30): any that stands on the square is cut down whole, every solid plant sample joined to
+        // it above the ground, so no crown is left floating over the table (GL338).
+        private static void ClearTrees(World world, MaterialRegistry materials, Vector3 centre, float half, float ground, float iso)
+        {
+            if (materials == null)
+            {
+                return;
+            }
+            WorldGrid grid = world.Grid;
+            float floor = ground - grid.VoxelSize;
+            Vector3Int low = grid.WorldToNearestSample(new Vector3(centre.x - half, floor, centre.z - half));
+            Vector3Int high = grid.WorldToNearestSample(new Vector3(centre.x + half, ground + Headroom, centre.z + half));
+            var front = new System.Collections.Generic.Stack<Vector3Int>();
+            var seen = new System.Collections.Generic.HashSet<Vector3Int>();
+            for (int z = low.z; z <= high.z; z++)
+            {
+                for (int y = low.y; y <= high.y; y++)
+                {
+                    for (int x = low.x; x <= high.x; x++)
+                    {
+                        var sample = new Vector3Int(x, y, z);
+                        if ((world.GetDensity(sample) ?? 0f) >= iso && IsPlant(world, materials, sample) && seen.Add(sample))
+                        {
+                            front.Push(sample);
+                        }
+                    }
+                }
+            }
+            int floorY = low.y;
+            while (front.Count > 0 && seen.Count < MaxTreeSamples)
+            {
+                Vector3Int sample = front.Pop();
+                world.SetDensity(sample, 0f);
+                foreach (Vector3Int step in Around)
+                {
+                    Vector3Int next = sample + step;
+                    if (next.y >= floorY && !seen.Contains(next) && (world.GetDensity(next) ?? 0f) >= iso && IsPlant(world, materials, next))
+                    {
+                        seen.Add(next);
+                        front.Push(next);
+                    }
+                }
+            }
+        }
+
+        private static readonly Vector3Int[] Around =
+        {
+            Vector3Int.up, Vector3Int.down, Vector3Int.right, Vector3Int.left, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
+        };
+
+        // The surface height at a point: the highest solid sample of its column that isn't part of a tree, and where
+        // between it and the air above the density crosses the iso level.
+        private static float GroundHeight(World world, MaterialRegistry materials, Vector3 point, float iso, int heightInChunks)
         {
             WorldGrid grid = world.Grid;
             Vector3Int column = grid.WorldToNearestSample(point);
@@ -129,7 +205,7 @@ namespace Clube.Game
             for (int y = top; y >= 0; y--)
             {
                 float? below = world.GetDensity(new Vector3Int(column.x, y, column.z));
-                if (!below.HasValue || below.Value < iso)
+                if (!below.HasValue || below.Value < iso || IsPlant(world, materials, new Vector3Int(column.x, y, column.z)))
                 {
                     continue;
                 }

@@ -40,6 +40,9 @@ namespace Clube.Game
         private readonly HashSet<Vector3Int> seen = new HashSet<Vector3Int>();
         private readonly Stack<Vector3Int> pending = new Stack<Vector3Int>();
 
+        /// <summary>The samples of the worktop piece the last <see cref="Find"/> found, for the interact outline (GL368).</summary>
+        public IReadOnlyCollection<Vector3Int> LastPiece => seen;
+
         /// <summary>The worktop under a ray hit on the terrain, or null when it isn't one.</summary>
         public IInteractable Find(RaycastHit hit)
         {

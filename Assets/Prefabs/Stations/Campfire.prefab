@@ -202,6 +202,7 @@ GameObject:
   - component: {fileID: 423415346032570738}
   - component: {fileID: 8917457592478872214}
   - component: {fileID: 2781153100326116204}
+  - component: {fileID: 8973249433650384651}
   m_Layer: 0
   m_Name: Campfire
   m_TagString: Untagged
@@ -245,8 +246,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.6, y: 0.3, z: 0.6}
-  m_Center: {x: 0, y: 0.15, z: 0}
+  m_Size: {x: 0.6, y: 0.15, z: 0.6}
+  m_Center: {x: 0, y: 0.075, z: 0}
 --- !u!114 &4903786179241846693
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -343,3 +344,21 @@ MonoBehaviour:
   smokeMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
   flameAt: {x: 0, y: 0.08, z: 0}
   flameHeight: 0.4
+--- !u!114 &8973249433650384651
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5762353483625990904}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 504a459a63549324bb6b6acd0283ead2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.CampfireBounce
+  radius: 0.75
+  maxFeetHeight: 0.35
+  pushSpeed: 2.5
+  lift: 3.5
+  pushSeconds: 0.35
+  volume: 0.6

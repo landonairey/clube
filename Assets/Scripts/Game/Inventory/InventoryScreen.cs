@@ -18,7 +18,7 @@ namespace Clube.Game
     {
         private const float Padding = 12f;
 
-        [Tooltip("Opens and closes the screen (Tab).")]
+        [Tooltip("Opens and closes the screen (the Inventory action: E also opens it, GL298; Tab no longer does, GL364).")]
         [SerializeField]
         private InputActionReference toggleAction;
 
@@ -72,8 +72,23 @@ namespace Clube.Game
                 return;
             }
 
+            // E in the field log, or the log's key (Q) here, switches between the two (GL384).
+            bool interactPressed = interactAction != null && interactAction.action.WasPressedThisFrame();
+            if (fieldLog != null && fieldLog.IsOpen && interactPressed)
+            {
+                fieldLog.Close();
+                SetOpen(true);
+                return;
+            }
+            if (IsOpen && fieldLog != null && fieldLog.ToggleAction != null && fieldLog.ToggleAction.WasPressedThisFrame())
+            {
+                SetOpen(false);
+                fieldLog.Open(fieldLog.Current);
+                return;
+            }
+
             // One screen at a time: not over a station's or a merchant's panel.
-            bool otherOpen = (stationPanel != null && stationPanel.IsOpen) || (merchantPanel != null && merchantPanel.IsOpen)
+            bool otherOpen =(stationPanel != null && stationPanel.IsOpen) || (merchantPanel != null && merchantPanel.IsOpen)
                 || (fieldLog != null && fieldLog.IsOpen) || (chestPanel != null && chestPanel.IsOpen) || (rest != null && rest.IsOpen);
             if (toggleAction != null && toggleAction.action.WasPressedThisFrame() && !otherOpen)
             {
@@ -126,8 +141,8 @@ namespace Clube.Game
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
             string title = inventory.UsesToolSlot
-                ? "Inventory (Tab to close): tool slot, then items; click a tool to equip it, drag to place"
-                : "Inventory (Tab to close): click to send to the hotbar or back, drag to place (Shift half, Ctrl one), right-click to split";
+                ? "Inventory (E to close): tool slot, then items; click a tool to equip it, drag to place"
+                : "Inventory (E to close): click to send to the hotbar or back, drag to place (Shift half, Ctrl one), right-click to split";
             GUI.Label(new Rect(panel.x + Padding, panel.y + Padding, width - Padding * 2f, 20f), title);
 
             var gridTopLeft = new Vector2(panel.x + Padding, panel.y + Padding + 24f);

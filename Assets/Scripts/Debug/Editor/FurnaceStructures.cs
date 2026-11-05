@@ -113,9 +113,10 @@ namespace Clube.Debug.Editor
                 Object.DestroyImmediate(root.GetComponent<MeshFilter>());
 
                 var box = Get<BoxCollider>(root);
-                // The whole body (GL143), so the player can use it from any side and tools still break it.
+                // The body within its build cell (GL143, GL361): usable from any side and tools still break it, and two furnaces
+                // a cell apart leave room for the player to pass between.
                 box.center = new Vector3(0f, 0.85f, 0f);
-                box.size = new Vector3(1.3f, 1.7f, 1.3f);
+                box.size = new Vector3(1f, 1.7f, 1f);
 
                 var station = new SerializedObject(root.GetComponent<StationObject>());
                 station.FindProperty("displayName").stringValue = name;

@@ -154,7 +154,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1.3, y: 1.7, z: 1.3}
+  m_Size: {x: 1, y: 1.7, z: 1}
   m_Center: {x: 0, y: 0.85, z: 0}
 --- !u!114 &4903786179241846693
 MonoBehaviour:
@@ -181,7 +181,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2ea129385f04d4e4191060b48a63ffdf, type: 2}
   - {fileID: 11400000, guid: fbf7d632198dfe54cbfe905e7230c704, type: 2}
   - {fileID: 11400000, guid: f4da6991b017a7945abfa36571cdec99, type: 2}
+  - {fileID: 11400000, guid: 9f36d869842179e46914be8a41f33b7d, type: 2}
   - {fileID: 11400000, guid: 920c30d37746a7f45924e18044f271f0, type: 2}
+  - {fileID: 11400000, guid: 179eb7d029ba37049871ae5c98c544cb, type: 2}
   - {fileID: 11400000, guid: 8072c269a6427d146a7e5d0577b45068, type: 2}
   - {fileID: 11400000, guid: 047abb6ed16abca459fb3bcdb4f41160, type: 2}
   burnsFuel: 1

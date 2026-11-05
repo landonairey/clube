@@ -32,7 +32,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 3619314257253541441}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &495237046116366834
@@ -129,8 +130,8 @@ MonoBehaviour:
   displayName: Merchant
   prices: {fileID: 11400000, guid: 44577251d34951d40bd1ac9b329bc569, type: 2}
   offers:
-  - Item: {fileID: 11400000, guid: 5c26ed0b0bc9f364eb573719b28d57bf, type: 2}
-    Coins: 100
+  - Item: {fileID: 11400000, guid: 75884212da9ef2040ac6fa7449e6da69, type: 2}
+    Coins: 140
     Units: 1
     ByVolume: 0
   - Item: {fileID: 11400000, guid: 491e33a691a865b42bde1489ab967008, type: 2}
@@ -141,3 +142,43 @@ MonoBehaviour:
     Coins: 1000
     Units: 1
     ByVolume: 0
+--- !u!1 &2174981801179446961
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3619314257253541441}
+  - component: {fileID: 8998279020579094211}
+  m_Layer: 0
+  m_Name: Outline shape
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3619314257253541441
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2174981801179446961}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2810931723874795346}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &8998279020579094211
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2174981801179446961}
+  m_Mesh: {fileID: 4300000, guid: e11e9460e66450246a1776a6d3703308, type: 2}

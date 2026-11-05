@@ -33,6 +33,7 @@ namespace Clube.Core
         private readonly ITerrainGenerator generator;
         private readonly OreField ores;
         private readonly TreeField trees;
+        private readonly BoulderField boulders;
         private readonly ChunkFillSettings fillSettings;
         private readonly Func<Vector3Int, IVoxelStorage> createStorage;
 
@@ -56,12 +57,13 @@ namespace Clube.Core
         /// <param name="format">The density format the world's storage holds (<see cref="World.PreferredFormat"/>).</param>
         public ChunkPipeline(
             WorldGrid grid, ITerrainGenerator generator, TerrainLayers layers, OreField ores, DensityFormat format,
-            Func<Vector3Int, IVoxelStorage> createStorage, TreeField trees = null, StartArea start = null)
+            Func<Vector3Int, IVoxelStorage> createStorage, TreeField trees = null, StartArea start = null, BoulderField boulders = null)
         {
             this.grid = grid;
             this.generator = generator;
             this.ores = ores;
             this.trees = trees;
+            this.boulders = boulders;
             this.createStorage = createStorage;
             fillSettings = ChunkGenerator.SettingsFor(layers, ores, format, start, generator);
         }
@@ -185,7 +187,7 @@ namespace Clube.Core
             }
 
             var task = new GenerationTask { Coord = coord, Grid = chunkGrid };
-            task.Trees = ChunkGenerator.CollectTrees(trees, task.Grid, Allocator.Persistent);
+            task.Trees = ChunkGenerator.CollectTrees(trees, boulders, task.Grid, Allocator.Persistent);
             if (generator == null || (task.Trees.Length == 0 && IsAboveSurface(coord, task.Grid)))
             {
                 task.Trees.Dispose();

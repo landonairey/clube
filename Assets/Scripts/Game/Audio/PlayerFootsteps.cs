@@ -79,7 +79,8 @@ namespace Clube.Game
 
         private void Step()
         {
-            if (sounds.EffectsOn)
+            // In water the legs slosh instead (PlayerWaterSounds, GL397).
+            if (sounds.EffectsOn && player.Submersion < 0.12f)
             {
                 // Footsteps sit under the rest of the mix (GL275), at the player's footstep volume (GL276).
                 sounds.Play(sounds.StepsOn(GroundMaterial()), source, 0.6f, AudioChannel.Footsteps);

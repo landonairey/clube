@@ -317,3 +317,35 @@ MonoBehaviour:
     volume: 0.7
     pitchJitter: 0
     playAll: 1
+  knapped:
+    clips:
+    - {fileID: 8300000, guid: 5021ff502361ac74a91e2bfe53a10b62, type: 3}
+    - {fileID: 8300000, guid: 3c3bb7e48b5fae847817a96704030df6, type: 3}
+    - {fileID: 8300000, guid: fbdba8e82417bb54baba8106ec41cc2b, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
+    playAll: 0
+  splash:
+    clips:
+    - {fileID: 8300000, guid: aceae436e5647d544bc4b9c8788d5281, type: 3}
+    - {fileID: 8300000, guid: 9d175084e489dab4d97c8616d708fe2e, type: 3}
+    - {fileID: 8300000, guid: 80eb3fe3ca6a5bb4a8675a068d5e9789, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
+    playAll: 0
+  wade:
+    clips:
+    - {fileID: 8300000, guid: fc415d53be92ff04e8ad1fadda6dc69f, type: 3}
+    - {fileID: 8300000, guid: ea4b031242c52c94ea99c0518f2279af, type: 3}
+    - {fileID: 8300000, guid: cbd89b84d62fd4448a4b1e71c865aa7f, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
+    playAll: 0
+  emerge:
+    clips:
+    - {fileID: 8300000, guid: 922bce7a38450af49a8b2f7636e68cce, type: 3}
+    - {fileID: 8300000, guid: ebf26d2272f38104aae32e12e907bc5d, type: 3}
+    - {fileID: 8300000, guid: d559a5092bafff548807cd31cf15e3ad, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
+    playAll: 0

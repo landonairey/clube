@@ -28,6 +28,15 @@ namespace Clube.Core
 
         public int Capacity => capacity;
 
+        /// <summary>
+        /// The most water this bucket holds (GL395): its <see cref="Capacity"/> at the stack's quality, so a 60% bucket
+        /// carries 60 of 100 units. At least 1.
+        /// </summary>
+        public int CapacityOf(ItemStack stack)
+        {
+            return Mathf.Max(1, Mathf.RoundToInt(capacity * stack.Quality));
+        }
+
         public float ScoopRadius => scoopRadius;
 
         public int PourAmount => pourAmount;
@@ -37,13 +46,13 @@ namespace Clube.Core
         /// <summary>The water in a bucket's stack, in units.</summary>
         public int WaterIn(ItemStack stack)
         {
-            return Mathf.Clamp(stack.Wear, 0, capacity);
+            return Mathf.Clamp(stack.Wear, 0, CapacityOf(stack));
         }
 
         /// <summary>The same bucket holding <paramref name="water"/> units.</summary>
         public ItemStack WithWater(ItemStack stack, int water)
         {
-            return new ItemStack(this, 1, stack.Contents, Mathf.Clamp(water, 0, capacity), stack.Quality);
+            return new ItemStack(this, 1, stack.Contents, Mathf.Clamp(water, 0, CapacityOf(stack)), stack.Quality);
         }
 
         /// <summary>Makes a bucket in code (tests).</summary>

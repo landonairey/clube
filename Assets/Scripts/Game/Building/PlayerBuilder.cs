@@ -214,6 +214,11 @@ namespace Clube.Game
                 StopBuilding();
                 return;
             }
+            if (placeable is TorchDefinition)
+            {
+                BuildTorch(placeable, action, head, hit);
+                return;
+            }
 
             // The cell aimed at; the object stands on the ground at its centre, facing the player.
             var cells = new BuildGrid(worldView.Config.BuildCellSize);
@@ -264,6 +269,51 @@ namespace Clube.Game
                 : onWorktop ? $"A {placeable.DisplayName.ToLowerInvariant()} can't go on a stump"
                 : steep ? "Too steep to build here"
                 : blocked ? $"Something is in the way of the {placeable.DisplayName.ToLowerInvariant()}" : $"B  Place {placeable.DisplayName.ToLowerInvariant()}    R  Rotate";
+            if (action != null && action.WasPressedThisFrame())
+            {
+                TryPlace();
+            }
+        }
+
+        // A torch goes on the centre of the voxel aimed at (GL353), not a build cell: the open voxel in front of the surface hit,
+        // standing on the floor inside it, so it fits in a mining tunnel. Searched from inside that voxel, not from 3 m above
+        // like a station's cell, which found the surface over a tunnel and stood the torch outside its walls.
+        private void BuildTorch(PlaceableDefinition placeable, InputAction action, Transform head, Vector3 hit)
+        {
+            if (grid != null)
+            {
+                grid.Hide();
+            }
+            float voxel = worldView.World.Grid.VoxelSize;
+            Vector3 local = worldView.transform.InverseTransformPoint(hit);
+            Vector3 along = worldView.transform.InverseTransformDirection(head.forward).normalized;
+            // The voxel on the open side of the surface, and its centre.
+            Vector3Int open = worldView.World.Grid.WorldToVoxel(local - along * (voxel * 0.5f));
+            Vector3 centre = ((Vector3)open + Vector3.one * 0.5f) * voxel;
+            // Its floor: the ground straight under its centre, within a voxel and a little; else where the aim hit.
+            Vector3 from = worldView.transform.TransformPoint(centre + Vector3.up * (voxel * 0.45f));
+            Vector3 position = worldView.transform.TransformPoint(new Vector3(centre.x, local.y, centre.z));
+            if (worldView.Raycast(new Ray(from, -worldView.transform.up), out Vector3 floor) && (from - floor).sqrMagnitude <= (voxel * 2f) * (voxel * 2f))
+            {
+                position = floor;
+            }
+            Vector3 toPlayer = transform.position - position;
+            float yaw = Mathf.Round(Mathf.Atan2(toPlayer.x, toPlayer.z) * Mathf.Rad2Deg / 90f) * 90f;
+            Quaternion rotation = Quaternion.Euler(0f, yaw, 0f);
+
+            ShowPreview(placeable, position, rotation, out Bounds bounds);
+            bool locked = parcels != null && !parcels.CanEdit(position);
+            bool blocked = locked || Blocked(bounds, rotation);
+            properties.SetColor(BaseColorId, blocked ? blockedColor : clearColor);
+            foreach (MeshRenderer part in preview.GetComponentsInChildren<MeshRenderer>())
+            {
+                part.SetPropertyBlock(properties);
+            }
+            aimedItem = placeable;
+            aimedPosition = position;
+            aimedRotation = rotation;
+            CanPlace = !blocked;
+            hint = locked ? "You don't own this land" : blocked ? "Something is in the way of the torch" : "B  Place torch";
             if (action != null && action.WasPressedThisFrame())
             {
                 TryPlace();

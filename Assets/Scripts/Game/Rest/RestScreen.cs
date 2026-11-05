@@ -27,9 +27,9 @@ namespace Clube.Game
         [SerializeField]
         private InputActionReference closeAction;
 
-        [Tooltip("Real seconds each hour of rest takes.")]
+        [Tooltip("Real seconds each hour of rest takes (GL370: half a second, twice the first pass's speed).")]
         [SerializeField, Min(0.05f)]
-        private float secondsPerHour = 1f;
+        private float secondsPerHour = 0.5f;
 
         [Tooltip("Seconds the blur takes to come and go.")]
         [SerializeField, Min(0.01f)]

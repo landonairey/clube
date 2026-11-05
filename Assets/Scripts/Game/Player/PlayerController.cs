@@ -146,6 +146,10 @@ namespace Clube.Game
         private float fallSpeed;
         private float lastGroundedTime = float.NegativeInfinity;
         private Vector3 velocity;
+
+        // A knockback (GL356: the campfire) carries the player until this time, whatever Move says.
+        private float knockbackUntil;
+        private bool knockbackLiftPending;
         // Freed by FreeCursor; a menu frees it separately (isInMenu).
         private bool isCursorFree;
         private bool isInMenu;
@@ -253,6 +257,23 @@ namespace Clube.Game
         public bool MenuClosedThisFrame => menuClosedFrame == Time.frameCount;
 
         /// <summary>Moves the player without colliding on the way, and stops any fall or momentum.</summary>
+        /// <summary>The player's sideways speed and heading, in world space.</summary>
+        public Vector3 HorizontalVelocity => velocity;
+
+        /// <summary>
+        /// Throws the player back (GL356: touching the campfire): <paramref name="push"/> sideways for <paramref name="seconds"/>,
+        /// whatever Move says, with a hop of <paramref name="lift"/> metres a second upward. A slide ends.
+        /// </summary>
+        public void Knockback(Vector3 push, float lift, float seconds)
+        {
+            velocity = new Vector3(push.x, 0f, push.z);
+            fallSpeed = -Mathf.Abs(lift);
+            slideSpeed = 0f;
+            knockbackUntil = Time.time + seconds;
+            // Still on the ground this frame: keep the hop instead of settling it (GL375).
+            knockbackLiftPending = lift > 0f;
+        }
+
         public void Teleport(Vector3 position)
         {
             // A CharacterController overwrites a transform move made while it is enabled.
@@ -362,12 +383,22 @@ namespace Clube.Game
             if (Body.isGrounded)
             {
                 // On the ground the player goes where Move points, at once; a slide goes on where it started.
-                velocity = walk;
+                if (Time.time >= knockbackUntil)
+                {
+                    velocity = walk;
+                }
                 if (IsSliding)
                 {
                     SlideOn();
                 }
-                fallSpeed = GroundedFallSpeed;
+                if (knockbackLiftPending)
+                {
+                    knockbackLiftPending = false;
+                }
+                else
+                {
+                    fallSpeed = GroundedFallSpeed;
+                }
                 lastGroundedTime = Time.time;
                 if (jumpHeld)
                 {

@@ -10,8 +10,10 @@ namespace Clube.Core
     /// below while there's room, the way water falls down a drop; what's left spreads sideways, sharing out with lower
     /// neighbours, and only towards an edge with a drop under it when there is one, so a stream runs down the slope
     /// instead of fanning out over a hilltop, and keeps going until it meets other water or fills a hollow. Water that
-    /// is thin stays put rather than spreading further, and never vanishes: volume is kept (GL323). Generated rivers (<see cref="WaterFill"/>) hold their level without end, topped up from
-    /// upstream and carrying any excess away (GL333); lakes and ponds are finite water, so a bucket can empty them, and a
+    /// is thin stays put rather than spreading further, and never vanishes: volume is kept (GL323). Generated rivers (<see cref="WaterFill"/>) hold their level (GL333)
+    /// with water from the soil (WT1): each chunk holds soil water (<see cref="Chunk.SoilWater"/>) that its river samples
+    /// top up from while it lasts, and water over a river's level soaks back into it, so no water is made or lost;
+    /// <see cref="HoldSoilWaterFull"/> refills the soil each step until there is rain. Lakes and ponds are finite water, so a bucket can empty them, and a
     /// hole dug beside one fills from it, lowering it.
     /// Ground put where water was takes its place: a sample that turns solid loses its water. Every density change
     /// wakes the samples round it; a sample that changed wakes its own neighbours for the next step.
@@ -151,6 +153,7 @@ namespace Clube.Core
         /// </summary>
         public int Step(int max = 5000, float budgetMs = 0f)
         {
+            RefillSoil();
             if (awake.Count == 0 && carry.Count == 0)
             {
                 return 0;
@@ -265,12 +268,13 @@ namespace Clube.Core
             }
             float source = SourceAt(sample);
             float start = a;
-            // A river keeps its level both ways (GL333): topped up from upstream, and anything over its level is carried
-            // off downstream. Kept, a poured step over the level was handed on across the surface for ever, and enough
-            // pours filled the flow's budget so that new water stopped moving.
+            // A river keeps its level both ways (GL333), with water that comes from somewhere (WT1): topped up from its
+            // chunk's soil water while there is any, and anything over its level soaks back into the soil. Kept on the
+            // surface, a poured step over the level was handed on across it for ever, and enough pours filled the
+            // flow's budget so that new water stopped moving.
             if (source > 0f)
             {
-                a = source;
+                a = a < source ? Draw(sample, a, source) : Soak(sample, a, source);
             }
             if (a <= 0f)
             {
@@ -298,7 +302,7 @@ namespace Clube.Core
                 if (fall > 0.004f && CanFlowInto(into, there))
                 {
                     Set(into, there + fall, SourceAt(into));
-                    a = Mathf.Max(source, a - fall);
+                    a = Draw(sample, a - fall, source);
                     WakeAround(into);
                 }
             }
@@ -423,7 +427,7 @@ namespace Clube.Core
                     continue;
                 }
                 Set(into, there + give, SourceAt(into));
-                a = Mathf.Max(source, a - give);
+                a = Draw(sample, a - give, source);
                 WakeAround(into);
             }
         }
@@ -678,6 +682,95 @@ namespace Clube.Core
             }
             amount = 0f;
             return false;
+        }
+
+        /// <summary>Soil water a chunk holds when full (WT1), as a share of its volume; 0 leaves rivers nothing to draw on.</summary>
+        public float SoilWater { get; set; } = 0.3f;
+
+        /// <summary>Keeps the soil water of every chunk drawn on topped up to full each step: the stand-in for rain (WT1).</summary>
+        public bool HoldSoilWaterFull { get; set; } = true;
+
+        /// <summary>Water rivers have drawn from soil, in samples' worth, since the flow began.</summary>
+        public float SoilWaterDrawn { get; private set; }
+
+        /// <summary>Water over a river's level that soaked back into the soil, in samples' worth.</summary>
+        public float SoilWaterSoaked { get; private set; }
+
+        /// <summary>Water the rain stand-in put back into the soil, in samples' worth.</summary>
+        public float SoilWaterRefilled { get; private set; }
+
+        private readonly HashSet<Chunk> drawnFrom = new HashSet<Chunk>();
+
+        /// <summary>A chunk's soil water when full, in samples' worth.</summary>
+        public float SoilCapacity(Chunk chunk)
+        {
+            Vector3Int count = chunk.SampleCount;
+            return count.x * count.y * count.z * SoilWater;
+        }
+
+        /// <summary>A chunk's soil water now, filling it to its capacity the first time it's asked.</summary>
+        public float SoilOf(Chunk chunk)
+        {
+            if (float.IsNaN(chunk.SoilWater))
+            {
+                chunk.SoilWater = SoilCapacity(chunk);
+            }
+            return chunk.SoilWater;
+        }
+
+        // Tops a river sample up towards its level from its chunk's soil water, as far as the soil has water (WT1). Below
+        // the level and with the soil dry, the river sample is plain water and runs off like any other.
+        private float Draw(Vector3Int sample, float a, float source)
+        {
+            if (a >= source || !Owner(sample, out Chunk chunk, out _))
+            {
+                return a;
+            }
+            float soil = SoilOf(chunk);
+            float take = Steps(Mathf.Min(source - a, soil));
+            if (take <= 0f)
+            {
+                return a;
+            }
+            chunk.SoilWater = soil - take;
+            drawnFrom.Add(chunk);
+            SoilWaterDrawn += take;
+            return a + take;
+        }
+
+        // Water over a river's level soaks into its chunk's soil (WT1), so none is lost or made.
+        private float Soak(Vector3Int sample, float a, float source)
+        {
+            if (a <= source || !Owner(sample, out Chunk chunk, out _))
+            {
+                return a;
+            }
+            float excess = a - source;
+            chunk.SoilWater = SoilOf(chunk) + excess;
+            SoilWaterSoaked += excess;
+            return source;
+        }
+
+        // The rain stand-in: every chunk drawn on since the last step goes back to full.
+        private void RefillSoil()
+        {
+            if (drawnFrom.Count == 0)
+            {
+                return;
+            }
+            if (HoldSoilWaterFull)
+            {
+                foreach (Chunk chunk in drawnFrom)
+                {
+                    float capacity = SoilCapacity(chunk);
+                    if (chunk.SoilWater < capacity)
+                    {
+                        SoilWaterRefilled += capacity - chunk.SoilWater;
+                        chunk.SoilWater = capacity;
+                    }
+                }
+            }
+            drawnFrom.Clear();
         }
 
         // New water can go in while there's room under the cap on moving water.

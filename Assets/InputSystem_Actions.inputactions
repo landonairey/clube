@@ -374,17 +374,6 @@
                 },
                 {
                     "name": "",
-                    "id": "7012773e-1f29-4643-849a-30ddda55450b",
-                    "path": "<Keyboard>/tab",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": ";Keyboard&Mouse",
-                    "action": "Inventory",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
                     "id": "f8ff1319-fed5-4b87-9d6a-9ec841993daf",
                     "path": "<Gamepad>/select",
                     "interactions": "",

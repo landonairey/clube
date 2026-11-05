@@ -145,7 +145,11 @@ namespace Clube.Game
                 _ => null, group);
             if (clicked >= 0)
             {
-                if (Keyboard.current != null && Keyboard.current.ctrlKey.isPressed)
+                if (Keyboard.current != null && Keyboard.current.ctrlKey.isPressed && Keyboard.current.shiftKey.isPressed)
+                {
+                    PickAllOfItem(items, clicked);
+                }
+                else if (Keyboard.current != null && Keyboard.current.ctrlKey.isPressed)
                 {
                     PickForGroup(items, clicked);
                 }
@@ -162,6 +166,10 @@ namespace Clube.Game
             {
                 DrawGroup(items, prices, x, y);
                 y += SellRowHeight + 6f;
+                // With a group picked, the only sale is the group's (GL358): the one-stack row's price read as the total.
+                DrawOffers(x, y, width - Padding * 2f);
+                InventoryGridGui.DrawTooltip();
+                return;
             }
 
             ItemStack chosen = selected >= 0 ? items[selected] : ItemStack.Empty;
@@ -275,7 +283,8 @@ namespace Clube.Game
             selected = -1;
         }
 
-        // Ctrl-click (GL305): the first picks every stack of that item; later ones add a stack to the group or take it out.
+        // Ctrl-click (GL305, GL374): adds the clicked stack to the group, with the stack already highlighted, or takes it out.
+        // Only the stacks clicked are picked, never every stack of the item.
         private void PickForGroup(Inventory items, int slot)
         {
             if (items[slot].IsEmpty)
@@ -284,19 +293,39 @@ namespace Clube.Game
             }
             if (group.Count == 0)
             {
-                for (int i = 0; i < items.SlotCount; i++)
+                if (selected >= 0 && selected < items.SlotCount && selected != slot && !items[selected].IsEmpty)
                 {
-                    if (!items[i].IsEmpty && items[i].Item == items[slot].Item)
-                    {
-                        group.Add(i);
-                    }
+                    group.Add(selected);
                 }
+                group.Add(slot);
             }
             else if (!group.Remove(slot))
             {
                 group.Add(slot);
             }
             selected = group.Contains(slot) ? slot : group.Count > 0 ? First(group) : -1;
+        }
+
+        // Ctrl+Shift-click (GL393): every stack of the clicked item joins the group, whatever its quality.
+        private void PickAllOfItem(Inventory items, int slot)
+        {
+            ItemDefinition item = items[slot].Item;
+            if (item == null)
+            {
+                return;
+            }
+            if (selected >= 0 && selected < items.SlotCount && !items[selected].IsEmpty)
+            {
+                group.Add(selected);
+            }
+            for (int i = 0; i < items.SlotCount; i++)
+            {
+                if (items[i].Item == item)
+                {
+                    group.Add(i);
+                }
+            }
+            selected = slot;
         }
 
         private static int First(System.Collections.Generic.HashSet<int> slots)
@@ -319,7 +348,7 @@ namespace Clube.Game
                 coins += prices.PriceOf(items[slot], items[slot].Amount);
             }
             GUI.Label(new Rect(x, y + 4f, 360f, 40f),
-                $"{group.Count} stack{(group.Count == 1 ? "" : "s")} picked: {FormatAmount(amount)} in all\nCtrl-click to add or take out a stack");
+                $"{group.Count} stack{(group.Count == 1 ? "" : "s")} picked: {FormatAmount(amount)} in all\nCtrl-click: one stack in or out; Ctrl+Shift: all of an item");
             GUI.enabled = coins > 0f;
             if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), $"Sell picked\n{FormatCoins(coins)}"))
             {

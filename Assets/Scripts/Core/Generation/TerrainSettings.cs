@@ -95,6 +95,10 @@ namespace Clube.Core
         [SerializeField, Min(0f)]
         private float distantRangeStart = 2500f;
 
+        [Tooltip("Eroded landscape (P12): branching gullies and ridges cut into Landscape's mountains; the biggest gullies' valleys start rivers.")]
+        [SerializeField]
+        private ErosionSettings erosion = new ErosionSettings();
+
         [Header("Spline")]
         [Tooltip("Remaps the fractal noise (0-1 along the bottom) to a height (0 = level - amplitude, " +
                  "1 = level + amplitude). Flat stretches make plateaus, steep ones cliffs.")]
@@ -136,6 +140,9 @@ namespace Clube.Core
 
         /// <summary>Rivers and lakes (GL307).</summary>
         public WaterGeneration Water => water;
+
+        /// <summary>The eroded landscape's gullies (P12).</summary>
+        public ErosionSettings Erosion => erosion ??= new ErosionSettings();
 
         public TerrainGeneratorType Generator
         {

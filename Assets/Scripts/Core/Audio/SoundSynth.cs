@@ -183,6 +183,16 @@ namespace Clube.Core
             return Normalize(samples, 0.75f);
         }
 
+        /// <summary>Touching the campfire (GL356): a short hiss of steam with crackles, dying away.</summary>
+        public static float[] Sizzle(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(0.5f)];
+            AddNoise(samples, random, 0f, 0.008f, 0.1f, 0.35f, Band(Range(random, 4800f, 6500f), 1.2f));
+            AddCrackles(samples, random, 0f, 0.35f, 50, 0.3f, 4200f);
+            return Normalize(samples, 0.7f);
+        }
+
         /// <summary>Rock coming away: a crumble of grit falling.</summary>
         public static float[] Crumble(int seed)
         {
@@ -196,6 +206,82 @@ namespace Clube.Core
             return Normalize(samples, 0.85f);
         }
 
+        /// <summary>
+        /// Stone knapped on stone (GL381): three or four sharp strikes a moment apart, each a bright crack with a short stony
+        /// tock under it and a few flakes skittering off.
+        /// </summary>
+        public static float[] Chip(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(0.9f)];
+            int strikes = random.Next(3, 5);
+            float at = 0.01f;
+            for (int i = 0; i < strikes; i++)
+            {
+                float level = Range(random, 0.7f, 1f);
+                AddNoise(samples, random, at, 0.0003f, 0.008f, 0.9f * level, Band(Range(random, 2600f, 3800f), 2.2f));
+                AddTone(samples, at, Range(random, 900f, 1250f), Range(random, 650f, 850f), 0.0005f, 0.025f, 0.35f * level);
+                AddCrackles(samples, random, at + 0.01f, 0.08f, 12, 0.18f * level, 4500f);
+                at += Range(random, 0.17f, 0.24f);
+            }
+            return Normalize(samples, 0.85f);
+        }
+
+
+        /// <summary>
+        /// Jumping or wading into water (GL397): a low plunge, a burst of white water, then droplets pattering back down.
+        /// </summary>
+        public static float[] Splash(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(0.9f)];
+            AddNoise(samples, random, 0f, 0.003f, 0.06f, 0.45f, Low(380f));
+            AddTone(samples, 0f, Range(random, 110f, 140f), Range(random, 60f, 75f), 0.004f, 0.07f, 0.35f);
+            AddNoise(samples, random, 0.005f, 0.004f, 0.12f, 0.5f, Band(Range(random, 1600f, 2200f), 0.6f));
+            AddNoise(samples, random, 0.01f, 0.01f, 0.2f, 0.25f, Band(Range(random, 4500f, 6000f), 0.8f));
+            AddDrops(samples, random, 0.12f, 0.6f, 22, 0.3f);
+            return Normalize(samples, 0.8f);
+        }
+
+        /// <summary>
+        /// A stride through water (GL397): a slosh rushing past the legs, the water parting and closing, with a few drips.
+        /// </summary>
+        public static float[] Wade(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(0.6f)];
+            AddSweptNoise(samples, random, 0f, 0.4f, Range(random, 250f, 350f), Range(random, 900f, 1300f), 0.4f);
+            AddNoise(samples, random, 0.05f, 0.06f, 0.12f, 0.2f, Band(Range(random, 2500f, 3200f), 0.7f));
+            AddNoise(samples, random, 0.02f, 0.08f, 0.15f, 0.25f, Low(260f));
+            AddDrops(samples, random, 0.2f, 0.35f, 5, 0.18f);
+            return Normalize(samples, 0.65f);
+        }
+
+        /// <summary>
+        /// Climbing out of water (GL397): a sucking pull as the legs break free, then water streaming and dripping off.
+        /// </summary>
+        public static float[] Emerge(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(1f)];
+            AddSweptNoise(samples, random, 0f, 0.25f, Range(random, 1400f, 1800f), Range(random, 350f, 450f), 0.4f);
+            AddTone(samples, 0.03f, Range(random, 240f, 300f), Range(random, 520f, 640f), 0.01f, 0.06f, 0.2f);
+            AddNoise(samples, random, 0.15f, 0.05f, 0.25f, 0.18f, Band(Range(random, 3000f, 4000f), 0.6f));
+            AddDrops(samples, random, 0.2f, 0.75f, 16, 0.22f);
+            return Normalize(samples, 0.7f);
+        }
+
+        // Water droplets: tiny bright "plips", each a short rising tone, scattered over a span and thinning out.
+        private static void AddDrops(float[] samples, Random random, float at, float span, int count, float level)
+        {
+            for (int d = 0; d < count; d++)
+            {
+                float when = at + span * (float)Math.Pow(random.NextDouble(), 1.4);
+                float fade = 1f - (when - at) / Math.Max(span, 1e-4f) * 0.6f;
+                float pitch = Range(random, 900f, 2200f);
+                AddTone(samples, when, pitch, pitch * Range(random, 1.5f, 2.2f), 0.001f, Range(random, 0.008f, 0.018f), level * fade * Range(random, 0.4f, 1f));
+            }
+        }
         /// <summary>Soft ground coming away: a thud of earth.</summary>
         public static float[] Thud(int seed)
         {
@@ -256,6 +342,57 @@ namespace Clube.Core
             return Normalize(samples, 0.7f);
         }
 
+
+        /// <summary>
+        /// Other birds' calls (GL376), by the seed: a two-note whistle falling like a cuckoo's or a dove's, a warble (quick
+        /// notes rocking up and down), or a rising run of three or four notes.
+        /// </summary>
+        public static float[] Call(int seed)
+        {
+            var random = new Random(seed);
+            int style = random.Next(3);
+            float[] samples = new float[Samples(1.6f)];
+            float at = 0.03f;
+            if (style == 0)
+            {
+                float high = Range(random, 1500f, 2300f);
+                float fall = Range(random, 0.72f, 0.84f);
+                int phrases = random.Next(1, 3);
+                for (int p = 0; p < phrases; p++)
+                {
+                    AddSweep(samples, at, 0.22f, high * 1.03f, high, 0.8f);
+                    AddSweep(samples, at + 0.32f, 0.3f, high * fall * 1.02f, high * fall * 0.97f, 0.75f);
+                    at += 0.8f;
+                }
+            }
+            else if (style == 1)
+            {
+                float centre = Range(random, 2400f, 3600f);
+                float swing = centre * Range(random, 0.12f, 0.25f);
+                int notes = random.Next(10, 17);
+                for (int n = 0; n < notes; n++)
+                {
+                    float length = Range(random, 0.045f, 0.07f);
+                    bool up = n % 2 == 0;
+                    AddSweep(samples, at, length, up ? centre - swing : centre + swing, up ? centre + swing : centre - swing, Range(random, 0.55f, 0.8f));
+                    at += length * 0.85f;
+                }
+            }
+            else
+            {
+                float note = Range(random, 1800f, 2600f);
+                float step = Range(random, 1.12f, 1.25f);
+                int notes = random.Next(3, 5);
+                for (int n = 0; n < notes; n++)
+                {
+                    float length = Range(random, 0.1f, 0.16f);
+                    AddSweep(samples, at, length, note * 0.95f, note * 1.08f, 0.7f);
+                    at += length + Range(random, 0.06f, 0.1f);
+                    note *= step;
+                }
+            }
+            return Normalize(samples, 0.7f);
+        }
         /// <summary>A breeze that loops without a seam: low rushing noise in slow gusts, with a faint whistle on top.</summary>
         public static float[] WindLoop(float seconds, int seed)
         {

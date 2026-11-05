@@ -90,6 +90,7 @@ namespace Clube.Core
         private ITerrainGenerator generator;
         private OreField ores;
         private TreeField trees;
+        private BoulderField boulders;
         private ChunkRendererPool renderers;
         private WorldStreamer streamer;
         private string terrainFingerprint;
@@ -154,6 +155,21 @@ namespace Clube.Core
 
         /// <summary>Changes whenever which columns are drawn may have; never repeats.</summary>
         public int DrawVersion => streamer?.DrawVersion ?? 0;
+
+        /// <summary>
+        /// How far from the focus, in metres, the voxel chunks are drawn now: the draw radius (the detail distance, shrunk
+        /// with the focus's height, once the coarse terrain takes over past it), else the render distance.
+        /// </summary>
+        public float DrawnDistance
+        {
+            get
+            {
+                int chunks = streamer != null && DetailDistance > 0 && CoarseTerrainReady
+                    ? Mathf.Min(streamer.DrawRadius, renderDistance)
+                    : renderDistance;
+                return chunks * (World != null ? World.Grid.ChunkWorldSize.x : Config.ChunkSize.x * Config.VoxelSize);
+            }
+        }
 
         /// <summary>Radius in chunks of the loaded area, horizontally (M3).</summary>
         public int RenderDistance
@@ -362,7 +378,7 @@ namespace Clube.Core
             World = new World(Config.ChunkSize, Config.VoxelSize, Config.CreateStorage);
             terrainFingerprint = TerrainFingerprint();
             CreateGenerator();
-            var pipeline = new ChunkPipeline(World.Grid, generator, Config.Terrain.Layers, ores, World.PreferredFormat, World.StorageFactory, trees, Config.Terrain.StartArea);
+            var pipeline = new ChunkPipeline(World.Grid, generator, Config.Terrain.Layers, ores, World.PreferredFormat, World.StorageFactory, trees, Config.Terrain.StartArea, boulders);
             streamer = new WorldStreamer(World, pipeline, renderers, () => Config.MeshSettings, new StreamingSettings
             {
                 RenderDistance = renderDistance,
@@ -401,6 +417,7 @@ namespace Clube.Core
                 generator = TerrainGenerators.Create(Config.Terrain);
                 ores = OreField.Create(Config.Terrain, generator);
                 trees = TreeField.Create(Config.Terrain, generator);
+                boulders = BoulderField.Create(Config.Terrain, generator, Config.VoxelSize);
                 Problem = null;
             }
             catch (Exception exception) when (exception is InvalidOperationException || exception is ArgumentException)
@@ -409,6 +426,7 @@ namespace Clube.Core
                 generator = null;
                 ores = null;
                 trees = null;
+                boulders = null;
                 Problem = exception.Message;
             }
         }

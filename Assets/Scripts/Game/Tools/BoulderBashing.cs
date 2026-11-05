@@ -91,6 +91,10 @@ namespace Clube.Game
         [SerializeField, Min(0f)]
         private float refineExperience = 0.1f;
 
+        [Tooltip("Blacksmithing experience each refining pass gives too (GL362): a little, for working the stone.")]
+        [SerializeField, Min(0f)]
+        private float refineSmithingExperience = 0.02f;
+
         private PlayerController player;
         private PlayerInventory inventory;
         private PlayerSkills skills;
@@ -100,6 +104,9 @@ namespace Clube.Game
 
         /// <summary>Raised with what a bash did, or why it couldn't ("Made a hand axe", "Crushing ore needs Mining 2").</summary>
         public event Action<string> Message;
+
+        /// <summary>A stone was knapped into a hand axe (GL381), for its sound.</summary>
+        public event Action HandAxeMade;
 
         /// <summary>True when Place would bash this frame: a stone or crushable ore in hand, aimed at a boulder within reach.</summary>
         public bool CanBash => (HoldsSomethingToBash(out _, out _) || HoldsSomethingToRefine(out _)) && AimsAtBoulder();
@@ -178,7 +185,17 @@ namespace Clube.Game
             MaterialRegistry materials = worldView.Config.Materials;
             ItemStack held = items[slot];
             pickedOut.Clear();
-            ItemStack refined = Refining.Pass(held, materials, refineVolume, pickedOut);
+            ItemStack refined = Refining.Pass(held, materials, refineVolume, pickedOut, UnityEngine.Random.value, UnityEngine.Random.value, out bool failed);
+            // Crushed ore is prospecting work (GL388); anything else picked over is crafting.
+            bool prospecting = held.Item.PurityAs != null;
+            skills?.Skills.Award(prospecting ? SkillType.Prospecting : SkillType.Crafting, refineExperience);
+            skills?.Skills.Award(SkillType.Blacksmithing, refineSmithingExperience);
+            if (failed)
+            {
+                // The purer the stack, the more passes find nothing to pick out (GL386).
+                Message?.Invoke($"Found nothing to pick out of the {held.Item.DisplayName.ToLowerInvariant()} ({held.Quality * 100f:0}%)");
+                return;
+            }
             items.Replace(slot, refined);
             foreach (Content picked in pickedOut)
             {
@@ -189,8 +206,8 @@ namespace Clube.Game
                 }
                 int whole = (int)(picked.Fraction + 1e-4f);
                 items.Add(drop, whole, Composition.From(new Content(picked.Material, 1f)), 0, 1f, Mathf.Max(0f, picked.Fraction - whole));
+                inventory.Notify(drop, picked.Fraction);
             }
-            skills?.Skills.Award(SkillType.Crafting, refineExperience);
             Message?.Invoke(refined.IsEmpty
                 ? $"Nothing of the {held.Item.DisplayName.ToLowerInvariant()} was left"
                 : $"Picked over the {held.Item.DisplayName.ToLowerInvariant()}: {refined.Quality * 100f:0}% now");
@@ -242,6 +259,7 @@ namespace Clube.Game
                 items.Add(handAxe, 1);
                 skills?.Skills.Award(SkillType.Crafting, handAxeExperience);
                 Message?.Invoke($"Knocked the stone into a {handAxe.DisplayName.ToLowerInvariant()}");
+                HandAxeMade?.Invoke();
                 return true;
             }
             if (skills != null && !skills.Skills.Has(crushSkill, crushLevel))
@@ -255,21 +273,27 @@ namespace Clube.Game
             Composition crushed = Crushing.Crush(held.Contents, out float knockedOff);
             MaterialRegistry materials = worldView.Config.Materials;
             float quality = crushed != null && materials != null ? materials.Quality(crushed, crush.Raw) : held.Quality;
+            // What's knocked off goes: the crushed ore is the rest of the item, so its mineral stays what it was (GL377;
+            // keeping a whole item made copper out of nothing).
+            float left = amount * (1f - knockedOff);
+            int whole = (int)Mathf.Floor(left + 1e-4f);
             if (held.Count >= 1)
             {
                 items.RemoveAt(slot, 1);
-                items.Add(crush.Crushed, 1, crushed, 0, quality);
             }
             else
             {
                 items.TakeAll(slot);
-                items.Add(crush.Crushed, 0, crushed, 0, quality, amount);
             }
+            items.Add(crush.Crushed, whole, crushed, 0, quality, Mathf.Max(0f, left - whole));
+            inventory.Notify(crush.Crushed, left);
             if (crushedStone != null && knockedOff > 0f)
             {
                 items.Add(crushedStone, 0, null, 0, 1f, knockedOff * amount);
+                inventory.Notify(crushedStone, knockedOff * amount);
             }
-            skills?.Skills.Award(crushSkill, crushExperience);
+            // Crushing needs Mining (crushSkill) but trains Prospecting (GL388).
+            skills?.Skills.Award(SkillType.Prospecting, crushExperience);
             Message?.Invoke($"Crushed into {crush.Crushed.DisplayName.ToLowerInvariant()} ({quality * 100f:0}%)");
             return true;
         }
@@ -309,6 +333,16 @@ namespace Clube.Game
         // The crosshair on boulder material, within reach, in a piece too big to be a loose stone.
         private bool AimsAtBoulder()
         {
+            return TryGetAimedBoulder(out _);
+        }
+
+        /// <summary>
+        /// The boulder sample under the crosshair within reach (boulder material in a piece too big to be a loose stone), for
+        /// the interact outline (GL368); false when the crosshair isn't on one.
+        /// </summary>
+        public bool TryGetAimedBoulder(out Vector3Int boulder)
+        {
+            boulder = default;
             Transform head = player.Head != null ? player.Head : transform;
             if (!worldView.Raycast(new Ray(head.position, head.forward), out WorldHit hit)
                 || (worldView.transform.TransformPoint(hit.Point) - head.position).sqrMagnitude > reach * reach)
@@ -338,7 +372,12 @@ namespace Clube.Game
                     found = sample;
                 }
             }
-            return found.HasValue && !ToolStrike.IsSmallPiece(world, found.Value, world.GetMaterial(found.Value).Value, loosePieceSize, iso);
+            if (!found.HasValue || ToolStrike.IsSmallPiece(world, found.Value, world.GetMaterial(found.Value).Value, loosePieceSize, iso))
+            {
+                return false;
+            }
+            boulder = found.Value;
+            return true;
         }
     }
 }

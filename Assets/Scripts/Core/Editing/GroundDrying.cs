@@ -10,12 +10,12 @@ namespace Clube.Core
     /// they dry into, through the world's edit path (A7). Ground that generated as clay stays clay;
     /// only what's put down dries. Time is in in-game days, from whatever clock the caller keeps.
     /// </summary>
-    /// <remarks>Wet ground doesn't dry (GL334): while water touches a sample its clock stops, so clay dropped in a pond
+    /// <remarks>Wet ground doesn't dry (GL334), and water starts its drying over (GL347): while water touches a sample its
+    /// clock is held at the full drying time, so clay dropped in a pond
     /// stays clay until the water leaves it.</remarks>
     public sealed class GroundDrying
     {
         private readonly List<Drying> waiting = new List<Drying>();
-        private double? lastUpdate;
 
         private static readonly Vector3Int[] Around =
         {
@@ -65,18 +65,13 @@ namespace Clube.Core
         /// </summary>
         public int Update(World world, double now, float isoLevel = 0.5f)
         {
-            // Wet samples' clocks stop: their time to dry moves on by the time that passed.
-            double passed = lastUpdate.HasValue ? System.Math.Max(0.0, now - lastUpdate.Value) : 0.0;
-            lastUpdate = now;
-            if (passed > 0.0)
+            // Water starts a sample's drying over (GL347): while it's wet its clock stays at the full drying time.
+            for (int i = 0; i < waiting.Count; i++)
             {
-                for (int i = 0; i < waiting.Count; i++)
+                Drying wet = waiting[i];
+                if (IsWet(world, wet.Sample))
                 {
-                    Drying wet = waiting[i];
-                    if (IsWet(world, wet.Sample))
-                    {
-                        waiting[i] = new Drying(wet.Sample, wet.Material, wet.ReadyAt + passed);
-                    }
+                    waiting[i] = new Drying(wet.Sample, wet.Material, now + wet.Material.DryingDays);
                 }
             }
             int dried = 0;

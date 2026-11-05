@@ -720,3 +720,21 @@ WorldLab (300 m fixed area, 4 voxels/m), Editor, Play mode, `WaterView.LastUpdat
 | Flow step during the spill | 9.7-21 ms (unbounded) | 2.9 ms (2.5 ms budget), every 0.06 s |
 
 The fixes: meshes are built nearest first within 1.5 ms a frame and only for drawn columns (past them the far sheets show the water); far tiles rebuild only when a column first loads or its drawn state changes; the flow step has a time budget and caches its chunk lookup. Next step is optimization target 13 in `architecture.md` (water in Burst jobs).
+
+## P12a — Eroded landscape generation
+
+*Clube → Benchmarks → Heightfield generation (P12)* times the column-heights jobs of Landscape and the eroded landscape
+(defaults, seed 1): one chunk column (17 x 17 heights at 0.25 m) on one thread, as streaming runs them, and a 256 x 256
+block at 2 m over the workers, as the far terrain does. Run 2026-11-03 on an i9-10900K, **with Burst compilation off**
+on this machine (the jobs ran as managed code), so read the ratios, not the times:
+
+| Generator | Land | Chunk column (17² heights, 1 thread) | Far block (256² heights, workers) |
+|---|---|---|---|
+| Landscape | plains | 1.382 ms | 25.91 ms |
+| Landscape | mountains | 1.394 ms | 25.91 ms |
+| Eroded landscape | plains | 1.178 ms | 77.34 ms |
+| Eroded landscape | mountains | 8.342 ms | 111.22 ms |
+
+- On the plains the eroded land costs no more (the filter is skipped there and the massifs are cheaper than ridged noise).
+- In the mountains it is about 6x: three base samples (the slope) and 5 octaves of 16 blended cells. Worth rerunning with
+  Burst on before relying on it; if it shows, the slope can come from analytic derivatives and plains-only octaves can stop early.

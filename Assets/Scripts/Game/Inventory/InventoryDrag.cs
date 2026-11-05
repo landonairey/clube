@@ -90,9 +90,24 @@ namespace Clube.Game
         /// </summary>
         public InventoryDragResult Handle(PlayerInventory inventory, Vector2 gridTopLeft)
         {
+            return Handle(inventory.Inventory,
+                (point, reach) => InventoryGridGui.PlayerSlotNear(gridTopLeft, inventory, point, reach));
+        }
+
+        /// <summary>
+        /// The same over any inventory laid out by <see cref="InventoryGridGui.DrawGrid"/> from <paramref name="gridTopLeft"/>
+        /// (GL367: a chest's slots): moves and splits within it, and reports clicks and drops outside it.
+        /// </summary>
+        public InventoryDragResult HandleGrid(Inventory items, Vector2 gridTopLeft)
+        {
+            return Handle(items, (point, reach) => InventoryGridGui.GridSlotNear(gridTopLeft, items, point, reach));
+        }
+
+        // The drag itself, over slots found by slotNear(point, reach).
+        private InventoryDragResult Handle(Inventory items, System.Func<Vector2, float, int> slotNear)
+        {
             Event current = Event.current;
-            Inventory items = inventory.Inventory;
-            int over = InventoryGridGui.PlayerSlotAt(gridTopLeft, inventory, current.mousePosition);
+            int over = slotNear(current.mousePosition, 0f);
             var none = new InventoryDragResult(InventoryDragKind.None, -1, 0, current.mousePosition);
 
             // A right click splits a stack in half into an empty slot (GL191).
@@ -141,7 +156,7 @@ namespace Clube.Game
                     }
                     // A release over another slot is a drop even when no drag event came in between (a quick
                     // flick), and a release in the gap between slots lands on the nearer one.
-                    int target = InventoryGridGui.PlayerSlotNear(gridTopLeft, inventory, current.mousePosition, InventoryGridGui.RowGap * 0.5f);
+                    int target = slotNear(current.mousePosition, InventoryGridGui.RowGap * 0.5f);
                     if (target >= 0 && target != from)
                     {
                         // A repair item dropped on the tool it mends mends it, up to the items carried (GL286).

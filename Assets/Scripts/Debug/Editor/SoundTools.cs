@@ -55,6 +55,10 @@ namespace Clube.Debug.Editor
             for (int v = 0; v < 3; v++)
             {
                 Write("Crumble", v, SoundSynth.Crumble(300 + v));
+                Write("Chip", v, SoundSynth.Chip(360 + v));
+                Write("Splash", v, SoundSynth.Splash(370 + v));
+                Write("Wade", v, SoundSynth.Wade(380 + v));
+                Write("Emerge", v, SoundSynth.Emerge(390 + v));
                 Write("Thud", v, SoundSynth.Thud(310 + v));
                 Write("Rustle", v, SoundSynth.Rustle(320 + v));
             }
@@ -70,6 +74,11 @@ namespace Clube.Debug.Editor
             for (int v = 0; v < 8; v++)
             {
                 Write("Bird", v, SoundSynth.Chirp(400 + v));
+            }
+            // Other kinds of bird (GL376).
+            for (int v = 0; v < 4; v++)
+            {
+                Write("Bird", 8 + v, SoundSynth.Call(420 + v));
             }
             Write("Wind loop", 0, SoundSynth.WindLoop(14f, 500));
             Write("Leaves loop", 0, SoundSynth.LeavesLoop(9f, 510));
@@ -105,6 +114,10 @@ namespace Clube.Debug.Editor
                 SetClips(so, "gathered", Clips("Pickup"));
                 SetClips(so, "swishes", Clips("Whoosh"));
                 SetClips(so, "refusals", Clips("Err"));
+                SetClips(so, "knapped", Clips("Chip"));
+                SetClips(so, "splash", Clips("Splash"));
+                SetClips(so, "wade", Clips("Wade"));
+                SetClips(so, "emerge", Clips("Emerge"));
 
                 // A hit sound for every tool, by its kind.
                 var tools = new List<ToolDefinition>();

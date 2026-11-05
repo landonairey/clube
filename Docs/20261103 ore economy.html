@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ore Economy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* A smelter's ledger: slate paper, copper accent, a tin-grey rule; one column of findings, then the working tables. */
+  --paper: #f4f3f0;
+  --panel: #ffffff;
+  --ink: #23262b;
+  --muted: #646a73;
+  --rule: #d9d6d0;
+  --copper: #b8561f;
+  --copper-soft: #f6e3d6;
+  --good: #2f7d4f;
+  --good-soft: #dff0e5;
+  --bad: #b23a2e;
+  --bad-soft: #f6dedb;
+  --warn: #9a6a00;
+  --warn-soft: #f5ebcf;
+  --bar: #b8561f;
+  --bar-alt: #8b939e;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+  --mono: "IBM Plex Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #17191c;
+    --panel: #1f2226;
+    --ink: #e7e5e1;
+    --muted: #9aa0a8;
+    --rule: #33373d;
+    --copper: #e0834a;
+    --copper-soft: #3a2619;
+    --good: #6cc48f;
+    --good-soft: #1c3326;
+    --bad: #ef7e72;
+    --bad-soft: #3d1f1c;
+    --warn: #e2b94f;
+    --warn-soft: #3a3019;
+    --bar: #e0834a;
+    --bar-alt: #6c737c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #17191c;
+  --panel: #1f2226;
+  --ink: #e7e5e1;
+  --muted: #9aa0a8;
+  --rule: #33373d;
+  --copper: #e0834a;
+  --copper-soft: #3a2619;
+  --good: #6cc48f;
+  --good-soft: #1c3326;
+  --bad: #ef7e72;
+  --bad-soft: #3d1f1c;
+  --warn: #e2b94f;
+  --warn-soft: #3a3019;
+  --bar: #e0834a;
+  --bar-alt: #6c737c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 15px/1.55 var(--body);
+}
+main { max-width: 1080px; margin: 0 auto; padding: 32px 20px 64px; display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 1.35rem; font-weight: 700; }
+h3 { font-size: 1.02rem; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+.muted { color: var(--muted); }
+.num, td.n, th.n { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 0.86rem; }
+header { display: grid; gap: 10px; border-bottom: 2px solid var(--copper); padding-bottom: 18px; }
+.basis { font-size: 0.9rem; color: var(--muted); }
+section { display: grid; gap: 14px; }
+
+.findings { display: grid; gap: 10px; }
+.finding {
+  display: grid; grid-template-columns: 92px 1fr; gap: 14px; align-items: start;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px;
+}
+.pill { font: 600 0.72rem/1 var(--body); text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 8px; border-radius: 999px; text-align: center; }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.info { background: var(--copper-soft); color: var(--copper); }
+.finding h3 { margin-bottom: 4px; }
+.finding p { color: var(--ink); }
+
+.controls {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px 18px;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 16px;
+}
+.control { display: grid; gap: 6px; }
+.control label { font-weight: 600; font-size: 0.86rem; }
+.control output { font-family: var(--mono); font-size: 0.84rem; color: var(--copper); }
+select, input[type="range"] { width: 100%; font: inherit; }
+select { padding: 6px 8px; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); color: var(--ink); }
+input[type="range"] { accent-color: var(--copper); }
+.check { display: flex; gap: 8px; align-items: center; font-size: 0.88rem; }
+:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; }
+
+.tablewrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; }
+th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--rule); vertical-align: top; }
+thead th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); font-weight: 600; background: var(--paper); }
+th.n, td.n { text-align: right; white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+tr.best td { background: var(--copper-soft); }
+td.pos { color: var(--good); }
+td.neg { color: var(--bad); }
+td.cell { text-align: right; font-family: var(--mono); font-size: 0.84rem; }
+td.cell.pos { background: var(--good-soft); }
+td.cell.neg { background: var(--bad-soft); }
+.route small { display: block; color: var(--muted); font-size: 0.8rem; }
+
+.chart { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 16px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--ink); font-family: var(--body); font-size: 12px; }
+.chart .axis { fill: var(--muted); font-size: 11px; font-family: var(--mono); }
+.chart .grid { stroke: var(--rule); stroke-width: 1; }
+
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.note { font-size: 0.86rem; color: var(--muted); }
+ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 80ch; }
+code { font-family: var(--mono); font-size: 0.84rem; }
+@media (max-width: 520px) {
+  .finding { grid-template-columns: 1fr; }
+  h1 { font-size: 1.7rem; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Ore Economy</h1>
+    <p>What each way of handling ore earns, from the game's own numbers: merchant prices, recipes, furnace heat and recovery, ore grades, boulder crushing and refining, tool speed and fuel.</p>
+    <p class="basis">Basis: 100 items of mined ore, at the purity a stack comes out of a node with (the ore's mid grade × 0.75, since a node's face is mixed with stone the pick takes at half rate). Prices from <code>Merchant prices.asset</code>; recipes from <code>Assets/Config/Recipes</code>; branch <code>p12/eroded-landscape</code>, 2026-11-03.</p>
+  </header>
+
+  <section aria-labelledby="findings-h">
+    <h2 id="findings-h">Findings</h2>
+    <div class="findings">
+      <div class="finding"><span class="pill bad">Exploit</span><div><h3>Crushing makes metal out of nothing</h3><p id="f-crush">A crushed item keeps its count of one while half its rock goes, so its mineral share is renormalised upward. 100 chalcopyrite at 16% holds 16 units of copper mineral; crushed, the same 100 items hold 27, plus 42 crushed stone. Crush, then smelt, gives about 1.7× the copper of smelting raw.</p></div></div>
+      <div class="finding"><span class="pill bad">Exploit</span><div><h3>Crushed stone is worth ten times stone</h3><p id="f-stone">Crushed stone sells for 1 coin an item, stone for 0.1. Crushing low-grade chalcopyrite returns more coins in crushed stone (about 42) than the raw ore was worth (about 32).</p></div></div>
+      <div class="finding"><span class="pill info">Big lever</span><div><h3>Smelting is where the money is</h3><p id="f-smelt">A unit of copper mineral sells for 2 coins as ore and 10.5 to 14 as a bun, depending on the furnace's recovery: 5 to 7 times as much. Gold and silver keep the same 4.5 to 6× ratio.</p></div></div>
+      <div class="finding"><span class="pill warn">Balance</span><div><h3>Refining adds no sale value</h3><p>Prices scale straight with purity, so picking the stone out of a stack leaves its value the same. What refining buys is fewer furnace runs, less fuel and fewer inventory slots: for 16% chalcopyrite, 21 seconds at the boulder saves 67 furnace-seconds and about 17 coins of wood.</p></div></div>
+      <div class="finding"><span class="pill warn">Balance</span><div><h3>Ingots only pay with Blacksmithing</h3><p>Ingot quality is capped by the smith (50% at level 0, 100% at 10). Below Blacksmithing 7, hammering a silver or gold bun loses money (a gold bun is 900, its level 0 ingot 550). Copper, tin and bronze ingots barely beat buns until the mid levels.</p></div></div>
+      <div class="finding"><span class="pill warn">Balance</span><div><h3>Bronze breaks even in a stone furnace</h3><p>Alloying turns 3 copper and 1 tin bun (54 coins) into 4 bronze buns times the furnace's recovery. The stone furnace's 0.75 gives exactly 3 buns, 54 coins, minus fuel. In a clay, brick or refractory furnace (recovery 1) it's 72 coins: a third more.</p></div></div>
+      <div class="finding"><span class="pill info">Scale</span><div><h3>Gold dwarfs everything else</h3><p id="f-gold">100 gold ore smelts to about 11,400 coins in a stone furnace; 100 chalcopyrite to about 170. Gold nodes are half as common and deeper, but one gold stack is worth some 65 copper stacks.</p></div></div>
+      <div class="finding"><span class="pill good">Not the limit</span><div><h3>Digging is fast; finding and hauling isn't</h3><p>A pick takes about 29 (stone), 34 (copper) or 43 (bronze) items' worth of ground per hit at one hit a second, so 100 items of ore is a few seconds of swinging. Finding nodes, walking, stack limits (256 ore) and furnace time decide the rate.</p></div></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="calc-h">
+    <h2 id="calc-h">Routes for one ore</h2>
+    <p class="muted">Change the ore, its purity, the furnace and your Blacksmithing level; every table below follows.</p>
+    <div class="controls" role="group" aria-label="Settings">
+      <div class="control"><label for="ore">Ore</label><select id="ore"></select></div>
+      <div class="control"><label for="purity">Stack purity <output id="purity-out" for="purity"></output></label><input id="purity" type="range" min="0.05" max="0.6" step="0.005"></div>
+      <div class="control"><label for="furnace">Furnace</label><select id="furnace"></select></div>
+      <div class="control"><label for="material">Furnace built of <output id="material-out" for="material"></output></label><input id="material" type="range" min="0.5" max="1" step="0.01" value="1"></div>
+      <div class="control"><label for="smith">Blacksmithing level <output id="smith-out" for="smith"></output></label><input id="smith" type="range" min="0" max="10" step="1" value="0"></div>
+      <div class="control"><label for="fuel">Fuel</label><select id="fuel"></select></div>
+      <div class="control"><span class="check"><input id="ingots" type="checkbox"><label for="ingots">Hammer the buns into ingots (anvil)</label></span><span class="note" id="ingot-note"></span></div>
+    </div>
+
+    <div class="tablewrap">
+      <table id="routes">
+        <thead><tr>
+          <th>Route</th><th class="n">Coins out</th><th class="n">Fuel</th><th class="n">Net</th><th class="n">× raw</th>
+          <th class="n">Your time</th><th class="n">Furnace time</th><th class="n">Net per minute of your time</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="chart" aria-label="Net coins per route"><svg id="chart" viewBox="0 0 900 260" role="img"></svg></div>
+    <p class="note">Your time is time at the boulder (crushing and refining, 0.25 s an item) and at the anvil (6 strikes a second apart per ingot). Furnaces run on their own, so furnace time is time the station is busy, not you. Fuel is costed at what its wood would sell for.</p>
+  </section>
+
+  <section aria-labelledby="ingot-h">
+    <h2 id="ingot-h">Buns or ingots</h2>
+    <p class="muted">Coins gained (or lost) by hammering one bun into an ingot, by Blacksmithing level. An ingot sells at its quality, which the smith caps at 50% + 5% per level. Each ingot is 6 strikes, about 6 seconds at the anvil.</p>
+    <div class="tablewrap"><table id="ingot-table"><thead></thead><tbody></tbody></table></div>
+    <p class="note" id="ingot-breakeven"></p>
+  </section>
+
+  <section aria-labelledby="bronze-h">
+    <h2 id="bronze-h">Copper and tin, or bronze</h2>
+    <p class="muted">One alloy run: 3 copper buns and 1 tin bun in, 4 bronze buns out times the furnace's recovery, 3 seconds of work at its heat. Smelting 3 unlocks it; only furnaces alloy.</p>
+    <div class="two">
+      <div class="tablewrap"><table id="bronze-buns"><thead><tr><th>Furnace</th><th class="n">Bronze out</th><th class="n">Sold apart</th><th class="n">Bronze value</th><th class="n">Fuel</th><th class="n">Gain</th></tr></thead><tbody></tbody></table></div>
+      <div class="tablewrap"><table id="bronze-ingots"><thead><tr><th>As ingots</th><th class="n">Apart</th><th class="n">Bronze</th><th class="n">Gain</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <p class="note">Ingot comparison at your Blacksmithing level, in the furnace chosen above: 3 copper + 1 tin ingot against the bronze ingots the same buns make. Both need one anvil job per bun.</p>
+  </section>
+
+  <section aria-labelledby="refine-h">
+    <h2 id="refine-h">Is purer ore worth the time?</h2>
+    <p class="muted">Refining 100 items of each ore at its usual purity to 100% at the boulder, then smelting, in the furnace and with the fuel chosen above. Sale value doesn't move; furnace time and fuel do.</p>
+    <div class="tablewrap"><table id="refine-table"><thead><tr><th>Ore</th><th class="n">Purity</th><th class="n">Items after</th><th class="n">Boulder time</th><th class="n">Furnace time saved</th><th class="n">Fuel saved</th><th class="n">Stone picked out</th><th class="n">Gain per minute refining</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section aria-labelledby="best-h">
+    <h2 id="best-h">Best route for each ore</h2>
+    <p class="muted">Per 100 mined items at each ore's usual purity, with the furnace, fuel and Blacksmithing level chosen above. Crushing is shown both ways, since it's an exploit you may want to fix.</p>
+    <div class="tablewrap"><table id="best-table"><thead><tr><th>Ore</th><th class="n">Sell raw</th><th class="n">Smelt</th><th class="n">Crush, smelt</th><th>Best without crushing</th><th class="n">Best net</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section aria-labelledby="fuel-h">
+    <h2 id="fuel-h">Fuel</h2>
+    <div class="tablewrap"><table id="fuel-table"><thead><tr><th>Fuel</th><th class="n">Burns</th><th>Costed as</th><th class="n">Coins per furnace-minute</th></tr></thead><tbody></tbody></table></div>
+    <p class="note">Leaves burn for 2 s and sell 10 for a coin, so they're the cheapest heat by far, if you can keep a furnace fed. Charcoal stretches wood by half (4 wood, 80 s of burn, make 2 charcoal, 120 s) for 14 furnace-seconds of cooking.</p>
+  </section>
+
+  <section aria-labelledby="how-h">
+    <h2 id="how-h">How it's worked out</h2>
+    <ul class="plain">
+      <li><b>Selling ore</b>: price × count × purity (<code>PriceList.ValueOf</code>: anything sells at its quality's share; a gathered stack's quality is its own mineral's share).</li>
+      <li><b>Refining</b> (<code>Refining.Pass</code>): takes 1 item of impurities per pass, a pass every 0.25 s (<code>BoulderBashing</code>), never the mineral. 100 items at purity p become 100p items at 100%, and 100(1 − p) of stone come back.</li>
+      <li><b>Crushing</b> (<code>Crushing.Crush</code>): ore minerals stay, half the rest goes; the item count doesn't change, so purity becomes 2p / (1 + p), and (1 − p) / 2 of an item of crushed stone comes back per item. 0.25 s an item. Only cassiterite, chalcopyrite and malachite have crushed forms.</li>
+      <li><b>Smelting</b> (<code>CraftingStation.YieldOf</code>): a recipe's output count is what pure mineral gives; it yields that × the mineral's share × the furnace's quality (recovery × what it's built of). Work time is the recipe's amount ÷ heat (heat × what it's built of). Smelted metal comes out at 100% quality.</li>
+      <li><b>Furnaces</b>: campfire heat 0.75, recovery 0.5 (tin only); stone furnace 1, 0.75; clay 1.5, 1; brick 2.25, 1; refractory 3, 1.</li>
+      <li><b>Ingots</b>: 6 strikes at the anvil (12 on a flat rock); quality = min(bun quality, 0.5 + 0.05 × Blacksmithing) (<code>CraftingStation.SmithingQuality</code>).</li>
+      <li><b>Mining speed</b>: measured with <code>SphereStrike</code> against a solid face at 0.25 m voxels; the tool cooldown is 1 s (<code>ToolCooldown</code>).</li>
+      <li><b>Not counted</b>: walking, finding nodes, experience and unlocks, tool wear, fuel loading, and silver traces in copper ores (up to 3%, kept in buns' contents but not paid for).</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  const N = 100;
+  const BOULDER = 0.25;        // seconds per item crushed or per item of impurity refined
+  const STRIKE = 1;            // seconds between anvil strikes (tool cooldown)
+  const STONE_PRICE = 0.1;     // stone, 1 coin per 10
+  const CRUSHED_STONE = 1;     // crushed stone, 1 coin per item
+  const DILUTION = 0.75;
+
+  const ORES = {
+    chalcopyrite: { name: "Chalcopyrite (copper)", grade: [0.12, 0.30], raw: 2, crushed: 3, bun: 14, ingot: 30, metal: "Copper", smelt: { in: 5, out: 5, amount: 4 } },
+    malachite: { name: "Malachite (copper)", grade: [0.24, 0.60], raw: 2, crushed: 3, bun: 14, ingot: 30, metal: "Copper", smelt: { in: 5, out: 4, amount: 5 } },
+    cassiterite: { name: "Cassiterite (tin)", grade: [0.25, 0.55], raw: 2, crushed: 3, bun: 12, ingot: 26, metal: "Tin", smelt: { in: 6, out: 5, amount: 6 }, campfire: { in: 8, out: 5, amount: 12 } },
+    silver: { name: "Silver ore", grade: [0.15, 0.30], raw: 20, crushed: 0, bun: 90, ingot: 110, metal: "Silver", smelt: { in: 5, out: 5, amount: 4 } },
+    gold: { name: "Gold ore", grade: [0.15, 0.30], raw: 200, crushed: 0, bun: 900, ingot: 1100, metal: "Gold", smelt: { in: 5, out: 5, amount: 4 } }
+  };
+  const FURNACES = {
+    campfire: { name: "Campfire (tin only)", heat: 0.75, recovery: 0.5, alloys: false },
+    stone: { name: "Stone furnace", heat: 1, recovery: 0.75, alloys: true },
+    clay: { name: "Clay furnace", heat: 1.5, recovery: 1, alloys: true },
+    brick: { name: "Brick furnace", heat: 2.25, recovery: 1, alloys: true },
+    refractory: { name: "Refractory furnace", heat: 3, recovery: 1, alloys: true }
+  };
+  const FUELS = {
+    wood: { name: "Wood", burn: 20, cost: 5, how: "Its sale price, 5 coins" },
+    charcoal: { name: "Charcoal (from wood)", burn: 60, cost: 10, how: "Half of 4 wood (20 coins) per charcoal" },
+    sticks: { name: "Sticks (whittled wood)", burn: 8, cost: 1.25, how: "A quarter of a wood (5 coins) per stick" },
+    leaves: { name: "Leaves", burn: 2, cost: 0.1, how: "Their sale price, 10 for a coin" }
+  };
+  const METALS = [
+    { name: "Copper", bun: 14, ingot: 30 },
+    { name: "Tin", bun: 12, ingot: 26 },
+    { name: "Bronze", bun: 18, ingot: 38 },
+    { name: "Silver", bun: 90, ingot: 110 },
+    { name: "Gold", bun: 900, ingot: 1100 }
+  ];
+
+  const $ = id => document.getElementById(id);
+  const typical = ore => (ORES[ore].grade[0] + ORES[ore].grade[1]) / 2 * DILUTION;
+  const smithQuality = level => Math.min(1, 0.5 + 0.05 * level);
+  const fuelRate = f => FUELS[f].cost / FUELS[f].burn;
+
+  function fmt(n, digits) {
+    if (!isFinite(n)) return "–";
+    const d = digits === undefined ? (Math.abs(n) >= 100 ? 0 : 1) : digits;
+    return n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function secs(s) {
+    if (s < 0.5) return "–";
+    if (s < 90) return fmt(s, 0) + " s";
+    return fmt(s / 60, 1) + " min";
+  }
+
+  // Station figures for an ore in a furnace: recipe, quality (yield share) and heat.
+  function station(oreKey, furnaceKey, material) {
+    const ore = ORES[oreKey];
+    const f = FURNACES[furnaceKey];
+    const recipe = furnaceKey === "campfire" ? ore.campfire : ore.smelt;
+    if (!recipe) return null;
+    return { recipe, quality: f.recovery * material, heat: f.heat * material };
+  }
+
+  // One route: coins out, fuel, your seconds, furnace seconds, for 100 mined items.
+  function routes(oreKey, p, s) {
+    const ore = ORES[oreKey];
+    const st = station(oreKey, s.furnace, s.material);
+    const rate = fuelRate(s.fuel);
+    const sq = smithQuality(s.smith);
+    const list = [];
+    const raw = N * ore.raw * p;
+    list.push({ id: "raw", name: "Sell raw ore", note: "", out: raw, fuel: 0, you: 0, furnace: 0 });
+    list.push({ id: "refine-sell", name: "Refine, sell", note: "Same value, a little stone back", out: N * p * ore.raw + N * (1 - p) * STONE_PRICE, fuel: 0, you: N * (1 - p) * BOULDER, furnace: 0 });
+    const pc = 2 * p / (1 + p);
+    if (ore.crushed) {
+      list.push({ id: "crush-sell", name: "Crush, sell", note: "Exploit: metal from nothing", out: N * ore.crushed * pc + N * (1 - p) / 2 * CRUSHED_STONE, fuel: 0, you: N * BOULDER, furnace: 0, exploit: true });
+    }
+    if (st) {
+      const metalPer = st.recipe.out / st.recipe.in;
+      const smelt = (mineral, items, extra, you, id, name, note, exploit) => {
+        const buns = mineral * metalPer * st.quality;
+        const runs = items / st.recipe.in;
+        const furnace = runs * st.recipe.amount / st.heat;
+        let out = buns * ore.bun + extra;
+        let youT = you;
+        if (s.ingots) {
+          out = buns * ore.ingot * sq + extra;
+          youT += buns * 6 * STRIKE;
+        }
+        list.push({ id, name, note, out, fuel: furnace * rate, you: youT, furnace, buns, exploit });
+      };
+      smelt(N * p, N, 0, 0, "smelt", "Smelt", "");
+      smelt(N * p, N * p, N * (1 - p) * STONE_PRICE, N * (1 - p) * BOULDER, "refine-smelt", "Refine, smelt", "Fewer runs, less fuel");
+      if (ore.crushed) {
+        smelt(N * pc, N, N * (1 - p) / 2 * CRUSHED_STONE, N * BOULDER, "crush-smelt", "Crush, smelt", "Exploit", true);
+        smelt(N * pc, N * pc, N * (1 - p) / 2 * CRUSHED_STONE + N * (1 - pc) * STONE_PRICE, N * BOULDER + N * (1 - pc) * BOULDER, "crush-refine-smelt", "Crush, refine, smelt", "Exploit", true);
+      }
+    }
+    for (const r of list) {
+      r.net = r.out - r.fuel;
+      r.ratio = raw > 0 ? r.net / raw : NaN;
+      r.perMinute = r.you > 0.5 ? (r.net - raw) / (r.you / 60) : Infinity;
+    }
+    return list;
+  }
+
+  function settings() {
+    return {
+      ore: $("ore").value,
+      purity: parseFloat($("purity").value),
+      furnace: $("furnace").value,
+      material: parseFloat($("material").value),
+      smith: parseInt($("smith").value, 10),
+      fuel: $("fuel").value,
+      ingots: $("ingots").checked
+    };
+  }
+
+  function renderRoutes(s) {
+    const list = routes(s.ore, s.purity, s);
+    const body = $("routes").tBodies[0];
+    let best = null;
+    for (const r of list) if (!r.exploit && (!best || r.net > best.net)) best = r;
+    body.innerHTML = list.map(r => {
+      const per = r.perMinute === Infinity ? "no time needed" : (r.perMinute >= 0 ? "+" : "") + fmt(r.perMinute) + " over raw";
+      return `<tr class="${r === best ? "best" : ""}"><td class="route">${r.name}${r.note ? `<small>${r.note}</small>` : ""}</td>` +
+        `<td class="n">${fmt(r.out)}</td><td class="n">${r.fuel ? "−" + fmt(r.fuel) : "–"}</td><td class="n">${fmt(r.net)}</td>` +
+        `<td class="n">${fmt(r.ratio, 1)}×</td><td class="n">${secs(r.you)}</td><td class="n">${secs(r.furnace)}</td>` +
+        `<td class="n ${r.perMinute === Infinity ? "" : r.perMinute >= 0 ? "pos" : "neg"}">${per}</td></tr>`;
+    }).join("");
+    const st = station(s.ore, s.furnace, s.material);
+    $("ingot-note").textContent = st ? "" : "This furnace can't smelt this ore (the campfire only smelts cassiterite).";
+    renderChart(list, best);
+  }
+
+  function renderChart(list, best) {
+    const svg = $("chart");
+    const rowH = 28, top = 10, left = 190, right = 70, width = 900;
+    const height = top * 2 + rowH * list.length + 20;
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    const max = Math.max(1, ...list.map(r => r.net));
+    const scale = (width - left - right) / max;
+    const ticks = 4;
+    let out = "";
+    for (let i = 0; i <= ticks; i++) {
+      const v = max * i / ticks;
+      const x = left + v * scale;
+      out += `<line class="grid" x1="${x}" x2="${x}" y1="${top}" y2="${height - 22}"></line>`;
+      out += `<text class="axis" x="${x}" y="${height - 6}" text-anchor="middle">${fmt(v, 0)}</text>`;
+    }
+    list.forEach((r, i) => {
+      const y = top + i * rowH;
+      const w = Math.max(1, r.net * scale);
+      const fill = r.exploit ? "var(--bar-alt)" : "var(--bar)";
+      out += `<text x="${left - 10}" y="${y + rowH / 2 + 4}" text-anchor="end">${r.name}</text>`;
+      out += `<rect x="${left}" y="${y + 5}" width="${w}" height="${rowH - 10}" rx="3" fill="${fill}" opacity="${r === best ? 1 : 0.75}"></rect>`;
+      out += `<text x="${left + w + 6}" y="${y + rowH / 2 + 4}" class="axis">${fmt(r.net, 0)}</text>`;
+    });
+    svg.innerHTML = out;
+  }
+
+  function renderIngots() {
+    const levels = [0, 2, 4, 5, 6, 7, 8, 10];
+    $("ingot-table").tHead.innerHTML = `<tr><th>Metal</th><th class="n">Bun</th><th class="n">Ingot (100%)</th>${levels.map(l => `<th class="n">Level ${l}</th>`).join("")}</tr>`;
+    $("ingot-table").tBodies[0].innerHTML = METALS.map(m => {
+      const cells = levels.map(l => {
+        const d = m.ingot * smithQuality(l) - m.bun;
+        return `<td class="cell ${d > 0.05 ? "pos" : d < -0.05 ? "neg" : ""}">${d > 0 ? "+" : ""}${fmt(d, Math.abs(d) >= 100 ? 0 : 1)}</td>`;
+      }).join("");
+      return `<tr><td>${m.name}</td><td class="n">${m.bun}</td><td class="n">${m.ingot}</td>${cells}</tr>`;
+    }).join("");
+    const even = METALS.map(m => {
+      const level = Math.max(0, Math.ceil(((m.bun / m.ingot) - 0.5) / 0.05 - 1e-9));
+      return `${m.name} from level ${level}`;
+    });
+    $("ingot-breakeven").textContent = "Hammering first pays: " + even.join(", ") + ". Per minute at the anvil, multiply a cell by 10.";
+  }
+
+  function renderBronze(s) {
+    const apart = 3 * 14 + 12;
+    const rate = fuelRate(s.fuel);
+    $("bronze-buns").tBodies[0].innerHTML = Object.entries(FURNACES).filter(([, f]) => f.alloys).map(([key, f]) => {
+      const q = f.recovery * s.material;
+      const bronze = 4 * q;
+      const value = bronze * 18;
+      const fuel = 3 / (f.heat * s.material) * rate;
+      const gain = value - apart - fuel;
+      return `<tr class="${key === s.furnace ? "best" : ""}"><td>${f.name}</td><td class="n">${fmt(bronze, 2)}</td><td class="n">${apart}</td><td class="n">${fmt(value)}</td><td class="n">−${fmt(fuel, 2)}</td><td class="n ${gain >= 0 ? "pos" : "neg"}">${gain >= 0 ? "+" : ""}${fmt(gain)}</td></tr>`;
+    }).join("");
+    const f = FURNACES[s.furnace].alloys ? FURNACES[s.furnace] : FURNACES.stone;
+    const q = f.recovery * s.material;
+    const rows = [0, 5, 10].map(l => {
+      const sq = smithQuality(l);
+      const apartIngots = (3 * 30 + 26) * sq;
+      const bronzeIngots = 4 * q * 38 * sq;
+      const gain = bronzeIngots - apartIngots;
+      return `<tr><td>Blacksmithing ${l}${l === s.smith ? " (yours)" : ""}</td><td class="n">${fmt(apartIngots)}</td><td class="n">${fmt(bronzeIngots)}</td><td class="n ${gain >= 0 ? "pos" : "neg"}">${gain >= 0 ? "+" : ""}${fmt(gain)}</td></tr>`;
+    });
+    $("bronze-ingots").tBodies[0].innerHTML = rows.join("") + `<tr><td colspan="4" class="note">In a ${f.name.toLowerCase()} (recovery ${fmt(q, 2)}).</td></tr>`;
+  }
+
+  function renderRefining(s) {
+    const rate = fuelRate(s.fuel);
+    $("refine-table").tBodies[0].innerHTML = Object.keys(ORES).map(key => {
+      const p = typical(key);
+      const st = station(key, s.furnace, s.material) || station(key, "stone", s.material);
+      const boulder = N * (1 - p) * BOULDER;
+      const runsSaved = (N - N * p) / st.recipe.in;
+      const furnaceSaved = runsSaved * st.recipe.amount / st.heat;
+      const fuelSaved = furnaceSaved * rate;
+      const stone = N * (1 - p) * STONE_PRICE;
+      const perMin = (fuelSaved + stone) / (boulder / 60);
+      return `<tr><td>${ORES[key].name}</td><td class="n">${fmt(p * 100, 1)}%</td><td class="n">${fmt(N * p, 1)}</td><td class="n">${secs(boulder)}</td><td class="n">${secs(furnaceSaved)}</td><td class="n">${fmt(fuelSaved, 1)}</td><td class="n">${fmt(stone, 1)}</td><td class="n pos">+${fmt(perMin, 1)}</td></tr>`;
+    }).join("");
+  }
+
+  function renderBest(s) {
+    $("best-table").tBodies[0].innerHTML = Object.keys(ORES).map(key => {
+      const list = routes(key, typical(key), Object.assign({}, s, { furnace: station(key, s.furnace, s.material) ? s.furnace : "stone" }));
+      const get = id => list.find(r => r.id === id);
+      let best = null;
+      for (const r of list) if (!r.exploit && (!best || r.net > best.net)) best = r;
+      const crush = get("crush-smelt");
+      return `<tr><td>${ORES[key].name}</td><td class="n">${fmt(get("raw").net)}</td><td class="n">${fmt(get("smelt").net)}</td><td class="n">${crush ? fmt(crush.net) : "–"}</td><td>${best.name}${s.ingots ? " (ingots)" : ""}</td><td class="n">${fmt(best.net)}</td></tr>`;
+    }).join("");
+  }
+
+  function renderFuel() {
+    $("fuel-table").tBodies[0].innerHTML = Object.values(FUELS).map(f =>
+      `<tr><td>${f.name}</td><td class="n">${f.burn} s</td><td>${f.how}</td><td class="n">${fmt(f.cost / f.burn * 60, 2)}</td></tr>`).join("");
+  }
+
+  function render() {
+    const s = settings();
+    $("purity-out").textContent = fmt(s.purity * 100, 1) + "%";
+    $("material-out").textContent = fmt(s.material * 100, 0) + "%";
+    $("smith-out").textContent = s.smith;
+    renderRoutes(s);
+    renderBronze(s);
+    renderRefining(s);
+    renderBest(s);
+  }
+
+  function init() {
+    $("ore").innerHTML = Object.entries(ORES).map(([k, o]) => `<option value="${k}">${o.name}</option>`).join("");
+    $("furnace").innerHTML = Object.entries(FURNACES).map(([k, f]) => `<option value="${k}">${f.name} (heat ${f.heat}, recovery ${f.recovery})</option>`).join("");
+    $("fuel").innerHTML = Object.entries(FUELS).map(([k, f]) => `<option value="${k}">${f.name}</option>`).join("");
+    $("furnace").value = "stone";
+    $("fuel").value = "wood";
+    $("purity").value = typical("chalcopyrite").toFixed(3);
+    $("ore").addEventListener("change", () => { $("purity").value = typical($("ore").value).toFixed(3); render(); });
+    for (const id of ["purity", "furnace", "material", "smith", "fuel", "ingots"]) {
+      $(id).addEventListener("input", render);
+      $(id).addEventListener("change", render);
+    }
+    renderIngots();
+    renderFuel();
+    render();
+  }
+  init();
+})();
+</script>
+</body>
+</html>

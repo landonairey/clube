@@ -11,7 +11,7 @@ namespace Clube.Core
     /// ground is filled, so the bed holds no dry pockets. Past the wet cells the water runs on over the shore for up to
     /// <see cref="ShoreReach"/> samples, at the same level, wherever the ground under it holds it up, so a bank lower than
     /// the map thought is under water rather than beside a wall of it. Wet-cell samples are the generated water:
-    /// <see cref="LiveWater"/> keeps them topped up (a river or lake is a source without end).
+    /// <see cref="LiveWater"/> keeps rivers topped up from their chunk's soil water (WT1); lakes are finite.
     /// </summary>
     public static class WaterFill
     {
@@ -40,7 +40,7 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// How full of river water a sample is kept, 0-1 (GL333): rivers are fed from upstream without end; lakes and ponds
+        /// How full of river water a sample is kept, 0-1 (GL333): rivers are topped up from soil water (WT1); lakes and ponds
         /// are not, so their water is only what was generated and a bucket can empty them. 0 off a river.
         /// </summary>
         public static float RiverAt(in WaterMap map, Vector3 position, float voxelSize)

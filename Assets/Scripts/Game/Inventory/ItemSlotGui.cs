@@ -22,6 +22,9 @@ namespace Clube.Game
         /// <summary>The terrain materials, for how pure a stack is (GL115); set by whoever has them, null shows no purity.</summary>
         public static MaterialRegistry Materials { get; set; }
 
+        /// <summary>What the merchant pays, for tooltips (GL366); set by the merchant table when it's placed.</summary>
+        public static PriceList Prices { get; set; }
+
         // Every stack shows how well it was made, in the upper right, 100% included (GL158): its quality
         // (GL118: sticks of 60% wood), or for mined material that isn't all its own material, how much of it
         // is (GL115: ore of a grade).
@@ -68,7 +71,7 @@ namespace Clube.Game
                 if (stack.Item is BucketDefinition bucket)
                 {
                     // The water in a bucket (GL319): a blue bar, and the units in the corner.
-                    float full = (float)bucket.WaterIn(stack) / bucket.Capacity;
+                    float full = (float)bucket.WaterIn(stack) / bucket.CapacityOf(stack);
                     Fill(new Rect(rect.x + 4f, rect.yMax - 8f, rect.width - 8f, 4f), new Color(0.2f, 0.2f, 0.22f));
                     Fill(new Rect(rect.x + 4f, rect.yMax - 8f, (rect.width - 8f) * full, 4f), new Color(0.3f, 0.6f, 0.85f));
                     GUI.Label(Inset(rect, 3f), bucket.WaterIn(stack).ToString(), countStyle);

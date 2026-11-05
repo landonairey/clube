@@ -143,8 +143,13 @@ namespace Clube.Game
                     model.Box(new Vector3(0f, 0.38f, 0.02f), new Vector3(0.07f, 0.07f, 0.15f), Quaternion.identity, head);
                     break;
                 case HeldShape.Chisel:
-                    model.Prism(new Vector3(0f, -0.06f, 0.02f), new Vector3(0f, 0.17f, 0.05f), 0.014f, 0.012f, 4, head);
-                    model.Wedge(new Vector3(0f, 0.17f, 0.05f), new Vector3(0f, 0.23f, 0.06f), 0.012f, 0.026f, 0.004f, head * 1.1f);
+                    // As its icon (GL398): a rounded wooden handle, a dark ferrule, and a bronze blade flaring from a narrow
+                    // neck to a wide, bright bevelled edge.
+                    model.Prism(new Vector3(0f, -0.115f, 0.011f), new Vector3(0f, -0.09f, 0.015f), 0.014f, 0.026f, 6, Wood * 0.72f);
+                    model.Prism(new Vector3(0f, -0.09f, 0.015f), new Vector3(0f, 0.1f, 0.04f), 0.026f, 0.024f, 6, Wood * 0.8f);
+                    model.Prism(new Vector3(0f, 0.098f, 0.04f), new Vector3(0f, 0.125f, 0.044f), 0.028f, 0.028f, 6, head * 0.6f);
+                    model.Blade(new Vector3(0f, 0.125f, 0.044f), new Vector3(0f, 0.235f, 0.06f), 0.016f, 0.044f, 0.012f, 0.007f, head);
+                    model.Blade(new Vector3(0f, 0.235f, 0.06f), new Vector3(0f, 0.255f, 0.063f), 0.044f, 0.046f, 0.007f, 0.0015f, head * 1.3f);
                     break;
                 case HeldShape.Spear:
                     model.Prism(new Vector3(0f, -0.35f, -0.1f), new Vector3(0f, 0.85f, 0.25f), 0.015f, 0.014f, 5, Wood);
@@ -271,6 +276,27 @@ namespace Clube.Game
                 Quad(bt + side, bt - side, ft, ft, middle, color);
                 Quad(bb - side, bb + side, fb, fb, middle, color);
                 Quad(bb - side, bt - side, bt + side, bb + side, middle, color);
+            }
+
+            // A flat, tapering bar along a line: <paramref name="fromWidth"/> to <paramref name="toWidth"/> wide across x, and
+            // <paramref name="fromThickness"/> to <paramref name="toThickness"/> thick across the other side (a chisel's blade).
+            public void Blade(Vector3 from, Vector3 to, float fromWidth, float toWidth, float fromThickness, float toThickness, Color color)
+            {
+                Vector3 along = (to - from).normalized;
+                Vector3 width = Vector3.right;
+                Vector3 thick = Vector3.Cross(along, width).normalized;
+                Vector3 middle = (from + to) * 0.5f;
+                Vector3 Corner(Vector3 at, float w, float t, float sw, float st) => at + width * (w * 0.5f * sw) + thick * (t * 0.5f * st);
+                Vector3 b0 = Corner(from, fromWidth, fromThickness, -1f, -1f), b1 = Corner(from, fromWidth, fromThickness, 1f, -1f);
+                Vector3 b2 = Corner(from, fromWidth, fromThickness, 1f, 1f), b3 = Corner(from, fromWidth, fromThickness, -1f, 1f);
+                Vector3 t0 = Corner(to, toWidth, toThickness, -1f, -1f), t1 = Corner(to, toWidth, toThickness, 1f, -1f);
+                Vector3 t2 = Corner(to, toWidth, toThickness, 1f, 1f), t3 = Corner(to, toWidth, toThickness, -1f, 1f);
+                Quad(b0, t0, t1, b1, middle, color);
+                Quad(b1, t1, t2, b2, middle, color);
+                Quad(b2, t2, t3, b3, middle, color * 0.92f);
+                Quad(b3, t3, t0, b0, middle, color);
+                Quad(b0, b1, b2, b3, middle, color);
+                Quad(t3, t2, t1, t0, middle, color * 1.1f);
             }
 
             // An octahedron stretched to these half-sizes: a knapped stone, a spear point.

@@ -108,6 +108,9 @@ namespace Clube.Game
         /// <summary>Raised when Attack swings at nothing in reach (GL302): the swing and a whoosh, no hit.</summary>
         public event Action<ToolDefinition> Missed;
 
+        /// <summary>A hit aimed at a plant (a tree's wood or leaves) landed, on the samples of this box (GL344: felling looks there).</summary>
+        public event Action<VoxelBox> Chopped;
+
         /// <summary>Whether the view is on a bush within reach, in front of the ground (GL238).</summary>
         public bool HasBush { get; private set; }
 
@@ -550,6 +553,10 @@ namespace Clube.Game
                 Collected?.Invoke(knowledge != null ? knowledge.Disguise(stack, minedFrom[i].Material) : stack);
             }
             HandOverGathered();
+            if (aimedTarget != null && aimedTarget.Kind == MaterialKind.Plant && HasReach)
+            {
+                Chopped?.Invoke(Reach.Box);
+            }
         }
 
         // A sample mined (whole, or a whole one's worth taken gradually): experience and the journal.

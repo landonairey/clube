@@ -5442,6 +5442,7 @@ GameObject:
   - component: {fileID: 1350119484}
   - component: {fileID: 1350119486}
   - component: {fileID: 1350119485}
+  - component: {fileID: 1350119487}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -5539,6 +5540,7 @@ MonoBehaviour:
   renderDistance: 16
   frameBudgetMilliseconds: 3
   loadingBudgetMilliseconds: 30
+  farLoadingBudgetMilliseconds: 8
   overlayRadius: 32
   detailDistance: 24
   maxJobsInFlight: 0
@@ -5721,9 +5723,10 @@ MonoBehaviour:
   grass: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
   material: {fileID: 2100000, guid: bebf70da50c2fd042afe43cc4a285452, type: 2}
   radius: 64
-  thinFrom: 22
-  thinTo: 0.2
-  fadeLength: 16
+  reachDrawnTerrain: 1
+  thinFrom: 40
+  thinTo: 0.35
+  fadeLength: 8
   lawnShade: 0.6
   lawnNear: 0.55
   density: 6
@@ -6005,9 +6008,15 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 72ac502e9aa967649af93b2c9178c738, type: 3}
   - {fileID: 8300000, guid: 4eacf1aa58d19e44b84cbd9f850accb9, type: 3}
   - {fileID: 8300000, guid: 916b43354c38e8c4aa51cf171f0e85e2, type: 3}
+  - {fileID: 8300000, guid: 48cf47fdce5204c4eb1e59dd62382861, type: 3}
+  - {fileID: 8300000, guid: 496cbca4ce1f89f489e3d696b1db6bf0, type: 3}
+  - {fileID: 8300000, guid: 5cde3f37818a54c44b1449dec8031e94, type: 3}
+  - {fileID: 8300000, guid: d9ec7c290bc9ce44fa8a62ded6497a9e, type: 3}
   windVolume: {x: 0.12, y: 0.35}
   leavesVolume: 0.18
-  birdSeconds: {x: 4, y: 14}
+  feller: {fileID: 1697135610}
+  rustlePerFelledTree: 0.2
+  birdSeconds: {x: 8, y: 28}
   birdVolume: 0.35
 --- !u!114 &1350119484
 MonoBehaviour:
@@ -6055,7 +6064,22 @@ MonoBehaviour:
   show: 1
   flowStepSeconds: 0.06
   flowBudgetMs: 2.5
+  minFlowSlope: 0.25
   buildBudgetMs: 1.5
+--- !u!114 &1350119487
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b0d05c6ee1991c489607fa2253dd44f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.FallenLeaves
+  worldView: {fileID: 1350119460}
+  clock: {fileID: 1350119469}
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -6240,6 +6264,9 @@ GameObject:
   - component: {fileID: 1697135608}
   - component: {fileID: 1697135607}
   - component: {fileID: 1697135609}
+  - component: {fileID: 1697135610}
+  - component: {fileID: 1697135611}
+  - component: {fileID: 1697135612}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -6338,7 +6365,7 @@ CharacterController:
   m_Enabled: 1
   serializedVersion: 3
   m_Height: 1.8
-  m_Radius: 0.35
+  m_Radius: 0.3
   m_SlopeLimit: 50
   m_StepOffset: 0.4
   m_SkinWidth: 0.04
@@ -6890,7 +6917,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b41c6e81fd9d1964287e10b24e4537bc, type: 2}
   - {fileID: 11400000, guid: ab01fde72466eb541a3a9790e3f6770d, type: 2}
   - {fileID: 11400000, guid: f4da6991b017a7945abfa36571cdec99, type: 2}
+  - {fileID: 11400000, guid: 9f36d869842179e46914be8a41f33b7d, type: 2}
   - {fileID: 11400000, guid: 920c30d37746a7f45924e18044f271f0, type: 2}
+  - {fileID: 11400000, guid: 179eb7d029ba37049871ae5c98c544cb, type: 2}
   - {fileID: 11400000, guid: 9942e589f4b57e44d8376e7127be3de7, type: 2}
   - {fileID: 11400000, guid: c088dfedb8df22540be8f0fedbc11ea9, type: 2}
   - {fileID: 11400000, guid: 39e8504355d58004f9c3987f635a0511, type: 2}
@@ -6983,6 +7012,10 @@ MonoBehaviour:
     Crushed: {fileID: 11400000, guid: 5a86064ddd2bb7e4f8f439df059c404a, type: 2}
   - Raw: {fileID: 11400000, guid: 1e3311289ece4ce428134389e92a4e43, type: 2}
     Crushed: {fileID: 11400000, guid: 0009a74da2fcc9c418d567adad1cc958, type: 2}
+  - Raw: {fileID: 11400000, guid: 77d0fe700a4ca9f439cd43a5d6581c2d, type: 2}
+    Crushed: {fileID: 11400000, guid: 0f38f79b98b5d804581a43b8813ab590, type: 2}
+  - Raw: {fileID: 11400000, guid: 4273b1a1d0181c84a8fd5cdb5377de07, type: 2}
+    Crushed: {fileID: 11400000, guid: 86cf1409cbba3694bb4897daff8b45b9, type: 2}
   crushedStone: {fileID: 11400000, guid: e6ec90f8b46ea6747b89bbc179234604, type: 2}
   crushSkill: 3
   crushLevel: 2
@@ -6990,6 +7023,7 @@ MonoBehaviour:
   secondsPerVolume: 0.25
   refineVolume: 1
   refineExperience: 0.1
+  refineSmithingExperience: 0.02
 --- !u!114 &1697135593
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7258,7 +7292,7 @@ MonoBehaviour:
   clock: {fileID: 0}
   dayNight: {fileID: 0}
   closeAction: {fileID: 1781555164194001046, guid: 052faaac586de48259a63d0c4782560b, type: 3}
-  secondsPerHour: 1
+  secondsPerHour: 0.5
   blurSeconds: 0.6
 --- !u!114 &1697135606
 MonoBehaviour:
@@ -7318,6 +7352,59 @@ MonoBehaviour:
   pourAction: {fileID: 9082728051176153063, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   reach: 4
   holdDelay: 0.3
+--- !u!114 &1697135610
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfe65f025f153bb4983f6df670fc3b28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.TreeFeller
+  worldView: {fileID: 1350119460}
+  toolUser: {fileID: 1697135569}
+  view: {fileID: 371098496}
+  dustMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
+  dustColour: {r: 0.62, g: 0.55, b: 0.45, a: 0.75}
+  fallenLeaves: {fileID: 1350119487}
+--- !u!114 &1697135611
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 593292365af90f244834a835974118dd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.InteractHighlight
+  interactor: {fileID: 1697135574}
+  worldView: {fileID: 1350119460}
+  bashing: {fileID: 1697135592}
+  outline: {fileID: 2100000, guid: 84d2e2cdbce2c774cb23034c780c2013, type: 2}
+--- !u!114 &1697135612
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61283e2e119c62141bdf9f639c147cba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerWaterSounds
+  sounds: {fileID: 11400000, guid: a0d526c704e75e74a9b485c3484f305f, type: 2}
+  source: {fileID: 1697135596}
+  dropletMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
+  inDepth: 0.12
+  outDepth: 0.04
+  strideLength: 1.4
+  minSpeed: 0.6
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

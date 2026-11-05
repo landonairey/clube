@@ -27,6 +27,10 @@ MonoBehaviour:
   requiredSkill: 0
   requiredLevel: 0
   windSway: 1
+  fallenForm: {fileID: 11400000, guid: d2dea6ef946bc73468e02b6ebc03a7f4, type: 2}
+  shine: 0
+  fall: 0
+  stabilityLoss: 100
   breaksInto: {fileID: 0}
   isWorktop: 0
   isSoft: 1

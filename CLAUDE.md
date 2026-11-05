@@ -555,6 +555,38 @@ evens out one neighbour at a time, and water pressed from above pushes the last 
 GL333: only rivers are sources (`WaterFill.RiverAt`), holding their level both ways; lakes and ponds are finite. GL334: wet clay
 doesn't dry or steam (`GroundDrying.IsWet`). GL335: the bucket scoops the shovel's sphere (`CollectingSettings.ToolRadius`).
 GL336: rivers stand at least `WaterMap.MinRiverDepth` over their bed. GL337 (clumps on hills) and WT1 (moisture) are open.
+P12a, P12b, WT2 (branch `p12/eroded-landscape`, `Docs/20261103j clube-backlog.md`): the ErodedLandscape generator runs
+`ErosionFilter` (Generation/Noise, after runevision's erosion filter) over Landscape with smooth massifs
+(`LandscapeHeight.WithSmoothMassifs`; the filter needs a smooth base: on ridged noise its gullies turn to noise and seams);
+panel Erosion section. Rivers start in its biggest gullies' valleys (`HeightfieldGenerator.ScheduleValleys`, `Hydrology` by
+steepest descent) and merge downstream into lakes. River water comes from the chunk's soil (`Chunk.SoilWater`, `LiveWater`
+`Draw`/`Soak`), kept full by `HoldSoilWaterFull` until there is rain (needs more playtesting). GL338: the merchant table skips
+and clears trees on its square, and is placed again when the world regenerates (GL341). Large boulders (GL342) are 3D shapes
+from `BoulderField` (Generation/Rocks), 4-12 m, faceted, often overhanging, stamped as `TreePart.Boulder` with the trees.
+Grass reaches the drawn terrain (`WorldView.DrawnDistance`, GL340). The world labs default to ErodedLandscape (GL343). AR1: palette idea.
+GL344 felling: `PlayerToolUser.Chopped` → `TreeFeller` (Game/Tools, on Player) → `TreeFelling.FindSevered` (Core/Editing: wood cut off
+from the ground through wood, plus the leaves nearer to it) → a mesh from a scratch chunk → `FallingLimb` tips it to the player's right
+(cardinal), dust, then `TreeFelling.Land` (turned 90° about the cut, dropped per column, wood under a tenth of the leaves).
+GL349-GL371 (`Docs/20261103o clube-backlog.md`): landed wood keeps its density, and a cut piece that already lies there drops
+straight (`TreeFeller`); leaves land as their `VoxelMaterial.FallenForm` (ids 26, 27: no sway) and rot away 10% an in-game
+hour (`FallenLeaves` on World). A finished run that doesn't fit the output waits (`CraftingStation.OutputFits`); the flat rock
+mends a tool fully with one ingot (`ToolRepair.RepairFully`); `ItemStack.MinLoosePart` (0.05) clears specks. Torches go in the
+open voxel before the aimed face (`PlayerBuilder.BuildTorch`). `CampfireBounce` knocks the player back (`PlayerController.Knockback`).
+`InteractHighlight` (on Player) outlines the interact target with `Clube/Interact Outline`. Tab no longer opens the inventory.
+GL372-GL378 (`Docs/20261104 clube-backlog.md`): the interact outline is a stencil-masked 1.5-pixel rim (`Clube/Interact
+Outline`, mask and rim materials made in `InteractHighlight.Awake`); a model's "Outline shape" child replaces its meshes for
+it (the merchant table's). Smelted metal keeps slag (`CraftingStation.SmeltPurity`, `SlagCarried`: ore share, heat, Smelting),
+so a bun's quality is its purity; hammering drives out half the slag (`ForgedQuality`). Crushing keeps volume (the crushed
+ore is the rest of the item). `PlayerController.Knockback` keeps its hop on the frame it starts.
+GL379: `GrassScatter` thins far tufts on the CPU (tufts sorted by a hashed pick, a far chunk sends the share it keeps) and resumes its chunk scan where it stopped; `InstanceBatches` passes each batch's bounds.
+GL380-GL383: far grass is four-tuft clumps drawn without depth passes (`GrassScatter.FarMaterial`); fallen leaves drop like dirt and `FallenLeaves` follows them down; `SoundSynth.Chip` plays on `BoulderBashing.HandAxeMade`.
+GL384-GL398 (`Docs/20261104c clube-backlog.md`): Q and E switch between the field log and the inventory. Buns and ingots stack to 32;
+a station's output blends qualities by amount (`CraftingStation.BlendsInOutput`), and a dragged stack moves onto another by amount,
+parts included. Refining takes one impurity a pass and fails more the purer the stack (`Refining.FailChance`); crushing and refining
+crushed ore train the new Prospecting skill. Crushed silver and gold ore. A campfire's or furnace's ground samples target the station
+(`TerrainStructure.FindAt`); idle stations don't glow. A tap of Drop places one sample on the aimed spot (`TerrainPile.PlaceOne`).
+Bucket capacity follows quality (`BucketDefinition.CapacityOf`). `PlayerWaterSounds` splashes, sloshes and drips.
+Height maps: `Docs/images/20261103 *`.
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the
 Editor log; per-script markers aren't available without the profiler.

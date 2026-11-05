@@ -105,6 +105,81 @@ namespace Clube.Debug
             }
         }
 
+        // The eroded landscape's gullies (P12). Each change regenerates.
+        private static void DrawErosion(LabPanelFrame frame, WorldConfig config, ErosionSettings erosion)
+        {
+            GUILayout.Label("Erosion", frame.Header);
+            int baseOctaves = Mathf.RoundToInt(frame.Slider("Massif octaves", erosion.BaseOctaves, 1f, 8f, "0"));
+            float size = frame.Slider("Gully size (m)", erosion.GullySize, 20f, 400f, "0");
+            float strength = frame.Slider("Strength", erosion.Strength, 0f, 0.6f, "0.00");
+            int octaves = Mathf.RoundToInt(frame.Slider("Gully octaves", erosion.Octaves, 1f, 7f, "0"));
+            float weight = frame.Slider("Gully weight", erosion.GullyWeight, 0f, 1f, "0.00");
+            float detail = frame.Slider("Detail", erosion.Detail, 0.5f, 4f, "0.00");
+            float onset = frame.Slider("Onset", erosion.Onset, 0.25f, 4f, "0.00");
+            float assumed = frame.Slider("Assumed slope", erosion.AssumedSlope, 0.1f, 2f, "0.00");
+            float ridges = frame.Slider("Ridge rounding", erosion.RidgeRounding, 0f, 0.5f, "0.00");
+            float creases = frame.Slider("Gully floor rounding", erosion.CreaseRounding, 0f, 0.5f, "0.00");
+            int valleys = Mathf.RoundToInt(frame.Slider("River valley octaves", erosion.ValleyOctaves, 1f, 4f, "0"));
+            float lift = frame.Slider("Peak lift", erosion.PeakLift, 0f, 1f, "0.00");
+            float pond = frame.Slider("Smallest pond (m²)", erosion.MinPondArea, 0f, 5000f, "0");
+            if (baseOctaves != erosion.BaseOctaves || !Mathf.Approximately(size, erosion.GullySize) || !Mathf.Approximately(strength, erosion.Strength)
+                || octaves != erosion.Octaves || !Mathf.Approximately(weight, erosion.GullyWeight)
+                || !Mathf.Approximately(detail, erosion.Detail) || !Mathf.Approximately(onset, erosion.Onset)
+                || !Mathf.Approximately(assumed, erosion.AssumedSlope) || !Mathf.Approximately(ridges, erosion.RidgeRounding)
+                || !Mathf.Approximately(creases, erosion.CreaseRounding) || valleys != erosion.ValleyOctaves
+                || !Mathf.Approximately(pond, erosion.MinPondArea) || !Mathf.Approximately(lift, erosion.PeakLift))
+            {
+                erosion.BaseOctaves = baseOctaves;
+                erosion.GullySize = size;
+                erosion.Strength = strength;
+                erosion.Octaves = octaves;
+                erosion.GullyWeight = weight;
+                erosion.Detail = detail;
+                erosion.Onset = onset;
+                erosion.AssumedSlope = assumed;
+                erosion.RidgeRounding = ridges;
+                erosion.CreaseRounding = creases;
+                erosion.ValleyOctaves = valleys;
+                erosion.MinPondArea = pond;
+                erosion.PeakLift = lift;
+                config.NotifyChanged();
+            }
+            GUILayout.Label("Gullies branch down the mountains, each octave half the size; flat land is left alone. Rivers start in the valleys of the biggest octaves.", frame.Hint);
+        }
+
+        // Rivers and lakes (GL307), valley rivers (P12) and soil water (WT1). Shape changes regenerate; soil water is read
+        // by the water flow each step, so it changes live.
+        private static void DrawWater(LabPanelFrame frame, WorldConfig config, WaterGeneration water, bool eroded)
+        {
+            GUILayout.Label("Rivers and lakes", frame.Header);
+            float riverArea = frame.Slider("River from land drained (m²)", water.RiverArea, 1000f, 200000f, "0");
+            float lakeDepth = frame.Slider("Pond from hollow depth (m)", water.LakeMinDepth, 0.1f, 3f, "0.0");
+            bool valleyRivers = water.ValleyRivers;
+            float valleyDepth = water.ValleyDepth;
+            float headArea = water.ValleyHeadArea;
+            if (eroded)
+            {
+                valleyRivers = frame.ToggleField("Rivers start in gully valleys", water.ValleyRivers);
+                valleyDepth = frame.Slider("…valley depth (ridge map)", water.ValleyDepth, 0.05f, 0.9f, "0.00");
+                headArea = frame.Slider("…land drained at the head (m²)", water.ValleyHeadArea, 200f, 20000f, "0");
+            }
+            if (!Mathf.Approximately(riverArea, water.RiverArea) || !Mathf.Approximately(lakeDepth, water.LakeMinDepth)
+                || valleyRivers != water.ValleyRivers || !Mathf.Approximately(valleyDepth, water.ValleyDepth)
+                || !Mathf.Approximately(headArea, water.ValleyHeadArea))
+            {
+                water.RiverArea = riverArea;
+                water.LakeMinDepth = lakeDepth;
+                water.ValleyRivers = valleyRivers;
+                water.ValleyDepth = valleyDepth;
+                water.ValleyHeadArea = headArea;
+                config.NotifyChanged();
+            }
+
+            water.SoilWater = frame.Slider("Soil water (share of a chunk)", water.SoilWater, 0f, 1f, "0.00");
+            water.HoldSoilWaterFull = frame.ToggleField("Keep soil water full (rain stand-in)", water.HoldSoilWaterFull);
+            GUILayout.Label("Rivers top up from their chunk's soil water; with it kept full they never run dry. Off, a river drains its chunks and then stops.", frame.Hint);
+        }
+
         private static string Name(VoxelMaterial material)
         {
             return material != null ? material.DisplayName : "None";
@@ -115,7 +190,8 @@ namespace Clube.Debug
         {
             float worldHeight = config.ChunkSize.y * config.VoxelSize * config.WorldHeightInChunks;
             float surface = frame.Slider("Surface level", terrain.SurfaceLevel, 0f, Mathf.Max(1f, worldHeight), "0.0");
-            bool landscape = terrain.Generator == TerrainGeneratorType.Landscape;
+            bool eroded = terrain.Generator == TerrainGeneratorType.ErodedLandscape;
+            bool landscape = terrain.Generator == TerrainGeneratorType.Landscape || eroded;
             float amplitude = frame.Slider(landscape ? "Mountain height (m)" : "Amplitude", terrain.Amplitude, 0f,
                 Mathf.Max(1f, landscape ? worldHeight : worldHeight * 0.5f), "0.0");
             float frequency = frame.Slider("Frequency", terrain.Frequency, 0.005f, 0.5f, "0.000");
@@ -163,6 +239,15 @@ namespace Clube.Debug
                     config.NotifyChanged();
                 }
                 GUILayout.Label("Great ranges for the far terrain's horizon: none within Start of the origin, full height from twice it. 0 m: none.", frame.Hint);
+            }
+
+            if (eroded)
+            {
+                DrawErosion(frame, config, terrain.Erosion);
+            }
+            if (landscape)
+            {
+                DrawWater(frame, config, terrain.Water, eroded);
             }
 
             if (terrain.Generator == TerrainGeneratorType.Spline)
