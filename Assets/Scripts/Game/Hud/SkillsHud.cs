@@ -13,8 +13,9 @@ namespace Clube.Game
     public class SkillsHud : MonoBehaviour
     {
         private const float NoticeSeconds = 5f;
-        private const float Width = 230f;
-        private const float RowHeight = 22f;
+        private const float Width = 400f;
+        private const float RowHeight = 36f;
+        private const float LabelWidth = 190f;
 
         private static readonly SkillType[] Shown = { SkillType.Crafting, SkillType.Woodcutting, SkillType.Mining, SkillType.Smelting, SkillType.Blacksmithing, SkillType.Prospecting };
 
@@ -70,14 +71,15 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (player != null && !player.enabled)
             {
                 return;
             }
-            label ??= new GUIStyle(GUI.skin.label) { fontSize = 13, normal = { textColor = Color.white } };
+            label ??= new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(13), alignment = TextAnchor.MiddleLeft, normal = { textColor = Color.white } };
             noticeStyle ??= new GUIStyle(GUI.skin.label)
             {
-                fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, normal = { textColor = new Color(1f, 0.9f, 0.45f) },
+                fontSize = GameUi.Font(18), fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, normal = { textColor = new Color(1f, 0.9f, 0.45f) },
             };
 
             float x = Screen.width - Width - 12f;
@@ -90,8 +92,8 @@ namespace Clube.Game
                 float to = SkillSet.ExperienceFor(level + 1);
                 float xp = skills.Skills.Experience(skill);
                 float progress = to > from ? Mathf.Clamp01((xp - from) / (to - from)) : 1f;
-                GUI.Label(new Rect(x, y, 130f, RowHeight), $"{skill} {level}", label);
-                var bar = new Rect(x + 130f, y + 7f, Width - 130f, 8f);
+                GUI.Label(new Rect(x, y, LabelWidth, RowHeight), $"{skill} {level}", label);
+                var bar = new Rect(x + LabelWidth, y + 9f, Width - LabelWidth, 18f);
                 GUI.Box(bar, GUIContent.none);
                 Color previous = GUI.color;
                 GUI.color = new Color(0.45f, 0.85f, 0.4f);
@@ -102,7 +104,7 @@ namespace Clube.Game
 
             if (notice != null && Time.time < noticeUntil)
             {
-                GUI.Label(new Rect(0f, Screen.height * 0.25f, Screen.width, 30f), notice, noticeStyle);
+                GUI.Label(new Rect(0f, Screen.height * 0.25f, Screen.width, 44f), notice, noticeStyle);
             }
         }
     }

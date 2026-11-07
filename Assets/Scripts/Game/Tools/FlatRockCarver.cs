@@ -84,6 +84,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (notice == null || Time.time >= noticeUntil)
             {
                 return;

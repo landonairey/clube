@@ -48,6 +48,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             bool logOpen = fieldLog != null && fieldLog.IsOpen;
             if (!logOpen && notice != null && Time.time < noticeUntil)
             {
@@ -100,7 +101,7 @@ namespace Clube.Game
         private void DrawEntry(Rect area, int number, VoxelMaterial ore)
         {
             MiningJournal.Entry found = journal.Journal.EntryFor(ore);
-            GUI.Label(new Rect(area.x, area.y + 2f, 60f, 20f), $"No. {number}", JournalBook.Small);
+            GUI.Label(new Rect(area.x, area.y + 2f, 60f, 28f), $"No. {number}", JournalBook.Small);
             if (found == null)
             {
                 // Blank until it's found.

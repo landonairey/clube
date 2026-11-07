@@ -15,7 +15,7 @@ namespace Clube.Game
     public class MerchantPanel : MonoBehaviour
     {
         private const float Padding = 12f;
-        private const float RowHeight = 26f;
+        private const float RowHeight = 34f;
 
         // The sell buttons carry what they pay on a second line.
         private const float SellRowHeight = 44f;
@@ -137,6 +137,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (Current == null || Current.Prices == null)
             {
                 return;
@@ -146,20 +147,20 @@ namespace Clube.Game
             PriceList prices = Current.Prices;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
             float offerRows = OffersHeight() + TrainingHeight();
-            float height = Padding * 2f + 24f + 22f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + SellRowHeight + 6f + offerRows + (group.Count > 0 ? SellRowHeight + 6f : 0f);
+            float height = Padding * 2f + 32f + 30f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + SellRowHeight + 6f + offerRows + (group.Count > 0 ? SellRowHeight + 6f : 0f);
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
             float y = panel.y + Padding;
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   (E to close)");
-            GUI.Label(new Rect(panel.xMax - Padding - 160f, y, 160f, 20f), $"Your coins: {Wallet.Format(wallet.Wallet.Coins)}");
-            y += 24f;
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 28f), $"{Current.DisplayName}   (E to close)");
+            GUI.Label(new Rect(panel.xMax - Padding - 160f, y, 160f, 28f), $"Your coins: {Wallet.Format(wallet.Wallet.Coins)}");
+            y += 32f;
             // What the trader has left to buy with today (GL426), or why a sale was refused.
             string note = Time.unscaledTime < refusalUntil ? refusal
                 : Current.Purse != null ? $"Click one of your items to see what they pay. They have {Wallet.Format(Current.Purse.Coins)} to buy with today."
                 : "Click one of your items to see what they pay for it.";
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), note);
-            y += 22f;
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 28f), note);
+            y += 30f;
 
             // While a group is picked only its stacks are lit (GL310): the last Ctrl-clicked slot may have just left it.
             int clicked = InventoryGridGui.DrawPlayer(new Vector2(x, y), inventory, group.Count > 0 ? -1 : selected,
@@ -199,7 +200,7 @@ namespace Clube.Game
             string what = chosen.IsEmpty ? "Pick a stack to sell"
                 : buys ? $"{chosen.Item.DisplayName}: {FormatCoins(prices.PriceOf(chosen, 1))} each"
                 : $"{Current.DisplayName} doesn't buy {chosen.Item.DisplayName}";
-            GUI.Label(new Rect(x, y + 4f, 260f, 20f), what);
+            GUI.Label(new Rect(x, y + 4f, 260f, 28f), what);
             GUI.enabled = buys;
             string oneLabel = "Sell 1" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, Mathf.Min(1f, chosen.Amount)))}" : "");
             string stackLabel = "Sell stack" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, chosen.Amount))}" : "");
@@ -218,7 +219,7 @@ namespace Clube.Game
             float most = buys ? chosen.Amount : 1f;
             float least = Mathf.Min(most, most < 10f ? 0.01f : 1f);
             splitAmount = Mathf.Clamp(splitAmount, least, most);
-            GUI.Label(new Rect(x, y + 12f, 60f, 20f), "Sell part");
+            GUI.Label(new Rect(x, y + 12f, 60f, 28f), "Sell part");
             splitAmount = SnapAmount(GUI.HorizontalSlider(new Rect(x + 64f, y + 18f, 196f, 16f), splitAmount, least, most), most);
             if (buys)
             {
@@ -232,7 +233,7 @@ namespace Clube.Game
                 {
                     splitAmount = Mathf.Min(most, SnapAmount(splitAmount + step, most));
                 }
-                GUI.Label(new Rect(x + 296f, y + 12f, 48f, 20f), FormatAmount(splitAmount), countStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter });
+                GUI.Label(new Rect(x + 296f, y + 12f, 48f, 28f), FormatAmount(splitAmount), countStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter });
             }
             string partLabel = $"Sell {(buys ? FormatAmount(splitAmount) : "0")}" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, splitAmount))}" : "");
             if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), partLabel))
@@ -278,12 +279,12 @@ namespace Clube.Game
 
         private float OffersHeight()
         {
-            return Current.Offers.Count == 0 ? 0f : 24f + Mathf.Min(OfferRows, VisibleOfferRows) * (RowHeight + 4f) + 4f;
+            return Current.Offers.Count == 0 ? 0f : 32f + Mathf.Min(OfferRows, VisibleOfferRows) * (RowHeight + 4f) + 4f;
         }
 
         private float TrainingHeight()
         {
-            return Current.Trains.Count == 0 ? 0f : 24f + Current.Trains.Count * (RowHeight + 4f) + 4f;
+            return Current.Trains.Count == 0 ? 0f : 32f + Current.Trains.Count * (RowHeight + 4f) + 4f;
         }
 
         // What the trader sells, two buttons to a row and scrolling past a few rows: each buys one lot (e.g. 2 sticks),
@@ -294,8 +295,8 @@ namespace Clube.Game
             {
                 return y;
             }
-            GUI.Label(new Rect(x, y, width, 20f), "For sale");
-            y += 24f;
+            GUI.Label(new Rect(x, y, width, 28f), "For sale");
+            y += 32f;
             float rowStep = RowHeight + 4f;
             float shown = Mathf.Min(OfferRows, VisibleOfferRows) * rowStep;
             bool scrolls = OfferRows > VisibleOfferRows;
@@ -350,8 +351,8 @@ namespace Clube.Game
             {
                 return;
             }
-            GUI.Label(new Rect(x, y, width, 20f), "Lessons");
-            y += 24f;
+            GUI.Label(new Rect(x, y, width, 28f), "Lessons");
+            y += 32f;
             SkillSet set = skills.Skills;
             foreach (SkillType skill in Current.Trains)
             {

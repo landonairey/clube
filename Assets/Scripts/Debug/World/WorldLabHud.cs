@@ -14,7 +14,7 @@ namespace Clube.Debug
     public class WorldLabHud : MonoBehaviour
     {
         private const float Margin = 10f;
-        private const float Width = 400f;
+        private const float Width = 400f * Clube.Game.GameUi.FontScale;
 
         // The frame rate is frames counted over this many seconds, so one long frame
         // (e.g. a regenerate) only affects one window instead of dragging an average.
@@ -72,7 +72,7 @@ namespace Clube.Debug
             style ??= new GUIStyle(GUI.skin.label)
             {
                 richText = true,
-                fontSize = 13,
+                fontSize = Clube.Game.GameUi.Font(13),
                 padding = new RectOffset(10, 10, 8, 8),
                 normal = { textColor = Color.white },
             };

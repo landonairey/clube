@@ -26,16 +26,17 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (player != null && !player.enabled)
             {
                 return;
             }
-            style ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleRight, fontSize = 18, fontStyle = FontStyle.Bold };
-            // Above the right end of the 9-slot hotbar (56 px slots, 4 px gaps).
-            float hotbarRight = Screen.width * 0.5f + (9 * 56f + 8 * 4f) * 0.5f;
+            style ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleRight, fontSize = GameUi.Font(18), fontStyle = FontStyle.Bold };
+            // Above the right end of the 9-slot hotbar.
+            float hotbarRight = Screen.width * 0.5f + (9 * GameUi.SlotSize + 8 * GameUi.SlotGap) * 0.5f;
             Color previous = GUI.color;
             GUI.color = new Color(1f, 0.85f, 0.35f);
-            GUI.Label(new Rect(hotbarRight - 200f, Screen.height - 56f - 12f - 26f, 200f, 24f), $"{Wallet.Format(Wallet.Coins)} coins", style);
+            GUI.Label(new Rect(hotbarRight - 260f, Screen.height - GameUi.SlotSize - 12f - 34f, 260f, 32f), $"{Wallet.Format(Wallet.Coins)} coins", style);
             GUI.color = previous;
         }
     }

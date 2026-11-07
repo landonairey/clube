@@ -95,6 +95,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (!tools.isActiveAndEnabled || !tools.HasBush)
             {
                 return;
