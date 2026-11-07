@@ -92,6 +92,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (Current == null)
             {
                 return;
@@ -99,25 +100,25 @@ namespace Clube.Game
             Inventory chest = Current.Storage;
             Inventory items = inventory.Inventory;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
-            float height = Padding * 2f + 24f + InventoryGridGui.GridHeight(chest) + 16f + 22f + InventoryGridGui.PlayerHeight(inventory);
+            float height = Padding * 2f + 32f + InventoryGridGui.GridHeight(chest) + 16f + 30f + InventoryGridGui.PlayerHeight(inventory);
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
             float y = panel.y + Padding;
-            GUI.Label(new Rect(x, y, width - 140f - Padding * 2f, 20f), $"{Current.DisplayName}   {chest.SlotCount} slots   (E to close)");
+            GUI.Label(new Rect(x, y, width - 140f - Padding * 2f, 28f), $"{Current.DisplayName}   {chest.SlotCount} slots   (E to close)");
             // Sort the chest the way the inventory sorts (GL357).
-            if (GUI.Button(new Rect(panel.xMax - Padding - 110f, y - 2f, 110f, 22f), "Sort chest"))
+            if (GUI.Button(new Rect(panel.xMax - Padding - 110f, y - 2f, 110f, 28f), "Sort chest"))
             {
                 chest.Sort(0, chest.SlotCount);
             }
-            y += 24f;
+            y += 32f;
 
             // The chest's slots take drags too (GL367): moved, split and stacked inside it, or dragged out to your items.
             var chestTopLeft = new Vector2(x, y);
             var chestArea = new Rect(x, y, InventoryGridGui.RowWidth, InventoryGridGui.GridHeight(chest));
             y += chestArea.height + 16f;
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Your items: click to store (Shift half, Ctrl one), drag onto the chest, right-click to split");
-            y += 22f;
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 28f), "Your items: click to store (Shift half, Ctrl one), drag onto the chest, right-click to split");
+            y += 30f;
             var grid = new Vector2(x, y);
             var playerArea = new Rect(grid.x, grid.y, InventoryGridGui.RowWidth, InventoryGridGui.PlayerHeight(inventory));
 

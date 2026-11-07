@@ -350,7 +350,8 @@ namespace Clube.Game
             Transform head = player.Head != null ? player.Head : transform;
             if (Physics.Raycast(head.position, head.forward, out RaycastHit hit, reach, ~0, QueryTriggerInteraction.Ignore))
             {
-                return hit.collider.GetComponentInParent<PlacedObject>();
+                PlacedObject placed = hit.collider.GetComponentInParent<PlacedObject>();
+                return placed != null && !placed.Fixed ? placed : null;
             }
             return null;
         }
@@ -481,12 +482,13 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (hint == null || !player.enabled || player.IsCursorFree)
             {
                 return;
             }
-            hintStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 16 };
-            GUI.Label(new Rect(0f, Screen.height * 0.5f + 46f, Screen.width, 24f), hint, hintStyle);
+            hintStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = GameUi.Font(16) };
+            GUI.Label(new Rect(0f, Screen.height * 0.5f + 46f, Screen.width, 28f), hint, hintStyle);
         }
     }
 }

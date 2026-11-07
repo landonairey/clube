@@ -587,6 +587,37 @@ crushed ore train the new Prospecting skill. Crushed silver and gold ore. A camp
 (`TerrainStructure.FindAt`); idle stations don't glow. A tap of Drop places one sample on the aimed spot (`TerrainPile.PlaceOne`).
 Bucket capacity follows quality (`BucketDefinition.CapacityOf`). `PlayerWaterSounds` splashes, sloshes and drips.
 Height maps: `Docs/images/20261103 *`.
+Town center (GL399-GL407, `Docs/20261104d clube-backlog.md`, `20261104e`; branch `gl399/town-center`): a "Town" object in both
+world labs (`TownSite`, Game/Town) searches for a site near tin, copper, silver and gold nodes and water (`TownSiteSearch` in
+Core/Generation/Settlements, 4 ms a frame; inside the fixed area, or within 1 km of the spawn), builds the town (`TownBuilder`:
+`TownLayout` plan, `TownMeshes` models in `Clube/Low Poly`, built with `LowPolyMeshBuilder`, Core/Meshing/Models) with its gate
+facing the spawn, and levels it once its chunks load (`GroundLeveling`, Core/Editing: dirt between cobbled paths, `TownLayout.IsPath`).
+Five shops (`ShopSpecialty` assets in `Assets/Config/Economy/Shops/`, prices from the one merchant list, 1.5x to buy, wares 2x)
+each have a `Shopkeeper`: an `ITrader` for `MerchantPanel` (lessons for coins, `SkillTraining`) and an `IClosableInteractable`
+(a notice while shut), following `ShopHours` (counter 9-17, chores, asleep 18-6) by the `DayNightCycle`; `KeeperFigure` poses
+the body in code. Nothing about the town is saved; it follows from the seed and the clock. `TownGate` opens with E.
+Second pass (GL408-GL415, `Docs/20261105 clube-backlog.md`): the town fills one 32 m land parcel (sites on parcel centres),
+locked (`LandParcels.Lock`: never bought, so never dug). `TownPlan` (Core/Generation/Settlements) works out the frame, each shop's
+pad height, the wall's stones and the mine shafts once; `TownStructures` has their shapes. The wall is marching-cubes stones
+stamped into the terrain; the shops are square voxels of stone and Oak/Maple boards (materials 28, 29, `VoxelMaterial.BuildsSquare`;
+`SquareVoxels` in Core/Editing: a block's corners solid and the voxels round it carved, GL92's flat walls; the player places boards
+the same way with a tap of Drop); only the shops' pads are levelled, the square keeps the land's shape. Four stair shafts spiral down
+to the nearest tin, copper, silver and gold nodes (heads inside or up to 10 m outside the wall), lit by lanterns; after work the miner
+walks down one and takes a sample of the node every 6 s (`NodeMining`). Keepers walk 3D routes over the terrain (`TownContext`).
+Sign words use `Clube/World Text` (the built-in font material shows through walls). Board textures stay straight in the terrain
+shader (`_MaterialRegular`).
+Third pass (GL416-GL426, `Docs/20261105b clube-backlog.md`, the first playtest): 60 fps at 1440p (GL416): the grass draws from a
+GPU buffer of matrices (`InstanceBatches.DrawFromBuffer`, procedural instancing in `Clube/Grass`), newly meshed chunks join a
+waiting list rather than calling a full look, and new grass is batched in 4 times a second. Measure the built game with
+`clube.exe -townbench -screen-width 2560 -screen-height 1440` (`TownBenchmark`, writes `townbench.txt`; the exe segfaults on quit,
+after writing it). The wall is one solid band of Loose stone 0.9 m high (`TownStructures.StampWall`); stairs are a 4 m spiral with
+landings, every side whole (steps shorter than the capsule's radius stuck the player); pads sit on the voxel grid. The anvil,
+furnace, sleeping rolls and counter items are copies of the game's own models (`ModelCopy`: meshes and colliders, no scripts;
+tools via `HeldToolMeshes.Build(tool, withHand: false)`); the prospector shows square ore blocks in the terrain. Shafts are lit by
+everlasting torches (`PlacedTorch.Everlasting`, `PlacedObject.Fixed`); torches are 3/4 their old height. Real trees and a woodpile
+of wood logs by the lumber shop (`TownPlan.LumberYard`, written by `PartStamp` in Core/Editing). The town is grass. Keepers buy
+from a purse (`ITrader.Purse`) of 525 coins a day. `TownSite` writes the town once, checking for the blacksmith's oak floor
+(`IsWritten`).
 To profile real frames in Play mode, hook `EditorApplication.update` and read `ProfilerRecorder`s (Internal
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the
 Editor log; per-script markers aren't available without the profiler.

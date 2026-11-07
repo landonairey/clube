@@ -42,6 +42,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (shown <= 0f || Event.current.type != EventType.Repaint)
             {
                 return;

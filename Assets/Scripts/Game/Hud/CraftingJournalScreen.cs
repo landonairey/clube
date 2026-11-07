@@ -89,7 +89,7 @@ namespace Clube.Game
             if (entry.IsMystery)
             {
                 // More than a level away (GL181): nothing but a big question mark where the sketch goes.
-                questionStyle ??= new GUIStyle(JournalBook.Title) { fontSize = 64, alignment = TextAnchor.MiddleCenter };
+                questionStyle ??= new GUIStyle(JournalBook.Title) { fontSize = GameUi.Font(64), alignment = TextAnchor.MiddleCenter };
                 GUI.Label(new Rect(area.x, area.y + 6f, sketchWidth, area.height - 12f), "?", questionStyle);
                 return;
             }

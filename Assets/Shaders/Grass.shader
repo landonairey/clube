@@ -32,6 +32,36 @@ Shader "Clube/Grass"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
         #include "Assets/Shaders/Wind.hlsl"
 
+        // Grass drawn from a buffer of matrices (GL416): GrassScatter uploads the tufts' matrices only when they change and
+        // draws each mesh once (Graphics.RenderMeshPrimitives); copying every matrix to every draw each frame cost several
+        // milliseconds. Bushes still draw as ordinary instances, through the per-draw arrays.
+        #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
+            StructuredBuffer<float4x4> _InstanceMatrices;
+
+            float3x3 InverseOf(float3x3 m)
+            {
+                float3 a = m[0], b = m[1], c = m[2];
+                float3 r0 = cross(b, c), r1 = cross(c, a), r2 = cross(a, b);
+                float det = dot(a, r0);
+                return transpose(float3x3(r0, r1, r2)) / det;
+            }
+        #endif
+
+        void SetupInstance()
+        {
+        #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
+            float4x4 m = _InstanceMatrices[unity_InstanceID];
+            unity_ObjectToWorld = m;
+            float3x3 inverse = InverseOf((float3x3)m);
+            float3 move = -mul(inverse, float3(m._m03, m._m13, m._m23));
+            unity_WorldToObject = float4x4(
+                inverse._m00, inverse._m01, inverse._m02, move.x,
+                inverse._m10, inverse._m11, inverse._m12, move.y,
+                inverse._m20, inverse._m21, inverse._m22, move.z,
+                0, 0, 0, 1);
+        #endif
+        }
+
         CBUFFER_START(UnityPerMaterial)
             half4 _Tint;
             float _WindStrength;
@@ -95,6 +125,7 @@ Shader "Clube/Grass"
             #pragma vertex Vertex
             #pragma fragment Fragment
             #pragma multi_compile_instancing
+            #pragma instancing_options procedural:SetupInstance
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
@@ -175,6 +206,7 @@ Shader "Clube/Grass"
             #pragma vertex ShadowVertex
             #pragma fragment ShadowFragment
             #pragma multi_compile_instancing
+            #pragma instancing_options procedural:SetupInstance
             #pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
@@ -227,6 +259,7 @@ Shader "Clube/Grass"
             #pragma vertex Vertex
             #pragma fragment Fragment
             #pragma multi_compile_instancing
+            #pragma instancing_options procedural:SetupInstance
 
             struct Attributes
             {
@@ -261,6 +294,7 @@ Shader "Clube/Grass"
             #pragma vertex NormalsVertex
             #pragma fragment NormalsFragment
             #pragma multi_compile_instancing
+            #pragma instancing_options procedural:SetupInstance
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
             struct Attributes

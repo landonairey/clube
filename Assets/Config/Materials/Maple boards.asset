@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d59954c0fdd2f5d4c9594a66c55f0fc1, type: 3}
+  m_Name: Maple boards
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.VoxelMaterial
+  id: 29
+  displayName: Maple boards
+  category: 0
+  albedo: {fileID: 2800000, guid: 67f7bcd11371033459a4f1079eef6d8f, type: 3}
+  debugColor: {r: 0.62, g: 0.38, b: 0.24, a: 1}
+  hardness: 2
+  drop: {fileID: 11400000, guid: da0b784ad94952d4599252d63b6e3eae, type: 2}
+  pileShape: 1
+  reposeAngle: 40
+  pickUpPieceSize: 0
+  pickedFromPiles: 0
+  toolTier: 1
+  requiredSkill: 0
+  requiredLevel: 0
+  windSway: 0
+  fallenForm: {fileID: 0}
+  shine: 0
+  fall: 0
+  stabilityLoss: 0
+  breaksInto: {fileID: 0}
+  buildsSquare: 1
+  isWorktop: 0
+  isSoft: 0
+  driesInto: {fileID: 0}
+  dryingDays: 2
+  notes:
+    Hardness: 
+    Luster: 
+    Colour: 
+    Feel: 

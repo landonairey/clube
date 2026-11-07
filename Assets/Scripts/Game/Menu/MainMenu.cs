@@ -63,6 +63,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             styles ??= new MenuStyles();
             DrawBackground();
 
@@ -80,7 +81,7 @@ namespace Clube.Game
             {
                 DrawTitle(column);
             }
-            GUI.Label(new Rect(16f, Screen.height - 30f, Screen.width - 32f, 20f), BuildInfo.Version, styles.Corner);
+            GUI.Label(new Rect(16f, Screen.height - 30f, Screen.width - 32f, 28f), BuildInfo.Version, styles.Corner);
         }
 
         private void DrawTitle(Rect column)

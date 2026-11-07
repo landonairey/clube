@@ -13,7 +13,7 @@ namespace Clube.Game
     {
         [Tooltip("Where the flame is, above the torch's foot.")]
         [SerializeField]
-        private Vector3 flameAt = new Vector3(0f, 1.15f, 0f);
+        private Vector3 flameAt = new Vector3(0f, 0.86f, 0f);
 
         [Tooltip("The smoke rising from the flame (the Drying steam material, tinted grey).")]
         [SerializeField]
@@ -24,6 +24,9 @@ namespace Clube.Game
         private Material flameMaterial;
 
         private PlacedObject placed;
+
+        /// <summary>Never burns out (GL421: the town's shaft torches).</summary>
+        public bool Everlasting { get; set; }
         private TorchFlame flame;
         private GameClockTicks ticks;
 
@@ -36,6 +39,11 @@ namespace Clube.Game
 
         private void Update()
         {
+            if (Everlasting)
+            {
+                flame.Flicker(1f);
+                return;
+            }
             if (!(placed.Item is TorchDefinition torch))
             {
                 return;

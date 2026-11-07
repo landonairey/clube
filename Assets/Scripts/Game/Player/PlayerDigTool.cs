@@ -218,6 +218,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (!player.enabled || player.IsCursorFree)
             {
                 return;
@@ -236,7 +237,7 @@ namespace Clube.Game
             }
             if (!ToolHeld)
             {
-                GUI.Label(new Rect(centre.x + 12f, centre.y + 12f, 160f, 20f), $"Brush {Radius:0.0} m");
+                GUI.Label(new Rect(centre.x + 12f, centre.y + 12f, 160f, 28f), $"Brush {Radius:0.0} m");
             }
         }
     }

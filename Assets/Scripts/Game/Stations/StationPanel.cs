@@ -129,6 +129,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (Current == null)
             {
                 return;
@@ -141,7 +142,7 @@ namespace Clube.Game
             float width = InventoryGridGui.RowWidth + Padding * 2f;
             float fuelRow = station.BurnsFuel ? slot + gap * 2f : 0f;
             // The trash slot (GL224) sits in a row under your items.
-            float height = Padding * 2f + 24f + 22f * station.Recipes.Count + slot + fuelRow + 30f + 22f + InventoryGridGui.PlayerHeight(inventory) + InventoryGridGui.RowGap + slot;
+            float height = Padding * 2f + 32f + 30f * station.Recipes.Count + slot + fuelRow + 30f + 30f + InventoryGridGui.PlayerHeight(inventory) + InventoryGridGui.RowGap + slot;
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
@@ -150,13 +151,13 @@ namespace Clube.Game
             string works = station.BurnsFuel ? "Heat/Yield" : "Yield";
             // And what the loaded ore yields (GL127, GL128), in the header so it never covers the fuel row.
             string yield = YieldNote(station);
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), $"{Current.DisplayName}   Efficiency {Current.Station.Quality * 100f:0}%  {works}" + (yield != null ? "   " + yield : "") + "   (E to close)");
-            y += 24f;
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 28f), $"{Current.DisplayName}   Efficiency {Current.Station.Quality * 100f:0}%  {works}" + (yield != null ? "   " + yield : "") + "   (E to close)");
+            y += 32f;
             // Click a recipe to make only it (ML1: sticks and stone make a spear, a hatchet or a hammer)
             // and pull one batch of its ingredients from your items (GL80); click it again to let any start.
             foreach (Recipe recipe in station.Recipes)
             {
-                var row = new Rect(x, y, width - Padding * 2f, 20f);
+                var row = new Rect(x, y, width - Padding * 2f, 28f);
                 if (!recipe.IsUnlockedFor(station.Learner))
                 {
                     // Locked (GL48): shown, greyed, with the level it needs.
@@ -178,7 +179,7 @@ namespace Clube.Game
                         }
                     }
                 }
-                y += 22f;
+                y += 30f;
             }
 
             // Input slots, the work in the middle, the output slot.
@@ -211,12 +212,12 @@ namespace Clube.Game
             string blocked = Blocked(station);
             if (blocked != null)
             {
-                GUI.Label(new Rect(workX, y + slot + 4f, width - (workX - panel.x) - Padding, 20f), blocked);
+                GUI.Label(new Rect(workX, y + slot + 4f, width - (workX - panel.x) - Padding, 28f), blocked);
             }
             if (station.BurnsFuel)
             {
                 y += slot + gap * 2f;
-                GUI.Label(new Rect(x, y + 18f, 40f, 20f), "Fuel");
+                GUI.Label(new Rect(x, y + 18f, 40f, 28f), "Fuel");
                 fuelSlots = new Rect(x + 44f, y, slot, slot);
                 int fuel = InventoryGridGui.DrawRow(new Vector2(x + 44f, y), station.Fuel);
                 if (fuel >= 0)
@@ -228,8 +229,8 @@ namespace Clube.Game
             }
             y += slot + 30f;
 
-            GUI.Label(new Rect(x, y, width - Padding * 2f, 20f), "Your items: click to load (Shift half, Ctrl one), drag onto a slot, right-click to split");
-            y += 22f;
+            GUI.Label(new Rect(x, y, width - Padding * 2f, 28f), "Your items: click to load (Shift half, Ctrl one), drag onto a slot, right-click to split");
+            y += 30f;
             // Dragging works here as in the inventory (GL195): between your slots, or onto the station's input and
             // fuel slots, Shift carrying half and Ctrl one (GL191).
             var grid = new Vector2(x, y);
@@ -321,8 +322,8 @@ namespace Clube.Game
             string status = station.NeedsFuel ? "Needs fuel"
                 : station.IsBusy ? $"Working {Mathf.RoundToInt(station.Progress * 100f)}%"
                 : "Idle";
-            GUI.Label(new Rect(area.x, area.y, area.width, 20f), status);
-            var bar = new Rect(area.x, area.y + 22f, area.width, 12f);
+            GUI.Label(new Rect(area.x, area.y, area.width, 28f), status);
+            var bar = new Rect(area.x, area.y + 30f, area.width, 12f);
             GUI.Box(bar, GUIContent.none);
             GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * station.Progress, bar.height), Texture2D.whiteTexture);
         }
@@ -370,7 +371,7 @@ namespace Clube.Game
         private static void DrawBurn(Rect area, CraftingStation station)
         {
             string status = station.IsBurning ? $"Burning {station.BurnLeft:0} s" : "Out";
-            GUI.Label(new Rect(area.x, area.y + 6f, area.width, 20f), status);
+            GUI.Label(new Rect(area.x, area.y + 6f, area.width, 28f), status);
             var bar = new Rect(area.x, area.y + 30f, area.width, 12f);
             GUI.Box(bar, GUIContent.none);
             Color previous = GUI.color;

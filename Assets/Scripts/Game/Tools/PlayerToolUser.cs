@@ -865,9 +865,10 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (Time.time < brokenUntil)
             {
-                GUI.Label(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f + 48f, 300f, 24f), $"Your {brokenName.ToLowerInvariant()} broke!");
+                GUI.Label(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f + 48f, 300f, 28f), $"Your {brokenName.ToLowerInvariant()} broke!");
             }
             ToolDefinition tool = Current;
             if (tool == null || !player.enabled || player.IsCursorFree)
@@ -878,7 +879,7 @@ namespace Clube.Game
             string wear = tool.MaxHits > 0 && hotbar != null && hotbar.ToolStack.Item == tool
                 ? $" ({hotbar.ToolStack.MaxHits - hotbar.ToolStack.Wear}/{hotbar.ToolStack.MaxHits})"
                 : "";
-            GUI.Label(new Rect(centre.x + 12f, centre.y + 12f, 220f, 20f), tool.DisplayName + wear);
+            GUI.Label(new Rect(centre.x + 12f, centre.y + 12f, 220f, 28f), tool.DisplayName + wear);
         }
     }
 }

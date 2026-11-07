@@ -738,3 +738,23 @@ on this machine (the jobs ran as managed code), so read the ratios, not the time
 - On the plains the eroded land costs no more (the filter is skipped there and the massifs are cheaper than ridged noise).
 - In the mountains it is about 6x: three base samples (the slope) and 5 octaves of 16 blended cells. Worth rerunning with
   Burst on before relying on it; if it shows, the slope can come from analytic derivatives and plains-only octaves can stop early.
+
+## Frame time in the town (GL416, 2026-11-05)
+
+The built game at 2560 x 1440 (`clube.exe -townbench`, `TownBenchmark`: WorldLab, the camera walking round the town square
+at eye height for 25 s after 6 s settling), RTX 3080, i9-10900K, vsync and frame cap off. The playtest saw 11 fps.
+
+| | Before | After |
+|---|---|---|
+| Frame, average (whole run) | 26.9 ms | 13.1 ms |
+| Frame, last 10 s (streaming done) | | 11.4 ms avg, 95th 16.2 ms |
+| CPU main thread | | 12.3 ms avg |
+| GPU | 7.7 ms | 4.8 ms |
+| Grass (`GrassScatter`) | 13.3 ms (scan 9.6, draw 3.7) | 0.8 ms (scan 0.5, draw 0.3) |
+| Distant trees | 1.6 ms | 1.9 ms |
+
+The fixes, all in the grass: tuft matrices go to the GPU once in a buffer (`InstanceBatches.DrawFromBuffer`, procedural
+instancing in `Clube/Grass`) instead of being copied into every draw each frame; a newly meshed chunk joins a waiting list
+instead of calling for a look over every renderer (the world meshes a chunk nearly every frame while it streams);
+newly grown grass is batched in four times a second, not every frame (edits still rebuild at once). What's left of
+the main thread is spread thin; the remaining spikes are optimization target 15 in `architecture.md`.

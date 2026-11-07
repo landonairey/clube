@@ -26,6 +26,7 @@ namespace Clube.Core
         private static readonly int MaterialSwayId = Shader.PropertyToID("_MaterialSway");
         private static readonly int MaterialShineId = Shader.PropertyToID("_MaterialShine");
         private static readonly int MaterialReliefId = Shader.PropertyToID("_MaterialRelief");
+        private static readonly int MaterialRegularId = Shader.PropertyToID("_MaterialRegular");
 
         [SerializeField]
         private List<VoxelMaterial> materials = new List<VoxelMaterial>();
@@ -50,6 +51,7 @@ namespace Clube.Core
         private float[] layerRemap;
         private float[] sway;
         private float[] shine;
+        private float[] regular;
         private float[] relief;
 
         /// <summary>Makes a registry in code (tests, tools); the game's registry is an asset.</summary>
@@ -247,6 +249,7 @@ namespace Clube.Core
             material.SetFloatArray(MaterialSwayId, sway);
             material.SetFloatArray(MaterialShineId, shine);
             material.SetFloatArray(MaterialReliefId, relief);
+            material.SetFloatArray(MaterialRegularId, regular);
         }
 
         private void EnsureLookup()
@@ -260,6 +263,7 @@ namespace Clube.Core
             layerRemap = new float[MaxMaterials];
             sway = new float[MaxMaterials];
             shine = new float[MaxMaterials];
+            regular = new float[MaxMaterials];
             relief = new float[MaxMaterials];
             for (int i = 0; i < MaxMaterials; i++)
             {
@@ -281,6 +285,8 @@ namespace Clube.Core
                 sway[material.Id] = material.WindSway;
                 shine[material.Id] = material.Shine;
                 relief[material.Id] = material.Relief;
+                // Square-built boards (GL411) keep their planks straight: no turned copy breaking up the tiling.
+                regular[material.Id] = material.BuildsSquare ? 1f : 0f;
             }
         }
 

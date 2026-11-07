@@ -227,6 +227,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (!refining || inventory == null || hotbar == null || hotbar.SelectedSlot < 0)
             {
                 return;
@@ -239,7 +240,7 @@ namespace Clube.Game
             // Above the crosshair (GL244): under it are the tool hint and the pickup notices, which wrote over this.
             var bar = new Rect(Screen.width * 0.5f - 90f, Screen.height * 0.5f - 52f, 180f, 10f);
             string doing = HoldsSomethingToBash(out _, out Crush crush) && crush.Raw != null ? "Crushing" : "Refining";
-            GUI.Label(new Rect(bar.x - 30f, bar.y - 22f, bar.width + 60f, 20f), $"{doing} {stack.Item.DisplayName.ToLowerInvariant()} ({stack.Quality * 100f:0}%)");
+            GUI.Label(new Rect(bar.x - 30f, bar.y - 22f, bar.width + 60f, 28f), $"{doing} {stack.Item.DisplayName.ToLowerInvariant()} ({stack.Quality * 100f:0}%)");
             GUI.Box(bar, GUIContent.none);
             GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(refineProgress / secondsPerVolume), bar.height), Texture2D.whiteTexture);
         }

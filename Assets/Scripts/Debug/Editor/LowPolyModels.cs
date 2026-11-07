@@ -80,13 +80,13 @@ namespace Clube.Debug.Editor
         }
 
         // Submeshes: 0 wood, 1 char and binding. A stick pushed into the ground and a charred head bound on at the top
-        // (GL287); the flame is the torch's own, flickering (TorchFlame, GL304).
+        // (GL287); the flame is the torch's own, flickering (TorchFlame, GL304). Three quarters of its first height (GL421).
         private static Mesh Torch()
         {
             var model = new ModelBuilder(2);
-            model.Loft(0, 0f, new Vector2(0.05f, 0.05f), 0.92f, new Vector2(0.04f, 0.04f));
-            model.Loft(1, 0.86f, new Vector2(0.075f, 0.075f), 1.0f, new Vector2(0.065f, 0.065f));
-            model.Box(1, new Vector3(0f, 0.86f, 0f), new Vector3(0.085f, 0.025f, 0.085f));
+            model.Loft(0, 0f, new Vector2(0.05f, 0.05f), 0.69f, new Vector2(0.04f, 0.04f));
+            model.Loft(1, 0.645f, new Vector2(0.075f, 0.075f), 0.75f, new Vector2(0.065f, 0.065f));
+            model.Box(1, new Vector3(0f, 0.645f, 0f), new Vector3(0.085f, 0.025f, 0.085f));
             return model.Build("Torch");
         }
 

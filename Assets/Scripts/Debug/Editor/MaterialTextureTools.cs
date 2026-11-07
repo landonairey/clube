@@ -57,6 +57,7 @@ namespace Clube.Debug.Editor
             Leaves,
             Bricks,
             Cobbles,
+            Planks,
         }
 
         private static readonly Color StoneBase = new Color(0.45f, 0.45f, 0.47f);
@@ -102,6 +103,9 @@ namespace Clube.Debug.Editor
                 // Fallen leaves (GL350): the leaves' colours, a little duller, lying still.
                 { "fallen leaves", (new Color(0.24f, 0.31f, 0.2f), new Color(0.38f, 0.44f, 0.3f), null, Wear.Leaves) },
                 { "fallen maple leaves", (new Color(0.44f, 0.3f, 0.17f), new Color(0.57f, 0.43f, 0.26f), null, Wear.Leaves) },
+                // Boards (GL411): sawn planks a voxel wide, oak a warm light brown, maple a redder brown.
+                { "oak boards", (new Color(0.62f, 0.47f, 0.3f), new Color(0.71f, 0.56f, 0.37f), null, Wear.Planks) },
+                { "maple boards", (new Color(0.56f, 0.35f, 0.22f), new Color(0.65f, 0.43f, 0.28f), null, Wear.Planks) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]
@@ -391,6 +395,10 @@ namespace Clube.Debug.Editor
             {
                 PaintBricks(texture, random);
             }
+            else if (wear == Wear.Planks)
+            {
+                PaintPlanks(texture, random);
+            }
             else if (wear == Wear.Cobbles)
             {
                 PaintCobbles(texture, random);
@@ -610,7 +618,8 @@ namespace Clube.Debug.Editor
                 tints[i] = new Color(shade + warm, shade, shade - warm);
             }
 
-            var soil = new Color(0.2f, 0.17f, 0.13f);
+            // Light grout and gently shaded edges (GL410): with near-black joints the cobbles stood out from every other material.
+            var soil = new Color(0.47f, 0.44f, 0.39f);
             float gap = 1.1f * scale;
             float bevel = spacing * 0.32f;
             Vector2 light = new Vector2(-0.6f, 0.8f).normalized;
@@ -674,7 +683,7 @@ namespace Clube.Debug.Editor
                         float height = Mathf.Sqrt(1f - (1f - t) * (1f - t));
                         Vector2 away = Wrapped(p - centres[stone], size);
                         float facing = away.sqrMagnitude > 1e-4f ? Vector2.Dot(away.normalized, light) : 0f;
-                        float lit = Mathf.Lerp(0.45f, 1f, height) + facing * 0.28f * (1f - t);
+                        float lit = Mathf.Lerp(0.74f, 1.05f, height) + facing * 0.16f * (1f - t);
                         color = ground * tints[stone] * lit;
                     }
                     color.a = 1f;
@@ -752,6 +761,56 @@ namespace Clube.Debug.Editor
                     }
                     float shade = shades[(course % 8) * 4 + along / brickWidth];
                     texture.SetPixel(x, y, texture.GetPixel(x, y) * shade);
+                }
+            }
+        }
+
+        // Planks (GL411): boards a voxel wide running along the tile (the detail tile spans 8 voxels), each its own shade,
+        // with fine grain lines along it, a thin darker seam between boards (not black: GL410), and butt joints staggered
+        // from board to board. Wraps so it tiles.
+        private static void PaintPlanks(Texture2D texture, System.Random random)
+        {
+            int size = texture.width;
+            int boards = 8;
+            int boardHeight = size / boards;
+            int seam = Mathf.Max(1, size / 256);
+            var shades = new float[boards];
+            var joints = new int[boards];
+            var grainPhase = new float[boards];
+            for (int i = 0; i < boards; i++)
+            {
+                shades[i] = 0.88f + 0.22f * (float)random.NextDouble();
+                joints[i] = random.Next(size);
+                grainPhase[i] = (float)random.NextDouble() * 10f;
+            }
+            Color[] original = texture.GetPixels();
+            for (int y = 0; y < size; y++)
+            {
+                int board = y / boardHeight;
+                int within = y % boardHeight;
+                for (int x = 0; x < size; x++)
+                {
+                    Color ground = original[x + y * size];
+                    if (within < seam)
+                    {
+                        texture.SetPixel(x, y, ground * 0.62f);
+                        continue;
+                    }
+                    // A butt joint across the board, and a second half a tile on.
+                    int along = (x - joints[board] + size) % (size / 2);
+                    if (along < seam)
+                    {
+                        texture.SetPixel(x, y, ground * 0.7f);
+                        continue;
+                    }
+                    // Grain: thin lines along the board that wander a little.
+                    float v = within / (float)boardHeight;
+                    float grain = Mathf.Sin((v * 9f + Mathf.Sin(x * 0.045f + grainPhase[board]) * 0.6f) * Mathf.PI * 2f);
+                    float shade = shades[board] * (0.95f + 0.05f * grain);
+                    // A soft bevel: the board's edges a touch darker than its middle.
+                    float edge = Mathf.Min(within - seam, boardHeight - within) / (float)boardHeight;
+                    shade *= Mathf.Lerp(0.9f, 1f, Mathf.Clamp01(edge * 6f));
+                    texture.SetPixel(x, y, ground * shade);
                 }
             }
         }

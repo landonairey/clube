@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c64db18f989530a41ae24d12d4f92644, type: 3}
+  m_Name: Lumber Shop
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.ShopSpecialty
+  kind: 3
+  shopName: Lumber Shop
+  keeperName: the lumberjack
+  buysEverything: 0
+  buys:
+  - {fileID: 11400000, guid: ce1c9585acf5fc14f848a8b43eddc45d, type: 2}
+  - {fileID: 11400000, guid: 8864539802b2d884296933ec2cccedf1, type: 2}
+  - {fileID: 11400000, guid: 4f717f7cc0f3ec743b5f84c88baea32c, type: 2}
+  - {fileID: 11400000, guid: 3d69f87512eb09842b9ec73744ff5790, type: 2}
+  - {fileID: 11400000, guid: e5acd428b6947c7469aca6cbe59c5618, type: 2}
+  - {fileID: 11400000, guid: a56a1ea3071fb444faf3aa4d3fba77a8, type: 2}
+  - {fileID: 11400000, guid: ec342cbb09055dd4ea2cce0b53812e2c, type: 2}
+  - {fileID: 11400000, guid: b41295084fb37454693bab6f100dfeb5, type: 2}
+  - {fileID: 11400000, guid: b0747403d8a47e04d950cedc0cc18003, type: 2}
+  - {fileID: 11400000, guid: 4deb51d79b8d11b43afd2b9a9f938789, type: 2}
+  - {fileID: 11400000, guid: 26947b4c1e25624458045c5449c84a3b, type: 2}
+  - {fileID: 11400000, guid: 781da9aaba956e543b3c7da3e7b05bee, type: 2}
+  - {fileID: 11400000, guid: 4843d7b7f1c8d204baec0cd100bc7a91, type: 2}
+  - {fileID: 11400000, guid: 9e0d59d866801a2468af3467350c41bf, type: 2}
+  - {fileID: 11400000, guid: da0b784ad94952d4599252d63b6e3eae, type: 2}
+  sells:
+  - {fileID: 11400000, guid: 4f717f7cc0f3ec743b5f84c88baea32c, type: 2}
+  - {fileID: 11400000, guid: 3d69f87512eb09842b9ec73744ff5790, type: 2}
+  - {fileID: 11400000, guid: ec342cbb09055dd4ea2cce0b53812e2c, type: 2}
+  - {fileID: 11400000, guid: b41295084fb37454693bab6f100dfeb5, type: 2}
+  - {fileID: 11400000, guid: b0747403d8a47e04d950cedc0cc18003, type: 2}
+  - {fileID: 11400000, guid: 4deb51d79b8d11b43afd2b9a9f938789, type: 2}
+  - {fileID: 11400000, guid: 781da9aaba956e543b3c7da3e7b05bee, type: 2}
+  - {fileID: 11400000, guid: 4843d7b7f1c8d204baec0cd100bc7a91, type: 2}
+  - {fileID: 11400000, guid: 9e0d59d866801a2468af3467350c41bf, type: 2}
+  - {fileID: 11400000, guid: da0b784ad94952d4599252d63b6e3eae, type: 2}
+  sellMarkup: 1.5
+  trains: 0200000001000000
+  coinsPerExperience: 2
+  displayed:
+  - {fileID: 11400000, guid: ec342cbb09055dd4ea2cce0b53812e2c, type: 2}
+  - {fileID: 11400000, guid: b41295084fb37454693bab6f100dfeb5, type: 2}
+  - {fileID: 11400000, guid: b0747403d8a47e04d950cedc0cc18003, type: 2}
+  - {fileID: 11400000, guid: 9e0d59d866801a2468af3467350c41bf, type: 2}
+  colour: {r: 0.25, g: 0.5, b: 0.24, a: 1}

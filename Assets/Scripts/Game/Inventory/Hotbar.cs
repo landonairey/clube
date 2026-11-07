@@ -15,8 +15,8 @@ namespace Clube.Game
     [RequireComponent(typeof(PlayerInventory))]
     public class Hotbar : MonoBehaviour
     {
-        private const float SlotSize = 56f;
-        private const float Gap = 4f;
+        private const float SlotSize = GameUi.SlotSize;
+        private const float Gap = GameUi.SlotGap;
         private const float BottomMargin = 12f;
 
         [Tooltip("Picks a slot: bound to the number keys 1-9.")]
@@ -154,6 +154,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (player != null && !player.enabled)
             {
                 return;
@@ -173,7 +174,7 @@ namespace Clube.Game
                 : inventory.UsesToolSlot && Selected == PlayerInventory.ToolSlot ? "Tool slot (empty: bare hands)" : null;
             if (name != null)
             {
-                GUI.Label(new Rect(x, y - 22f, Mathf.Max(width, 420f), 20f), name);
+                GUI.Label(new Rect(x, y - 32f, Mathf.Max(width, 560f), 30f), name);
             }
         }
     }

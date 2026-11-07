@@ -147,6 +147,32 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// The nodes centred in a cell, worked out without touching the cache: for wide one-off surveys (the town's site,
+        /// GL399) that would otherwise push out the cells generation is using.
+        /// </summary>
+        public OreNode[] NodesInCellUncached(Vector3Int cell)
+        {
+            return cells.TryGetValue(cell, out OreNode[] nodes) ? nodes : PlaceNodes(cell);
+        }
+
+        /// <summary>The deepest any ore's nodes lie below the surface, in metres.</summary>
+        public float MaxNodeDepth
+        {
+            get
+            {
+                float deepest = 0f;
+                foreach (OreSpec spec in settings.Ores)
+                {
+                    if (spec?.Ore != null)
+                    {
+                        deepest = Mathf.Max(deepest, spec.MaxDepth);
+                    }
+                }
+                return deepest;
+            }
+        }
+
+        /// <summary>
         /// Every node whose reach overlaps the box (O3): nodes centred in neighbouring cells
         /// spill into it. <paramref name="results"/> is cleared first.
         /// </summary>
