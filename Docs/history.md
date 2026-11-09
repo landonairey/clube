@@ -649,3 +649,10 @@ sleeps 21:00-04:00. `Fireflies` (on World; `DuskLight.Glow` from the sun's heigh
 specks seated on grass (`GetMaterial`) round the camera. `RiverTrout` (on World; `TroutJumps.Activity` by hour: most before
 09:00, least after 15:00, none at night) starts instanced leaps from deep `WaterMap` river cells still wet by `WaterQuery`,
 with a spray and a 3D `PlayerSounds.Splash`. Tests: `SkyNatureTests`.
+GL467-GL469 (trees and climbing): `PlayerController.Climb` climbs a face steeper than the slope limit in front (two sphere casts,
+chest and knee height) while Jump is held in the air once a jump's rise is spent, at `climbSpeedShare` 0.25 of the walk, through
+the CharacterController; letting go drops off, past the top it hops onto the ledge (`IsClimbing`). `FellingYield` (Core/Editing)
+caps the wood a felled piece keeps at 10 x 1.1^Woodcutting level: `TreeFeller` meshes the whole piece, then `CapWood` keeps the
+wood nearest the cut (`FelledLimb.WoodLost` counts the rest), so landed wood is what can be gathered; re-cut landed wood isn't
+capped again. `FallingLimb` starts a bigger dust cloud just before landing (sized by the piece, thick from its first frame) and
+keeps the mesh 0.7 s under it; `FellingBurst` throws up leaves that shrink away, and splinters for lost wood. Tests: `FellingYieldTests`.
