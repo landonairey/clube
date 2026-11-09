@@ -770,9 +770,9 @@ GL250 (ambient wildlife).
 - [x] **GL462** `Game` *(added 2026-11-09)* Graphics: 16:9, 21:9 and 32:9 resolution presets, window or full screen, bordered or borderless (part of P10).
 - [x] **GL463** `Game` *(added 2026-11-09)* The parcel fence is maple wood at its current height.
 - **H — sky and nature**
-- [ ] **GL464** `Game` *(added 2026-11-09)* 16 hours of daylight, 8 of dark.
-- [ ] **GL465** `Game` *(added 2026-11-09)* Fireflies at dusk.
-- [ ] **GL466** `Game` *(added 2026-11-09)* Trout jump in rivers, most in the morning, never at night.
+- [x] **GL464** `Game` *(added 2026-11-09)* 16 hours of daylight, 8 of dark.
+- [x] **GL465** `Game` *(added 2026-11-09)* Fireflies at dusk.
+- [x] **GL466** `Game` *(added 2026-11-09)* Trout jump in rivers, most in the morning, never at night.
 - **G — trees and climbing**
 - [ ] **GL467** `Game` *(added 2026-11-09)* Hold Space against a steep face to climb at 25% walk speed.
 - [ ] **GL468** `Core + Game` *(added 2026-11-09)* Felling yields at most 10 volume at Woodcutting 0 (+10% a level, compounding); climbing lets limbs be cut one at a time.

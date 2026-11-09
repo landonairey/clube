@@ -642,3 +642,10 @@ Windows builds only. The Video page draws them first. `ParcelBorders` draws mapl
 GL478 (branch `gl478/lick-ore`): `PlayerProspecting` also licks the selected ore on Place when not aimed at a boulder
 (`BoulderBashing.CanBash`): one item (or the part left) is used up for Prospecting xp (1, or 3 for an ore not yet told
 apart) and `ToolHint` says its grade.
+
+GL464-GL466 (branch `gl464/sky-nature`): `SkyPositions.SunHourAngle` runs the sun 04:00-20:00 (16 h up, 8 h down; faster in
+the dark), so `DayNightCycle`, stars and moon follow; `ToolCooldown.DawnFrom/To` is 02:30-07:30 and `ShopHours.Default`
+sleeps 21:00-04:00. `Fireflies` (on World; `DuskLight.Glow` from the sun's height, evening only) keeps a pool of instanced
+specks seated on grass (`GetMaterial`) round the camera. `RiverTrout` (on World; `TroutJumps.Activity` by hour: most before
+09:00, least after 15:00, none at night) starts instanced leaps from deep `WaterMap` river cells still wet by `WaterQuery`,
+with a spray and a 3D `PlayerSounds.Splash`. Tests: `SkyNatureTests`.
