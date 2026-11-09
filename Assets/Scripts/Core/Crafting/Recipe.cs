@@ -176,6 +176,15 @@ namespace Clube.Core
             return skills == null || skills.Has(unlockSkill, unlockLevel);
         }
 
+        /// <summary>
+        /// True when the recipe is unlocked or needs at most one more level (GL450): station lists show these and hide
+        /// recipes further off, to keep the list short.
+        /// </summary>
+        public bool IsInSightFor(SkillSet skills)
+        {
+            return skills == null || skills.Level(unlockSkill) + 1 >= unlockLevel;
+        }
+
         public IReadOnlyList<ItemAmount> Inputs => inputs;
 
         public ItemAmount Output => output;
