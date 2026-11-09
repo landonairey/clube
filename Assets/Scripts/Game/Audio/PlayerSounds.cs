@@ -117,6 +117,10 @@ namespace Clube.Game
         [SerializeField]
         private SoundSet knapped = new SoundSet();
 
+        [Tooltip("Ore crushed on a boulder or the flat rock (GL459).")]
+        [SerializeField]
+        private SoundSet crushed = new SoundSet();
+
         [Header("Water (GL397)")]
         [Tooltip("Going into water.")]
         [SerializeField]
@@ -197,6 +201,8 @@ namespace Clube.Game
         public SoundSet Placed => placed;
 
         public SoundSet Knapped => knapped;
+
+        public SoundSet Crushed => crushed;
 
         public SoundSet Splash => splash;
 

@@ -107,6 +107,7 @@ namespace Clube.Game
         private FlameCluster flame;
         private ItemDefinition shown;
         private Hotbar hotbar;
+        private BoulderBashing bashing;
         private bool shownSet;
         private Key[] swing;
         private float swingTime = 1f;
@@ -128,6 +129,7 @@ namespace Clube.Game
             body = GetComponent<CharacterController>();
             view = GetComponentInChildren<Camera>(true);
             hotbar = GetComponent<Hotbar>();
+            bashing = GetComponent<BoulderBashing>();
         }
 
         private void OnEnable()
@@ -139,6 +141,10 @@ namespace Clube.Game
                 toolUser.BushPicked += OnBushPicked;
                 toolUser.Missed += OnMissed;
             }
+            if (bashing != null)
+            {
+                bashing.OreCrushed += OnOreCrushed;
+            }
         }
 
         private void OnDisable()
@@ -149,6 +155,10 @@ namespace Clube.Game
                 toolUser.Blocked -= OnBlocked;
                 toolUser.BushPicked -= OnBushPicked;
                 toolUser.Missed -= OnMissed;
+            }
+            if (bashing != null)
+            {
+                bashing.OreCrushed -= OnOreCrushed;
             }
             if (held != null)
             {
@@ -187,6 +197,12 @@ namespace Clube.Game
         private void OnBushPicked(Bush bush)
         {
             Swing(Grab);
+        }
+
+        // The hand brings the ore down on the boulder (GL459).
+        private void OnOreCrushed(Vector3 at, VoxelMaterial ore)
+        {
+            Swing(Strike);
         }
 
         private void Swing(Key[] keys)

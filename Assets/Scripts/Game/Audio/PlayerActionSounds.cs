@@ -52,6 +52,7 @@ namespace Clube.Game
             if (bashing != null)
             {
                 bashing.HandAxeMade += OnKnapped;
+                bashing.OreCrushed += OnCrushed;
             }
         }
 
@@ -76,6 +77,7 @@ namespace Clube.Game
             if (bashing != null)
             {
                 bashing.HandAxeMade -= OnKnapped;
+                bashing.OreCrushed -= OnCrushed;
             }
         }
 
@@ -111,6 +113,15 @@ namespace Clube.Game
             if (sounds != null)
             {
                 sounds.Play(sounds.Knapped, source);
+            }
+        }
+
+        // Ore crushed on a boulder (GL459).
+        private void OnCrushed(Vector3 at, VoxelMaterial ore)
+        {
+            if (sounds != null)
+            {
+                sounds.Play(sounds.Crushed, source);
             }
         }
 

@@ -56,6 +56,7 @@ namespace Clube.Debug.Editor
             {
                 Write("Crumble", v, SoundSynth.Crumble(300 + v));
                 Write("Chip", v, SoundSynth.Chip(360 + v));
+                Write("Crush", v, SoundSynth.Crush(400 + v));
                 Write("Splash", v, SoundSynth.Splash(370 + v));
                 Write("Wade", v, SoundSynth.Wade(380 + v));
                 Write("Emerge", v, SoundSynth.Emerge(390 + v));
@@ -115,6 +116,7 @@ namespace Clube.Debug.Editor
                 SetClips(so, "swishes", Clips("Whoosh"));
                 SetClips(so, "refusals", Clips("Err"));
                 SetClips(so, "knapped", Clips("Chip"));
+                SetClips(so, "crushed", Clips("Crush"));
                 SetClips(so, "splash", Clips("Splash"));
                 SetClips(so, "wade", Clips("Wade"));
                 SetClips(so, "emerge", Clips("Emerge"));

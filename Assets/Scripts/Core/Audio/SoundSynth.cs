@@ -207,6 +207,21 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// Ore crushed on a boulder (GL459): a heavy stone-on-stone thump with a crack on top, then grit crunching and a few
+        /// fragments skittering off.
+        /// </summary>
+        public static float[] Crush(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(0.55f)];
+            AddTone(samples, 0.005f, Range(random, 140f, 180f), Range(random, 70f, 90f), 0.001f, 0.09f, 0.7f);
+            AddNoise(samples, random, 0.005f, 0.0003f, 0.012f, 0.8f, Band(Range(random, 1800f, 2600f), 1.6f));
+            AddNoise(samples, random, 0.01f, 0.004f, 0.16f, 0.45f, Band(Range(random, 900f, 1300f), 1f));
+            AddCrackles(samples, random, 0.02f, 0.3f, 60, 0.32f, 3200f);
+            return Normalize(samples, 0.9f);
+        }
+
+        /// <summary>
         /// Stone knapped on stone (GL381): three or four sharp strikes a moment apart, each a bright crack with a short stony
         /// tock under it and a few flakes skittering off.
         /// </summary>
