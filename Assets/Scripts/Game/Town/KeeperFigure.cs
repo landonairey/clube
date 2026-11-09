@@ -54,9 +54,27 @@ namespace Clube.Game
         /// <summary>Builds the body for a trade, in a material for vertex-coloured models.</summary>
         public void Build(ShopKind kind, Material material, int seed)
         {
+            Build(LookOf(kind), Prop(kind), material, seed);
+        }
+
+        /// <summary>Builds the thief (GL475): dark clothes, a hood, a dagger in hand.</summary>
+        public void BuildThief(Material material, int seed)
+        {
+            var look = new Look
+            {
+                Shirt = new Color(0.2f, 0.2f, 0.22f), Hair = new Color(0.15f, 0.1f, 0.07f), Hat = new Color(0.14f, 0.13f, 0.16f), HatStyle = 3,
+            };
+            var dagger = new LowPolyMeshBuilder();
+            dagger.Prism(new Vector3(0f, 0f, -0.04f), new Vector3(0f, 0f, 0.08f), 0.016f, 0.016f, 5, new Color(0.25f, 0.15f, 0.1f));
+            dagger.Box(new Vector3(0f, 0f, 0.09f), new Vector3(0.09f, 0.02f, 0.02f), Quaternion.identity, Iron);
+            dagger.Prism(new Vector3(0f, 0f, 0.1f), new Vector3(0f, 0f, 0.3f), 0.02f, 0.003f, 4, Iron * 1.3f);
+            Build(look, dagger.Make("Thief dagger"), material, seed);
+        }
+
+        private void Build(Look look, Mesh propMesh, Material material, int seed)
+        {
             var random = new System.Random(seed);
             phase = (float)random.NextDouble() * 10f;
-            Look look = LookOf(kind);
             body = new GameObject("Body").transform;
             body.SetParent(transform, false);
             hips = Part("Hips", body, new Vector3(0f, HipHeight, 0f), null, material);
@@ -66,7 +84,6 @@ namespace Clube.Game
             head = Part("Head", torso, new Vector3(0f, 0.64f, 0f), Head(look), material);
             armLeft = Part("Arm L", torso, new Vector3(-0.29f, 0.58f, 0f), Arm(look), material);
             armRight = Part("Arm R", torso, new Vector3(0.29f, 0.58f, 0f), Arm(look), material);
-            Mesh propMesh = Prop(kind);
             if (propMesh != null)
             {
                 prop = Part("Prop", armRight, new Vector3(0f, -0.56f, 0.03f), propMesh, material).gameObject;
@@ -332,6 +349,13 @@ namespace Clube.Game
                     // A brimmed hat.
                     model.Box(new Vector3(0f, 0.34f, 0f), new Vector3(0.4f, 0.03f, 0.4f), Quaternion.identity, look.Hat);
                     model.Box(new Vector3(0f, 0.42f, 0f), new Vector3(0.24f, 0.14f, 0.24f), Quaternion.identity, look.Hat * 0.9f);
+                    break;
+                case 3:
+                    // A hood (GL475): over the top, down the sides and back, a face left open.
+                    model.Box(new Vector3(0f, 0.36f, -0.02f), new Vector3(0.31f, 0.1f, 0.32f), Quaternion.identity, look.Hat);
+                    model.Box(new Vector3(-0.15f, 0.2f, -0.02f), new Vector3(0.04f, 0.3f, 0.3f), Quaternion.identity, look.Hat);
+                    model.Box(new Vector3(0.15f, 0.2f, -0.02f), new Vector3(0.04f, 0.3f, 0.3f), Quaternion.identity, look.Hat);
+                    model.Box(new Vector3(0f, 0.16f, -0.15f), new Vector3(0.3f, 0.36f, 0.06f), Quaternion.identity, look.Hat * 0.9f);
                     break;
                 default:
                     model.Box(new Vector3(0f, 0.32f, -0.02f), new Vector3(0.27f, 0.06f, 0.27f), Quaternion.identity, look.Hair);

@@ -200,6 +200,76 @@ namespace Clube.Core.Tests
             Assert.GreaterOrEqual((heads[0] - pit).magnitude, 4f + TownLayout.ShaftHeadRadius + 1f - 1e-3f);
         }
 
+        // A town on gently sloping land, its tin node near the surface outside the wall and three deep ones.
+        private static TownPlan PlanOnSlope(Vector3[] nodes)
+        {
+            var distances = new float[nodes.Length];
+            for (int i = 0; i < distances.Length; i++)
+            {
+                distances[i] = 20f;
+            }
+            var site = new TownPlacement(new Vector2(100f, 100f), 40f, 1f, 1f, 50f, distances, nodes);
+            return new TownPlan(site, 0f, (x, z) => 40f + x * 0.02f, 7);
+        }
+
+        [Test]
+        public void TownPlan_TinNodeNearTheSurface_IsAPit_DeepOnesShafts()
+        {
+            TownPlan plan = PlanOnSlope(new[]
+            {
+                new Vector3(100f + TownLayout.OuterHalf + 8f, 39f, 100f), new Vector3(90f, 20f, 90f),
+                new Vector3(110f, 22f, 92f), new Vector3(95f, 18f, 108f),
+            });
+            TownShaft tin = plan.Shafts.Find(s => s.Group == 0);
+            Assert.IsNotNull(tin);
+            Assert.IsTrue(tin.IsPit);
+            Assert.AreEqual(1, tin.Path.Count);
+            Assert.AreEqual(38f, tin.PitFloor, 1e-3f);
+            Assert.IsFalse(plan.Shafts.Find(s => s.Group == 1).IsPit);
+        }
+
+        [Test]
+        public void TownPlan_DeepTinNode_GetsAStairShaft()
+        {
+            TownPlan plan = PlanOnSlope(new[] { new Vector3(100f + TownLayout.OuterHalf + 8f, 20f, 100f) });
+            Assert.IsFalse(plan.Shafts[0].IsPit);
+            Assert.Greater(plan.Shafts[0].Path.Count, 2);
+        }
+
+        [Test]
+        public void TownCave_UnderTheSquare_CoveredAndOpeningOutsideTheWall()
+        {
+            TownPlan plan = PlanOnSlope(new Vector3[0]);
+            TownCave cave = plan.Cave;
+            Assert.IsNotNull(cave);
+            Vector2 room = plan.ToTown(new Vector2(cave.Room.x, cave.Room.z));
+            Assert.IsTrue(TownLayout.IsInside(room));
+            // Ground left over the ceiling.
+            Assert.LessOrEqual(cave.Room.y + TownCave.RoomHeight + TownCave.Cover, plan.GroundAt(room) + 1e-3f);
+            Vector3 mouth = cave.Tunnel[0];
+            Vector2 mouthTown = plan.ToTown(new Vector2(mouth.x, mouth.z));
+            Assert.Greater(Mathf.Max(Mathf.Abs(mouthTown.x), Mathf.Abs(mouthTown.y)), TownLayout.OuterHalf);
+            // Not on the gate's side.
+            Assert.GreaterOrEqual(mouthTown.y, 0f);
+            // The tunnel slopes no steeper than the player can climb.
+            Vector3 end = cave.Tunnel[cave.Tunnel.Count - 1];
+            float run = new Vector2(end.x - mouth.x, end.z - mouth.z).magnitude;
+            Assert.Less(Mathf.Atan2(mouth.y - end.y, run) * Mathf.Rad2Deg, 40f);
+        }
+
+        [Test]
+        public void TownCave_KeepsClearOfAShaftAtTheBack()
+        {
+            // A deep node behind the town draws a shaft head to the back; the cave goes to a side.
+            TownPlan plan = PlanOnSlope(new[] { new Vector3(100f, 10f, 100f + TownLayout.InnerHalf - 4f) });
+            Assert.IsNotNull(plan.Cave);
+            Vector2 room = plan.ToTown(new Vector2(plan.Cave.Room.x, plan.Cave.Room.z));
+            foreach (TownShaft shaft in plan.Shafts)
+            {
+                Assert.Greater((shaft.Head - room).magnitude, TownCave.RoomRadius + TownLayout.ShaftHeadRadius);
+            }
+        }
+
         [Test]
         public void Disposition_Restore_ClampsAndRaisesChanged()
         {

@@ -369,6 +369,20 @@ namespace Clube.Core
             return voxels;
         }
 
+        /// <summary>Of a set of voxels, those with ground in them (GL475: the cave's room carves only what's there).</summary>
+        public static HashSet<Vector3Int> WithGround(World world, IEnumerable<Vector3Int> voxels, float iso)
+        {
+            var found = new HashSet<Vector3Int>();
+            foreach (Vector3Int voxel in voxels)
+            {
+                if (HasGround(world, voxel, iso))
+                {
+                    found.Add(voxel);
+                }
+            }
+            return found;
+        }
+
         private static bool HasGround(World world, Vector3Int voxel, float iso)
         {
             for (int corner = 0; corner < 8; corner++)

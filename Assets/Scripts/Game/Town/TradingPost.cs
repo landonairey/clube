@@ -114,6 +114,80 @@ namespace Clube.Game
             {
                 values[Key("paidday")] = Sale.PaidDay.ToString(CultureInfo.InvariantCulture);
             }
+            // What's left in the cave's crates (GL475); a save's, when the town isn't built yet.
+            foreach (KeyValuePair<int, string> pair in restoredCrates)
+            {
+                values[Key($"crate{pair.Key}")] = pair.Value;
+            }
+            foreach (KeyValuePair<int, StorageChest> pair in crates)
+            {
+                if (pair.Value != null)
+                {
+                    values[Key($"crate{pair.Key}")] = Encode(pair.Value.Storage);
+                }
+            }
+        }
+
+        private const int MaxCrates = 8;
+        private readonly Dictionary<int, StorageChest> crates = new Dictionary<int, StorageChest>();
+        private readonly Dictionary<int, string> restoredCrates = new Dictionary<int, string>();
+
+        /// <summary>
+        /// One of the cave's crates (GL475), filled from the seed: its contents are saved from now on, and a save's contents
+        /// (what the player left in it) replace the seed's.
+        /// </summary>
+        public void RegisterCrate(int index, StorageChest crate)
+        {
+            crates[index] = crate;
+            if (restoredCrates.TryGetValue(index, out string text))
+            {
+                Fill(crate.Storage, text);
+            }
+        }
+
+        // Slots as "id*count*quality|...".
+        private static string Encode(Inventory storage)
+        {
+            var entries = new List<string>();
+            for (int slot = 0; slot < storage.SlotCount; slot++)
+            {
+                ItemStack stack = storage[slot];
+                if (!stack.IsEmpty)
+                {
+                    entries.Add(string.Format(CultureInfo.InvariantCulture, "{0}*{1}*{2:R}", stack.Item.Id, stack.Count, stack.Quality));
+                }
+            }
+            return string.Join("|", entries);
+        }
+
+        private static void Fill(Inventory storage, string text)
+        {
+            for (int slot = 0; slot < storage.SlotCount; slot++)
+            {
+                storage.TakeAll(slot);
+            }
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+            var items = new Dictionary<string, ItemDefinition>();
+            foreach (ItemDefinition item in Resources.FindObjectsOfTypeAll<ItemDefinition>())
+            {
+                if (!string.IsNullOrEmpty(item.Id))
+                {
+                    items[item.Id] = item;
+                }
+            }
+            foreach (string entry in text.Split('|'))
+            {
+                string[] parts = entry.Split('*');
+                if (parts.Length == 3 && items.TryGetValue(parts[0], out ItemDefinition item)
+                    && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int count)
+                    && float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float quality))
+                {
+                    storage.Add(item, count, null, 0, quality);
+                }
+            }
         }
 
         public void RestoreValues(IReadOnlyDictionary<string, string> values)
@@ -135,6 +209,18 @@ namespace Clube.Game
             {
                 Sale.Restore(true, paid);
                 Bought?.Invoke();
+            }
+            for (int i = 0; i < MaxCrates; i++)
+            {
+                if (!values.TryGetValue(Key($"crate{i}"), out string crate))
+                {
+                    continue;
+                }
+                restoredCrates[i] = crate;
+                if (crates.TryGetValue(i, out StorageChest chest) && chest != null)
+                {
+                    Fill(chest.Storage, crate);
+                }
             }
         }
     }

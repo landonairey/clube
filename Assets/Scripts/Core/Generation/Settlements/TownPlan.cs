@@ -70,6 +70,7 @@ namespace Clube.Core
             }
             Stones = TownStructures.GatePillars(p => GroundAt(p), ToWorld, yaw);
             Shafts = PlanShafts();
+            Cave = TownCave.Plan(this);
         }
 
         public TownPlacement Site { get; }
@@ -90,6 +91,9 @@ namespace Clube.Core
 
         /// <summary>The shafts dug to the ore nodes (GL414), one per ore group with a node.</summary>
         public List<TownShaft> Shafts { get; }
+
+        /// <summary>The secret cave under the square (GL475); null when there was no side clear of the mines for it.</summary>
+        public TownCave Cave { get; }
 
         /// <summary>A point of the town's frame, in the world's local metres (x, z).</summary>
         public Vector2 ToWorld(Vector2 town)

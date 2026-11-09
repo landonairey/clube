@@ -79,6 +79,10 @@ namespace Clube.Game
         [SerializeField]
         private GameObject sleepingRollPrefab;
 
+        [Tooltip("The wooden crate (a storage chest) the secret cave's valuables are hidden in (GL475).")]
+        [SerializeField]
+        private GameObject cratePrefab;
+
         [Tooltip("Coins each shopkeeper has to buy with, every day (GL426).")]
         [SerializeField, Min(0f)]
         private float dailyCoins = 525f;
@@ -345,6 +349,7 @@ namespace Clube.Game
                 FurnacePrefab = furnacePrefab,
                 TorchPrefab = torchPrefab,
                 SleepingRollPrefab = sleepingRollPrefab,
+                CratePrefab = cratePrefab,
                 DailyCoins = dailyCoins,
                 Name = Name,
                 Post = Post,
@@ -422,6 +427,15 @@ namespace Clube.Game
                 {
                     area = Rect.MinMaxRect(Mathf.Min(area.xMin, point.x - reach), Mathf.Min(area.yMin, point.z - reach),
                         Mathf.Max(area.xMax, point.x + reach), Mathf.Max(area.yMax, point.z + reach));
+                }
+            }
+            if (Plan.Cave != null)
+            {
+                // The cave's tunnel opens outside the wall (GL475).
+                foreach (Vector3 point in Plan.Cave.Tunnel)
+                {
+                    area = Rect.MinMaxRect(Mathf.Min(area.xMin, point.x - 2f), Mathf.Min(area.yMin, point.z - 2f),
+                        Mathf.Max(area.xMax, point.x + 2f), Mathf.Max(area.yMax, point.z + 2f));
                 }
             }
             return area;
@@ -552,6 +566,13 @@ namespace Clube.Game
             if (stone != null)
             {
                 TownStructures.StampStones(world, plan.Stones, stone.Id, iso);
+            }
+
+            // The secret cave under the square (GL475), lined with stone where the ground would fall; after the wall, as its
+            // tunnel passes under it.
+            if (plan.Cave != null)
+            {
+                SquareVoxels.Carve(world, plan.Cave.Voxels(world, iso), materials, stone, iso);
             }
 
             // 5. The shops in stone and boards (GL412): oak or maple walls with the other for the counter and trim.
