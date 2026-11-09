@@ -36,8 +36,8 @@ namespace Clube.Game
                 purity = Materials.Quality(stack.Contents, stack.Item);
             }
             // No padding or clipping: the skin's label padding cut the bottom off the digits (GL222).
-            purityStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = 10, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0), clipping = TextClipping.Overflow, normal = { textColor = new Color(1f, 0.8f, 0.35f) } };
-            GUI.Label(new Rect(rect.x, rect.y + 2f, rect.width - 4f, 16f), (purity * 100f).ToString("0") + "%", purityStyle);
+            purityStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = 20, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0), clipping = TextClipping.Overflow, normal = { textColor = new Color(1f, 0.8f, 0.35f) } };
+            GUI.Label(new Rect(rect.x, rect.y + 3f, rect.width - 6f, 26f), (purity * 100f).ToString("0") + "%", purityStyle);
         }
 
         /// <param name="corner">Small text for the lower left, e.g. a merchant's price; null for none.</param>
@@ -72,8 +72,8 @@ namespace Clube.Game
                 {
                     // The water in a bucket (GL319): a blue bar, and the units in the corner.
                     float full = (float)bucket.WaterIn(stack) / bucket.CapacityOf(stack);
-                    Fill(new Rect(rect.x + 4f, rect.yMax - 8f, rect.width - 8f, 4f), new Color(0.2f, 0.2f, 0.22f));
-                    Fill(new Rect(rect.x + 4f, rect.yMax - 8f, (rect.width - 8f) * full, 4f), new Color(0.3f, 0.6f, 0.85f));
+                    Fill(new Rect(rect.x + 4f, rect.yMax - 12f, rect.width - 8f, 7f), new Color(0.2f, 0.2f, 0.22f));
+                    Fill(new Rect(rect.x + 4f, rect.yMax - 12f, (rect.width - 8f) * full, 7f), new Color(0.3f, 0.6f, 0.85f));
                     GUI.Label(Inset(rect, 3f), bucket.WaterIn(stack).ToString(), countStyle);
                 }
                 if (stack.MaxHits > 0 && (stack.Wear > 0 || stack.Quality < 0.995f))
@@ -86,22 +86,22 @@ namespace Clube.Game
                     if (best < 0.995f)
                     {
                         float width = rect.width - 8f;
-                        Fill(new Rect(rect.x + 4f + width * best, rect.yMax - 8f, width * (1f - best), 4f), new Color(0.45f, 0.45f, 0.47f));
+                        Fill(new Rect(rect.x + 4f + width * best, rect.yMax - 12f, width * (1f - best), 7f), new Color(0.45f, 0.45f, 0.47f));
                     }
-                    var bar = new Rect(rect.x + 4f, rect.yMax - 8f, (rect.width - 8f) * left, 4f);
+                    var bar = new Rect(rect.x + 4f, rect.yMax - 12f, (rect.width - 8f) * left, 7f);
                     Fill(bar, Color.Lerp(new Color(0.85f, 0.2f, 0.15f), new Color(0.35f, 0.8f, 0.25f), left));
                 }
             }
 
             if (key != null)
             {
-                GUI.Label(new Rect(rect.x + 3f, rect.y + 1f, 20f, 16f), key);
+                GUI.Label(new Rect(rect.x + 5f, rect.y + 2f, 30f, 26f), key);
             }
             if (!string.IsNullOrEmpty(corner))
             {
                 Color previous = GUI.color;
                 GUI.color = new Color(1f, 0.85f, 0.35f);
-                GUI.Label(new Rect(rect.x + 3f, rect.yMax - 18f, rect.width - 6f, 16f), corner);
+                GUI.Label(new Rect(rect.x + 5f, rect.yMax - 30f, rect.width - 10f, 26f), corner);
                 GUI.color = previous;
             }
         }
@@ -145,12 +145,13 @@ namespace Clube.Game
             {
                 alignment = TextAnchor.MiddleCenter,
                 wordWrap = true,
-                fontSize = 11,
+                fontSize = 20,
             };
             countStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.LowerRight,
                 fontStyle = FontStyle.Bold,
+                fontSize = 24,
             };
         }
 

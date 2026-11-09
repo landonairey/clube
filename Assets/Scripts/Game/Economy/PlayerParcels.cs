@@ -33,6 +33,7 @@ namespace Clube.Game
         private PlayerSpawn spawn;
         private ParcelOffer offer;
         private NotOwnedNotice notOwned;
+        private TownLandNotice townLand;
 
         // Parcels a save owned (GL205), granted as soon as the land is set up.
         private List<Vector2Int> restoring;
@@ -42,6 +43,9 @@ namespace Clube.Game
         {
             restoring = new List<Vector2Int>(owned);
         }
+
+        /// <summary>Width of a parcel, in chunk columns (the town fills one, GL408).</summary>
+        public int SizeInChunks => sizeInChunks;
 
         /// <summary>The land and its prices; null until the world exists.</summary>
         public LandParcels Parcels { get; private set; }
@@ -57,6 +61,7 @@ namespace Clube.Game
             spawn = GetComponent<PlayerSpawn>();
             offer = new ParcelOffer(this);
             notOwned = new NotOwnedNotice();
+            townLand = new TownLandNotice();
         }
 
         private void Update()
@@ -109,6 +114,11 @@ namespace Clube.Game
             {
                 return null;
             }
+            if (Parcels.IsLocked(parcel))
+            {
+                // The town's land (GL408): never for sale.
+                return townLand;
+            }
             if (!Parcels.IsBuyable(parcel))
             {
                 // Land further than a parcel from the player's own (GL179): it only says so.
@@ -121,6 +131,16 @@ namespace Clube.Game
         private Vector3 Local(Vector3 worldPoint)
         {
             return worldView != null ? worldView.transform.InverseTransformPoint(worldPoint) : worldPoint;
+        }
+
+        // The town's parcel (GL408): it says whose land it is.
+        private sealed class TownLandNotice : INoticeOnly
+        {
+            public string Prompt => "Town land: not for sale";
+
+            public void Interact(PlayerInteractor by)
+            {
+            }
         }
 
         // Land that can't be bought from here (GL179): Interact does nothing.

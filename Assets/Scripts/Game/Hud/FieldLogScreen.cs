@@ -161,6 +161,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (!IsOpen)
             {
                 return;
@@ -183,7 +184,7 @@ namespace Clube.Game
         // A tab per journal down the book's left edge: the one open is paper, the others darker.
         private void DrawTabs()
         {
-            tabStyle ??= new GUIStyle(JournalBook.Title) { fontSize = 15, alignment = TextAnchor.MiddleCenter, wordWrap = true };
+            tabStyle ??= new GUIStyle(JournalBook.Title) { fontSize = GameUi.Font(15), alignment = TextAnchor.MiddleCenter, wordWrap = true };
             Rect book = JournalBook.Area;
             float width = JournalBook.TabWidth - 24f;
             float x = book.x - 10f - width;
@@ -231,7 +232,7 @@ namespace Clube.Game
 
         private void DrawSection(Rect area, int page, QuestLog log, string section)
         {
-            questStyle ??= new GUIStyle(JournalBook.Text) { fontSize = 15, fontStyle = FontStyle.Italic };
+            questStyle ??= new GUIStyle(JournalBook.Text) { fontSize = GameUi.Font(15), fontStyle = FontStyle.Italic };
             doneStyle ??= JournalBook.Inked(new GUIStyle(questStyle), new Color(JournalBook.Ink.r, JournalBook.Ink.g, JournalBook.Ink.b, 0.45f));
             Rect inner = JournalBook.Inner(area);
             int done = 0;

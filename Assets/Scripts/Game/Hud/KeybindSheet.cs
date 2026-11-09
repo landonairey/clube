@@ -157,23 +157,24 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (!player.enabled || player.IsCursorFree)
             {
                 return;
             }
-            keyStyle ??= new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold, fontSize = 12, alignment = TextAnchor.MiddleRight };
-            labelStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 12 };
+            keyStyle ??= new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold, fontSize = GameUi.Font(12), alignment = TextAnchor.MiddleRight };
+            labelStyle ??= new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(12), alignment = TextAnchor.MiddleLeft };
             if (!shown)
             {
                 string help = helpAction != null ? helpAction.action.GetBindingDisplayString(InputBinding.MaskByGroup(BindingGroup)) : "F1";
-                GUI.Label(new Rect(12f, Screen.height - 150f, 200f, 18f), $"{help}  Keys", labelStyle);
+                GUI.Label(new Rect(12f, Screen.height - 150f, 200f, 28f), $"{help}  Keys", labelStyle);
                 return;
             }
 
             BuildLines();
-            const float rowHeight = 17f;
-            const float keyWidth = 96f;
-            const float labelWidth = 185f;
+            const float rowHeight = 25f;
+            const float keyWidth = 130f;
+            const float labelWidth = 300f;
             // Above the axes gizmo in the corner.
             float height = lines.Count * rowHeight + 10f;
             var box = new Rect(8f, Screen.height - 130f - height, keyWidth + labelWidth + 16f, height);

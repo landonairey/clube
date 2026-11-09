@@ -12,8 +12,8 @@ namespace Clube.Game
     public static class InventoryGridGui
     {
         public const int Columns = 9;
-        public const float SlotSize = 56f;
-        public const float Gap = 4f;
+        public const float SlotSize = GameUi.SlotSize;
+        public const float Gap = GameUi.SlotGap;
         public const float RowGap = 14f;
 
         private static readonly Color PanelColor = new Color(0.08f, 0.09f, 0.1f, 0.92f);

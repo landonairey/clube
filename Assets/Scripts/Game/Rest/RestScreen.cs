@@ -169,12 +169,13 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (!IsOpen)
             {
                 return;
             }
-            titleStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 18, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
-            centredStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, alignment = TextAnchor.MiddleCenter };
+            titleStyle ??= new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(18), alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+            centredStyle ??= new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(14), alignment = TextAnchor.MiddleCenter };
             var panel = new Rect((Screen.width - Width) * 0.5f, (Screen.height - Height) * 0.5f, Width, Height);
             InventoryGridGui.Panel(panel);
             float x = panel.x + 20f, y = panel.y + 16f, inner = Width - 40f;
@@ -183,14 +184,14 @@ namespace Clube.Game
             if (resting)
             {
                 int done = Mathf.Min(hours, Mathf.FloorToInt(restedHours + 1e-4f));
-                GUI.Label(new Rect(x, y, inner, 22f), $"{done} of {hours} hours", centredStyle);
+                GUI.Label(new Rect(x, y, inner, 28f), $"{done} of {hours} hours", centredStyle);
                 y += 30f;
                 // The hours as a bar filling up.
                 var bar = new Rect(x, y, inner, 14f);
                 GUI.Box(bar, GUIContent.none);
                 GUI.Box(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(restedHours / hours), bar.height), GUIContent.none);
                 y += 28f;
-                GUI.Label(new Rect(x, y, inner, 22f), $"It's {Clock(CurrentHour())}", centredStyle);
+                GUI.Label(new Rect(x, y, inner, 28f), $"It's {Clock(CurrentHour())}", centredStyle);
                 y += 34f;
                 if (GUI.Button(new Rect(panel.center.x - 60f, y, 120f, 30f), "Wake up"))
                 {
@@ -199,21 +200,21 @@ namespace Clube.Game
                 return;
             }
 
-            GUI.Label(new Rect(x, y, inner, 22f), $"Rest for {hours} hour{(hours == 1 ? "" : "s")}", centredStyle);
+            GUI.Label(new Rect(x, y, inner, 28f), $"Rest for {hours} hour{(hours == 1 ? "" : "s")}", centredStyle);
             y += 28f;
-            if (GUI.Button(new Rect(x, y, 30f, 22f), "-"))
+            if (GUI.Button(new Rect(x, y, 30f, 28f), "-"))
             {
                 hours = Mathf.Max(1, hours - 1);
             }
             hours = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(x + 40f, y + 5f, inner - 80f, 16f), hours, 1f, MaxHours));
-            if (GUI.Button(new Rect(x + inner - 30f, y, 30f, 22f), "+"))
+            if (GUI.Button(new Rect(x + inner - 30f, y, 30f, 28f), "+"))
             {
                 hours = Mathf.Min(MaxHours, hours + 1);
             }
             y += 34f;
             float wakeHour = CurrentHour() + hours;
             int wakeDay = CurrentDay() + Mathf.FloorToInt(wakeHour / 24f);
-            GUI.Label(new Rect(x, y, inner, 22f), $"You'll wake at {Clock(wakeHour)}, day {wakeDay}", centredStyle);
+            GUI.Label(new Rect(x, y, inner, 28f), $"You'll wake at {Clock(wakeHour)}, day {wakeDay}", centredStyle);
             y += 40f;
             if (GUI.Button(new Rect(panel.center.x - 130f, y, 120f, 30f), "Cancel"))
             {

@@ -102,7 +102,7 @@ namespace Clube.Game
                 {
                     SetOpen(false);
                 }
-                else if ((interactor == null || interactor.Target == null || interactor.Target is INoticeOnly) && (player == null || !player.MenuClosedThisFrame))
+                else if ((interactor == null || interactor.Target == null || PlayerInteractor.IsNotice(interactor.Target)) && (player == null || !player.MenuClosedThisFrame))
                 {
                     SetOpen(true);
                 }
@@ -130,6 +130,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (!IsOpen)
             {
                 return;
@@ -137,18 +138,18 @@ namespace Clube.Game
 
             Inventory items = inventory.Inventory;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
-            float height = Padding * 2f + 24f + InventoryGridGui.PlayerHeight(inventory) + InventoryGridGui.RowGap + InventoryGridGui.SlotSize;
+            float height = Padding * 2f + 32f + InventoryGridGui.PlayerHeight(inventory) + InventoryGridGui.RowGap + InventoryGridGui.SlotSize;
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
             string title = inventory.UsesToolSlot
                 ? "Inventory (E to close): tool slot, then items; click a tool to equip it, drag to place"
                 : "Inventory (E to close): click to send to the hotbar or back, drag to place (Shift half, Ctrl one), right-click to split";
-            GUI.Label(new Rect(panel.x + Padding, panel.y + Padding, width - Padding * 2f, 20f), title);
+            GUI.Label(new Rect(panel.x + Padding, panel.y + Padding, width - Padding * 2f, 28f), title);
 
-            var gridTopLeft = new Vector2(panel.x + Padding, panel.y + Padding + 24f);
+            var gridTopLeft = new Vector2(panel.x + Padding, panel.y + Padding + 32f);
             float bottom = gridTopLeft.y + InventoryGridGui.PlayerHeight(inventory) + InventoryGridGui.RowGap;
             trashSlot = new Rect(panel.xMax - Padding - InventoryGridGui.SlotSize, bottom, InventoryGridGui.SlotSize, InventoryGridGui.SlotSize);
-            DrawSortAndTrash(items, new Rect(gridTopLeft.x, bottom + (InventoryGridGui.SlotSize - 28f) * 0.5f, 120f, 28f));
+            DrawSortAndTrash(items, new Rect(gridTopLeft.x, bottom + (InventoryGridGui.SlotSize - 36f) * 0.5f, 190f, 36f));
             HandleMouse(items, gridTopLeft);
             InventoryGridGui.DrawPlayer(gridTopLeft, inventory, drag.Pressed);
             if (drag.IsDragging)

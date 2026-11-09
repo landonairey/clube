@@ -12,25 +12,25 @@ namespace Clube.Game
         {
             Title = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 64,
+                fontSize = GameUi.Font(64),
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
                 normal = { textColor = Ink },
             };
             Subtitle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 17,
+                fontSize = GameUi.Font(17),
                 alignment = TextAnchor.MiddleCenter,
                 wordWrap = true,
                 normal = { textColor = Dim },
             };
-            Heading = new GUIStyle(Title) { fontSize = 30 };
-            Label = new GUIStyle(GUI.skin.label) { fontSize = 15, wordWrap = true, normal = { textColor = Ink } };
-            Caption = new GUIStyle(Label) { fontSize = 12, alignment = TextAnchor.MiddleCenter, normal = { textColor = Dim } };
+            Heading = new GUIStyle(Title) { fontSize = GameUi.Font(30) };
+            Label = new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(15), wordWrap = true, normal = { textColor = Ink } };
+            Caption = new GUIStyle(Label) { fontSize = GameUi.Font(12), alignment = TextAnchor.MiddleCenter, normal = { textColor = Dim } };
             Corner = new GUIStyle(Caption) { alignment = TextAnchor.LowerRight };
-            Button = new GUIStyle(GUI.skin.button) { fontSize = 19 };
-            ModeButton = new GUIStyle(GUI.skin.button) { fontSize = 16, alignment = TextAnchor.MiddleLeft, padding = new RectOffset(14, 10, 6, 6), richText = true };
-            Field = new GUIStyle(GUI.skin.textField) { fontSize = 18, alignment = TextAnchor.MiddleLeft, padding = new RectOffset(8, 8, 4, 4) };
+            Button = new GUIStyle(GUI.skin.button) { fontSize = GameUi.Font(19) };
+            ModeButton = new GUIStyle(GUI.skin.button) { fontSize = GameUi.Font(16), alignment = TextAnchor.MiddleLeft, padding = new RectOffset(14, 10, 6, 6), richText = true };
+            Field = new GUIStyle(GUI.skin.textField) { fontSize = GameUi.Font(18), alignment = TextAnchor.MiddleLeft, padding = new RectOffset(8, 8, 4, 4) };
         }
 
         public GUIStyle Title { get; }

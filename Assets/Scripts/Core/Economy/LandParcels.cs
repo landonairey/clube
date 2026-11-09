@@ -20,6 +20,7 @@ namespace Clube.Core
         private static readonly Vector2Int[] Sides = { Vector2Int.right, Vector2Int.left, Vector2Int.up, Vector2Int.down };
 
         private readonly HashSet<Vector2Int> owned = new HashSet<Vector2Int>();
+        private readonly HashSet<Vector2Int> locked = new HashSet<Vector2Int>();
 
         /// <param name="size">Width of a parcel along x and z, in metres.</param>
         /// <param name="firstPrice">Coins the first parcel bought costs.</param>
@@ -63,10 +64,27 @@ namespace Clube.Core
             return owned.Contains(ParcelAt(position));
         }
 
-        /// <summary>True for a parcel not owned yet that shares a side with owned land (the first one: any).</summary>
+        /// <summary>Keeps a parcel from ever being bought or granted (GL408: the town's land). False when it was already locked.</summary>
+        public bool Lock(Vector2Int parcel)
+        {
+            if (!locked.Add(parcel))
+            {
+                return false;
+            }
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>True for a parcel nobody can buy (the town's land, GL408).</summary>
+        public bool IsLocked(Vector2Int parcel)
+        {
+            return locked.Contains(parcel);
+        }
+
+        /// <summary>True for a parcel not owned yet that shares a side with owned land (the first one: any); never a locked one.</summary>
         public bool IsBuyable(Vector2Int parcel)
         {
-            if (owned.Contains(parcel))
+            if (owned.Contains(parcel) || locked.Contains(parcel))
             {
                 return false;
             }
@@ -90,7 +108,7 @@ namespace Clube.Core
         /// <summary>Gives a parcel without paying (the one the player starts on). False when already owned.</summary>
         public bool Grant(Vector2Int parcel)
         {
-            if (!owned.Add(parcel))
+            if (locked.Contains(parcel) || !owned.Add(parcel))
             {
                 return false;
             }

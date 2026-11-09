@@ -12,6 +12,9 @@ namespace Clube.Game
         /// <summary>The item it was placed from, and turns back into.</summary>
         public PlaceableDefinition Item { get; set; }
 
+        /// <summary>Part of the town (GL421: its everlasting torches): the player can't pick it up.</summary>
+        public bool Fixed { get; set; }
+
         /// <summary>What it was made of (GL100), given back with it when it's picked up; null when made of pure items.</summary>
         public Composition Contents { get; set; }
 

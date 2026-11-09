@@ -123,13 +123,14 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             notices.RemoveAll(notice => Time.time - notice.LastTime > showSeconds);
             if (notices.Count == 0)
             {
                 return;
             }
 
-            style ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 16 };
+            style ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = GameUi.Font(16) };
             Color previous = GUI.color;
             // Below the interact prompt (+24) and the build hint (+46).
             float y = Screen.height * 0.5f + 72f;

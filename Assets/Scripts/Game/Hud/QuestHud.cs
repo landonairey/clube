@@ -11,7 +11,7 @@ namespace Clube.Game
     [RequireComponent(typeof(PlayerQuests))]
     public class QuestHud : MonoBehaviour
     {
-        private const float Width = 400f;
+        private const float Width = 400f * GameUi.FontScale;
 
         private PlayerQuests quests;
         private PlayerController player;
@@ -26,6 +26,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (Event.current.type != EventType.Repaint || (player != null && (!player.enabled || player.IsInMenu)))
             {
                 return;
@@ -35,13 +36,13 @@ namespace Clube.Game
             {
                 return;
             }
-            headingStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 12, fontStyle = FontStyle.Bold, padding = new RectOffset(10, 10, 6, 0), normal = { textColor = new Color(1f, 0.85f, 0.4f) } };
-            questStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 13, wordWrap = true, padding = new RectOffset(10, 10, 2, 8), normal = { textColor = Color.white } };
+            headingStyle ??= new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(12), fontStyle = FontStyle.Bold, padding = new RectOffset(10, 10, 6, 0), normal = { textColor = new Color(1f, 0.85f, 0.4f) } };
+            questStyle ??= new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(13), wordWrap = true, padding = new RectOffset(10, 10, 2, 8), normal = { textColor = Color.white } };
 
             string heading = active.Section == PlayerQuests.MainSection ? "Active Quest" : "Active Quest (side)";
             var text = new GUIContent(active.Title);
             float top = HudLayout.TopLeftFree;
-            float headingHeight = 22f;
+            float headingHeight = 30f;
             float questHeight = questStyle.CalcHeight(text, Width);
             var box = new Rect(10f, top, Width, headingHeight + questHeight);
             Color previous = GUI.color;

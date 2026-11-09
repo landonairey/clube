@@ -149,7 +149,12 @@ namespace Clube.Game
             var grid = new BuildGrid(worldView.Config.BuildCellSize);
             int wanted = Mathf.Min(count, stack.Count);
             int placed;
-            if (exact && !into.Started && wanted >= 1 && PlaceAtAim(stack, material, materials))
+            if (material.BuildsSquare)
+            {
+                // Boards go down one square voxel at a time (GL411), never as a rounded pile.
+                placed = exact && !into.Started && wanted >= 1 && PlaceBlockAtAim(material) ? 1 : 0;
+            }
+            else if (exact && !into.Started && wanted >= 1 && PlaceAtAim(stack, material, materials))
             {
                 placed = 1;
             }
@@ -201,6 +206,27 @@ namespace Clube.Game
             }
             Piled?.Invoke(material, TerrainPile.LastFilled);
             return true;
+        }
+
+        // A square block of a board material (GL411) in the open voxel in front of the aimed face, within reach.
+        private bool PlaceBlockAtAim(VoxelMaterial material)
+        {
+            Transform head = player.Head != null ? player.Head : transform;
+            if (!worldView.Raycast(new Ray(head.position, head.forward), out WorldHit hit))
+            {
+                return false;
+            }
+            Vector3 hitWorld = worldView.transform.TransformPoint(hit.Point);
+            if ((hitWorld - head.position).sqrMagnitude > reach * reach)
+            {
+                return false;
+            }
+            float size = worldView.World.Grid.VoxelSize;
+            // Half a voxel back towards the player from the face hit: the voxel the block fills.
+            Vector3 toward = worldView.transform.InverseTransformDirection(-head.forward).normalized;
+            Vector3 inside = hit.Point + toward * (size * 0.5f);
+            Vector3Int voxel = Vector3Int.FloorToInt(inside / size);
+            return SquareVoxels.Place(worldView.World, voxel, material.Id, worldView.Config.IsoLevel);
         }
 
         // A gathered stack holding more than its own material (GL120: grass with some dirt). Ore keeps

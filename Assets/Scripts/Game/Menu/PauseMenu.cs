@@ -175,6 +175,7 @@ namespace Clube.Game
 
         private void OnGUI()
         {
+            GameUi.Apply();
             if (!IsOpen)
             {
                 return;
@@ -346,15 +347,15 @@ namespace Clube.Game
             }
             titleStyle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 22,
+                fontSize = GameUi.Font(22),
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
                 normal = { textColor = Color.white },
             };
-            buttonStyle = new GUIStyle(GUI.skin.button) { fontSize = 16 };
-            labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 14, normal = { textColor = Color.white } };
-            hintStyle = new GUIStyle(GUI.skin.label) { fontSize = 12, wordWrap = true, normal = { textColor = new Color(0.72f, 0.72f, 0.7f) } };
-            fieldStyle = new GUIStyle(GUI.skin.textField) { fontSize = 16, alignment = TextAnchor.MiddleLeft, padding = new RectOffset(8, 8, 4, 4) };
+            buttonStyle = new GUIStyle(GUI.skin.button) { fontSize = GameUi.Font(16) };
+            labelStyle = new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(14), normal = { textColor = Color.white } };
+            hintStyle = new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(12), wordWrap = true, normal = { textColor = new Color(0.72f, 0.72f, 0.7f) } };
+            fieldStyle = new GUIStyle(GUI.skin.textField) { fontSize = GameUi.Font(16), alignment = TextAnchor.MiddleLeft, padding = new RectOffset(8, 8, 4, 4) };
             problemStyle = new GUIStyle(GUI.skin.label) { wordWrap = true, normal = { textColor = new Color(1f, 0.6f, 0.5f) } };
         }
     }

@@ -838,6 +838,87 @@ namespace Clube.Debug.Editor
             AssetDatabase.SaveAssets();
         }
 
+        /// <summary>Writes the oak and maple boards icons (GL411), leaving the rest as they are.</summary>
+        [MenuItem("Clube/Items/Generate boards icons")]
+        public static void GenerateBoardsIcons()
+        {
+            Directory.CreateDirectory(Folder);
+            Write("oak boards", "Oak boards", PaintBoards(new Color(0.7f, 0.53f, 0.33f), 3));
+            Write("maple boards", "Maple boards", PaintBoards(new Color(0.62f, 0.38f, 0.24f), 5));
+            AssetDatabase.SaveAssets();
+        }
+
+        // Three sawn planks lying in a stack, each a lit top, a shaded front and a pale end grain on the right, with grain
+        // lines along the tops.
+        private static Texture2D PaintBoards(Color wood, int seed)
+        {
+            Texture2D texture = Blank();
+            var random = new System.Random(seed);
+            Color dark = wood * 0.55f;
+            dark.a = 1f;
+            for (int plank = 0; plank < 3; plank++)
+            {
+                float left = Size * (0.1f + plank * 0.04f), right = Size * (0.84f - plank * 0.03f);
+                float bottom = Size * (0.2f + plank * 0.19f);
+                float front = Size * 0.1f, top = Size * 0.09f;
+                float skew = Size * 0.06f;
+                float shade = 0.92f + 0.14f * (float)random.NextDouble();
+                for (int y = 0; y < Size; y++)
+                {
+                    for (int x = 0; x < Size; x++)
+                    {
+                        Color? colour = null;
+                        if (y >= bottom && y < bottom + front && x >= left && x <= right)
+                        {
+                            colour = wood * 0.78f * shade;
+                        }
+                        else if (y >= bottom + front && y < bottom + front + top)
+                        {
+                            float shift = (y - bottom - front) / top * skew;
+                            if (x >= left + shift && x <= right + shift)
+                            {
+                                bool grain = Mathf.Abs(Mathf.Sin((y + Mathf.Sin(x * 0.3f + plank) * 0.8f) * 1.7f)) > 0.93f;
+                                colour = wood * (grain ? 0.85f : 1.05f) * shade;
+                            }
+                        }
+                        if (y >= bottom && y < bottom + front + top && x > right)
+                        {
+                            float shift = (y - bottom) / (front + top) * skew;
+                            if (x <= right + shift)
+                            {
+                                colour = Color.Lerp(wood, Color.white, 0.25f) * shade;
+                            }
+                        }
+                        if (colour.HasValue)
+                        {
+                            Color c = colour.Value;
+                            c.a = 1f;
+                            texture.SetPixel(x, y, c);
+                        }
+                    }
+                }
+            }
+            // Dark outline round what was drawn, like the other icons.
+            Color[] pixels = texture.GetPixels();
+            for (int y = 1; y < Size - 1; y++)
+            {
+                for (int x = 1; x < Size - 1; x++)
+                {
+                    if (pixels[x + y * Size].a > 0.5f)
+                    {
+                        continue;
+                    }
+                    if (pixels[x + 1 + y * Size].a > 0.5f || pixels[x - 1 + y * Size].a > 0.5f
+                        || pixels[x + (y + 1) * Size].a > 0.5f || pixels[x + (y - 1) * Size].a > 0.5f)
+                    {
+                        texture.SetPixel(x, y, dark);
+                    }
+                }
+            }
+            texture.Apply();
+            return texture;
+        }
+
         private static Texture2D Tinted(Texture2D texture, Color tint)
         {
             Color[] pixels = texture.GetPixels();
