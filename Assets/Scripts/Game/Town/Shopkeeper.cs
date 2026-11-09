@@ -164,6 +164,9 @@ namespace Clube.Game
         /// <summary>How the keeper feels about the player (GL471), saved by the <see cref="TradingPost"/>.</summary>
         public Disposition Disposition { get; private set; }
 
+        /// <summary>Something special the keeper offers (GL473: the merchant sells the trading post); null for none.</summary>
+        public ITraderDeal Deal { get; set; }
+
         // IClosableInteractable.
 
         public bool IsAvailable => AtCounter;

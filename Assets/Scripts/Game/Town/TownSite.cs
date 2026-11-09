@@ -349,17 +349,58 @@ namespace Clube.Game
                 Name = Name,
                 Post = Post,
             });
+            // The merchant sells the trading post itself (GL473); its profits go to the player's wallet.
+            PlayerWallet wallet = spawn != null ? spawn.GetComponent<PlayerWallet>() : null;
+            Post.Setup(FindClock(), wallet != null ? wallet.Wallet : null);
+            foreach (Shopkeeper keeper in Keepers)
+            {
+                if (keeper.Shop.Kind == ShopKind.Wares)
+                {
+                    keeper.Deal = Post;
+                }
+            }
         }
 
-        // The town's parcel can't be bought (GL408); the land is set up a little after the world, so keep trying.
+        // The town's parcel can't be bought (GL408); the land is set up a little after the world, so keep trying. Once the
+        // player owns the trading post it's theirs to dig (GL473).
         private void LockParcel()
         {
             if (locked || Plan == null || parcels == null || parcels.Parcels == null)
             {
                 return;
             }
-            parcels.Parcels.Lock(Parcel);
+            if (Post.Owned)
+            {
+                parcels.Parcels.Unlock(Parcel);
+                parcels.Parcels.Grant(Parcel);
+            }
+            else
+            {
+                parcels.Parcels.Lock(Parcel);
+            }
             locked = true;
+        }
+
+        // Bought (or a save says so): give the player the parcel at the next frame's check.
+        private void OnPostBought()
+        {
+            locked = false;
+        }
+
+        private void OnEnable()
+        {
+            if (Post != null)
+            {
+                Post.Bought += OnPostBought;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (Post != null)
+            {
+                Post.Bought -= OnPostBought;
+            }
         }
 
         private DayNightCycle FindClock()

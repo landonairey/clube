@@ -51,6 +51,8 @@ namespace Clube.Game
 
         public Disposition Disposition => null;
 
+        public ITraderDeal Deal => null;
+
         public string Prompt => $"Trade with {displayName.ToLowerInvariant()}";
 
         public void Interact(PlayerInteractor by)

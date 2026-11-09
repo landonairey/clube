@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Clube.Core;
@@ -7,17 +8,49 @@ namespace Clube.Game
 {
     /// <summary>
     /// What the player has done at a trading post (GL471-GL475), the only part of a settlement that's saved: the town itself
-    /// follows from the seed (<see cref="TownSite"/>). Holds each shopkeeper's <see cref="Disposition"/>. Sits on the
-    /// settlement's object from the scene's start, so a save restores into it before the town is built; keys start with
-    /// <see cref="keyPrefix"/>, so a second settlement keeps its own.
+    /// follows from the seed (<see cref="TownSite"/>). Holds each shopkeeper's <see cref="Disposition"/> and the post's
+    /// <see cref="PropertySale"/> (GL473: the merchant sells it for 10k, and it pays 500c a game day after), which it offers
+    /// through the trade screen as an <see cref="ITraderDeal"/>. Sits on the settlement's object from the scene's start, so a
+    /// save restores into it before the town is built; keys start with <see cref="keyPrefix"/>, so a second settlement keeps
+    /// its own.
     /// </summary>
-    public class TradingPost : MonoBehaviour, ISavedValues
+    public class TradingPost : MonoBehaviour, ISavedValues, ITraderDeal
     {
         [Tooltip("What this settlement's saved values are called (unique per settlement).")]
         [SerializeField]
         private string keyPrefix = "tradingpost";
 
+        [Tooltip("What the trading post and its parcel cost (GL473).")]
+        [SerializeField, Min(0)]
+        private int price = 10000;
+
+        [Tooltip("Coins of sale profits it pays its owner each game day (GL473).")]
+        [SerializeField, Min(0)]
+        private int profitPerDay = 500;
+
         private readonly Dictionary<ShopKind, Disposition> dispositions = new Dictionary<ShopKind, Disposition>();
+        private PropertySale sale;
+        private DayNightCycle clock;
+        private Wallet owner;
+
+        /// <summary>Raised when the player buys the post: its parcel becomes theirs.</summary>
+        public event Action Bought;
+
+        /// <summary>The post's sale and ownership (GL473).</summary>
+        public PropertySale Sale => sale ??= new PropertySale(price, profitPerDay);
+
+        /// <summary>True once the player owns the trading post (GL473).</summary>
+        public bool Owned => Sale.Owned;
+
+        /// <summary>Coins the post has paid its owner (GL473), this session.</summary>
+        public float Paid { get; private set; }
+
+        /// <summary>The clock the days are counted by and the player's wallet the profits go to.</summary>
+        public void Setup(DayNightCycle clock, Wallet owner)
+        {
+            this.clock = clock;
+            this.owner = owner;
+        }
 
         /// <summary>A shopkeeper's disposition towards the player (GL471): 10 until they've traded.</summary>
         public Disposition DispositionOf(ShopKind kind)
@@ -28,6 +61,42 @@ namespace Clube.Game
                 dispositions[kind] = disposition;
             }
             return disposition;
+        }
+
+        private int Today => clock != null ? clock.Day : 1;
+
+        // The day's sale profits (GL473), paid as each game day starts.
+        private void Update()
+        {
+            if (owner == null || !Sale.Owned)
+            {
+                return;
+            }
+            int coins = Sale.Collect(Today);
+            if (coins > 0)
+            {
+                owner.Earn(coins);
+                Paid += coins;
+            }
+        }
+
+        // ITraderDeal: the merchant sells the trading post (GL473).
+
+        public string Label => $"Buy the trading post and its parcel ({Sale.Price}c): {Sale.ProfitPerDay}c a day in sale profits";
+
+        public bool IsOffered(Wallet player)
+        {
+            return player != null && Sale.IsOffered(player.Coins);
+        }
+
+        public bool Accept(Wallet player)
+        {
+            if (!Sale.TryBuy(player, Today))
+            {
+                return false;
+            }
+            Bought?.Invoke();
+            return true;
         }
 
         private string Key(string name)
@@ -41,11 +110,15 @@ namespace Clube.Game
             {
                 values[Key($"disposition.{pair.Key}")] = string.Format(CultureInfo.InvariantCulture, "{0};{1:R}", pair.Value.Value, pair.Value.Carried);
             }
+            if (Sale.Owned)
+            {
+                values[Key("paidday")] = Sale.PaidDay.ToString(CultureInfo.InvariantCulture);
+            }
         }
 
         public void RestoreValues(IReadOnlyDictionary<string, string> values)
         {
-            foreach (ShopKind kind in System.Enum.GetValues(typeof(ShopKind)))
+            foreach (ShopKind kind in Enum.GetValues(typeof(ShopKind)))
             {
                 if (!values.TryGetValue(Key($"disposition.{kind}"), out string text))
                 {
@@ -57,6 +130,11 @@ namespace Clube.Game
                 {
                     DispositionOf(kind).Restore(value, carried);
                 }
+            }
+            if (values.TryGetValue(Key("paidday"), out string day) && int.TryParse(day, NumberStyles.Integer, CultureInfo.InvariantCulture, out int paid))
+            {
+                Sale.Restore(true, paid);
+                Bought?.Invoke();
             }
         }
     }

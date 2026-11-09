@@ -150,6 +150,8 @@ namespace Clube.Game
             Disposition disposition = Current.Disposition;
             float height = Padding * 2f + 32f + 30f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + SellRowHeight + 6f + offerRows + (group.Count > 0 ? SellRowHeight + 6f : 0f)
                 + (disposition != null ? 30f : 0f);
+            ITraderDeal deal = Current.Deal != null && Current.Deal.IsOffered(wallet.Wallet) ? Current.Deal : null;
+            height += deal != null ? RowHeight + 6f : 0f;
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
@@ -161,6 +163,15 @@ namespace Clube.Game
             {
                 GUI.Label(new Rect(x, y, width - Padding * 2f, 28f), DispositionText(disposition));
                 y += 30f;
+            }
+            // Something special on offer (GL473: the trading post itself, to a player with 10k).
+            if (deal != null)
+            {
+                if (GUI.Button(new Rect(x, y, width - Padding * 2f, RowHeight), deal.Label))
+                {
+                    deal.Accept(wallet.Wallet);
+                }
+                y += RowHeight + 6f;
             }
             // What the trader has left to buy with today (GL426), or why a sale was refused.
             string note = Time.unscaledTime < refusalUntil ? refusal

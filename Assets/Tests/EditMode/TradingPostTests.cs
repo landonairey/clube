@@ -98,6 +98,46 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void PropertySale_OfferedOnlyWithThePrice_ThenPaysEachDay()
+        {
+            var sale = new PropertySale(10000, 500);
+            Assert.IsFalse(sale.IsOffered(9999f));
+            Assert.IsTrue(sale.IsOffered(10000f));
+            var wallet = new Wallet(12000f);
+            Assert.IsTrue(sale.TryBuy(wallet, 4));
+            Assert.AreEqual(2000f, wallet.Coins, 1e-3f);
+            Assert.IsFalse(sale.IsOffered(50000f));
+            Assert.AreEqual(0, sale.Collect(4));
+            Assert.AreEqual(500, sale.Collect(5));
+            Assert.AreEqual(1500, sale.Collect(8));
+            Assert.AreEqual(0, sale.Collect(8));
+        }
+
+        [Test]
+        public void PropertySale_ShortWallet_ChangesNothing()
+        {
+            var sale = new PropertySale(10000, 500);
+            var wallet = new Wallet(500f);
+            Assert.IsFalse(sale.TryBuy(wallet, 1));
+            Assert.AreEqual(500f, wallet.Coins);
+            Assert.IsFalse(sale.Owned);
+            Assert.AreEqual(0, sale.Collect(9));
+        }
+
+        [Test]
+        public void LandParcels_Unlock_LetsALockedParcelBeOwned()
+        {
+            var parcels = new LandParcels(32f, 100, 100);
+            var town = new Vector2Int(2, 3);
+            parcels.Lock(town);
+            Assert.IsFalse(parcels.Grant(town));
+            Assert.IsTrue(parcels.Unlock(town));
+            Assert.IsFalse(parcels.Unlock(town));
+            Assert.IsTrue(parcels.Grant(town));
+            Assert.IsTrue(parcels.IsOwned(town));
+        }
+
+        [Test]
         public void Disposition_Restore_ClampsAndRaisesChanged()
         {
             var disposition = new Disposition();

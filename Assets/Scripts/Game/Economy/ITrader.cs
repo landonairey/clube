@@ -34,6 +34,9 @@ namespace Clube.Game
         /// <summary>How they feel about the player (GL471), which sets their prices; null for a trader without one (the merchant table).</summary>
         Disposition Disposition { get; }
 
+        /// <summary>Something special they offer beside their wares (GL473: the trading post itself); null for none.</summary>
+        ITraderDeal Deal { get; }
+
         /// <summary>False once they stop trading (a shop closing), which closes the screen.</summary>
         bool IsTrading { get; }
     }
