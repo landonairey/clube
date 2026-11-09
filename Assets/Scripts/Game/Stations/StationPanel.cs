@@ -220,7 +220,7 @@ namespace Clube.Game
                     continue;
                 }
                 var row = new Rect(0f, y, view.width, rowHeight - 2f);
-                string name = recipe.Output.Item != null ? $"{recipe.Output.Count} {recipe.Output.Item.DisplayName}" : "?";
+                string name = ListName(station, recipe);
                 if (!recipe.IsUnlockedFor(station.Learner))
                 {
                     // Locked (GL48, GL450): a lock, greyed, with the level it needs.
@@ -256,7 +256,7 @@ namespace Clube.Game
             float slot = InventoryGridGui.SlotSize;
             float gap = InventoryGridGui.Gap;
             titleStyle ??= new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold, fontSize = GameUi.Font(16), clipping = TextClipping.Clip };
-            detailStyle ??= new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(12), clipping = TextClipping.Clip, normal = { textColor = new Color(0.8f, 0.8f, 0.78f) } };
+            detailStyle ??= new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(12), wordWrap = true, normal = { textColor = new Color(0.8f, 0.8f, 0.78f) } };
             missingStyle ??= new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(13), wordWrap = true, normal = { textColor = new Color(1f, 0.45f, 0.4f) } };
 
             float x = area.x;
@@ -268,7 +268,7 @@ namespace Clube.Game
             // What it takes and, for the loaded ore, what it yields (GL127, GL128).
             string yield = YieldNote(station);
             string detail = shown != null ? Describe(shown) + (yield != null ? "   " + yield : "") : "Or load what you have: the station makes what it can.";
-            GUI.Label(new Rect(x, y, area.width, 30f), detail, detailStyle);
+            JournalBook.FitLabel(new Rect(x, y, area.width, 32f), detail, detailStyle);
             y += 34f;
 
             // Input slots, the work in the middle, the output slot. Where the input slots are, for stacks dragged onto
@@ -372,6 +372,25 @@ namespace Clube.Game
                 lines.Append($"Need {need.Count - have} more {need.Item.DisplayName}");
             }
             return lines.Length > 0 ? lines.ToString() : null;
+        }
+
+        // "4 Stick", and when another recipe here makes the same thing, what from: "4 Stick (Maple wood)".
+        private static string ListName(CraftingStation station, Recipe recipe)
+        {
+            if (recipe.Output.Item == null)
+            {
+                return "?";
+            }
+            string name = $"{recipe.Output.Count} {recipe.Output.Item.DisplayName}";
+            foreach (Recipe other in station.Recipes)
+            {
+                if (other != recipe && other.Output.Item == recipe.Output.Item && other.IsInSightFor(station.Learner))
+                {
+                    ItemDefinition from = recipe.Inputs.Count > 0 ? recipe.Inputs[0].Item : null;
+                    return from != null ? $"{name} ({from.DisplayName})" : name;
+                }
+            }
+            return name;
         }
 
         // A padlock, drawn once (GL450).
