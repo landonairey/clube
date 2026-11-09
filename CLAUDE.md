@@ -54,7 +54,8 @@ Map of the game (details in the history):
   (`CraftingStation`, `StationObject`, `StationPanel`, `TerrainStructure`), economy
   (`Wallet`, `PriceList`, `MerchantPanel`, `ITrader`), skills (`SkillSet`, `PlayerSkills`),
   quests (`QuestLog`, `PlayerQuests`, `QuestHud`), journals (`FieldLogScreen`), saving
-  (`Core/Saving`, `GameSessionHost`, `SaveSlots`), town (`Game/Town`, `TownPlan`).
+  (`Core/Saving`, `GameSessionHost`, `SaveSlots`; small new state implements `ISavedValues`
+  instead of raising the save version), town (`Game/Town`, `TownPlan`).
 - Demo exe: *Clube → Build → Game demo* (`DemoBuild`) → `Builds/Demo/`.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
