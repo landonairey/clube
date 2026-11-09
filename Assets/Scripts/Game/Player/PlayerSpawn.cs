@@ -53,6 +53,17 @@ namespace Clube.Game
             Wait();
         }
 
+        /// <summary>
+        /// Moves the player over a point (world space) and sets it down on the highest ground there once it has loaded,
+        /// like a fresh spawn (GL479: the tutorial's quarry, then the starting parcel).
+        /// </summary>
+        public void SetDownOver(Vector3 position)
+        {
+            placeAt = null;
+            transform.position = position;
+            Wait();
+        }
+
         private void Awake()
         {
             player = GetComponent<PlayerController>();

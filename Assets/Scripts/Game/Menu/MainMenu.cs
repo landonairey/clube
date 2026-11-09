@@ -130,7 +130,7 @@ namespace Clube.Game
                     newGame = null;
                     break;
                 case NewGamePage.Choice.Start:
-                    GameSession.StartNew(newGame.Mode, newGame.Seed, newGame.WorldName);
+                    GameSession.StartNew(newGame.Mode, newGame.Seed, newGame.WorldName, newGame.WithTutorial);
                     GameScenes.LoadGame();
                     break;
             }

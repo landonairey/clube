@@ -28,17 +28,27 @@ namespace Clube.Game
         /// <summary>The world's name from the new-game page (GL206), "Hello World" by default.</summary>
         public static string WorldName { get; private set; } = SaveNames.DefaultWorldName;
 
+        /// <summary>True for a new game that opens with the Mining Corp tutorial (GL479), until the tutorial ends.</summary>
+        public static bool Tutorial { get; private set; }
+
         /// <summary>The save this game was loaded from, until the game scene has put it back; null for a new game.</summary>
         public static GameSave Loaded { get; private set; }
 
-        /// <summary>A new game in a mode, on a seed, with a world name (the default when empty).</summary>
-        public static void StartNew(GameMode mode, int seed, string worldName = null)
+        /// <summary>A new game in a mode, on a seed, with a world name (the default when empty), with or without the tutorial.</summary>
+        public static void StartNew(GameMode mode, int seed, string worldName = null, bool tutorial = false)
         {
             IsActive = true;
             Mode = mode;
             Seed = seed;
             WorldName = NameOrDefault(worldName);
+            Tutorial = tutorial;
             Loaded = null;
+        }
+
+        /// <summary>The tutorial is over: the game carries on as a normal new game.</summary>
+        public static void FinishTutorial()
+        {
+            Tutorial = false;
         }
 
         /// <summary>Carries on a saved game: its mode, seed and world name, and everything else once the scene starts.</summary>
@@ -48,6 +58,7 @@ namespace Clube.Game
             Mode = System.Enum.TryParse(save.Header.Mode, out GameMode mode) ? mode : GameMode.World;
             Seed = save.Header.Seed;
             WorldName = NameOrDefault(save.Header.WorldName);
+            Tutorial = false;
             Loaded = save;
         }
 
@@ -67,6 +78,7 @@ namespace Clube.Game
         public static void End()
         {
             IsActive = false;
+            Tutorial = false;
             Loaded = null;
         }
     }
