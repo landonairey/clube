@@ -27,10 +27,12 @@ namespace Clube.Game
         private void OnGUI()
         {
             GameUi.Apply();
-            if (Event.current.type != EventType.Repaint || (player != null && (!player.enabled || player.IsInMenu)))
+            // It stays up while the inventory, a station screen or the field log is open (GL437), drawn over them.
+            if (Event.current.type != EventType.Repaint || (player != null && !player.enabled))
             {
                 return;
             }
+            GUI.depth = -50;
             QuestLog.Quest active = quests.Log.Active;
             if (active == null)
             {
