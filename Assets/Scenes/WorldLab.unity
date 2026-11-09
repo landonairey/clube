@@ -6341,6 +6341,7 @@ GameObject:
   - component: {fileID: 1697135613}
   - component: {fileID: 1697135614}
   - component: {fileID: 1697135615}
+  - component: {fileID: 1697135616}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -6850,8 +6851,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.ParcelBorders
   material: {fileID: 2100000, guid: 7306c3d226f246045a04b0c391c5dfd0, type: 2}
-  color: {r: 1, g: 0.82, b: 0.3, a: 0.18}
-  railColor: {r: 1, g: 0.82, b: 0.3, a: 0.75}
+  color: {r: 0.62, g: 0.38, b: 0.23, a: 0.15}
+  woodMaterial: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
   height: 0.75
   step: 0.5
   postSpacing: 2
@@ -7531,6 +7532,23 @@ MonoBehaviour:
   reach: 3
   experience: 0.5
   unknownExperience: 2
+--- !u!114 &1697135616
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: acc8b28a0ee18614aa10894e1ce5a99d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.Minimap
+  radius: 48
+  size: 260
+  interval: 0.4
+  height: 60
+  resolution: 256
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
