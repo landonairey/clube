@@ -750,16 +750,16 @@ GL250 (ambient wildlife).
 - **D — onboarding** *(done 2026-11-09, branch `gl446/onboarding`)*
 - [x] **GL446** `Game` *(added 2026-11-09)* The first quests show sketches of the boulder, a tree and the stump.
 - [x] **GL447** `Game` *(added 2026-11-09)* A tips box under the quest box gives each early quest's tip.
-- **B — crafting and stations**
-- [ ] **GL448** `Game` *(added 2026-11-09)* Station screens: recipe list on the left, the active recipe's large slots and details on the right.
-- [ ] **GL449** `Game` *(added 2026-11-09)* Missing ingredients show a red X in their slot and "need N more <item>".
-- [ ] **GL450** `Game` *(added 2026-11-09)* Recipe lists show what can be made and the next level's recipes with a lock; higher ones stay hidden.
-- [ ] **GL451** `Game` *(added 2026-11-09)* Copper tools are made at the stump.
-- [ ] **GL452** `Core + Game` *(added 2026-11-09)* Wood boards (1 wood each, at the stump) and a workbench of 100 boards, a voxel `TerrainStructure` station.
-- [ ] **GL453** `Game` *(added 2026-11-09)* The stump makes firebrick (refractory brick mix) from clay and sand.
-- [ ] **GL454** `Game` *(added 2026-11-09)* The flat rock crushes and refines at twice the boulder's batch.
-- [ ] **GL455** `Core + Game` *(added 2026-11-09)* A Goldsmithing skill (jewellery recipes come later; first pass of a Chapter 6 craft).
-- [ ] **GL456** `Core + Game` *(added 2026-11-09)* Coffee: 50c at the trading post merchant, unstackable; drinking gives 25% quicker cooldowns for 3 game hours, a refill resets the time.
+- **B — crafting and stations** *(done 2026-11-09, branch `gl448/crafting`)*
+- [x] **GL448** `Game` *(added 2026-11-09)* Station screens: recipe list on the left, the active recipe's large slots and details on the right.
+- [x] **GL449** `Game` *(added 2026-11-09)* Missing ingredients show a red X in their slot and "need N more <item>".
+- [x] **GL450** `Game` *(added 2026-11-09)* Recipe lists show what can be made and the next level's recipes with a lock; higher ones stay hidden.
+- [x] **GL451** `Game` *(added 2026-11-09)* Copper tools are made at the stump.
+- [x] **GL452** `Core + Game` *(added 2026-11-09)* Wood boards (1 wood each, at the stump) and a workbench of 100 boards, a voxel `TerrainStructure` station.
+- [x] **GL453** `Game` *(added 2026-11-09)* The stump makes firebrick (refractory brick mix) from clay and sand.
+- [x] **GL454** `Game` *(added 2026-11-09)* The flat rock crushes and refines at twice the boulder's batch.
+- [x] **GL455** `Core + Game` *(added 2026-11-09)* A Goldsmithing skill (jewellery recipes come later; first pass of a Chapter 6 craft).
+- [x] **GL456** `Core + Game` *(added 2026-11-09)* Coffee: 50c at the trading post merchant, unstackable; drinking gives 25% quicker cooldowns for 3 game hours, a refill resets the time.
 - **C — prospecting and hit effects**
 - [ ] **GL457** `Core + Game` *(added 2026-11-09)* Stack contents show by Prospecting level: the main material and a coloured grade first, one more component per level, exact shares at level 10.
 - [ ] **GL458** `Game` *(added 2026-11-09)* Bare-hand right click prospects a ground voxel for xp (more for an unknown ore, once per voxel).

@@ -610,3 +610,14 @@ walls).
 Batch D (GL446, GL447, branch `gl446/onboarding`): `QuestHud` draws a sketch on a paper card beside the hand axe, gather wood
 and campfire quests (`PlaceSketch.Boulder`, `Tree`, `Stump`) and a "Tip" box under the quest box from
 `PlayerQuests.TipFor` (the first eight main quests).
+
+Batch B (GL448-GL456, branch `gl448/crafting`): `StationPanel` is two halves over the inventory, the recipe list on the left
+(scrolls; `Recipe.IsInSightFor` shows what's unlocked and, with a padlock, the next level's; names say what from when two
+make the same thing) and the active recipe on the right (title, details, inputs with a red X and "Need N more" for what's
+missing, work, output, fuel). The stump makes copper picks and hatchets ("(worktop)" recipes); Refractory brick and Brick mix
+read Firebrick and Firebrick mix. The workbench (*Clube → Models → Build workbench*, `WorkbenchStructure`): 100 oak boards
+at the stump, a `TerrainStructure` table of 44 board samples that is a worktop with every stump recipe. `BoulderBashing`
+also works the flat rock (`flatRock`), two batches a cycle. `SkillType.Goldsmithing` is added (no recipes yet). Coffee is a
+`ConsumableDefinition` (Core/Items): `PlayerConsumables` (on Player) drinks it on Place, multiplies
+`ToolCooldown.SecondsFor`'s boost for its game hours, shows a line over the hotbar and saves through `ISavedValues`; the
+trading post merchant sells it at 50c (listed 100 per 3, times the town's 1.5).
