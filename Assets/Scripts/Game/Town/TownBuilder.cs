@@ -38,6 +38,9 @@ namespace Clube.Game
 
             /// <summary>Coins each keeper has to buy with each day (GL426).</summary>
             public float DailyCoins;
+
+            /// <summary>The settlement's name (GL470), on the sign outside its gate.</summary>
+            public string Name;
         }
 
         /// <summary>Builds the town's objects under its root.</summary>
@@ -45,6 +48,7 @@ namespace Clube.Game
         {
             var keepers = new List<Shopkeeper>();
             BuildGate(parts);
+            BuildNameSign(parts);
             foreach (ShopSpecialty shop in parts.Shops)
             {
                 if (shop != null)
@@ -105,6 +109,20 @@ namespace Clube.Game
             float middle = (TownLayout.OuterHalf + TownLayout.InnerHalf) * 0.5f;
             GameObject gate = Model("Gate", parts.Town.Root, null, null, At(plan, new Vector2(0f, -middle), plan.GateGround), plan.Yaw, parts.Town);
             gate.AddComponent<TownGate>().Build(parts.Material);
+        }
+
+        // The wooden sign outside the gate (GL470): the trading post's name, beside the way in, facing whoever comes up to it.
+        private static void BuildNameSign(Parts parts)
+        {
+            if (string.IsNullOrEmpty(parts.Name))
+            {
+                return;
+            }
+            TownPlan plan = parts.Town.Plan;
+            var at = new Vector2(TownLayout.GateWidth * 0.5f + 1.6f, -TownLayout.OuterHalf - 1.4f);
+            GameObject sign = Model("Trading post sign", parts.Town.Root, TownMeshes.SignPost(1.9f, 0.62f), parts.Material, OnGround(plan, at), plan.Yaw + 180f, parts.Town);
+            Text(sign.transform, $"{parts.Name}\nTrading Post", new Vector3(0f, 1.62f, 0.03f), parts.TextMaterial, 0.03f);
+            Box(sign, new Vector3(0f, 1.1f, 0f), new Vector3(1.9f, 2.2f, 0.12f));
         }
 
         private static Shopkeeper BuildShop(ShopSpecialty shop, Parts parts)

@@ -123,6 +123,9 @@ namespace Clube.Game
         /// <summary>The land parcel the town fills (GL408).</summary>
         public Vector2Int Parcel { get; private set; }
 
+        /// <summary>The trading post's name (GL470), from the world's seed and its parcel; empty until it's placed.</summary>
+        public string Name { get; private set; } = "";
+
         /// <summary>The shopkeepers, once built.</summary>
         public IReadOnlyList<Shopkeeper> Keepers { get; private set; } = new List<Shopkeeper>();
 
@@ -312,6 +315,7 @@ namespace Clube.Game
             int seed = worldView.Ores != null ? worldView.Ores.Seed : 0;
             Plan = new TownPlan(Site, yaw, Natural, seed, worldView.World.Grid.VoxelSize);
             Parcel = new Vector2Int(Mathf.FloorToInt(Site.Centre.x / ParcelSize), Mathf.FloorToInt(Site.Centre.y / ParcelSize));
+            Name = SettlementNames.Generate(worldView.Config.Terrain.Seed, Parcel);
             var root = new GameObject("Town").transform;
             root.SetParent(transform, false);
             root.SetPositionAndRotation(worldView.transform.TransformPoint(new Vector3(Site.Centre.x, Site.Ground, Site.Centre.y)),
@@ -337,6 +341,7 @@ namespace Clube.Game
                 TorchPrefab = torchPrefab,
                 SleepingRollPrefab = sleepingRollPrefab,
                 DailyCoins = dailyCoins,
+                Name = Name,
             });
         }
 

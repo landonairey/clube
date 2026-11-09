@@ -61,10 +61,17 @@ namespace Clube.Core
         /// <summary>A signpost (GL414): a post with a board at head height, its face towards +z.</summary>
         public static Mesh SignPost()
         {
-            var model = new LowPolyMeshBuilder();
-            model.Prism(new Vector3(0f, -0.3f, 0f), new Vector3(0f, 1.9f, 0f), 0.06f, 0.05f, 6, DarkTimber);
             // Wide enough for "Copper mine" and "Silver mine" (GL420).
-            model.Box(new Vector3(0f, 1.62f, 0f), new Vector3(1.5f, 0.34f, 0.05f), Quaternion.identity, Plank * 1.1f);
+            return SignPost(1.5f, 0.34f);
+        }
+
+        /// <summary>A post with a board of a size centred 1.62 m up (GL470: the trading post's name board is bigger).</summary>
+        public static Mesh SignPost(float width, float height)
+        {
+            var model = new LowPolyMeshBuilder();
+            float top = Mathf.Max(1.9f, 1.62f + height * 0.5f + 0.06f);
+            model.Prism(new Vector3(0f, -0.3f, 0f), new Vector3(0f, top, 0f), 0.06f, 0.05f, 6, DarkTimber);
+            model.Box(new Vector3(0f, 1.62f, 0f), new Vector3(width, height, 0.05f), Quaternion.identity, Plank * 1.1f);
             return model.Make("Sign post");
         }
 
