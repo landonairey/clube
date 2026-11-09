@@ -425,8 +425,11 @@ namespace Clube.Core
                 return false;
             }
             // Mixed fuel burns for its quality's share (GL124): grass with dirt in it burns shorter.
-            float seconds = Fuel[0].Item.BurnSeconds * Fuel[0].Quality;
-            Fuel.RemoveAt(0);
+            // A part item burns for its part and is used up (GL432: 0.14 of a leaf burned forever, since taking a whole
+            // item from it took nothing).
+            float amount = Math.Min(1f, Fuel[0].Amount);
+            float seconds = Fuel[0].Item.BurnSeconds * Fuel[0].Quality * amount;
+            Fuel.RemoveAmount(0, amount);
             BurnLeft = BurnTotal = seconds;
             return BurnLeft > 0f;
         }
