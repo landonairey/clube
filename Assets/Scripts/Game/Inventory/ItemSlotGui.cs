@@ -37,7 +37,7 @@ namespace Clube.Game
             }
             // No padding or clipping: the skin's label padding cut the bottom off the digits (GL222).
             purityStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = 20, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0), clipping = TextClipping.Overflow, normal = { textColor = new Color(1f, 0.8f, 0.35f) } };
-            GUI.Label(new Rect(rect.x, rect.y + 3f, rect.width - 6f, 26f), (purity * 100f).ToString("0") + "%", purityStyle);
+            OutlinedLabel(new Rect(rect.x, rect.y + 3f, rect.width - 6f, 26f), QualityText.Percent(purity), purityStyle);
         }
 
         /// <param name="corner">Small text for the lower left, e.g. a merchant's price; null for none.</param>
@@ -61,11 +61,11 @@ namespace Clube.Game
                 if (stack.Part > 0f)
                 {
                     // A part item (GL136): 0.48 of a tin bun.
-                    GUI.Label(Inset(rect, 3f), stack.Amount.ToString("0.##"), countStyle);
+                    OutlinedLabel(Inset(rect, 3f), stack.Amount.ToString("0.##"), countStyle);
                 }
                 else if (stack.Count > 1)
                 {
-                    GUI.Label(Inset(rect, 3f), stack.Count.ToString(), countStyle);
+                    OutlinedLabel(Inset(rect, 3f), stack.Count.ToString(), countStyle);
                 }
                 DrawPurity(rect, stack);
                 if (stack.Item is BucketDefinition bucket)
@@ -153,6 +153,25 @@ namespace Clube.Game
                 fontStyle = FontStyle.Bold,
                 fontSize = 24,
             };
+        }
+
+        // Slot text with a dark outline, so it reads on light icons like sand (GL435).
+        internal static void OutlinedLabel(Rect rect, string text, GUIStyle style)
+        {
+            Color color = style.normal.textColor;
+            style.normal.textColor = new Color(0f, 0f, 0f, 0.85f);
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    if (dx != 0 || dy != 0)
+                    {
+                        GUI.Label(new Rect(rect.x + dx * 1.5f, rect.y + dy * 1.5f, rect.width, rect.height), text, style);
+                    }
+                }
+            }
+            style.normal.textColor = color;
+            GUI.Label(rect, text, style);
         }
 
         internal static Rect Inset(Rect rect, float by)
