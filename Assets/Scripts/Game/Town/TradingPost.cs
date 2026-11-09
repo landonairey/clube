@@ -123,7 +123,7 @@ namespace Clube.Game
             {
                 if (pair.Value != null)
                 {
-                    values[Key($"crate{pair.Key}")] = Encode(pair.Value.Storage);
+                    values[Key($"crate{pair.Key}")] = StorageText.Encode(pair.Value.Storage);
                 }
             }
         }
@@ -141,52 +141,7 @@ namespace Clube.Game
             crates[index] = crate;
             if (restoredCrates.TryGetValue(index, out string text))
             {
-                Fill(crate.Storage, text);
-            }
-        }
-
-        // Slots as "id*count*quality|...".
-        private static string Encode(Inventory storage)
-        {
-            var entries = new List<string>();
-            for (int slot = 0; slot < storage.SlotCount; slot++)
-            {
-                ItemStack stack = storage[slot];
-                if (!stack.IsEmpty)
-                {
-                    entries.Add(string.Format(CultureInfo.InvariantCulture, "{0}*{1}*{2:R}", stack.Item.Id, stack.Count, stack.Quality));
-                }
-            }
-            return string.Join("|", entries);
-        }
-
-        private static void Fill(Inventory storage, string text)
-        {
-            for (int slot = 0; slot < storage.SlotCount; slot++)
-            {
-                storage.TakeAll(slot);
-            }
-            if (string.IsNullOrEmpty(text))
-            {
-                return;
-            }
-            var items = new Dictionary<string, ItemDefinition>();
-            foreach (ItemDefinition item in Resources.FindObjectsOfTypeAll<ItemDefinition>())
-            {
-                if (!string.IsNullOrEmpty(item.Id))
-                {
-                    items[item.Id] = item;
-                }
-            }
-            foreach (string entry in text.Split('|'))
-            {
-                string[] parts = entry.Split('*');
-                if (parts.Length == 3 && items.TryGetValue(parts[0], out ItemDefinition item)
-                    && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int count)
-                    && float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float quality))
-                {
-                    storage.Add(item, count, null, 0, quality);
-                }
+                StorageText.Fill(crate.Storage, text);
             }
         }
 
@@ -219,7 +174,7 @@ namespace Clube.Game
                 restoredCrates[i] = crate;
                 if (crates.TryGetValue(i, out StorageChest chest) && chest != null)
                 {
-                    Fill(chest.Storage, crate);
+                    StorageText.Fill(chest.Storage, crate);
                 }
             }
         }

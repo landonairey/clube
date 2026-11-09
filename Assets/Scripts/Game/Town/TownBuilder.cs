@@ -178,7 +178,7 @@ namespace Clube.Game
 
         // Words on a sign, facing out of its front (+z), at a fixed size (GL420: measuring the words to fit read 0 before
         // the text mesh was built, so long names ran off the board).
-        private static void Text(Transform parent, string text, Vector3 at, Material material, float size)
+        internal static void Text(Transform parent, string text, Vector3 at, Material material, float size)
         {
             var go = new GameObject("Sign text");
             go.transform.SetParent(parent, false);
@@ -428,7 +428,7 @@ namespace Clube.Game
         }
 
         // Goods worth hiding: not tools, buckets, torches, drinks or things to place (ingots, ore, bricks and the like).
-        private static bool IsValuable(ItemDefinition item)
+        internal static bool IsValuable(ItemDefinition item)
         {
             return item != null && !(item is ToolDefinition) && !(item is BucketDefinition) && !(item is TorchDefinition)
                 && !(item is ConsumableDefinition) && !(item is PlaceableDefinition);

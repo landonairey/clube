@@ -6270,6 +6270,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1566741226}
   - component: {fileID: 1566741225}
+  - component: {fileID: 1566741227}
   m_Layer: 0
   m_Name: Travellers
   m_TagString: Untagged
@@ -6314,6 +6315,29 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1566741227
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1566741224}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 706a3d2349dbecc45b33b347396a21c3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.TradeCart
+  worldView: {fileID: 1350119460}
+  town: {fileID: 870862398}
+  prices: {fileID: 11400000, guid: 44577251d34951d40bd1ac9b329bc569, type: 2}
+  material: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
+  textMaterial: {fileID: 2100000, guid: e9c1e17c90ccf8b4e922e9392fda6ee5, type: 2}
+  cratePrefab: {fileID: 3729972786520127726, guid: c468d4c25adbf874b90f327ad3d70fac, type: 3}
+  roadMaterial: Dirt
+  yardMaterial: Loose stone
+  speed: 1.4
+  stopHours: 2.5
+  writeBudgetMilliseconds: 2
 --- !u!1 &1697135560
 GameObject:
   m_ObjectHideFlags: 0

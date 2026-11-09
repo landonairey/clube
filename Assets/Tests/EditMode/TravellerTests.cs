@@ -51,6 +51,80 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void CartSchedule_TripsAreTwoOrThreeDaysApart()
+        {
+            for (int seed = 0; seed < 5; seed++)
+            {
+                var gaps = new System.Collections.Generic.HashSet<int>();
+                for (int trip = 0; trip < 30; trip++)
+                {
+                    double gap = CartSchedule.TripStart(seed, trip + 1) - CartSchedule.TripStart(seed, trip);
+                    Assert.GreaterOrEqual(gap, 2d - 1e-9);
+                    Assert.LessOrEqual(gap, 3d + 1e-9);
+                    gaps.Add((int)System.Math.Round(gap));
+                }
+                Assert.AreEqual(2, gaps.Count, "both two- and three-day gaps happen");
+            }
+        }
+
+        [Test]
+        public void CartSchedule_GoesToThePostStopsAndComesBack()
+        {
+            const int Seed = 42;
+            const double Leg = 0.1, Wait = 0.1;
+            Assert.AreEqual(-1, CartSchedule.At(Seed, 0.5, Leg, Wait).Trip);
+            double start = CartSchedule.TripStart(Seed, 3);
+            CartState going = CartSchedule.At(Seed, start + Leg * 0.5, Leg, Wait);
+            Assert.AreEqual(3, going.Trip);
+            Assert.AreEqual(CartPhase.ToPost, going.Phase);
+            Assert.AreEqual(0.5f, going.Progress, 1e-4f);
+            Assert.AreEqual(CartPhase.AtPost, CartSchedule.At(Seed, start + Leg + Wait * 0.5, Leg, Wait).Phase);
+            CartState back = CartSchedule.At(Seed, start + Leg + Wait + Leg * 0.25, Leg, Wait);
+            Assert.AreEqual(CartPhase.ToTown, back.Phase);
+            Assert.AreEqual(0.75f, back.Progress, 1e-4f);
+            Assert.AreEqual(CartPhase.Away, CartSchedule.At(Seed, start + 1.5, Leg, Wait).Phase);
+            // The same moment always gives the same answer: nothing to save.
+            Assert.AreEqual(going.Progress, CartSchedule.At(Seed, start + Leg * 0.5, Leg, Wait).Progress);
+        }
+
+        [Test]
+        public void CartRoute_DistantTownIsAtLeastTenParcelsOutOfTheGate()
+        {
+            const float Parcel = 32f;
+            for (int seed = 0; seed < 20; seed++)
+            {
+                var post = new Vector2(16f, 48f);
+                Vector2 town = CartRoute.DistantTown(post, Parcel, seed, null, Vector2.up, 60f);
+                Assert.GreaterOrEqual((town - post).magnitude, CartRoute.MinParcels * Parcel - 0.01f);
+                // A parcel's centre.
+                Assert.AreEqual(Parcel * 0.5f, Mathf.Repeat(town.x, Parcel), 1e-3f);
+                // Within the cone round the gate's direction (a little more after snapping to a parcel).
+                Assert.Less(Vector2.Angle(Vector2.up, town - post), 66f);
+            }
+        }
+
+        [Test]
+        public void CartRoute_RunsEndToEndAndSkirtsTheHill()
+        {
+            var from = new Vector2(-100f, -20f);
+            var to = new Vector2(180f, -20f);
+            var route = new CartRoute(from, to, Hill, 7);
+            Assert.AreEqual(from, route.Points[0]);
+            Assert.AreEqual(to, route.Points[route.Points.Count - 1]);
+            Assert.GreaterOrEqual(route.Length, (to - from).magnitude - 0.01f);
+            Assert.Less(route.Length, (to - from).magnitude * 1.3f);
+            Assert.AreEqual(from.x, route.At(0f).x, 1e-3f);
+            Assert.AreEqual(Hill(from.x, from.y), route.At(0f).y, 0.05f);
+            // The straight line crosses the hilltop (40 m); the road goes round lower down.
+            float highest = 0f;
+            for (float d = 0f; d <= route.Length; d += 2f)
+            {
+                highest = Mathf.Max(highest, route.HeightAlong(d));
+            }
+            Assert.Less(highest, 36f);
+        }
+
+        [Test]
         public void AdventurerVisit_ArrivesAtTheDawnAfterTheFifthNight()
         {
             const float Sunrise = 4f;
