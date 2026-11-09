@@ -112,14 +112,14 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// How far the stars have turned, in degrees (the local sidereal time, GL253): the sun's hour angle plus its
+        /// How far the stars have turned, in degrees (the local sidereal time, GL253): the clock (15° an hour, not the sun's uneven GL464 pace) plus its
         /// drift east through the stars, once a year. So the stars turn once a sidereal day, about 4 minutes (of 24 game
         /// hours) shorter than the sun's, and the same stars rise a little earlier each night.
         /// </summary>
         public static float SiderealAngle(double days, float hour)
         {
             double years = days / TropicalYearDays;
-            return SunHourAngle(hour) + (float)((years - System.Math.Floor(years)) * 360d);
+            return (hour - 12f) * 15f + (float)((years - System.Math.Floor(years)) * 360d);
         }
 
         /// <summary>
