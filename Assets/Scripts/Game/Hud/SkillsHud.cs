@@ -17,7 +17,7 @@ namespace Clube.Game
         private const float RowHeight = 36f;
         private const float LabelWidth = 190f;
 
-        private static readonly SkillType[] Shown = { SkillType.Crafting, SkillType.Woodcutting, SkillType.Mining, SkillType.Smelting, SkillType.Blacksmithing, SkillType.Prospecting };
+        private static readonly SkillType[] Shown = { SkillType.Crafting, SkillType.Woodcutting, SkillType.Mining, SkillType.Smelting, SkillType.Blacksmithing, SkillType.Prospecting, SkillType.Goldsmithing };
 
         [Tooltip("Recipes to name when the level they need is reached.")]
         [SerializeField]

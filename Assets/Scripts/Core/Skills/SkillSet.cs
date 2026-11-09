@@ -13,6 +13,9 @@ namespace Clube.Core
         Smelting,
         Blacksmithing,
         Prospecting,
+
+        /// <summary>Working gold and silver into jewellery (GL455; the recipes come later).</summary>
+        Goldsmithing,
     }
 
     /// <summary>

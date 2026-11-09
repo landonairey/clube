@@ -104,7 +104,7 @@ namespace Clube.Debug
             {
                 return $"No skill called \"{words[1]}\" (crafting, woodcutting, mining, smelting, blacksmithing)";
             }
-            foreach (SkillType skill in new[] { SkillType.Crafting, SkillType.Woodcutting, SkillType.Mining, SkillType.Smelting, SkillType.Blacksmithing, SkillType.Prospecting })
+            foreach (SkillType skill in new[] { SkillType.Crafting, SkillType.Woodcutting, SkillType.Mining, SkillType.Smelting, SkillType.Blacksmithing, SkillType.Prospecting, SkillType.Goldsmithing })
             {
                 if (!all && skill != one)
                 {
