@@ -204,6 +204,11 @@ namespace Clube.Game
                 {
                     continue;
                 }
+                // Ore picked out of crushed ore is crushed already (GL440): silver out of crushed chalcopyrite is crushed silver ore.
+                if (prospecting)
+                {
+                    drop = CrushedFormOf(drop);
+                }
                 int whole = (int)(picked.Fraction + 1e-4f);
                 items.Add(drop, whole, Composition.From(new Content(picked.Material, 1f)), 0, 1f, Mathf.Max(0f, picked.Fraction - whole));
                 inventory.Notify(drop, picked.Fraction);
@@ -211,6 +216,19 @@ namespace Clube.Game
             Message?.Invoke(refined.IsEmpty
                 ? $"Nothing of the {held.Item.DisplayName.ToLowerInvariant()} was left"
                 : $"Picked over the {held.Item.DisplayName.ToLowerInvariant()}: {QualityText.Percent(refined.Quality)} now");
+        }
+
+        // The crushed item for a raw ore, from the crush table; the item itself when it has none (stone).
+        private ItemDefinition CrushedFormOf(ItemDefinition raw)
+        {
+            foreach (Crush entry in crushes)
+            {
+                if (entry.Raw == raw && entry.Crushed != null)
+                {
+                    return entry.Crushed;
+                }
+            }
+            return raw;
         }
 
         // A mixed stack in the selected slot that isn't bashed instead: gathered clay, dirt, wood with what came with it.
