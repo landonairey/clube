@@ -272,7 +272,7 @@ namespace Clube.Game
             ItemStack stack = hovered;
             hovered = ItemStack.Empty;
 
-            tooltipStyle ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, wordWrap = true, padding = new RectOffset(8, 8, 6, 6) };
+            tooltipStyle ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, wordWrap = true, richText = true, padding = new RectOffset(8, 8, 6, 6) };
             var content = new GUIContent(Describe(stack));
             float width = 240f;
             float height = tooltipStyle.CalcHeight(content, width);
@@ -286,6 +286,13 @@ namespace Clube.Game
         /// One fact a line (GL70): "Chalcopyrite ×12", "Volume 12", then a line per component,
         /// "80% Stone (9.6)", "20% Chalcopyrite (2.4)": its share and how much of the stack that is (GL188).
         /// </summary>
+        // A grade in its colour, as rich text (GL457): "<color=#ffc733>High Grade</color>".
+        private static string GradeText(float share)
+        {
+            Grade grade = ProspectReading.GradeOf(share);
+            return $"<color=#{ColorUtility.ToHtmlStringRGB(ProspectReading.ColourOf(grade))}>{ProspectReading.Name(grade)}</color>";
+        }
+
         public static string Describe(ItemStack stack)
         {
             string text = stack.Count > 1 ? $"{stack.Item.DisplayName} ×{stack.Count}" : stack.Item.DisplayName;
@@ -297,14 +304,30 @@ namespace Clube.Game
             {
                 text += $"\nVolume {stack.Volume:0.##}";
             }
-            // Always, 100% included (GL158).
-            text += $"\nQuality {QualityText.Percent(stack.Quality)}";
+            if (ItemSlotGui.ReadsAsGrades(stack) && !stack.Item.HidesContents)
+            {
+                // Below Prospecting 10 (GL457): grades for the shares, the stack's own material first, one more component a
+                // level, the rest a question mark.
+                text += $"\nQuality {GradeText(stack.Quality)}";
+                MaterialRegistry materials = ItemSlotGui.Materials;
+                var parts = ProspectReading.InReadingOrder(stack.Contents, m => materials != null && materials.IsSourceOf(m, stack.Item));
+                int read = ProspectReading.ComponentsRead(ItemSlotGui.ProspectingLevel);
+                for (int i = 0; i < parts.Count; i++)
+                {
+                    text += i < read ? $"\n{GradeText(parts[i].Fraction)} {parts[i].Material.DisplayName}" : "\n? ?";
+                }
+            }
+            else
+            {
+                // Always, 100% included (GL158).
+                text += $"\nQuality {QualityText.Percent(stack.Quality)}";
+            }
             if (stack.Item.HidesContents)
             {
                 // "? ore" (GL76): what it holds stays hidden until the player can tell.
                 text += "\nContents unknown";
             }
-            else if (stack.Contents != null)
+            else if (stack.Contents != null && !ItemSlotGui.ReadsAsGrades(stack))
             {
                 // Each material's share, and how much of the stack that is (GL188): "92% Stone (942.1)".
                 foreach (Content part in stack.Contents.Parts)
