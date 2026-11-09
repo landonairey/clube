@@ -427,7 +427,14 @@ namespace Clube.Game
             thiefObject.AddComponent<TownThief>();
         }
 
-        // The dearest things the shops sell, one of each kind, dearest first (GL475: what the thief took).
+        // Goods worth hiding: not tools, buckets, torches, drinks or things to place (ingots, ore, bricks and the like).
+        private static bool IsValuable(ItemDefinition item)
+        {
+            return item != null && !(item is ToolDefinition) && !(item is BucketDefinition) && !(item is TorchDefinition)
+                && !(item is ConsumableDefinition) && !(item is PlaceableDefinition);
+        }
+
+        // The dearest goods the shops sell, one of each kind, dearest first (GL475: what the thief took).
         private static List<ItemPrice> Valuables(Parts parts)
         {
             var best = new Dictionary<ItemDefinition, ItemPrice>();
@@ -439,7 +446,7 @@ namespace Clube.Game
                 }
                 foreach (ItemPrice offer in shop.Offers(parts.Prices))
                 {
-                    if (offer.Item != null && !(offer.Item is PlaceableDefinition) && (!best.TryGetValue(offer.Item, out ItemPrice had) || had.Coins < offer.Coins))
+                    if (IsValuable(offer.Item) && (!best.TryGetValue(offer.Item, out ItemPrice had) || had.Coins < offer.Coins))
                     {
                         best[offer.Item] = offer;
                     }
