@@ -6818,6 +6818,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3b915b6e75ae6fe4883f76455350ed82, type: 2}
   - {fileID: 11400000, guid: d60685b224db7664a9af1c897162e558, type: 2}
   - {fileID: 11400000, guid: 6e1d0ec0bd2d48440b2b96a163e7b96b, type: 2}
+  - {fileID: 11400000, guid: 0ce319f9af19832499bb1b6d96511e3b, type: 2}
+  - {fileID: 11400000, guid: 2f2e8808d61f59549a0331d7d86525b1, type: 2}
   kinds:
   - Material: {fileID: 11400000, guid: a7a179311785ad14bab47c68162a300f, type: 2}
     Name: Flat Rock
@@ -7012,6 +7014,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 8631d3965ce9c6242a9e08353f96e6c7, type: 2}
   - {fileID: 11400000, guid: d60685b224db7664a9af1c897162e558, type: 2}
   - {fileID: 11400000, guid: 6e1d0ec0bd2d48440b2b96a163e7b96b, type: 2}
+  - {fileID: 11400000, guid: 0ce319f9af19832499bb1b6d96511e3b, type: 2}
+  - {fileID: 11400000, guid: 2f2e8808d61f59549a0331d7d86525b1, type: 2}
 --- !u!114 &1697135589
 MonoBehaviour:
   m_ObjectHideFlags: 0
