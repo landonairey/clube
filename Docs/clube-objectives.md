@@ -790,14 +790,14 @@ GL250 (ambient wildlife).
 - **Added later**
 - [x] **GL478** `Game` *(added 2026-11-09)* Licking an ore (right click with it selected, away from a boulder) uses one up for Prospecting xp, more for an unknown ore, and tells its grade.
 - **Tutorial and title page** *(added 2026-11-09, from `Docs/backlogs/20261109b clube-backlog.md`; branch `gl479/tutorial-menu`)*
-- [ ] **GL479** `Game` *(added 2026-11-09)* An opening tutorial, chosen or skipped on the New Game page: the player works a Mining Corp quarry, and stealing gets them thrown out to their family's parcel.
+- [x] **GL479** `Game` *(added 2026-11-09)* An opening tutorial, chosen or skipped on the New Game page: the player works a Mining Corp quarry, and stealing gets them thrown out to their family's parcel.
   - New Game page: start with the tutorial or skip it (carried into the world by `GameSession`).
   - The company quarry: a pit dug by the trading post's gate, a crew lead (`KeeperFigure`) and a company pickaxe.
   - Steps teach looking, moving, jumping, sprinting, crouching, the key sheet, the hotbar, digging, the inventory and Interact.
   - All the stone mined is the company's: the crew lead takes it and pays 10c for every 100c of its price (`PriceList`, `Wallet`).
   - The crew lead heads out ("don't touch anything"). Leaving the quarry with company stone, or taking anything that isn't company stone, is stealing.
   - Caught: fade out, the company's goods taken back, and the player set down on their starting parcel to start the normal game, keeping their coins.
-- [ ] **GL480** `Game` *(added 2026-11-09)* A new title page: the main menu's background is a cut-open cross-section of the player's parcel.
+- [x] **GL480** `Game` *(added 2026-11-09)* A new title page: the main menu's background is a cut-open cross-section of the player's parcel.
   - Layers of grass, dirt and rock seen through the cut face; gold ore at the bottom, then a silver node, chalcopyrite, malachite, and tin ore at the top and on the surface.
   - On the surface: a tree, a campfire, a stump, and the player mining the tin node in a loop.
   - The menu's buttons laid out beside the diorama so the two read together; cheap to draw (the menu caps at 60 fps).

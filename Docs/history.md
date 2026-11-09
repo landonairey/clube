@@ -686,3 +686,16 @@ isn't saved; `TradeCartModel` is the hand cart, carter (`KeeperFigure.BuildCarte
 refilled each trip, their leftovers saved per trip (`StorageText`, Game/Building, the crate format `TradingPost` used). The distant
 town is only a cobbled yard with a name sign and crate looks, built once its chunks load; beyond a fixed area's edge it isn't built
 and the cart hides there. Tests: `TravellerTests`.
+
+Tutorial and title page (GL479-GL480, branch `gl479/tutorial-menu`): the New Game page offers the Mining Corp tutorial or
+skipping it (`GameSession.Tutorial`, cleared by `FinishTutorial`; saving is refused while it runs). The tutorial is a mode of
+WorldLab, not its own scene: `MiningCorpTutorial` (Game/Tutorial, on WorldLab's Tutorial object) waits for the town's plan, and
+`CompanyQuarry` digs a 5 m `OpenPit` out of the gate and beside the road (`CompanyWork`, Core/Economy: site, 10% wage, theft
+rule), then the player is set down on its rim (`PlayerSpawn.SetDownOver`) with a `CrewLead` (`KeeperFigure`, miner) and an
+`OreCart`. Steps on a card at the top: look, walk, jump, sprint, crouch, F1, talk (E, gives the Stone pick), hotbar, dig, inventory,
+hand in (stone dug in the quarry is company goods, paid `CompanyWork.Wage` of its `PriceList` price); then the lead walks off to
+the gate. Carrying company goods past the rim plus 5 m, or holding anything else, is theft: fade, inventory emptied (coins kept),
+the player set down on the spawn and the quest box back on. The title page's background is `MenuDiorama` (Game/Menu, MainMenu
+scene): a low-poly cut-open block of the parcel built in code (layers, ore nodes, tree, campfire copy, stump, a `KeeperFigure`
+in the Mine pose), framed right of the menu column, which `MainMenu` now draws on the left over a fading shade. Tests:
+`CompanyWorkTests`.
