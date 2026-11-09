@@ -6,7 +6,7 @@ namespace Clube.Game
     /// <summary>
     /// First-person walking (M6): Move walks, Sprint runs, Crouch (C) crouches, lowering the head and slowing the
     /// walk, and pressed while sprinting slides on while held, up to a set distance (GL219, GL247); Jump jumps (keeping its run-up:
-    /// in the air Move only steers a little), Look turns the body left and right and tilts
+    /// in the air Move only steers a little; held against a steep face it climbs, GL467), Look turns the body left and right and tilts
     /// the head up and down. A <see cref="CharacterController"/>
     /// collides with the terrain's chunk colliders (<see cref="Clube.Core.ChunkCollider"/>);
     /// gravity is applied here. Locks the cursor while enabled; FreeCursor (Left Alt)
@@ -120,6 +120,18 @@ namespace Clube.Game
         [SerializeField, Min(0f)]
         private float climbOutSpeed = 5f;
 
+        [Tooltip("Climbing speed (GL467) as a share of the walk: Jump held against a steep face (a trunk, a pit wall) climbs it.")]
+        [SerializeField, Range(0.05f, 1f)]
+        private float climbSpeedShare = 0.25f;
+
+        // How far in front of the capsule a face still counts for climbing, and how hard a climber presses into it so the
+        // capsule keeps touching (metres, metres a second).
+        private const float ClimbReach = 0.3f;
+        private const float ClimbGrip = 0.6f;
+        // The hop up and forward over the top of a climb (GL467): rise in metres, forward speed as a share of the walk.
+        private const float ClimbTopHop = 0.4f;
+        private const float ClimbTopPush = 0.6f;
+
         // Swimming starts with this much of the body under water and ends below the lower share, so it doesn't flicker.
         private const float SwimStart = 0.55f;
         private const float SwimEnd = 0.35f;
@@ -191,6 +203,12 @@ namespace Clube.Game
 
         /// <summary>True while swimming (GL316).</summary>
         public bool IsSwimming { get; private set; }
+
+        /// <summary>True while climbing a steep face (GL467).</summary>
+        public bool IsClimbing { get; private set; }
+
+        /// <summary>Climbing speed in metres a second (GL467): a share of the walk.</summary>
+        public float ClimbSpeed => walkSpeed * climbSpeedShare;
 
         /// <summary>True while the capsule is lower than standing: crouching or sliding (GL219).</summary>
         public bool IsCrouching => currentHeight < standingHeight - 0.01f;
@@ -380,6 +398,10 @@ namespace Clube.Game
             bool jumpPressed = jumpAction != null && jumpAction.action.WasPressedThisFrame();
             // Holding Jump jumps again at every landing.
             bool jumpHeld = jumpAction != null && jumpAction.action.IsPressed();
+            if (Climb(jumpHeld && !isInMenu, input))
+            {
+                return;
+            }
             if (Body.isGrounded)
             {
                 // On the ground the player goes where Move points, at once; a slide goes on where it started.
@@ -450,12 +472,72 @@ namespace Clube.Game
             }
         }
 
+        // One frame of climbing (GL467), when it applies: Jump held in the air, once a jump's rise is spent, with a steep face
+        // just in front climbs it at ClimbSpeed, Move's left and right going along it. The capsule moves through the
+        // CharacterController, so it never passes into terrain; an overhang stops the rise. Letting go of Jump drops off;
+        // past the top (no face in front any more, down to the knees) the climber hops up and onto the ledge. True when
+        // this frame climbed.
+        private bool Climb(bool jumpHeld, Vector2 input)
+        {
+            bool canStart = !Body.isGrounded && fallSpeed >= 0f && Time.time >= knockbackUntil;
+            if (!jumpHeld || !(IsClimbing || canStart))
+            {
+                IsClimbing = false;
+                return false;
+            }
+            if (!FindClimbFace(out Vector3 normal))
+            {
+                if (IsClimbing)
+                {
+                    // Over the top: a small hop up and forward onto the ledge.
+                    IsClimbing = false;
+                    fallSpeed = -Mathf.Sqrt(2f * Gravity * ClimbTopHop);
+                    velocity = transform.forward * walkSpeed * ClimbTopPush;
+                }
+                return false;
+            }
+            IsClimbing = true;
+            slideSpeed = 0f;
+            Vector3 into = new Vector3(-normal.x, 0f, -normal.z).normalized;
+            Vector3 along = Vector3.Cross(Vector3.up, into).normalized;
+            float speed = ClimbSpeed;
+            Vector3 move = into * ClimbGrip + along * (Vector3.Dot(transform.right, along) * input.x * speed) + Vector3.up * speed;
+            velocity = Vector3.zero;
+            fallSpeed = 0f;
+            Body.Move(move * Time.deltaTime);
+            return true;
+        }
+
+        // A face steeper than the walkable slope just in front of the capsule, at chest or knee height (GL467).
+        private bool FindClimbFace(out Vector3 normal)
+        {
+            CharacterController capsule = Body;
+            float radius = capsule.radius * 0.9f;
+            Vector3 feet = transform.position + capsule.center - Vector3.up * (capsule.height * 0.5f);
+            float reach = capsule.radius - radius + capsule.skinWidth + ClimbReach;
+            float steepest = Mathf.Cos(capsule.slopeLimit * Mathf.Deg2Rad);
+            for (int i = 0; i < 2; i++)
+            {
+                float height = i == 0 ? capsule.height * 0.7f : capsule.stepOffset + radius;
+                Vector3 from = feet + Vector3.up * Mathf.Max(height, radius);
+                if (Physics.SphereCast(from, radius, transform.forward, out RaycastHit hit, reach, ~0, QueryTriggerInteraction.Ignore)
+                    && hit.normal.y < steepest && hit.normal.y > -0.5f)
+                {
+                    normal = hit.normal;
+                    return true;
+                }
+            }
+            normal = Vector3.zero;
+            return false;
+        }
+
         // One frame of swimming (GL316): Move swims where the player looks (looking down and forward dives), Jump swims up and
         // Crouch down, and with neither the body floats with its head at the surface. Water drags, so the speed follows the
         // keys gently. Jump held against a bank at the surface pushes up and out.
         private void Swim(Vector2 input, bool isSprinting)
         {
             slideSpeed = 0f;
+            IsClimbing = false;
             UpdateCrouch(false);
             Transform look = head != null ? head : transform;
             float speed = swimSpeed * (isSprinting ? 1.4f : 1f);
