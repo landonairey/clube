@@ -106,7 +106,7 @@ namespace Clube.Game
             }
             // Into a holding wallet first, so a trader with a purse (GL426) pays only what they have.
             if (Current.Purse != null && Current.Prices.TryGetLot(item, out int coins, out int lot)
-                && !CanPay(Mathf.Min(count, inventory.Inventory.Count(item)) / lot * coins * inventory.Inventory.QualityOf(item)))
+                && !CanPay(Mathf.Min(count, inventory.Inventory.Count(item)) / lot * coins * inventory.Inventory.QualityOf(item) * Current.Prices.Share))
             {
                 return 0;
             }
@@ -147,7 +147,9 @@ namespace Clube.Game
             PriceList prices = Current.Prices;
             float width = InventoryGridGui.RowWidth + Padding * 2f;
             float offerRows = OffersHeight() + TrainingHeight();
-            float height = Padding * 2f + 32f + 30f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + SellRowHeight + 6f + offerRows + (group.Count > 0 ? SellRowHeight + 6f : 0f);
+            Disposition disposition = Current.Disposition;
+            float height = Padding * 2f + 32f + 30f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + SellRowHeight + 6f + offerRows + (group.Count > 0 ? SellRowHeight + 6f : 0f)
+                + (disposition != null ? 30f : 0f);
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
@@ -155,6 +157,11 @@ namespace Clube.Game
             GUI.Label(new Rect(x, y, width - Padding * 2f, 28f), $"{Current.DisplayName}   (E to close)");
             GUI.Label(new Rect(panel.xMax - Padding - 160f, y, 160f, 28f), $"Your coins: {Wallet.Format(wallet.Wallet.Coins)}");
             y += 32f;
+            if (disposition != null)
+            {
+                GUI.Label(new Rect(x, y, width - Padding * 2f, 28f), DispositionText(disposition));
+                y += 30f;
+            }
             // What the trader has left to buy with today (GL426), or why a sale was refused.
             string note = Time.unscaledTime < refusalUntil ? refusal
                 : Current.Purse != null ? $"Click one of your items to see what they pay. They have {Wallet.Format(Current.Purse.Coins)} to buy with today."
@@ -272,6 +279,19 @@ namespace Clube.Game
         {
             Current.Purse?.Spend(Mathf.Min(coins, Current.Purse.Coins));
             wallet.Wallet.Earn(coins);
+            Current.Disposition?.Record(coins);
+        }
+
+        // How the trader feels about the player (GL471) and what it does to their prices.
+        private static string DispositionText(Disposition disposition)
+        {
+            if (disposition.Value >= Disposition.Max)
+            {
+                return $"Disposition {disposition.Value}/{Disposition.Max}: fair prices.";
+            }
+            int points = Disposition.Max - disposition.Value;
+            float toNext = Disposition.CoinsPerPoint - disposition.Carried;
+            return $"Disposition {disposition.Value}/{Disposition.Max}: prices {points}% against you; {Wallet.Format(toNext)} more trade raises it.";
         }
 
         // Coins to two places at most: "50c", "0.1c", "0.001c".
@@ -344,6 +364,7 @@ namespace Clube.Game
             if (wallet.Wallet.Spend(offer.Coins))
             {
                 Current.Purse?.Earn(offer.Coins);
+                Current.Disposition?.Record(offer.Coins);
             }
             else
             {
@@ -373,6 +394,8 @@ namespace Clube.Game
                 if (GUI.Button(new Rect(x, y, width, RowHeight), label)
                     && SkillTraining.Train(set, wallet.Wallet, skill, Current.CoinsPerExperience))
                 {
+                    // A lesson is trade with them too (GL471).
+                    Current.Disposition?.Record(cost);
                     Trained?.Invoke(skill);
                 }
                 GUI.enabled = true;

@@ -31,6 +31,9 @@ namespace Clube.Game
         /// <summary>The coins they have to buy with (GL426: a shopkeeper's 525 a day); null for no limit (the merchant table).</summary>
         Wallet Purse { get; }
 
+        /// <summary>How they feel about the player (GL471), which sets their prices; null for a trader without one (the merchant table).</summary>
+        Disposition Disposition { get; }
+
         /// <summary>False once they stop trading (a shop closing), which closes the screen.</summary>
         bool IsTrading { get; }
     }

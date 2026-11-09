@@ -49,6 +49,8 @@ namespace Clube.Game
         // The merchant table buys without limit.
         public Wallet Purse => null;
 
+        public Disposition Disposition => null;
+
         public string Prompt => $"Trade with {displayName.ToLowerInvariant()}";
 
         public void Interact(PlayerInteractor by)

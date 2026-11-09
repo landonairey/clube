@@ -41,6 +41,9 @@ namespace Clube.Game
 
             /// <summary>The settlement's name (GL470), on the sign outside its gate.</summary>
             public string Name;
+
+            /// <summary>What the player has done here (GL471: the keepers' dispositions); may be null.</summary>
+            public TradingPost Post;
         }
 
         /// <summary>Builds the town's objects under its root.</summary>
@@ -149,7 +152,8 @@ namespace Clube.Game
             var keeperObject = new GameObject($"{shop.ShopName} keeper");
             keeperObject.transform.SetParent(town.Root, false);
             Shopkeeper keeper = keeperObject.AddComponent<Shopkeeper>();
-            keeper.Setup(shop, parts.Prices, parts.Hours, parts.Clock, town, parts.Material, plan.Seed + (int)shop.Kind * 977, parts.DailyCoins);
+            keeper.Setup(shop, parts.Prices, parts.Hours, parts.Clock, town, parts.Material, plan.Seed + (int)shop.Kind * 977, parts.DailyCoins,
+                parts.Post != null ? parts.Post.DispositionOf(shop.Kind) : null);
             return keeper;
         }
 

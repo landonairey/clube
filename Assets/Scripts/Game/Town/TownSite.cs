@@ -126,6 +126,9 @@ namespace Clube.Game
         /// <summary>The trading post's name (GL470), from the world's seed and its parcel; empty until it's placed.</summary>
         public string Name { get; private set; } = "";
 
+        /// <summary>What the player has done at the trading post: the saved part of it (GL471-GL475).</summary>
+        public TradingPost Post { get; private set; }
+
         /// <summary>The shopkeepers, once built.</summary>
         public IReadOnlyList<Shopkeeper> Keepers { get; private set; } = new List<Shopkeeper>();
 
@@ -144,6 +147,8 @@ namespace Clube.Game
             }
             spawnPoint = new Vector2(at.x, at.z);
             parcels = spawn != null ? spawn.GetComponent<PlayerParcels>() : null;
+            // Here from the start, so a save restores into it before the town is built (GL471).
+            Post = TryGetComponent(out TradingPost post) ? post : gameObject.AddComponent<TradingPost>();
         }
 
         private void Update()
@@ -342,6 +347,7 @@ namespace Clube.Game
                 SleepingRollPrefab = sleepingRollPrefab,
                 DailyCoins = dailyCoins,
                 Name = Name,
+                Post = Post,
             });
         }
 
