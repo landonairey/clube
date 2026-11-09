@@ -266,6 +266,21 @@ namespace Clube.Game
             return mesh;
         }
 
+        /// <summary>The blacksmith's disposition that opens the town's anvil and furnace to the player (GL472).</summary>
+        public const int SmithyDisposition = 25;
+
+        private static string BlacksmithName(Parts parts)
+        {
+            foreach (ShopSpecialty shop in parts.Shops)
+            {
+                if (shop != null && shop.Kind == ShopKind.Blacksmith)
+                {
+                    return shop.KeeperName;
+                }
+            }
+            return "the blacksmith";
+        }
+
         private static void BuildChoreProps(Parts parts)
         {
             TownContext town = parts.Town;
@@ -275,9 +290,14 @@ namespace Clube.Game
             Material m = parts.Material;
             float yaw = plan.Yaw;
 
-            // The game's own furnace and anvil in the yard beside the smithy (GL419): their models, not stations.
-            Copied(parts.FurnacePrefab, "Furnace", props, OnGround(plan, TownLayout.Furnace), yaw + 180f, town, true);
-            Copied(parts.AnvilPrefab, "Anvil", props, OnGround(plan, TownLayout.Anvil), yaw + 90f, town, true);
+            // The game's own furnace and anvil in the yard beside the smithy (GL419): their looks until the blacksmith's
+            // disposition reaches 25, then the real stations (GL472).
+            Disposition smith = parts.Post != null ? parts.Post.DispositionOf(ShopKind.Blacksmith) : new Disposition();
+            string keeper = BlacksmithName(parts);
+            GameObject furnace = Copied(parts.FurnacePrefab, "Furnace", props, OnGround(plan, TownLayout.Furnace), yaw + 180f, town, true);
+            furnace.AddComponent<TownStation>().Setup(parts.FurnacePrefab, smith, SmithyDisposition, keeper, "furnace");
+            GameObject anvil = Copied(parts.AnvilPrefab, "Anvil", props, OnGround(plan, TownLayout.Anvil), yaw + 90f, town, true);
+            anvil.AddComponent<TownStation>().Setup(parts.AnvilPrefab, smith, SmithyDisposition, keeper, "anvil");
 
             // The lumber keeper's seat by the woodpile (the woodpile and the trees are wood in the terrain, GL423).
             Model("Seat", props, TownMeshes.Stump(), m, OnGround(plan, TownLayout.Seat), yaw, town);
