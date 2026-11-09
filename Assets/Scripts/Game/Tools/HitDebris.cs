@@ -315,8 +315,9 @@ namespace Clube.Game
             }
         }
 
-        // An irregular low-poly lump about a unit across: an octahedron with its corners pushed in and out.
-        private static Mesh Chunk(string name, Vector3 scale, int seed)
+        // An irregular low-poly lump about a unit across: an octahedron with its corners pushed in and out. Also the
+        // leaves and splinters of a felling (FellingBurst).
+        internal static Mesh Chunk(string name, Vector3 scale, int seed)
         {
             var random = new System.Random(seed);
             Vector3[] corners =

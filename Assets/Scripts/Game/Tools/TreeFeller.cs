@@ -35,6 +35,10 @@ namespace Clube.Game
         [SerializeField]
         private Color dustColour = new Color(0.62f, 0.55f, 0.45f, 0.75f);
 
+        [Tooltip("Material for the leaves and splinters a landing throws up (GL469): the Clube/Held Item material, tinted per piece.")]
+        [SerializeField]
+        private Material burstMaterial;
+
         [Tooltip("Where landed leaves go to decay (GL350); on World.")]
         [SerializeField]
         private FallenLeaves fallenLeaves;
@@ -120,7 +124,8 @@ namespace Clube.Game
             FellingYield.CapWood(limb, WoodCap);
             var falling = new GameObject("Falling limb").AddComponent<FallingLimb>();
             falling.transform.SetParent(worldView.transform, false);
-            falling.Begin(worldView, limb, trees, mesh, origin, Materials(), FallDirection(), dustMaterial, dustColour, OnLanded);
+            falling.Begin(
+                worldView, limb, trees, mesh, origin, Materials(), FallDirection(), dustMaterial, dustColour, burstMaterial, OnLanded);
             Felled?.Invoke(limb);
             return true;
         }

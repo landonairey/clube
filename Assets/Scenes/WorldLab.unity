@@ -6462,6 +6462,7 @@ MonoBehaviour:
   swimRise: 2.4
   swimAcceleration: 6
   climbOutSpeed: 5
+  climbSpeedShare: 0.25
 --- !u!143 &1697135564
 CharacterController:
   m_ObjectHideFlags: 0
@@ -7496,7 +7497,9 @@ MonoBehaviour:
   view: {fileID: 371098496}
   dustMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
   dustColour: {r: 0.62, g: 0.55, b: 0.45, a: 0.75}
+  burstMaterial: {fileID: 2100000, guid: 4d599372257648141b207c3dbd8d5b8f, type: 2}
   fallenLeaves: {fileID: 1350119487}
+  skills: {fileID: 0}
 --- !u!114 &1697135611
 MonoBehaviour:
   m_ObjectHideFlags: 0
