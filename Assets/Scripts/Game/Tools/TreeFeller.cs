@@ -39,6 +39,10 @@ namespace Clube.Game
         [SerializeField]
         private FallenLeaves fallenLeaves;
 
+        [Tooltip("The skills whose Woodcutting level caps the wood a felled piece keeps (GL468); found on this object when empty.")]
+        [SerializeField]
+        private PlayerSkills skills;
+
         private TreeMaterials trees;
         private World treesFor;
 
@@ -47,6 +51,17 @@ namespace Clube.Game
 
         /// <summary>Raised when a limb comes off and starts to fall.</summary>
         public event System.Action<FelledLimb> Felled;
+
+        /// <summary>Most wood, in volume, a felled piece keeps at the player's Woodcutting level (GL468).</summary>
+        public float WoodCap => FellingYield.WoodCap(skills != null ? skills.Skills.Level(SkillType.Woodcutting) : 0);
+
+        private void Awake()
+        {
+            if (skills == null)
+            {
+                skills = GetComponent<PlayerSkills>();
+            }
+        }
 
         private void OnEnable()
         {
@@ -92,14 +107,17 @@ namespace Clube.Game
             TreeFelling.Remove(world, limb);
             if (HasFallen(limb))
             {
-                // Already lying down (on an old leaf pile, say): it just drops onto the ground, as it is (GL349).
+                // Already lying down (on an old leaf pile, say): it just drops onto the ground, as it is (GL349). It was
+                // capped when it fell, so it isn't again (GL468).
                 var wood = new List<Vector3Int>();
                 var leaves = new List<Vector3Int>();
                 TreeFelling.Land(world, limb, Vector3Int.zero, trees, iso, leafPacking: 1f, landedWood: wood, landedLeaves: leaves);
                 OnLanded(wood, leaves);
                 return true;
             }
+            // Meshed whole, so the whole piece falls; wood past the player's cap is gone once it lands (GL468).
             Mesh mesh = BuildMesh(limb, out Vector3 origin);
+            FellingYield.CapWood(limb, WoodCap);
             var falling = new GameObject("Falling limb").AddComponent<FallingLimb>();
             falling.transform.SetParent(worldView.transform, false);
             falling.Begin(worldView, limb, trees, mesh, origin, Materials(), FallDirection(), dustMaterial, dustColour, OnLanded);
