@@ -728,25 +728,25 @@ GL250 (ambient wildlife).
 
 ### Week of 2026-11-09 *(added 2026-11-09, from `Docs/backlogs/20261109 clube-backlog.md`; batches A–I, one branch and PR each)*
 - [x] **GL427** `Game` *(added 2026-11-09)* HUD and menu text 1.4x, inventory slots doubled, larger skill bars.
-- **A — bugs and quick tweaks**
-- [ ] **GL428** `Game` *(added 2026-11-09)* A new world starts at 7:00.
-- [ ] **GL429** `Game` *(added 2026-11-09)* The pause menu shows the game version under its box.
-- [ ] **GL430** `Game` *(added 2026-11-09)* An unlit campfire doesn't knock the player back.
-- [ ] **GL431** `Core` *(added 2026-11-09)* Bug: 99% cassiterite smelted into a 100% tin bun.
-- [ ] **GL432** `Core` *(added 2026-11-09)* Bug: a 0.14 leaf part burns forever as fuel.
-- [ ] **GL433** `Game` *(added 2026-11-09)* Ctrl-click at a trader picks every stack of the item, whatever its quality.
-- [ ] **GL434** `Game` *(added 2026-11-09)* Ctrl group selling works at the town's shopkeepers.
-- [ ] **GL435** `Game` *(added 2026-11-09)* Slot counts read on light icons (sand).
-- [ ] **GL436** `Game` *(added 2026-11-09)* Cursor text reads over the build preview hologram.
-- [ ] **GL437** `Game` *(added 2026-11-09)* The quest box stays shown under player screens and the field log.
-- [ ] **GL438** `Game` *(added 2026-11-09)* Journal text fits at the larger font size.
-- [ ] **GL439** `Game` *(added 2026-11-09)* The generic "Pickaxe" item is gone (copper and bronze picks stay).
-- [ ] **GL440** `Core` *(added 2026-11-09)* Ore separated out by refining crushed ore comes out crushed.
-- [ ] **GL441** `Game` *(added 2026-11-09)* The refining notice pops and fades on every cycle.
-- [ ] **GL442** `Game` *(added 2026-11-09)* The HUD's brush volume line becomes "Volume": the player's lifetime volume taken and placed.
-- [ ] **GL443** `Game` *(added 2026-11-09)* Every furnace screen shows its output yield (clay, brick, refractory).
-- [ ] **GL444** `Core + Game` *(added 2026-11-09)* Switching recipe moves what's in the output slot to the inventory.
-- [ ] **GL445** `Game` *(added 2026-11-09)* The camera never sees through the ground (cave head clipping).
+- **A — bugs and quick tweaks** *(done 2026-11-09, branch `gl428/batch-a`)*
+- [x] **GL428** `Game` *(added 2026-11-09)* A new world starts at 7:00.
+- [x] **GL429** `Game` *(added 2026-11-09)* The pause menu shows the game version under its box.
+- [x] **GL430** `Game` *(added 2026-11-09)* An unlit campfire doesn't knock the player back.
+- [x] **GL431** `Core` *(added 2026-11-09)* Bug: 99% cassiterite smelted into a 100% tin bun.
+- [x] **GL432** `Core` *(added 2026-11-09)* Bug: a 0.14 leaf part burns forever as fuel.
+- [x] **GL433** `Game` *(added 2026-11-09)* Ctrl-click at a trader picks every stack of the item, whatever its quality.
+- [x] **GL434** `Game` *(added 2026-11-09)* Ctrl group selling works at the town's shopkeepers.
+- [x] **GL435** `Game` *(added 2026-11-09)* Slot counts read on light icons (sand).
+- [x] **GL436** `Game` *(added 2026-11-09)* Cursor text reads over the build preview hologram.
+- [x] **GL437** `Game` *(added 2026-11-09)* The quest box stays shown under player screens and the field log.
+- [x] **GL438** `Game` *(added 2026-11-09)* Journal text fits at the larger font size.
+- [x] **GL439** `Game` *(added 2026-11-09)* The generic "Pickaxe" item is gone (copper and bronze picks stay).
+- [x] **GL440** `Core` *(added 2026-11-09)* Ore separated out by refining crushed ore comes out crushed.
+- [x] **GL441** `Game` *(added 2026-11-09)* The refining notice pops and fades on every cycle.
+- [x] **GL442** `Game` *(added 2026-11-09)* The HUD's brush volume line becomes "Volume": the player's lifetime volume taken and placed.
+- [x] **GL443** `Game` *(added 2026-11-09)* Every furnace screen shows its output yield (clay, brick, refractory).
+- [x] **GL444** `Core + Game` *(added 2026-11-09)* Switching recipe moves what's in the output slot to the inventory.
+- [x] **GL445** `Game` *(added 2026-11-09)* The camera never sees through the ground (cave head clipping).
 - **D — onboarding**
 - [ ] **GL446** `Game` *(added 2026-11-09)* The first quests show sketches of the boulder, a tree and the stump.
 - [ ] **GL447** `Game` *(added 2026-11-09)* A tips box under the quest box gives each early quest's tip.
