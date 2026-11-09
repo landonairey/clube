@@ -70,7 +70,8 @@ namespace Clube.Core
         {
             var model = new LowPolyMeshBuilder();
             float top = Mathf.Max(1.9f, 1.62f + height * 0.5f + 0.06f);
-            model.Prism(new Vector3(0f, -0.3f, 0f), new Vector3(0f, top, 0f), 0.06f, 0.05f, 6, DarkTimber);
+            // Behind the board, so it never crosses the words on its face.
+            model.Prism(new Vector3(0f, -0.3f, -0.09f), new Vector3(0f, top, -0.09f), 0.06f, 0.05f, 6, DarkTimber);
             model.Box(new Vector3(0f, 1.62f, 0f), new Vector3(width, height, 0.05f), Quaternion.identity, Plank * 1.1f);
             return model.Make("Sign post");
         }
