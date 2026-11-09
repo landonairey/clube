@@ -26,6 +26,9 @@ namespace Clube.Game
         // Real seconds between samples the miner takes from a node (GL415): slow on purpose.
         private const float MineSeconds = 6f;
 
+        // Samples dug out of an open pit with each swing (GL474): a quarter of a cubic metre at 0.25 m voxels.
+        private const int PitSamplesPerSwing = 16;
+
         private enum Place
         {
             Counter,
@@ -296,9 +299,10 @@ namespace Clube.Game
                     yield return InShop(TownLayout.OutsideDoor);
                     break;
                 case Place.Shaft when shaft != null:
+                    // Out of an open pit (GL474) over the ground; up a shaft's stairs on its line.
                     for (int i = shaft.Path.Count - 1; i >= 0; i--)
                     {
-                        yield return new Waypoint(shaft.Path[i], true);
+                        yield return new Waypoint(shaft.Path[i], !shaft.IsPit);
                     }
                     if (!TownLayout.IsInside(shaft.Head))
                     {
@@ -444,6 +448,16 @@ namespace Clube.Game
                     figure.Pose = KeeperPose.Lie;
                     break;
                 }
+                case Place.Shaft when shaft != null && shaft.IsPit:
+                {
+                    // In the pit's middle, on its floor as dug so far (GL474), facing the town.
+                    StandInPit();
+                    Vector2 towards = Plan.Centre - shaft.PitCentre;
+                    transform.rotation = town.SceneRotation(Mathf.Atan2(towards.x, towards.y) * Mathf.Rad2Deg);
+                    figure.Pose = KeeperPose.Mine;
+                    mineTime = 0f;
+                    break;
+                }
                 case Place.Shaft when shaft != null:
                 {
                     local = shaft.Path[shaft.Path.Count - 1];
@@ -505,6 +519,13 @@ namespace Clube.Game
                 return;
             }
             mineTime = 0f;
+            if (shaft.IsPit)
+            {
+                // A swing in the open pit (GL474) digs a spadeful, ore or not, and the miner stands on the new floor.
+                Mined += town.DigPit(shaft, PitSamplesPerSwing);
+                StandInPit();
+                return;
+            }
             Vector3 face = local + Vector3.up * 1.1f;
             Vector3 toNode = shaft.Node - local;
             toNode.y = 0f;
@@ -516,6 +537,14 @@ namespace Clube.Game
             {
                 Mined++;
             }
+        }
+
+        private void StandInPit()
+        {
+            Vector2 centre = shaft.PitCentre;
+            float near = placed && route.Count == 0 && place == Place.Shaft ? local.y : shaft.Path[0].y;
+            local = new Vector3(centre.x, Mathf.Max(shaft.PitFloor, town.GroundAt(centre.x, centre.y, near)), centre.y);
+            MoveFigure();
         }
 
         private KeeperPose ChorePose(int index)

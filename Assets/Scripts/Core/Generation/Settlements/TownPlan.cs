@@ -5,16 +5,32 @@ using UnityEngine;
 
 namespace Clube.Core
 {
-    /// <summary>One mine shaft of the town (GL414): which ore group it reaches, its head in the square and its floor line.</summary>
+    /// <summary>
+    /// One mine of the town (GL414): which ore group it reaches, its head in the square and its floor line. A stair shaft, or
+    /// an open pit over a node near the surface (GL474), whose path is the one point on the ground over its middle.
+    /// </summary>
     public sealed class TownShaft
     {
-        public TownShaft(int group, Vector2 head, Vector3 node, List<Vector3> path)
+        public TownShaft(int group, Vector2 head, Vector3 node, List<Vector3> path, float pitFloor = float.NaN)
         {
             Group = group;
             Head = head;
             Node = node;
             Path = path;
+            PitFloor = pitFloor;
         }
+
+        /// <summary>True for an open pit (GL474) rather than a stair shaft.</summary>
+        public bool IsPit => !float.IsNaN(PitFloor);
+
+        /// <summary>The height of a pit's floor when it's dug out (<see cref="OpenPit"/>); NaN for a shaft.</summary>
+        public float PitFloor { get; }
+
+        /// <summary>A pit's middle, in the world's local metres (x, z).</summary>
+        public Vector2 PitCentre => new Vector2(Node.x, Node.z);
+
+        /// <summary>How far a pit reaches from its middle at the ground; 0 for a shaft.</summary>
+        public float PitRadius => IsPit ? OpenPit.RimRadius(Path[0].y - PitFloor) : 0f;
 
         /// <summary>The ore group it was dug to, in the site request's order (tin, copper, silver, gold).</summary>
         public int Group { get; }
@@ -136,15 +152,24 @@ namespace Clube.Core
             }
             var towards = new List<Vector2>();
             var groups = new List<int>();
+            var pits = new List<(Vector2 Centre, float Radius)>();
             for (int g = 0; g < nodes.Length; g++)
             {
-                if (Site.OreDistances != null && g < Site.OreDistances.Length && !float.IsInfinity(Site.OreDistances[g]))
+                if (Site.OreDistances == null || g >= Site.OreDistances.Length || float.IsInfinity(Site.OreDistances[g]))
                 {
-                    towards.Add(ToTown(new Vector2(nodes[g].x, nodes[g].z)));
-                    groups.Add(g);
+                    continue;
                 }
+                // The first group's (tin's) node near the surface is an open pit (GL474), where there's room for one.
+                if (g == PitGroup && TryPlanPit(nodes[g], out TownShaft pit))
+                {
+                    shafts.Add(pit);
+                    pits.Add((pit.Head, pit.PitRadius));
+                    continue;
+                }
+                towards.Add(ToTown(new Vector2(nodes[g].x, nodes[g].z)));
+                groups.Add(g);
             }
-            List<Vector2> heads = TownLayout.ShaftHeads(towards);
+            List<Vector2> heads = TownLayout.ShaftHeads(towards, pits);
             for (int i = 0; i < heads.Count; i++)
             {
                 Vector2 head = ToWorld(heads[i]);
@@ -152,6 +177,31 @@ namespace Clube.Core
                 shafts.Add(new TownShaft(groups[i], heads[i], node, TownStructures.ShaftPath(head, node, natural)));
             }
             return shafts;
+        }
+
+        /// <summary>The ore group whose node may be an open pit (GL474): the first, tin.</summary>
+        public const int PitGroup = 0;
+
+        // An open pit over the node (GL474): its floor a metre under the node's centre, no deeper than OpenPit.MaxDepth under
+        // the ground, and with room round it (off the town's shops, paths and wall).
+        private bool TryPlanPit(Vector3 node, out TownShaft pit)
+        {
+            pit = null;
+            var centre = new Vector2(node.x, node.z);
+            float ground = natural(centre.x, centre.y);
+            float floor = node.y - 1f;
+            float depth = ground - floor;
+            if (depth > OpenPit.MaxDepth)
+            {
+                return false;
+            }
+            Vector2 head = ToTown(centre);
+            if (!TownLayout.IsClearForPit(head, OpenPit.RimRadius(depth)))
+            {
+                return false;
+            }
+            pit = new TownShaft(PitGroup, head, node, new List<Vector3> { new Vector3(centre.x, ground, centre.y) }, Mathf.Min(floor, ground));
+            return true;
         }
 
         /// <summary>The trees in the corner by the lumber shop, young ones of the world's own kinds (small enough for the corner), and

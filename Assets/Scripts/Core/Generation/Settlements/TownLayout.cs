@@ -250,6 +250,12 @@ namespace Clube.Core
         /// </summary>
         public static List<Vector2> ShaftHeads(IReadOnlyList<Vector2> towards)
         {
+            return ShaftHeads(towards, null);
+        }
+
+        /// <summary>As <see cref="ShaftHeads(IReadOnlyList{Vector2})"/>, keeping the stairwells off open pits (GL474: centre and radius, town frame).</summary>
+        public static List<Vector2> ShaftHeads(IReadOnlyList<Vector2> towards, IReadOnlyList<(Vector2 Centre, float Radius)> pits)
+        {
             var heads = new List<Vector2>();
             var spots = new List<Vector2>();
             // Inside the square or out past the wall (shafts may lie outside the town).
@@ -259,7 +265,7 @@ namespace Clube.Core
                 for (float x = -reach; x <= reach + 1e-3f; x += 0.5f)
                 {
                     var spot = new Vector2(x, z);
-                    if (IsClearForShaft(spot))
+                    if (IsClearForShaft(spot) && !NearPit(spot, pits))
                     {
                         spots.Add(spot);
                     }
@@ -290,6 +296,37 @@ namespace Clube.Core
                 heads.Add(best);
             }
             return heads;
+        }
+
+        private static bool NearPit(Vector2 spot, IReadOnlyList<(Vector2 Centre, float Radius)> pits)
+        {
+            if (pits == null)
+            {
+                return false;
+            }
+            foreach ((Vector2 centre, float radius) in pits)
+            {
+                if ((spot - centre).magnitude < radius + ShaftHeadRadius + 1f)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// True where an open pit of a radius at the ground (GL474) may be dug, town frame: wholly outside the wall and off the
+        /// way up to the gate, or a small one in a free spot of the square (where a stairwell could go).
+        /// </summary>
+        public static bool IsClearForPit(Vector2 spot, float radius)
+        {
+            float far = Mathf.Max(Mathf.Abs(spot.x), Mathf.Abs(spot.y));
+            if (far - radius > OuterHalf + 0.5f)
+            {
+                // Outside: clear of the approach to the gate.
+                return !(Mathf.Abs(spot.x) < GateWidth * 0.5f + radius + 1.5f && spot.y < 0f);
+            }
+            return radius <= ShaftHeadRadius && IsClearForShaft(spot);
         }
 
         private static bool IsClearForShaft(Vector2 spot)

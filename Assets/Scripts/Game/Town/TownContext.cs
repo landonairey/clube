@@ -73,5 +73,28 @@ namespace Clube.Game
             }
             return NodeMining.TakeNearest(worldView.World, local, 1.6f, ores, worldView.Config.IsoLevel).HasValue;
         }
+
+        private readonly Dictionary<TownShaft, Queue<Vector3Int>> pitOrders = new Dictionary<TownShaft, Queue<Vector3Int>>();
+
+        /// <summary>
+        /// Digs a few more samples out of an open pit (GL474), in <see cref="OpenPit"/>'s order (worked out the first time);
+        /// returns how many were its group's ore. 0 once it's dug out.
+        /// </summary>
+        public int DigPit(TownShaft pit, int samples)
+        {
+            if (!worldView.IsReady || pit == null || !pit.IsPit)
+            {
+                return 0;
+            }
+            float iso = worldView.Config.IsoLevel;
+            if (!pitOrders.TryGetValue(pit, out Queue<Vector3Int> order))
+            {
+                // Up to a couple of metres over the ground as generated: the land there may stand a little higher.
+                order = OpenPit.Plan(worldView.World, pit.PitCentre, pit.PitFloor, pit.Path[0].y + 2f, iso);
+                pitOrders[pit] = order;
+            }
+            groupOres.TryGetValue(pit.Group, out HashSet<byte> ores);
+            return OpenPit.Dig(worldView.World, order, samples, iso, ores);
+        }
     }
 }

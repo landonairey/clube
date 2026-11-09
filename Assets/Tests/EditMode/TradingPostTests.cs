@@ -138,6 +138,69 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void OpenPit_Cone_FloorRadiusThenFortyFiveDegreeWalls()
+        {
+            var centre = new Vector2(10f, 10f);
+            Assert.IsTrue(OpenPit.Contains(new Vector3(11f, 5f, 10f), centre, 5f));
+            Assert.IsFalse(OpenPit.Contains(new Vector3(12f, 5f, 10f), centre, 5f));
+            Assert.IsTrue(OpenPit.Contains(new Vector3(12f, 5.6f, 10f), centre, 5f));
+            Assert.IsFalse(OpenPit.Contains(new Vector3(10f, 4.9f, 10f), centre, 5f));
+            Assert.AreEqual(4.5f, OpenPit.RimRadius(3f), 1e-5f);
+        }
+
+        [Test]
+        public void OpenPit_DigsTopAndMiddleFirst_AndCountsOre()
+        {
+            // A 16 m block of ground up to y = 6 m with ore at the floor, a pit 2 m deep in its middle.
+            var world = new World(new Vector3Int(16, 16, 16), 1f);
+            world.Load(Vector3Int.zero, null);
+            for (int z = 0; z <= 16; z++)
+            {
+                for (int y = 0; y <= 16; y++)
+                {
+                    for (int x = 0; x <= 16; x++)
+                    {
+                        var sample = new Vector3Int(x, y, z);
+                        world.SetDensity(sample, y <= 6 ? 1f : 0f);
+                        world.SetMaterial(sample, (byte)(y <= 4 ? 7 : 1));
+                    }
+                }
+            }
+            var centre = new Vector2(8f, 8f);
+            Queue<Vector3Int> order = OpenPit.Plan(world, centre, 4f, 7f, 0.5f);
+            Assert.Greater(order.Count, 0);
+            Assert.AreEqual(new Vector3Int(8, 6, 8), order.Peek());
+            Assert.AreEqual(0, OpenPit.Dig(world, order, 1, 0.5f, new HashSet<byte> { 7 }));
+            Assert.Less(world.GetDensity(new Vector3Int(8, 6, 8)) ?? 1f, 0.5f);
+            // Dug out to the end, the floor's ore comes up and nothing outside the cone is touched.
+            int ore = OpenPit.Dig(world, order, 10000, 0.5f, new HashSet<byte> { 7 });
+            Assert.Greater(ore, 0);
+            Assert.AreEqual(0, order.Count);
+            Assert.GreaterOrEqual(world.GetDensity(new Vector3Int(8, 3, 8)) ?? 0f, 0.5f);
+            Assert.GreaterOrEqual(world.GetDensity(new Vector3Int(14, 6, 8)) ?? 0f, 0.5f);
+        }
+
+        [Test]
+        public void TownLayout_PitClear_OutsideTheWallOrSmallInAFreeSpot()
+        {
+            Assert.IsTrue(TownLayout.IsClearForPit(new Vector2(TownLayout.OuterHalf + 5f, 0f), 3f));
+            Assert.IsFalse(TownLayout.IsClearForPit(new Vector2(TownLayout.OuterHalf + 1f, 0f), 3f));
+            // On the way up to the gate.
+            Assert.IsFalse(TownLayout.IsClearForPit(new Vector2(0f, -TownLayout.OuterHalf - 5f), 3f));
+            // On a shop.
+            Assert.IsFalse(TownLayout.IsClearForPit(TownLayout.PlotOf(ShopKind.Blacksmith).Centre, 2f));
+        }
+
+        [Test]
+        public void TownLayout_ShaftHeads_KeepOffPits()
+        {
+            var pit = new Vector2(TownLayout.OuterHalf + 6f, 4f);
+            List<Vector2> heads = TownLayout.ShaftHeads(new List<Vector2> { pit }, new List<(Vector2, float)> { (pit, 4f) });
+            Assert.AreEqual(1, heads.Count);
+            Assert.GreaterOrEqual((heads[0] - pit).magnitude, 4f + TownLayout.ShaftHeadRadius + 1f - 1e-3f);
+        }
+
+        [Test]
         public void Disposition_Restore_ClampsAndRaisesChanged()
         {
             var disposition = new Disposition();

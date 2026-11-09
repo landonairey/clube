@@ -329,10 +329,12 @@ namespace Clube.Game
                 var root = new GameObject($"{name} mine").transform;
                 root.SetParent(shafts, false);
                 // The post stands just outside the middle of the stairwell's near side, its board facing out.
-                Vector2 corner = shaft.Head + new Vector2(0f, -(TownStructures.SpiralHalf + TownStructures.ShaftWidth * 0.5f + 0.35f));
+                // An open pit's post stands just past its rim (GL474), in daylight: no torches.
+                float signOffset = shaft.IsPit ? shaft.PitRadius + 0.6f : TownStructures.SpiralHalf + TownStructures.ShaftWidth * 0.5f + 0.35f;
+                Vector2 corner = shaft.Head + new Vector2(0f, -signOffset);
                 GameObject sign = Model("Sign", root, post, parts.Material, OnGround(plan, corner), plan.Yaw + 180f, town);
-                Text(sign.transform, $"{name} mine", new Vector3(0f, 1.62f, 0.03f), parts.TextMaterial, 0.03f);
-                if (parts.TorchPrefab == null)
+                Text(sign.transform, shaft.IsPit ? $"{name} pit" : $"{name} mine", new Vector3(0f, 1.62f, 0.03f), parts.TextMaterial, 0.03f);
+                if (parts.TorchPrefab == null || shaft.IsPit)
                 {
                     continue;
                 }
