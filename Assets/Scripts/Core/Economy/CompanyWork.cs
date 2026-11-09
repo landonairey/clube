@@ -19,7 +19,7 @@ namespace Clube.Core
         public const float BesideRoad = 18f;
 
         /// <summary>The quarry's floor, in metres under the ground at its centre.</summary>
-        public const float Depth = 3f;
+        public const float Depth = 5f;
 
         /// <summary>Metres past the pit's rim the worker may stand while carrying company stone.</summary>
         public const float Margin = 5f;
