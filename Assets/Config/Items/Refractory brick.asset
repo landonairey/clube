@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Refractory brick
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
   id: refractory-brick
-  displayName: Refractory brick
+  displayName: Firebrick
   icon: {fileID: 2800000, guid: 0423847510d61dc4ebd5d9a467852d36, type: 3}
   maxStack: 256
   unitVolume: 1

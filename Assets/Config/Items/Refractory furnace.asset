@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Refractory furnace
   m_EditorClassIdentifier: Clube.Core::Clube.Core.PlaceableDefinition
   id: refractory-furnace
-  displayName: Refractory furnace
+  displayName: Firebrick furnace
   icon: {fileID: 2800000, guid: 0d71551ab4e4bf94abfe9f71a95eb63e, type: 3}
   maxStack: 1
   unitVolume: 1
