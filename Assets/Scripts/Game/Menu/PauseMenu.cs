@@ -50,6 +50,7 @@ namespace Clube.Game
         private GUIStyle hintStyle;
         private GUIStyle fieldStyle;
         private GUIStyle problemStyle;
+        private GUIStyle versionStyle;
 
         public bool IsOpen { get; private set; }
 
@@ -252,6 +253,9 @@ namespace Clube.Game
                 Exit();
             }
             GUILayout.EndArea();
+            // The game's version just under the box (GL429), for playtest reports.
+            float boxBottom = (Screen.height + height) * 0.5f;
+            GUI.Label(new Rect(0f, boxBottom + 6f, Screen.width, 30f), BuildInfo.Version, versionStyle);
         }
 
         // The save's name (GL207), filled in with the default: world, mode and the time.
@@ -357,6 +361,7 @@ namespace Clube.Game
             hintStyle = new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(12), wordWrap = true, normal = { textColor = new Color(0.72f, 0.72f, 0.7f) } };
             fieldStyle = new GUIStyle(GUI.skin.textField) { fontSize = GameUi.Font(16), alignment = TextAnchor.MiddleLeft, padding = new RectOffset(8, 8, 4, 4) };
             problemStyle = new GUIStyle(GUI.skin.label) { wordWrap = true, normal = { textColor = new Color(1f, 0.6f, 0.5f) } };
+            versionStyle = new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(12), alignment = TextAnchor.UpperCenter, normal = { textColor = new Color(0.85f, 0.85f, 0.82f) } };
         }
     }
 }
