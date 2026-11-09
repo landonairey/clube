@@ -777,13 +777,13 @@ GL250 (ambient wildlife).
 - [x] **GL467** `Game` *(added 2026-11-09)* Hold Space against a steep face to climb at 25% walk speed.
 - [x] **GL468** `Core + Game` *(added 2026-11-09)* Felling yields at most 10 volume at Woodcutting 0 (+10% a level, compounding); climbing lets limbs be cut one at a time.
 - [x] **GL469** `Game` *(added 2026-11-09)* A bigger felling dust cloud with leaves thrown up that shrink away, hiding the landing.
-- **E — trading post**
-- [ ] **GL470** `Core + Game` *(added 2026-11-09)* The town is a trading post with a named wooden sign (first pass of ST8).
-- [ ] **GL471** `Core + Game` *(added 2026-11-09)* Shopkeeper disposition 0-100 (starts 10, +1 per 100c traded); each point under 100 is 1% worse on both buy and sell prices. Saved.
-- [ ] **GL472** `Game` *(added 2026-11-09)* The town's anvil and furnace work for the player at blacksmith disposition 25.
-- [ ] **GL473** `Game` *(added 2026-11-09)* At 10k coins the merchant sells the trading post parcel for 10k: unlocked for digging, 500c a day.
-- [ ] **GL474** `Core + Game` *(added 2026-11-09)* The tin mine is an open pit the miner digs over time.
-- [ ] **GL475** `Core + Game` *(added 2026-11-09)* A secret cave under the town: crates of shop valuables, one torch, a thief.
+- **E — trading post** *(done 2026-11-09, branch `gl470/trading-post`)*
+- [x] **GL470** `Core + Game` *(added 2026-11-09)* The town is a trading post with a named wooden sign (first pass of ST8).
+- [x] **GL471** `Core + Game` *(added 2026-11-09)* Shopkeeper disposition 0-100 (starts 10, +1 per 100c traded); each point under 100 is 1% worse on both buy and sell prices. Saved.
+- [x] **GL472** `Game` *(added 2026-11-09)* The town's anvil and furnace work for the player at blacksmith disposition 25.
+- [x] **GL473** `Game` *(added 2026-11-09)* At 10k coins the merchant sells the trading post parcel for 10k: unlocked for digging, 500c a day.
+- [x] **GL474** `Core + Game` *(added 2026-11-09)* The tin mine is an open pit the miner digs over time.
+- [x] **GL475** `Core + Game` *(added 2026-11-09)* A secret cave under the town: crates of shop valuables, one torch, a thief.
 - **F — travelers**
 - [ ] **GL476** `Game` *(added 2026-11-09)* After night 5 a lone adventurer camps on the nearest peak (campfire seen at night), trading everything with 10k coins.
 - [ ] **GL477** `Core + Game` *(added 2026-11-09)* A trade cart every 2-3 days on a cart path to a distant town (10+ parcels), with lootable crates.
@@ -1238,7 +1238,7 @@ Villages and towns are placed where the natural resources would support them.
 - [ ] **ST5** `Core` Deterministic from seed, using the same world-cell approach as ore centroids (O2), so settlements exist before their chunks are loaded.
 - [ ] **ST6** `Core` Flatten/clear terrain under building footprints.
 - [ ] **ST7** `Lab` Map overlay showing region scores, chosen settlement sites, and why each specialization was picked.
-- [ ] **ST8** `Core` *(backlog)* Town name generator, seeded per settlement (ST5).
+- [ ] **ST8** `Core` *(backlog)* Town name generator, seeded per settlement (ST5). *(First pass 2026-11-09, GL470: `SettlementNames` (Core/Generation/Settlements) joins a first part and an ending by the world seed and the parcel.)*
   - Pattern: `[Descriptor] [Geological feature] [Settlement type]`, e.g. *Wind River Village*, *Stone Mountain City*, *Gold Coast Outpost*.
   - Descriptors: colours, adjectives, and resource types (copper, silver, gold, steel, iron, bronze, brick, clay, cedar, maple, oak, …).
   - Settlement types: Camp, Outpost, Village, Town, City. The type tracks the ST4 tier, so a town can grow from *Iron Creek Camp* to *Iron Creek City*.

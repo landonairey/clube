@@ -656,3 +656,17 @@ caps the wood a felled piece keeps at 10 x 1.1^Woodcutting level: `TreeFeller` m
 wood nearest the cut (`FelledLimb.WoodLost` counts the rest), so landed wood is what can be gathered; re-cut landed wood isn't
 capped again. `FallingLimb` starts a bigger dust cloud just before landing (sized by the piece, thick from its first frame) and
 keeps the mesh 0.7 s under it; `FellingBurst` throws up leaves that shrink away, and splinters for lost wood. Tests: `FellingYieldTests`.
+
+Week of 2026-11-09, batch E (GL470-GL475, branch `gl470/trading-post`): the town is a trading post with a name on a wooden sign by
+its gate (`SettlementNames`, Core/Generation/Settlements, first pass of ST8: world seed and parcel). `TradingPost` (Game/Town,
+`ISavedValues`, added to the Town object by `TownSite`) is the only saved part of a settlement: each keeper's `Disposition`
+(Core/Economy: starts at 10, +1 per 100c of trade (sales, purchases, lessons), each point under 100 is 1% markup and 1% off what
+they pay; `PriceList.Scaled`/`Share`, shown in `MerchantPanel`), the `PropertySale` (the merchant offers the post for 10k through
+`ITraderDeal` once the player has it; owned, `LandParcels.Unlock` frees the parcel and it pays 500c a game day), and what's left in
+the cave's crates. `TownStation` keeps the smithy's anvil and furnace as looks with a notice until the blacksmith reaches 25, then
+swaps in the real stations. Tin's node within `OpenPit.MaxDepth` (6 m) of the ground, with room, is an open pit (`TownShaft.IsPit`):
+grass cleared to dirt at the start, and the miner digs `OpenPit`'s cone (Core/Editing: 45° walls, centre and top first) 16 samples
+a swing, standing on the new floor. `TownCave` (Core/Generation/Settlements) is a round room under the back of the square (or a
+side clear of the mines) with a tunnel up to an opening outside the wall; `TownBuilder.BuildCave` puts three crates
+(`TownSite.cratePrefab`, the wooden chest) of the shops' dearest goods, an everlasting torch and the thief (`KeeperFigure.BuildThief`,
+`TownThief`) in it. Tests: `TradingPostTests`.
