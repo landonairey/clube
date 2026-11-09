@@ -638,3 +638,7 @@ stack so report order doesn't matter. `DisplaySettings` (Game/Settings) has the 
 mode (Window, BorderlessWindow, FullScreen = `FullScreenWindow`); borderless strips the window frame through user32 in
 Windows builds only. The Video page draws them first. `ParcelBorders` draws maple wood posts and two rails
 (`LowPolyMeshBuilder`, the LowPoly material) above ground and a faint band below it.
+
+GL478 (branch `gl478/lick-ore`): `PlayerProspecting` also licks the selected ore on Place when not aimed at a boulder
+(`BoulderBashing.CanBash`): one item (or the part left) is used up for Prospecting xp (1, or 3 for an ore not yet told
+apart) and `ToolHint` says its grade.
