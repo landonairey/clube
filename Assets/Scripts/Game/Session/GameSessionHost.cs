@@ -94,6 +94,10 @@ namespace Clube.Game
                 player.Restore(restoring.Player, items, materials);
             }
             PlacedObjectSaving.Restore(restoring.Placed, items, materials);
+            foreach (ISavedValues saved in SavedValues())
+            {
+                saved.RestoreValues(restoring.Values);
+            }
             restoring = null;
         }
 
@@ -105,6 +109,18 @@ namespace Clube.Game
 
         // The day the game is on, from the sky's clock; day 1 without one.
         private int Day => GetComponent<DayNightCycle>() is DayNightCycle sky ? sky.Day : 1;
+
+        // Every component in the scene that keeps named values (GL442).
+        private static IEnumerable<ISavedValues> SavedValues()
+        {
+            foreach (MonoBehaviour behaviour in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (behaviour is ISavedValues saved)
+                {
+                    yield return saved;
+                }
+            }
+        }
 
         /// <summary>Everything a save keeps, as it is now, under a name.</summary>
         public GameSave Capture(string saveName)
@@ -134,6 +150,10 @@ namespace Clube.Game
             if (player != null && player.IsReady)
             {
                 save.Player = player.Capture();
+            }
+            foreach (ISavedValues saved in SavedValues())
+            {
+                saved.SaveValues(save.Values);
             }
             if (drying != null)
             {

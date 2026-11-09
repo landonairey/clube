@@ -31,6 +31,12 @@ namespace Clube.Core
 
         /// <summary>The cells whose bushes were picked or broken (GL236; save version 4): they stay gone.</summary>
         public List<Vector2Int> RemovedBushes = new List<Vector2Int>();
+
+        /// <summary>
+        /// Small named values (version 6, GL442): a lifetime count, a timer, a flag. New state of that size adds a key here
+        /// (see <c>ISavedValues</c> in Game) instead of raising the format version.
+        /// </summary>
+        public Dictionary<string, string> Values = new Dictionary<string, string>();
     }
 
     /// <summary>
@@ -42,9 +48,9 @@ namespace Clube.Core
         /// <summary>
         /// Format version written by this build (S1). Raise it when the format changes, and upgrade older ones on read.
         /// 1: the first. 2: the save's and the world's names (GL206, GL207). 3: the quests done (GL216), at the body's end.
-        /// 4: the bushes picked or broken (GL236), after the quests.
+        /// 4: the bushes picked or broken (GL236), after the quests. 5: placed objects' wear (GL287). 6: named values (GL442).
         /// </summary>
-        public const int CurrentVersion = 5;
+        public const int CurrentVersion = 6;
 
         public int Version = CurrentVersion;
 

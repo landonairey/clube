@@ -90,6 +90,13 @@ namespace Clube.Core
                 });
                 // Version 5 (GL287): what each placed object has burned, in the order they were written.
                 WriteList(body, save.Placed, (w, p) => w.Write(p.Wear));
+                // Version 6 (GL442): named values.
+                body.Write(save.Values.Count);
+                foreach (KeyValuePair<string, string> value in save.Values)
+                {
+                    body.Write(value.Key ?? "");
+                    body.Write(value.Value ?? "");
+                }
             }
             writer.Dispose();
         }
@@ -124,6 +131,15 @@ namespace Clube.Core
                     for (int i = 0; i < wear.Count && i < save.Placed.Count; i++)
                     {
                         save.Placed[i].Wear = wear[i];
+                    }
+                }
+                if (save.Header.Version >= 6)
+                {
+                    int count = body.ReadInt32();
+                    for (int i = 0; i < count; i++)
+                    {
+                        string key = body.ReadString();
+                        save.Values[key] = body.ReadString();
                     }
                 }
             }
