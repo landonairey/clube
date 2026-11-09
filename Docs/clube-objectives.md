@@ -760,11 +760,11 @@ GL250 (ambient wildlife).
 - [x] **GL454** `Game` *(added 2026-11-09)* The flat rock crushes and refines at twice the boulder's batch.
 - [x] **GL455** `Core + Game` *(added 2026-11-09)* A Goldsmithing skill (jewellery recipes come later; first pass of a Chapter 6 craft).
 - [x] **GL456** `Core + Game` *(added 2026-11-09)* Coffee: 50c at the trading post merchant, unstackable; drinking gives 25% quicker cooldowns for 3 game hours, a refill resets the time.
-- **C — prospecting and hit effects**
-- [ ] **GL457** `Core + Game` *(added 2026-11-09)* Stack contents show by Prospecting level: the main material and a coloured grade first, one more component per level, exact shares at level 10.
-- [ ] **GL458** `Game` *(added 2026-11-09)* Bare-hand right click prospects a ground voxel for xp (more for an unknown ore, once per voxel).
-- [ ] **GL459** `Game` *(added 2026-11-09)* Crushing has a sound, a hand smash, flying fragments and some sparks.
-- [ ] **GL460** `Game` *(added 2026-11-09)* Mining debris always splashes outward, with occasional sparks.
+- **C — prospecting and hit effects** *(done 2026-11-09, branch `gl457/prospecting`)*
+- [x] **GL457** `Core + Game` *(added 2026-11-09)* Stack contents show by Prospecting level: the main material and a coloured grade first, one more component per level, exact shares at level 10.
+- [x] **GL458** `Game` *(added 2026-11-09)* Bare-hand right click prospects a ground voxel for xp (more for an unknown ore, once per voxel).
+- [x] **GL459** `Game` *(added 2026-11-09)* Crushing has a sound, a hand smash, flying fragments and some sparks.
+- [x] **GL460** `Game` *(added 2026-11-09)* Mining debris always splashes outward, with occasional sparks.
 - **I — UI and settings**
 - [ ] **GL461** `Game` *(added 2026-11-09)* A minimap top left; the lab HUD box moves under it.
 - [ ] **GL462** `Game` *(added 2026-11-09)* Graphics: 16:9, 21:9 and 32:9 resolution presets, window or full screen, bordered or borderless (part of P10).

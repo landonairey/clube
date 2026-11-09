@@ -621,3 +621,12 @@ also works the flat rock (`flatRock`), two batches a cycle. `SkillType.Goldsmith
 `ConsumableDefinition` (Core/Items): `PlayerConsumables` (on Player) drinks it on Place, multiplies
 `ToolCooldown.SecondsFor`'s boost for its game hours, shows a line over the hotbar and saves through `ISavedValues`; the
 trading post merchant sells it at 50c (listed 100 per 3, times the town's 1.5).
+
+Batch C (GL457-GL460, branch `gl457/prospecting`): `ProspectReading` (Core/Items) reads gathered stacks below Prospecting 10
+as grades (`Grade`: PURE, High Grade, Good, Medium, Poor, each a colour), the stack's own material first, one more component
+a level, the rest "?"; `ItemSlotGui.ProspectingLevel` (set by `PlayerSkills`) switches the slot corner to a short grade and
+the tooltip to rich-text grades. `PlayerProspecting` (on Player): bare-hand Place reads the aimed sample (ore contents from
+`OreField.ContentsAt`) through `ToolHint`, with Prospecting xp once per sample (saved). `BoulderBashing.OreCrushed` drives a
+`SoundSynth.Crush` sound (`PlayerSounds.Crushed`), a `HeldToolView` strike and ore fragments. `HitDebris` splashes crumbs in a
+cone out of the struck face (towards the head), floors each crumb on the ground below it ignoring the player, and throws
+sparks (the torch flame material) off rock and crushes.
