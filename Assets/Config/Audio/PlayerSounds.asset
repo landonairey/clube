@@ -125,15 +125,6 @@ MonoBehaviour:
       volume: 0.6
       pitchJitter: 0.1
       playAll: 0
-  - tool: {fileID: 11400000, guid: 5c26ed0b0bc9f364eb573719b28d57bf, type: 2}
-    sound:
-      clips:
-      - {fileID: 8300000, guid: 0b3fe07558da8384c8e087cd011b6d00, type: 3}
-      - {fileID: 8300000, guid: 3be405fb7bf5d6a47b603be5fb011a53, type: 3}
-      - {fileID: 8300000, guid: 8fc2add3e7f4dd64fb2d20f7b48cadb7, type: 3}
-      volume: 0.6
-      pitchJitter: 0.1
-      playAll: 0
   - tool: {fileID: 11400000, guid: 491e33a691a865b42bde1489ab967008, type: 2}
     sound:
       clips:
