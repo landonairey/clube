@@ -12,6 +12,7 @@ namespace Clube.Game
     /// the material there as far as the player's Prospecting level allows (<see cref="ProspectReading"/>: the material and its
     /// grade, one more component a level) and gives a little Prospecting xp. An ore the player can't tell apart yet reads as a
     /// question mark and gives more. Each sample gives xp once (kept in saves); reading it again still tells what it is.
+    /// With an ore selected instead, away from a boulder, right click licks it (GL478): one is used up for Prospecting xp.
     /// </summary>
     public class PlayerProspecting : MonoBehaviour, ISavedValues
     {
@@ -33,12 +34,21 @@ namespace Clube.Game
         [SerializeField, Min(0f)]
         private float unknownExperience = 2f;
 
+        [Tooltip("Prospecting xp for licking one ore item the player knows (GL478).")]
+        [SerializeField, Min(0f)]
+        private float lickExperience = 1f;
+
+        [Tooltip("Prospecting xp for licking one ore item the player can't tell apart yet.")]
+        [SerializeField, Min(0f)]
+        private float unknownLickExperience = 3f;
+
         private PlayerController player;
         private PlayerInventory inventory;
         private Hotbar hotbar;
         private PlayerSkills skills;
         private OreKnowledge knowledge;
         private ToolHint hint;
+        private BoulderBashing bashing;
         private WorldView worldView;
 
         // Samples already prospected for xp.
@@ -46,6 +56,9 @@ namespace Clube.Game
 
         /// <summary>Raised after a reading, with the text shown.</summary>
         public event System.Action<string> Read;
+
+        /// <summary>Raised when an ore is licked (GL478), with what was licked.</summary>
+        public event System.Action<ItemDefinition> Licked;
 
         private void Awake()
         {
@@ -55,6 +68,7 @@ namespace Clube.Game
             skills = GetComponent<PlayerSkills>();
             knowledge = GetComponent<OreKnowledge>();
             hint = GetComponent<ToolHint>();
+            bashing = GetComponent<BoulderBashing>();
         }
 
         private void OnEnable()
@@ -69,14 +83,83 @@ namespace Clube.Game
                 worldView = FindFirstObjectByType<WorldView>();
             }
             if (player == null || !player.enabled || player.IsInMenu || player.IsCursorFree || placeAction == null
-                || worldView == null || !worldView.IsReady || !placeAction.action.WasPressedThisFrame() || !HandsEmpty())
+                || worldView == null || !worldView.IsReady || !placeAction.action.WasPressedThisFrame())
             {
+                return;
+            }
+            if (!HandsEmpty())
+            {
+                // An ore in hand, away from a boulder (where right click crushes it): a lick (GL478).
+                if (bashing == null || !bashing.CanBash)
+                {
+                    TryLick();
+                }
                 return;
             }
             if (TryGetAimedSample(out Vector3Int sample, out VoxelMaterial material))
             {
                 Prospect(sample, material);
             }
+        }
+
+        // Licks the selected ore (GL478): one of it (or the part that's left) is used up for Prospecting xp, more for an ore
+        // the player can't tell apart yet, and the reading their level allows of what it's made of.
+        private bool TryLick()
+        {
+            int slot = hotbar.SelectedSlot;
+            ItemStack held = inventory.Inventory[slot];
+            if (!IsOre(held, out VoxelMaterial ore))
+            {
+                return false;
+            }
+            bool known = !held.Item.HidesContents && (ore == null || knowledge == null || knowledge.Knows(ore));
+            float amount = Mathf.Min(1f, held.Amount);
+            float xp = (known ? lickExperience : unknownLickExperience) * amount;
+            string taste = known && ore != null ? Taste(held, ore) : "a taste I can't place yet";
+            inventory.Inventory.RemoveAmount(slot, amount);
+            skills?.Skills.Award(SkillType.Prospecting, xp);
+            string text = $"Licked the {held.Item.DisplayName.ToLowerInvariant()}: {taste}  (+{xp:0.#} Prospecting)";
+            hint?.Show(text);
+            Licked?.Invoke(held.Item);
+            Read?.Invoke(text);
+            return true;
+        }
+
+        // Ore: a hidden "? ore", or a stack whose own material is an ore (raw or crushed).
+        private bool IsOre(ItemStack stack, out VoxelMaterial ore)
+        {
+            ore = null;
+            if (stack.IsEmpty)
+            {
+                return false;
+            }
+            if (stack.Item.HidesContents)
+            {
+                return true;
+            }
+            MaterialRegistry materials = worldView.Config.Materials;
+            if (stack.Contents == null || materials == null)
+            {
+                return false;
+            }
+            foreach (Content part in stack.Contents.Parts)
+            {
+                if (part.Material != null && part.Material.Category == VoxelMaterialCategory.Ore && materials.IsSourceOf(part.Material, stack.Item))
+                {
+                    ore = part.Material;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // "High Grade chalcopyrite" below Prospecting 10, "92% chalcopyrite" at it.
+        private string Taste(ItemStack stack, VoxelMaterial ore)
+        {
+            float share = stack.Contents != null ? stack.Contents.FractionOf(ore) : 1f;
+            int level = skills != null ? skills.Skills.Level(SkillType.Prospecting) : 0;
+            string grade = level >= ProspectReading.ExactLevel ? QualityText.Percent(share) : ProspectReading.Name(ProspectReading.GradeOf(share));
+            return $"{grade} {ore.DisplayName.ToLowerInvariant()}";
         }
 
         // Nothing selected in the hotbar: bare hands.
