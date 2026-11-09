@@ -100,8 +100,8 @@ namespace Clube.Game
             }
             float x = area.x + sketchWidth + 14f;
             float width = area.xMax - x;
-            GUI.Label(new Rect(x, area.y + 2f, width, 26f), entry.Title, JournalBook.Title);
-            GUI.Label(new Rect(x, area.y + 28f, width, area.height - 34f), entry.Body, JournalBook.Text);
+            JournalBook.FitLabel(new Rect(x, area.y + 2f, width, 32f), entry.Title, JournalBook.Title);
+            JournalBook.FitLabel(new Rect(x, area.y + 34f, width, area.height - 40f), entry.Body, JournalBook.Text);
         }
 
         // Writes every page from the recipes, the ore groups and the player's skills.

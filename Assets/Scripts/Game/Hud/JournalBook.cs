@@ -103,7 +103,7 @@ namespace Clube.Game
         /// <summary>A page's heading and its number in the corner; returns where the page's content starts.</summary>
         public static float Heading(Rect inner, string heading, int page)
         {
-            GUI.Label(new Rect(inner.x, inner.y, inner.width, 28f), heading, Title);
+            FitLabel(new Rect(inner.x, inner.y, inner.width - 70f, 32f), heading, Title);
             GUI.Label(new Rect(inner.x, inner.y, inner.width, 28f), $"p. {page + 1}", new GUIStyle(Small) { alignment = TextAnchor.UpperRight });
             return inner.y + 36f;
         }
@@ -131,6 +131,40 @@ namespace Clube.Game
             {
                 font.RequestCharactersInTexture(text, style.fontSize, style.fontStyle);
             }
+        }
+
+        /// <summary>
+        /// A label that shrinks its text until it fits the area (GL438: at the larger HUD font, titles and long notes ran
+        /// past their boxes and were cut off). One line when the style doesn't wrap.
+        /// </summary>
+        public static void FitLabel(Rect area, string text, GUIStyle style)
+        {
+            var content = new GUIContent(text);
+            fitted ??= new GUIStyle(style);
+            fitted.font = style.font;
+            fitted.fontStyle = style.fontStyle;
+            fitted.wordWrap = style.wordWrap;
+            fitted.alignment = style.alignment;
+            fitted.padding = style.padding;
+            fitted.normal.textColor = style.normal.textColor;
+            int size = style.fontSize > 0 ? style.fontSize : GameUi.Font(13);
+            int smallest = Mathf.Max(8, size / 2);
+            do
+            {
+                fitted.fontSize = size--;
+            }
+            while (size >= smallest && !Fits(area, content, fitted));
+            GUI.Label(area, content, fitted);
+        }
+
+        // The style FitLabel draws with, set to each call's style and size.
+        private static GUIStyle fitted;
+
+        private static bool Fits(Rect area, GUIContent content, GUIStyle style)
+        {
+            return style.wordWrap
+                ? style.CalcHeight(content, area.width) <= area.height + 0.5f
+                : style.CalcSize(content).x <= area.width + 0.5f && style.lineHeight + style.padding.vertical <= area.height + 0.5f;
         }
 
         /// <summary>A ruled ink line, e.g. between entries.</summary>

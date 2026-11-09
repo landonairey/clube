@@ -115,9 +115,9 @@ namespace Clube.Game
             float x = area.x + sketchWidth + 14f;
             float width = area.xMax - x;
             float y = area.y + 2f;
-            GUI.Label(new Rect(x, y, width, 26f), known ? ore.DisplayName : "Unknown Ore", JournalBook.Title);
-            y += 26f;
-            GUI.Label(new Rect(x, y, width, area.yMax - y - 6f), Notes(ore, found, known), JournalBook.Text);
+            JournalBook.FitLabel(new Rect(x, y, width, 32f), known ? ore.DisplayName : "Unknown Ore", JournalBook.Title);
+            y += 32f;
+            JournalBook.FitLabel(new Rect(x, y, width, area.yMax - y - 6f), Notes(ore, found, known), JournalBook.Text);
         }
 
         // An entry's notes: for an ore found before the player can tell it apart (GL77, GL91), how to learn more; else
