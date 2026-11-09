@@ -71,6 +71,30 @@ namespace Clube.Game
             Build(look, dagger.Make("Thief dagger"), material, seed);
         }
 
+        /// <summary>Builds the lone adventurer (GL476): a travelling cloak, a wide hat, a beard and a walking staff.</summary>
+        public void BuildAdventurer(Material material, int seed)
+        {
+            var look = new Look
+            {
+                Shirt = new Color(0.36f, 0.42f, 0.26f), Hair = new Color(0.55f, 0.5f, 0.45f), Hat = new Color(0.32f, 0.24f, 0.16f), HatStyle = 2,
+                Beard = true, Robe = true,
+            };
+            var staff = new LowPolyMeshBuilder();
+            staff.Prism(new Vector3(0f, -0.9f, 0f), new Vector3(0f, 0.75f, 0f), 0.025f, 0.03f, 6, Wood);
+            Build(look, staff.Make("Adventurer staff"), material, seed);
+        }
+
+        /// <summary>Builds the carter who pulls the trade cart (GL477): a work shirt and cap, no prop.</summary>
+        public void BuildCarter(Material material, int seed)
+        {
+            var look = new Look
+            {
+                Shirt = new Color(0.55f, 0.45f, 0.3f), Apron = new Color(0.35f, 0.25f, 0.18f), HasApron = true, Hair = new Color(0.25f, 0.16f, 0.1f),
+                Hat = new Color(0.3f, 0.28f, 0.25f), HatStyle = 1,
+            };
+            Build(look, null, material, seed);
+        }
+
         private void Build(Look look, Mesh propMesh, Material material, int seed)
         {
             var random = new System.Random(seed);
