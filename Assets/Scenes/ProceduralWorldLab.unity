@@ -5891,7 +5891,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.DayNightCycle
   clock: {fileID: 1350119469}
   sun: {fileID: 1429470165}
-  startHour: 8
+  startHour: 7
   azimuth: 150
   startMoonAge: 5
   moon: {fileID: 1350119477}
