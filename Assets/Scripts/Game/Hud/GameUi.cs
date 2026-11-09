@@ -29,6 +29,27 @@ namespace Clube.Game
             return Mathf.RoundToInt(size * FontScale);
         }
 
+        /// <summary>
+        /// A label with a dark outline (GL435, GL436), so white text reads over light icons, sand and the build preview.
+        /// </summary>
+        public static void OutlinedLabel(Rect rect, string text, GUIStyle style)
+        {
+            Color color = style.normal.textColor;
+            style.normal.textColor = new Color(0f, 0f, 0f, 0.85f);
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    if (dx != 0 || dy != 0)
+                    {
+                        GUI.Label(new Rect(rect.x + dx * 1.5f, rect.y + dy * 1.5f, rect.width, rect.height), text, style);
+                    }
+                }
+            }
+            style.normal.textColor = color;
+            GUI.Label(rect, text, style);
+        }
+
         /// <summary>Sets the current skin's default text size, once per skin. Call at the start of OnGUI.</summary>
         public static void Apply()
         {

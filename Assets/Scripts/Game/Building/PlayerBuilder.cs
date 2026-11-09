@@ -488,7 +488,7 @@ namespace Clube.Game
                 return;
             }
             hintStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = GameUi.Font(16) };
-            GUI.Label(new Rect(0f, Screen.height * 0.5f + 46f, Screen.width, 28f), hint, hintStyle);
+            GameUi.OutlinedLabel(new Rect(0f, Screen.height * 0.5f + 46f, Screen.width, 28f), hint, hintStyle);
         }
     }
 }
