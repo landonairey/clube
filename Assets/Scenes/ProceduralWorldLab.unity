@@ -6275,6 +6275,7 @@ GameObject:
   - component: {fileID: 1697135606}
   - component: {fileID: 1697135608}
   - component: {fileID: 1697135609}
+  - component: {fileID: 1697135610}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -7367,6 +7368,18 @@ MonoBehaviour:
   outDepth: 0.04
   strideLength: 1.4
   minSpeed: 0.6
+--- !u!114 &1697135610
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2e80bbb435f750458c8c4918e5b17ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerVolumeLedger
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
