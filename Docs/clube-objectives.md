@@ -765,10 +765,10 @@ GL250 (ambient wildlife).
 - [x] **GL458** `Game` *(added 2026-11-09)* Bare-hand right click prospects a ground voxel for xp (more for an unknown ore, once per voxel).
 - [x] **GL459** `Game` *(added 2026-11-09)* Crushing has a sound, a hand smash, flying fragments and some sparks.
 - [x] **GL460** `Game` *(added 2026-11-09)* Mining debris always splashes outward, with occasional sparks.
-- **I — UI and settings**
-- [ ] **GL461** `Game` *(added 2026-11-09)* A minimap top left; the lab HUD box moves under it.
-- [ ] **GL462** `Game` *(added 2026-11-09)* Graphics: 16:9, 21:9 and 32:9 resolution presets, window or full screen, bordered or borderless (part of P10).
-- [ ] **GL463** `Game` *(added 2026-11-09)* The parcel fence is maple wood at its current height.
+- **I — UI and settings** *(done 2026-11-09, branch `gl461/ui-settings`)*
+- [x] **GL461** `Game` *(added 2026-11-09)* A minimap top left; the lab HUD box moves under it.
+- [x] **GL462** `Game` *(added 2026-11-09)* Graphics: 16:9, 21:9 and 32:9 resolution presets, window or full screen, bordered or borderless (part of P10).
+- [x] **GL463** `Game` *(added 2026-11-09)* The parcel fence is maple wood at its current height.
 - **H — sky and nature**
 - [ ] **GL464** `Game` *(added 2026-11-09)* 16 hours of daylight, 8 of dark.
 - [ ] **GL465** `Game` *(added 2026-11-09)* Fireflies at dusk.
