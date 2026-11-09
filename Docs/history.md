@@ -606,3 +606,7 @@ keys, so small state needs no new save version. `PlayerVolumeLedger` (on Player)
 shown as "Volume" on the lab HUD. The quest box draws over open screens. `JournalBook.FitLabel` shrinks journal titles and
 notes to fit. The player camera's near plane is 0.08 m (it was 0.3, the capsule's radius, so the near plane reached through
 walls).
+
+Batch D (GL446, GL447, branch `gl446/onboarding`): `QuestHud` draws a sketch on a paper card beside the hand axe, gather wood
+and campfire quests (`PlaceSketch.Boulder`, `Tree`, `Stump`) and a "Tip" box under the quest box from
+`PlayerQuests.TipFor` (the first eight main quests).

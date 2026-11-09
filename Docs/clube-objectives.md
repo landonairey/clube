@@ -747,9 +747,9 @@ GL250 (ambient wildlife).
 - [x] **GL443** `Game` *(added 2026-11-09)* Every furnace screen shows its output yield (clay, brick, refractory).
 - [x] **GL444** `Core + Game` *(added 2026-11-09)* Switching recipe moves what's in the output slot to the inventory.
 - [x] **GL445** `Game` *(added 2026-11-09)* The camera never sees through the ground (cave head clipping).
-- **D — onboarding**
-- [ ] **GL446** `Game` *(added 2026-11-09)* The first quests show sketches of the boulder, a tree and the stump.
-- [ ] **GL447** `Game` *(added 2026-11-09)* A tips box under the quest box gives each early quest's tip.
+- **D — onboarding** *(done 2026-11-09, branch `gl446/onboarding`)*
+- [x] **GL446** `Game` *(added 2026-11-09)* The first quests show sketches of the boulder, a tree and the stump.
+- [x] **GL447** `Game` *(added 2026-11-09)* A tips box under the quest box gives each early quest's tip.
 - **B — crafting and stations**
 - [ ] **GL448** `Game` *(added 2026-11-09)* Station screens: recipe list on the left, the active recipe's large slots and details on the right.
 - [ ] **GL449** `Game` *(added 2026-11-09)* Missing ingredients show a red X in their slot and "need N more <item>".
