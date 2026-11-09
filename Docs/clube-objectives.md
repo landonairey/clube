@@ -789,6 +789,18 @@ GL250 (ambient wildlife).
 - [x] **GL477** `Core + Game` *(added 2026-11-09)* A trade cart every 2-3 days on a cart path to a distant town (10+ parcels), with lootable crates.
 - **Added later**
 - [x] **GL478** `Game` *(added 2026-11-09)* Licking an ore (right click with it selected, away from a boulder) uses one up for Prospecting xp, more for an unknown ore, and tells its grade.
+- **Tutorial and title page** *(added 2026-11-09, from `Docs/backlogs/20261109b clube-backlog.md`; branch `gl479/tutorial-menu`)*
+- [ ] **GL479** `Game` *(added 2026-11-09)* An opening tutorial, chosen or skipped on the New Game page: the player works a Mining Corp quarry, and stealing gets them thrown out to their family's parcel.
+  - New Game page: start with the tutorial or skip it (carried into the world by `GameSession`).
+  - The company quarry: a pit dug by the trading post's gate, a crew lead (`KeeperFigure`) and a company pickaxe.
+  - Steps teach looking, moving, jumping, sprinting, crouching, the key sheet, the hotbar, digging, the inventory and Interact.
+  - All the stone mined is the company's: the crew lead takes it and pays 10c for every 100c of its price (`PriceList`, `Wallet`).
+  - The crew lead heads out ("don't touch anything"). Leaving the quarry with company stone, or taking anything that isn't company stone, is stealing.
+  - Caught: fade out, the company's goods taken back, and the player set down on their starting parcel to start the normal game, keeping their coins.
+- [ ] **GL480** `Game` *(added 2026-11-09)* A new title page: the main menu's background is a cut-open cross-section of the player's parcel.
+  - Layers of grass, dirt and rock seen through the cut face; gold ore at the bottom, then a silver node, chalcopyrite, malachite, and tin ore at the top and on the surface.
+  - On the surface: a tree, a campfire, a stump, and the player mining the tin node in a loop.
+  - The menu's buttons laid out beside the diorama so the two read together; cheap to draw (the menu caps at 60 fps).
 
 ### Eroded landscape *(added 2026-11-03, from `Docs/backlogs/20261103j clube-backlog.md` — first pass of P12; branch `p12/eroded-landscape`)*
 - [x] **P12a** `Core + Debug` *(added 2026-11-03)* An eroded landscape generator after runevision's erosion filter: branching gullies and ridges as a filter on a heightfield, every point worked out on its own, so chunks, levels of detail and the water map agree. *(Done 2026-11-03: `ErosionFilter` + `ErosionSettings` (Generation/Noise, written from the blog's description: stripes blended from 4 x 4 cells, normalised gullies, stacked fading, straight gullies, ridge map), `ErodedLandscapeHeight` and the ErodedLandscape generator (`TerrainGeneratorType.ErodedLandscape`; Landscape's mask, warp, plains and distant ranges, with smooth massifs (`LandscapeHeight.WithSmoothMassifs`) in place of the ridged peaks). Learned on the way (height maps in `Docs/images/20261103 *`): on Landscape's ridged noise the gullies turned to noise (fine ridges) and seams (knife-edge crests flip the slope); clamped noise made flat plateaus with cliff edges; full-strength gullies from the plains up raised a cliff along every range's foot (gullies now deepen over the foothills); 35% of the mountains were over the player's 50° slope limit. With smooth massifs and strength 0.15: 15% (Landscape 8%), peaks at 131 m. Peaks rise by `PeakLift` 0.4 of the gully depth, so they stay inside the 160 m world. Lab panel: Erosion section. Tests: `ErodedLandscapeTests`. Benchmark: *Clube → Benchmarks → Heightfield generation*.)*
