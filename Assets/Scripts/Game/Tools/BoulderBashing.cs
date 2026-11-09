@@ -193,7 +193,7 @@ namespace Clube.Game
             if (failed)
             {
                 // The purer the stack, the more passes find nothing to pick out (GL386).
-                Message?.Invoke($"Found nothing to pick out of the {held.Item.DisplayName.ToLowerInvariant()} ({held.Quality * 100f:0}%)");
+                Message?.Invoke($"Found nothing to pick out of the {held.Item.DisplayName.ToLowerInvariant()} ({QualityText.Percent(held.Quality)})");
                 return;
             }
             items.Replace(slot, refined);
@@ -210,7 +210,7 @@ namespace Clube.Game
             }
             Message?.Invoke(refined.IsEmpty
                 ? $"Nothing of the {held.Item.DisplayName.ToLowerInvariant()} was left"
-                : $"Picked over the {held.Item.DisplayName.ToLowerInvariant()}: {refined.Quality * 100f:0}% now");
+                : $"Picked over the {held.Item.DisplayName.ToLowerInvariant()}: {QualityText.Percent(refined.Quality)} now");
         }
 
         // A mixed stack in the selected slot that isn't bashed instead: gathered clay, dirt, wood with what came with it.
@@ -240,7 +240,7 @@ namespace Clube.Game
             // Above the crosshair (GL244): under it are the tool hint and the pickup notices, which wrote over this.
             var bar = new Rect(Screen.width * 0.5f - 90f, Screen.height * 0.5f - 52f, 180f, 10f);
             string doing = HoldsSomethingToBash(out _, out Crush crush) && crush.Raw != null ? "Crushing" : "Refining";
-            GUI.Label(new Rect(bar.x - 30f, bar.y - 22f, bar.width + 60f, 28f), $"{doing} {stack.Item.DisplayName.ToLowerInvariant()} ({stack.Quality * 100f:0}%)");
+            GUI.Label(new Rect(bar.x - 30f, bar.y - 22f, bar.width + 60f, 28f), $"{doing} {stack.Item.DisplayName.ToLowerInvariant()} ({QualityText.Percent(stack.Quality)})");
             GUI.Box(bar, GUIContent.none);
             GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(refineProgress / secondsPerVolume), bar.height), Texture2D.whiteTexture);
         }
@@ -295,7 +295,7 @@ namespace Clube.Game
             }
             // Crushing needs Mining (crushSkill) but trains Prospecting (GL388).
             skills?.Skills.Award(SkillType.Prospecting, crushExperience);
-            Message?.Invoke($"Crushed into {crush.Crushed.DisplayName.ToLowerInvariant()} ({quality * 100f:0}%)");
+            Message?.Invoke($"Crushed into {crush.Crushed.DisplayName.ToLowerInvariant()} ({QualityText.Percent(quality)})");
             return true;
         }
 

@@ -298,7 +298,7 @@ namespace Clube.Game
                 text += $"\nVolume {stack.Volume:0.##}";
             }
             // Always, 100% included (GL158).
-            text += $"\nQuality {stack.Quality * 100f:0}%";
+            text += $"\nQuality {QualityText.Percent(stack.Quality)}";
             if (stack.Item.HidesContents)
             {
                 // "? ore" (GL76): what it holds stays hidden until the player can tell.
