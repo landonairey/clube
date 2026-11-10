@@ -899,8 +899,8 @@ GL250 (ambient wildlife).
 
 **P4 — Tutorial terrain and workers**
 - [ ] **GL547** `Game` Tutorial mountain side: stone instead of the player-high grass ramp.
-- [ ] **GL548** `Game` The extra workers actually dig voxels, working back along the whole west-to-east mountain wall.
-- [ ] **GL549** `Game` Workers hand in their day's stone and go to bed at 5pm.
+- [x] **GL548** `Game` The extra workers actually dig voxels, working back along the whole west-to-east mountain wall.
+- [x] **GL549** `Game` Workers hand in their day's stone and go to bed at 5pm.
 
 ### Eroded landscape *(added 2026-11-03, from `Docs/backlogs/20261103j clube-backlog.md` — first pass of P12; branch `p12/eroded-landscape`)*
 - [x] **P12a** `Core + Debug` *(added 2026-11-03)* An eroded landscape generator after runevision's erosion filter: branching gullies and ridges as a filter on a heightfield, every point worked out on its own, so chunks, levels of detail and the water map agree. *(Done 2026-11-03: `ErosionFilter` + `ErosionSettings` (Generation/Noise, written from the blog's description: stripes blended from 4 x 4 cells, normalised gullies, stacked fading, straight gullies, ridge map), `ErodedLandscapeHeight` and the ErodedLandscape generator (`TerrainGeneratorType.ErodedLandscape`; Landscape's mask, warp, plains and distant ranges, with smooth massifs (`LandscapeHeight.WithSmoothMassifs`) in place of the ridged peaks). Learned on the way (height maps in `Docs/images/20261103 *`): on Landscape's ridged noise the gullies turned to noise (fine ridges) and seams (knife-edge crests flip the slope); clamped noise made flat plateaus with cliff edges; full-strength gullies from the plains up raised a cliff along every range's foot (gullies now deepen over the foothills); 35% of the mountains were over the player's 50° slope limit. With smooth massifs and strength 0.15: 15% (Landscape 8%), peaks at 131 m. Peaks rise by `PeakLift` 0.4 of the gully depth, so they stay inside the 160 m world. Lab panel: Erosion section. Tests: `ErodedLandscapeTests`. Benchmark: *Clube → Benchmarks → Heightfield generation*.)*
