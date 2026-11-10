@@ -855,14 +855,14 @@ GL250 (ambient wildlife).
 
 ### Playtest 2026-11-10 *(added 2026-11-10, from `Docs/backlogs/20261110 clube-backlog.md`; three batches: T1 and T2 tutorial, M menu and misc)*
 **T1 — Tutorial fixes** (`gl519/tutorial-fixes`)
-- [ ] **GL519** `Game` Typing your name for the crew lead no longer moves the player (character control off until the name is entered).
-- [ ] **GL520** `Game` No 3D grass or bushes spawn inside the mining corp building.
-- [ ] **GL521** `Game` Tutorial crates say "Do not take", can be opened, and only count as stealing when an item goes into the inventory; filled with various valuables. The crew lead says "And don't take anything that isn't yours".
-- [ ] **GL525** `Game` Handing in materials takes only materials, never tools.
-- [ ] **GL526** `Game` A sign on the back of the tutorial building: Mining Corp rules, "No Stealing", "Fill your quota".
-- [ ] **GL527** `Game` Skill levels suppressed in the tutorial: not shown, no xp earned.
-- [ ] **GL529** `Game` Climbing disabled in the tutorial.
-- [ ] **GL530** `Game` The player's name on their assigned bed.
+- [x] **GL519** `Game` Typing your name for the crew lead no longer moves the player (character control off until the name is entered).
+- [x] **GL520** `Game` No 3D grass or bushes spawn inside the mining corp building.
+- [x] **GL521** `Game` Tutorial crates say "Do not take", can be opened, and only count as stealing when an item goes into the inventory; filled with various valuables. The crew lead says "And don't take anything that isn't yours".
+- [x] **GL525** `Game` Handing in materials takes only materials, never tools.
+- [x] **GL526** `Game` A sign on the back of the tutorial building: Mining Corp rules, "No Stealing", "Fill your quota".
+- [x] **GL527** `Game` Skill levels suppressed in the tutorial: not shown, no xp earned.
+- [x] **GL529** `Game` Climbing disabled in the tutorial.
+- [x] **GL530** `Game` The player's name on their assigned bed.
 
 **T2 — Tutorial world and quota**
 - [ ] **GL522** `Game` The company pick can be replaced after it wears out (via the tool shed, GL533).

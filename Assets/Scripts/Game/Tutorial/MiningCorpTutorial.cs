@@ -63,6 +63,10 @@ namespace Clube.Game
         [SerializeField]
         private Material material;
 
+        [Tooltip("The Clube/World Text material for the words on signs.")]
+        [SerializeField]
+        private Material textMaterial;
+
         [Tooltip("What the supply crates round the yard hold, one item each.")]
         [SerializeField]
         private ItemDefinition[] supplies = new ItemDefinition[0];
@@ -103,6 +107,9 @@ namespace Clube.Game
         private Vector3 lastPosition;
         private Quaternion lastLook;
         private string typedName = "";
+        private CompanyWarehouse warehouse;
+        private CompanyCrate openCrate;
+        private float regroundAt;
         private string speech = "";
         private string note = "";
         private float caughtAt;
@@ -134,6 +141,18 @@ namespace Clube.Game
             inventory = player.GetComponentInChildren<PlayerInventory>();
             wallet = player.GetComponentInChildren<PlayerWallet>();
             tools = player.GetComponentInChildren<PlayerToolUser>();
+            // GL527, GL529: a new hire sees no skill levels and earns no xp, and can't climb.
+            PlayerSkills playerSkills = player.GetComponentInChildren<PlayerSkills>();
+            if (playerSkills != null)
+            {
+                playerSkills.Skills.Suppressed = true;
+            }
+            SkillsHud skillsHud = player.GetComponentInChildren<SkillsHud>(true);
+            if (skillsHud != null)
+            {
+                skillsHud.enabled = false;
+            }
+            player.ClimbingDisabled = true;
             inventoryScreen = player.GetComponentInChildren<InventoryScreen>();
             questHud = player.GetComponentInChildren<QuestHud>(true);
             minimap = player.GetComponentInChildren<Minimap>();
@@ -173,6 +192,12 @@ namespace Clube.Game
                 Thrown();
                 return;
             }
+            if (regroundAt > 0f && Time.time > regroundAt)
+            {
+                // The ground streams in over the first seconds: clear it once more so nothing grows in the building (GL520).
+                regroundAt = 0f;
+                CompanyWarehouse.ClearGround(worldView);
+            }
             if (lead != null)
             {
                 lead.Face(player.transform.position);
@@ -185,6 +210,10 @@ namespace Clube.Game
             if (minimap != null)
             {
                 minimap.Marker = talk && lead != null ? lead.transform : null;
+            }
+            if (openCrate != null && (openCrate.transform.position - player.transform.position).sqrMagnitude > 25f)
+            {
+                CloseCrate();
             }
             Teach();
             lastPosition = player.transform.position;
@@ -217,7 +246,7 @@ namespace Clube.Game
             }
             if (!placing)
             {
-                CompanyWarehouse.Build(worldView.transform, material, this, supplies, valuables);
+                warehouse = CompanyWarehouse.Build(worldView.transform, material, this, supplies, valuables, textMaterial);
                 spawn.SetDownOver(OnMap(CompanyWarehouse.Spawn) + Vector3.up);
                 placing = true;
             }
@@ -227,6 +256,7 @@ namespace Clube.Game
             }
             // The ground round the player is loaded now: no grass under the warehouse floor.
             CompanyWarehouse.ClearGround(worldView);
+            regroundAt = Time.time + 4f;
             Vector3 leadAt = OnMap(CompanyWarehouse.LeadSpot);
             lead = CrewLead.Build(leadAt, player.transform.position, material, this);
             arrow = QuestArrow.Build(lead.transform, 2.6f, material);
@@ -239,6 +269,7 @@ namespace Clube.Game
             lastLook = LookRotation;
             speech = "Crew lead: \"So you're the new hire. Welcome to Mining Corp. What's your name?\"";
             player.IsInMenu = true;
+            player.InputLocked = true;
             step = Step.Name;
         }
 
@@ -252,6 +283,8 @@ namespace Clube.Game
             string name = (typed ?? "").Trim();
             GameSession.CharacterName = name.Length > NameLength ? name.Substring(0, NameLength) : name;
             player.IsInMenu = false;
+            player.InputLocked = false;
+            warehouse?.NameBunk(Name);
             speech = $"Crew lead: \"{Name}, then. Your bunk's in the dorm hall, through that door; you sleep there nights. "
                 + "Work's out back, at the rock face. Get your bearings, then come and see me for a pick.\"";
             step = Step.Look;
@@ -319,7 +352,7 @@ namespace Clube.Game
                     inventory.Inventory.Add(pick);
                 }
                 speech = $"Crew lead: \"Here's a company pick, {Name}. Dig the mountain out back; every stone is the company's: "
-                    + "ten coins for every hundred you bring in. And don't touch anything.\"";
+                    + "ten coins for every hundred you bring in. And don't take anything that isn't yours.\"";
                 step = Step.Hotbar;
                 return;
             }
@@ -346,7 +379,7 @@ namespace Clube.Game
             for (int slot = 0; slot < items.SlotCount; slot++)
             {
                 ItemStack stack = items[slot];
-                if (stack.IsEmpty || stack.Item == pick)
+                if (stack.IsEmpty || stack.Item == pick || stack.Item is ToolDefinition)
                 {
                     continue;
                 }
@@ -366,7 +399,62 @@ namespace Clube.Game
             {
                 step = Step.Free;
                 speech = "Crew lead: \"That's the way. Mine all you want and hand it in at the cart. Sleep in your bunk when it's dark. "
-                    + "And remember: don't touch anything.\"";
+                    + "And remember: don't take anything that isn't yours.\"";
+            }
+        }
+
+        /// <summary>The player opened a company crate to look inside (GL521): nothing is stolen until they take an item.</summary>
+        public void OpenCrate(CompanyCrate crate)
+        {
+            if (step <= Step.Name || step >= Step.Caught || openCrate != null)
+            {
+                return;
+            }
+            openCrate = crate;
+            player.IsInMenu = true;
+        }
+
+        private void CloseCrate()
+        {
+            if (openCrate == null)
+            {
+                return;
+            }
+            openCrate = null;
+            player.IsInMenu = false;
+        }
+
+        // The open crate's contents: a button per item; taking one is theft.
+        private void DrawCrate()
+        {
+            Event e = Event.current;
+            bool closeKey = e.type == EventType.KeyDown && (e.keyCode == KeyCode.E || e.keyCode == KeyCode.Escape);
+            float width = Mathf.Min(Screen.width - 32f, 420f * GameUi.FontScale);
+            float row = GameUi.Font(17) + 14f;
+            float height = 70f + row * (openCrate.Loot.Count + 1);
+            var panel = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
+            GUI.Box(panel, "", cardStyle);
+            GUI.Label(new Rect(panel.x + 14f, panel.y + 10f, width - 28f, 28f), $"{openCrate.Title}: company property. Do not take.");
+            float y = panel.y + 44f;
+            ItemDefinition taken = null;
+            foreach (ItemDefinition item in openCrate.Loot)
+            {
+                if (GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), $"{item.DisplayName}  (take)"))
+                {
+                    taken = item;
+                }
+                y += row;
+            }
+            if (GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), "Close (E)") || closeKey)
+            {
+                CloseCrate();
+            }
+            if (taken != null)
+            {
+                CompanyCrate crate = openCrate;
+                crate.Loot.Remove(taken);
+                CloseCrate();
+                Steal(new[] { taken });
             }
         }
 
@@ -396,7 +484,7 @@ namespace Clube.Game
             step = Step.Caught;
             caughtAt = Time.time;
             note = "";
-            speech = $"Crew lead: \"Thief! I told you not to touch anything, {Name}! Get out!\"";
+            speech = $"Crew lead: \"Thief! I told you not to take anything that isn't yours, {Name}! Get out!\"";
             if (arrow != null)
             {
                 arrow.gameObject.SetActive(false);
@@ -502,6 +590,10 @@ namespace Clube.Game
             if (step != Step.Arriving && fade < 1f)
             {
                 DrawCard();
+                if (openCrate != null)
+                {
+                    DrawCrate();
+                }
             }
             if (fade > 0f)
             {

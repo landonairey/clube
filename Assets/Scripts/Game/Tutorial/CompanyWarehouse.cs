@@ -14,6 +14,8 @@ namespace Clube.Game
     {
         private const float WallHeight = 4.5f;
         private const float Thick = 0.3f;
+        // The dirt reaches this far past the walls, so no grass or bush stands against them (GL520).
+        private const float Margin = 0.8f;
         private const float DoorWidth = 1.6f;
         private const float DoorHeight = 2.4f;
 
@@ -26,6 +28,8 @@ namespace Clube.Game
 
         private LowPolyMeshBuilder mesh;
         private Material material;
+        private Material textMaterial;
+        private TextMesh bunkName;
 
         /// <summary>Where the player starts (map space): by the back door, facing the crew lead.</summary>
         public static readonly Vector3 Spawn = new Vector3(44f, CompanyWork.Ground, 18.2f);
@@ -43,12 +47,13 @@ namespace Clube.Game
         /// Builds the warehouse, the beds and the crates under a parent placed like the world (map space), filling the yard's
         /// crates from one list and the crew lead's crate from another.
         /// </summary>
-        public static CompanyWarehouse Build(Transform map, Material material, MiningCorpTutorial tutorial, ItemDefinition[] supplies, ItemDefinition[] valuables)
+        public static CompanyWarehouse Build(Transform map, Material material, MiningCorpTutorial tutorial, ItemDefinition[] supplies, ItemDefinition[] valuables, Material textMaterial = null)
         {
             var go = new GameObject("Company warehouse");
             go.transform.SetParent(map, false);
             CompanyWarehouse house = go.AddComponent<CompanyWarehouse>();
             house.material = material;
+            house.textMaterial = textMaterial;
             house.mesh = new LowPolyMeshBuilder();
             house.BuildShell();
             house.BuildRooms();
@@ -63,6 +68,7 @@ namespace Clube.Game
             }
             house.Bed(new Vector3(66.4f, 0f, 14.2f), 90f, false);
             house.Crate(new Vector3(64.8f, 0f, 14.2f), 90f, tutorial, valuables, "The crew lead's crate");
+            house.RulesSign();
             house.Lamp(new Vector3(44f, WallHeight - 0.6f, 12f));
             house.Lamp(new Vector3(62f, WallHeight - 0.6f, 12f));
 
@@ -70,7 +76,16 @@ namespace Clube.Game
             for (int i = 0; i < yard.Length; i++)
             {
                 ItemDefinition item = supplies != null && supplies.Length > 0 ? supplies[i % supplies.Length] : null;
-                house.Crate(yard[i], 20f * i, tutorial, item != null ? new[] { item } : null, "A supply crate");
+                var loot = new System.Collections.Generic.List<ItemDefinition>();
+                if (item != null)
+                {
+                    loot.Add(item);
+                }
+                for (int v = 0; valuables != null && valuables.Length > 0 && v < 3; v++)
+                {
+                    loot.Add(valuables[(i * 2 + v) % valuables.Length]);
+                }
+                house.Crate(yard[i], 20f * i, tutorial, loot.ToArray(), "A supply crate");
             }
             return house;
         }
@@ -90,8 +105,8 @@ namespace Clube.Game
             }
             WorldGrid grid = world.World.Grid;
             Rect r = CompanyWork.Warehouse;
-            Vector3Int min = grid.WorldToNearestSample(new Vector3(r.xMin, G - 0.75f, r.yMin));
-            Vector3Int max = grid.WorldToNearestSample(new Vector3(r.xMax, G + 0.75f, r.yMax));
+            Vector3Int min = grid.WorldToNearestSample(new Vector3(r.xMin - Margin, G - 0.75f, r.yMin - Margin));
+            Vector3Int max = grid.WorldToNearestSample(new Vector3(r.xMax + Margin, G + 0.75f, r.yMax + Margin));
             for (int x = min.x; x <= max.x; x++)
             {
                 for (int y = min.y; y <= max.y; y++)
@@ -202,6 +217,10 @@ namespace Clube.Game
             bed.Box(new Vector3(0f, 0.45f, 0.1f), new Vector3(0.85f, 0.12f, 1.75f), Quaternion.identity, own ? new Color(0.55f, 0.3f, 0.25f) : Blanket);
             bed.Box(new Vector3(0f, 0.55f, 0.75f), new Vector3(0.6f, 0.12f, 0.35f), Quaternion.identity, Linen);
             bed.Box(new Vector3(0f, 0.55f, 1f), new Vector3(0.95f, 0.8f, 0.08f), Quaternion.identity, DarkPlank);
+            if (own)
+            {
+                bed.Box(new Vector3(0f, 1.18f, 1f), new Vector3(0.8f, 0.24f, 0.05f), Quaternion.identity, Linen);
+            }
             var go = new GameObject(own ? "Your bunk" : "Bunk");
             go.transform.SetParent(transform, false);
             go.transform.localPosition = new Vector3(centre.x, G + 0.1f, centre.z);
@@ -218,6 +237,7 @@ namespace Clube.Game
             SleepingRoll roll = go.AddComponent<SleepingRoll>();
             roll.FitsGround = false;
             roll.Label = "Sleep in your bunk";
+            bunkName = AddText(go.transform, "", new Vector3(0f, 1.18f, 0.95f), 0f, 0.012f, textMaterial);
             return roll;
         }
 
@@ -241,8 +261,57 @@ namespace Clube.Game
             box.size = new Vector3(1.04f, 0.76f, 0.74f);
             CompanyCrate company = go.AddComponent<CompanyCrate>();
             company.Tutorial = tutorial;
-            company.Loot = loot ?? new ItemDefinition[0];
+            if (loot != null)
+            {
+                company.Loot.AddRange(loot);
+            }
             company.Title = title;
+        }
+
+        /// <summary>Writes the player's name on the placard over their bunk (GL530).</summary>
+        public void NameBunk(string name)
+        {
+            if (bunkName != null)
+            {
+                bunkName.text = name;
+            }
+        }
+
+        // The Mining Corp's rules on a board on the warehouse's back wall, facing the work fields (GL526).
+        private void RulesSign()
+        {
+            Rect r = CompanyWork.Warehouse;
+            var board = new GameObject("Rules sign");
+            board.transform.SetParent(transform, false);
+            board.transform.localPosition = new Vector3(56f, G + 2.4f, r.yMax + Thick * 0.5f + 0.05f);
+            var boardMesh = new LowPolyMeshBuilder();
+            boardMesh.Box(Vector3.zero, new Vector3(2.4f, 1.5f, 0.08f), Quaternion.identity, Plank);
+            boardMesh.Box(new Vector3(0f, 0f, -0.01f), new Vector3(2.5f, 1.6f, 0.05f), Quaternion.identity, DarkPlank);
+            board.AddComponent<MeshFilter>().sharedMesh = boardMesh.Make("Rules sign");
+            board.AddComponent<MeshRenderer>().sharedMaterial = material;
+            AddText(board.transform, "MINING CORP RULES\n\n1. No Stealing\n2. Fill your quota", new Vector3(0f, 0f, 0.05f), 180f, 0.032f, textMaterial);
+        }
+
+        // Words on a board: a TextMesh child, facing -z at yaw 0 (so yaw 180 reads from +z).
+        private static TextMesh AddText(Transform parent, string text, Vector3 at, float yaw, float size, Material textMaterial)
+        {
+            var go = new GameObject("Sign text");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = at;
+            go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+            var mesh = go.AddComponent<TextMesh>();
+            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            mesh.font = font;
+            mesh.text = text;
+            mesh.fontSize = 64;
+            mesh.characterSize = size;
+            mesh.anchor = TextAnchor.MiddleCenter;
+            mesh.alignment = TextAlignment.Center;
+            mesh.color = new Color(0.16f, 0.1f, 0.05f);
+            Material shown = textMaterial != null ? new Material(textMaterial) : font.material;
+            shown.mainTexture = font.material.mainTexture;
+            go.GetComponent<MeshRenderer>().sharedMaterial = shown;
+            return mesh;
         }
 
         private void Lamp(Vector3 at)

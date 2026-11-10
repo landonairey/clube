@@ -75,10 +75,13 @@ namespace Clube.Core
             return skill == SkillType.None || Level(skill) >= level;
         }
 
+        /// <summary>True while no experience is earned (the tutorial, GL527).</summary>
+        public bool Suppressed { get; set; }
+
         /// <summary>Adds experience; raises <see cref="LevelReached"/> once for every level it passes.</summary>
         public void Award(SkillType skill, float amount)
         {
-            if (skill == SkillType.None || amount <= 0f)
+            if (Suppressed || skill == SkillType.None || amount <= 0f)
             {
                 return;
             }
