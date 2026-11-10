@@ -29,6 +29,25 @@ namespace Clube.Game
 
         private static readonly string[] Ingots = { "tin-ingot", "copper-ingot", "bronze-ingot", "silver-ingot", "gold-ingot" };
 
+        // What to do next, for the early quests (GL447), shown under the quest box.
+        private static readonly System.Collections.Generic.Dictionary<string, string> Tips = new System.Collections.Generic.Dictionary<string, string>
+        {
+            ["pick-up-stone"] = "Loose stones on the surface can be collected by hand; hard rock stone needs a tool to gather.",
+            ["hand-axe"] = "With a stone selected in the hotbar, right click a boulder to shape it into a hand axe.",
+            ["gather-wood"] = "Use the hand axe to cut down a birch tree. Maple trees need a better tool.",
+            ["campfire"] = "Raise your Crafting skill by making more hand axes or crafting at the stump, then build a campfire at the stump.",
+            ["first-ore"] = "Tin ore shows at the surface; gather it with a tool. Shovels clear soft dirt and grass best, the stone pick works hard ore.",
+            ["smelt-bun"] = "Use the campfire, with fuel, to smelt the tin ore.",
+            ["bronze"] = "Copper ore is buried below the surface; dig for it with tools. If you get stuck, you can climb out of a hole.",
+            ["flat-rock"] = "Use the chisel to carve a level 3 x 3 working area on solid stone.",
+        };
+
+        /// <summary>The tip for a quest (GL447), or null when it has none.</summary>
+        public static string TipFor(string questId)
+        {
+            return questId != null && Tips.TryGetValue(questId, out string tip) ? tip : null;
+        }
+
         private PlayerInventory inventory;
         private PlayerWallet wallet;
         private PlayerJournal journal;

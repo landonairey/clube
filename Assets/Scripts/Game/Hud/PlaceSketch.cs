@@ -22,6 +22,71 @@ namespace Clube.Game
         /// <summary>A stone boulder, as the tool journal's second entry shows it.</summary>
         public static Texture2D Boulder => boulder != null ? boulder : boulder = PaintBoulder();
 
+        /// <summary>A birch tree, for the gather wood quest (GL446).</summary>
+        public static Texture2D Tree => tree != null ? tree : tree = PaintTree();
+
+        private static Texture2D tree;
+
+        // A birch: a pale trunk with dark bark marks under a lumpy, hatched crown, on a ground line.
+        private static Texture2D PaintTree()
+        {
+            var pixels = new Color[Size * Size];
+            const float cx = 64f, ground = 14f, trunkTop = 70f;
+            var crownCentre = new Vector2(64f, 86f);
+            bool InTrunk(float x, float y)
+            {
+                if (y < ground || y > trunkTop)
+                {
+                    return false;
+                }
+                float half = Mathf.Lerp(7f, 4.5f, (y - ground) / (trunkTop - ground));
+                return Mathf.Abs(x - cx) <= half;
+            }
+            bool InCrown(float x, float y)
+            {
+                float dx = x - crownCentre.x, dy = (y - crownCentre.y) * 1.25f;
+                float angle = Mathf.Atan2(dy, dx);
+                float radius = 38f * (1f + 0.12f * Mathf.Sin(5f * angle + 0.7f) + 0.06f * Mathf.Sin(9f * angle + 2f));
+                return dx * dx + dy * dy <= radius * radius;
+            }
+
+            float[] trunk = Coverage(InTrunk);
+            float[] crown = Coverage(InCrown);
+            var light = new Vector2(-0.6f, 0.8f);
+            for (int y = 1; y < Size - 1; y++)
+            {
+                for (int x = 1; x < Size - 1; x++)
+                {
+                    int i = y * Size + x;
+                    if (crown[i] > 0.5f)
+                    {
+                        Vector2 from = (new Vector2(x, y) - crownCentre) / 38f;
+                        bool hatch = Vector2.Dot(from, light) < -0.2f && (x + y) % 4 == 0;
+                        pixels[i] = hatch ? new Color(Ink.r, Ink.g, Ink.b, 0.65f) : Wash(new Color(0.45f, 0.62f, 0.32f));
+                    }
+                    else if (trunk[i] > 0.5f)
+                    {
+                        pixels[i] = Wash(new Color(0.92f, 0.9f, 0.84f));
+                    }
+                }
+            }
+            Outline(pixels, trunk);
+            Outline(pixels, crown);
+            // Birch bark: short dark dashes across the trunk.
+            for (int k = 0; k < 6; k++)
+            {
+                float y = ground + 6f + k * 8.5f;
+                float x = cx - 4f + (k % 3) * 2.5f;
+                Line(pixels, new Vector2(x, y), new Vector2(x + 3.5f, y + 0.5f), 1f, 0.85f);
+            }
+            // Leaf clumps inside the crown.
+            Ellipse(pixels, new Vector2(50f, 92f), 9f, 6f, 0.7f, 0.6f);
+            Ellipse(pixels, new Vector2(76f, 98f), 8f, 5f, 0.7f, 0.6f);
+            Ellipse(pixels, new Vector2(66f, 78f), 9f, 5f, 0.7f, 0.6f);
+            Line(pixels, new Vector2(6f, ground - 1f), new Vector2(122f, ground - 1f), 1f, 0.8f);
+            return Make(pixels, "Birch tree sketch");
+        }
+
         private static Texture2D PaintStump()
         {
             var pixels = new Color[Size * Size];
