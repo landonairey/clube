@@ -12,7 +12,7 @@ namespace Clube.Core
     /// </summary>
     /// <remarks>
     /// Plain math. Directions are in the sky's frame: x east, y up, z north. The sun keeps to the equinox (no seasons), so
-    /// it rises at 06:00 and sets at 18:00 every day.
+    /// it rises at 04:00 and sets at 20:00 every day (GL464): 16 hours of light and 8 of dark, as near a midsummer solstice.
     /// </remarks>
     public static class SkyPositions
     {
@@ -43,10 +43,27 @@ namespace Clube.Core
             return new Vector3(east, up, north).normalized;
         }
 
-        /// <summary>The sun's hour angle at an hour of the day (0-24), in degrees: 0 at noon.</summary>
+        /// <summary>When the sun rises, in hours (GL464).</summary>
+        public const float SunriseHour = 4f;
+
+        /// <summary>When the sun sets, in hours (GL464): 16 hours of daylight.</summary>
+        public const float SunsetHour = 20f;
+
+        /// <summary>
+        /// The sun's hour angle at an hour of the day (0-24), in degrees: 0 at noon, -90 at sunrise, 90 at sunset. The day
+        /// takes the half-turn over 16 hours and the night the other half over 8, so the sun runs faster in the dark.
+        /// </summary>
         public static float SunHourAngle(float hour)
         {
-            return (hour - 12f) * 15f;
+            const float day = SunsetHour - SunriseHour;
+            const float night = 24f - day;
+            if (hour >= SunriseHour && hour <= SunsetHour)
+            {
+                return (hour - 12f) * 180f / day;
+            }
+            // After sunset 90 grows to 270 (= -90) at the next sunrise.
+            float sinceSunset = hour > SunsetHour ? hour - SunsetHour : hour + 24f - SunsetHour;
+            return 90f + sinceSunset * 180f / night;
         }
 
         /// <summary>Where the sun is at an hour of the day.</summary>
@@ -95,14 +112,14 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// How far the stars have turned, in degrees (the local sidereal time, GL253): the sun's hour angle plus its
+        /// How far the stars have turned, in degrees (the local sidereal time, GL253): the clock (15° an hour, not the sun's uneven GL464 pace) plus its
         /// drift east through the stars, once a year. So the stars turn once a sidereal day, about 4 minutes (of 24 game
         /// hours) shorter than the sun's, and the same stars rise a little earlier each night.
         /// </summary>
         public static float SiderealAngle(double days, float hour)
         {
             double years = days / TropicalYearDays;
-            return SunHourAngle(hour) + (float)((years - System.Math.Floor(years)) * 360d);
+            return (hour - 12f) * 15f + (float)((years - System.Math.Floor(years)) * 360d);
         }
 
         /// <summary>

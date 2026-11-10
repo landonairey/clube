@@ -16,7 +16,7 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void ShopHours_CounterNineToFive_ChoresThenSleepSixToSix()
+        public void ShopHours_CounterNineToFive_ChoresThenSleepNineToFour()
         {
             ShopHours hours = ShopHours.Default;
             Assert.AreEqual(KeeperActivity.Chores, hours.At(6f));
@@ -24,7 +24,8 @@ namespace Clube.Core.Tests
             Assert.AreEqual(KeeperActivity.Counter, hours.At(9f));
             Assert.AreEqual(KeeperActivity.Counter, hours.At(16.9f));
             Assert.AreEqual(KeeperActivity.Chores, hours.At(17f));
-            Assert.AreEqual(KeeperActivity.Sleep, hours.At(18f));
+            Assert.AreEqual(KeeperActivity.Chores, hours.At(18f));
+            Assert.AreEqual(KeeperActivity.Sleep, hours.At(21f));
             Assert.AreEqual(KeeperActivity.Sleep, hours.At(23.5f));
             Assert.AreEqual(KeeperActivity.Sleep, hours.At(3f));
             Assert.AreEqual(KeeperActivity.Counter, hours.At(24f + 10f), "hours wrap round the day");

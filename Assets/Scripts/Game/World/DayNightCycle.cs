@@ -6,7 +6,7 @@ namespace Clube.Game
 {
     /// <summary>
     /// Day and night (GL227, first pass of PK4): the hour of day follows the <see cref="GameClock"/>, one in-game day
-    /// of 40 minutes, the sun up from 06:00 to 18:00 (20 minutes) and down for the other 20. The sun rises in the east,
+    /// of 40 minutes, the sun up from 04:00 to 20:00 (26.7 minutes) and down for the other 13.3 (GL464, a long solstice-like day). The sun rises in the east,
     /// crosses the sky warm and low at the ends of the day, and goes down under the horizon (GL248). The moon has its own
     /// orbit (<see cref="SkyPositions"/>): a month of 29.5 days, rising about 50 minutes later each day, its phase the
     /// angle between it and the sun, drawn by <see cref="MoonDisc"/>. The stars (<see cref="StarSky"/>) turn about the
@@ -21,8 +21,8 @@ namespace Clube.Game
     /// </remarks>
     public class DayNightCycle : MonoBehaviour
     {
-        public const float SunriseHour = 6f;
-        public const float SunsetHour = 18f;
+        public const float SunriseHour = SkyPositions.SunriseHour;
+        public const float SunsetHour = SkyPositions.SunsetHour;
 
         [SerializeField]
         private GameClock clock;

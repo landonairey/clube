@@ -37,8 +37,8 @@ namespace Clube.Core
             Wake = wake;
         }
 
-        /// <summary>9 am to 5 pm at the counter, asleep from 6 pm to 6 am (as asked for GL404-GL406).</summary>
-        public static ShopHours Default => new ShopHours(9f, 17f, 18f, 6f);
+        /// <summary>9 am to 5 pm at the counter, asleep from 9 pm to 4 am, the dark hours (GL404-GL406, GL464).</summary>
+        public static ShopHours Default => new ShopHours(9f, 17f, 21f, 4f);
 
         /// <summary>What the keeper does at an hour of the day.</summary>
         public KeeperActivity At(float hour)

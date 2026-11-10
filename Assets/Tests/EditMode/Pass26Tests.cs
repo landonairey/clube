@@ -115,14 +115,14 @@ namespace Clube.Core.Tests
         public void Sun_RisesEast_HighestAtNoon_UnderTheHorizonAtNight()
         {
             const float latitude = 28f;
-            Vector3 sunrise = SkyPositions.Sun(6f, latitude);
-            Assert.AreEqual(0f, sunrise.y, 1e-4f, "On the horizon at 06:00.");
+            Vector3 sunrise = SkyPositions.Sun(4f, latitude);
+            Assert.AreEqual(0f, sunrise.y, 1e-4f, "On the horizon at 04:00.");
             Assert.Greater(sunrise.x, 0.99f, "Due east.");
             Vector3 noon = SkyPositions.Sun(12f, latitude);
             Assert.AreEqual(Mathf.Sin((90f - latitude) * Mathf.Deg2Rad), noon.y, 1e-4f, "Its noon height.");
             Assert.Less(noon.z, 0f, "South at noon, from the north.");
             Assert.Less(SkyPositions.Sun(0f, latitude).y, -0.5f, "Well under the horizon at midnight.");
-            Assert.Less(SkyPositions.Sun(18f, latitude).x, -0.99f, "Sets in the west.");
+            Assert.Less(SkyPositions.Sun(20f, latitude).x, -0.99f, "Sets in the west.");
         }
 
         [Test]

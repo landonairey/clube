@@ -5514,6 +5514,8 @@ GameObject:
   - component: {fileID: 1350119486}
   - component: {fileID: 1350119485}
   - component: {fileID: 1350119487}
+  - component: {fileID: 1350119489}
+  - component: {fileID: 1350119488}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -6151,6 +6153,45 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.FallenLeaves
   worldView: {fileID: 1350119460}
   clock: {fileID: 1350119469}
+--- !u!114 &1350119488
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a42f56be6aa09ab45a10446a24c411a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.RiverTrout
+  material: {fileID: 2100000, guid: bae4f3ca3c3d4c84f81c1eccfd8300bf, type: 2}
+  worldView: {fileID: 1350119460}
+  dayNight: {fileID: 1350119477}
+  sounds: {fileID: 11400000, guid: a0d526c704e75e74a9b485c3484f305f, type: 2}
+  dropletMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
+  range: {x: 4, y: 40}
+  length: 0.35
+--- !u!114 &1350119489
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 262e670fa8ec8914db0ff0958a3f8d52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.Fireflies
+  material: {fileID: 2100000, guid: 43f8b17a1675f6241ad706816e36ffec, type: 2}
+  worldView: {fileID: 1350119460}
+  dayNight: {fileID: 1350119477}
+  grass: {fileID: 0}
+  count: 60
+  ring: {x: 3, y: 20}
+  height: {x: 0.5, y: 2.2}
+  size: 0.12
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -7532,6 +7573,8 @@ MonoBehaviour:
   reach: 3
   experience: 0.5
   unknownExperience: 2
+  lickExperience: 1
+  unknownLickExperience: 3
 --- !u!114 &1697135616
 MonoBehaviour:
   m_ObjectHideFlags: 0
