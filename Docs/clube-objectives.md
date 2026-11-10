@@ -816,12 +816,12 @@ GL250 (ambient wildlife).
 - [x] **GL490** `Debug` Free camera default speed and shift multiplier doubled.
 
 **Batch 2 — Sounds and effects**
-- [ ] **GL491** Menu button clicks; Back buttons pitched slightly down.
-- [ ] **GL492** Licking sound when eating ore.
-- [ ] **GL493** Picking-over sound while refining crushed ore.
-- [ ] **GL494** Bigger, blacker campfire smoke.
-- [ ] **GL495** Occasional shooting stars at night.
-- [ ] **GL496** Licking crushed ore gives more xp than raw ore.
+- [x] **GL491** Menu button clicks; Back buttons pitched slightly down.
+- [x] **GL492** Licking sound when eating ore.
+- [x] **GL493** Picking-over sound while refining crushed ore.
+- [x] **GL494** Bigger, blacker campfire smoke.
+- [x] **GL495** Occasional shooting stars at night.
+- [x] **GL496** Licking crushed ore gives more xp than raw ore.
 
 **Batch 3 — Missing features**
 - [ ] **GL497** Trout jumping.

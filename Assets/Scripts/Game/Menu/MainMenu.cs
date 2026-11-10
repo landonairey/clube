@@ -105,21 +105,21 @@ namespace Clube.Game
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
             GUILayout.BeginVertical(GUILayout.Width(Mathf.Min(ColumnWidth, column.width)));
-            if (GUILayout.Button("New", styles.Button, GUILayout.Height(48f)))
+            if (GameUi.LayoutButton("New", styles.Button, GUILayout.Height(48f)))
             {
                 OpenNewGame();
             }
             GUILayout.Space(10f);
             bool wasEnabled = GUI.enabled;
             GUI.enabled = saves.Count > 0;
-            if (GUILayout.Button("Load", styles.Button, GUILayout.Height(48f)))
+            if (GameUi.LayoutButton("Load", styles.Button, GUILayout.Height(48f)))
             {
                 OpenLoadGame();
             }
             GUI.enabled = wasEnabled;
             GUILayout.Label(SavesCaption(), styles.Caption);
             GUILayout.Space(10f);
-            if (GUILayout.Button("Exit", styles.Button, GUILayout.Height(48f)))
+            if (GameUi.LayoutButton("Exit", styles.Button, GUILayout.Height(48f)))
             {
                 GameScenes.Quit();
             }

@@ -42,6 +42,10 @@ namespace Clube.Game
         [SerializeField, Min(0f)]
         private float unknownLickExperience = 3f;
 
+        [Tooltip("Licking crushed ore gives this many times the xp of raw ore (GL496).")]
+        [SerializeField, Min(1f)]
+        private float crushedLickMultiplier = 1.5f;
+
         private PlayerController player;
         private PlayerInventory inventory;
         private Hotbar hotbar;
@@ -114,7 +118,7 @@ namespace Clube.Game
             }
             bool known = !held.Item.HidesContents && (ore == null || knowledge == null || knowledge.Knows(ore));
             float amount = Mathf.Min(1f, held.Amount);
-            float xp = (known ? lickExperience : unknownLickExperience) * amount;
+            float xp = (known ? lickExperience : unknownLickExperience) * amount * (held.Item.PurityAs != null ? crushedLickMultiplier : 1f);
             string taste = known && ore != null ? Taste(held, ore) : "a taste I can't place yet";
             inventory.Inventory.RemoveAmount(slot, amount);
             skills?.Skills.Award(SkillType.Prospecting, xp);

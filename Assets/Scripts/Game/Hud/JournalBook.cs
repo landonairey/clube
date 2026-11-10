@@ -80,12 +80,12 @@ namespace Clube.Game
             if (spreads > 1)
             {
                 GUI.enabled = spread > 0;
-                if (GUI.Button(new Rect(book.x, book.yMax + 14f, 90f, 26f), "< Back"))
+                if (GameUi.Button(new Rect(book.x, book.yMax + 14f, 90f, 26f), "< Back"))
                 {
                     spread--;
                 }
                 GUI.enabled = spread < spreads - 1;
-                if (GUI.Button(new Rect(book.xMax - 90f, book.yMax + 14f, 90f, 26f), "Next >"))
+                if (GameUi.Button(new Rect(book.xMax - 90f, book.yMax + 14f, 90f, 26f), "Next >"))
                 {
                     spread++;
                 }

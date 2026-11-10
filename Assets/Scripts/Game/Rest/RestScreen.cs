@@ -193,7 +193,7 @@ namespace Clube.Game
                 y += 28f;
                 GUI.Label(new Rect(x, y, inner, 28f), $"It's {Clock(CurrentHour())}", centredStyle);
                 y += 34f;
-                if (GUI.Button(new Rect(panel.center.x - 60f, y, 120f, 30f), "Wake up"))
+                if (GameUi.Button(new Rect(panel.center.x - 60f, y, 120f, 30f), "Wake up"))
                 {
                     Close();
                 }
@@ -202,12 +202,12 @@ namespace Clube.Game
 
             GUI.Label(new Rect(x, y, inner, 28f), $"Rest for {hours} hour{(hours == 1 ? "" : "s")}", centredStyle);
             y += 28f;
-            if (GUI.Button(new Rect(x, y, 30f, 28f), "-"))
+            if (GameUi.Button(new Rect(x, y, 30f, 28f), "-"))
             {
                 hours = Mathf.Max(1, hours - 1);
             }
             hours = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(x + 40f, y + 5f, inner - 80f, 16f), hours, 1f, MaxHours));
-            if (GUI.Button(new Rect(x + inner - 30f, y, 30f, 28f), "+"))
+            if (GameUi.Button(new Rect(x + inner - 30f, y, 30f, 28f), "+"))
             {
                 hours = Mathf.Min(MaxHours, hours + 1);
             }
@@ -216,11 +216,11 @@ namespace Clube.Game
             int wakeDay = CurrentDay() + Mathf.FloorToInt(wakeHour / 24f);
             GUI.Label(new Rect(x, y, inner, 28f), $"You'll wake at {Clock(wakeHour)}, day {wakeDay}", centredStyle);
             y += 40f;
-            if (GUI.Button(new Rect(panel.center.x - 130f, y, 120f, 30f), "Cancel"))
+            if (GameUi.Button(new Rect(panel.center.x - 130f, y, 120f, 30f), "Cancel"))
             {
                 Close();
             }
-            if (GUI.Button(new Rect(panel.center.x + 10f, y, 120f, 30f), "Rest"))
+            if (GameUi.Button(new Rect(panel.center.x + 10f, y, 120f, 30f), "Rest"))
             {
                 BeginRest();
             }

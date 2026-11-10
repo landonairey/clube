@@ -97,7 +97,7 @@ namespace Clube.Game
                 string text = entry.Playable
                     ? $"{mark}  <b>{entry.Name}</b>    <size=13>{entry.About}</size>"
                     : $"{mark}  <b>{entry.Name}</b>    <size=13>{entry.About}  (WIP)</size>";
-                if (GUILayout.Button(text, styles.ModeButton, GUILayout.Height(40f)) && entry.Playable)
+                if (GameUi.LayoutButton(text, styles.ModeButton, GUILayout.Height(40f)) && entry.Playable)
                 {
                     selected = entry.Mode;
                 }
@@ -116,7 +116,7 @@ namespace Clube.Game
             GUILayout.BeginHorizontal();
             GUI.SetNextControlName("Seed");
             seedText = GUILayout.TextField(seedText, 24, styles.Field, GUILayout.Height(36f));
-            if (GUILayout.Button("Random", styles.Button, GUILayout.Width(110f), GUILayout.Height(36f)))
+            if (GameUi.LayoutButton("Random", styles.Button, GUILayout.Width(110f), GUILayout.Height(36f)))
             {
                 seedText = Random.Range(1, 1000000).ToString();
                 GUI.FocusControl(null);
@@ -130,24 +130,24 @@ namespace Clube.Game
             GUILayout.Space(14f);
             GUILayout.Label("Opening", styles.Label);
             GUILayout.Space(4f);
-            if (GUILayout.Button(OpeningText(withTutorial, "Tutorial", "A day's work at the Mining Corp quarry."), styles.ModeButton, GUILayout.Height(40f)))
+            if (GameUi.LayoutButton(OpeningText(withTutorial, "Tutorial", "A day's work at the Mining Corp quarry."), styles.ModeButton, GUILayout.Height(40f)))
             {
                 withTutorial = true;
             }
             GUILayout.Space(4f);
-            if (GUILayout.Button(OpeningText(!withTutorial, "Skip it", "Start on your family's parcel."), styles.ModeButton, GUILayout.Height(40f)))
+            if (GameUi.LayoutButton(OpeningText(!withTutorial, "Skip it", "Start on your family's parcel."), styles.ModeButton, GUILayout.Height(40f)))
             {
                 withTutorial = false;
             }
 
             GUILayout.Space(22f);
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Back", styles.Button, GUILayout.Height(46f)))
+            if (GameUi.LayoutButton("Back", styles.Button, GUILayout.Height(46f)))
             {
                 choice = Choice.Back;
             }
             GUILayout.Space(12f);
-            if (GUILayout.Button("Start", styles.Button, GUILayout.Height(46f)))
+            if (GameUi.LayoutButton("Start", styles.Button, GUILayout.Height(46f)))
             {
                 choice = Choice.Start;
             }

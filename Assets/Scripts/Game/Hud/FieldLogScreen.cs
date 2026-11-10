@@ -197,7 +197,7 @@ namespace Clube.Game
                 GUI.color = open ? JournalBook.PaperColor : new Color(0.62f, 0.6f, 0.54f, 1f);
                 GUI.DrawTexture(tab, Texture2D.whiteTexture);
                 GUI.color = previous;
-                if (GUI.Button(tab, label, tabStyle) && !open)
+                if (GameUi.Button(tab, label, tabStyle) && !open)
                 {
                     Show(page);
                 }

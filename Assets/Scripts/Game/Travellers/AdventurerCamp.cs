@@ -186,7 +186,7 @@ namespace Clube.Game
             }
             if (smokeMaterial != null)
             {
-                TorchFlame.MakeSmoke(camp, new Vector3(0f, 0.45f, 0f), smokeMaterial);
+                TorchFlame.MakeSmoke(camp, new Vector3(0f, 0.45f, 0f), smokeMaterial, 3f, 1f); // bigger and blacker (GL494)
             }
             var light = new GameObject("Fire light");
             light.transform.SetParent(camp, false);

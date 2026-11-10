@@ -121,20 +121,20 @@ namespace Clube.Game
         private Choice DrawButtons(MenuStyles styles, Choice choice)
         {
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Back", styles.Button, GUILayout.Height(46f)))
+            if (GameUi.LayoutButton("Back", styles.Button, GUILayout.Height(46f)))
             {
                 choice = Choice.Back;
             }
             GUILayout.Space(12f);
             bool wasEnabled = GUI.enabled;
             GUI.enabled = Selected != null;
-            if (GUILayout.Button("Delete", styles.Button, GUILayout.Height(46f)))
+            if (GameUi.LayoutButton("Delete", styles.Button, GUILayout.Height(46f)))
             {
                 confirmingDelete = true;
                 problem = null;
             }
             GUILayout.Space(12f);
-            if (GUILayout.Button("Load", styles.Button, GUILayout.Height(46f)))
+            if (GameUi.LayoutButton("Load", styles.Button, GUILayout.Height(46f)))
             {
                 choice = Choice.Load;
             }
@@ -149,12 +149,12 @@ namespace Clube.Game
             GUILayout.Label($"Delete \"{Escape(Selected.Name)}\"? This can't be undone.", styles.Caption);
             GUILayout.Space(6f);
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Cancel", styles.Button, GUILayout.Height(46f)))
+            if (GameUi.LayoutButton("Cancel", styles.Button, GUILayout.Height(46f)))
             {
                 confirmingDelete = false;
             }
             GUILayout.Space(12f);
-            if (GUILayout.Button("Delete", styles.Button, GUILayout.Height(46f)))
+            if (GameUi.LayoutButton("Delete", styles.Button, GUILayout.Height(46f)))
             {
                 confirmingDelete = false;
                 if (SaveSlots.Delete(Selected.Path, out string why))

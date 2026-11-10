@@ -119,6 +119,9 @@ namespace Clube.Game
         /// <summary>Raised on each crush of ore (GL459), with where on the boulder and what was crushed: for the sound, the swing and the fragments.</summary>
         public event Action<Vector3, VoxelMaterial> OreCrushed;
 
+        /// <summary>A pass of picking over a stack while refining (GL493).</summary>
+        public event Action RefinePassed;
+
         /// <summary>True when Place would bash this frame: a stone or crushable ore in hand, aimed at a boulder within reach.</summary>
         public bool CanBash => (HoldsSomethingToBash(out _, out _) || HoldsSomethingToRefine(out _)) && AimsAtBoulder();
 
@@ -201,6 +204,7 @@ namespace Clube.Game
                 return false;
             }
             pickedOut.Clear();
+            RefinePassed?.Invoke();
             ItemStack refined = Refining.Pass(held, materials, refineVolume, pickedOut, UnityEngine.Random.value, UnityEngine.Random.value, out bool failed);
             // Crushed ore is prospecting work (GL388); anything else picked over is crafting.
             bool prospecting = held.Item.PurityAs != null;

@@ -247,7 +247,7 @@ namespace Clube.Game
                 else
                 {
                     bool chosen = station.Chosen == recipe;
-                    if (GUI.Button(row, (chosen ? "▶ " : "   ") + name, recipeStyle))
+                    if (GameUi.Button(row, (chosen ? "▶ " : "   ") + name, recipeStyle))
                     {
                         station.Chosen = chosen ? null : recipe;
                         if (!chosen)
@@ -488,7 +488,7 @@ namespace Clube.Game
             if (station.Kind == StationKind.FlatRock && ToolRepair.FindPair(station.Input, out int toolSlot, out int itemSlot))
             {
                 string ingot = station.Input[itemSlot].Item.DisplayName;
-                if (GUI.Button(new Rect(area.x, area.y + 8f, area.width, area.height - 16f), $"Repair (1 {ingot})"))
+                if (GameUi.Button(new Rect(area.x, area.y + 8f, area.width, area.height - 16f), $"Repair (1 {ingot})"))
                 {
                     ToolRepair.RepairFully(station.Input, toolSlot, itemSlot);
                 }
@@ -498,7 +498,7 @@ namespace Clube.Game
             if (strikes)
             {
                 string label = station.IsBusy ? $"Strike ({station.StrikesLeft} left)" : "Strike";
-                if (GUI.Button(new Rect(area.x, area.y + 8f, area.width, area.height - 16f), label))
+                if (GameUi.Button(new Rect(area.x, area.y + 8f, area.width, area.height - 16f), label))
                 {
                     station.Strike();
                 }

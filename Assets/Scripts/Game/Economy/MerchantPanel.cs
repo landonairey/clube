@@ -167,7 +167,7 @@ namespace Clube.Game
             // Something special on offer (GL473: the trading post itself, to a player with 10k).
             if (deal != null)
             {
-                if (GUI.Button(new Rect(x, y, width - Padding * 2f, RowHeight), deal.Label))
+                if (GameUi.Button(new Rect(x, y, width - Padding * 2f, RowHeight), deal.Label))
                 {
                     deal.Accept(wallet.Wallet);
                 }
@@ -230,11 +230,11 @@ namespace Clube.Game
             GUI.enabled = buys;
             string oneLabel = "Sell 1" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, Mathf.Min(1f, chosen.Amount)))}" : "");
             string stackLabel = "Sell stack" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, chosen.Amount))}" : "");
-            if (GUI.Button(new Rect(x + 270f, y, 100f, SellRowHeight), oneLabel))
+            if (GameUi.Button(new Rect(x + 270f, y, 100f, SellRowHeight), oneLabel))
             {
                 SellFromSlot(selected, 1f);
             }
-            if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), stackLabel))
+            if (GameUi.Button(new Rect(x + 376f, y, 100f, SellRowHeight), stackLabel))
             {
                 SellStack(selected);
             }
@@ -251,18 +251,18 @@ namespace Clube.Game
             {
                 // Arrow buttons for the last few, which a slider over a big stack can't hit.
                 float step = most < 10f ? 0.01f : 1f;
-                if (GUI.Button(new Rect(x + 270f, y + 8f, 24f, 28f), "-"))
+                if (GameUi.Button(new Rect(x + 270f, y + 8f, 24f, 28f), "-"))
                 {
                     splitAmount = Mathf.Max(least, SnapAmount(splitAmount - step, most));
                 }
-                if (GUI.Button(new Rect(x + 346f, y + 8f, 24f, 28f), "+"))
+                if (GameUi.Button(new Rect(x + 346f, y + 8f, 24f, 28f), "+"))
                 {
                     splitAmount = Mathf.Min(most, SnapAmount(splitAmount + step, most));
                 }
                 GUI.Label(new Rect(x + 296f, y + 12f, 48f, 28f), FormatAmount(splitAmount), countStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter });
             }
             string partLabel = $"Sell {(buys ? FormatAmount(splitAmount) : "0")}" + (buys ? $"\n{FormatCoins(prices.PriceOf(chosen, splitAmount))}" : "");
-            if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), partLabel))
+            if (GameUi.Button(new Rect(x + 376f, y, 100f, SellRowHeight), partLabel))
             {
                 SellFromSlot(selected, splitAmount);
             }
@@ -352,7 +352,7 @@ namespace Clube.Game
                 int lot = offer.Lot;
                 string what = lot > 1 ? $"{lot} {offer.Item.DisplayName}" : offer.Item.DisplayName;
                 GUI.enabled = wallet.Wallet.Coins >= offer.Coins;
-                if (GUI.Button(new Rect(i % 2 * (button + 6f), i / 2 * rowStep, button, RowHeight), $"Buy {what}  ({offer.Coins}c)"))
+                if (GameUi.Button(new Rect(i % 2 * (button + 6f), i / 2 * rowStep, button, RowHeight), $"Buy {what}  ({offer.Coins}c)"))
                 {
                     Buy(offer);
                 }
@@ -402,7 +402,7 @@ namespace Clube.Game
                 GUI.enabled = !top && wallet.Wallet.Coins >= cost;
                 string label = top ? $"{skill}: level {level}, nothing left to teach"
                     : $"Train {skill} to level {level + 1}  ({cost}c, {SkillTraining.ExperienceToNext(set, skill):0} xp)";
-                if (GUI.Button(new Rect(x, y, width, RowHeight), label)
+                if (GameUi.Button(new Rect(x, y, width, RowHeight), label)
                     && SkillTraining.Train(set, wallet.Wallet, skill, Current.CoinsPerExperience))
                 {
                     // A lesson is trade with them too (GL471).
@@ -501,7 +501,7 @@ namespace Clube.Game
             GUI.Label(new Rect(x, y + 4f, 360f, 40f),
                 $"{group.Count} stack{(group.Count == 1 ? "" : "s")} picked: {FormatAmount(amount)} in all\nCtrl-click: all of an item, or one picked stack out; Ctrl+Shift: one stack");
             GUI.enabled = coins > 0f;
-            if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), $"Sell picked\n{FormatCoins(coins)}") && CanPay(coins))
+            if (GameUi.Button(new Rect(x + 376f, y, 100f, SellRowHeight), $"Sell picked\n{FormatCoins(coins)}") && CanPay(coins))
             {
                 foreach (int slot in new System.Collections.Generic.List<int>(group))
                 {
