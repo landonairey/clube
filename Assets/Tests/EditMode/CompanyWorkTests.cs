@@ -14,6 +14,14 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void QuotaGrowsByTheStepEachDay()
+        {
+            Assert.AreEqual(1024, CompanyWork.Quota(1));
+            Assert.AreEqual(2048, CompanyWork.Quota(2));
+            Assert.AreEqual(1024, CompanyWork.Quota(0));
+        }
+
+        [Test]
         public void FieldsAndWarehouseAreLevel()
         {
             var fields = CompanyWork.Fields;

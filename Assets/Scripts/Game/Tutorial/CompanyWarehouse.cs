@@ -40,6 +40,9 @@ namespace Clube.Game
         /// <summary>Where the ore cart stands (map space), near the mountain's foot.</summary>
         public static readonly Vector3 CartSpot = new Vector3(52f, CompanyWork.Ground, 38f);
 
+        /// <summary>Where the tool shed stands (map space), off to the side of the fields, its door facing the yard.</summary>
+        public static readonly Vector3 ShedSpot = new Vector3(34f, CompanyWork.Ground, 27f);
+
         /// <summary>The player's bunk.</summary>
         public SleepingRoll Bunk { get; private set; }
 
@@ -57,6 +60,7 @@ namespace Clube.Game
             house.mesh = new LowPolyMeshBuilder();
             house.BuildShell();
             house.BuildRooms();
+            house.BuildFence();
             var filter = go.AddComponent<MeshFilter>();
             filter.sharedMesh = house.mesh.Make("Company warehouse");
             go.AddComponent<MeshRenderer>().sharedMaterial = material;
@@ -188,6 +192,45 @@ namespace Clube.Game
             Solid(new Vector3(x, G + (WallHeight + DoorHeight) * 0.5f, doorZ), new Vector3(Thick, WallHeight - DoorHeight, DoorWidth), Plank);
         }
 
+        // A tall fence (GL532) along each side of the building, with a cross fence at the back corners, so the only way
+        // to the front doors is through the building. The mountain rises right behind each side fence.
+        private void BuildFence()
+        {
+            Rect r = CompanyWork.Warehouse;
+            const float tall = 6f;
+            const float gap = 4f;
+            float backZ = r.yMax + 1.2f;
+            float length = backZ - (r.yMin - 3f);
+            float midZ = (backZ + r.yMin - 3f) * 0.5f;
+            foreach (float sign in new[] { -1f, 1f })
+            {
+                float sideX = sign < 0f ? r.xMin - 1.4f : r.xMax + 1.4f;
+                FenceRun(new Vector3(sideX, G + tall * 0.5f, midZ), new Vector3(0.2f, tall, length));
+                // From the slope's foot (and a little into it) across to the building's wall.
+                float from = sign < 0f ? r.xMin - gap : r.xMax - 0.3f;
+                float to = sign < 0f ? r.xMin + 0.3f : r.xMax + gap;
+                FenceRun(new Vector3((from + to) * 0.5f, G + tall * 0.5f, backZ), new Vector3(to - from, tall, 0.2f));
+            }
+        }
+
+        // One fence run: a solid board wall with the collider, plus posts and rails drawn on it.
+        private void FenceRun(Vector3 centre, Vector3 size)
+        {
+            Solid(centre, size, Plank);
+            bool alongZ = size.z > size.x;
+            float run = alongZ ? size.z : size.x;
+            for (float t = -run * 0.5f; t <= run * 0.5f + 0.01f; t += 2.5f)
+            {
+                Vector3 post = centre + (alongZ ? new Vector3(0f, 0f, t) : new Vector3(t, 0f, 0f));
+                mesh.Box(post, alongZ ? new Vector3(0.34f, size.y + 0.2f, 0.34f) : new Vector3(0.34f, size.y + 0.2f, 0.34f), Quaternion.identity, DarkPlank);
+            }
+            foreach (float y in new[] { -0.35f, 0f, 0.3f })
+            {
+                Vector3 rail = centre + new Vector3(0f, size.y * y, 0f);
+                mesh.Box(rail, alongZ ? new Vector3(0.3f, 0.2f, size.z) : new Vector3(size.x, 0.2f, 0.3f), Quaternion.identity, DarkPlank);
+            }
+        }
+
         // A box drawn into the warehouse's mesh with a collider of its own.
         private void Solid(Vector3 centre, Vector3 size, Color color)
         {
@@ -293,7 +336,7 @@ namespace Clube.Game
         }
 
         // Words on a board: a TextMesh child, facing -z at yaw 0 (so yaw 180 reads from +z).
-        private static TextMesh AddText(Transform parent, string text, Vector3 at, float yaw, float size, Material textMaterial)
+        internal static TextMesh AddText(Transform parent, string text, Vector3 at, float yaw, float size, Material textMaterial)
         {
             var go = new GameObject("Sign text");
             go.transform.SetParent(parent, false);

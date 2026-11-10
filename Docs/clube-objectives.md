@@ -865,12 +865,12 @@ GL250 (ambient wildlife).
 - [x] **GL530** `Game` The player's name on their assigned bed.
 
 **T2 — Tutorial world and quota**
-- [ ] **GL522** `Game` The company pick can be replaced after it wears out (via the tool shed, GL533).
-- [ ] **GL528** `Game` Crew lead: "Report back to me if you find anything interesting" while mining; after an ore is found, "discuss the <Ore Name>" always answers "We don't care about any of that, we only do Stone here. Now get back to work."
-- [ ] **GL531** `Game` Other workers mining the mountain wall.
-- [ ] **GL532** `Game` A tall fence along the sides of the building, so the player can't reach the front.
-- [ ] **GL533** `Game` A tool shed with a "Tool Shed" sign: a new pickaxe after breaking one, only one carried at a time.
-- [ ] **GL534** `Game` Quota: 1024 Stone on day 1 before 17:00 or be kicked out; each day adds 1024 more.
+- [x] **GL522** `Game` The company pick can be replaced after it wears out (via the tool shed, GL533).
+- [x] **GL528** `Game` Crew lead: "Report back to me if you find anything interesting" while mining; after an ore is found, "discuss the <Ore Name>" always answers "We don't care about any of that, we only do Stone here. Now get back to work."
+- [x] **GL531** `Game` Other workers mining the mountain wall.
+- [x] **GL532** `Game` A tall fence along the sides of the building, so the player can't reach the front.
+- [x] **GL533** `Game` A tool shed with a "Tool Shed" sign: a new pickaxe after breaking one, only one carried at a time.
+- [x] **GL534** `Game` Quota: 1024 Stone on day 1 before 17:00 or be kicked out; each day adds 1024 more.
 
 **M — Menu and misc**
 - [ ] **GL517** `Game` Title diorama: a mountain-edge shape with a river through it, fully generated trees, the real campfire flames plus smoke, all from the game's own terrain generation.

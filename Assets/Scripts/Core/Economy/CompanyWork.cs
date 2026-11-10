@@ -16,6 +16,18 @@ namespace Clube.Core
         /// <summary>Height of the work fields and the warehouse floor.</summary>
         public const float Ground = 20f;
 
+        /// <summary>Stone the company wants handed in by <see cref="QuotaHour"/> on day 1; each day adds this much more (GL534).</summary>
+        public const int QuotaStep = 1024;
+
+        /// <summary>The hour of the day the quota is checked.</summary>
+        public const float QuotaHour = 17f;
+
+        /// <summary>The total stone that must be handed in by the end of a day (1-based): 1024, 2048, ...</summary>
+        public static int Quota(int day)
+        {
+            return QuotaStep * Mathf.Max(1, day);
+        }
+
         /// <summary>The work fields (and the warehouse south of them): x from <see cref="Fields"/>.xMin to xMax, z up to yMax.</summary>
         public static readonly Rect Fields = new Rect(30f, 18f, 40f, 28f);
 

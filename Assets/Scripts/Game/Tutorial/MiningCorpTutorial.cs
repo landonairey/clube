@@ -15,7 +15,7 @@ namespace Clube.Game
     /// any of it can be dug. Taking from a crate (<see cref="CompanyCrate"/>) gets the player caught: a fade to black,
     /// everything but their coins taken, and the game goes on in the world scene, on their family's parcel.
     /// </summary>
-    public class MiningCorpTutorial : MonoBehaviour
+    public class MiningCorpTutorial : MonoBehaviour, ISavedValues
     {
         private const string BindingGroup = "Keyboard&Mouse";
         private const int NameLength = 20;
@@ -117,6 +117,13 @@ namespace Clube.Game
         private float fade = 1f;
         private GUIStyle cardStyle;
         private GUIStyle storyStyle;
+        private DayNightCycle dayNight;
+        private ToolShed shed;
+        private readonly System.Collections.Generic.List<string> foundOres = new System.Collections.Generic.List<string>();
+        private bool talking;
+        private int stoneDelivered;
+        private string outcome = "";
+        private GUIStyle quotaStyle;
 
         /// <summary>True while the tutorial runs.</summary>
         public bool IsRunning => step != Step.Off;
@@ -156,6 +163,7 @@ namespace Clube.Game
             inventoryScreen = player.GetComponentInChildren<InventoryScreen>();
             questHud = player.GetComponentInChildren<QuestHud>(true);
             minimap = player.GetComponentInChildren<Minimap>();
+            dayNight = FindAnyObjectByType<DayNightCycle>();
             if (questHud != null)
             {
                 questHud.enabled = false;
@@ -215,9 +223,43 @@ namespace Clube.Game
             {
                 CloseCrate();
             }
+            CheckQuota();
             Teach();
             lastPosition = player.transform.position;
             lastLook = LookRotation;
+        }
+
+        private int QuotaDay => dayNight != null ? dayNight.Day : 1;
+
+        /// <summary>The stone handed in so far, over all days.</summary>
+        public int StoneDelivered => stoneDelivered;
+
+        /// <summary>Stone that must have been handed in by 17:00 today (GL534).</summary>
+        public int QuotaToday => CompanyWork.Quota(QuotaDay);
+
+        // From the first hand-in on the company wants its quota by 17:00 every day, or the player is thrown out.
+        private void CheckQuota()
+        {
+            if (dayNight == null || step < Step.Hotbar || step >= Step.Caught || dayNight.ClockHour < CompanyWork.QuotaHour
+                || stoneDelivered >= QuotaToday)
+            {
+                return;
+            }
+            outcome = $"You didn't make the quota of {QuotaToday} stone,\nand the Mining Corp has no use for you.\n\nYou are thrown out and left on the only land your family still owns.";
+            ThrowOut($"Crew lead: \"{stoneDelivered} stone. The quota was {QuotaToday}, {Name}. You're done here. Out!\"");
+        }
+
+        public void SaveValues(System.Collections.Generic.IDictionary<string, string> values)
+        {
+            values["quotaStone"] = stoneDelivered.ToString();
+        }
+
+        public void RestoreValues(System.Collections.Generic.IReadOnlyDictionary<string, string> values)
+        {
+            if (values.TryGetValue("quotaStone", out string saved) && int.TryParse(saved, out int count))
+            {
+                stoneDelivered = Mathf.Max(0, count);
+            }
         }
 
         private float TargetFade()
@@ -262,6 +304,8 @@ namespace Clube.Game
             arrow = QuestArrow.Build(lead.transform, 2.6f, material);
             Vector3 cartAt = OnMap(CompanyWarehouse.CartSpot);
             cart = OreCart.Build(cartAt, Vector3.right, material, this);
+            shed = ToolShed.Build(OnMap(CompanyWarehouse.ShedSpot), Vector3.right, material, this, textMaterial);
+            WorkerCrew.Build(worldView.transform, material);
             player.LookTowards(leadAt);
             // A new hire owns nothing: whatever a new game hands out waits for the player's own land.
             EmptyInventory();
@@ -352,17 +396,94 @@ namespace Clube.Game
                     inventory.Inventory.Add(pick);
                 }
                 speech = $"Crew lead: \"Here's a company pick, {Name}. Dig the mountain out back; every stone is the company's: "
-                    + "ten coins for every hundred you bring in. And don't take anything that isn't yours.\"";
+                    + "ten coins for every hundred you bring in. And don't take anything that isn't yours. "
+                    + "Report back to me if you find anything interesting. A broken pick? Get a new one at the tool shed.\"";
                 step = Step.Hotbar;
                 return;
             }
             if (step > Step.Talk && step < Step.Caught)
             {
+                if (foundOres.Count > 0)
+                {
+                    talking = true;
+                    player.IsInMenu = true;
+                    return;
+                }
                 HandIn();
             }
             else if (step < Step.Talk && step > Step.Name)
             {
                 note = "Crew lead: \"Get your bearings first.\"";
+            }
+        }
+
+        /// <summary>The tool shed (GL533): a new company pick for a player who has none, one at a time (GL522).</summary>
+        public void TakePickFromShed()
+        {
+            if (pick == null || step <= Step.Talk || step >= Step.Caught)
+            {
+                note = "Tool shed: \"Ask the crew lead for your pick first.\"";
+                return;
+            }
+            Inventory items = inventory.Inventory;
+            for (int slot = 0; slot < items.SlotCount; slot++)
+            {
+                ItemStack stack = items[slot];
+                if (!stack.IsEmpty && stack.Item is ToolDefinition && stack.Item.DisplayName == pick.DisplayName)
+                {
+                    note = "Tool shed: \"You've got a pick already. Come back when it breaks.\"";
+                    return;
+                }
+            }
+            if (inventory.Inventory.Add(pick) > 0)
+            {
+                note = "Tool shed: \"Pick's full. Make room.\"";
+                return;
+            }
+            note = "Tool shed: \"Here's a new company pick. Mind it.\"";
+        }
+
+        /// <summary>The crew lead's one answer to anything the player found (GL528).</summary>
+        private const string NotInterested = "Crew lead: \"We don't care about any of that, we only do Stone here. Now get back to work.\"";
+
+        private void CloseTalk()
+        {
+            talking = false;
+            player.IsInMenu = false;
+        }
+
+        // Talking to the lead once ore has been found: hand in, or discuss what was found (he never cares).
+        private void DrawTalk()
+        {
+            Event e = Event.current;
+            bool closeKey = e.type == EventType.KeyDown && (e.keyCode == KeyCode.E || e.keyCode == KeyCode.Escape);
+            float width = Mathf.Min(Screen.width - 32f, 420f * GameUi.FontScale);
+            float row = GameUi.Font(17) + 14f;
+            float height = 70f + row * (foundOres.Count + 2);
+            var panel = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
+            GUI.Box(panel, "", cardStyle);
+            GUI.Label(new Rect(panel.x + 14f, panel.y + 10f, width - 28f, 28f), "The crew lead");
+            float y = panel.y + 44f;
+            if (GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), "Hand in the stone"))
+            {
+                CloseTalk();
+                HandIn();
+                return;
+            }
+            y += row;
+            foreach (string ore in foundOres)
+            {
+                if (GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), $"Discuss the {ore}"))
+                {
+                    speech = NotInterested;
+                    CloseTalk();
+                    return;
+                }
+                y += row;
+            }
+            if (GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), "Goodbye (E)") || closeKey)
+            {
+                CloseTalk();
             }
         }
 
@@ -376,6 +497,7 @@ namespace Clube.Game
             Inventory items = inventory.Inventory;
             float price = 0f;
             float volume = 0f;
+            int stone = 0;
             for (int slot = 0; slot < items.SlotCount; slot++)
             {
                 ItemStack stack = items[slot];
@@ -385,6 +507,10 @@ namespace Clube.Game
                 }
                 price += prices != null ? prices.PriceOf(stack, stack.Amount) : 0f;
                 volume += stack.Volume;
+                if (stack.Item.DisplayName == "Stone")
+                {
+                    stone += Mathf.RoundToInt(stack.Amount);
+                }
                 items.Set(slot, ItemStack.Empty);
             }
             if (volume <= 0f)
@@ -392,6 +518,7 @@ namespace Clube.Game
                 note = "Nothing to hand in yet: dig some stone first.";
                 return;
             }
+            stoneDelivered += stone;
             float wage = CompanyWork.Wage(price);
             wallet?.Wallet?.Earn(wage);
             note = $"Handed in stone worth {Wallet.Format(price)}. The company pays you {Wallet.Format(wage)}.";
@@ -464,6 +591,19 @@ namespace Clube.Game
             if (step > Step.Talk && step < Step.Caught && !collected.IsEmpty)
             {
                 dug += collected.Volume;
+                // GL528: remember the ores the player turns up, for the crew lead to wave away.
+                if (collected.Contents != null)
+                {
+                    foreach (Content part in collected.Contents.Parts)
+                    {
+                        string ore = part.Material != null && part.Material.Category == VoxelMaterialCategory.Ore ? part.Material.DisplayName : null;
+                        if (ore != null && !foundOres.Contains(ore))
+                        {
+                            foundOres.Add(ore);
+                            note = $"You found some {ore}. The crew lead wants to hear about interesting finds.";
+                        }
+                    }
+                }
             }
         }
 
@@ -481,10 +621,22 @@ namespace Clube.Game
                     inventory.Inventory.Add(item);
                 }
             }
+            outcome = "Caught stealing from the Mining Corp, you are thrown out\nand left on the only land your family still owns.\n\nTime to start something of your own.";
+            ThrowOut($"Crew lead: \"Thief! I told you not to take anything that isn't yours, {Name}! Get out!\"");
+        }
+
+        // The player is thrown out (caught, or short of the quota): black screen, the story, then the world scene.
+        private void ThrowOut(string line)
+        {
             step = Step.Caught;
             caughtAt = Time.time;
             note = "";
-            speech = $"Crew lead: \"Thief! I told you not to take anything that isn't yours, {Name}! Get out!\"";
+            speech = line;
+            if (talking)
+            {
+                talking = false;
+            }
+            openCrate = null;
             if (arrow != null)
             {
                 arrow.gameObject.SetActive(false);
@@ -590,9 +742,14 @@ namespace Clube.Game
             if (step != Step.Arriving && fade < 1f)
             {
                 DrawCard();
+                DrawQuota();
                 if (openCrate != null)
                 {
                     DrawCrate();
+                }
+                if (talking)
+                {
+                    DrawTalk();
                 }
             }
             if (fade > 0f)
@@ -605,6 +762,24 @@ namespace Clube.Game
                 GUI.Label(middle, StoryText(), storyStyle);
                 GUI.color = before;
             }
+        }
+
+        // The quota box at the top right (GL534): stone handed in against today's quota, and the hour it's due.
+        private void DrawQuota()
+        {
+            if (step < Step.Hotbar || step >= Step.Caught)
+            {
+                return;
+            }
+            if (quotaStyle == null)
+            {
+                quotaStyle = new GUIStyle(cardStyle) { alignment = TextAnchor.MiddleLeft, fontSize = GameUi.Font(16) };
+            }
+            string due = $"{(int)CompanyWork.QuotaHour}:00";
+            string text = $"<b>Quota, day {QuotaDay}</b>\nStone handed in: {stoneDelivered} / {QuotaToday}\nDue by {due}";
+            float width = 230f * GameUi.FontScale;
+            float height = quotaStyle.CalcHeight(new GUIContent(text), width);
+            GUI.Box(new Rect(Screen.width - width - 14f, 14f, width, height), text, quotaStyle);
         }
 
         // The card at the top: what's said, the task, a note, and the name box at the name step.
@@ -645,9 +820,7 @@ namespace Clube.Game
             }
             if (step == Step.Caught || step == Step.Off)
             {
-                return blackAt >= 0f
-                    ? "Caught stealing from the Mining Corp, you are thrown out\nand left on the only land your family still owns.\n\nTime to start something of your own."
-                    : speech;
+                return blackAt >= 0f ? outcome : speech;
             }
             return "";
         }
