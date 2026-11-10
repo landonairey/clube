@@ -31,6 +31,12 @@ namespace Clube.Game
         /// <summary>True for a new game that opens with the Mining Corp tutorial (GL479), until the tutorial ends.</summary>
         public static bool Tutorial { get; private set; }
 
+        /// <summary>The character's name, typed for the crew lead in the tutorial (GL514); empty until then.</summary>
+        public static string CharacterName { get; set; } = "";
+
+        /// <summary>Coins earned in the tutorial, waiting for the player's wallet in the game scene.</summary>
+        public static float CarriedCoins { get; set; }
+
         /// <summary>The save this game was loaded from, until the game scene has put it back; null for a new game.</summary>
         public static GameSave Loaded { get; private set; }
 
@@ -42,6 +48,8 @@ namespace Clube.Game
             Seed = seed;
             WorldName = NameOrDefault(worldName);
             Tutorial = tutorial;
+            CharacterName = "";
+            CarriedCoins = 0f;
             Loaded = null;
         }
 
@@ -79,7 +87,16 @@ namespace Clube.Game
         {
             IsActive = false;
             Tutorial = false;
+            CarriedCoins = 0f;
             Loaded = null;
+        }
+
+        /// <summary>The coins carried out of the tutorial, now cleared.</summary>
+        public static float TakeCarriedCoins()
+        {
+            float coins = CarriedCoins;
+            CarriedCoins = 0f;
+            return coins;
         }
     }
 }

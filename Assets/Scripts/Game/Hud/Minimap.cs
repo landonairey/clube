@@ -40,6 +40,9 @@ namespace Clube.Game
         private float nextDraw;
         private bool drawnThisFrame;
 
+        /// <summary>Something to mark on the map, such as who a quest says to talk to (GL513); null for nothing.</summary>
+        public Transform Marker { get; set; }
+
         private void Awake()
         {
             player = GetComponent<PlayerController>();
@@ -139,7 +142,33 @@ namespace Clube.Game
             GUI.DrawTexture(new Rect(frame.center.x - 9f, frame.center.y - 11f, 18f, 22f), arrow);
             GUI.matrix = matrix;
             GUI.Label(new Rect(frame.center.x - 10f, frame.y + 2f, 20f, 22f), "N");
+            DrawMarker(frame);
             HudLayout.ReportMinimap(frame.yMax + 3f);
+        }
+
+        // The quest marker: a yellow square where it is, held at the map's edge when it's further than the map shows.
+        private void DrawMarker(Rect frame)
+        {
+            if (Marker == null || !Marker.gameObject.activeInHierarchy)
+            {
+                return;
+            }
+            Vector3 offset = Marker.position - transform.position;
+            // North (+z) is up on the map.
+            var onMap = new Vector2(offset.x, -offset.z) / radius * (size * 0.5f);
+            float limit = size * 0.5f - 8f;
+            float far = Mathf.Max(Mathf.Abs(onMap.x), Mathf.Abs(onMap.y));
+            if (far > limit)
+            {
+                onMap *= limit / far;
+            }
+            Vector2 at = frame.center + onMap;
+            Color previous = GUI.color;
+            GUI.color = new Color(0.1f, 0.1f, 0.1f);
+            GUI.DrawTexture(new Rect(at.x - 7f, at.y - 7f, 14f, 14f), Texture2D.whiteTexture);
+            GUI.color = new Color(1f, 0.85f, 0.15f);
+            GUI.DrawTexture(new Rect(at.x - 5f, at.y - 5f, 10f, 10f), Texture2D.whiteTexture);
+            GUI.color = previous;
         }
 
         // A white arrow with a dark edge, pointing up.

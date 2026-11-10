@@ -3,26 +3,30 @@ using UnityEngine;
 namespace Clube.Core
 {
     /// <summary>
-    /// The rules of the opening tutorial's job at the Mining Corp quarry (GL479): where the quarry is dug, what the
-    /// company pays for the stone handed in, and when the worker counts as stealing. Kept apart from the scene so
-    /// they can be tested.
+    /// The rules and the map of the opening tutorial's job at the Mining Corp (GL479, GL514): what the company pays for the
+    /// stone handed in, and where its warehouse, work fields and stone mountain are on the tutorial map. Heights are world
+    /// metres; x runs east and z north. The fields are open to the south, where the warehouse stands across them, and the
+    /// mountain rises steeply on the other three sides. Kept apart from the scene so they can be tested.
     /// </summary>
     public static class CompanyWork
     {
         /// <summary>The worker's share of the stone's price: 10c for every 100c.</summary>
         public const float WageShare = 0.1f;
 
-        /// <summary>Metres from the town's gate, out along the road, to the quarry.</summary>
-        public const float OutFromGate = 12f;
+        /// <summary>Height of the work fields and the warehouse floor.</summary>
+        public const float Ground = 20f;
 
-        /// <summary>Metres to the side of the road, so the cart track misses the pit.</summary>
-        public const float BesideRoad = 18f;
+        /// <summary>The work fields (and the warehouse south of them): x from <see cref="Fields"/>.xMin to xMax, z up to yMax.</summary>
+        public static readonly Rect Fields = new Rect(30f, 18f, 40f, 28f);
 
-        /// <summary>The quarry's floor, in metres under the ground at its centre.</summary>
-        public const float Depth = 5f;
+        /// <summary>The warehouse's footprint, across the fields' open south end.</summary>
+        public static readonly Rect Warehouse = new Rect(32f, -6f, 36f, 22f);
 
-        /// <summary>Metres past the pit's rim the worker may stand while carrying company stone.</summary>
-        public const float Margin = 5f;
+        /// <summary>Metres the mountain climbs for each metre out from the fields: steeper than the player can walk.</summary>
+        public const float MountainSlope = 1.6f;
+
+        /// <summary>The mountain's height over the fields at its highest.</summary>
+        public const float MountainRise = 66f;
 
         /// <summary>What the company pays for stone of this price.</summary>
         public static float Wage(float price)
@@ -30,22 +34,27 @@ namespace Clube.Core
             return Mathf.Max(0f, price) * WageShare;
         }
 
-        /// <summary>The quarry's centre (world metres, x and z): out of the gate and to the right of the road.</summary>
-        public static Vector2 QuarryCentre(Vector2 gate, Vector2 outward)
+        /// <summary>Metres from a point (x, z) out of the open ground: the fields, and the strip south of them.</summary>
+        public static float OutOfFields(float x, float z)
         {
-            outward = outward.sqrMagnitude > 1e-6f ? outward.normalized : Vector2.down;
-            var side = new Vector2(outward.y, -outward.x);
-            return gate + outward * OutFromGate + side * BesideRoad;
+            float dx = Mathf.Max(Fields.xMin - x, x - Fields.xMax, 0f);
+            float dz = Mathf.Max(z - Fields.yMax, 0f);
+            return Mathf.Sqrt(dx * dx + dz * dz);
         }
 
-        /// <summary>
-        /// True when the worker is stealing: carrying company stone more than <see cref="Margin"/> past the pit's rim,
-        /// or holding something that was never the company's to give (mined elsewhere, taken from a crate, a shop or
-        /// the land).
-        /// </summary>
-        public static bool IsStealing(float distanceFromQuarry, float rimRadius, bool carriesCompanyGoods, bool holdsOtherGoods)
+        /// <summary>The ground's height at a point (x, z): the level fields, and the mountain round them, a little uneven.</summary>
+        public static float Height(float x, float z)
         {
-            return holdsOtherGoods || (carriesCompanyGoods && distanceFromQuarry > rimRadius + Margin);
+            float away = OutOfFields(x, z);
+            if (away <= 0f)
+            {
+                return Ground;
+            }
+            // A rounded foot, then the steep face up to the flat top.
+            float rise = Mathf.Min(MountainRise, away * MountainSlope);
+            float foot = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(away / 2f));
+            float rough = 2.5f * Mathf.Sin(x * 0.21f + z * 0.07f) * Mathf.Sin(z * 0.17f - x * 0.05f);
+            return Ground + foot * rise + Mathf.Clamp01(away / 4f) * rough;
         }
     }
 }

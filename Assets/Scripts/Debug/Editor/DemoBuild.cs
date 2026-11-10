@@ -25,6 +25,7 @@ namespace Clube.Debug.Editor
         private static readonly string[] Scenes =
         {
             "Assets/Scenes/MainMenu.unity",
+            "Assets/Scenes/Tutorial.unity",
             "Assets/Scenes/WorldLab.unity",
         };
 

@@ -303,6 +303,23 @@ namespace Clube.Game
             slideSpeed = 0f;
         }
 
+        /// <summary>Turns the player to face a point (world space), looking level.</summary>
+        public void LookTowards(Vector3 point)
+        {
+            Vector3 flat = Vector3.ProjectOnPlane(point - transform.position, Vector3.up);
+            if (flat.sqrMagnitude < 1e-6f)
+            {
+                return;
+            }
+            yaw = Quaternion.LookRotation(flat).eulerAngles.y;
+            pitch = 0f;
+            transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            if (head != null)
+            {
+                head.localRotation = Quaternion.identity;
+            }
+        }
+
         private void Awake()
         {
             standingHeight = Body.height;

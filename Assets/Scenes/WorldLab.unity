@@ -5459,59 +5459,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1018851405
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1018851407}
-  - component: {fileID: 1018851406}
-  m_Layer: 0
-  m_Name: Tutorial
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1018851406
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1018851405}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0de4bdab6bcb1904c8d83c17038e0616, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Game::Clube.Game.MiningCorpTutorial
-  worldView: {fileID: 1350119460}
-  town: {fileID: 782721299}
-  player: {fileID: 1697135563}
-  actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
-  prices: {fileID: 11400000, guid: 44577251d34951d40bd1ac9b329bc569, type: 2}
-  pick: {fileID: 11400000, guid: 950dfde7ea687974caddd2269cd51cd5, type: 2}
-  material: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
-  townWaitSeconds: 60
-  digTarget: 4
---- !u!4 &1018851407
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1018851405}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1350119454
 GameObject:
   m_ObjectHideFlags: 0
@@ -6095,6 +6042,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.StarSky
   material: {fileID: 2100000, guid: fcee9d4b03c50d846a0ea1acc10230f6, type: 2}
   distanceShare: 0.95
+  shootingStarGap: {x: 60, y: 180}
 --- !u!114 &1350119483
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6499,6 +6447,7 @@ GameObject:
   - component: {fileID: 1697135614}
   - component: {fileID: 1697135615}
   - component: {fileID: 1697135616}
+  - component: {fileID: 1697135617}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -7521,8 +7470,8 @@ MonoBehaviour:
   material: {fileID: 2100000, guid: 4d599372257648141b207c3dbd8d5b8f, type: 2}
   gravity: 12
   sparkMaterial: {fileID: 2100000, guid: d578650619eba4e498c80599e6a05b45, type: 2}
-  sparkChance: 0.2
-  crushSparkChance: 0.35
+  rockSparkChance: 0.7
+  boulderSparkChance: 0.85
 --- !u!114 &1697135605
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7696,6 +7645,7 @@ MonoBehaviour:
   unknownExperience: 2
   lickExperience: 1
   unknownLickExperience: 3
+  crushedLickMultiplier: 1.5
 --- !u!114 &1697135616
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7713,6 +7663,18 @@ MonoBehaviour:
   interval: 0.4
   height: 60
   resolution: 256
+--- !u!114 &1697135617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f600faea3dbf53b4997948e09b5cf99e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerName
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -7724,4 +7686,3 @@ SceneRoots:
   - {fileID: 979859994}
   - {fileID: 782721300}
   - {fileID: 1566741226}
-  - {fileID: 1018851407}
