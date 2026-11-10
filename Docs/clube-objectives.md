@@ -802,6 +802,57 @@ GL250 (ambient wildlife).
   - On the surface: a tree, a campfire, a stump, and the player mining the tin node in a loop.
   - The menu's buttons laid out beside the diorama so the two read together; cheap to draw (the menu caps at 60 fps).
 
+### Playtest 2026-11-09 *(added 2026-11-09, from `Docs/backlogs/20261109c clube-backlog.md`; seven batches, one branch and PR each)*
+**Batch 1 — Quick fixes** (`gl481/quick-fixes`)
+- [ ] **GL481** `Game` Crafting station recipes sorted by unlock level, then the current order within a level.
+- [ ] **GL482** `Game` The left bracket of the quest items box is no longer clipped.
+- [ ] **GL483** `Game` The "climb out of the hole" text says to press SPACE.
+- [ ] **GL484** `Game` Tip on the tree quest: hold SPACE to climb and cut limbs; Woodcutting level raises the yield.
+- [ ] **GL485** `Game` Crushing ore shows the prospect grade name (per Prospecting level), not the exact quality %.
+- [ ] **GL486** `Game` The orange refine text fades fast enough to be gone before the next, while refining a held stack.
+- [ ] **GL487** `Game` Stone can be refined on a boulder (hand axe still possible).
+- [ ] **GL488** `Game` "Saw oak boards" and "Saw maple boards" at the stump worktop.
+- [ ] **GL489** `Game` The merchant table is no longer placed on the starting parcel (stays in the debug cheats).
+- [ ] **GL490** `Debug` Free camera default speed and shift multiplier doubled.
+
+**Batch 2 — Sounds and effects**
+- [ ] **GL491** Menu button clicks; Back buttons pitched slightly down.
+- [ ] **GL492** Licking sound when eating ore.
+- [ ] **GL493** Picking-over sound while refining crushed ore.
+- [ ] **GL494** Bigger, blacker campfire smoke.
+- [ ] **GL495** Occasional shooting stars at night.
+- [ ] **GL496** Licking crushed ore gives more xp than raw ore.
+
+**Batch 3 — Missing features**
+- [ ] **GL497** Trout jumping.
+- [ ] **GL498** Mining sparks and bigger spraying particles.
+- [ ] **GL499** Early-bird morning speed bonus restored.
+
+**Batch 4 — Crafting panel**
+- [ ] **GL500** Have/need fractions on inputs, red with a greyed icon when short.
+- [ ] **GL501** Left-clicking a same-type non-stackable in the inventory swaps it into the recipe slot.
+- [ ] **GL502** Smelting yield also depends on fuel quality.
+
+**Batch 5 — Terrain**
+- [ ] **GL503** Rivers carved into the earth and full of running water, unbroken up into the mountains.
+- [ ] **GL504** Rocks and downed trunks draped across rivers.
+- [ ] **GL505** Fallen trees in forests (stump and logs, random cardinal directions, no leaves).
+- [ ] **GL506** Smoother sand-to-grass transitions.
+- [ ] **GL507** World 5× deeper into the ground.
+
+**Batch 6 — Town and roads**
+- [ ] **GL508** Organic trading post layout: pick the site, place shops by their interests, then wall around them.
+- [ ] **GL509** Thief room sealed by terrain, with tunnels to the parcel's north, east, south and west faces.
+- [ ] **GL510** A sensible trade road (not up a mountain face).
+- [ ] **GL511** Trade carts appear.
+
+**Batch 7 — Tutorial and title page**
+- [ ] **GL512** Title page diorama built from real world generation (trees, campfire, stump, ores).
+- [ ] **GL513** Quest arrow over the crew lead and on the minimap when told to talk to them.
+- [ ] **GL514** A separate tutorial map: a company warehouse (spawn behind it, dorm hall, crew lead's room with a crate, crates outside), name entry, working fields against a mountain on three sides, company pickaxe.
+- [ ] **GL515** Bug: the tutorial auto-flags theft on spawn (leaves and stick in the inventory). *(Replaced by the new tutorial map, GL514.)*
+- [ ] **GL516** Bug: "you don't own this land" while mining in the quarry. *(Replaced by the new tutorial map, GL514.)*
+
 ### Eroded landscape *(added 2026-11-03, from `Docs/backlogs/20261103j clube-backlog.md` — first pass of P12; branch `p12/eroded-landscape`)*
 - [x] **P12a** `Core + Debug` *(added 2026-11-03)* An eroded landscape generator after runevision's erosion filter: branching gullies and ridges as a filter on a heightfield, every point worked out on its own, so chunks, levels of detail and the water map agree. *(Done 2026-11-03: `ErosionFilter` + `ErosionSettings` (Generation/Noise, written from the blog's description: stripes blended from 4 x 4 cells, normalised gullies, stacked fading, straight gullies, ridge map), `ErodedLandscapeHeight` and the ErodedLandscape generator (`TerrainGeneratorType.ErodedLandscape`; Landscape's mask, warp, plains and distant ranges, with smooth massifs (`LandscapeHeight.WithSmoothMassifs`) in place of the ridged peaks). Learned on the way (height maps in `Docs/images/20261103 *`): on Landscape's ridged noise the gullies turned to noise (fine ridges) and seams (knife-edge crests flip the slope); clamped noise made flat plateaus with cliff edges; full-strength gullies from the plains up raised a cliff along every range's foot (gullies now deepen over the foothills); 35% of the mountains were over the player's 50° slope limit. With smooth massifs and strength 0.15: 15% (Landscape 8%), peaks at 131 m. Peaks rise by `PeakLift` 0.4 of the gully depth, so they stay inside the 160 m world. Lab panel: Erosion section. Tests: `ErodedLandscapeTests`. Benchmark: *Clube → Benchmarks → Heightfield generation*.)*
 - [x] **P12b** `Core` *(added 2026-11-03)* Rivers start in the eroded valleys and run down into lakes, ponds and other rivers. *(Done 2026-11-03: `HeightfieldGenerator.HasValleys`/`ScheduleValleys` (the ridge map of the biggest `ValleyOctaves` gullies); `Hydrology` on such ground routes water by steepest descent (it follows the gullies), starts a river where a valley is deeper than `WaterGeneration.ValleyDepth` and drains `ValleyHeadArea`, and carries it on downstream, so streams merge and pass through lakes; river beds there follow the ground instead of floating over steep gully floors. `ErosionSettings.MinPondArea` can keep small pits dry (0 by default). Mountain streams are still thin and broken in places on the 1 m map; the live flow carries their water down.)*
