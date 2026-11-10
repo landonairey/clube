@@ -67,7 +67,7 @@ namespace Clube.Core.Tests
                     for (int x = -12; x < 12; x++)
                     {
                         var cell = new Vector2Int(x, z);
-                        bool hasTree = field.TryGetTree(cell, out Vector3 root, out _);
+                        bool hasTree = field.TryGetTree(cell, out Vector3 root, out _) && !TreeForests.IsFallen(Seed, cell, settings);
                         Assert.That(placed.TryGetValue(cell, out DistantTree tree), Is.EqualTo(hasTree), $"cell {cell}");
                         if (hasTree)
                         {
