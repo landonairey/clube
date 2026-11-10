@@ -5391,6 +5391,7 @@ MonoBehaviour:
   prices: {fileID: 11400000, guid: 44577251d34951d40bd1ac9b329bc569, type: 2}
   pick: {fileID: 11400000, guid: 950dfde7ea687974caddd2269cd51cd5, type: 2}
   material: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
+  textMaterial: {fileID: 2100000, guid: e9c1e17c90ccf8b4e922e9392fda6ee5, type: 2}
   supplies:
   - {fileID: 11400000, guid: 781da9aaba956e543b3c7da3e7b05bee, type: 2}
   - {fileID: 11400000, guid: 33028a6509cc10f4f8906fcc55fabb01, type: 2}
