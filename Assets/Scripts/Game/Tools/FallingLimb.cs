@@ -7,14 +7,18 @@ namespace Clube.Game
     /// <summary>
     /// A felled limb on its way down (GL344): the limb's mesh tips over about the cut, 90° towards the fall direction,
     /// speeding up as it goes, while the cut drops to the ground under it. It passes through anything in the way (other
-    /// trees included). When it lies flat on the ground a plume of dust goes up and the limb becomes voxels again
+    /// trees included). Just before it lies flat a big plume of dust goes up, with leaves thrown out of it (GL469), and the
+    /// limb becomes voxels again
     /// (<see cref="TreeFelling.Land"/>); the mesh stays a moment longer, under the dust, while the chunks it landed in
     /// rebuild, then goes.
     /// </summary>
     public class FallingLimb : MonoBehaviour
     {
         // Seconds the mesh stays after the limb is voxels again, hiding the frames before the landed chunks are drawn.
-        private const float Overlap = 0.35f;
+        private const float Overlap = 0.7f;
+
+        // Seconds before it lands that the dust starts, so the cloud is already thick when the mesh turns to voxels (GL469).
+        private const float DustLead = 0.25f;
 
         private WorldView worldView;
         private FelledLimb limb;
@@ -22,6 +26,8 @@ namespace Clube.Game
         private Vector3Int direction;
         private Material dustMaterial;
         private Color dustColour;
+        private Material burstMaterial;
+        private bool dustStarted;
         private System.Action<List<Vector3Int>, List<Vector3Int>> onLandedCallback;
         private Transform body;
         private Mesh mesh;
@@ -35,7 +41,7 @@ namespace Clube.Game
         /// <summary>Starts the fall. <paramref name="origin"/> is where the mesh's corner sits, in the world view's space.</summary>
         public void Begin(
             WorldView view, FelledLimb felled, TreeMaterials treeMaterials, Mesh limbMesh, Vector3 origin, Material[] materials,
-            Vector3Int fallDirection, Material dust, Color dustTint, System.Action<List<Vector3Int>, List<Vector3Int>> onLanded = null)
+            Vector3Int fallDirection, Material dust, Color dustTint, Material burst, System.Action<List<Vector3Int>, List<Vector3Int>> onLanded = null)
         {
             worldView = view;
             limb = felled;
@@ -43,6 +49,7 @@ namespace Clube.Game
             direction = fallDirection;
             dustMaterial = dust;
             dustColour = dustTint;
+            burstMaterial = burst;
             onLandedCallback = onLanded;
             mesh = limbMesh;
 
@@ -89,6 +96,10 @@ namespace Clube.Game
             float eased = t * t;
             transform.localRotation = Quaternion.Slerp(Quaternion.identity, fullTurn, eased);
             transform.localPosition = new Vector3(pivotStart.x, Mathf.Lerp(pivotStart.y, pivotEnd, eased), pivotStart.z);
+            if (!dustStarted && elapsed >= duration - DustLead)
+            {
+                Dust();
+            }
             if (t >= 1f)
             {
                 Land();
@@ -102,12 +113,18 @@ namespace Clube.Game
             var leaves = new List<Vector3Int>();
             TreeFelling.Land(worldView.World, limb, direction, trees, worldView.Config.IsoLevel, landedWood: wood, landedLeaves: leaves);
             onLandedCallback?.Invoke(wood, leaves);
-            Dust();
+            if (!dustStarted)
+            {
+                Dust();
+            }
+            Burst();
         }
 
-        // A brief, big cloud along where the limb lies: soft puffs that billow out and up and fade.
+        // A big cloud along where the limb will lie: soft puffs that billow out and up and fade. Thick from the start and
+        // wider than the limb, so it hides the mesh becoming voxels (GL469).
         private void Dust()
         {
+            dustStarted = true;
             if (dustMaterial == null)
             {
                 return;
@@ -117,7 +134,9 @@ namespace Clube.Game
             float length = Mathf.Max(size.y, 1f);
             float width = Mathf.Max(Mathf.Max(size.x, size.z), 1f);
             Vector3 along = direction;
-            Vector3 centre = transform.localPosition + along * length * 0.5f;
+            Vector3 centre = LandedCut() + along * length * 0.5f;
+            // A big tree raises a big cloud, a twig a small one.
+            float scale = Mathf.Clamp(size.magnitude / 5f, 0.5f, 1.8f);
 
             var dust = new GameObject("Felling dust");
             dust.transform.SetParent(worldView.transform, false);
@@ -130,19 +149,19 @@ namespace Clube.Game
             main.loop = false;
             main.playOnAwake = false;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(1.2f, 2.2f);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(0.6f, 2.2f);
-            main.startSize = new ParticleSystem.MinMaxCurve(1.2f, 2.8f);
+            main.startLifetime = new ParticleSystem.MinMaxCurve(1.8f, 3f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.8f, 3f);
+            main.startSize = new ParticleSystem.MinMaxCurve(1.6f * scale, 3.2f * scale);
             main.startColor = dustColour;
             main.gravityModifier = -0.04f;
-            main.maxParticles = 200;
+            main.maxParticles = 400;
             main.stopAction = ParticleSystemStopAction.Destroy;
             ParticleSystem.EmissionModule emission = particles.emission;
             emission.rateOverTime = 0f;
-            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)Mathf.Clamp(length * 6f, 30f, 160f)) });
+            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)Mathf.Clamp(length * 12f, 30f, 320f)) });
             ParticleSystem.ShapeModule shape = particles.shape;
             shape.shapeType = ParticleSystemShapeType.Box;
-            shape.scale = new Vector3(width, 0.5f, length);
+            shape.scale = new Vector3(width + scale, 1.5f * scale, length + scale);
             ParticleSystem.SizeOverLifetimeModule growth = particles.sizeOverLifetime;
             growth.enabled = true;
             growth.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.6f, 1f, 1.6f));
@@ -151,7 +170,7 @@ namespace Clube.Game
             var gradient = new Gradient();
             gradient.SetKeys(
                 new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.12f), new GradientAlphaKey(0f, 1f) });
+                new[] { new GradientAlphaKey(0.5f, 0f), new GradientAlphaKey(1f, 0.06f), new GradientAlphaKey(0.8f, 0.5f), new GradientAlphaKey(0f, 1f) });
             fade.color = gradient;
             ParticleSystem.VelocityOverLifetimeModule rise = particles.velocityOverLifetime;
             rise.enabled = true;
@@ -161,6 +180,30 @@ namespace Clube.Game
             rise.z = new ParticleSystem.MinMaxCurve(0f, 0f);
             dust.GetComponent<ParticleSystemRenderer>().sharedMaterial = dustMaterial;
             particles.Play();
+        }
+
+        // Where the cut lies once the limb is down, in the world view's space.
+        private Vector3 LandedCut()
+        {
+            return new Vector3(pivotStart.x, pivotEnd, pivotStart.z);
+        }
+
+        // Leaves flung up out of the dust, and splinters for the wood that shattered past the cap (GL468, GL469).
+        private void Burst()
+        {
+            int leafSamples = 0;
+            foreach (FelledSample sample in limb.Solid)
+            {
+                leafSamples += sample.IsWood ? 0 : 1;
+            }
+            WorldGrid grid = worldView.World.Grid;
+            Vector3 size = (Vector3)(limb.Max - limb.Min) * grid.VoxelSize;
+            float length = Mathf.Max(size.y, 1f);
+            float width = Mathf.Max(Mathf.Max(size.x, size.z), 1f);
+            Vector3 along = direction;
+            int leaves = leafSamples == 0 ? 0 : Mathf.Clamp(leafSamples / 10, 12, 120);
+            int splinters = limb.WoodLost == 0 ? 0 : Mathf.Clamp(limb.WoodLost / 2, 6, 60);
+            FellingBurst.Spawn(worldView.transform, LandedCut() + along * length * 0.5f, along, length, width, leaves, splinters, burstMaterial);
         }
 
         // The ground (solid, not tree) under a point in the world view's space, searched down from it.

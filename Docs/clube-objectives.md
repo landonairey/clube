@@ -773,10 +773,10 @@ GL250 (ambient wildlife).
 - [x] **GL464** `Game` *(added 2026-11-09)* 16 hours of daylight, 8 of dark.
 - [x] **GL465** `Game` *(added 2026-11-09)* Fireflies at dusk.
 - [x] **GL466** `Game` *(added 2026-11-09)* Trout jump in rivers, most in the morning, never at night.
-- **G — trees and climbing**
-- [ ] **GL467** `Game` *(added 2026-11-09)* Hold Space against a steep face to climb at 25% walk speed.
-- [ ] **GL468** `Core + Game` *(added 2026-11-09)* Felling yields at most 10 volume at Woodcutting 0 (+10% a level, compounding); climbing lets limbs be cut one at a time.
-- [ ] **GL469** `Game` *(added 2026-11-09)* A bigger felling dust cloud with leaves thrown up that shrink away, hiding the landing.
+- **G — trees and climbing** *(done 2026-11-09, branch `gl467/trees-climbing`)*
+- [x] **GL467** `Game` *(added 2026-11-09)* Hold Space against a steep face to climb at 25% walk speed.
+- [x] **GL468** `Core + Game` *(added 2026-11-09)* Felling yields at most 10 volume at Woodcutting 0 (+10% a level, compounding); climbing lets limbs be cut one at a time.
+- [x] **GL469** `Game` *(added 2026-11-09)* A bigger felling dust cloud with leaves thrown up that shrink away, hiding the landing.
 - **E — trading post**
 - [ ] **GL470** `Core + Game` *(added 2026-11-09)* The town is a trading post with a named wooden sign (first pass of ST8).
 - [ ] **GL471** `Core + Game` *(added 2026-11-09)* Shopkeeper disposition 0-100 (starts 10, +1 per 100c traded); each point under 100 is 1% worse on both buy and sell prices. Saved.

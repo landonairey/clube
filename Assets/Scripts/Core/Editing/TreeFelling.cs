@@ -113,7 +113,11 @@ namespace Clube.Core
         /// <summary>The lowest and highest sample of the limb, fringe included.</summary>
         public Vector3Int Min, Max;
 
+        /// <summary>Wood samples in it.</summary>
         public int WoodCount { get; internal set; }
+
+        /// <summary>Wood taken out of it past the woodcutter's cap, which shatters as it falls (GL468, <see cref="FellingYield"/>).</summary>
+        public int WoodLost { get; internal set; }
     }
 
     /// <summary>
