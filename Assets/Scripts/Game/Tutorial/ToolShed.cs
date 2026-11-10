@@ -46,7 +46,7 @@ namespace Clube.Game
             box.center = new Vector3(0f, 1.2f, 0f);
             box.size = new Vector3(3.2f, 2.4f, 2.4f);
             // The sign faces +z at yaw 180 (see CompanyWarehouse.AddText).
-            CompanyWarehouse.AddText(go.transform, "TOOL SHED", new Vector3(0f, 2.0f, 1.19f), 180f, 0.05f, textMaterial);
+            CompanyWarehouse.AddText(go.transform, "TOOL SHED", new Vector3(0f, 2.0f, 1.19f), 180f, 0.05f, textMaterial, Color.white);
             ToolShed shed = go.AddComponent<ToolShed>();
             shed.Tutorial = tutorial;
             return shed;
