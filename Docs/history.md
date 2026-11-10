@@ -670,3 +670,19 @@ a swing, standing on the new floor. `TownCave` (Core/Generation/Settlements) is 
 side clear of the mines) with a tunnel up to an opening outside the wall; `TownBuilder.BuildCave` puts three crates
 (`TownSite.cratePrefab`, the wooden chest) of the shops' dearest goods, an everlasting torch and the thief (`KeeperFigure.BuildThief`,
 `TownThief`) in it. Tests: `TradingPostTests`.
+
+Batch F (GL476-GL477, branch `gl476/travelers`): `AdventurerCamp` (Game/Travellers, on the labs' Travellers object, `ISavedValues`:
+arrived, purse, disposition) finds the peak once the world is up (`PeakSearch`, Core/Generation: highest ground within 250 m of the
+starting parcel on the generated surface, then `Summit` climbs to its top, kept inside a fixed area) and, from the dawn after night 5
+(`AdventurerVisit`, Core/Economy), builds a campfire (`ModelCopy` of the campfire, `FlameCluster`, smoke, a point light that shines only
+at night) and an `Adventurer` (`ITrader`, `KeeperFigure.BuildAdventurer`) who buys the whole price list and sells it at 2.5x, from a 10k
+purse refilled only by the player's purchases. `TradeCart` (same object, `ISavedValues`) waits for the town's plan, places a distant
+town 10-13 parcels out of the gate (`CartRoute.DistantTown`, within 60° of it; in a fixed area the direction most inside it; named by
+`SettlementNames`) and roughs in a road (`CartRoute`: bends every 16 m moved sideways to the least climb, rounded once, heights kept
+every metre). `CartTrack` writes it as a 2.4 m dirt track with `GroundLeveling` (following the ground) in 2 m pieces as their chunks
+load, about 3 ms each in the Editor (25 ms where a tree is cut), and saves which pieces are done. `CartSchedule` (Core/Economy) times
+trips from the seed and clock (first 09:00 day 2, then every 2-3 days: to the post, a 2.5 h stop outside the gate, back), so the cart
+isn't saved; `TradeCartModel` is the hand cart, carter (`KeeperFigure.BuildCarter`) and two wooden crates of the dearer trade goods,
+refilled each trip, their leftovers saved per trip (`StorageText`, Game/Building, the crate format `TradingPost` used). The distant
+town is only a cobbled yard with a name sign and crate looks, built once its chunks load; beyond a fixed area's edge it isn't built
+and the cart hides there. Tests: `TravellerTests`.

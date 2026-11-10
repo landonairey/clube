@@ -785,8 +785,8 @@ GL250 (ambient wildlife).
 - [x] **GL474** `Core + Game` *(added 2026-11-09)* The tin mine is an open pit the miner digs over time.
 - [x] **GL475** `Core + Game` *(added 2026-11-09)* A secret cave under the town: crates of shop valuables, one torch, a thief.
 - **F — travelers**
-- [ ] **GL476** `Game` *(added 2026-11-09)* After night 5 a lone adventurer camps on the nearest peak (campfire seen at night), trading everything with 10k coins.
-- [ ] **GL477** `Core + Game` *(added 2026-11-09)* A trade cart every 2-3 days on a cart path to a distant town (10+ parcels), with lootable crates.
+- [x] **GL476** `Game` *(added 2026-11-09)* After night 5 a lone adventurer camps on the nearest peak (campfire seen at night), trading everything with 10k coins.
+- [x] **GL477** `Core + Game` *(added 2026-11-09)* A trade cart every 2-3 days on a cart path to a distant town (10+ parcels), with lootable crates.
 - **Added later**
 - [x] **GL478** `Game` *(added 2026-11-09)* Licking an ore (right click with it selected, away from a boulder) uses one up for Prospecting xp, more for an unknown ore, and tells its grade.
 
