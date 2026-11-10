@@ -21,14 +21,18 @@ namespace Clube.Game
         private PlayerBuilder builder;
         private PlayerParcels parcels;
         private BoulderBashing bashing;
+        private PlayerProspecting prospecting;
 
         private void Awake()
         {
+            lickClips = lickClips ?? Make("Lick", SoundSynth.Lick, 440);
+            pickClips = pickClips ?? Make("Pick", SoundSynth.Pick, 450);
             skills = GetComponent<PlayerSkills>();
             merchant = GetComponent<MerchantPanel>();
             builder = GetComponent<PlayerBuilder>();
             parcels = GetComponent<PlayerParcels>();
             bashing = GetComponent<BoulderBashing>();
+            prospecting = GetComponent<PlayerProspecting>();
         }
 
         private void OnEnable()
@@ -53,6 +57,11 @@ namespace Clube.Game
             {
                 bashing.HandAxeMade += OnKnapped;
                 bashing.OreCrushed += OnCrushed;
+                bashing.RefinePassed += OnPicked;
+            }
+            if (prospecting != null)
+            {
+                prospecting.Licked += OnLicked;
             }
         }
 
@@ -78,6 +87,11 @@ namespace Clube.Game
             {
                 bashing.HandAxeMade -= OnKnapped;
                 bashing.OreCrushed -= OnCrushed;
+                bashing.RefinePassed -= OnPicked;
+            }
+            if (prospecting != null)
+            {
+                prospecting.Licked -= OnLicked;
             }
         }
 
@@ -122,6 +136,46 @@ namespace Clube.Game
             if (sounds != null)
             {
                 sounds.Play(sounds.Crushed, source);
+            }
+        }
+
+        // Licking and picking over are made from scratch when first needed (GL492, GL493), a few variants each.
+        private static AudioClip[] lickClips;
+        private static AudioClip[] pickClips;
+
+        private void PlayMade(AudioClip[] clips, float volume)
+        {
+            if (sounds.EffectsOn && source != null)
+            {
+                source.PlayOneShot(clips[Random.Range(0, clips.Length)], volume * SoundSettings.Gain(AudioChannel.Effects));
+            }
+        }
+
+        private static AudioClip[] Make(string name, System.Func<int, float[]> synth, int seed)
+        {
+            var clips = new AudioClip[3];
+            for (int i = 0; i < clips.Length; i++)
+            {
+                float[] samples = synth(seed + i);
+                clips[i] = AudioClip.Create(name, samples.Length, 1, SoundSynth.SampleRate, false);
+                clips[i].SetData(samples, 0);
+            }
+            return clips;
+        }
+
+        private void OnLicked(ItemDefinition ore)
+        {
+            if (sounds != null)
+            {
+                PlayMade(lickClips, 0.9f);
+            }
+        }
+
+        private void OnPicked()
+        {
+            if (sounds != null)
+            {
+                PlayMade(pickClips, 0.7f);
             }
         }
 

@@ -21,7 +21,7 @@ namespace Clube.Game
             Slider("Footsteps", null, AudioChannel.Footsteps, label, hint);
             Slider("Ambient", "Wind, leaves and birds", AudioChannel.Ambient, label, hint);
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Defaults", button, GUILayout.Height(30f)))
+            if (GameUi.LayoutButton("Defaults", button, GUILayout.Height(30f)))
             {
                 foreach (AudioChannel channel in System.Enum.GetValues(typeof(AudioChannel)))
                 {
@@ -29,7 +29,7 @@ namespace Clube.Game
                 }
             }
             GUILayout.Space(6f);
-            return GUILayout.Button("Back", button, GUILayout.Height(36f));
+            return GameUi.LayoutButton("Back", button, GUILayout.Height(36f));
         }
 
         private static void Slider(string name, string about, AudioChannel channel, GUIStyle label, GUIStyle hint)

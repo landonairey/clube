@@ -699,3 +699,5 @@ the player set down on the spawn and the quest box back on. The title page's bac
 scene): a low-poly cut-open block of the parcel built in code (layers, ore nodes, tree, campfire copy, stump, a `KeeperFigure`
 in the Mine pose), framed right of the menu column, which `MainMenu` now draws on the left over a fading shade. Tests:
 `CompanyWorkTests`.
+
+GL491-GL496 (branch `gl491/sounds-fx`): menu clicks live in `GameUi.Button`/`GameUi.LayoutButton` (every menu, journal, station, merchant, rest and chest IMGUI button now calls them) which play `UiClick` (a clip from `SoundSynth.Click`, one hidden `AudioSource`; labels containing Back/Cancel/Close play at 0.82 pitch). `SoundSynth.Lick`/`Pick` are built at runtime in `PlayerActionSounds` (no WAV assets) on `PlayerProspecting.Licked` and the new `BoulderBashing.RefinePassed`. `PlayerProspecting.crushedLickMultiplier` (1.5) scales lick xp for crushed ore (`PurityAs != null`). `TorchFlame.MakeSmoke` takes `sizeScale`/`darkness`; the adventurer campfire uses 3 and 1. `StarSky` runs one pooled `LineRenderer` shooting star (Sprites/Default) every 60-180 s when night > 0.85.

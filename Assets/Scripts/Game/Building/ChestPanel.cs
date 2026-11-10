@@ -107,7 +107,7 @@ namespace Clube.Game
             float y = panel.y + Padding;
             GUI.Label(new Rect(x, y, width - 140f - Padding * 2f, 28f), $"{Current.DisplayName}   {chest.SlotCount} slots   (E to close)");
             // Sort the chest the way the inventory sorts (GL357).
-            if (GUI.Button(new Rect(panel.xMax - Padding - 110f, y - 2f, 110f, 28f), "Sort chest"))
+            if (GameUi.Button(new Rect(panel.xMax - Padding - 110f, y - 2f, 110f, 28f), "Sort chest"))
             {
                 chest.Sort(0, chest.SlotCount);
             }

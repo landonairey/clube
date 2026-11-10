@@ -168,7 +168,7 @@ namespace Clube.Game
         private void DrawSortAndTrash(Inventory items, Rect sortButton)
         {
             int sortFrom = inventory.UsesToolSlot ? PlayerInventory.ToolSlot + 1 : inventory.HotbarSlots;
-            if (GUI.Button(sortButton, inventory.UsesToolSlot ? "Sort items" : "Sort backpack"))
+            if (GameUi.Button(sortButton, inventory.UsesToolSlot ? "Sort items" : "Sort backpack"))
             {
                 items.Sort(sortFrom, items.SlotCount);
             }

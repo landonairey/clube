@@ -24,8 +24,20 @@ namespace Clube.Game
         [SerializeField, Range(0.5f, 0.99f)]
         private float distanceShare = 0.95f;
 
+        [Tooltip("Seconds between shooting stars at night: the least and the most (GL495).")]
+        [SerializeField]
+        private Vector2 shootingStarGap = new Vector2(60f, 180f);
+
+        private const float StreakSeconds = 0.8f;
+
         private GameObject sphere;
         private Material instance;
+        private float night;
+        private LineRenderer streak;
+        private float nextStreakAt = -1f;
+        private float streakStart;
+        private Vector3 streakFrom;
+        private Vector3 streakTo;
 
         /// <summary>
         /// Turns the stars: <paramref name="x"/>, <paramref name="y"/> and <paramref name="pole"/> are world directions
@@ -34,6 +46,7 @@ namespace Clube.Game
         /// </summary>
         public void Show(Vector3 x, Vector3 y, Vector3 pole, float night)
         {
+            this.night = night;
             if (instance == null)
             {
                 if (material == null)
@@ -50,9 +63,65 @@ namespace Clube.Game
             sphere.SetActive(night > 0.01f);
         }
 
+        // One pooled streak across the sky, now and then, on dark nights only (GL495).
+        private void UpdateShootingStar(Camera view)
+        {
+            if (nextStreakAt < 0f)
+            {
+                nextStreakAt = Time.time + Random.Range(shootingStarGap.x, shootingStarGap.y);
+            }
+            if (streak != null && streak.enabled)
+            {
+                float t = (Time.time - streakStart) / StreakSeconds;
+                if (t >= 1f || night < 0.5f)
+                {
+                    streak.enabled = false;
+                    return;
+                }
+                streak.SetPosition(0, Vector3.Lerp(streakFrom, streakTo, Mathf.Clamp01(t - 0.25f)));
+                streak.SetPosition(1, Vector3.Lerp(streakFrom, streakTo, t));
+                streak.startColor = new Color(1f, 1f, 1f, 0f);
+                streak.endColor = new Color(1f, 0.97f, 0.9f, Mathf.Sin(t * Mathf.PI));
+                return;
+            }
+            if (night < 0.85f || Time.time < nextStreakAt)
+            {
+                return;
+            }
+            nextStreakAt = Time.time + Random.Range(shootingStarGap.x, shootingStarGap.y);
+            if (streak == null)
+            {
+                Shader shader = Shader.Find("Sprites/Default");
+                if (shader == null)
+                {
+                    return;
+                }
+                var go = new GameObject("Shooting star");
+                go.transform.SetParent(transform, false);
+                streak = go.AddComponent<LineRenderer>();
+                streak.positionCount = 2;
+                streak.useWorldSpace = true;
+                streak.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                streak.receiveShadows = false;
+                streak.sharedMaterial = new Material(shader) { name = "Shooting star" };
+            }
+            float radius = Mathf.Min(view.farClipPlane * 0.5f, 400f);
+            Vector3 start = Quaternion.Euler(-Random.Range(25f, 65f), Random.value * 360f, 0f) * Vector3.forward;
+            Vector3 along = Quaternion.AngleAxis(Random.value * 360f, start) * Vector3.Cross(start, Vector3.up).normalized;
+            streakFrom = view.transform.position + start * radius;
+            streakTo = view.transform.position + (start + along * 0.5f).normalized * radius;
+            streakStart = Time.time;
+            streak.widthMultiplier = radius * 0.004f;
+            streak.enabled = true;
+        }
+
         private void LateUpdate()
         {
             Camera view = Camera.main;
+            if (view != null)
+            {
+                UpdateShootingStar(view);
+            }
             if (sphere != null && sphere.activeSelf && view != null)
             {
                 SkySphere.Follow(sphere.transform, view, distanceShare);

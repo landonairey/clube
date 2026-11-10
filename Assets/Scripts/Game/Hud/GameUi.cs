@@ -50,6 +50,38 @@ namespace Clube.Game
             GUI.Label(rect, text, style);
         }
 
+        /// <summary>A button that clicks when pressed (GL491): Back, Close and Cancel click slightly lower.</summary>
+        public static bool Button(Rect rect, string text)
+        {
+            return Clicked(GUI.Button(rect, text), text);
+        }
+
+        /// <summary><see cref="Button(Rect, string)"/> in a given style.</summary>
+        public static bool Button(Rect rect, string text, GUIStyle style)
+        {
+            return Clicked(GUI.Button(rect, text, style), text);
+        }
+
+        /// <summary>An auto-laid-out button that clicks when pressed (GL491).</summary>
+        public static bool LayoutButton(string text, GUIStyle style, params GUILayoutOption[] options)
+        {
+            return Clicked(GUILayout.Button(text, style, options), text);
+        }
+
+        private static bool Clicked(bool pressed, string text)
+        {
+            if (pressed)
+            {
+                UiClick.Play(IsBack(text));
+            }
+            return pressed;
+        }
+
+        private static bool IsBack(string text)
+        {
+            return text != null && (text.Contains("Back") || text.Contains("Cancel") || text.Contains("Close"));
+        }
+
         /// <summary>Sets the current skin's default text size, once per skin. Call at the start of OnGUI.</summary>
         public static void Apply()
         {

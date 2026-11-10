@@ -221,6 +221,42 @@ namespace Clube.Core
             return Normalize(samples, 0.9f);
         }
 
+        /// <summary>A menu button (GL491): a short, soft, woody tick.</summary>
+        public static float[] Click(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(0.08f)];
+            AddTone(samples, 0f, 1500f, 900f, 0.0005f, 0.012f, 0.6f);
+            AddNoise(samples, random, 0f, 0.0003f, 0.006f, 0.3f, Band(3000f, 1.2f));
+            return Normalize(samples, 0.7f);
+        }
+
+        /// <summary>Ore licked (GL492): a wet smack and a slurp, a tongue dragged over stone.</summary>
+        public static float[] Lick(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(0.6f)];
+            AddNoise(samples, random, 0.02f, 0.05f, 0.12f, 0.35f, Band(Range(random, 1200f, 1700f), 0.8f));
+            AddTone(samples, 0.22f, Range(random, 260f, 320f), Range(random, 700f, 900f), 0.01f, 0.05f, 0.45f);
+            AddNoise(samples, random, 0.24f, 0.003f, 0.05f, 0.4f, Band(Range(random, 2200f, 2800f), 1.4f));
+            AddTone(samples, 0.42f, Range(random, 500f, 600f), Range(random, 250f, 320f), 0.004f, 0.03f, 0.35f);
+            return Normalize(samples, 0.7f);
+        }
+
+        /// <summary>Crushed ore picked over (GL493): a few small, light fingertip taps and grit shifting.</summary>
+        public static float[] Pick(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(0.5f)];
+            AddNoise(samples, random, 0f, 0.01f, 0.12f, 0.2f, Band(Range(random, 1500f, 2200f), 0.7f));
+            AddCrackles(samples, random, 0f, 0.4f, 28, 0.35f, 4200f);
+            for (int i = 0; i < 3; i++)
+            {
+                AddTone(samples, 0.05f + i * 0.13f + (float)random.NextDouble() * 0.04f, Range(random, 1800f, 2600f), Range(random, 1000f, 1400f), 0.0005f, 0.012f, 0.3f);
+            }
+            return Normalize(samples, 0.65f);
+        }
+
         /// <summary>
         /// Stone knapped on stone (GL381): three or four sharp strikes a moment apart, each a bright crack with a short stony
         /// tock under it and a few flakes skittering off.

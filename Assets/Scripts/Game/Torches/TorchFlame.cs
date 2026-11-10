@@ -71,7 +71,7 @@ namespace Clube.Game
         }
 
         /// <summary>Thin grey wisps rising and spreading from a flame, in the world, so a moving torch leaves a trail.</summary>
-        public static ParticleSystem MakeSmoke(Transform parent, Vector3 at, Material material)
+        public static ParticleSystem MakeSmoke(Transform parent, Vector3 at, Material material, float sizeScale = 1f, float darkness = 0f)
         {
             var go = new GameObject("Smoke");
             go.transform.SetParent(parent, false);
@@ -84,8 +84,8 @@ namespace Clube.Game
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.startLifetime = new ParticleSystem.MinMaxCurve(1.2f, 2.2f);
             main.startSpeed = 0f;
-            main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.11f);
-            main.startColor = new Color(0.32f, 0.31f, 0.3f, 0.45f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.05f * sizeScale, 0.11f * sizeScale);
+            main.startColor = Color.Lerp(new Color(0.32f, 0.31f, 0.3f, 0.45f), new Color(0.04f, 0.04f, 0.04f, 0.8f), darkness);
             main.maxParticles = 60;
             ParticleSystem.EmissionModule emission = particles.emission;
             emission.rateOverTime = 9f;

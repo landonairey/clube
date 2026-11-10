@@ -68,7 +68,7 @@ namespace Clube.Game
             GUILayout.Label("Only the sky stops: drying and smelting go on.", hint);
 
             GUILayout.FlexibleSpace();
-            return GUILayout.Button("Back", button, GUILayout.Height(36f));
+            return GameUi.LayoutButton("Back", button, GUILayout.Height(36f));
         }
 
         // The resolution presets by aspect, and window or full screen (GL462). Dragging a window's edge changes its size too.
