@@ -30,7 +30,7 @@ namespace Clube.Core
         }
 
         /// <summary>Rivers shallower than this (metres) are too shallow for a trout to leap from.</summary>
-        public const float MinDepth = 0.6f;
+        public const float MinDepth = 0.4f;
 
         /// <summary>
         /// Finds the water surface at (x, z) when it's a river cell deep enough for a trout, with the current's

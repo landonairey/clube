@@ -103,7 +103,10 @@ namespace Clube.Game
                 float chance = TroutJumps.ChanceIn(Mathf.Min(dt, 0.1f), dayNight.Hour, dayNight.Daylight);
                 if (chance > 0f && Random.value < chance)
                 {
-                    TryStart(view.transform.position);
+                    // Most random spots are not river, so look at many (GL497).
+                    for (int tries = 0; tries < 60 && !TryStart(view.transform.position); tries++)
+                    {
+                    }
                 }
             }
             for (int i = leaps.Count - 1; i >= 0; i--)

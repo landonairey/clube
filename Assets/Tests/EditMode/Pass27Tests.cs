@@ -120,8 +120,8 @@ namespace Clube.Core.Tests
             Assert.AreEqual(0.75f, ToolCooldown.SecondsFor(true, 12f), 1e-5f, "Hands are a quarter quicker.");
             Assert.AreEqual(0.75f, ToolCooldown.SecondsFor(false, 4f), 1e-5f, "The early bird's bonus at dawn.");
             Assert.AreEqual(0.5625f, ToolCooldown.SecondsFor(true, 4f), 1e-5f, "Both together.");
-            Assert.IsTrue(ToolCooldown.IsDawn(7f), "Dawn runs to 07:30.");
-            Assert.IsFalse(ToolCooldown.IsDawn(7.6f));
+            Assert.IsTrue(ToolCooldown.IsDawn(7f), "Dawn runs to 09:00.");
+            Assert.IsFalse(ToolCooldown.IsDawn(9.1f));
             Assert.IsFalse(ToolCooldown.IsDawn(2f));
         }
 
