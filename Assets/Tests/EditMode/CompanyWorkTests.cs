@@ -1,9 +1,8 @@
+using Clube.Core;
 using NUnit.Framework;
-using UnityEngine;
 
 namespace Clube.Core.Tests
 {
-    /// <summary>The opening tutorial's job rules (GL479): the wage, where the quarry goes, and what counts as stealing.</summary>
     public class CompanyWorkTests
     {
         [Test]
@@ -15,24 +14,24 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void QuarryIsOutOfTheGateAndBesideTheRoad()
+        public void FieldsAndWarehouseAreLevel()
         {
-            var gate = new Vector2(100f, 50f);
-            Vector2 centre = CompanyWork.QuarryCentre(gate, Vector2.down * 3f);
-            Vector2 offset = centre - gate;
-            Assert.AreEqual(-CompanyWork.OutFromGate, offset.y, 1e-4f, "out along the road");
-            Assert.AreEqual(CompanyWork.BesideRoad, Mathf.Abs(offset.x), 1e-4f, "to the side of it");
+            var fields = CompanyWork.Fields;
+            var house = CompanyWork.Warehouse;
+            Assert.AreEqual(CompanyWork.Ground, CompanyWork.Height(fields.center.x, fields.center.y), 1e-4f);
+            Assert.AreEqual(CompanyWork.Ground, CompanyWork.Height(house.xMin, house.yMin), 1e-4f);
+            Assert.AreEqual(CompanyWork.Ground, CompanyWork.Height(house.xMax, house.yMax), 1e-4f);
         }
 
         [Test]
-        public void StealingIsLeavingWithStoneOrHoldingAnythingElse()
+        public void MountainRisesOnThreeSides()
         {
-            const float rim = 4.5f;
-            Assert.IsFalse(CompanyWork.IsStealing(3f, rim, true, false), "stone in the pit");
-            Assert.IsFalse(CompanyWork.IsStealing(rim + CompanyWork.Margin - 0.1f, rim, true, false), "stone by the rim");
-            Assert.IsTrue(CompanyWork.IsStealing(rim + CompanyWork.Margin + 0.1f, rim, true, false), "stone out of the quarry");
-            Assert.IsFalse(CompanyWork.IsStealing(100f, rim, false, false), "empty-handed anywhere");
-            Assert.IsTrue(CompanyWork.IsStealing(1f, rim, false, true), "anything that isn't the company's");
+            var fields = CompanyWork.Fields;
+            float tall = CompanyWork.Ground + 20f;
+            Assert.Greater(CompanyWork.Height(fields.xMin - 15f, fields.center.y), tall, "west");
+            Assert.Greater(CompanyWork.Height(fields.xMax + 15f, fields.center.y), tall, "east");
+            Assert.Greater(CompanyWork.Height(fields.center.x, fields.yMax + 15f), tall, "north");
+            Assert.AreEqual(CompanyWork.Ground, CompanyWork.Height(fields.center.x, -40f), 1e-4f, "open to the south");
         }
     }
 }

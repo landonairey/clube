@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -6,23 +5,26 @@ using UnityEngine.InputSystem;
 namespace Clube.Game
 {
     /// <summary>
-    /// The opening tutorial (GL479), run when the new-game page chose it (<see cref="GameSession.Tutorial"/>): the player
-    /// starts a day's work at the Mining Corp's quarry (<see cref="CompanyQuarry"/>) by the trading post. Steps teach looking,
-    /// walking, jumping, sprinting, crouching, the key sheet, talking (Interact) to the crew lead (<see cref="CrewLead"/>),
-    /// the hotbar, digging, the inventory and handing stone in at the ore cart (<see cref="OreCart"/>), which pays
-    /// <see cref="CompanyWork.Wage"/> of its price. Then the lead heads out, and the first theft
-    /// (<see cref="CompanyWork.IsStealing"/>) gets the player caught: a fade to black, everything but their coins taken,
-    /// and the player set down on their starting parcel to play on as a normal new game. Played without a session, or
-    /// with the tutorial skipped, it does nothing.
+    /// The opening tutorial (GL479, GL514), on its own map (the Tutorial scene): the Mining Corp's warehouse
+    /// (<see cref="CompanyWarehouse"/>) across the end of its work fields, which a stone mountain closes in on three sides.
+    /// The player wakes behind the warehouse talking to the crew lead (<see cref="CrewLead"/>), who asks their name
+    /// (<see cref="GameSession.CharacterName"/>). Steps teach looking, walking, jumping, sprinting, crouching, the key
+    /// sheet, talking (a <see cref="QuestArrow"/> over the lead and a mark on the <see cref="Minimap"/>), the hotbar,
+    /// digging the mountain with the company pick, the inventory, and handing the stone in at the ore cart
+    /// (<see cref="OreCart"/>), which pays <see cref="CompanyWork.Wage"/> of its price. All the land is the company's, so
+    /// any of it can be dug. Taking from a crate (<see cref="CompanyCrate"/>) gets the player caught: a fade to black,
+    /// everything but their coins taken, and the game goes on in the world scene, on their family's parcel.
     /// </summary>
     public class MiningCorpTutorial : MonoBehaviour
     {
         private const string BindingGroup = "Keyboard&Mouse";
+        private const int NameLength = 20;
 
         private enum Step
         {
             Off,
             Arriving,
+            Name,
             Look,
             Move,
             Jump,
@@ -41,11 +43,7 @@ namespace Clube.Game
         [SerializeField]
         private WorldView worldView;
 
-        [Tooltip("The trading post: the quarry is dug out of its gate. Without one it's dug near the spawn.")]
-        [SerializeField]
-        private TownSite town;
-
-        [Tooltip("The player, with its spawn, inventory, wallet, tools, inventory screen, key sheet and quest box.")]
+        [Tooltip("The player, with its spawn, inventory, wallet, tools, inventory screen, key sheet, quest box and minimap.")]
         [SerializeField]
         private PlayerController player;
 
@@ -61,17 +59,29 @@ namespace Clube.Game
         [SerializeField]
         private ItemDefinition pick;
 
-        [Tooltip("The Clube/Low Poly material for the crew lead and the ore cart.")]
+        [Tooltip("The Clube/Low Poly material for the warehouse, the crew lead and the ore cart.")]
         [SerializeField]
         private Material material;
 
-        [Tooltip("Seconds to wait for the town before digging the quarry near the spawn instead.")]
-        [SerializeField, Min(1f)]
-        private float townWaitSeconds = 60f;
+        [Tooltip("What the supply crates round the yard hold, one item each.")]
+        [SerializeField]
+        private ItemDefinition[] supplies = new ItemDefinition[0];
+
+        [Tooltip("The valuables in the crate at the end of the crew lead's bed.")]
+        [SerializeField]
+        private ItemDefinition[] valuables = new ItemDefinition[0];
 
         [Tooltip("Volume of stone to dig before the inventory step.")]
         [SerializeField, Min(0.1f)]
-        private float digTarget = 4f;
+        private float digTarget = 2f;
+
+        [Tooltip("Seconds between being caught and the screen going black.")]
+        [SerializeField, Min(0f)]
+        private float caughtSeconds = 2.5f;
+
+        [Tooltip("Seconds the story card shows on black before the world scene loads.")]
+        [SerializeField, Min(0f)]
+        private float storySeconds = 6f;
 
         private PlayerSpawn spawn;
         private PlayerInventory inventory;
@@ -79,39 +89,44 @@ namespace Clube.Game
         private PlayerToolUser tools;
         private InventoryScreen inventoryScreen;
         private QuestHud questHud;
+        private Minimap minimap;
 
         private Step step;
-        private float startedAt;
-        private Vector3 home;
-        private CompanyQuarry quarry;
         private CrewLead lead;
+        private QuestArrow arrow;
         private OreCart cart;
-        private readonly HashSet<ItemDefinition> companyGoods = new HashSet<ItemDefinition>();
+        private bool placing;
         private float dug;
-        private bool pickGiven;
         private float looked;
         private float walked;
         private float sprinted;
         private Vector3 lastPosition;
         private Quaternion lastLook;
+        private string typedName = "";
         private string speech = "";
         private string note = "";
         private float caughtAt;
-        private bool movedHome;
+        private float blackAt = -1f;
         private float fade = 1f;
         private GUIStyle cardStyle;
         private GUIStyle storyStyle;
 
-        /// <summary>True while the tutorial runs (until the player wakes on their parcel).</summary>
+        /// <summary>True while the tutorial runs.</summary>
         public bool IsRunning => step != Step.Off;
 
-        public string TalkPrompt => step == Step.Talk ? "Talk to the crew lead" : "Hand in the company's stone";
+        /// <summary>The step the player is on, by name (for tests and lab checks).</summary>
+        public string Stage => step.ToString();
+
+        public string TalkPrompt => step <= Step.Talk ? "Talk to the crew lead" : HandInPrompt;
 
         public string HandInPrompt => "Hand in the company's stone";
 
+        private string Name => GameSession.CharacterName.Length > 0 ? GameSession.CharacterName : "new hire";
+
         private void Start()
         {
-            if (!GameSession.IsActive || !GameSession.Tutorial || player == null || worldView == null)
+            // Its own scene: it runs for a new game that chose it, or when the scene is played on its own.
+            if ((GameSession.IsActive && !GameSession.Tutorial) || player == null || worldView == null)
             {
                 return;
             }
@@ -121,6 +136,7 @@ namespace Clube.Game
             tools = player.GetComponentInChildren<PlayerToolUser>();
             inventoryScreen = player.GetComponentInChildren<InventoryScreen>();
             questHud = player.GetComponentInChildren<QuestHud>(true);
+            minimap = player.GetComponentInChildren<Minimap>();
             if (questHud != null)
             {
                 questHud.enabled = false;
@@ -129,10 +145,7 @@ namespace Clube.Game
             {
                 tools.Collected += OnCollected;
             }
-            home = player.transform.position;
-            startedAt = Time.time;
             step = Step.Arriving;
-            speech = "Mining Corp, Quarry Three. Your first day.";
         }
 
         private void OnDestroy()
@@ -160,14 +173,18 @@ namespace Clube.Game
                 Thrown();
                 return;
             }
-            if (lead != null && lead.gameObject.activeSelf)
+            if (lead != null)
             {
                 lead.Face(player.transform.position);
             }
-            if (pickGiven && IsStealing())
+            bool talk = step == Step.Talk;
+            if (arrow != null && arrow.gameObject.activeSelf != talk)
             {
-                Catch();
-                return;
+                arrow.gameObject.SetActive(talk);
+            }
+            if (minimap != null)
+            {
+                minimap.Marker = talk && lead != null ? lead.transform : null;
             }
             Teach();
             lastPosition = player.transform.position;
@@ -182,61 +199,62 @@ namespace Clube.Game
             }
             if (step == Step.Caught)
             {
-                return movedHome && spawn.IsPlaced && Time.time - caughtAt > 7f ? 0f : 1f;
+                return Time.time - caughtAt > caughtSeconds ? 1f : 0f;
             }
             return 0f;
         }
 
         private Quaternion LookRotation => player.Head != null ? player.Head.rotation : player.transform.rotation;
 
-        // Waits for the town, digs the quarry, sets the player down on its rim and puts the crew lead and the cart there.
+        private Vector3 OnMap(Vector3 point) => worldView.transform.TransformPoint(point);
+
+        // Waits for the world, builds the warehouse, sets the player down behind it and puts the crew lead and the cart out.
         private void Arrive()
         {
             if (!worldView.IsReady || !player.gameObject.activeInHierarchy)
             {
                 return;
             }
-            if (quarry == null)
+            if (!placing)
             {
-                bool hasPlan = town != null && town.Plan != null;
-                if (!hasPlan && town != null && Time.time - startedAt < townWaitSeconds)
-                {
-                    return;
-                }
-                Vector3 local = worldView.transform.InverseTransformPoint(home);
-                Vector2 centre = new Vector2(local.x + 24f, local.z);
-                if (hasPlan)
-                {
-                    TownPlan plan = town.Plan;
-                    Vector2 gate = plan.ToWorld(new Vector2(0f, -TownLayout.OuterHalf));
-                    centre = CompanyWork.QuarryCentre(gate, gate - plan.ToWorld(Vector2.zero));
-                }
-                quarry = new CompanyQuarry(worldView, centre);
-                spawn.SetDownOver(quarry.OnRim(TownAngle, 2.5f) + Vector3.up);
+                CompanyWarehouse.Build(worldView.transform, material, this, supplies, valuables);
+                spawn.SetDownOver(OnMap(CompanyWarehouse.Spawn) + Vector3.up);
+                placing = true;
             }
-            if (!quarry.Dig() || !spawn.IsPlaced)
+            if (!spawn.IsPlaced)
             {
                 return;
             }
-            Vector3 middle = worldView.transform.TransformPoint(new Vector3(quarry.Centre.x, quarry.Floor, quarry.Centre.y));
-            lead = CrewLead.Build(quarry.OnRim(TownAngle + 28f), middle, material, this);
-            cart = CompanyQuarry.BuildCart(quarry.OnRim(TownAngle - 35f, 1.8f), middle - quarry.OnRim(TownAngle - 35f, 1.8f), material, this);
+            // The ground round the player is loaded now: no grass under the warehouse floor.
+            CompanyWarehouse.ClearGround(worldView);
+            Vector3 leadAt = OnMap(CompanyWarehouse.LeadSpot);
+            lead = CrewLead.Build(leadAt, player.transform.position, material, this);
+            arrow = QuestArrow.Build(lead.transform, 2.6f, material);
+            Vector3 cartAt = OnMap(CompanyWarehouse.CartSpot);
+            cart = OreCart.Build(cartAt, Vector3.right, material, this);
+            player.LookTowards(leadAt);
+            // A new hire owns nothing: whatever a new game hands out waits for the player's own land.
+            EmptyInventory();
             lastPosition = player.transform.position;
             lastLook = LookRotation;
-            speech = "Crew lead: \"Morning, new hire. Get your bearings, then come and see me.\"";
-            step = Step.Look;
+            speech = "Crew lead: \"So you're the new hire. Welcome to Mining Corp. What's your name?\"";
+            player.IsInMenu = true;
+            step = Step.Name;
         }
 
-        // Degrees round the quarry from its centre towards the town (or the spawn).
-        private float TownAngle
+        /// <summary>The player answered the crew lead with their character's name (typed in the card at the name step).</summary>
+        public void GiveName(string typed)
         {
-            get
+            if (step != Step.Name)
             {
-                Vector3 local = worldView.transform.InverseTransformPoint(home);
-                Vector2 towards = town != null && town.Plan != null ? town.Plan.ToWorld(Vector2.zero) : new Vector2(local.x, local.z);
-                Vector2 d = towards - quarry.Centre;
-                return Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
+                return;
             }
+            string name = (typed ?? "").Trim();
+            GameSession.CharacterName = name.Length > NameLength ? name.Substring(0, NameLength) : name;
+            player.IsInMenu = false;
+            speech = $"Crew lead: \"{Name}, then. Your bunk's in the dorm hall, through that door; you sleep there nights. "
+                + "Work's out back, at the rock face. Get your bearings, then come and see me for a pick.\"";
+            step = Step.Look;
         }
 
         private void Teach()
@@ -299,10 +317,9 @@ namespace Clube.Game
                 if (pick != null)
                 {
                     inventory.Inventory.Add(pick);
-                    companyGoods.Add(pick);
                 }
-                pickGiven = true;
-                speech = "Crew lead: \"Here's a company pick. You dig, the company keeps every stone: ten coins for every hundred you bring in.\"";
+                speech = $"Crew lead: \"Here's a company pick, {Name}. Dig the mountain out back; every stone is the company's: "
+                    + "ten coins for every hundred you bring in. And don't touch anything.\"";
                 step = Step.Hotbar;
                 return;
             }
@@ -310,9 +327,13 @@ namespace Clube.Game
             {
                 HandIn();
             }
+            else if (step < Step.Talk && step > Step.Name)
+            {
+                note = "Crew lead: \"Get your bearings first.\"";
+            }
         }
 
-        /// <summary>Takes the company's stone from the player and pays the wage for it.</summary>
+        /// <summary>Takes the company's stone (everything but the pick) from the player and pays the wage for it.</summary>
         public void HandIn()
         {
             if (step <= Step.Talk || step >= Step.Caught)
@@ -325,7 +346,7 @@ namespace Clube.Game
             for (int slot = 0; slot < items.SlotCount; slot++)
             {
                 ItemStack stack = items[slot];
-                if (stack.IsEmpty || stack.Item == pick || !companyGoods.Contains(stack.Item))
+                if (stack.IsEmpty || stack.Item == pick)
                 {
                     continue;
                 }
@@ -344,98 +365,84 @@ namespace Clube.Game
             if (step < Step.Free)
             {
                 step = Step.Free;
-                speech = "Crew lead (heading out): \"That's the way. Mine all you want and hand it in at the cart. And don't touch anything.\"";
-                if (lead != null && town != null && town.Plan != null)
-                {
-                    Vector2 gate = town.Plan.ToWorld(new Vector2(0f, -TownLayout.OuterHalf));
-                    lead.Leave(worldView.transform.TransformPoint(new Vector3(gate.x, town.Plan.GateGround, gate.y)));
-                }
-                else if (lead != null)
-                {
-                    lead.Leave(lead.transform.position + lead.transform.forward * -40f);
-                }
+                speech = "Crew lead: \"That's the way. Mine all you want and hand it in at the cart. Sleep in your bunk when it's dark. "
+                    + "And remember: don't touch anything.\"";
             }
         }
 
+        // Anything dug counts towards the dig step: the whole map is company land.
         private void OnCollected(ItemStack collected)
         {
-            if (!pickGiven || step >= Step.Caught || collected.IsEmpty || quarry == null)
+            if (step > Step.Talk && step < Step.Caught && !collected.IsEmpty)
             {
-                return;
-            }
-            // Dug in the quarry: the company's. Dug anywhere else, it's the player's own theft (caught by IsStealing).
-            if (quarry.DistanceTo(player.transform.position) <= quarry.RimRadius + CompanyWork.Margin)
-            {
-                companyGoods.Add(collected.Item);
                 dug += collected.Volume;
             }
         }
 
-        private bool IsStealing()
+        /// <summary>The player took from a company crate: they get the goods, and get caught.</summary>
+        public void Steal(ItemDefinition[] taken)
         {
-            bool carries = false;
-            bool other = false;
-            Inventory items = inventory.Inventory;
-            for (int slot = 0; slot < items.SlotCount; slot++)
+            if (step <= Step.Name || step >= Step.Caught)
             {
-                ItemDefinition item = items[slot].Item;
-                if (item == null)
+                return;
+            }
+            foreach (ItemDefinition item in taken)
+            {
+                if (item != null)
                 {
-                    continue;
-                }
-                if (companyGoods.Contains(item))
-                {
-                    carries = true;
-                }
-                else
-                {
-                    other = true;
+                    inventory.Inventory.Add(item);
                 }
             }
-            return CompanyWork.IsStealing(quarry.DistanceTo(player.transform.position), quarry.RimRadius, carries, other);
-        }
-
-        private void Catch()
-        {
             step = Step.Caught;
             caughtAt = Time.time;
             note = "";
-            speech = lead != null && lead.gameObject.activeSelf && !lead.IsLeaving
-                ? "Crew lead: \"Thief! I said don't touch anything!\""
-                : "A company guard: \"Hey! That's Mining Corp property!\"";
+            speech = $"Crew lead: \"Thief! I told you not to touch anything, {Name}! Get out!\"";
+            if (arrow != null)
+            {
+                arrow.gameObject.SetActive(false);
+            }
+            if (minimap != null)
+            {
+                minimap.Marker = null;
+            }
             player.IsInMenu = true;
         }
 
-        // Caught: once the screen is black, everything but the coins is taken and the player is set down on their parcel.
+        // Caught: once the screen is black, everything but the coins is taken, the story shows, and the world scene loads.
         private void Thrown()
         {
-            if (!movedHome && fade >= 1f)
+            if (fade < 1f)
             {
-                Inventory items = inventory.Inventory;
-                for (int slot = 0; slot < items.SlotCount; slot++)
-                {
-                    items.Set(slot, ItemStack.Empty);
-                }
-                if (lead != null)
-                {
-                    Destroy(lead.gameObject);
-                }
-                if (cart != null)
-                {
-                    Destroy(cart.gameObject);
-                }
-                player.IsInMenu = false;
-                spawn.SetDownOver(home);
-                if (questHud != null)
-                {
-                    questHud.enabled = true;
-                }
-                GameSession.FinishTutorial();
-                movedHome = true;
+                return;
             }
-            if (movedHome && fade <= 0f)
+            if (blackAt < 0f)
             {
-                step = Step.Off;
+                blackAt = Time.time;
+                EmptyInventory();
+            }
+            if (Time.time - blackAt < storySeconds)
+            {
+                return;
+            }
+            step = Step.Off;
+            string name = GameSession.CharacterName;
+            float coins = wallet != null && wallet.Wallet != null ? wallet.Wallet.Coins : 0f;
+            if (!GameSession.IsActive)
+            {
+                GameSession.StartNew(GameMode.World, 1);
+            }
+            GameSession.FinishTutorial();
+            GameSession.CharacterName = name;
+            GameSession.CarriedCoins = coins;
+            GameScenes.LoadGame();
+        }
+
+        private void EmptyInventory()
+        {
+            Inventory items = inventory.Inventory;
+            for (int slot = 0; slot < items.SlotCount; slot++)
+            {
+                items.Set(slot, ItemStack.Empty);
             }
         }
 
@@ -462,16 +469,17 @@ namespace Clube.Game
         {
             switch (step)
             {
+                case Step.Name: return "Type your character's name and press <b>Enter</b>.";
                 case Step.Look: return "Move the mouse to look around.";
                 case Step.Move: return $"Walk with {Keys("Move", "WASD")}.";
                 case Step.Jump: return $"Jump with {Keys("Jump", "Space")}.";
                 case Step.Sprint: return $"Hold {Keys("Sprint", "Shift")} while walking to run.";
                 case Step.Crouch: return $"Crouch with {Keys("Crouch", "C")}.";
                 case Step.KeySheet: return $"Every key is listed in the lower left. {Keys("Help", "F1")} hides and shows the list: try it.";
-                case Step.Talk: return $"Walk up to the crew lead and press {Keys("Interact", "E")} to talk.";
+                case Step.Talk: return $"Walk up to the crew lead (the yellow arrow, and the square on the map) and press {Keys("Interact", "E")} to talk.";
                 case Step.Hotbar: return $"Hold the company pick: pick its slot with {Keys("Hotbar", "1")} (or scroll).";
-                case Step.Dig: return $"Aim at the rock in the pit and dig with {Keys("Attack", "LMB")}.";
-                case Step.Inventory: return $"Open your inventory with {Keys("Inventory", "Tab")} to see what you've dug.";
+                case Step.Dig: return $"Aim at the rock face behind the yard and dig with {Keys("Attack", "LMB")}.";
+                case Step.Inventory: return $"Open your inventory with {Keys("Interact", "E")} (facing nothing you can use) to see what you've dug.";
                 case Step.HandIn: return $"Close it, then hand the stone in at the ore cart or to the crew lead ({Keys("Interact", "E")}).";
                 case Step.Free: return "Mine all you want and hand it in at the ore cart: 10c for every 100c of stone.";
                 default: return "";
@@ -493,15 +501,7 @@ namespace Clube.Game
             }
             if (step != Step.Arriving && fade < 1f)
             {
-                string text = $"<i>{speech}</i>\n\n{Task()}";
-                if (note.Length > 0)
-                {
-                    text += $"\n<size={GameUi.Font(14)}>{note}</size>";
-                }
-                float width = Mathf.Min(Screen.width - 32f, 680f * GameUi.FontScale);
-                var content = new GUIContent(text);
-                float height = cardStyle.CalcHeight(content, width);
-                GUI.Box(new Rect((Screen.width - width) * 0.5f, 18f, width, height), content, cardStyle);
+                DrawCard();
             }
             if (fade > 0f)
             {
@@ -515,16 +515,46 @@ namespace Clube.Game
             }
         }
 
+        // The card at the top: what's said, the task, a note, and the name box at the name step.
+        private void DrawCard()
+        {
+            string text = $"<i>{speech}</i>\n\n{Task()}";
+            if (note.Length > 0)
+            {
+                text += $"\n<size={GameUi.Font(14)}>{note}</size>";
+            }
+            float width = Mathf.Min(Screen.width - 32f, 680f * GameUi.FontScale);
+            var content = new GUIContent(text);
+            float height = cardStyle.CalcHeight(content, width);
+            float field = step == Step.Name ? GameUi.Font(17) + 22f : 0f;
+            var card = new Rect((Screen.width - width) * 0.5f, 18f, width, height + field);
+            GUI.Box(card, content, cardStyle);
+            if (step != Step.Name)
+            {
+                return;
+            }
+            bool enter = Event.current.type == EventType.KeyDown
+                && (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.KeypadEnter);
+            GUI.SetNextControlName("CharacterName");
+            var box = new Rect(card.x + 16f, card.yMax - field, width * 0.5f, field - 10f);
+            typedName = GUI.TextField(box, typedName, NameLength);
+            GUI.FocusControl("CharacterName");
+            if (GUI.Button(new Rect(box.xMax + 8f, box.y, 80f, box.height), "OK") || (enter && typedName.Trim().Length > 0))
+            {
+                GiveName(typedName);
+            }
+        }
+
         private string StoryText()
         {
             if (step == Step.Arriving)
             {
-                return "<b>Mining Corp</b>\n\nYou took the job: dig stone at the company quarry by the trading post.\nWhatever you dig belongs to the company.";
+                return "<b>Mining Corp</b>\n\nYou took the job: dig stone for the company, and keep a tenth of its worth.\nWhatever you dig belongs to the company.";
             }
-            if (step == Step.Caught)
+            if (step == Step.Caught || step == Step.Off)
             {
-                return movedHome
-                    ? "Caught stealing from the Mining Corp, you are marched out of town\nand left on the only land your family still owns.\n\nTime to start something of your own."
+                return blackAt >= 0f
+                    ? "Caught stealing from the Mining Corp, you are thrown out\nand left on the only land your family still owns.\n\nTime to start something of your own."
                     : speech;
             }
             return "";

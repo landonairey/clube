@@ -11,6 +11,9 @@ namespace Clube.Game
     {
         public const string MainMenu = "MainMenu";
 
+        /// <summary>The opening tutorial's own map (GL514), played before a new game's world when chosen.</summary>
+        public const string Tutorial = "Tutorial";
+
         /// <summary>True when the main menu can be loaded (it's in the build's scene list).</summary>
         public static bool HasMainMenu => Application.CanStreamedLevelBeLoaded(MainMenu);
 
@@ -33,7 +36,8 @@ namespace Clube.Game
         /// <summary>Starts the session's game in its mode's scene.</summary>
         public static void LoadGame()
         {
-            SceneManager.LoadScene(For(GameSession.Mode));
+            bool tutorial = GameSession.Tutorial && Application.CanStreamedLevelBeLoaded(Tutorial);
+            SceneManager.LoadScene(tutorial ? Tutorial : For(GameSession.Mode));
         }
 
         /// <summary>Back to the main menu, ending the session; quits when the menu isn't in the build.</summary>

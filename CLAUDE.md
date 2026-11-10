@@ -41,7 +41,7 @@ read it whole — grep it for a class name or ID (`GL344`, `TreeFeller`) to find
 where something was built. After a pass, add one short paragraph at its end (not here).
 
 Map of the game (details in the history):
-- Scenes: `MainMenu` → WorldLab (fixed 300 m area, the game the demo exe plays) and
+- Scenes: `MainMenu` → `Tutorial` (the opening tutorial's own map, when chosen) → WorldLab (fixed 300 m area, the game the demo exe plays) and
   `ProceduralWorldLab` (streamed); `VoxelLab`, `ChunkLab` are the single-voxel and chunk labs.
 - Core layers (A14): data → algorithms (`Generation`, `Meshing`, `Editing`, `Queries`,
   `Volume`, `Saving`) → `Streaming` → `Rendering`. `WorldView` is a façade over `World`
@@ -68,7 +68,7 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   Game reference Core; **Core never references Debug or Game.** Debug also
   references Game (lab tools tune the player, M16); Game never references Debug.
 - Namespaces match assembly names (`Clube.Core`, `Clube.Debug`, `Clube.Game`).
-- Scenes (A9): `MainMenu` (the exe's first scene), `VoxelLab`, `ChunkLab`, `WorldLab` (fixed area), `ProceduralWorldLab` (streamed), `Game`. The `Game` scene
+- Scenes (A9): `MainMenu` (the exe's first scene), `Tutorial` (GL514), `VoxelLab`, `ChunkLab`, `WorldLab` (fixed area), `ProceduralWorldLab` (streamed), `Game`. The `Game` scene
   contains no `Clube.Debug` components (A10).
 - Docs go in `Docs/` (capital D, G5).
 - Workflow (G2): one objective = one GitHub issue; one sub-section = one

@@ -20,7 +20,8 @@ namespace Clube.Game
 
         private void Awake()
         {
-            Wallet = new Wallet(startingCoins);
+            // Plus the tutorial's wages (GL514), carried over from its scene.
+            Wallet = new Wallet(startingCoins + GameSession.TakeCarriedCoins());
             player = GetComponent<PlayerController>();
         }
 

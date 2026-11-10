@@ -14,7 +14,13 @@ namespace Clube.Game
         [SerializeField, Range(0f, 60f)]
         private float maxTilt = 35f;
 
-        public string Prompt => "Rest";
+        /// <summary>What Interact offers: "Rest" for a roll, or a bed's own words (GL514).</summary>
+        public string Label { get; set; } = "Rest";
+
+        /// <summary>False for a bed built on a floor, which mustn't settle onto the ground under it.</summary>
+        public bool FitsGround { get; set; } = true;
+
+        public string Prompt => Label;
 
         public void Interact(PlayerInteractor by)
         {
@@ -27,7 +33,10 @@ namespace Clube.Game
 
         private void Start()
         {
-            LieOnGround();
+            if (FitsGround)
+            {
+                LieOnGround();
+            }
         }
 
         // The ground under the roll's four corners (its footprint, from its renderers), fitted with a plane: the roll turns to
