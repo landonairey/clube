@@ -213,6 +213,7 @@ namespace Clube.Game
                 // The ground streams in over the first seconds: clear it once more so nothing grows in the building (GL520).
                 regroundAt = 0f;
                 CompanyWarehouse.ClearGround(worldView);
+                TutorialTerrain.Apply(worldView);
             }
             if (lead != null)
             {
@@ -320,6 +321,7 @@ namespace Clube.Game
             }
             // The ground round the player is loaded now: no grass under the warehouse floor.
             CompanyWarehouse.ClearGround(worldView);
+            TutorialTerrain.Apply(worldView);
             regroundAt = Time.time + 4f;
             Vector3 leadAt = OnMap(CompanyWarehouse.LeadSpot);
             lead = CrewLead.Build(leadAt, player.transform.position, material, this);
