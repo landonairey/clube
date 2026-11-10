@@ -177,6 +177,12 @@ namespace Clube.Game
                 problem = "The game is still loading.";
                 return false;
             }
+            if (GameSession.IsActive && GameSession.Tutorial)
+            {
+                // The quarry is no place to come back to (GL479): the game saves once the tutorial is over.
+                problem = "The tutorial can't be saved.";
+                return false;
+            }
             string name = SaveNames.Clean(saveName);
             return SaveSlots.Write(Capture(name.Length > 0 ? name : DefaultSaveName), out problem);
         }

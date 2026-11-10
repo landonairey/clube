@@ -23,6 +23,10 @@ namespace Clube.Game
         [SerializeField]
         private Texture2D splash;
 
+        [Tooltip("The cut-open parcel behind the menu (GL480); the splash shows without one.")]
+        [SerializeField]
+        private MenuDiorama diorama;
+
         [SerializeField]
         private string title = "clube";
 
@@ -68,7 +72,9 @@ namespace Clube.Game
             DrawBackground();
 
             float width = Mathf.Min(Screen.width - 32f, newGame != null || loadGame != null ? 460f : 520f);
-            var column = new Rect((Screen.width - width) * 0.5f, 16f, width, Screen.height - 48f);
+            // Beside the diorama (GL480): the column on the left, the cut-open parcel on the right.
+            float left = HasDiorama ? Mathf.Max(28f, Screen.width * 0.07f) : (Screen.width - width) * 0.5f;
+            var column = new Rect(left, 16f, width, Screen.height - 48f);
             if (newGame != null)
             {
                 DrawNewGame(column);
@@ -86,7 +92,10 @@ namespace Clube.Game
 
         private void DrawTitle(Rect column)
         {
-            Shade(new Rect(column.x - 12f, column.y + column.height * 0.5f - 195f, column.width + 24f, 390f));
+            if (!HasDiorama)
+            {
+                Shade(new Rect(column.x - 12f, column.y + column.height * 0.5f - 195f, column.width + 24f, 390f));
+            }
             GUILayout.BeginArea(column);
             GUILayout.FlexibleSpace();
             GUILayout.Label(title, styles.Title);
@@ -123,14 +132,14 @@ namespace Clube.Game
 
         private void DrawNewGame(Rect column)
         {
-            Rect panel = Page(column, 650f);
+            Rect panel = Page(column, 780f);
             switch (newGame.Draw(Inside(panel), styles))
             {
                 case NewGamePage.Choice.Back:
                     newGame = null;
                     break;
                 case NewGamePage.Choice.Start:
-                    GameSession.StartNew(newGame.Mode, newGame.Seed, newGame.WorldName);
+                    GameSession.StartNew(newGame.Mode, newGame.Seed, newGame.WorldName, newGame.WithTutorial);
                     GameScenes.LoadGame();
                     break;
             }
@@ -207,9 +216,26 @@ namespace Clube.Game
             return new Rect(panel.x + 24f, panel.y + 16f, panel.width - 48f, panel.height - 32f);
         }
 
+        private bool HasDiorama => diorama != null && diorama.isActiveAndEnabled;
+
         private void DrawBackground()
         {
             var screen = new Rect(0f, 0f, Screen.width, Screen.height);
+            if (HasDiorama)
+            {
+                // The diorama is the picture: only a shade fading in from the left, under the column.
+                Color previous = GUI.color;
+                const int Bands = 24;
+                float reach = Mathf.Min(Screen.width, Mathf.Max(620f, Screen.width * 0.48f));
+                for (int i = 0; i < Bands; i++)
+                {
+                    float share = i / (float)Bands;
+                    GUI.color = new Color(0.04f, 0.05f, 0.06f, 0.78f * (1f - share * share));
+                    GUI.DrawTexture(new Rect(reach * share, 0f, reach / Bands + 1f, Screen.height), Texture2D.whiteTexture);
+                }
+                GUI.color = previous;
+                return;
+            }
             if (splash != null)
             {
                 GUI.DrawTexture(screen, splash, ScaleMode.ScaleAndCrop);

@@ -36,6 +36,7 @@ namespace Clube.Game
         private GameMode selected = GameMode.World;
         private string worldName = SaveNames.DefaultWorldName;
         private string seedText;
+        private bool withTutorial = true;
 
         public NewGamePage(int defaultSeed)
         {
@@ -46,6 +47,14 @@ namespace Clube.Game
 
         /// <summary>The world's name as typed (GL206); <see cref="GameSession"/> takes the default for an empty one.</summary>
         public string WorldName => worldName;
+
+        /// <summary>True when the game opens with the Mining Corp tutorial (GL479); the default.</summary>
+        public bool WithTutorial => withTutorial;
+
+        private static string OpeningText(bool chosen, string name, string about)
+        {
+            return $"{(chosen ? "●" : "○")}  <b>{name}</b>    <size=13>{about}</size>";
+        }
 
         /// <summary>The seed the text makes.</summary>
         public int Seed => SeedFrom(seedText);
@@ -116,6 +125,19 @@ namespace Clube.Game
             if (!int.TryParse(seedText.Trim(), out _))
             {
                 GUILayout.Label($"Makes seed {Seed}", styles.Caption);
+            }
+
+            GUILayout.Space(14f);
+            GUILayout.Label("Opening", styles.Label);
+            GUILayout.Space(4f);
+            if (GUILayout.Button(OpeningText(withTutorial, "Tutorial", "A day's work at the Mining Corp quarry."), styles.ModeButton, GUILayout.Height(40f)))
+            {
+                withTutorial = true;
+            }
+            GUILayout.Space(4f);
+            if (GUILayout.Button(OpeningText(!withTutorial, "Skip it", "Start on your family's parcel."), styles.ModeButton, GUILayout.Height(40f)))
+            {
+                withTutorial = false;
             }
 
             GUILayout.Space(22f);
