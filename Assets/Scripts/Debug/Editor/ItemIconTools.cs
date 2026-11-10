@@ -61,7 +61,6 @@ namespace Clube.Debug.Editor
             Write("leaves", "Leaves", PaintLeaf());
             Write("clay", "Clay", PaintClay());
             Write("brick", "Brick", PaintBrick());
-            Write("pickaxe", "Pickaxe", PaintPickaxe());
             Write("shovel", "Shovel", PaintShovel());
             Write("stick", "Stick", PaintStick());
             Write("spear", "Spear", PaintSpear());
@@ -397,7 +396,6 @@ namespace Clube.Debug.Editor
         private static readonly Color HandleLight = new Color(0.72f, 0.5f, 0.28f);
 
         // A wooden handle running up to the right, with a curved steel head across its top.
-        private static Texture2D PaintPickaxe() => PaintPickaxe(Steel);
 
         // The same shape with a head of another metal (bronze tools, GL63).
         private static Texture2D PaintPickaxe(Color head)

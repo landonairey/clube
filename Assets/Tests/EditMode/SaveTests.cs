@@ -166,5 +166,18 @@ namespace Clube.Core.Tests
                 File.Delete(path);
             }
         }
+
+        [Test]
+        public void NamedValues_KeptInTheSave()
+        {
+            var save = new GameSave();
+            save.Values["volume.taken"] = "123.5";
+            save.Values["volume.placed"] = "7";
+            using var stream = new MemoryStream();
+            GameSaveFile.Write(stream, save);
+            stream.Position = 0;
+            GameSave read = GameSaveFile.Read(stream);
+            CollectionAssert.AreEquivalent(save.Values, read.Values);
+        }
     }
 }

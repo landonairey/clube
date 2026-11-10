@@ -28,7 +28,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 834e2b54760fc7142a38069199661761, type: 2}
   - {fileID: 11400000, guid: 155e4f6fdac2e164786af465109e9cec, type: 2}
   - {fileID: 11400000, guid: 950dfde7ea687974caddd2269cd51cd5, type: 2}
-  - {fileID: 11400000, guid: 5c26ed0b0bc9f364eb573719b28d57bf, type: 2}
   - {fileID: 11400000, guid: 491e33a691a865b42bde1489ab967008, type: 2}
   - {fileID: 11400000, guid: e03060fe9ac797745b8b656d593b7671, type: 2}
   - {fileID: 11400000, guid: 75884212da9ef2040ac6fa7449e6da69, type: 2}
@@ -37,7 +36,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 4843d7b7f1c8d204baec0cd100bc7a91, type: 2}
   sells:
   - {fileID: 11400000, guid: 950dfde7ea687974caddd2269cd51cd5, type: 2}
-  - {fileID: 11400000, guid: 5c26ed0b0bc9f364eb573719b28d57bf, type: 2}
   - {fileID: 11400000, guid: 491e33a691a865b42bde1489ab967008, type: 2}
   - {fileID: 11400000, guid: e03060fe9ac797745b8b656d593b7671, type: 2}
   - {fileID: 11400000, guid: 75884212da9ef2040ac6fa7449e6da69, type: 2}
@@ -51,6 +49,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 950dfde7ea687974caddd2269cd51cd5, type: 2}
   - {fileID: 11400000, guid: e03060fe9ac797745b8b656d593b7671, type: 2}
   - {fileID: 11400000, guid: 75884212da9ef2040ac6fa7449e6da69, type: 2}
-  - {fileID: 11400000, guid: 5c26ed0b0bc9f364eb573719b28d57bf, type: 2}
   - {fileID: 11400000, guid: 491e33a691a865b42bde1489ab967008, type: 2}
   colour: {r: 0.78, g: 0.56, b: 0.18, a: 1}

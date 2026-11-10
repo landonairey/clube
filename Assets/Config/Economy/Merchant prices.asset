@@ -61,10 +61,6 @@ MonoBehaviour:
     Coins: 1
     Units: 10
     ByVolume: 1
-  - Item: {fileID: 11400000, guid: 5c26ed0b0bc9f364eb573719b28d57bf, type: 2}
-    Coins: 50
-    Units: 1
-    ByVolume: 0
   - Item: {fileID: 11400000, guid: 491e33a691a865b42bde1489ab967008, type: 2}
     Coins: 50
     Units: 1

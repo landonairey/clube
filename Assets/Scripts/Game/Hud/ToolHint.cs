@@ -18,12 +18,14 @@ namespace Clube.Game
 
         private string message;
         private float until;
+        private float shownAt;
         private GUIStyle style;
 
         /// <summary>Shows a message for a couple of seconds.</summary>
         public void Show(string text)
         {
             message = text;
+            shownAt = Time.time;
             until = Time.time + Seconds;
         }
 
@@ -72,9 +74,18 @@ namespace Clube.Game
                 return;
             }
             style ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, normal = { textColor = new Color(1f, 0.85f, 0.5f) } };
-            var area = new Rect(0f, Screen.height * 0.5f + 48f, Screen.width, 24f);
+            var area = new Rect(0f, Screen.height * 0.5f + 48f, Screen.width, 30f);
+            // Each message pops and then fades (GL441), so a repeat of the same words (a refining pass) still shows as new.
+            float age = Time.time - shownAt;
+            float pop = 1f + 0.25f * Mathf.Clamp01(1f - age / 0.15f);
+            Color previous = GUI.color;
+            Matrix4x4 matrix = GUI.matrix;
+            GUI.color = new Color(1f, 1f, 1f, Mathf.Lerp(1f, 0.2f, age / Seconds));
+            GUIUtility.ScaleAroundPivot(new Vector2(pop, pop), area.center);
             GUI.Label(new Rect(area.x + 1f, area.y + 1f, area.width, area.height), message, new GUIStyle(style) { normal = { textColor = Color.black } });
             GUI.Label(area, message, style);
+            GUI.matrix = matrix;
+            GUI.color = previous;
         }
     }
 }

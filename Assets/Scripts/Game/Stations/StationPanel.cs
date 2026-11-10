@@ -175,6 +175,11 @@ namespace Clube.Game
                         station.Chosen = chosen ? null : recipe;
                         if (!chosen)
                         {
+                            // What the last recipe made goes to the inventory, so it can't block the new one (GL444).
+                            if (!station.Output[0].IsEmpty)
+                            {
+                                station.Output.MoveTo(0, items, keepApart: true);
+                            }
                             station.LoadFor(recipe, items);
                         }
                     }
@@ -359,7 +364,8 @@ namespace Clube.Game
                 return null;
             }
             float yield = station.YieldOf(next);
-            if (Mathf.Abs(yield - 1f) < 0.005f)
+            // Smelts always show it, a full 100% too (GL443: the clay and brick furnaces showed nothing at 100%).
+            if (next.Extracts == null && Mathf.Abs(yield - 1f) < 0.005f)
             {
                 return null;
             }

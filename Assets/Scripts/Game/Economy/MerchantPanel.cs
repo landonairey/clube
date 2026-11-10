@@ -169,11 +169,19 @@ namespace Clube.Game
             {
                 if (Keyboard.current != null && Keyboard.current.ctrlKey.isPressed && Keyboard.current.shiftKey.isPressed)
                 {
-                    PickAllOfItem(items, clicked);
+                    PickForGroup(items, clicked);
                 }
                 else if (Keyboard.current != null && Keyboard.current.ctrlKey.isPressed)
                 {
-                    PickForGroup(items, clicked);
+                    // Ctrl-click picks every stack of the item, whatever its quality (GL433, GL434); on a picked stack, takes it out.
+                    if (group.Contains(clicked))
+                    {
+                        PickForGroup(items, clicked);
+                    }
+                    else
+                    {
+                        PickAllOfItem(items, clicked);
+                    }
                 }
                 else
                 {
@@ -392,7 +400,7 @@ namespace Clube.Game
             selected = -1;
         }
 
-        // Ctrl-click (GL305, GL374): adds the clicked stack to the group, with the stack already highlighted, or takes it out.
+        // Ctrl+Shift-click (GL305, GL374, GL433): adds the clicked stack to the group, with the stack already highlighted, or takes it out.
         // Only the stacks clicked are picked, never every stack of the item.
         private void PickForGroup(Inventory items, int slot)
         {
@@ -415,7 +423,7 @@ namespace Clube.Game
             selected = group.Contains(slot) ? slot : group.Count > 0 ? First(group) : -1;
         }
 
-        // Ctrl+Shift-click (GL393): every stack of the clicked item joins the group, whatever its quality.
+        // Ctrl-click (GL393, GL433): every stack of the clicked item joins the group, whatever its quality.
         private void PickAllOfItem(Inventory items, int slot)
         {
             ItemDefinition item = items[slot].Item;
@@ -457,7 +465,7 @@ namespace Clube.Game
                 coins += prices.PriceOf(items[slot], items[slot].Amount);
             }
             GUI.Label(new Rect(x, y + 4f, 360f, 40f),
-                $"{group.Count} stack{(group.Count == 1 ? "" : "s")} picked: {FormatAmount(amount)} in all\nCtrl-click: one stack in or out; Ctrl+Shift: all of an item");
+                $"{group.Count} stack{(group.Count == 1 ? "" : "s")} picked: {FormatAmount(amount)} in all\nCtrl-click: all of an item, or one picked stack out; Ctrl+Shift: one stack");
             GUI.enabled = coins > 0f;
             if (GUI.Button(new Rect(x + 376f, y, 100f, SellRowHeight), $"Sell picked\n{FormatCoins(coins)}") && CanPay(coins))
             {

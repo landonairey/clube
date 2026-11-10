@@ -31,9 +31,9 @@ namespace Clube.Game
         [SerializeField]
         private Light sun;
 
-        [Tooltip("The hour of day when the clock reads 0 days: a new game starts in the morning.")]
+        [Tooltip("The hour of day when the clock reads 0 days: a new game starts at 7 in the morning (GL428).")]
         [SerializeField, Range(0f, 24f)]
-        private float startHour = 8f;
+        private float startHour = 7f;
 
         [Tooltip("The compass direction of north in the world, in degrees: the sun is opposite it at noon.")]
         [SerializeField]

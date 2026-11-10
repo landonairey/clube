@@ -69,6 +69,16 @@ namespace Clube.Game
             }
         }
 
+        /// <summary>True while fuel burns in it (or, for a station without fuel, while it works).</summary>
+        public bool IsLit
+        {
+            get
+            {
+                var work = station != null ? station.Station : null;
+                return work != null && (work.BurnsFuel ? work.IsBurning : work.IsBusy);
+            }
+        }
+
         private void Update()
         {
             bool working = IsWorking;

@@ -6,8 +6,8 @@ namespace Clube.Debug
     /// <summary>
     /// WorldLab's heads-up display, top left: the frame rate; where the camera (the
     /// player, for now) is, as a world position, the voxel it's in (global coordinates),
-    /// that voxel's chunk (M1) and its place inside the chunk; and the brush's running
-    /// totals of volume placed and dug out; last, the game time and the day (GL259). A fixed number of lines, so it never
+    /// that voxel's chunk (M1) and its place inside the chunk; the player's lifetime volume
+    /// collected and placed (GL442); last, the game time and the day (GL259). A fixed number of lines, so it never
     /// resizes. F3 hides it (GL78).
     /// </summary>
     [RequireComponent(typeof(WorldView))]
@@ -21,7 +21,7 @@ namespace Clube.Debug
         private const float FpsWindowSeconds = 0.5f;
 
         private WorldView worldView;
-        private TerrainBrushTool brush;
+        private Clube.Game.PlayerVolumeLedger ledger;
         private Clube.Game.DayNightCycle dayNight;
         private GUIStyle style;
 
@@ -35,7 +35,6 @@ namespace Clube.Debug
         private void Awake()
         {
             worldView = GetComponent<WorldView>();
-            brush = GetComponent<TerrainBrushTool>();
         }
 
         private void Update()
@@ -89,11 +88,14 @@ namespace Clube.Debug
                 $"Position   ({position.x:0.0}, {position.y:0.0}, {position.z:0.0})\n" +
                 $"Voxel      ({voxel.x}, {voxel.y}, {voxel.z})\n" +
                 $"Chunk      ({chunk.x}, {chunk.y}, {chunk.z}), voxel ({local.x}, {local.y}, {local.z}) in it";
-            if (brush != null)
+            // The player's lifetime volume collected and placed (GL442); the brush totals stay in the panel's Brush section.
+            if (ledger == null)
             {
-                float net = brush.TotalVolumeAdded - brush.TotalVolumeRemoved;
-                text += $"\nBrushed    placed {brush.TotalVolumeAdded:0.0} u³ · dug {brush.TotalVolumeRemoved:0.0} u³ · " +
-                        $"net {net:+0.0;-0.0;0.0} u³";
+                ledger = FindFirstObjectByType<Clube.Game.PlayerVolumeLedger>(FindObjectsInactive.Include);
+            }
+            if (ledger != null)
+            {
+                text += $"\nVolume     collected {ledger.Taken:0.0} · placed {ledger.Placed:0.0}";
             }
             // The game's time of day and day count (GL259), last.
             dayNight ??= GetComponent<Clube.Game.DayNightCycle>();

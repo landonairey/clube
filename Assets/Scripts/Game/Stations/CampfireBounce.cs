@@ -35,6 +35,7 @@ namespace Clube.Game
 
         private static AudioClip sizzle;
         private PlayerController player;
+        private StationFire fire;
         private float readyAt;
 
         private void Update()
@@ -48,6 +49,15 @@ namespace Clube.Game
                 }
             }
             if (!player.isActiveAndEnabled || Time.time < readyAt)
+            {
+                return;
+            }
+            // An unlit campfire is only stones and wood: walk on it (GL430).
+            if (fire == null)
+            {
+                fire = GetComponentInParent<StationFire>();
+            }
+            if (fire != null && !fire.IsLit)
             {
                 return;
             }

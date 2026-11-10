@@ -593,3 +593,16 @@ To profile real frames in Play mode, hook `EditorApplication.update` and read `P
 category: `PlayerLoop`, `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging to the
 Editor log; per-script markers aren't available without the profiler.
 
+
+Week of 2026-11-09, batch A (GL428-GL445, branch `gl428/batch-a`): a new world starts at 7:00 (`DayNightCycle.startHour`);
+the pause menu shows `BuildInfo.Version` under its box; `CampfireBounce` only throws the player off a lit fire
+(`StationFire.IsLit`). Qualities read rounded down (`QualityText.Percent`), so only pure reads 100%. Part fuel burns for its
+part and is used up (`CraftingStation.Ignite`). `GameUi.OutlinedLabel` outlines slot counts, purity and the cursor prompts.
+Ctrl-click at a trader picks every stack of the item (Ctrl+Shift one stack). The generic Pickaxe item is gone. Ore picked out
+of crushed ore comes out crushed (`BoulderBashing.CrushedFormOf`); `ToolHint` pops and fades each message. Smelts always show
+their yield; picking another recipe moves the output to the inventory. Saves have named values (version 6,
+`GameSave.Values`): a component implementing `ISavedValues` (Game/Session) is found by `GameSessionHost` and keeps a few
+keys, so small state needs no new save version. `PlayerVolumeLedger` (on Player) counts lifetime volume collected and placed,
+shown as "Volume" on the lab HUD. The quest box draws over open screens. `JournalBook.FitLabel` shrinks journal titles and
+notes to fit. The player camera's near plane is 0.08 m (it was 0.3, the capsule's radius, so the near plane reached through
+walls).

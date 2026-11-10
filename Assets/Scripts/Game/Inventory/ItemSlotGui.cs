@@ -37,7 +37,7 @@ namespace Clube.Game
             }
             // No padding or clipping: the skin's label padding cut the bottom off the digits (GL222).
             purityStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = 20, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0), clipping = TextClipping.Overflow, normal = { textColor = new Color(1f, 0.8f, 0.35f) } };
-            GUI.Label(new Rect(rect.x, rect.y + 3f, rect.width - 6f, 26f), (purity * 100f).ToString("0") + "%", purityStyle);
+            GameUi.OutlinedLabel(new Rect(rect.x, rect.y + 3f, rect.width - 6f, 26f), QualityText.Percent(purity), purityStyle);
         }
 
         /// <param name="corner">Small text for the lower left, e.g. a merchant's price; null for none.</param>
@@ -61,11 +61,11 @@ namespace Clube.Game
                 if (stack.Part > 0f)
                 {
                     // A part item (GL136): 0.48 of a tin bun.
-                    GUI.Label(Inset(rect, 3f), stack.Amount.ToString("0.##"), countStyle);
+                    GameUi.OutlinedLabel(Inset(rect, 3f), stack.Amount.ToString("0.##"), countStyle);
                 }
                 else if (stack.Count > 1)
                 {
-                    GUI.Label(Inset(rect, 3f), stack.Count.ToString(), countStyle);
+                    GameUi.OutlinedLabel(Inset(rect, 3f), stack.Count.ToString(), countStyle);
                 }
                 DrawPurity(rect, stack);
                 if (stack.Item is BucketDefinition bucket)
