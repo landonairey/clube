@@ -878,6 +878,30 @@ GL250 (ambient wildlife).
 - [x] **GL523** `Game` The copper pick's 3D head is copper with green patina, matching its icon.
 - [x] **GL524** `Game` A stack fills to its maximum before a new stack starts.
 
+### Playtest 2026-11-10b *(added 2026-11-10, from `Docs/backlogs/20261110b clube-backlog.md`; four batches P1–P4, in order)*
+**P1 — Title screen** (`gl535/title-screen`)
+- [ ] **GL535** `Game` Title diorama covers 2 x 2 parcels, and its camera is tilted down at a lower angle instead of top-down.
+- [ ] **GL536** `Game` Title water shows only over the generated parcels (no floating water over the rest of the screen).
+- [ ] **GL537** `Game` No stray dirt ball generated on the title terrain.
+- [ ] **GL538** `Game` The Tool Shed sign text is white, so it reads easily.
+
+**P2 — Tutorial UI and quota**
+- [ ] **GL539** `Game` Tutorial: no inventory screen while typing your name, and E doesn't open it then.
+- [ ] **GL540** `Game` Tutorial: the quest, ore and tool journals are off until you reach the family's starter parcel.
+- [ ] **GL541** `Game` Crew Lead, while you're off mining, adds "Let me know if you find anything interesting too while you're out there."
+- [ ] **GL542** `Game` After discussing an ore with the Crew Lead, that dialog option doesn't come back (for that ore).
+- [ ] **GL543** `Game` Handing in your belongings doesn't raise the "we don't care about that ore" flag.
+- [ ] **GL544** `Game` Quota resets daily: day N needs 1024 x N stone mined that day (not a running total).
+
+**P3 — Tutorial building**
+- [ ] **GL545** `Game` The side fences are replaced by a stone wall like the town's, tall enough that the player can't jump it.
+- [ ] **GL546** `Game` The player's name on the other side of the bed too; a copy of the rules board inside the building.
+
+**P4 — Tutorial terrain and workers**
+- [ ] **GL547** `Game` Tutorial mountain side: stone instead of the player-high grass ramp.
+- [ ] **GL548** `Game` The extra workers actually dig voxels, working back along the whole west-to-east mountain wall.
+- [ ] **GL549** `Game` Workers hand in their day's stone and go to bed at 5pm.
+
 ### Eroded landscape *(added 2026-11-03, from `Docs/backlogs/20261103j clube-backlog.md` — first pass of P12; branch `p12/eroded-landscape`)*
 - [x] **P12a** `Core + Debug` *(added 2026-11-03)* An eroded landscape generator after runevision's erosion filter: branching gullies and ridges as a filter on a heightfield, every point worked out on its own, so chunks, levels of detail and the water map agree. *(Done 2026-11-03: `ErosionFilter` + `ErosionSettings` (Generation/Noise, written from the blog's description: stripes blended from 4 x 4 cells, normalised gullies, stacked fading, straight gullies, ridge map), `ErodedLandscapeHeight` and the ErodedLandscape generator (`TerrainGeneratorType.ErodedLandscape`; Landscape's mask, warp, plains and distant ranges, with smooth massifs (`LandscapeHeight.WithSmoothMassifs`) in place of the ridged peaks). Learned on the way (height maps in `Docs/images/20261103 *`): on Landscape's ridged noise the gullies turned to noise (fine ridges) and seams (knife-edge crests flip the slope); clamped noise made flat plateaus with cliff edges; full-strength gullies from the plains up raised a cliff along every range's foot (gullies now deepen over the foothills); 35% of the mountains were over the player's 50° slope limit. With smooth massifs and strength 0.15: 15% (Landscape 8%), peaks at 131 m. Peaks rise by `PeakLift` 0.4 of the gully depth, so they stay inside the 160 m world. Lab panel: Erosion section. Tests: `ErodedLandscapeTests`. Benchmark: *Clube → Benchmarks → Heightfield generation*.)*
 - [x] **P12b** `Core` *(added 2026-11-03)* Rivers start in the eroded valleys and run down into lakes, ponds and other rivers. *(Done 2026-11-03: `HeightfieldGenerator.HasValleys`/`ScheduleValleys` (the ridge map of the biggest `ValleyOctaves` gullies); `Hydrology` on such ground routes water by steepest descent (it follows the gullies), starts a river where a valley is deeper than `WaterGeneration.ValleyDepth` and drains `ValleyHeadArea`, and carries it on downstream, so streams merge and pass through lakes; river beds there follow the ground instead of floating over steep gully floors. `ErosionSettings.MinPondArea` can keep small pits dry (0 by default). Mountain streams are still thin and broken in places on the 1 m map; the live flow carries their water down.)*
