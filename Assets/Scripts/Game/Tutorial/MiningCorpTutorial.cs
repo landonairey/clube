@@ -121,7 +121,9 @@ namespace Clube.Game
         private ToolShed shed;
         private readonly System.Collections.Generic.List<string> foundOres = new System.Collections.Generic.List<string>();
         private bool talking;
-        private int stoneDelivered;
+        private readonly DailyQuota quota = new DailyQuota();
+        private readonly System.Collections.Generic.HashSet<string> discussedOres = new System.Collections.Generic.HashSet<string>();
+        private FieldLogScreen fieldLog;
         private string outcome = "";
         private GUIStyle quotaStyle;
 
@@ -162,6 +164,12 @@ namespace Clube.Game
             player.ClimbingDisabled = true;
             inventoryScreen = player.GetComponentInChildren<InventoryScreen>();
             questHud = player.GetComponentInChildren<QuestHud>(true);
+            // GL540: the journals are for the family's own parcel, after the job.
+            fieldLog = player.GetComponentInChildren<FieldLogScreen>(true);
+            if (fieldLog != null)
+            {
+                fieldLog.Blocked = true;
+            }
             minimap = player.GetComponentInChildren<Minimap>();
             dayNight = FindAnyObjectByType<DayNightCycle>();
             if (questHud != null)
@@ -223,6 +231,11 @@ namespace Clube.Game
             {
                 CloseCrate();
             }
+            if (inventoryScreen != null)
+            {
+                // GL539: no inventory while typing the name.
+                inventoryScreen.Blocked = step == Step.Name;
+            }
             CheckQuota();
             Teach();
             lastPosition = player.transform.position;
@@ -231,34 +244,43 @@ namespace Clube.Game
 
         private int QuotaDay => dayNight != null ? dayNight.Day : 1;
 
-        /// <summary>The stone handed in so far, over all days.</summary>
-        public int StoneDelivered => stoneDelivered;
+        /// <summary>The stone handed in today (GL544: the count starts again each day).</summary>
+        public int StoneDelivered
+        {
+            get
+            {
+                quota.Advance(QuotaDay);
+                return quota.Stone;
+            }
+        }
 
-        /// <summary>Stone that must have been handed in by 17:00 today (GL534).</summary>
+        /// <summary>Stone that must have been handed in by 17:00 today: 1024 x the day (GL534, GL544).</summary>
         public int QuotaToday => CompanyWork.Quota(QuotaDay);
 
         // From the first hand-in on the company wants its quota by 17:00 every day, or the player is thrown out.
         private void CheckQuota()
         {
             if (dayNight == null || step < Step.Hotbar || step >= Step.Caught || dayNight.ClockHour < CompanyWork.QuotaHour
-                || stoneDelivered >= QuotaToday)
+                || StoneDelivered >= QuotaToday)
             {
                 return;
             }
             outcome = $"You didn't make the quota of {QuotaToday} stone,\nand the Mining Corp has no use for you.\n\nYou are thrown out and left on the only land your family still owns.";
-            ThrowOut($"Crew lead: \"{stoneDelivered} stone. The quota was {QuotaToday}, {Name}. You're done here. Out!\"");
+            ThrowOut($"Crew lead: \"{StoneDelivered} stone. The quota was {QuotaToday}, {Name}. You're done here. Out!\"");
         }
 
         public void SaveValues(System.Collections.Generic.IDictionary<string, string> values)
         {
-            values["quotaStone"] = stoneDelivered.ToString();
+            values["quotaStone"] = quota.Stone.ToString();
+            values["quotaDay"] = quota.Day.ToString();
         }
 
         public void RestoreValues(System.Collections.Generic.IReadOnlyDictionary<string, string> values)
         {
             if (values.TryGetValue("quotaStone", out string saved) && int.TryParse(saved, out int count))
             {
-                stoneDelivered = Mathf.Max(0, count);
+                values.TryGetValue("quotaDay", out string savedDay);
+                quota.Restore(int.TryParse(savedDay, out int day) ? day : QuotaDay, count);
             }
         }
 
@@ -446,6 +468,9 @@ namespace Clube.Game
         /// <summary>The crew lead's one answer to anything the player found (GL528).</summary>
         private const string NotInterested = "Crew lead: \"We don't care about any of that, we only do Stone here. Now get back to work.\"";
 
+        /// <summary>What the lead adds while the player is off mining (GL541).</summary>
+        private const string OutThere = "Let me know if you find anything interesting too while you're out there.";
+
         private void CloseTalk()
         {
             talking = false;
@@ -475,7 +500,10 @@ namespace Clube.Game
             {
                 if (GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), $"Discuss the {ore}"))
                 {
+                    // GL542: once discussed, an ore's option doesn't come back.
                     speech = NotInterested;
+                    discussedOres.Add(ore);
+                    foundOres.Remove(ore);
                     CloseTalk();
                     return;
                 }
@@ -498,12 +526,24 @@ namespace Clube.Game
             float price = 0f;
             float volume = 0f;
             int stone = 0;
+            bool handedOre = false;
             for (int slot = 0; slot < items.SlotCount; slot++)
             {
                 ItemStack stack = items[slot];
                 if (stack.IsEmpty || stack.Item == pick || stack.Item is ToolDefinition)
                 {
                     continue;
+                }
+                if (stack.Contents != null)
+                {
+                    foreach (Content part in stack.Contents.Parts)
+                    {
+                        if (part.Material != null && part.Material.Category == VoxelMaterialCategory.Ore)
+                        {
+                            handedOre = true;
+                            discussedOres.Add(part.Material.DisplayName);
+                        }
+                    }
                 }
                 price += prices != null ? prices.PriceOf(stack, stack.Amount) : 0f;
                 volume += stack.Volume;
@@ -518,7 +558,9 @@ namespace Clube.Game
                 note = "Nothing to hand in yet: dig some stone first.";
                 return;
             }
-            stoneDelivered += stone;
+            quota.Add(QuotaDay, stone);
+            // GL543: ore handed in with the rest gets the same brush-off as ore discussed, and is settled for good (GL542).
+            foundOres.RemoveAll(discussedOres.Contains);
             float wage = CompanyWork.Wage(price);
             wallet?.Wallet?.Earn(wage);
             note = $"Handed in stone worth {Wallet.Format(price)}. The company pays you {Wallet.Format(wage)}.";
@@ -526,7 +568,11 @@ namespace Clube.Game
             {
                 step = Step.Free;
                 speech = "Crew lead: \"That's the way. Mine all you want and hand it in at the cart. Sleep in your bunk when it's dark. "
-                    + "And remember: don't take anything that isn't yours.\"";
+                    + "And remember: don't take anything that isn't yours. " + OutThere + "\"";
+            }
+            else
+            {
+                speech = handedOre ? NotInterested : $"Crew lead: \"Good. {OutThere}\"";
             }
         }
 
@@ -597,7 +643,7 @@ namespace Clube.Game
                     foreach (Content part in collected.Contents.Parts)
                     {
                         string ore = part.Material != null && part.Material.Category == VoxelMaterialCategory.Ore ? part.Material.DisplayName : null;
-                        if (ore != null && !foundOres.Contains(ore))
+                        if (ore != null && !foundOres.Contains(ore) && !discussedOres.Contains(ore))
                         {
                             foundOres.Add(ore);
                             note = $"You found some {ore}. The crew lead wants to hear about interesting finds.";
@@ -776,7 +822,7 @@ namespace Clube.Game
                 quotaStyle = new GUIStyle(cardStyle) { alignment = TextAnchor.MiddleLeft, fontSize = GameUi.Font(16) };
             }
             string due = $"{(int)CompanyWork.QuotaHour}:00";
-            string text = $"<b>Quota, day {QuotaDay}</b>\nStone handed in: {stoneDelivered} / {QuotaToday}\nDue by {due}";
+            string text = $"<b>Quota, day {QuotaDay}</b>\nStone handed in today: {StoneDelivered} / {QuotaToday}\nDue by {due}";
             float width = 230f * GameUi.FontScale;
             float height = quotaStyle.CalcHeight(new GUIContent(text), width);
             GUI.Box(new Rect(Screen.width - width - 14f, 14f, width, height), text, quotaStyle);

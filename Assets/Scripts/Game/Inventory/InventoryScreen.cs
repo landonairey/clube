@@ -39,6 +39,9 @@ namespace Clube.Game
 
         public bool IsOpen { get; private set; }
 
+        /// <summary>While true the screen cannot be opened (the tutorial's name step, GL539).</summary>
+        public bool Blocked { get; set; }
+
         private void Awake()
         {
             inventory = GetComponent<PlayerInventory>();
@@ -67,6 +70,10 @@ namespace Clube.Game
 
         private void Update()
         {
+            if (Blocked)
+            {
+                return;
+            }
             if (player != null && !player.enabled)
             {
                 return;
@@ -80,7 +87,7 @@ namespace Clube.Game
                 SetOpen(true);
                 return;
             }
-            if (IsOpen && fieldLog != null && fieldLog.ToggleAction != null && fieldLog.ToggleAction.WasPressedThisFrame())
+            if (IsOpen && fieldLog != null && !fieldLog.Blocked && fieldLog.ToggleAction != null && fieldLog.ToggleAction.WasPressedThisFrame())
             {
                 SetOpen(false);
                 fieldLog.Open(fieldLog.Current);
