@@ -129,6 +129,28 @@ namespace Clube.Core
 
         public bool IsBurning => BurnLeft > 0f;
 
+        /// <summary>
+        /// The fuel's quality factor on smelting yield (GL502): the fuel burning now, else the fuel waiting in the
+        /// slot, else 1 (a station that burns nothing).
+        /// </summary>
+        public float FuelFactor
+        {
+            get
+            {
+                if (!BurnsFuel)
+                {
+                    return 1f;
+                }
+                if (IsBurning)
+                {
+                    return burningFuelFactor;
+                }
+                return HasFuel ? Fuel[0].Item.FuelQuality : 1f;
+            }
+        }
+
+        private float burningFuelFactor = 1f;
+
         /// <summary>The recipe being worked, or null when idle.</summary>
         public Recipe Active { get; private set; }
 
@@ -428,6 +450,7 @@ namespace Clube.Core
             // A part item burns for its part and is used up (GL432: 0.14 of a leaf burned forever, since taking a whole
             // item from it took nothing).
             float amount = Math.Min(1f, Fuel[0].Amount);
+            burningFuelFactor = Fuel[0].Item.FuelQuality;
             float seconds = Fuel[0].Item.BurnSeconds * Fuel[0].Quality * amount;
             Fuel.RemoveAmount(0, amount);
             BurnLeft = BurnTotal = seconds;
@@ -490,7 +513,8 @@ namespace Clube.Core
             float yield = Math.Max(0f, Quality);
             if (recipe != null && recipe.Extracts != null)
             {
-                yield *= Math.Min(1f, Concentration(recipe));
+                // Smelting only: the fuel's quality counts too (GL502).
+                yield *= Math.Min(1f, Concentration(recipe)) * FuelFactor;
             }
             return yield;
         }

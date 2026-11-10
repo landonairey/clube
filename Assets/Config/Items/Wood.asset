@@ -18,4 +18,5 @@ MonoBehaviour:
   maxStack: 256
   unitVolume: 1
   burnSeconds: 20
+  fuelQuality: 0.85
   hidesContents: 0
