@@ -336,7 +336,7 @@ namespace Clube.Game
         }
 
         // Words on a board: a TextMesh child, facing -z at yaw 0 (so yaw 180 reads from +z).
-        internal static TextMesh AddText(Transform parent, string text, Vector3 at, float yaw, float size, Material textMaterial)
+        internal static TextMesh AddText(Transform parent, string text, Vector3 at, float yaw, float size, Material textMaterial, Color? color = null)
         {
             var go = new GameObject("Sign text");
             go.transform.SetParent(parent, false);
@@ -350,7 +350,7 @@ namespace Clube.Game
             mesh.characterSize = size;
             mesh.anchor = TextAnchor.MiddleCenter;
             mesh.alignment = TextAlignment.Center;
-            mesh.color = new Color(0.16f, 0.1f, 0.05f);
+            mesh.color = color ?? new Color(0.16f, 0.1f, 0.05f);
             Material shown = textMaterial != null ? new Material(textMaterial) : font.material;
             shown.mainTexture = font.material.mainTexture;
             go.GetComponent<MeshRenderer>().sharedMaterial = shown;

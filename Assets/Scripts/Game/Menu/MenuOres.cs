@@ -6,22 +6,28 @@ namespace Clube.Game
     /// <summary>
     /// Stamps the title page's ore nodes into its small real world (GL512), by <see cref="World"/>'s edit paths so the
     /// chunks remesh themselves: gold at the bottom of the cut face (z = -8), then silver, chalcopyrite, malachite and tin
-    /// near the top, a tin node standing out of the grass for the miner, and a stump. Placed by hand, not rolled, so each
+    /// near the top, and a tin node standing out of the grass for the miner (the stump that sat by the fire read as a stray dirt ball, GL537). Placed by hand, not rolled, so each
     /// one shows on the cut face whatever the seed's terrain does.
     /// </summary>
     public sealed class MenuOres
     {
-        // The cut face of the 16 m block, and how far into it a node's centre sits (so a ball of ore shows on the face).
-        private const float Face = -16f;
+        // How far into the cut face a node's centre sits (so a ball of ore shows on the face).
         private const float FaceInset = 0.4f;
+        // The hand-placed layout was made for a 32 m block (half 16); a bigger block spreads it out by this much (GL535).
+        private const float DesignHalf = 16f;
 
         private readonly World world;
         private readonly MaterialRegistry registry;
 
         private readonly float top;
+        private readonly float scale;
+        private float Face => -half;
+        private readonly float half;
 
-        public MenuOres(World world, MaterialRegistry registry, float top)
+        public MenuOres(World world, MaterialRegistry registry, float top, float halfExtent = DesignHalf)
         {
+            half = halfExtent;
+            scale = halfExtent / DesignHalf;
             this.world = world;
             this.registry = registry;
             this.top = top;
@@ -45,34 +51,29 @@ namespace Clube.Game
             return 0f;
         }
 
-        /// <summary>Puts every ore, the surface tin and the stump in, measured down from <paramref name="ground"/>.</summary>
+        /// <summary>Puts every ore, and the surface tin in, measured down from <paramref name="ground"/>.</summary>
         public void StampAll()
         {
             float z = Face + FaceInset;
             // Gold lowest, then silver, chalcopyrite, malachite and tin nearest the surface; each measured down from the
             // ground at its own spot (the ground tilts: a mountain's edge).
-            DeepBall("Gold", 4.8f, 13f, z, 2.8f);
-            DeepBall("Gold", -7.6f, 11.5f, z, 2.0f);
-            DeepBall("Silver", -1.6f, 9.6f, z, 2.6f);
-            DeepBall("Chalcopyrite", 7.2f, 7.6f, z, 2.4f);
-            DeepBall("Malachite", -7.2f, 6f, z, 2.2f);
-            DeepBall("Malachite", 1.2f, 6.4f, z, 1.6f);
-            DeepBall("Cassiterite", -3.6f, 3.4f, z, 1.8f);
-            DeepBall("Cassiterite", 10.4f, 3f, z, 1.6f);
+            DeepBall("Gold", 4.8f * scale, 13f, z, 2.8f);
+            DeepBall("Gold", -7.6f * scale, 11.5f, z, 2.0f);
+            DeepBall("Silver", -1.6f * scale, 9.6f, z, 2.6f);
+            DeepBall("Chalcopyrite", 7.2f * scale, 7.6f, z, 2.4f);
+            DeepBall("Malachite", -7.2f * scale, 6f, z, 2.2f);
+            DeepBall("Malachite", 1.2f * scale, 6.4f, z, 1.6f);
+            DeepBall("Cassiterite", -3.6f * scale, 3.4f, z, 1.8f);
+            DeepBall("Cassiterite", 10.4f * scale, 3f, z, 1.6f);
 
             // The miner's node: a lump of tin standing out of the grass.
             TinOnSurface = new Vector3(TinX, SurfaceAt(TinX, TinZ), TinZ);
             Ball("Cassiterite", TinOnSurface + Vector3.up * 0.2f, 1.1f, true);
-
-            // The stump beside the fire, in the real stump material.
-            float stumpX = -6.8f;
-            float stumpZ = -12f;
-            Cylinder("Maple stump", new Vector3(stumpX, SurfaceAt(stumpX, stumpZ) - 0.6f, stumpZ), 1.3f, 2.4f);
         }
 
         /// <summary>Where the miner's tin node stands (x, z).</summary>
-        public const float TinX = 4.4f;
-        public const float TinZ = -10f;
+        public float TinX => 4.4f * scale;
+        public float TinZ => -half + 6f;
 
         private void DeepBall(string material, float x, float depth, float z, float radius)
         {
@@ -89,15 +90,6 @@ namespace Clube.Game
                 return;
             }
             Fill(centre, radius, radius, id.Value, raise);
-        }
-
-        private void Cylinder(string material, Vector3 baseCentre, float radius, float height)
-        {
-            byte? id = registry.Find(material)?.Id;
-            if (id != null)
-            {
-                Fill(baseCentre + Vector3.up * height * 0.5f, radius, height * 0.5f, id.Value, true);
-            }
         }
 
         private void Fill(Vector3 centre, float radius, float halfHeight, byte id, bool raise)

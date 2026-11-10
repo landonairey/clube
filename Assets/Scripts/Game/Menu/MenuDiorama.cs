@@ -5,10 +5,10 @@ namespace Clube.Game
 {
     /// <summary>
     /// The title page's background (GL480, GL512): a small fixed-seed area of the real world, generated and meshed by the
-    /// real pipeline (<see cref="WorldView"/> on <c>MenuWorldConfig</c>: a 16 m square whose sealed outer faces cut it open like
+    /// real pipeline (<see cref="WorldView"/> on <c>MenuWorldConfig</c>: a 64 m square (2 x 2 parcels) whose sealed outer faces cut it open like
     /// a cake), so the layers, grass and trees are the game's own. Once it has loaded, the ores are stamped into its cut face
     /// on purpose (<see cref="MenuOres"/>: gold at the bottom, then silver, chalcopyrite, malachite and tin near the top and
-    /// on the surface) with a stump beside them; a campfire and the player's figure (<see cref="KeeperFigure"/>, mining pose)
+    /// on the surface); a campfire and the player's figure (<see cref="KeeperFigure"/>, mining pose)
     /// stand on the grass. The camera looks down at it from the front, shifted so the block sits right of the menu's column.
     /// </summary>
     public class MenuDiorama : MonoBehaviour
@@ -36,6 +36,10 @@ namespace Clube.Game
         [Tooltip("Degrees a minute the block turns back and forth, so it never sits quite still.")]
         [SerializeField, Min(0f)]
         private float sway = 4f;
+
+        [Tooltip("Degrees the camera looks down at the block (GL535: lower than top-down).")]
+        [SerializeField, Range(5f, 80f)]
+        private float cameraPitch = 28f;
 
         private Transform block;
         private Light fireLight;
@@ -85,17 +89,19 @@ namespace Clube.Game
             flame?.Animate(1f);
         }
 
-        // Once the real terrain is in: ores in the cut face, a stump, then the campfire and the miner on the grass.
+        // Once the real terrain is in: ores in the cut face, then the campfire and the miner on the grass.
         private void Dress()
         {
             WorldConfig config = world.Config;
             float top = config.WorldHeightInChunks * config.ChunkSize.y * config.VoxelSize;
-            var ores = new MenuOres(world.World, config.Materials, top);
+            float half = config.FixedAreaSize * 0.5f;
+            float scale = half / 16f;
+            var ores = new MenuOres(world.World, config.Materials, top, half);
             // The ground's height range over the block sets the framing (the spot is a mountain's edge, so it tilts).
             float low = float.MaxValue, high = float.MinValue;
-            for (float x = -14f; x <= 14f; x += 4f)
+            for (float x = -half + 2f; x <= half - 2f; x += 4f * scale)
             {
-                for (float z = -14f; z <= 14f; z += 4f)
+                for (float z = -half + 2f; z <= half - 2f; z += 4f * scale)
                 {
                     float h = ores.SurfaceAt(x, z);
                     low = Mathf.Min(low, h);
@@ -103,11 +109,12 @@ namespace Clube.Game
                 }
             }
             frameCentreY = low + (high - low) * 0.5f + 1f;
-            frameHeight = Mathf.Max(22f, (high - low) * 0.7f + 14f);
+            frameHeight = Mathf.Max(22f * scale, (high - low) * 0.7f + 14f);
             UnityEngine.Debug.Log($"MenuDiorama: ground {low:0.0}-{high:0.0} m, framing {frameCentreY:0.0} +- {frameHeight:0.0}");
             ores.StampAll();
             Vector3 tin = ores.TinOnSurface;
-            BuildCampfire(new Vector3(-1.5f, ores.SurfaceAt(-1.5f, -10.5f), -10.5f));
+            Vector2 fire = new Vector2(-1.5f * scale, -half + 5.5f);
+            BuildCampfire(new Vector3(fire.x, ores.SurfaceAt(fire.x, fire.y), fire.y));
             BuildMiner(new Vector3(tin.x, ores.SurfaceAt(tin.x, tin.z + 2.2f), tin.z + 2.2f));
             lastAspect = 0f;
         }
@@ -117,7 +124,7 @@ namespace Clube.Game
         {
             lastAspect = view.aspect;
             var centre = new Vector3(0f, frameCentreY, 0f);
-            Vector3 from = Quaternion.Euler(38f, -22f, 0f) * Vector3.back;
+            Vector3 from = Quaternion.Euler(cameraPitch, -22f, 0f) * Vector3.back;
             float halfHeight = Mathf.Tan(view.fieldOfView * 0.5f * Mathf.Deg2Rad);
             // Far enough for the block (and its trees) to fill about two thirds of the screen's height.
             float distance = frameHeight * 1.35f / halfHeight;

@@ -46,6 +46,10 @@ namespace Clube.Core
         [SerializeField, Range(0.25f, 8f)]
         private float buildBudgetMs = 1.5f;
 
+        [Tooltip("Draw the far water sheets (the map's rivers and lakes beyond the loaded chunks). Off for a small fixed area such as the title diorama, so no water floats outside it (GL536).")]
+        [SerializeField]
+        private bool drawFarWater = true;
+
         private WorldView worldView;
         private ITerrainGenerator builtFor;
         private WaterMap water;
@@ -280,7 +284,7 @@ namespace Clube.Core
 
         private void MarkAllTiles()
         {
-            if (!water.IsCreated)
+            if (!water.IsCreated || !drawFarWater)
             {
                 return;
             }
@@ -468,7 +472,7 @@ namespace Clube.Core
         // Far tiles take what's left of the frame's budget (one at least once the chunks are all built).
         private void RebuildTiles()
         {
-            if (dirtyTiles.Count == 0 || !water.IsCreated || worldView.World == null)
+            if (dirtyTiles.Count == 0 || !water.IsCreated || !drawFarWater || worldView.World == null)
             {
                 return;
             }
