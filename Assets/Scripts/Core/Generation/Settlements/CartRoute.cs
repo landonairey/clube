@@ -90,51 +90,95 @@ namespace Clube.Core
             return length;
         }
 
+        // How much a metre of road costs per unit of steepness squared (GL510): a 45-degree face costs 1 + this per metre.
+        private const float SlopeCost = 40f;
+
+        // The cost of a stretch from a to b (ground heights ha, hb): its length, dearer where it climbs.
+        private static float StretchCost(Vector2 a, Vector2 b, float ha, float hb)
+        {
+            float length = Mathf.Max((b - a).magnitude, 1e-3f);
+            float slope = Mathf.Abs(hb - ha) / length;
+            return length * (1f + SlopeCost * slope * slope);
+        }
+
         /// <summary>Plans the road from <paramref name="from"/> to <paramref name="to"/> over the ground <paramref name="heightAt"/>.</summary>
         /// <param name="spacing">Metres between bends.</param>
         /// <param name="sway">The most metres a bend may move off the straight line.</param>
-        public CartRoute(Vector2 from, Vector2 to, Func<float, float, float> heightAt, int seed, float spacing = 16f, float sway = 10f)
+        public CartRoute(Vector2 from, Vector2 to, Func<float, float, float> heightAt, int seed, float spacing = 16f, float sway = 30f)
         {
             if (heightAt == null)
             {
                 throw new ArgumentNullException(nameof(heightAt));
             }
-            var random = new System.Random(seed * 17 + 4770);
             Vector2 along = to - from;
             float straight = along.magnitude;
             Vector2 forward = straight > 1e-4f ? along / straight : Vector2.right;
             var side = new Vector2(-forward.y, forward.x);
             int bends = Mathf.Max(1, Mathf.CeilToInt(straight / Mathf.Max(1f, spacing)));
-            var rough = new List<Vector2> { from };
-            float lastHeight = heightAt(from.x, from.y);
-            float lastOffset = 0f;
+
+            // GL510: the cheapest way through a bend at each station, where a stretch costs its length times
+            // 1 + SlopeCost * (steepness squared), so the road goes round a mountain's face rather than up it.
+            const int Levels = 9;
+            var offsets = new float[bends, Levels];
             for (int i = 1; i < bends; i++)
             {
-                Vector2 onLine = from + along * (i / (float)bends);
-                float bestScore = float.MaxValue;
-                float bestOffset = 0f;
-                float bestHeight = lastHeight;
-                // The ends are fixed, so the bends near them can't swing as far.
                 float reach = sway * Mathf.Min(1f, Mathf.Min(i, bends - i) / 2f);
-                for (int k = -2; k <= 2; k++)
+                for (int j = 0; j < Levels; j++)
                 {
-                    float offset = Mathf.Clamp(lastOffset + k * reach * 0.5f + ((float)random.NextDouble() - 0.5f) * reach * 0.2f, -reach, reach);
-                    Vector2 point = onLine + side * offset;
-                    float h = heightAt(point.x, point.y);
-                    // Least climb, then least turning.
-                    float score = Mathf.Abs(h - lastHeight) + 0.05f * Mathf.Abs(offset - lastOffset);
-                    if (score < bestScore)
-                    {
-                        bestScore = score;
-                        bestOffset = offset;
-                        bestHeight = h;
-                    }
+                    offsets[i, j] = reach * (j / (Levels - 1f) * 2f - 1f);
                 }
-                rough.Add(onLine + side * bestOffset);
-                lastOffset = bestOffset;
-                lastHeight = bestHeight;
             }
-            rough.Add(to);
+            var cost = new float[bends + 1, Levels];
+            var from_ = new int[bends + 1, Levels];
+            Vector2 PointAt(int station, int level)
+            {
+                return station >= bends ? to : from + along * (station / (float)bends) + side * (station == 0 ? 0f : offsets[station, level]);
+            }
+            // Ground heights at each candidate (the ends have one).
+            var ground = new float[bends + 1, Levels];
+            for (int i = 0; i <= bends; i++)
+            {
+                for (int j = 0; j < (i == 0 || i == bends ? 1 : Levels); j++)
+                {
+                    Vector2 p = PointAt(i, j);
+                    ground[i, j] = heightAt(p.x, p.y);
+                }
+            }
+            for (int i = 1; i <= bends; i++)
+            {
+                int levels = i == bends ? 1 : Levels;
+                int previous = i == 1 ? 1 : Levels;
+                for (int j = 0; j < levels; j++)
+                {
+                    float best = float.MaxValue;
+                    int bestFrom = 0;
+                    for (int k = 0; k < previous; k++)
+                    {
+                        float c = (i == 1 ? 0f : cost[i - 1, k]) + StretchCost(PointAt(i - 1, k), PointAt(i, j), ground[i - 1, k], ground[i, j]);
+                        // A little against turning, so the road doesn't zigzag on level ground.
+                        if (i > 1 && i < bends)
+                        {
+                            c += 0.02f * Mathf.Abs(offsets[i, j] - offsets[i - 1, k]);
+                        }
+                        if (c < best)
+                        {
+                            best = c;
+                            bestFrom = k;
+                        }
+                    }
+                    cost[i, j] = best;
+                    from_[i, j] = bestFrom;
+                }
+            }
+            var rough = new List<Vector2>(bends + 1) { to };
+            int at = 0;
+            for (int i = bends; i >= 2; i--)
+            {
+                at = from_[i, at];
+                rough.Add(PointAt(i - 1, at));
+            }
+            rough.Add(from);
+            rough.Reverse();
 
             // Rounded once (Chaikin), keeping the ends.
             points.Add(rough[0]);

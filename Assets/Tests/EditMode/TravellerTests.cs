@@ -72,7 +72,7 @@ namespace Clube.Core.Tests
         {
             const int Seed = 42;
             const double Leg = 0.1, Wait = 0.1;
-            Assert.AreEqual(-1, CartSchedule.At(Seed, 0.5, Leg, Wait).Trip);
+            Assert.AreEqual(-1, CartSchedule.At(Seed, 0.05, Leg, Wait).Trip);
             double start = CartSchedule.TripStart(Seed, 3);
             CartState going = CartSchedule.At(Seed, start + Leg * 0.5, Leg, Wait);
             Assert.AreEqual(3, going.Trip);
@@ -122,6 +122,20 @@ namespace Clube.Core.Tests
                 highest = Mathf.Max(highest, route.HeightAlong(d));
             }
             Assert.Less(highest, 36f);
+        }
+
+        [Test]
+        public void CartRoute_GoesRoundASteepFaceThroughTheGap()
+        {
+            // A 30 m wide-based ridge across the straight line, with a low gap 20 m to one side (GL510).
+            float Wall(float x, float z) => Mathf.Abs(x) < 40f && Mathf.Abs(z - 20f) > 6f ? 30f : 0f;
+            var route = new CartRoute(new Vector2(-100f, 0f), new Vector2(100f, 0f), Wall, 3);
+            float steepest = 0f;
+            for (float d = 1f; d <= route.Length; d += 1f)
+            {
+                steepest = Mathf.Max(steepest, Mathf.Abs(route.HeightAlong(d) - route.HeightAlong(d - 1f)));
+            }
+            Assert.Less(steepest, 5f);
         }
 
         [Test]

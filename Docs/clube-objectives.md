@@ -841,10 +841,10 @@ GL250 (ambient wildlife).
 - [ ] **GL507** World 5× deeper into the ground. *(Not done 2026-11-09: needs absolute-y tuning checks (ore depths, towns, saves) and Play-mode timing; left for its own pass.)*
 
 **Batch 6 — Town and roads**
-- [ ] **GL508** Organic trading post layout: pick the site, place shops by their interests, then wall around them.
-- [ ] **GL509** Thief room sealed by terrain, with tunnels to the parcel's north, east, south and west faces.
-- [ ] **GL510** A sensible trade road (not up a mountain face).
-- [ ] **GL511** Trade carts appear.
+- [ ] **GL508** Organic trading post layout: pick the site, place shops by their interests, then wall around them. *(Not done in batch 6: the layout is static in `TownLayout` (54 call sites) and needs to become per-plan data first.)*
+- [x] **GL509** Thief room sealed by terrain, with tunnels to the parcel's north, east, south and west faces.
+- [x] **GL510** A sensible trade road (not up a mountain face).
+- [x] **GL511** Trade carts appear.
 
 **Batch 7 — Tutorial and title page**
 - [ ] **GL512** Title page diorama built from real world generation (trees, campfire, stump, ores).

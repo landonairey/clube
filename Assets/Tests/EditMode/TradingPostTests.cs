@@ -237,7 +237,7 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void TownCave_UnderTheSquare_CoveredAndOpeningOutsideTheWall()
+        public void TownCave_SealedUnderground_WithTunnelsToTheFourParcelFaces()
         {
             TownPlan plan = PlanOnSlope(new Vector3[0]);
             TownCave cave = plan.Cave;
@@ -246,15 +246,19 @@ namespace Clube.Core.Tests
             Assert.IsTrue(TownLayout.IsInside(room));
             // Ground left over the ceiling.
             Assert.LessOrEqual(cave.Room.y + TownCave.RoomHeight + TownCave.Cover, plan.GroundAt(room) + 1e-3f);
-            Vector3 mouth = cave.Tunnel[0];
-            Vector2 mouthTown = plan.ToTown(new Vector2(mouth.x, mouth.z));
-            Assert.Greater(Mathf.Max(Mathf.Abs(mouthTown.x), Mathf.Abs(mouthTown.y)), TownLayout.OuterHalf);
-            // Not on the gate's side.
-            Assert.GreaterOrEqual(mouthTown.y, 0f);
-            // The tunnel slopes no steeper than the player can climb.
-            Vector3 end = cave.Tunnel[cave.Tunnel.Count - 1];
-            float run = new Vector2(end.x - mouth.x, end.z - mouth.z).magnitude;
-            Assert.Less(Mathf.Atan2(mouth.y - end.y, run) * Mathf.Rad2Deg, 40f);
+            Assert.AreEqual(4, cave.Tunnels.Count);
+            var reached = new HashSet<Vector2Int>();
+            foreach (List<Vector3> tunnel in cave.Tunnels)
+            {
+                Vector3 end = tunnel[tunnel.Count - 1];
+                Vector2 endTown = plan.ToTown(new Vector2(end.x, end.z));
+                // Level, under the ground all along, and ending at a face of the parcel.
+                Assert.AreEqual(cave.Room.y, end.y, 1e-3f);
+                Assert.LessOrEqual(end.y + TownStructures.ShaftHeight + TownCave.Cover, plan.GroundAt(endTown) + 1e-3f);
+                Assert.AreEqual(TownLayout.ParcelSize * 0.5f, Mathf.Max(Mathf.Abs(endTown.x), Mathf.Abs(endTown.y)) + TownStructures.ShaftWidth * 0.5f, 1e-2f);
+                reached.Add(new Vector2Int(Mathf.RoundToInt(Mathf.Sign(Mathf.Abs(endTown.x) > Mathf.Abs(endTown.y) ? endTown.x : 0f)), Mathf.RoundToInt(Mathf.Sign(Mathf.Abs(endTown.y) >= Mathf.Abs(endTown.x) ? endTown.y : 0f))));
+            }
+            Assert.AreEqual(4, reached.Count);
         }
 
         [Test]

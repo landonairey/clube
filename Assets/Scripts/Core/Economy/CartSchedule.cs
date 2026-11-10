@@ -35,8 +35,8 @@ namespace Clube.Core
     /// </summary>
     public static class CartSchedule
     {
-        /// <summary>Days on the clock (which starts at 07:00 on day 1) when the first trip leaves: 09:00 on day 2.</summary>
-        public const double FirstTrip = 1d + 2d / 24d;
+        /// <summary>Days on the clock (which starts at 07:00 on day 1) when the first trip leaves: 09:00 on day 1 (GL511: it used to be day 2, over an hour of play away, so nobody saw it).</summary>
+        public const double FirstTrip = 2d / 24d;
 
         /// <summary>The fewest and most whole days from one trip's start to the next.</summary>
         public const int MinGap = 2;
