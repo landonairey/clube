@@ -14,7 +14,7 @@ namespace Clube.Game
     [RequireComponent(typeof(PlayerToolUser))]
     public class HitDebris : MonoBehaviour
     {
-        private const int PoolSize = 48;
+        private const int PoolSize = 64;
         private static readonly int TintId = Shader.PropertyToID("_Tint");
         private static readonly Color LeafGreen = new Color(0.26f, 0.42f, 0.15f);
 
@@ -30,13 +30,13 @@ namespace Clube.Game
         [SerializeField]
         private Material sparkMaterial;
 
-        [Tooltip("Chance a hit on rock throws a few sparks (GL460).")]
+        [Tooltip("Chance a hit on rock or ore throws sparks (GL460, GL498; renamed so old scene values no longer override it).")]
         [SerializeField, Range(0f, 1f)]
-        private float sparkChance = 0.2f;
+        private float rockSparkChance = 0.7f;
 
         [Tooltip("Chance a crush on the boulder throws a few sparks (GL459).")]
         [SerializeField, Range(0f, 1f)]
-        private float crushSparkChance = 0.35f;
+        private float boulderSparkChance = 0.85f;
 
         private sealed class Crumb
         {
@@ -112,7 +112,7 @@ namespace Clube.Game
         private void OnStruck(StrikeResult result)
         {
             int took = Mathf.Max(result.Removed, result.Broken);
-            if (took <= 0 || tools.WorldView == null)
+            if (result.Reached <= 0 || tools.WorldView == null)
             {
                 return;
             }
@@ -129,14 +129,14 @@ namespace Clube.Game
             int shape = hit.Kind == MaterialKind.Rock ? 0 : hit.Kind == MaterialKind.Soil ? 1 : 2;
             Vector3 at = tools.WorldView.transform.TransformPoint(tools.ImpactCentre);
             // Sparks now and then off rock (GL460).
-            Burst(at, Earthy(hit.DebugColor), shape, Mathf.Clamp(4 + took * 2, 5, 14), OutwardFrom(at), hit.Kind == MaterialKind.Rock ? sparkChance : 0f);
+            Burst(at, Earthy(hit.DebugColor), shape, Mathf.Clamp(8 + took * 3, 8, 22), OutwardFrom(at), hit.Kind == MaterialKind.Rock ? rockSparkChance : 0f);
         }
 
         // Ore crushed on a boulder (GL459): fragments of the ore fly off the boulder, with sparks now and then.
         private void OnOreCrushed(Vector3 at, VoxelMaterial ore)
         {
             Color colour = ore != null ? Earthy(ore.DebugColor) : new Color(0.5f, 0.5f, 0.52f);
-            Burst(at, colour, 0, 12, OutwardFrom(at), crushSparkChance);
+            Burst(at, colour, 0, 18, OutwardFrom(at), boulderSparkChance);
         }
 
         // A material's debug colour toned down towards how its texture looks: a little greyer and darker.
@@ -179,13 +179,13 @@ namespace Clube.Game
                 // Evenly round the cone, jittered, so they spread out rather than bunch.
                 float angle = (i + Random.value * 0.8f) / count * Mathf.PI * 2f;
                 Vector3 across = side * Mathf.Cos(angle) + other * Mathf.Sin(angle);
-                Vector3 velocity = outward * Random.Range(0.8f, 1.8f) + across * Random.Range(1f, 2.4f) + Vector3.up * Random.Range(1.2f, 2.6f);
+                Vector3 velocity = outward * Random.Range(1.2f, 2.6f) + across * Random.Range(1.5f, 3.4f) + Vector3.up * Random.Range(1.8f, 3.6f);
                 Launch(crumbs[next], at + outward * 0.05f + across * 0.04f, velocity, colour, shape, false);
                 next = (next + 1) % crumbs.Count;
             }
             if (sparkChance > 0f && Random.value < sparkChance && sparkMaterial != null)
             {
-                int sparkCount = Random.Range(3, 7);
+                int sparkCount = Random.Range(6, 12);
                 for (int i = 0; i < sparkCount; i++)
                 {
                     Vector3 across = Random.insideUnitSphere;

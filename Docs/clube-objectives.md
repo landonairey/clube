@@ -824,9 +824,9 @@ GL250 (ambient wildlife).
 - [x] **GL496** Licking crushed ore gives more xp than raw ore.
 
 **Batch 3 — Missing features**
-- [ ] **GL497** Trout jumping.
-- [ ] **GL498** Mining sparks and bigger spraying particles.
-- [ ] **GL499** Early-bird morning speed bonus restored.
+- [x] **GL497** Trout jumping.
+- [x] **GL498** Mining sparks and bigger spraying particles.
+- [x] **GL499** Early-bird morning speed bonus restored.
 
 **Batch 4 — Crafting panel**
 - [x] **GL500** Have/need fractions on inputs, red with a greyed icon when short.

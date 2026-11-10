@@ -4,7 +4,7 @@ namespace Clube.Core
 {
     /// <summary>
     /// How long the player waits between uses of a tool (GL270): a second, a quarter less with bare hands, and a quarter
-    /// less again at dawn (the early bird's bonus, <see cref="DawnFrom"/> to <see cref="DawnTo"/>, round the 04:00 sunrise).
+    /// less again at dawn (the early bird's bonus, <see cref="DawnFrom"/> to <see cref="DawnTo"/>, from before the 04:00 sunrise to 09:00, the trout's hours too).
     /// Every use waits it out, a click as much as a held button.
     /// </summary>
     /// <remarks>Plain math.</remarks>
@@ -21,7 +21,7 @@ namespace Clube.Core
 
         /// <summary>When dawn starts and ends, hours of the day.</summary>
         public const float DawnFrom = 2.5f;
-        public const float DawnTo = 7.5f;
+        public const float DawnTo = 9f;
 
         /// <summary>True at dawn, when the early bird's bonus holds.</summary>
         public static bool IsDawn(float hour)
