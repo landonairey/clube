@@ -93,28 +93,68 @@ namespace Clube.Core
                     {
                         continue;
                     }
-                    float ground = groundAt(town);
-                    float top = ground + TownLayout.WallHeight;
-                    int y0 = grid.WorldToNearestSample(new Vector3(column.x, ground - 1f, column.z)).y;
-                    int y1 = grid.WorldToNearestSample(new Vector3(column.x, top + 1.25f, column.z)).y;
-                    for (int y = y0; y <= y1; y++)
+                    StampColumn(world, x, z, groundAt(town), TownLayout.WallHeight, inside, material, iso);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Writes a straight run of the same stone wall (GL545), from <paramref name="from"/> to <paramref name="to"/> (world
+        /// x, z), <paramref name="height"/> over the ground under each column and <paramref name="thickness"/> across, with
+        /// flat faces. Never lowers ground.
+        /// </summary>
+        public static void StampWallRun(World world, Vector2 from, Vector2 to, float thickness, float height, Func<Vector2, float> groundAt, byte material, float iso)
+        {
+            WorldGrid grid = world.Grid;
+            float half = thickness * 0.5f;
+            float pad = half + grid.VoxelSize;
+            Vector3Int low = grid.WorldToNearestSample(new Vector3(Mathf.Min(from.x, to.x) - pad, 0f, Mathf.Min(from.y, to.y) - pad));
+            Vector3Int high = grid.WorldToNearestSample(new Vector3(Mathf.Max(from.x, to.x) + pad, 0f, Mathf.Max(from.y, to.y) + pad));
+            Vector2 along = to - from;
+            float length = along.magnitude;
+            Vector2 dir = length > 0.0001f ? along / length : Vector2.right;
+            for (int z = low.z; z <= high.z; z++)
+            {
+                for (int x = low.x; x <= high.x; x++)
+                {
+                    Vector3 column = grid.SampleToWorld(new Vector3Int(x, 0, z));
+                    Vector2 at = new Vector2(column.x, column.z);
+                    Vector2 rel = at - from;
+                    float t = Mathf.Clamp(Vector2.Dot(rel, dir), 0f, length);
+                    float inside = half - (rel - dir * t).magnitude;
+                    if (inside < -grid.VoxelSize)
                     {
-                        var sample = new Vector3Int(x, y, z);
-                        float depth = Mathf.Min(top - grid.SampleToWorld(sample).y, inside);
-                        float density = TerrainDensity.FromDepth(depth);
-                        if (!world.TryGetOwner(sample, out Chunk chunk, out Vector3Int local))
-                        {
-                            continue;
-                        }
-                        if (density > chunk.GetDensity(local) + 1.5f / 255f)
-                        {
-                            world.SetDensity(sample, density);
-                        }
-                        if (density >= iso)
-                        {
-                            world.SetMaterial(sample, material);
-                        }
+                        continue;
                     }
+                    StampColumn(world, x, z, groundAt(at), height, inside, material, iso);
+                }
+            }
+        }
+
+        // One column of a wall: solid from just under the ground to height over it, the density falling off over its faces.
+        private static void StampColumn(World world, int x, int z, float ground, float height, float inside, byte material, float iso)
+        {
+            WorldGrid grid = world.Grid;
+            Vector3 column = grid.SampleToWorld(new Vector3Int(x, 0, z));
+            float top = ground + height;
+            int y0 = grid.WorldToNearestSample(new Vector3(column.x, ground - 1f, column.z)).y;
+            int y1 = grid.WorldToNearestSample(new Vector3(column.x, top + 1.25f, column.z)).y;
+            for (int y = y0; y <= y1; y++)
+            {
+                var sample = new Vector3Int(x, y, z);
+                float depth = Mathf.Min(top - grid.SampleToWorld(sample).y, inside);
+                float density = TerrainDensity.FromDepth(depth);
+                if (!world.TryGetOwner(sample, out Chunk chunk, out Vector3Int local))
+                {
+                    continue;
+                }
+                if (density > chunk.GetDensity(local) + 1.5f / 255f)
+                {
+                    world.SetDensity(sample, density);
+                }
+                if (density >= iso)
+                {
+                    world.SetMaterial(sample, material);
                 }
             }
         }

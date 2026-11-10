@@ -30,6 +30,7 @@ namespace Clube.Game
         private Material material;
         private Material textMaterial;
         private TextMesh bunkName;
+        private TextMesh bunkNameBack;
 
         /// <summary>Where the player starts (map space): by the back door, facing the crew lead.</summary>
         public static readonly Vector3 Spawn = new Vector3(44f, CompanyWork.Ground, 18.2f);
@@ -60,7 +61,6 @@ namespace Clube.Game
             house.mesh = new LowPolyMeshBuilder();
             house.BuildShell();
             house.BuildRooms();
-            house.BuildFence();
             var filter = go.AddComponent<MeshFilter>();
             filter.sharedMesh = house.mesh.Make("Company warehouse");
             go.AddComponent<MeshRenderer>().sharedMaterial = material;
@@ -72,7 +72,9 @@ namespace Clube.Game
             }
             house.Bed(new Vector3(66.4f, 0f, 14.2f), 90f, false);
             house.Crate(new Vector3(64.8f, 0f, 14.2f), 90f, tutorial, valuables, "The crew lead's crate");
-            house.RulesSign();
+            // One on the back wall facing the work fields (GL526), one inside the dorm hall (GL546).
+            house.RulesSign(new Vector3(56f, G + 2.4f, CompanyWork.Warehouse.yMax + Thick * 0.5f + 0.05f));
+            house.RulesSign(new Vector3(44f, G + 2.4f, 8f + Thick * 0.5f + 0.05f));
             house.Lamp(new Vector3(44f, WallHeight - 0.6f, 12f));
             house.Lamp(new Vector3(62f, WallHeight - 0.6f, 12f));
 
@@ -192,45 +194,6 @@ namespace Clube.Game
             Solid(new Vector3(x, G + (WallHeight + DoorHeight) * 0.5f, doorZ), new Vector3(Thick, WallHeight - DoorHeight, DoorWidth), Plank);
         }
 
-        // A tall fence (GL532) along each side of the building, with a cross fence at the back corners, so the only way
-        // to the front doors is through the building. The mountain rises right behind each side fence.
-        private void BuildFence()
-        {
-            Rect r = CompanyWork.Warehouse;
-            const float tall = 6f;
-            const float gap = 4f;
-            float backZ = r.yMax + 1.2f;
-            float length = backZ - (r.yMin - 3f);
-            float midZ = (backZ + r.yMin - 3f) * 0.5f;
-            foreach (float sign in new[] { -1f, 1f })
-            {
-                float sideX = sign < 0f ? r.xMin - 1.4f : r.xMax + 1.4f;
-                FenceRun(new Vector3(sideX, G + tall * 0.5f, midZ), new Vector3(0.2f, tall, length));
-                // From the slope's foot (and a little into it) across to the building's wall.
-                float from = sign < 0f ? r.xMin - gap : r.xMax - 0.3f;
-                float to = sign < 0f ? r.xMin + 0.3f : r.xMax + gap;
-                FenceRun(new Vector3((from + to) * 0.5f, G + tall * 0.5f, backZ), new Vector3(to - from, tall, 0.2f));
-            }
-        }
-
-        // One fence run: a solid board wall with the collider, plus posts and rails drawn on it.
-        private void FenceRun(Vector3 centre, Vector3 size)
-        {
-            Solid(centre, size, Plank);
-            bool alongZ = size.z > size.x;
-            float run = alongZ ? size.z : size.x;
-            for (float t = -run * 0.5f; t <= run * 0.5f + 0.01f; t += 2.5f)
-            {
-                Vector3 post = centre + (alongZ ? new Vector3(0f, 0f, t) : new Vector3(t, 0f, 0f));
-                mesh.Box(post, alongZ ? new Vector3(0.34f, size.y + 0.2f, 0.34f) : new Vector3(0.34f, size.y + 0.2f, 0.34f), Quaternion.identity, DarkPlank);
-            }
-            foreach (float y in new[] { -0.35f, 0f, 0.3f })
-            {
-                Vector3 rail = centre + new Vector3(0f, size.y * y, 0f);
-                mesh.Box(rail, alongZ ? new Vector3(0.3f, 0.2f, size.z) : new Vector3(size.x, 0.2f, 0.3f), Quaternion.identity, DarkPlank);
-            }
-        }
-
         // A box drawn into the warehouse's mesh with a collider of its own.
         private void Solid(Vector3 centre, Vector3 size, Color color)
         {
@@ -281,6 +244,8 @@ namespace Clube.Game
             roll.FitsGround = false;
             roll.Label = "Sleep in your bunk";
             bunkName = AddText(go.transform, "", new Vector3(0f, 1.18f, 0.95f), 0f, 0.012f, textMaterial);
+            // The same name on the headboard's far side (GL546).
+            bunkNameBack = AddText(go.transform, "", new Vector3(0f, 1.18f, 1.05f), 180f, 0.012f, textMaterial);
             return roll;
         }
 
@@ -318,15 +283,18 @@ namespace Clube.Game
             {
                 bunkName.text = name;
             }
+            if (bunkNameBack != null)
+            {
+                bunkNameBack.text = name;
+            }
         }
 
         // The Mining Corp's rules on a board on the warehouse's back wall, facing the work fields (GL526).
-        private void RulesSign()
+        private void RulesSign(Vector3 at)
         {
-            Rect r = CompanyWork.Warehouse;
             var board = new GameObject("Rules sign");
             board.transform.SetParent(transform, false);
-            board.transform.localPosition = new Vector3(56f, G + 2.4f, r.yMax + Thick * 0.5f + 0.05f);
+            board.transform.localPosition = at;
             var boardMesh = new LowPolyMeshBuilder();
             boardMesh.Box(Vector3.zero, new Vector3(2.4f, 1.5f, 0.08f), Quaternion.identity, Plank);
             boardMesh.Box(new Vector3(0f, 0f, -0.01f), new Vector3(2.5f, 1.6f, 0.05f), Quaternion.identity, DarkPlank);
