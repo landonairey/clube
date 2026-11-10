@@ -9,8 +9,8 @@ namespace Clube.Game
     /// Shows where the player's land ends (GL42, GL56): a fence along every side of an owned
     /// parcel that borders land not owned yet. It follows the generated ground, standing a little
     /// above it, and carries on down through the ground to the bottom of the world, so it shows
-    /// in the walls of a hole dug beside it. A see-through band with a brighter top rail and
-    /// posts. Rebuilt when a parcel is granted or bought, or the terrain is regenerated. One
+    /// in the walls of a hole dug beside it: a maple wood fence of posts and two rails above the ground (GL463), a faint
+    /// see-through band below it. Rebuilt when a parcel is granted or bought, or the terrain is regenerated. One
     /// mesh, drawn from both sides, in vertex colours.
     /// </summary>
     [RequireComponent(typeof(PlayerParcels))]
@@ -19,8 +19,13 @@ namespace Clube.Game
         private static readonly Vector2Int[] Sides = { Vector2Int.right, Vector2Int.left, Vector2Int.up, Vector2Int.down };
 
         // The rail's and posts' thickness, in metres.
-        private const float RailHeight = 0.08f;
-        private const float PostWidth = 0.1f;
+        private const float RailHeight = 0.09f;
+        private const float RailThickness = 0.06f;
+        private const float PostWidth = 0.12f;
+
+        // Maple wood (GL463): reddish brown posts, the rails a little lighter.
+        private static readonly Color PostWood = new Color(0.5f, 0.3f, 0.18f);
+        private static readonly Color RailWood = new Color(0.62f, 0.38f, 0.23f);
 
         [Tooltip("A transparent material that draws vertex colours (e.g. LabVertexColorTransparent).")]
         [SerializeField]
@@ -28,11 +33,11 @@ namespace Clube.Game
 
         [Tooltip("The band, from the bottom of the world to the top of the fence.")]
         [SerializeField]
-        private Color color = new Color(1f, 0.82f, 0.3f, 0.18f);
+        private Color color = new Color(0.62f, 0.38f, 0.23f, 0.15f);
 
-        [Tooltip("The top rail and the posts.")]
+        [Tooltip("The Clube/Low Poly material the wooden posts and rails are drawn with (GL463).")]
         [SerializeField]
-        private Color railColor = new Color(1f, 0.82f, 0.3f, 0.75f);
+        private Material woodMaterial;
 
         [Tooltip("How far the fence stands above the ground, in metres.")]
         [SerializeField, Min(0.1f)]
@@ -51,6 +56,9 @@ namespace Clube.Game
         private ITerrainGenerator builtFor;
         private GameObject fence;
         private Mesh mesh;
+        private GameObject woodFence;
+        private Mesh woodMesh;
+        private LowPolyMeshBuilder wood;
         private readonly List<Vector3> vertices = new List<Vector3>();
         private readonly List<Color> colors = new List<Color>();
         private readonly List<int> triangles = new List<int>();
@@ -89,6 +97,14 @@ namespace Clube.Game
             {
                 Destroy(mesh);
             }
+            if (woodFence != null)
+            {
+                Destroy(woodFence);
+            }
+            if (woodMesh != null)
+            {
+                Destroy(woodMesh);
+            }
         }
 
         private void Rebuild()
@@ -111,6 +127,7 @@ namespace Clube.Game
             }
 
             float top = view.World.Grid.ChunkWorldSize.y * view.Config.WorldHeightInChunks;
+            wood = new LowPolyMeshBuilder();
             float size = parcels.Size;
             vertices.Clear();
             colors.Clear();
@@ -135,38 +152,76 @@ namespace Clube.Game
             mesh.SetColors(colors);
             mesh.SetTriangles(triangles, 0);
             mesh.RecalculateBounds();
+
+            // The wooden fence above ground (GL463).
+            if (woodFence == null && woodMaterial != null)
+            {
+                woodFence = new GameObject("Parcel fence (wood)");
+                woodFence.transform.SetParent(view.transform, false);
+                woodFence.AddComponent<MeshFilter>();
+                woodFence.AddComponent<MeshRenderer>().sharedMaterial = woodMaterial;
+            }
+            if (woodFence != null)
+            {
+                if (woodMesh != null)
+                {
+                    Destroy(woodMesh);
+                }
+                woodMesh = wood.Make("Parcel fence (wood)");
+                woodFence.GetComponent<MeshFilter>().sharedMesh = woodMesh;
+            }
         }
 
-        // One side: the band and rail in steps that follow the ground, and posts along it.
+        // One side: underground, a faint band in steps that follow the ground, down to the bottom of the world (so it shows in
+        // a hole's walls); above it a maple wood fence (GL463): posts, and a top and middle rail from post to post.
         private void AddSide(ITerrainGenerator generator, Vector2 from, Vector2 to, float worldTop)
         {
             float length = Vector2.Distance(from, to);
             int steps = Mathf.Max(1, Mathf.CeilToInt(length / step));
-            Vector2 direction = (to - from) / length;
-            float previousTop = 0f;
+            float previousGround = 0f;
             Vector2 previous = from;
             for (int i = 0; i <= steps; i++)
             {
                 Vector2 point = Vector2.Lerp(from, to, (float)i / steps);
-                float fenceTop = Mathf.Min(worldTop, GroundAt(generator, point, worldTop) + height);
+                float ground = Mathf.Min(worldTop, GroundAt(generator, point, worldTop)) - 0.05f;
                 if (i > 0)
                 {
-                    // The band from the bottom of the world, so it shows underground, then the rail.
-                    AddQuad(previous, point, 0f, 0f, previousTop, fenceTop, color);
-                    AddQuad(previous, point, previousTop - RailHeight, fenceTop - RailHeight, previousTop, fenceTop, railColor);
+                    AddQuad(previous, point, 0f, 0f, previousGround, ground, color);
                 }
                 previous = point;
-                previousTop = fenceTop;
+                previousGround = ground;
             }
 
             int posts = Mathf.Max(1, Mathf.RoundToInt(length / postSpacing));
+            Vector3 last = default;
             for (int i = 0; i <= posts; i++)
             {
                 Vector2 point = Vector2.Lerp(from, to, (float)i / posts);
-                float postTop = Mathf.Min(worldTop, GroundAt(generator, point, worldTop) + height + RailHeight);
-                Vector2 half = direction * (PostWidth * 0.5f);
-                AddQuad(point - half, point + half, 0f, 0f, postTop, postTop, railColor);
+                float ground = Mathf.Min(worldTop, GroundAt(generator, point, worldTop));
+                // Each post a little different, as split wood is.
+                float shade = 0.85f + 0.15f * Mathf.Repeat(Mathf.Sin(point.x * 12.9898f + point.y * 78.233f) * 43758.55f, 1f);
+                wood.Block(new Vector3(point.x, ground - 0.25f, point.y), new Vector3(PostWidth, height + RailHeight + 0.25f, PostWidth), PostWood * shade);
+                var top = new Vector3(point.x, ground, point.y);
+                if (i > 0)
+                {
+                    AddRail(last, top, height, RailWood);
+                    AddRail(last, top, height * 0.5f, RailWood * 0.95f);
+                }
+                last = top;
             }
+        }
+
+        // A rail from one post to the next at a height over the ground at each, sloping with it.
+        private void AddRail(Vector3 fromGround, Vector3 toGround, float over, Color tint)
+        {
+            Vector3 a = fromGround + Vector3.up * over;
+            Vector3 b = toGround + Vector3.up * over;
+            Vector3 along = b - a;
+            if (along.sqrMagnitude < 1e-4f)
+            {
+                return;
+            }
+            wood.Box((a + b) * 0.5f, new Vector3(RailThickness, RailHeight, along.magnitude), Quaternion.LookRotation(along.normalized, Vector3.up), tint);
         }
 
         private static float GroundAt(ITerrainGenerator generator, Vector2 point, float worldTop)

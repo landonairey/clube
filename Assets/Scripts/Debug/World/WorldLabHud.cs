@@ -105,7 +105,8 @@ namespace Clube.Debug
             }
 
             var content = new GUIContent(text);
-            var rect = new Rect(Margin, Margin, Width, style.CalcHeight(content, Width));
+            // Under the minimap (GL461).
+            var rect = new Rect(Margin, Clube.Game.HudLayout.BelowMinimap, Width, style.CalcHeight(content, Width));
             GuiDrawing.Rect(rect, new Color(0f, 0f, 0f, 0.65f));
             GUI.Label(rect, content, style);
             // The active quest goes under the box (GL216).

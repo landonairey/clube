@@ -630,3 +630,11 @@ the tooltip to rich-text grades. `PlayerProspecting` (on Player): bare-hand Plac
 `SoundSynth.Crush` sound (`PlayerSounds.Crushed`), a `HeldToolView` strike and ore fragments. `HitDebris` splashes crumbs in a
 cone out of the struck face (towards the head), floors each crumb on the ground below it ignoring the player, and throws
 sparks (the torch flame material) off rock and crushes.
+
+Batch I (GL461-GL463, branch `gl461/ui-settings`): `Minimap` (Game/Hud, on Player) draws a north-up top-down view in the
+top-left corner from an orthographic camera that renders into a 256 px texture every 0.4 s (enabled for one frame at a
+time); `HudLayout.ReportMinimap`/`BelowMinimap` put the lab HUD box under it, and `TopLeftFree` keeps last frame's whole
+stack so report order doesn't matter. `DisplaySettings` (Game/Settings) has the 16:9, 21:9 and 32:9 presets and the window
+mode (Window, BorderlessWindow, FullScreen = `FullScreenWindow`); borderless strips the window frame through user32 in
+Windows builds only. The Video page draws them first. `ParcelBorders` draws maple wood posts and two rails
+(`LowPolyMeshBuilder`, the LowPoly material) above ground and a faint band below it.
