@@ -829,9 +829,9 @@ GL250 (ambient wildlife).
 - [x] **GL499** Early-bird morning speed bonus restored.
 
 **Batch 4 — Crafting panel**
-- [ ] **GL500** Have/need fractions on inputs, red with a greyed icon when short.
-- [ ] **GL501** Left-clicking a same-type non-stackable in the inventory swaps it into the recipe slot.
-- [ ] **GL502** Smelting yield also depends on fuel quality.
+- [x] **GL500** Have/need fractions on inputs, red with a greyed icon when short.
+- [x] **GL501** Left-clicking a same-type non-stackable in the inventory swaps it into the recipe slot.
+- [x] **GL502** Smelting yield also depends on fuel quality.
 
 **Batch 5 — Terrain**
 - [ ] **GL503** Rivers carved into the earth and full of running water, unbroken up into the mountains.

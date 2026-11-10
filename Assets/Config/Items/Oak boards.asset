@@ -18,5 +18,6 @@ MonoBehaviour:
   maxStack: 256
   unitVolume: 1
   burnSeconds: 15
+  fuelQuality: 0.85
   purityAs: {fileID: 0}
   hidesContents: 0

@@ -33,6 +33,10 @@ namespace Clube.Core
         [SerializeField, Min(0f)]
         private float burnSeconds;
 
+        [Tooltip("How clean it burns, 0-1 (GL502): a furnace's smelting yield is multiplied by the burning fuel's quality. Charcoal 1, wood less.")]
+        [SerializeField, Range(0f, 1f)]
+        private float fuelQuality = 1f;
+
         [Tooltip("For an item no material drops but that is made of one (crushed cassiterite, GL186): the item whose material counts as its own, for its purity and for refining. Empty for the rest.")]
         [SerializeField]
         private ItemDefinition purityAs;
@@ -95,6 +99,9 @@ namespace Clube.Core
 
         public bool IsFuel => burnSeconds > 0f;
 
+        /// <summary>How clean it burns as fuel, 0-1 (GL502): a factor in the smelting yield.</summary>
+        public float FuelQuality => fuelQuality;
+
         /// <summary>
         /// The item whose material counts as this one's own (GL186): crushed cassiterite is pure when it's all
         /// cassiterite. Null for an item that is its own (stone, clay), or has no purity.
@@ -112,8 +119,9 @@ namespace Clube.Core
         public bool HidesContents => hidesContents;
 
         /// <summary>Sets its volume and burn time, for items made in code (tests, tools).</summary>
-        public ItemDefinition With(float unitVolume = 1f, float burnSeconds = 0f)
+        public ItemDefinition With(float unitVolume = 1f, float burnSeconds = 0f, float fuelQuality = 1f)
         {
+            this.fuelQuality = Mathf.Clamp01(fuelQuality);
             this.unitVolume = Mathf.Max(0.001f, unitVolume);
             this.burnSeconds = Mathf.Max(0f, burnSeconds);
             return this;

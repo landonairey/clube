@@ -458,6 +458,32 @@ namespace Clube.Core.Tests
                 Object.DestroyImmediate(grass);
             }
         }
+        // GL502: a smelt's yield also follows the fuel's quality, waiting or burning.
+        [Test]
+        public void Yield_FollowsTheFuelsQuality()
+        {
+            VoxelMaterial mineral = VoxelMaterial.Create(3, "Chalcopyrite", VoxelMaterialCategory.Ore);
+            ItemDefinition wood = ItemDefinition.Create("wood", "Wood").With(burnSeconds: 10f, fuelQuality: 0.5f);
+            smelt.WithExtraction(mineral, 0.2f);
+            try
+            {
+                var furnace = new CraftingStation(StationKind.Furnace, new[] { smelt }, burnsFuel: true);
+                Composition pure = Composition.From(new Content(mineral, 1f));
+                furnace.Input.Add(ore, 8, pure, 0, 1f);
+                Assert.AreEqual(1f, furnace.YieldOf(smelt), 1e-4f, "No fuel yet: no penalty.");
+                furnace.Fuel.Add(wood, 1);
+                Assert.AreEqual(0.5f, furnace.YieldOf(smelt), 1e-4f, "Waiting fuel counts.");
+                furnace.Tick(0.1f);
+                Assert.IsTrue(furnace.IsBurning);
+                Assert.AreEqual(0.5f, furnace.YieldOf(smelt), 1e-4f, "Burning fuel counts once the slot is empty.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(wood);
+                Object.DestroyImmediate(mineral);
+            }
+        }
+
         // GL140: picking a recipe loads a full stack of its input, not one batch.
         [Test]
         public void LoadFor_TakesAFullStack()

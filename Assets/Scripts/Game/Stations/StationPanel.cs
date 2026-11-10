@@ -41,6 +41,7 @@ namespace Clube.Game
         private GUIStyle detailStyle;
         private GUIStyle missingStyle;
         private GUIStyle xStyle;
+        private GUIStyle countStyle;
         private Vector2 listScroll;
         private readonly InventoryDrag drag = new InventoryDrag();
 
@@ -354,10 +355,7 @@ namespace Clube.Game
                     continue;
                 }
                 int have = station.Input.Count(need.Item);
-                if (have >= need.Count)
-                {
-                    continue;
-                }
+                bool isShort = have < need.Count;
                 int at = -1;
                 for (int i = 0; i < station.Input.SlotCount && at < 0; i++)
                 {
@@ -376,11 +374,29 @@ namespace Clube.Game
                 if (at >= 0)
                 {
                     var cell = new Rect(topLeft.x + at * (slot + gap), topLeft.y, slot, slot);
-                    if (have == 0)
+                    // Have / need on each input (GL500): red, with the icon greyed, when short.
+                    countStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperLeft, fontStyle = FontStyle.Bold, fontSize = GameUi.Font(12) };
+                    countStyle.normal.textColor = isShort ? new Color(1f, 0.25f, 0.2f) : new Color(0.9f, 0.9f, 0.85f);
+                    if (isShort && have == 0)
                     {
                         ItemSlotGui.Ghost(cell, need.Item, need.Count);
                     }
-                    GameUi.OutlinedLabel(new Rect(cell.x + 3f, cell.y + 3f, slot - 9f, slot - 6f), "X", xStyle);
+                    else if (isShort)
+                    {
+                        Color previous = GUI.color;
+                        GUI.color = new Color(0.25f, 0.25f, 0.25f, 0.6f);
+                        GUI.DrawTexture(new Rect(cell.x + 2f, cell.y + 2f, slot - 4f, slot - 4f), Texture2D.whiteTexture);
+                        GUI.color = previous;
+                    }
+                    GameUi.OutlinedLabel(new Rect(cell.x + 3f, cell.y + 1f, slot, 18f), $"{have}/{need.Count}", countStyle);
+                    if (isShort)
+                    {
+                        GameUi.OutlinedLabel(new Rect(cell.x + 3f, cell.y + 3f, slot - 9f, slot - 6f), "X", xStyle);
+                    }
+                }
+                if (!isShort)
+                {
+                    continue;
                 }
                 if (lines.Length > 0)
                 {
@@ -450,6 +466,21 @@ namespace Clube.Game
             if (stack.IsEmpty)
             {
                 return;
+            }
+            // A different one of a non-stackable already in a slot swaps in, the old one going back (GL501).
+            if (stack.Item.MaxStack == 1)
+            {
+                for (int i = 0; i < station.Input.SlotCount; i++)
+                {
+                    ItemStack held = station.Input[i];
+                    if (!held.IsEmpty && held.Item == stack.Item)
+                    {
+                        ItemStack incoming = items.TakeAll(slot);
+                        items.Set(slot, held);
+                        station.Input.Set(i, incoming);
+                        return;
+                    }
+                }
             }
             if (station.BurnsFuel && stack.Item.IsFuel)
             {
@@ -551,7 +582,9 @@ namespace Clube.Game
                 return null;
             }
             // A smelt's count is what pure mineral gives (GL192), so its yield is the ore's share times the efficiency.
-            return $"Yield {yield * 100f:0}%: {next.Output.Count * yield:0.##} of {next.Output.Count} a run";
+            // The fuel burning counts too, with its factor shown when it isn't 1 (GL502).
+            string fuel = next.Extracts != null && station.BurnsFuel && station.FuelFactor < 0.995f ? $" (fuel {station.FuelFactor * 100f:0}%)" : "";
+            return $"Yield {yield * 100f:0}%{fuel}: {next.Output.Count * yield:0.##} of {next.Output.Count} a run";
         }
 
         // The fuel burning now as a bar that empties (GL35).
