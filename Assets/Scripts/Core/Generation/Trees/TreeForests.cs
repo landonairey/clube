@@ -58,6 +58,23 @@ namespace Clube.Core
             return Mathf.Lerp(settings.FieldChance, settings.Chance, ForestAtCell(seed, cell, settings));
         }
 
+        /// <summary>Share of a deep forest's trees that lie fallen (GL505).</summary>
+        public const float FallenShare = 0.12f;
+
+        // Forest this thick or more has fallen trees; thinner edges and fields keep their trees standing.
+        private const float FallenForest = 0.7f;
+        private const int FallenSalt = 0x46414C4C;
+
+        /// <summary>
+        /// True when the cell's tree lies fallen (GL505): a stump and a leafless trunk on the ground (<see cref="TreeShape.BuildFallen"/>).
+        /// Only deep in a forest, by a hash of the seed and cell, so the trees drawn far off can skip it too.
+        /// </summary>
+        public static bool IsFallen(int seed, Vector2Int cell, TreeGeneration settings)
+        {
+            return VoxelHash.Uniform(seed, cell.x, 5, cell.y, FallenSalt) < FallenShare
+                   && ForestAtCell(seed, cell, settings) >= FallenForest;
+        }
+
         /// <summary>The cell's tree's size against a full-grown one, from its age: <see cref="TreeGeneration.YoungestSize"/> to 1.</summary>
         public static float SizeOf(int seed, Vector2Int cell, TreeGeneration settings)
         {

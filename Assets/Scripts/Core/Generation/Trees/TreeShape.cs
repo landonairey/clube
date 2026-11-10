@@ -136,6 +136,49 @@ namespace Clube.Core
             LeafCluster(ref dice, trunk[TrunkSegments] + up * (0.3f * leafScale), settings, leaves, 4, 6, CrownScale * leafScale, parts);
         }
 
+        /// <summary>
+        /// Adds a fallen tree (GL505): the stump left standing at <paramref name="root"/>, and the trunk lying on the ground beside
+        /// it, in one of the four cardinal directions, with no branches or leaves.
+        /// </summary>
+        /// <param name="groundAt">The ground's height at (x, z), so the trunk rests on it.</param>
+        public static void BuildFallen(
+            int seed, Vector2Int cell, float3 root, TreeGeneration settings, System.Func<float, float, float> groundAt, List<TreePart> parts)
+        {
+            var dice = new Dice(seed, cell);
+            bool maple = IsMaple(seed, cell, settings);
+            byte wood = maple ? settings.MapleWood.Id : settings.Wood.Id;
+            byte stump = maple ? settings.MapleStump.Id : settings.Stump.Id;
+            float size = TreeForests.SizeOf(seed, cell, settings);
+            Vector2 range = settings.HeightFor(maple);
+            float height = dice.Range(range.x, range.y) * size;
+            float radius = math.max(settings.MinBranchRadius, settings.TrunkRadiusFor(maple) * dice.Range(0.85f, 1.15f) * size);
+            var up = new float3(0f, 1f, 0f);
+            parts.Add(TreePart.Segment(root - up * FootDepth, root + up * settings.StumpHeight, radius * 1.3f, radius * 1.08f, stump));
+
+            // Lying off one of the stump's four sides, as far as the trunk reaches without its top.
+            int side = dice.Range(0, 3);
+            var direction = new float3(side == 0 ? 1f : side == 1 ? -1f : 0f, 0f, side == 2 ? 1f : side == 3 ? -1f : 0f);
+            float length = height * dice.Range(0.6f, 0.8f);
+            float start = radius * 1.6f;
+            int segments = math.max(2, (int)math.ceil(length / 2f));
+            float3 previous = float3.zero;
+            float previousRadius = 0f;
+            for (int i = 0; i <= segments; i++)
+            {
+                float along = start + length * i / segments;
+                float x = root.x + direction.x * along, z = root.z + direction.z * along;
+                float thickness = math.max(settings.MinBranchRadius, radius * math.lerp(0.95f, 0.45f, (float)i / segments));
+                // Resting on the ground, sunk in a little so no gap shows on a slope.
+                var point = new float3(x, groundAt(x, z) + thickness * 0.7f, z);
+                if (i > 0)
+                {
+                    parts.Add(TreePart.Segment(previous, point, previousRadius, thickness, wood));
+                }
+                previous = point;
+                previousRadius = thickness;
+            }
+        }
+
         // A few leaf balls scattered around a branch end, mostly above and beside it.
         private static void LeafCluster(
             ref Dice dice, float3 centre, TreeGeneration settings, byte leaves, int fewest, int most, float scale, List<TreePart> parts)

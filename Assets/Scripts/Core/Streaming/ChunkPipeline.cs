@@ -33,7 +33,7 @@ namespace Clube.Core
         private readonly ITerrainGenerator generator;
         private readonly OreField ores;
         private readonly TreeField trees;
-        private readonly BoulderField boulders;
+        private readonly IStampField boulders;
         private readonly ChunkFillSettings fillSettings;
         private readonly Func<Vector3Int, IVoxelStorage> createStorage;
 
@@ -57,7 +57,7 @@ namespace Clube.Core
         /// <param name="format">The density format the world's storage holds (<see cref="World.PreferredFormat"/>).</param>
         public ChunkPipeline(
             WorldGrid grid, ITerrainGenerator generator, TerrainLayers layers, OreField ores, DensityFormat format,
-            Func<Vector3Int, IVoxelStorage> createStorage, TreeField trees = null, StartArea start = null, BoulderField boulders = null)
+            Func<Vector3Int, IVoxelStorage> createStorage, TreeField trees = null, StartArea start = null, IStampField boulders = null)
         {
             this.grid = grid;
             this.generator = generator;

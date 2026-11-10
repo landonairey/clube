@@ -215,6 +215,10 @@ flowchart LR
   Each kind has its own full-grown height and trunk (GL166: birch 11-16 m, maple 14-20 m in the
   world labs); leaf balls grow with the height (`TreeShape.LeafReferenceHeight`), so a tall
   tree is a bigger copy of a short one.
+- **Stamp fields** (GL504): besides trees, a chunk gathers parts from an `IStampField` (`BoulderField`, `RiverDebris`;
+  `StampFields.Combine`), all stamped by `TreeStamp`. `RiverDebris` lays a log bank to bank and rocks in the stream from the
+  water map. Fallen trees (GL505, `TreeForests.IsFallen`) are built by `TreeShape.BuildFallen`; the distant trees skip them.
+  Sand shores wander by `WaterMap.ShoreJitter` (GL506).
 - **Determinism** (P4, O4): every value is a pure function of position and seed,
   and positions come from integer global sample indices, so border copies agree
   exactly. Burst's float rounding differs from Mono by a few ULPs (heights

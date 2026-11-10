@@ -287,10 +287,15 @@ namespace Clube.Core
                         float top = math.lerp(topA, topB, t);
                         int i = x + z * size;
                         // Eroded land: the straight line between nodes floats over a steep gully's convex floor, where no
-                        // water stood and streams came out dashed; there the bed follows the ground under it.
-                        if (valleys && distance < half)
+                        // water stood and streams came out dashed. The water's level there follows the ground under the
+                        // channel's centre, the same across the whole cross-section, so the bed is cut right across and
+                        // the whole channel fills (GL503).
+                        if (valleys)
                         {
-                            top = math.min(top, fine[i]);
+                            float2 centre = a + along * t;
+                            int cx = Mathf.Clamp(Mathf.FloorToInt(centre.x - origin.x), 0, size - 1);
+                            int cz = Mathf.Clamp(Mathf.FloorToInt(centre.y - origin.y), 0, size - 1);
+                            top = math.min(top, fine[cx + cz * size]);
                         }
                         float bed = top - deep;
                         float shape = distance < half

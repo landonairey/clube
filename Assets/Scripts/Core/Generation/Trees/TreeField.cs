@@ -290,13 +290,29 @@ namespace Clube.Core
         private Tree Build(Vector2Int cell, Vector3 root)
         {
             scratch.Clear();
-            TreeShape.Build(seed, cell, root, settings, scratch);
+            if (TreeForests.IsFallen(seed, cell, settings))
+            {
+                fallenGround = fallenGround ?? GroundAt;
+                TreeShape.BuildFallen(seed, cell, root, settings, fallenGround, scratch);
+            }
+            else
+            {
+                TreeShape.Build(seed, cell, root, settings, scratch);
+            }
             Bounds bounds = scratch[0].Bounds(GatherMargin);
             foreach (TreePart part in scratch)
             {
                 bounds.Encapsulate(part.Bounds(GatherMargin));
             }
             return new Tree { Root = root, Parts = scratch.ToArray(), Bounds = bounds };
+        }
+
+        private System.Func<float, float, float> fallenGround;
+
+        // The ground under a fallen trunk; the generator's height where it finds the surface, else the last guess.
+        private float GroundAt(float x, float z)
+        {
+            return TryFindGround(x, z, out float ground) ? ground : 0f;
         }
 
         // The surface height over (x, z): exact in one step for a heightfield (its depth is height

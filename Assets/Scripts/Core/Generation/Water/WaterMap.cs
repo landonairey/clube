@@ -44,6 +44,9 @@ namespace Clube.Core
 
         public const int MaxDistance = 15;
 
+        /// <summary>How far, in metres, the sand's outer edge wanders either side of its limit (GL506).</summary>
+        public const float ShoreJitter = 1.5f;
+
         /// <summary>What <see cref="MaterialAt"/> gives where the layer's material stays.</summary>
         public const byte Keep = 255;
 
@@ -199,7 +202,9 @@ namespace Clube.Core
                 }
                 return depth < Banks.SandDepth ? Banks.Sand : depth < Banks.SandDepth + Banks.ClayDepth && kind == WaterKind.Lake ? Banks.Clay : Keep;
             }
-            if (LakeDistance[i] <= Banks.ShoreSand)
+            // The shore's edge wanders with a smooth noise (GL506): the distance is whole metres, so a fixed limit stepped.
+            float wander = (ValueNoise.At(seed, position.x / 2.5f, position.y / 2.5f, 0, 0x5348) - 0.5f) * 2f * ShoreJitter;
+            if (LakeDistance[i] <= Banks.ShoreSand + wander)
             {
                 return depth < Banks.SandDepth * 0.75f ? Banks.Sand : Keep;
             }

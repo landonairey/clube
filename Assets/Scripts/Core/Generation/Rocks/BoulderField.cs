@@ -13,7 +13,7 @@ namespace Clube.Core
     /// has a smaller lobe leaning off it. Kept out of the start area and off water. Everything comes from the seed, the
     /// cell and the ground height, so every chunk that reaches a boulder builds the same one. Main thread only (cached).
     /// </summary>
-    public sealed class BoulderField
+    public sealed class BoulderField : IStampField
     {
         /// <summary>Width of the cell that holds at most one large boulder, in metres.</summary>
         public const float CellSize = 48f;
