@@ -257,6 +257,7 @@ GameObject:
   m_Component:
   - component: {fileID: 691416622}
   - component: {fileID: 691416621}
+  - component: {fileID: 691416690}
   m_Layer: 0
   m_Name: Menu world
   m_TagString: Untagged
@@ -280,7 +281,7 @@ MonoBehaviour:
   chunkMaterials:
   - {fileID: 2100000, guid: ae35e53838faf9a41b52f47d227d1236, type: 2}
   focus: {fileID: 691416622}
-  renderDistance: 4
+  renderDistance: 20
   frameBudgetMilliseconds: 3
   loadingBudgetMilliseconds: 8
   farLoadingBudgetMilliseconds: 8
@@ -386,6 +387,8 @@ MonoBehaviour:
   world: {fileID: 691416621}
   material: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
   campfirePrefab: {fileID: 5762353483625990904, guid: c859784cae52d43499c37a1bf6a1e621, type: 3}
+  flameMaterial: {fileID: 2100000, guid: d578650619eba4e498c80599e6a05b45, type: 2}
+  smokeMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
   shiftRight: 0.38
   sway: 4
 --- !u!4 &1861159259
@@ -411,3 +414,21 @@ SceneRoots:
   - {fileID: 454366837}
   - {fileID: 1689597850}
   - {fileID: 1861159259}
+--- !u!114 &691416690
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 691416620}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 469ce04ad93e32742aff016bee04291d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.WaterView
+  material: {fileID: 2100000, guid: 842257cf3c1f32044ab4a5739a08c2ed, type: 2}
+  show: 1
+  flowStepSeconds: 0.06
+  flowBudgetMs: 2.5
+  minFlowSlope: 0.25
+  buildBudgetMs: 1.5

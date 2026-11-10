@@ -85,6 +85,10 @@ namespace Clube.Game
             {
                 return Bronze;
             }
+            if (name.Contains("copper"))
+            {
+                return Copper; // GL523: the copper pick's head is copper (with its patina), not iron grey
+            }
             if (name.Contains("stone") || name.Contains("hand axe"))
             {
                 return name.Contains("hand axe") ? Flint : Stone;

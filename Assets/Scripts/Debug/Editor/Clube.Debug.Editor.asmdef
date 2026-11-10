@@ -4,7 +4,8 @@
     "references": [
         "Clube.Core",
         "Clube.Debug",
-        "Clube.Game"
+        "Clube.Game",
+        "Unity.Mathematics"
     ],
     "includePlatforms": [
         "Editor"

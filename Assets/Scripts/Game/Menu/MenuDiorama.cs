@@ -13,9 +13,6 @@ namespace Clube.Game
     /// </summary>
     public class MenuDiorama : MonoBehaviour
     {
-        // The block is 16 m square (centred on the origin, the cut face at -z); its ground is about 9 m up.
-        private const float FrameHeight = 12f;
-
         [Tooltip("The camera that looks at the diorama.")]
         [SerializeField]
         private Camera view;
@@ -42,13 +39,28 @@ namespace Clube.Game
 
         private Transform block;
         private Light fireLight;
-        private Transform[] flames;
+        private FlameCluster flame;
         private float lastAspect;
         private bool dressed;
+        private float frameHeight = 26f;
+        private float frameCentreY = 36f;
+
+        [Tooltip("The campfire's flames (the prefab's own flame material).")]
+        [SerializeField]
+        private Material flameMaterial;
+
+        [Tooltip("The campfire's smoke (the Drying steam material).")]
+        [SerializeField]
+        private Material smokeMaterial;
 
         private void Awake()
         {
             block = world.transform;
+            // The scene has no listener of its own, so the menu clicks (UiClick) were never heard (GL518).
+            if (view != null && view.GetComponent<AudioListener>() == null && FindAnyObjectByType<AudioListener>() == null)
+            {
+                view.gameObject.AddComponent<AudioListener>();
+            }
             BuildLight();
         }
 
@@ -70,33 +82,45 @@ namespace Clube.Game
             }
             float flicker = Mathf.PerlinNoise(Time.time * 6f, 0.3f);
             fireLight.intensity = 1.6f + flicker * 1.2f;
-            for (int i = 0; i < flames.Length; i++)
-            {
-                float s = 0.75f + Mathf.PerlinNoise(Time.time * 5f, i * 3.1f) * 0.5f;
-                flames[i].localScale = new Vector3(1f, s, 1f);
-            }
+            flame?.Animate(1f);
         }
 
         // Once the real terrain is in: ores in the cut face, a stump, then the campfire and the miner on the grass.
         private void Dress()
         {
-            var ores = new MenuOres(world.World, world.Config.Materials);
-            float ground = ores.SurfaceAt(0f, 0f);
-            ores.StampAll(ground);
+            WorldConfig config = world.Config;
+            float top = config.WorldHeightInChunks * config.ChunkSize.y * config.VoxelSize;
+            var ores = new MenuOres(world.World, config.Materials, top);
+            // The ground's height range over the block sets the framing (the spot is a mountain's edge, so it tilts).
+            float low = float.MaxValue, high = float.MinValue;
+            for (float x = -14f; x <= 14f; x += 4f)
+            {
+                for (float z = -14f; z <= 14f; z += 4f)
+                {
+                    float h = ores.SurfaceAt(x, z);
+                    low = Mathf.Min(low, h);
+                    high = Mathf.Max(high, h);
+                }
+            }
+            frameCentreY = low + (high - low) * 0.5f + 1f;
+            frameHeight = Mathf.Max(22f, (high - low) * 0.7f + 14f);
+            UnityEngine.Debug.Log($"MenuDiorama: ground {low:0.0}-{high:0.0} m, framing {frameCentreY:0.0} +- {frameHeight:0.0}");
+            ores.StampAll();
             Vector3 tin = ores.TinOnSurface;
-            BuildCampfire(new Vector3(-1.2f, ores.SurfaceAt(-1.2f, -2.4f), -2.4f));
-            BuildMiner(new Vector3(tin.x, ores.SurfaceAt(tin.x, tin.z + 1.1f), tin.z + 1.1f));
+            BuildCampfire(new Vector3(-1.5f, ores.SurfaceAt(-1.5f, -10.5f), -10.5f));
+            BuildMiner(new Vector3(tin.x, ores.SurfaceAt(tin.x, tin.z + 2.2f), tin.z + 2.2f));
+            lastAspect = 0f;
         }
 
         // Points the camera down at the block from the front, then slides it so the block sits right of the menu.
         private void Frame()
         {
             lastAspect = view.aspect;
-            var centre = new Vector3(0f, FrameHeight * 0.65f, 0f);
-            Vector3 from = Quaternion.Euler(24f, -22f, 0f) * Vector3.back;
+            var centre = new Vector3(0f, frameCentreY, 0f);
+            Vector3 from = Quaternion.Euler(38f, -22f, 0f) * Vector3.back;
             float halfHeight = Mathf.Tan(view.fieldOfView * 0.5f * Mathf.Deg2Rad);
             // Far enough for the block (and its trees) to fill about two thirds of the screen's height.
-            float distance = FrameHeight * 1.35f / halfHeight;
+            float distance = frameHeight * 1.35f / halfHeight;
             view.transform.position = transform.TransformPoint(centre + from * distance);
             view.transform.LookAt(transform.TransformPoint(centre));
             float halfWidth = halfHeight * view.aspect * distance;
@@ -114,15 +138,15 @@ namespace Clube.Game
             {
                 ModelCopy.Copy(campfirePrefab, fire, "Model", false, 1.1f);
             }
-            var flame = new LowPolyMeshBuilder();
-            flame.Diamond(new Vector3(0f, 0.3f, 0f), new Vector3(0.14f, 0.32f, 0.14f), new Color(1f, 0.55f, 0.1f));
-            flame.Diamond(new Vector3(0f, 0.28f, 0f), new Vector3(0.08f, 0.22f, 0.08f), new Color(1f, 0.85f, 0.3f));
-            Mesh flameMesh = flame.Make("Menu flame");
-            flames = new Transform[3];
-            for (int i = 0; i < flames.Length; i++)
+            // The game's own fire while a campfire works (StationFire): the dancing flame cluster and the smoke, with the
+            // campfire prefab's own materials and sizes.
+            if (flameMaterial != null)
             {
-                float angle = i * 120f * Mathf.Deg2Rad;
-                flames[i] = Part("Flame", fire, new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 0.1f, flameMesh);
+                flame = new FlameCluster(fire, new Vector3(0f, 0.08f, 0f), 0.4f, flameMaterial);
+            }
+            if (smokeMaterial != null)
+            {
+                TorchFlame.MakeSmoke(fire, new Vector3(0f, 0.08f + 0.4f * 0.6f, 0f), smokeMaterial);
             }
             fireLight = new GameObject("Fire light").AddComponent<Light>();
             fireLight.transform.SetParent(fire, false);
