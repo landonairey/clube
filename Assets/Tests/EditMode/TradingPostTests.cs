@@ -256,7 +256,7 @@ namespace Clube.Core.Tests
                 Assert.AreEqual(cave.Room.y, end.y, 1e-3f);
                 Assert.LessOrEqual(end.y + TownStructures.ShaftHeight + TownCave.Cover, plan.GroundAt(endTown) + 1e-3f);
                 Assert.AreEqual(TownLayout.ParcelSize * 0.5f, Mathf.Max(Mathf.Abs(endTown.x), Mathf.Abs(endTown.y)) + TownStructures.ShaftWidth * 0.5f, 1e-2f);
-                reached.Add(new Vector2Int(Mathf.RoundToInt(Mathf.Sign(Mathf.Abs(endTown.x) > Mathf.Abs(endTown.y) ? endTown.x : 0f)), Mathf.RoundToInt(Mathf.Sign(Mathf.Abs(endTown.y) >= Mathf.Abs(endTown.x) ? endTown.y : 0f))));
+                reached.Add(Mathf.Abs(endTown.x) > Mathf.Abs(endTown.y) ? new Vector2Int(endTown.x > 0f ? 1 : -1, 0) : new Vector2Int(0, endTown.y > 0f ? 1 : -1));
             }
             Assert.AreEqual(4, reached.Count);
         }

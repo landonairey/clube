@@ -94,11 +94,15 @@ namespace Clube.Core
         private const float SlopeCost = 40f;
 
         // The cost of a stretch from a to b (ground heights ha, hb): its length, dearer where it climbs.
-        private static float StretchCost(Vector2 a, Vector2 b, float ha, float hb)
+        private static float StretchCost(Vector2 a, Vector2 b, float ha, float hb, Func<float, float, float> heightAt)
         {
             float length = Mathf.Max((b - a).magnitude, 1e-3f);
-            float slope = Mathf.Abs(hb - ha) / length;
-            return length * (1f + SlopeCost * slope * slope);
+            // The middle too, so a face between two bends isn't stepped over.
+            Vector2 m = (a + b) * 0.5f;
+            float hm = heightAt(m.x, m.y);
+            float half = length * 0.5f;
+            float s1 = Mathf.Abs(hm - ha) / half, s2 = Mathf.Abs(hb - hm) / half;
+            return half * (2f + SlopeCost * (s1 * s1 + s2 * s2));
         }
 
         /// <summary>Plans the road from <paramref name="from"/> to <paramref name="to"/> over the ground <paramref name="heightAt"/>.</summary>
@@ -118,7 +122,7 @@ namespace Clube.Core
 
             // GL510: the cheapest way through a bend at each station, where a stretch costs its length times
             // 1 + SlopeCost * (steepness squared), so the road goes round a mountain's face rather than up it.
-            const int Levels = 9;
+            const int Levels = 7;
             var offsets = new float[bends, Levels];
             for (int i = 1; i < bends; i++)
             {
@@ -154,7 +158,7 @@ namespace Clube.Core
                     int bestFrom = 0;
                     for (int k = 0; k < previous; k++)
                     {
-                        float c = (i == 1 ? 0f : cost[i - 1, k]) + StretchCost(PointAt(i - 1, k), PointAt(i, j), ground[i - 1, k], ground[i, j]);
+                        float c = (i == 1 ? 0f : cost[i - 1, k]) + StretchCost(PointAt(i - 1, k), PointAt(i, j), ground[i - 1, k], ground[i, j], heightAt);
                         // A little against turning, so the road doesn't zigzag on level ground.
                         if (i > 1 && i < bends)
                         {
