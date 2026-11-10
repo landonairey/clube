@@ -6,8 +6,9 @@ namespace Clube.Game
 {
     /// <summary>
     /// Crumbs flying off a hit (GL273): small low-poly chunks of the material the tool works, in its colour (a hidden ore's
-    /// as the stone it's shown as), thrown back towards the player and up, falling, bouncing on the ground under them and
-    /// shrinking away within a second or two. Rock breaks into angular chips, soil into clods, wood and leaves into flat
+    /// as the stone it's shown as), splashing out of the struck face in a wide cone (GL460), falling, bouncing on the ground
+    /// under them and shrinking away within a second or two; rock throws a few sparks now and then, and ore crushed on a
+    /// boulder throws fragments of the ore (GL459). Rock breaks into angular chips, soil into clods, wood and leaves into flat
     /// flakes; a picked bush sheds leaves. More crumbs the more the hit took. A pool of a few dozen, reused.
     /// </summary>
     [RequireComponent(typeof(PlayerToolUser))]
@@ -25,6 +26,18 @@ namespace Clube.Game
         [SerializeField, Min(0f)]
         private float gravity = 12f;
 
+        [Tooltip("Sparks: the torch flame material, glowing. Empty for none.")]
+        [SerializeField]
+        private Material sparkMaterial;
+
+        [Tooltip("Chance a hit on rock throws a few sparks (GL460).")]
+        [SerializeField, Range(0f, 1f)]
+        private float sparkChance = 0.2f;
+
+        [Tooltip("Chance a crush on the boulder throws a few sparks (GL459).")]
+        [SerializeField, Range(0f, 1f)]
+        private float crushSparkChance = 0.35f;
+
         private sealed class Crumb
         {
             public GameObject Object;
@@ -36,12 +49,14 @@ namespace Clube.Game
             public float Age;
             public float Life;
             public bool Alive;
+            public bool Spark;
         }
 
         private readonly List<Crumb> crumbs = new List<Crumb>();
         private readonly Mesh[] shapes = new Mesh[3];
         private MaterialPropertyBlock tint;
         private PlayerToolUser tools;
+        private BoulderBashing bashing;
         private PlayerController player;
         private Transform holder;
         private int next;
@@ -49,6 +64,7 @@ namespace Clube.Game
         private void Awake()
         {
             tools = GetComponent<PlayerToolUser>();
+            bashing = GetComponent<BoulderBashing>();
             player = GetComponent<PlayerController>();
             tint = new MaterialPropertyBlock();
             shapes[0] = Chunk("Chip", new Vector3(1f, 0.8f, 0.9f), 1);
@@ -60,12 +76,20 @@ namespace Clube.Game
         {
             tools.Struck += OnStruck;
             tools.BushPicked += OnBushPicked;
+            if (bashing != null)
+            {
+                bashing.OreCrushed += OnOreCrushed;
+            }
         }
 
         private void OnDisable()
         {
             tools.Struck -= OnStruck;
             tools.BushPicked -= OnBushPicked;
+            if (bashing != null)
+            {
+                bashing.OreCrushed -= OnOreCrushed;
+            }
             foreach (Crumb crumb in crumbs)
             {
                 crumb.Alive = false;
@@ -103,7 +127,16 @@ namespace Clube.Game
                 return;
             }
             int shape = hit.Kind == MaterialKind.Rock ? 0 : hit.Kind == MaterialKind.Soil ? 1 : 2;
-            Burst(tools.WorldView.transform.TransformPoint(tools.ImpactCentre), Earthy(hit.DebugColor), shape, Mathf.Clamp(4 + took * 2, 5, 14));
+            Vector3 at = tools.WorldView.transform.TransformPoint(tools.ImpactCentre);
+            // Sparks now and then off rock (GL460).
+            Burst(at, Earthy(hit.DebugColor), shape, Mathf.Clamp(4 + took * 2, 5, 14), OutwardFrom(at), hit.Kind == MaterialKind.Rock ? sparkChance : 0f);
+        }
+
+        // Ore crushed on a boulder (GL459): fragments of the ore fly off the boulder, with sparks now and then.
+        private void OnOreCrushed(Vector3 at, VoxelMaterial ore)
+        {
+            Color colour = ore != null ? Earthy(ore.DebugColor) : new Color(0.5f, 0.5f, 0.52f);
+            Burst(at, colour, 0, 12, OutwardFrom(at), crushSparkChance);
         }
 
         // A material's debug colour toned down towards how its texture looks: a little greyer and darker.
@@ -117,41 +150,101 @@ namespace Clube.Game
         {
             if (tools.WorldView != null)
             {
-                Burst(tools.WorldView.transform.TransformPoint(tools.ImpactCentre), LeafGreen, 2, 10);
+                Vector3 at = tools.WorldView.transform.TransformPoint(tools.ImpactCentre);
+                Burst(at, LeafGreen, 2, 10, OutwardFrom(at), 0f);
             }
         }
 
-        private void Burst(Vector3 at, Color colour, int shape, int count)
+        // Out of the struck face: from the impact towards the player's head, which is on the open side of it.
+        private Vector3 OutwardFrom(Vector3 at)
+        {
+            Transform head = player != null && player.Head != null ? player.Head : transform;
+            Vector3 outward = head.position - at;
+            return outward.sqrMagnitude > 1e-4f ? outward.normalized : Vector3.up;
+        }
+
+        // Crumbs splash out of the face in a wide cone all round its outward direction (GL460: never in a huddle), each with
+        // its own floor below it; with sparkChance, a few sparks fly too.
+        private void Burst(Vector3 at, Color colour, int shape, int count, Vector3 outward, float sparkChance)
         {
             EnsurePool();
-            Transform head = player != null && player.Head != null ? player.Head : transform;
-            Vector3 back = -head.forward;
-            back.y = 0f;
-            back = back.sqrMagnitude > 1e-4f ? back.normalized : Vector3.forward;
+            if (holder == null)
+            {
+                return;
+            }
+            Vector3 side = Vector3.Cross(outward, Mathf.Abs(outward.y) > 0.9f ? Vector3.right : Vector3.up).normalized;
+            Vector3 other = Vector3.Cross(outward, side);
             for (int i = 0; i < count; i++)
             {
-                Crumb crumb = crumbs[next];
+                // Evenly round the cone, jittered, so they spread out rather than bunch.
+                float angle = (i + Random.value * 0.8f) / count * Mathf.PI * 2f;
+                Vector3 across = side * Mathf.Cos(angle) + other * Mathf.Sin(angle);
+                Vector3 velocity = outward * Random.Range(0.8f, 1.8f) + across * Random.Range(1f, 2.4f) + Vector3.up * Random.Range(1.2f, 2.6f);
+                Launch(crumbs[next], at + outward * 0.05f + across * 0.04f, velocity, colour, shape, false);
                 next = (next + 1) % crumbs.Count;
-                Vector3 spread = Random.insideUnitSphere;
-                crumb.Velocity = back * Random.Range(0.6f, 1.8f) + Vector3.up * Random.Range(1.4f, 3.2f) + spread * 1.2f;
-                crumb.Spin = Random.insideUnitSphere * 540f;
-                crumb.Size = Random.Range(0.025f, shape == 1 ? 0.05f : 0.065f);
-                crumb.Age = 0f;
-                crumb.Life = Random.Range(1f, 1.7f);
-                crumb.Alive = true;
-                Vector3 start = at + spread * 0.06f + back * 0.04f;
-                crumb.Floor = Physics.Raycast(start + Vector3.up * 0.5f, Vector3.down, out RaycastHit ground, 6f, ~0, QueryTriggerInteraction.Ignore)
-                    ? ground.point.y + crumb.Size * 0.4f
-                    : at.y - 1.5f;
-                crumb.Object.transform.SetPositionAndRotation(start, Random.rotation);
-                crumb.Object.transform.localScale = Vector3.one * crumb.Size;
-                crumb.Object.GetComponent<MeshFilter>().sharedMesh = shapes[shape];
+            }
+            if (sparkChance > 0f && Random.value < sparkChance && sparkMaterial != null)
+            {
+                int sparkCount = Random.Range(3, 7);
+                for (int i = 0; i < sparkCount; i++)
+                {
+                    Vector3 across = Random.insideUnitSphere;
+                    Vector3 velocity = (outward * Random.Range(1.5f, 3f) + across * 2.2f + Vector3.up * Random.Range(0.5f, 1.8f)) * 1.3f;
+                    Launch(crumbs[next], at + outward * 0.05f, velocity, Color.white, 0, true);
+                    next = (next + 1) % crumbs.Count;
+                }
+            }
+        }
+
+        private void Launch(Crumb crumb, Vector3 start, Vector3 velocity, Color colour, int shape, bool spark)
+        {
+            crumb.Velocity = velocity;
+            crumb.Spin = Random.insideUnitSphere * 540f;
+            crumb.Size = spark ? Random.Range(0.012f, 0.02f) : Random.Range(0.025f, shape == 1 ? 0.05f : 0.065f);
+            crumb.Age = 0f;
+            crumb.Life = spark ? Random.Range(0.25f, 0.45f) : Random.Range(1f, 1.7f);
+            crumb.Alive = true;
+            crumb.Spark = spark;
+            crumb.Floor = FloorUnder(start) + crumb.Size * 0.4f;
+            crumb.Object.transform.SetPositionAndRotation(start, Random.rotation);
+            crumb.Object.transform.localScale = Vector3.one * crumb.Size;
+            crumb.Object.GetComponent<MeshFilter>().sharedMesh = shapes[shape];
+            if (spark)
+            {
+                crumb.Renderer.sharedMaterial = sparkMaterial;
+                crumb.Renderer.SetPropertyBlock(null);
+            }
+            else
+            {
+                crumb.Renderer.sharedMaterial = material;
                 // Each crumb a little lighter or darker, as the ground's texture is.
                 tint.SetColor(TintId, colour * Random.Range(0.8f, 1.15f));
                 crumb.Renderer.SetPropertyBlock(tint);
-                crumb.Object.SetActive(true);
             }
+            crumb.Object.SetActive(true);
         }
+
+        // The ground below a point, never above it: the first collider under it that isn't the player (a downward ray once
+        // stopped on the player's own capsule or an overhang, and the crumbs settled in mid-air in a huddle).
+        private float FloorUnder(Vector3 start)
+        {
+            int found = Physics.RaycastNonAlloc(start, Vector3.down, floorHits, 6f, ~0, QueryTriggerInteraction.Ignore);
+            float floor = start.y - 1.5f;
+            float nearest = float.MaxValue;
+            for (int i = 0; i < found; i++)
+            {
+                RaycastHit hit = floorHits[i];
+                if (hit.collider.transform.IsChildOf(transform) || hit.distance >= nearest)
+                {
+                    continue;
+                }
+                nearest = hit.distance;
+                floor = hit.point.y;
+            }
+            return Mathf.Min(floor, start.y - 0.02f);
+        }
+
+        private readonly RaycastHit[] floorHits = new RaycastHit[8];
 
         private void Update()
         {
@@ -174,6 +267,13 @@ namespace Clube.Game
                 Vector3 position = t.position + crumb.Velocity * step;
                 if (position.y < crumb.Floor)
                 {
+                    if (crumb.Spark)
+                    {
+                        // A spark goes out where it lands.
+                        crumb.Alive = false;
+                        crumb.Object.SetActive(false);
+                        continue;
+                    }
                     // Bounce, losing most of it; settle once slow.
                     position.y = crumb.Floor;
                     crumb.Velocity = new Vector3(crumb.Velocity.x * 0.5f, -crumb.Velocity.y * 0.3f, crumb.Velocity.z * 0.5f);

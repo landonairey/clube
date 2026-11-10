@@ -43,6 +43,12 @@ namespace Clube.Game
             tools = GetComponent<PlayerToolUser>();
         }
 
+        private void Update()
+        {
+            // How much of a gathered stack the slots and tooltips read (GL457).
+            ItemSlotGui.ProspectingLevel = Skills.Level(SkillType.Prospecting);
+        }
+
         private void OnEnable()
         {
             if (tools != null)

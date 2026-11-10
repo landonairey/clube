@@ -116,6 +116,9 @@ namespace Clube.Game
         /// <summary>A stone was knapped into a hand axe (GL381), for its sound.</summary>
         public event Action HandAxeMade;
 
+        /// <summary>Raised on each crush of ore (GL459), with where on the boulder and what was crushed: for the sound, the swing and the fragments.</summary>
+        public event Action<Vector3, VoxelMaterial> OreCrushed;
+
         /// <summary>True when Place would bash this frame: a stone or crushable ore in hand, aimed at a boulder within reach.</summary>
         public bool CanBash => (HoldsSomethingToBash(out _, out _) || HoldsSomethingToRefine(out _)) && AimsAtBoulder();
 
@@ -328,6 +331,22 @@ namespace Clube.Game
             // Crushing needs Mining (crushSkill) but trains Prospecting (GL388).
             skills?.Skills.Award(SkillType.Prospecting, crushExperience);
             Message?.Invoke($"Crushed into {crush.Crushed.DisplayName.ToLowerInvariant()} ({QualityText.Percent(quality)})");
+            if (OreCrushed != null && TryGetAimedBoulder(out Vector3Int boulder))
+            {
+                // The ore's own material, for the colour of the fragments.
+                VoxelMaterial ore = null;
+                if (held.Contents != null && materials != null)
+                {
+                    foreach (Content part in held.Contents.Parts)
+                    {
+                        if (materials.IsSourceOf(part.Material, crush.Raw))
+                        {
+                            ore = part.Material;
+                        }
+                    }
+                }
+                OreCrushed(worldView.transform.TransformPoint(worldView.World.Grid.SampleToWorld(boulder)), ore);
+            }
             return true;
         }
 

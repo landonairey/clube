@@ -25,6 +25,18 @@ namespace Clube.Game
         /// <summary>What the merchant pays, for tooltips (GL366); set by the merchant table when it's placed.</summary>
         public static PriceList Prices { get; set; }
 
+        /// <summary>
+        /// The player's Prospecting level, for how much of a gathered stack they can read (GL457); set by
+        /// <c>PlayerSkills</c>. Exact shares until something sets it (the labs).
+        /// </summary>
+        public static int ProspectingLevel { get; set; } = ProspectReading.ExactLevel;
+
+        /// <summary>True when a stack's shares read as grades, not numbers (GL457): a gathered mix below Prospecting 10.</summary>
+        public static bool ReadsAsGrades(ItemStack stack)
+        {
+            return !stack.IsEmpty && stack.Contents != null && ProspectingLevel < ProspectReading.ExactLevel;
+        }
+
         // Every stack shows how well it was made, in the upper right, 100% included (GL158): its quality
         // (GL118: sticks of 60% wood), or for mined material that isn't all its own material, how much of it
         // is (GL115: ore of a grade).
@@ -37,7 +49,18 @@ namespace Clube.Game
             }
             // No padding or clipping: the skin's label padding cut the bottom off the digits (GL222).
             purityStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = 20, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0), clipping = TextClipping.Overflow, normal = { textColor = new Color(1f, 0.8f, 0.35f) } };
-            GameUi.OutlinedLabel(new Rect(rect.x, rect.y + 3f, rect.width - 6f, 26f), QualityText.Percent(purity), purityStyle);
+            var corner = new Rect(rect.x, rect.y + 3f, rect.width - 6f, 26f);
+            if (ReadsAsGrades(stack))
+            {
+                // A grade, in its colour, until Prospecting reads numbers (GL457).
+                Grade grade = ProspectReading.GradeOf(purity);
+                Color colour = purityStyle.normal.textColor;
+                purityStyle.normal.textColor = ProspectReading.ColourOf(grade);
+                GameUi.OutlinedLabel(corner, ProspectReading.ShortName(grade), purityStyle);
+                purityStyle.normal.textColor = colour;
+                return;
+            }
+            GameUi.OutlinedLabel(corner, QualityText.Percent(purity), purityStyle);
         }
 
         /// <param name="corner">Small text for the lower left, e.g. a merchant's price; null for none.</param>

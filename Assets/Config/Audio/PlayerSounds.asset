@@ -316,6 +316,14 @@ MonoBehaviour:
     volume: 0.6
     pitchJitter: 0.08
     playAll: 0
+  crushed:
+    clips:
+    - {fileID: 8300000, guid: 6146c6cd99dfa794fb43f0e3a66dec5d, type: 3}
+    - {fileID: 8300000, guid: ecddcc4e4a005d448a87e76658401d05, type: 3}
+    - {fileID: 8300000, guid: 1e220c9c755891d4ba5edf8fe8b9d5c2, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
+    playAll: 0
   splash:
     clips:
     - {fileID: 8300000, guid: aceae436e5647d544bc4b9c8788d5281, type: 3}
