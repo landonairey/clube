@@ -329,7 +329,7 @@ namespace Clube.Game
             Vector3 cartAt = OnMap(CompanyWarehouse.CartSpot);
             cart = OreCart.Build(cartAt, Vector3.right, material, this);
             shed = ToolShed.Build(OnMap(CompanyWarehouse.ShedSpot), Vector3.right, material, this, textMaterial);
-            WorkerCrew.Build(worldView.transform, material);
+            WorkerCrew.Build(worldView.transform, material, worldView);
             player.LookTowards(leadAt);
             // A new hire owns nothing: whatever a new game hands out waits for the player's own land.
             EmptyInventory();
