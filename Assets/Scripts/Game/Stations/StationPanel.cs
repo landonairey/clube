@@ -194,6 +194,23 @@ namespace Clube.Game
             }
         }
 
+        // The station's recipes by unlock level, the station's own order within a level (GL481); kept until the station or its list changes.
+        private CraftingStation sortedFor;
+        private int sortedCount = -1;
+        private System.Collections.Generic.List<Recipe> sortedRecipes;
+
+        private System.Collections.Generic.List<Recipe> SortedRecipes(CraftingStation station)
+        {
+            if (sortedRecipes == null || sortedFor != station || sortedCount != station.Recipes.Count)
+            {
+                sortedRecipes = new System.Collections.Generic.List<Recipe>(System.Linq.Enumerable.OrderBy(station.Recipes, r => r.UnlockLevel));
+                sortedFor = station;
+                sortedCount = station.Recipes.Count;
+            }
+            return sortedRecipes;
+        }
+
+
         // The left half (GL448): what can be made now and, with a lock, what the next level brings (GL450); recipes further
         // off stay hidden. Click a recipe to make only it (ML1) and pull one batch of its ingredients from your items
         // (GL80); click it again to let any start. Scrolls when the list is long.
@@ -202,7 +219,7 @@ namespace Clube.Game
             recipeStyle ??= new GUIStyle(GUI.skin.button) { alignment = TextAnchor.MiddleLeft, wordWrap = false, clipping = TextClipping.Clip };
             lockedStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleLeft, clipping = TextClipping.Clip, normal = { textColor = new Color(0.6f, 0.6f, 0.6f) } };
             int shown = 0;
-            foreach (Recipe recipe in station.Recipes)
+            foreach (Recipe recipe in SortedRecipes(station))
             {
                 if (recipe.IsInSightFor(station.Learner))
                 {
@@ -213,7 +230,7 @@ namespace Clube.Game
             var view = new Rect(0f, 0f, area.width - 18f, shown * rowHeight);
             listScroll = GUI.BeginScrollView(area, listScroll, view);
             float y = 0f;
-            foreach (Recipe recipe in station.Recipes)
+            foreach (Recipe recipe in SortedRecipes(station))
             {
                 if (!recipe.IsInSightFor(station.Learner))
                 {

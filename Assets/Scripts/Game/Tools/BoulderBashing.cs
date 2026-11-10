@@ -330,27 +330,31 @@ namespace Clube.Game
             }
             // Crushing needs Mining (crushSkill) but trains Prospecting (GL388).
             skills?.Skills.Award(SkillType.Prospecting, crushExperience);
-            Message?.Invoke($"Crushed into {crush.Crushed.DisplayName.ToLowerInvariant()} ({QualityText.Percent(quality)})");
-            if (OreCrushed != null && TryGetAimedBoulder(out Vector3Int boulder))
+            // The ore's own material, for the colour of the fragments and the grade named in the message.
+            VoxelMaterial ore = null;
+            if (held.Contents != null && materials != null)
             {
-                // The ore's own material, for the colour of the fragments.
-                VoxelMaterial ore = null;
-                if (held.Contents != null && materials != null)
+                foreach (Content part in held.Contents.Parts)
                 {
-                    foreach (Content part in held.Contents.Parts)
+                    if (materials.IsSourceOf(part.Material, crush.Raw))
                     {
-                        if (materials.IsSourceOf(part.Material, crush.Raw))
-                        {
-                            ore = part.Material;
-                        }
+                        ore = part.Material;
                     }
                 }
+            }
+            // A grade name, not the exact share, until Prospecting reads exactly (GL485), as PlayerProspecting.Taste does.
+            int level = skills != null ? skills.Skills.Level(SkillType.Prospecting) : 0;
+            float share = crushed != null && ore != null ? crushed.FractionOf(ore) : quality;
+            string grade = level >= ProspectReading.ExactLevel ? QualityText.Percent(share) : ProspectReading.Name(ProspectReading.GradeOf(share));
+            Message?.Invoke($"Crushed into {crush.Crushed.DisplayName.ToLowerInvariant()} ({grade})");
+            if (OreCrushed != null && TryGetAimedBoulder(out Vector3Int boulder))
+            {
                 OreCrushed(worldView.transform.TransformPoint(worldView.World.Grid.SampleToWorld(boulder)), ore);
             }
             return true;
         }
 
-        // A stone, or ore with a crushed form, in the selected slot.
+        // A stone, or ore with a crushed form, in the selected slot. A stone with a mix in it is picked over instead (GL487); a clean one is knapped into a hand axe.
         private bool HoldsSomethingToBash(out int slot, out Crush crush)
         {
             crush = default;
@@ -365,7 +369,7 @@ namespace Clube.Game
             {
                 return false;
             }
-            if (item == stone && handAxe != null)
+            if (item == stone && handAxe != null && !(worldView != null && worldView.IsReady && Refining.CanRefine(stack, worldView.Config.Materials)))
             {
                 return stack.Count > 0;
             }

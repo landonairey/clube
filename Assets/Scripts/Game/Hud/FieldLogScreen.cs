@@ -232,7 +232,7 @@ namespace Clube.Game
 
         private void DrawSection(Rect area, int page, QuestLog log, string section)
         {
-            questStyle ??= new GUIStyle(JournalBook.Text) { fontSize = GameUi.Font(15), fontStyle = FontStyle.Italic };
+            questStyle ??= new GUIStyle(JournalBook.Text) { fontSize = GameUi.Font(15), fontStyle = FontStyle.Italic, clipping = TextClipping.Overflow, padding = new RectOffset(6, 0, 0, 0) };
             doneStyle ??= JournalBook.Inked(new GUIStyle(questStyle), new Color(JournalBook.Ink.r, JournalBook.Ink.g, JournalBook.Ink.b, 0.45f));
             Rect inner = JournalBook.Inner(area);
             int done = 0;
@@ -255,7 +255,7 @@ namespace Clube.Game
                 {
                     // Struck through, as a ticked line in a notebook.
                     float width = Mathf.Min(inner.width, style.CalcSize(row).x);
-                    JournalBook.InkLine(new Rect(rect.x + 34f, rect.y + Mathf.Min(height, 24f) * 0.5f + 1f, Mathf.Max(0f, width - 34f), 1.5f));
+                    JournalBook.InkLine(new Rect(rect.x + 40f, rect.y + Mathf.Min(height, 24f) * 0.5f + 1f, Mathf.Max(0f, width - 40f), 1.5f));
                 }
                 y += height + 10f;
             }

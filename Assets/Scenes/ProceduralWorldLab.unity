@@ -195,8 +195,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 917808246178de94d9cf027e640ba080, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Debug::Clube.Debug.FreeFlyCamera
-  moveSpeed: 3
-  fastMultiplier: 4
+  moveSpeed: 6
+  fastMultiplier: 8
   lookSensitivity: 0.15
   scrollSpeedStep: 0.1
   focusTime: 0.25
@@ -5273,7 +5273,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 555367919}
-  - component: {fileID: 555367918}
   m_Layer: 0
   m_Name: Merchant Site
   m_TagString: Untagged
@@ -5281,21 +5280,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &555367918
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 555367917}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 35b285c878b494f43b15675e5433d47a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Game::Clube.Game.MerchantSite
-  worldView: {fileID: 1350119460}
-  tablePrefab: {fileID: 1496179932686027658, guid: 2c8f8540ab1a5e143af6ed63263d7486, type: 3}
-  cell: {x: -7, y: 13}
 --- !u!4 &555367919
 Transform:
   m_ObjectHideFlags: 0
@@ -6882,6 +6866,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 0ce319f9af19832499bb1b6d96511e3b, type: 2}
   - {fileID: 11400000, guid: 2f2e8808d61f59549a0331d7d86525b1, type: 2}
   - {fileID: 11400000, guid: 08594d0fdd8ba66419aaffeb6ae837d5, type: 2}
+  - {fileID: 11400000, guid: ab98c97052db20042ae1ed986472066f, type: 2}
+  - {fileID: 11400000, guid: 842c5ed4148bf74499b40ca377984edd, type: 2}
   kinds:
   - Material: {fileID: 11400000, guid: a7a179311785ad14bab47c68162a300f, type: 2}
     Name: Flat Rock

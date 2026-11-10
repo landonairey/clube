@@ -19,6 +19,7 @@ namespace Clube.Game
         private string message;
         private float until;
         private float shownAt;
+        private float duration = Seconds;
         private GUIStyle style;
 
         /// <summary>Shows a message for a couple of seconds.</summary>
@@ -26,7 +27,19 @@ namespace Clube.Game
         {
             message = text;
             shownAt = Time.time;
-            until = Time.time + Seconds;
+            duration = Seconds;
+            until = Time.time + duration;
+        }
+
+        // The lines of a held refine or crush come once a second, so they fade fast enough to be gone before the next (GL486).
+        private void ShowFromBashing(string text)
+        {
+            Show(text);
+            if (text.StartsWith("Picked over") || text.StartsWith("Found nothing") || text.StartsWith("Crushed into"))
+            {
+                duration = 0.85f;
+                until = Time.time + duration;
+            }
         }
 
         private void Awake()
@@ -50,7 +63,7 @@ namespace Clube.Game
             }
             if (bashing != null)
             {
-                bashing.Message += Show;
+                bashing.Message += ShowFromBashing;
             }
         }
 
@@ -62,7 +75,7 @@ namespace Clube.Game
             }
             if (bashing != null)
             {
-                bashing.Message -= Show;
+                bashing.Message -= ShowFromBashing;
             }
         }
 
@@ -80,7 +93,7 @@ namespace Clube.Game
             float pop = 1f + 0.25f * Mathf.Clamp01(1f - age / 0.15f);
             Color previous = GUI.color;
             Matrix4x4 matrix = GUI.matrix;
-            GUI.color = new Color(1f, 1f, 1f, Mathf.Lerp(1f, 0.2f, age / Seconds));
+            GUI.color = new Color(1f, 1f, 1f, Mathf.Lerp(1f, 0f, age / duration));
             GUIUtility.ScaleAroundPivot(new Vector2(pop, pop), area.center);
             GUI.Label(new Rect(area.x + 1f, area.y + 1f, area.width, area.height), message, new GUIStyle(style) { normal = { textColor = Color.black } });
             GUI.Label(area, message, style);
