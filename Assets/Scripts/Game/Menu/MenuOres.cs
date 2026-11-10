@@ -62,9 +62,9 @@ namespace Clube.Game
             Ball("Cassiterite", TinOnSurface + Vector3.up * 0.1f, 0.55f, true);
 
             // The stump beside the fire, in the real stump material.
-            float stumpX = 4.6f;
-            float stumpZ = -1.0f;
-            Cylinder("Stump", new Vector3(stumpX, SurfaceAt(stumpX, stumpZ) - 0.2f, stumpZ), 0.5f, 0.8f);
+            float stumpX = -3.4f;
+            float stumpZ = -4.2f;
+            Cylinder("Maple stump", new Vector3(stumpX, SurfaceAt(stumpX, stumpZ) - 0.3f, stumpZ), 0.65f, 1.2f);
         }
 
         // A ball of one material: its solid samples change material; with raise, air samples become ground too.
