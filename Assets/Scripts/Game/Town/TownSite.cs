@@ -79,6 +79,10 @@ namespace Clube.Game
         [SerializeField]
         private GameObject sleepingRollPrefab;
 
+        [Tooltip("The wooden crate (a storage chest) the secret cave's valuables are hidden in (GL475).")]
+        [SerializeField]
+        private GameObject cratePrefab;
+
         [Tooltip("Coins each shopkeeper has to buy with, every day (GL426).")]
         [SerializeField, Min(0f)]
         private float dailyCoins = 525f;
@@ -123,6 +127,12 @@ namespace Clube.Game
         /// <summary>The land parcel the town fills (GL408).</summary>
         public Vector2Int Parcel { get; private set; }
 
+        /// <summary>The trading post's name (GL470), from the world's seed and its parcel; empty until it's placed.</summary>
+        public string Name { get; private set; } = "";
+
+        /// <summary>What the player has done at the trading post: the saved part of it (GL471-GL475).</summary>
+        public TradingPost Post { get; private set; }
+
         /// <summary>The shopkeepers, once built.</summary>
         public IReadOnlyList<Shopkeeper> Keepers { get; private set; } = new List<Shopkeeper>();
 
@@ -141,6 +151,8 @@ namespace Clube.Game
             }
             spawnPoint = new Vector2(at.x, at.z);
             parcels = spawn != null ? spawn.GetComponent<PlayerParcels>() : null;
+            // Here from the start, so a save restores into it before the town is built (GL471).
+            Post = TryGetComponent(out TradingPost post) ? post : gameObject.AddComponent<TradingPost>();
         }
 
         private void Update()
@@ -312,6 +324,7 @@ namespace Clube.Game
             int seed = worldView.Ores != null ? worldView.Ores.Seed : 0;
             Plan = new TownPlan(Site, yaw, Natural, seed, worldView.World.Grid.VoxelSize);
             Parcel = new Vector2Int(Mathf.FloorToInt(Site.Centre.x / ParcelSize), Mathf.FloorToInt(Site.Centre.y / ParcelSize));
+            Name = SettlementNames.Generate(worldView.Config.Terrain.Seed, Parcel);
             var root = new GameObject("Town").transform;
             root.SetParent(transform, false);
             root.SetPositionAndRotation(worldView.transform.TransformPoint(new Vector3(Site.Centre.x, Site.Ground, Site.Centre.y)),
@@ -336,19 +349,63 @@ namespace Clube.Game
                 FurnacePrefab = furnacePrefab,
                 TorchPrefab = torchPrefab,
                 SleepingRollPrefab = sleepingRollPrefab,
+                CratePrefab = cratePrefab,
                 DailyCoins = dailyCoins,
+                Name = Name,
+                Post = Post,
             });
+            // The merchant sells the trading post itself (GL473); its profits go to the player's wallet.
+            PlayerWallet wallet = spawn != null ? spawn.GetComponent<PlayerWallet>() : null;
+            Post.Setup(FindClock(), wallet != null ? wallet.Wallet : null);
+            foreach (Shopkeeper keeper in Keepers)
+            {
+                if (keeper.Shop.Kind == ShopKind.Wares)
+                {
+                    keeper.Deal = Post;
+                }
+            }
         }
 
-        // The town's parcel can't be bought (GL408); the land is set up a little after the world, so keep trying.
+        // The town's parcel can't be bought (GL408); the land is set up a little after the world, so keep trying. Once the
+        // player owns the trading post it's theirs to dig (GL473).
         private void LockParcel()
         {
             if (locked || Plan == null || parcels == null || parcels.Parcels == null)
             {
                 return;
             }
-            parcels.Parcels.Lock(Parcel);
+            if (Post.Owned)
+            {
+                parcels.Parcels.Unlock(Parcel);
+                parcels.Parcels.Grant(Parcel);
+            }
+            else
+            {
+                parcels.Parcels.Lock(Parcel);
+            }
             locked = true;
+        }
+
+        // Bought (or a save says so): give the player the parcel at the next frame's check.
+        private void OnPostBought()
+        {
+            locked = false;
+        }
+
+        private void OnEnable()
+        {
+            if (Post != null)
+            {
+                Post.Bought += OnPostBought;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (Post != null)
+            {
+                Post.Bought -= OnPostBought;
+            }
         }
 
         private DayNightCycle FindClock()
@@ -364,7 +421,18 @@ namespace Clube.Game
             Rect area = new Rect(Site.Centre - Vector2.one * half, Vector2.one * half * 2f);
             foreach (TownShaft shaft in Plan.Shafts)
             {
+                // An open pit's whole rim (GL474), dug later by the miner.
+                float reach = Mathf.Max(2f, shaft.PitRadius + 1f);
                 foreach (Vector3 point in shaft.Path)
+                {
+                    area = Rect.MinMaxRect(Mathf.Min(area.xMin, point.x - reach), Mathf.Min(area.yMin, point.z - reach),
+                        Mathf.Max(area.xMax, point.x + reach), Mathf.Max(area.yMax, point.z + reach));
+                }
+            }
+            if (Plan.Cave != null)
+            {
+                // The cave's tunnel opens outside the wall (GL475).
+                foreach (Vector3 point in Plan.Cave.Tunnel)
                 {
                     area = Rect.MinMaxRect(Mathf.Min(area.xMin, point.x - 2f), Mathf.Min(area.yMin, point.z - 2f),
                         Mathf.Max(area.xMax, point.x + 2f), Mathf.Max(area.yMax, point.z + 2f));
@@ -477,8 +545,15 @@ namespace Clube.Game
             }
 
             // 3. The mine shafts (GL414), lined with stone where they pass through ground that would fall.
+            // An open pit (GL474) starts as bare dirt where the grass was cleared off its middle; the miner digs it later.
+            VoxelMaterial dirt = materials != null ? materials.Find("Dirt") : null;
             foreach (TownShaft shaft in plan.Shafts)
             {
+                if (shaft.IsPit)
+                {
+                    ClearGrass(world, shaft.Path[0], OpenPit.FloorRadius + 1f, ground, dirt, iso);
+                    continue;
+                }
                 SquareVoxels.Carve(world, TownStructures.ShaftVoxels(world, shaft.Path, iso), materials, stone, iso);
             }
 
@@ -491,6 +566,13 @@ namespace Clube.Game
             if (stone != null)
             {
                 TownStructures.StampStones(world, plan.Stones, stone.Id, iso);
+            }
+
+            // The secret cave under the square (GL475), lined with stone where the ground would fall; after the wall, as its
+            // tunnel passes under it.
+            if (plan.Cave != null)
+            {
+                SquareVoxels.Carve(world, plan.Cave.Voxels(world, iso), materials, stone, iso);
             }
 
             // 5. The shops in stone and boards (GL412): oak or maple walls with the other for the counter and trim.
@@ -516,6 +598,35 @@ namespace Clube.Game
 
             LevelMilliseconds = (Time.realtimeSinceStartup - started) * 1000f;
             UnityEngine.Debug.Log($"TownSite: wrote the town into the terrain in {LevelMilliseconds:0} ms ({plan.Shafts.Count} shafts).");
+        }
+
+        // Grass turned to dirt within a radius of a point on the ground (GL474: the open pit's start), so no blades grow there.
+        private static void ClearGrass(World world, Vector3 centre, float radius, VoxelMaterial grass, VoxelMaterial dirt, float iso)
+        {
+            if (grass == null || dirt == null)
+            {
+                return;
+            }
+            WorldGrid grid = world.Grid;
+            Vector3Int low = grid.WorldToNearestSample(centre - new Vector3(radius, 2f, radius));
+            Vector3Int high = grid.WorldToNearestSample(centre + new Vector3(radius, 2f, radius));
+            for (int z = low.z; z <= high.z; z++)
+            {
+                for (int y = low.y; y <= high.y; y++)
+                {
+                    for (int x = low.x; x <= high.x; x++)
+                    {
+                        var sample = new Vector3Int(x, y, z);
+                        Vector3 at = grid.SampleToWorld(sample);
+                        if (new Vector2(at.x - centre.x, at.z - centre.z).sqrMagnitude > radius * radius
+                            || !world.TryGetOwner(sample, out Chunk chunk, out Vector3Int local) || chunk.GetMaterial(local) != grass.Id)
+                        {
+                            continue;
+                        }
+                        world.SetMaterial(sample, dirt.Id);
+                    }
+                }
+            }
         }
 
         // A block of each of the town's ores standing along the prospectors' counter (GL424): real ore voxels, square

@@ -136,7 +136,7 @@ namespace Clube.Game
         // The town's parcel (GL408): it says whose land it is.
         private sealed class TownLandNotice : INoticeOnly
         {
-            public string Prompt => "Town land: not for sale";
+            public string Prompt => "Trading post land: not for sale";
 
             public void Interact(PlayerInteractor by)
             {

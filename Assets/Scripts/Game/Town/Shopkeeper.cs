@@ -26,6 +26,9 @@ namespace Clube.Game
         // Real seconds between samples the miner takes from a node (GL415): slow on purpose.
         private const float MineSeconds = 6f;
 
+        // Samples dug out of an open pit with each swing (GL474): a quarter of a cubic metre at 0.25 m voxels.
+        private const int PitSamplesPerSwing = 16;
+
         private enum Place
         {
             Counter,
@@ -51,6 +54,8 @@ namespace Clube.Game
         private ShopSpecialty shop;
         private PriceList prices;
         private List<ItemPrice> offers;
+        private PriceList fairPrices;
+        private List<ItemPrice> fairOffers;
         private ShopHours hours;
         private DayNightCycle clock;
         private TownContext town;
@@ -88,7 +93,8 @@ namespace Clube.Game
         public int Mined { get; private set; }
 
         /// <summary>Sets the keeper up for a shop in the town; called once, before the first frame.</summary>
-        public void Setup(ShopSpecialty shop, PriceList master, ShopHours hours, DayNightCycle clock, TownContext town, Material material, int seed, float dailyCoins = 525f)
+        public void Setup(ShopSpecialty shop, PriceList master, ShopHours hours, DayNightCycle clock, TownContext town, Material material, int seed,
+            float dailyCoins = 525f, Disposition disposition = null)
         {
             this.shop = shop;
             this.hours = hours;
@@ -97,12 +103,39 @@ namespace Clube.Game
             this.dailyCoins = dailyCoins;
             Purse = new Wallet(dailyCoins);
             purseDay = clock != null ? clock.Day : 0;
-            prices = shop.BuyingPrices(master);
-            offers = shop.Offers(master);
+            fairPrices = shop.BuyingPrices(master);
+            fairOffers = shop.Offers(master);
+            Disposition = disposition ?? new Disposition();
+            Disposition.Changed += Reprice;
+            Reprice();
             plot = TownLayout.PlotOf(shop.Kind);
             chores = TownLayout.ChoresOf(shop.Kind);
             figure = gameObject.AddComponent<KeeperFigure>();
             figure.Build(shop.Kind, material, seed);
+        }
+
+        // The prices for the disposition (GL471): a point of markup on what they sell and a point off what they pay for each
+        // point under 100.
+        private void Reprice()
+        {
+            if (prices != null && prices != fairPrices)
+            {
+                Destroy(prices);
+            }
+            prices = fairPrices.Scaled(Disposition.PayShare);
+            offers = new List<ItemPrice>(fairOffers.Count);
+            foreach (ItemPrice offer in fairOffers)
+            {
+                offers.Add(new ItemPrice(offer.Item, Disposition.SellingPrice(offer.Coins), offer.Units, offer.ByVolume));
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (Disposition != null)
+            {
+                Disposition.Changed -= Reprice;
+            }
         }
 
         private float Hour => clock != null ? clock.Hour : 12f;
@@ -130,6 +163,12 @@ namespace Clube.Game
 
         /// <summary>The coins the keeper has to buy with today (GL426): back to the day's amount each morning.</summary>
         public Wallet Purse { get; private set; }
+
+        /// <summary>How the keeper feels about the player (GL471), saved by the <see cref="TradingPost"/>.</summary>
+        public Disposition Disposition { get; private set; }
+
+        /// <summary>Something special the keeper offers (GL473: the merchant sells the trading post); null for none.</summary>
+        public ITraderDeal Deal { get; set; }
 
         // IClosableInteractable.
 
@@ -260,9 +299,10 @@ namespace Clube.Game
                     yield return InShop(TownLayout.OutsideDoor);
                     break;
                 case Place.Shaft when shaft != null:
+                    // Out of an open pit (GL474) over the ground; up a shaft's stairs on its line.
                     for (int i = shaft.Path.Count - 1; i >= 0; i--)
                     {
-                        yield return new Waypoint(shaft.Path[i], true);
+                        yield return new Waypoint(shaft.Path[i], !shaft.IsPit);
                     }
                     if (!TownLayout.IsInside(shaft.Head))
                     {
@@ -408,6 +448,16 @@ namespace Clube.Game
                     figure.Pose = KeeperPose.Lie;
                     break;
                 }
+                case Place.Shaft when shaft != null && shaft.IsPit:
+                {
+                    // In the pit's middle, on its floor as dug so far (GL474), facing the town.
+                    StandInPit();
+                    Vector2 towards = Plan.Centre - shaft.PitCentre;
+                    transform.rotation = town.SceneRotation(Mathf.Atan2(towards.x, towards.y) * Mathf.Rad2Deg);
+                    figure.Pose = KeeperPose.Mine;
+                    mineTime = 0f;
+                    break;
+                }
                 case Place.Shaft when shaft != null:
                 {
                     local = shaft.Path[shaft.Path.Count - 1];
@@ -469,6 +519,13 @@ namespace Clube.Game
                 return;
             }
             mineTime = 0f;
+            if (shaft.IsPit)
+            {
+                // A swing in the open pit (GL474) digs a spadeful, ore or not, and the miner stands on the new floor.
+                Mined += town.DigPit(shaft, PitSamplesPerSwing);
+                StandInPit();
+                return;
+            }
             Vector3 face = local + Vector3.up * 1.1f;
             Vector3 toNode = shaft.Node - local;
             toNode.y = 0f;
@@ -480,6 +537,14 @@ namespace Clube.Game
             {
                 Mined++;
             }
+        }
+
+        private void StandInPit()
+        {
+            Vector2 centre = shaft.PitCentre;
+            float near = placed && route.Count == 0 && place == Place.Shaft ? local.y : shaft.Path[0].y;
+            local = new Vector3(centre.x, Mathf.Max(shaft.PitFloor, town.GroundAt(centre.x, centre.y, near)), centre.y);
+            MoveFigure();
         }
 
         private KeeperPose ChorePose(int index)

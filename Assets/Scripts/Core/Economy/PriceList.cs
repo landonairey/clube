@@ -66,6 +66,21 @@ namespace Clube.Core
 
         public IReadOnlyList<ItemPrice> Prices => prices;
 
+        /// <summary>
+        /// The share of each listed price actually paid (GL471: a shopkeeper's disposition pays less), 1 by default.
+        /// Everything this list pays (<see cref="ValueOf"/>, <see cref="PriceOf(ItemStack, float)"/>, <see cref="Sell"/>) is
+        /// scaled by it; the listed coins (<see cref="TryGetLot"/>) aren't.
+        /// </summary>
+        public float Share { get; private set; } = 1f;
+
+        /// <summary>A copy of this list that pays a share of its prices (GL471).</summary>
+        public PriceList Scaled(float share)
+        {
+            PriceList copy = Create(prices.ToArray());
+            copy.Share = Math.Max(0f, share);
+            return copy;
+        }
+
         // A lit torch is priced as the unlit torch it was (GL287).
         private static ItemDefinition PricedAs(ItemDefinition item)
         {
@@ -124,7 +139,7 @@ namespace Clube.Core
                 // Anything else sells at its quality's share (GL130): a 70% ingot for 70% of the price.
                 value *= Math.Max(0f, stack.Quality);
             }
-            return (int)Math.Round(value, MidpointRounding.AwayFromZero);
+            return (int)Math.Round(value * Share, MidpointRounding.AwayFromZero);
         }
 
         /// <summary>
@@ -163,7 +178,7 @@ namespace Clube.Core
                 // Anything else sells at its quality's share (GL130): a 70% ingot for 70% of the price.
                 value *= Math.Max(0f, stack.Quality);
             }
-            return value;
+            return value * Share;
         }
 
         /// <summary>The most that can be sold of <paramref name="available"/> items: whole lots only (GL38).</summary>
@@ -191,7 +206,7 @@ namespace Clube.Core
             {
                 return 0;
             }
-            to.Earn(sold / lot * coins * quality);
+            to.Earn(sold / lot * coins * quality * Share);
             return sold;
         }
     }

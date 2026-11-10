@@ -5318,6 +5318,7 @@ MonoBehaviour:
   furnacePrefab: {fileID: 5762353483625990904, guid: 2ad44317c98e3ee4db6993561dbc9b54, type: 3}
   torchPrefab: {fileID: 7166874474169212171, guid: 032319acc9bb9eb44a1eb17a0eeea3cc, type: 3}
   sleepingRollPrefab: {fileID: 7854643536770524401, guid: 285133e8568374f40bed56df93428099, type: 3}
+  cratePrefab: {fileID: 3729972786520127726, guid: c468d4c25adbf874b90f327ad3d70fac, type: 3}
   dailyCoins: 525
   searchBudgetMilliseconds: 4
 --- !u!4 &782721300

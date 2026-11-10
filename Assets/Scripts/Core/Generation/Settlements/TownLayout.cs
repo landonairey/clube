@@ -250,6 +250,12 @@ namespace Clube.Core
         /// </summary>
         public static List<Vector2> ShaftHeads(IReadOnlyList<Vector2> towards)
         {
+            return ShaftHeads(towards, null);
+        }
+
+        /// <summary>As <see cref="ShaftHeads(IReadOnlyList{Vector2})"/>, keeping the stairwells off open pits (GL474: centre and radius, town frame).</summary>
+        public static List<Vector2> ShaftHeads(IReadOnlyList<Vector2> towards, IReadOnlyList<(Vector2 Centre, float Radius)> pits)
+        {
             var heads = new List<Vector2>();
             var spots = new List<Vector2>();
             // Inside the square or out past the wall (shafts may lie outside the town).
@@ -259,7 +265,7 @@ namespace Clube.Core
                 for (float x = -reach; x <= reach + 1e-3f; x += 0.5f)
                 {
                     var spot = new Vector2(x, z);
-                    if (IsClearForShaft(spot))
+                    if (IsClearForShaft(spot) && !NearPit(spot, pits))
                     {
                         spots.Add(spot);
                     }
@@ -292,10 +298,48 @@ namespace Clube.Core
             return heads;
         }
 
+        private static bool NearPit(Vector2 spot, IReadOnlyList<(Vector2 Centre, float Radius)> pits)
+        {
+            if (pits == null)
+            {
+                return false;
+            }
+            foreach ((Vector2 centre, float radius) in pits)
+            {
+                if ((spot - centre).magnitude < radius + ShaftHeadRadius + 1f)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// True where an open pit of a radius at the ground (GL474) may be dug, town frame: wholly outside the wall and off the
+        /// way up to the gate, or inside it off the shops, props and wall (it may cut a path).
+        /// </summary>
+        public static bool IsClearForPit(Vector2 spot, float radius)
+        {
+            float far = Mathf.Max(Mathf.Abs(spot.x), Mathf.Abs(spot.y));
+            if (far - radius > OuterHalf + 0.5f)
+            {
+                // Outside: clear of the approach to the gate.
+                return !(Mathf.Abs(spot.x) < GateWidth * 0.5f + radius + 1.5f && spot.y < 0f);
+            }
+            // Inside, it may cut across a path (GL474: the pit is dug where the node is).
+            return IsClear(spot, radius, false);
+        }
+
         private static bool IsClearForShaft(Vector2 spot)
         {
-            float r = ShaftHeadRadius;
-            // The stairwell's square stays off the wall, inside it or out.
+            return IsClear(spot, ShaftHeadRadius, true);
+        }
+
+        // Room for a square of half-width r round a spot: off the wall, the gate's approach, the shops' pads, the props, the
+        // merchant's sweeping line and (when asked) the paths.
+        private static bool IsClear(Vector2 spot, float r, bool paths)
+        {
+            // The square stays off the wall, inside it or out.
             float far = Mathf.Max(Mathf.Abs(spot.x), Mathf.Abs(spot.y));
             if (far + r > InnerHalf - 0.5f && far - r < OuterHalf + 0.5f)
             {
@@ -321,8 +365,8 @@ namespace Clube.Core
                     return false;
                 }
             }
-            // The paths: the stairwell's square, sampled round its edge and through it.
-            for (float dz = -r; dz <= r + 1e-3f; dz += r * 0.5f)
+            // The paths: the square, sampled round its edge and through it.
+            for (float dz = -r; paths && dz <= r + 1e-3f; dz += r * 0.5f)
             {
                 for (float dx = -r; dx <= r + 1e-3f; dx += r * 0.5f)
                 {

@@ -75,6 +75,17 @@ namespace Clube.Core
             return true;
         }
 
+        /// <summary>Lets a locked parcel be owned again (GL473: the player bought the trading post). False when it wasn't locked.</summary>
+        public bool Unlock(Vector2Int parcel)
+        {
+            if (!locked.Remove(parcel))
+            {
+                return false;
+            }
+            Changed?.Invoke();
+            return true;
+        }
+
         /// <summary>True for a parcel nobody can buy (the town's land, GL408).</summary>
         public bool IsLocked(Vector2Int parcel)
         {

@@ -38,6 +38,15 @@ namespace Clube.Game
 
             /// <summary>Coins each keeper has to buy with each day (GL426).</summary>
             public float DailyCoins;
+
+            /// <summary>The settlement's name (GL470), on the sign outside its gate.</summary>
+            public string Name;
+
+            /// <summary>What the player has done here (GL471: the keepers' dispositions); may be null.</summary>
+            public TradingPost Post;
+
+            /// <summary>The wooden crate (a storage chest) the secret cave's valuables are hidden in (GL475).</summary>
+            public GameObject CratePrefab;
         }
 
         /// <summary>Builds the town's objects under its root.</summary>
@@ -45,6 +54,7 @@ namespace Clube.Game
         {
             var keepers = new List<Shopkeeper>();
             BuildGate(parts);
+            BuildNameSign(parts);
             foreach (ShopSpecialty shop in parts.Shops)
             {
                 if (shop != null)
@@ -54,6 +64,7 @@ namespace Clube.Game
             }
             BuildChoreProps(parts);
             BuildShafts(parts);
+            BuildCave(parts);
             return keepers;
         }
 
@@ -107,6 +118,20 @@ namespace Clube.Game
             gate.AddComponent<TownGate>().Build(parts.Material);
         }
 
+        // The wooden sign outside the gate (GL470): the trading post's name, beside the way in, facing whoever comes up to it.
+        private static void BuildNameSign(Parts parts)
+        {
+            if (string.IsNullOrEmpty(parts.Name))
+            {
+                return;
+            }
+            TownPlan plan = parts.Town.Plan;
+            var at = new Vector2(TownLayout.GateWidth * 0.5f + 1.6f, -TownLayout.OuterHalf - 1.4f);
+            GameObject sign = Model("Trading post sign", parts.Town.Root, TownMeshes.SignPost(1.9f, 0.62f), parts.Material, OnGround(plan, at), plan.Yaw + 180f, parts.Town);
+            Text(sign.transform, $"{parts.Name}\nTrading Post", new Vector3(0f, 1.62f, 0.03f), parts.TextMaterial, 0.03f);
+            Box(sign, new Vector3(0f, 1.1f, 0f), new Vector3(1.9f, 2.2f, 0.12f));
+        }
+
         private static Shopkeeper BuildShop(ShopSpecialty shop, Parts parts)
         {
             TownContext town = parts.Town;
@@ -131,7 +156,8 @@ namespace Clube.Game
             var keeperObject = new GameObject($"{shop.ShopName} keeper");
             keeperObject.transform.SetParent(town.Root, false);
             Shopkeeper keeper = keeperObject.AddComponent<Shopkeeper>();
-            keeper.Setup(shop, parts.Prices, parts.Hours, parts.Clock, town, parts.Material, plan.Seed + (int)shop.Kind * 977, parts.DailyCoins);
+            keeper.Setup(shop, parts.Prices, parts.Hours, parts.Clock, town, parts.Material, plan.Seed + (int)shop.Kind * 977, parts.DailyCoins,
+                parts.Post != null ? parts.Post.DispositionOf(shop.Kind) : null);
             return keeper;
         }
 
@@ -244,6 +270,21 @@ namespace Clube.Game
             return mesh;
         }
 
+        /// <summary>The blacksmith's disposition that opens the town's anvil and furnace to the player (GL472).</summary>
+        public const int SmithyDisposition = 25;
+
+        private static string BlacksmithName(Parts parts)
+        {
+            foreach (ShopSpecialty shop in parts.Shops)
+            {
+                if (shop != null && shop.Kind == ShopKind.Blacksmith)
+                {
+                    return shop.KeeperName;
+                }
+            }
+            return "the blacksmith";
+        }
+
         private static void BuildChoreProps(Parts parts)
         {
             TownContext town = parts.Town;
@@ -253,9 +294,14 @@ namespace Clube.Game
             Material m = parts.Material;
             float yaw = plan.Yaw;
 
-            // The game's own furnace and anvil in the yard beside the smithy (GL419): their models, not stations.
-            Copied(parts.FurnacePrefab, "Furnace", props, OnGround(plan, TownLayout.Furnace), yaw + 180f, town, true);
-            Copied(parts.AnvilPrefab, "Anvil", props, OnGround(plan, TownLayout.Anvil), yaw + 90f, town, true);
+            // The game's own furnace and anvil in the yard beside the smithy (GL419): their looks until the blacksmith's
+            // disposition reaches 25, then the real stations (GL472).
+            Disposition smith = parts.Post != null ? parts.Post.DispositionOf(ShopKind.Blacksmith) : new Disposition();
+            string keeper = BlacksmithName(parts);
+            GameObject furnace = Copied(parts.FurnacePrefab, "Furnace", props, OnGround(plan, TownLayout.Furnace), yaw + 180f, town, true);
+            furnace.AddComponent<TownStation>().Setup(parts.FurnacePrefab, smith, SmithyDisposition, keeper, "furnace");
+            GameObject anvil = Copied(parts.AnvilPrefab, "Anvil", props, OnGround(plan, TownLayout.Anvil), yaw + 90f, town, true);
+            anvil.AddComponent<TownStation>().Setup(parts.AnvilPrefab, smith, SmithyDisposition, keeper, "anvil");
 
             // The lumber keeper's seat by the woodpile (the woodpile and the trees are wood in the terrain, GL423).
             Model("Seat", props, TownMeshes.Stump(), m, OnGround(plan, TownLayout.Seat), yaw, town);
@@ -287,10 +333,12 @@ namespace Clube.Game
                 var root = new GameObject($"{name} mine").transform;
                 root.SetParent(shafts, false);
                 // The post stands just outside the middle of the stairwell's near side, its board facing out.
-                Vector2 corner = shaft.Head + new Vector2(0f, -(TownStructures.SpiralHalf + TownStructures.ShaftWidth * 0.5f + 0.35f));
+                // An open pit's post stands just past its rim (GL474), in daylight: no torches.
+                float signOffset = shaft.IsPit ? shaft.PitRadius + 0.6f : TownStructures.SpiralHalf + TownStructures.ShaftWidth * 0.5f + 0.35f;
+                Vector2 corner = shaft.Head + new Vector2(0f, -signOffset);
                 GameObject sign = Model("Sign", root, post, parts.Material, OnGround(plan, corner), plan.Yaw + 180f, town);
-                Text(sign.transform, $"{name} mine", new Vector3(0f, 1.62f, 0.03f), parts.TextMaterial, 0.03f);
-                if (parts.TorchPrefab == null)
+                Text(sign.transform, shaft.IsPit ? $"{name} pit" : $"{name} mine", new Vector3(0f, 1.62f, 0.03f), parts.TextMaterial, 0.03f);
+                if (parts.TorchPrefab == null || shaft.IsPit)
                 {
                     continue;
                 }
@@ -315,6 +363,102 @@ namespace Clube.Game
                     Torch(parts, root, at + new Vector3(outward.x, 0f, outward.y));
                 }
             }
+        }
+
+        // How many crates the cave holds, and how many kinds of valuables go in each (GL475).
+        private const int CaveCrates = 3;
+        private const int ValuablesPerCrate = 3;
+
+        // The secret cave (GL475; its room and tunnel are terrain, written by TownSite): crates of valuables from the shops
+        // against the far wall, one everlasting torch, and the thief between them and the way in.
+        private static void BuildCave(Parts parts)
+        {
+            TownContext town = parts.Town;
+            TownCave cave = town.Plan.Cave;
+            if (cave == null)
+            {
+                return;
+            }
+            var root = new GameObject("Secret cave").transform;
+            root.SetParent(town.Root, false);
+            Vector3 room = cave.Room;
+            var outward = new Vector3(cave.Outward.x, 0f, cave.Outward.y);
+            var across = new Vector3(-outward.z, 0f, outward.x);
+            float facingOut = Mathf.Atan2(outward.x, outward.z) * Mathf.Rad2Deg;
+
+            List<ItemPrice> valuables = Valuables(parts);
+            var random = new System.Random(town.Plan.Seed + 4751);
+            for (int i = 0; i < CaveCrates && parts.CratePrefab != null; i++)
+            {
+                // Spread round the far side of the room, each turned to face its middle.
+                float angle = (i - (CaveCrates - 1) * 0.5f) * 45f;
+                Vector3 towardsWall = Quaternion.Euler(0f, angle, 0f) * -outward;
+                Vector3 at = room + towardsWall * (TownCave.RoomRadius - 0.75f);
+                GameObject crate = Object.Instantiate(parts.CratePrefab, root);
+                crate.name = $"Cave crate {i + 1}";
+                crate.transform.SetPositionAndRotation(town.ToScene(at), town.SceneRotation(Mathf.Atan2(-towardsWall.x, -towardsWall.z) * Mathf.Rad2Deg));
+                if (crate.TryGetComponent(out PlacedObject placed))
+                {
+                    placed.Fixed = true;
+                    placed.Item = null;
+                }
+                if (!crate.TryGetComponent(out StorageChest chest))
+                {
+                    continue;
+                }
+                chest.MadeOf(1f);
+                for (int k = 0; k < ValuablesPerCrate && valuables.Count > 0; k++)
+                {
+                    ItemPrice valuable = valuables[(i * ValuablesPerCrate + k) % valuables.Count];
+                    chest.Storage.Add(valuable.Item, valuable.Lot * (1 + random.Next(3)));
+                }
+                parts.Post?.RegisterCrate(i, chest);
+            }
+
+            if (parts.TorchPrefab != null)
+            {
+                Torch(parts, root, room + across * (TownCave.RoomRadius - 0.5f));
+            }
+
+            var thiefObject = new GameObject("Thief");
+            thiefObject.transform.SetParent(root, false);
+            thiefObject.transform.SetPositionAndRotation(town.ToScene(room + outward * 0.4f - across * 0.6f), town.SceneRotation(facingOut));
+            thiefObject.AddComponent<KeeperFigure>().BuildThief(parts.Material, town.Plan.Seed + 475);
+            thiefObject.AddComponent<TownThief>();
+        }
+
+        // Goods worth hiding: not tools, buckets, torches, drinks or things to place (ingots, ore, bricks and the like).
+        private static bool IsValuable(ItemDefinition item)
+        {
+            return item != null && !(item is ToolDefinition) && !(item is BucketDefinition) && !(item is TorchDefinition)
+                && !(item is ConsumableDefinition) && !(item is PlaceableDefinition);
+        }
+
+        // The dearest goods the shops sell, one of each kind, dearest first (GL475: what the thief took).
+        private static List<ItemPrice> Valuables(Parts parts)
+        {
+            var best = new Dictionary<ItemDefinition, ItemPrice>();
+            foreach (ShopSpecialty shop in parts.Shops)
+            {
+                if (shop == null)
+                {
+                    continue;
+                }
+                foreach (ItemPrice offer in shop.Offers(parts.Prices))
+                {
+                    if (IsValuable(offer.Item) && (!best.TryGetValue(offer.Item, out ItemPrice had) || had.Coins < offer.Coins))
+                    {
+                        best[offer.Item] = offer;
+                    }
+                }
+            }
+            var list = new List<ItemPrice>(best.Values);
+            list.Sort((a, b) => (b.Coins / (float)b.Lot).CompareTo(a.Coins / (float)a.Lot));
+            if (list.Count > CaveCrates * ValuablesPerCrate)
+            {
+                list.RemoveRange(CaveCrates * ValuablesPerCrate, list.Count - CaveCrates * ValuablesPerCrate);
+            }
+            return list;
         }
 
         // One of the game's own torches, standing, that never burns out and can't be picked up (GL421).
