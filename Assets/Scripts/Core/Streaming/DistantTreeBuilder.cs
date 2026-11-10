@@ -260,6 +260,10 @@ namespace Clube.Core
                     continue;
                 }
                 Vector2Int cell = tile.Cells[i];
+                if (TreeForests.IsFallen(trees.Seed, cell, settings))
+                {
+                    continue;
+                }
                 float2 root = tile.Points[first];
                 tile.Trees.Add(new DistantTree(
                     new Vector3(root.x, ground, root.y),

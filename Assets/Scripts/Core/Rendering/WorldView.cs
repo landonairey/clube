@@ -90,7 +90,7 @@ namespace Clube.Core
         private ITerrainGenerator generator;
         private OreField ores;
         private TreeField trees;
-        private BoulderField boulders;
+        private IStampField boulders;
         private ChunkRendererPool renderers;
         private WorldStreamer streamer;
         private string terrainFingerprint;
@@ -417,7 +417,7 @@ namespace Clube.Core
                 generator = TerrainGenerators.Create(Config.Terrain);
                 ores = OreField.Create(Config.Terrain, generator);
                 trees = TreeField.Create(Config.Terrain, generator);
-                boulders = BoulderField.Create(Config.Terrain, generator, Config.VoxelSize);
+                boulders = StampFields.Combine(BoulderField.Create(Config.Terrain, generator, Config.VoxelSize), RiverDebris.Create(Config.Terrain, generator));
                 Problem = null;
             }
             catch (Exception exception) when (exception is InvalidOperationException || exception is ArgumentException)

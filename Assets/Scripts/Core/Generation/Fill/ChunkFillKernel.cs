@@ -234,7 +234,7 @@ namespace Clube.Core
                 {
                     float2 column = grid.Position(x, 0, z).xz;
                     if (!settings.Water.TryCell(column, out int cell) || (settings.Water.Kind[cell] == 0
-                        && settings.Water.LakeDistance[cell] > settings.Water.Banks.ShoreSand
+                        && settings.Water.LakeDistance[cell] > settings.Water.Banks.ShoreSand + WaterMap.ShoreJitter
                         && settings.Water.RiverDistance[cell] > settings.Water.Banks.BankClay))
                     {
                         continue;

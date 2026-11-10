@@ -173,7 +173,7 @@ namespace Clube.Core
         /// The tree parts and large boulders (GL342) reaching a chunk, as one array of parts stamped after the terrain (empty,
         /// not default, when there are none). Main thread only.
         /// </summary>
-        public static NativeArray<TreePart> CollectTrees(TreeField trees, BoulderField boulders, ChunkSampleGrid grid, Allocator allocator)
+        public static NativeArray<TreePart> CollectTrees(TreeField trees, IStampField boulders, ChunkSampleGrid grid, Allocator allocator)
         {
             if (boulders == null)
             {

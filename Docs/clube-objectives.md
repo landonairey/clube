@@ -834,11 +834,11 @@ GL250 (ambient wildlife).
 - [x] **GL502** Smelting yield also depends on fuel quality.
 
 **Batch 5 — Terrain**
-- [ ] **GL503** Rivers carved into the earth and full of running water, unbroken up into the mountains.
-- [ ] **GL504** Rocks and downed trunks draped across rivers.
-- [ ] **GL505** Fallen trees in forests (stump and logs, random cardinal directions, no leaves).
-- [ ] **GL506** Smoother sand-to-grass transitions.
-- [ ] **GL507** World 5× deeper into the ground.
+- [x] **GL503** Rivers carved into the earth and full of running water, unbroken up into the mountains. *(Done 2026-11-09: `Hydrology` sets a reach's water level from the ground under its centre line on eroded land, across the whole cross-section, so the bed is cut right across and the channel fills.)*
+- [x] **GL504** Rocks and downed trunks draped across rivers. *(Done 2026-11-09: `RiverDebris`, an `IStampField` beside `BoulderField`.)*
+- [x] **GL505** Fallen trees in forests (stump and logs, random cardinal directions, no leaves). *(Done 2026-11-09: `TreeForests.IsFallen` (12% of deep-forest trees), `TreeShape.BuildFallen`; far trees skip them.)*
+- [x] **GL506** Smoother sand-to-grass transitions. *(Done 2026-11-09: `WaterMap.ShoreJitter`, the sand edge wanders with noise.)*
+- [ ] **GL507** World 5× deeper into the ground. *(Not done 2026-11-09: needs absolute-y tuning checks (ore depths, towns, saves) and Play-mode timing; left for its own pass.)*
 
 **Batch 6 — Town and roads**
 - [ ] **GL508** Organic trading post layout: pick the site, place shops by their interests, then wall around them.
