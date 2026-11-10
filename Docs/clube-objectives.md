@@ -853,6 +853,31 @@ GL250 (ambient wildlife).
 - [x] **GL515** Bug: the tutorial auto-flags theft on spawn (leaves and stick in the inventory). *(Replaced by the new tutorial map, GL514.)*
 - [x] **GL516** Bug: "you don't own this land" while mining in the quarry. *(Replaced by the new tutorial map, GL514.)*
 
+### Playtest 2026-11-10 *(added 2026-11-10, from `Docs/backlogs/20261110 clube-backlog.md`; three batches: T1 and T2 tutorial, M menu and misc)*
+**T1 — Tutorial fixes** (`gl519/tutorial-fixes`)
+- [ ] **GL519** `Game` Typing your name for the crew lead no longer moves the player (character control off until the name is entered).
+- [ ] **GL520** `Game` No 3D grass or bushes spawn inside the mining corp building.
+- [ ] **GL521** `Game` Tutorial crates say "Do not take", can be opened, and only count as stealing when an item goes into the inventory; filled with various valuables. The crew lead says "And don't take anything that isn't yours".
+- [ ] **GL525** `Game` Handing in materials takes only materials, never tools.
+- [ ] **GL526** `Game` A sign on the back of the tutorial building: Mining Corp rules, "No Stealing", "Fill your quota".
+- [ ] **GL527** `Game` Skill levels suppressed in the tutorial: not shown, no xp earned.
+- [ ] **GL529** `Game` Climbing disabled in the tutorial.
+- [ ] **GL530** `Game` The player's name on their assigned bed.
+
+**T2 — Tutorial world and quota**
+- [ ] **GL522** `Game` The company pick can be replaced after it wears out (via the tool shed, GL533).
+- [ ] **GL528** `Game` Crew lead: "Report back to me if you find anything interesting" while mining; after an ore is found, "discuss the <Ore Name>" always answers "We don't care about any of that, we only do Stone here. Now get back to work."
+- [ ] **GL531** `Game` Other workers mining the mountain wall.
+- [ ] **GL532** `Game` A tall fence along the sides of the building, so the player can't reach the front.
+- [ ] **GL533** `Game` A tool shed with a "Tool Shed" sign: a new pickaxe after breaking one, only one carried at a time.
+- [ ] **GL534** `Game` Quota: 1024 Stone on day 1 before 17:00 or be kicked out; each day adds 1024 more.
+
+**M — Menu and misc**
+- [ ] **GL517** `Game` Title diorama: a mountain-edge shape with a river through it, fully generated trees, the real campfire flames plus smoke, all from the game's own terrain generation.
+- [ ] **GL518** `Game` Main menu buttons play their click sounds.
+- [ ] **GL523** `Game` The copper pick's 3D head is copper with green patina, matching its icon.
+- [ ] **GL524** `Game` A stack fills to its maximum before a new stack starts.
+
 ### Eroded landscape *(added 2026-11-03, from `Docs/backlogs/20261103j clube-backlog.md` — first pass of P12; branch `p12/eroded-landscape`)*
 - [x] **P12a** `Core + Debug` *(added 2026-11-03)* An eroded landscape generator after runevision's erosion filter: branching gullies and ridges as a filter on a heightfield, every point worked out on its own, so chunks, levels of detail and the water map agree. *(Done 2026-11-03: `ErosionFilter` + `ErosionSettings` (Generation/Noise, written from the blog's description: stripes blended from 4 x 4 cells, normalised gullies, stacked fading, straight gullies, ridge map), `ErodedLandscapeHeight` and the ErodedLandscape generator (`TerrainGeneratorType.ErodedLandscape`; Landscape's mask, warp, plains and distant ranges, with smooth massifs (`LandscapeHeight.WithSmoothMassifs`) in place of the ridged peaks). Learned on the way (height maps in `Docs/images/20261103 *`): on Landscape's ridged noise the gullies turned to noise (fine ridges) and seams (knife-edge crests flip the slope); clamped noise made flat plateaus with cliff edges; full-strength gullies from the plains up raised a cliff along every range's foot (gullies now deepen over the foothills); 35% of the mountains were over the player's 50° slope limit. With smooth massifs and strength 0.15: 15% (Landscape 8%), peaks at 131 m. Peaks rise by `PeakLift` 0.4 of the gully depth, so they stay inside the 160 m world. Lab panel: Erosion section. Tests: `ErodedLandscapeTests`. Benchmark: *Clube → Benchmarks → Heightfield generation*.)*
 - [x] **P12b** `Core` *(added 2026-11-03)* Rivers start in the eroded valleys and run down into lakes, ponds and other rivers. *(Done 2026-11-03: `HeightfieldGenerator.HasValleys`/`ScheduleValleys` (the ridge map of the biggest `ValleyOctaves` gullies); `Hydrology` on such ground routes water by steepest descent (it follows the gullies), starts a river where a valley is deeper than `WaterGeneration.ValleyDepth` and drains `ValleyHeadArea`, and carries it on downstream, so streams merge and pass through lakes; river beds there follow the ground instead of floating over steep gully floors. `ErosionSettings.MinPondArea` can keep small pits dry (0 by default). Mountain streams are still thin and broken in places on the 1 m map; the live flow carries their water down.)*
