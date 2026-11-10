@@ -376,6 +376,20 @@ namespace Clube.Core.Tests
             Assert.AreEqual(0.2f, second[1].Amount, 1e-4f, "...and the rest goes on to the next slot.");
         }
 
+        // GL524: a whole item added near a full stack tops it up to its max before a new stack starts.
+        [Test]
+        public void WholeItemNearAFullStack_FillsItBeforeStartingANewOne()
+        {
+            var inventory = new Inventory(3);
+            inventory.Add(ore, 9);
+            inventory.Add(ore, 0, null, 0, 1f, 0.88f);
+            int left = inventory.Add(ore, 1, null, 0, 1f, 0.49f);
+            Assert.AreEqual(0, left);
+            Assert.AreEqual(10f, inventory[0].Amount, 1e-4f, "The first stack fills to its max.");
+            Assert.AreEqual(1.37f, inventory[1].Amount, 1e-3f, "Only the rest starts a new stack.");
+            Assert.IsTrue(inventory[2].IsEmpty);
+        }
+
         // GL191: splitting a stack, and moving part of one onto another slot.
         [Test]
         public void Split_AndMoveACount()

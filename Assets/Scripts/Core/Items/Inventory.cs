@@ -107,6 +107,23 @@ namespace Clube.Core
                     left -= moved;
                 }
             }
+            // GL524: a stack holding a part (1023.88 of 1024) has under one item of room, which the whole items
+            // can't take; fill it with their first part before any new stack starts.
+            for (int i = 0; i < slots.Length && left > 0; i++)
+            {
+                float room = RoomFor(slots[i]);
+                if (room > ItemStack.PartEpsilon && room < 1f && Joins(slots[i], item, contents, quality, keepApart, anyQuality) && Fits(i, item))
+                {
+                    slots[i] = WithPart(BlendPart(slots[i], room, contents, quality), room, out _);
+                    left--;
+                    part += 1f - room;
+                    if (part >= 1f - ItemStack.PartEpsilon)
+                    {
+                        left++;
+                        part -= 1f;
+                    }
+                }
+            }
             for (int i = 0; i < slots.Length && left > 0; i++)
             {
                 if (slots[i].IsEmpty && Fits(i, item))

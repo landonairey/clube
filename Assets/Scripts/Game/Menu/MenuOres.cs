@@ -12,16 +12,19 @@ namespace Clube.Game
     public sealed class MenuOres
     {
         // The cut face of the 16 m block, and how far into it a node's centre sits (so a ball of ore shows on the face).
-        private const float Face = -8f;
-        private const float FaceInset = 0.2f;
+        private const float Face = -16f;
+        private const float FaceInset = 0.4f;
 
         private readonly World world;
         private readonly MaterialRegistry registry;
 
-        public MenuOres(World world, MaterialRegistry registry)
+        private readonly float top;
+
+        public MenuOres(World world, MaterialRegistry registry, float top)
         {
             this.world = world;
             this.registry = registry;
+            this.top = top;
         }
 
         /// <summary>Where the miner's tin node stands (set by <see cref="StampAll"/>).</summary>
@@ -31,7 +34,7 @@ namespace Clube.Game
         public float SurfaceAt(float x, float z)
         {
             float step = world.Grid.VoxelSize;
-            for (float y = 14f; y > 0f; y -= step)
+            for (float y = top - step; y > 0f; y -= step)
             {
                 float? density = world.GetDensity(world.Grid.WorldToNearestSample(new Vector3(x, y, z)));
                 if (density.HasValue && density.Value >= 0.5f)
@@ -43,28 +46,37 @@ namespace Clube.Game
         }
 
         /// <summary>Puts every ore, the surface tin and the stump in, measured down from <paramref name="ground"/>.</summary>
-        public void StampAll(float ground)
+        public void StampAll()
         {
             float z = Face + FaceInset;
-            Ball("Gold", new Vector3(2.4f, 1.5f, z), 1.4f);
-            Ball("Gold", new Vector3(-3.8f, 2.4f, z), 1.0f);
-            Ball("Silver", new Vector3(-0.8f, ground - 4.8f, z), 1.3f);
-            Ball("Chalcopyrite", new Vector3(3.6f, ground - 3.8f, z), 1.2f);
-            Ball("Malachite", new Vector3(-3.6f, ground - 3.0f, z), 1.1f);
-            Ball("Malachite", new Vector3(0.6f, ground - 3.2f, z), 0.8f);
-            Ball("Cassiterite", new Vector3(-1.8f, ground - 1.7f, z), 0.9f);
-            Ball("Cassiterite", new Vector3(5.2f, ground - 1.5f, z), 0.8f);
+            // Gold lowest, then silver, chalcopyrite, malachite and tin nearest the surface; each measured down from the
+            // ground at its own spot (the ground tilts: a mountain's edge).
+            DeepBall("Gold", 4.8f, 13f, z, 2.8f);
+            DeepBall("Gold", -7.6f, 11.5f, z, 2.0f);
+            DeepBall("Silver", -1.6f, 9.6f, z, 2.6f);
+            DeepBall("Chalcopyrite", 7.2f, 7.6f, z, 2.4f);
+            DeepBall("Malachite", -7.2f, 6f, z, 2.2f);
+            DeepBall("Malachite", 1.2f, 6.4f, z, 1.6f);
+            DeepBall("Cassiterite", -3.6f, 3.4f, z, 1.8f);
+            DeepBall("Cassiterite", 10.4f, 3f, z, 1.6f);
 
             // The miner's node: a lump of tin standing out of the grass.
-            float x = 2.2f;
-            float nodeZ = -3.4f;
-            TinOnSurface = new Vector3(x, SurfaceAt(x, nodeZ), nodeZ);
-            Ball("Cassiterite", TinOnSurface + Vector3.up * 0.1f, 0.55f, true);
+            TinOnSurface = new Vector3(TinX, SurfaceAt(TinX, TinZ), TinZ);
+            Ball("Cassiterite", TinOnSurface + Vector3.up * 0.2f, 1.1f, true);
 
             // The stump beside the fire, in the real stump material.
-            float stumpX = -3.4f;
-            float stumpZ = -4.2f;
-            Cylinder("Maple stump", new Vector3(stumpX, SurfaceAt(stumpX, stumpZ) - 0.3f, stumpZ), 0.65f, 1.2f);
+            float stumpX = -6.8f;
+            float stumpZ = -12f;
+            Cylinder("Maple stump", new Vector3(stumpX, SurfaceAt(stumpX, stumpZ) - 0.6f, stumpZ), 1.3f, 2.4f);
+        }
+
+        /// <summary>Where the miner's tin node stands (x, z).</summary>
+        public const float TinX = 4.4f;
+        public const float TinZ = -10f;
+
+        private void DeepBall(string material, float x, float depth, float z, float radius)
+        {
+            Ball(material, new Vector3(x, SurfaceAt(x, Face + 1f) - depth, z), radius);
         }
 
         // A ball of one material: its solid samples change material; with raise, air samples become ground too.

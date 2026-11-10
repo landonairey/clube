@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: MenuWorldConfig
   m_EditorClassIdentifier: Clube.Core::Clube.Core.WorldConfig
   chunkSize: {x: 16, y: 16, z: 16}
-  worldHeightInChunks: 3
+  worldHeightInChunks: 18
   sealEdges: 1
   fixedArea: 1
-  fixedAreaSize: 16
+  fixedAreaSize: 32
   voxelSize: 0.25
   isoLevel: 0.5
   edgePlacement: 0
@@ -28,11 +28,11 @@ MonoBehaviour:
   octreeMaxDepth: 4
   buildCellSize: 1
   terrain:
-    generator: 4
-    surfaceLevel: 8
-    amplitude: 0.7
-    frequency: 0.12
-    octaves: 4
+    generator: 8
+    surfaceLevel: 20
+    amplitude: 110
+    frequency: 0.048485477
+    octaves: 5
     lacunarity: 2
     persistence: 0.5
     shapes:
@@ -92,20 +92,13 @@ MonoBehaviour:
       Octaves: 5
       Lacunarity: 2
       Persistence: 0.5
-    - IsSet: 1
-      SurfaceLevel: 9
-      Amplitude: 0.7
-      Frequency: 0.12
-      Octaves: 5
-      Lacunarity: 2
-      Persistence: 0.5
-    shapeOwner: 4
-    seed: 512
+    shapeOwner: 8
+    seed: 475
     layers:
       top: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
       topDepth: 0.25
       band: {fileID: 11400000, guid: 0554987880d556d4cafb280d1242eb09, type: 2}
-      bandDepth: 2.5
+      bandDepth: 4
       baseMaterial: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
       steepAngle: 35
       steepMinHeight: 24
@@ -115,27 +108,95 @@ MonoBehaviour:
       ridgeFromAngle: 22
       ridgeFullAngle: 50
       rock: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
-      rockChance: 0
-      buriedStoneChance: 0
+      rockChance: 0.004
+      buriedStoneChance: 0.002
       clay: {fileID: 11400000, guid: b167c5abf07b4be419155d7e54a546e6, type: 2}
       clayCellSize: 24
-      clayChance: 0
+      clayChance: 0.3
       clayRadius: 3
       clayDepth: 0.75
     ores:
       cellSize: 16
-      ores: []
+      ores:
+      - ore: {fileID: 11400000, guid: fcb47a3195818b0449ad72b166340337, type: 2}
+        nodesPerCell: 1.5
+        minDepth: 0
+        maxDepth: 6
+        peakProbability: 0.6
+        spread: {x: 1.5, y: 1, z: 1.5}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        - {fileID: 11400000, guid: 0554987880d556d4cafb280d1242eb09, type: 2}
+        - {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
+        priority: 0
+        grade: {x: 0.25, y: 0.55}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents: []
+      - ore: {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
+        nodesPerCell: 1
+        minDepth: 4
+        maxDepth: 16
+        peakProbability: 0.6
+        spread: {x: 1.5, y: 1, z: 1.5}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: 0
+        grade: {x: 0.12, y: 0.3}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents:
+        - Material: {fileID: 11400000, guid: 7cbb344bf40f2c04bad682cdb7df7c8b, type: 2}
+          Min: 0
+          Max: 0.03
+      - ore: {fileID: 11400000, guid: 8d7e9d76247091549940794050b1d237, type: 2}
+        nodesPerCell: 1
+        minDepth: 4
+        maxDepth: 16
+        peakProbability: 0.6
+        spread: {x: 1.5, y: 1, z: 1.5}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: 0
+        grade: {x: 0.24, y: 0.6}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents:
+        - Material: {fileID: 11400000, guid: 7cbb344bf40f2c04bad682cdb7df7c8b, type: 2}
+          Min: 0
+          Max: 0.03
+      - ore: {fileID: 11400000, guid: 7cbb344bf40f2c04bad682cdb7df7c8b, type: 2}
+        nodesPerCell: 1
+        minDepth: 6
+        maxDepth: 20
+        peakProbability: 0.5
+        spread: {x: 1.2, y: 0.8, z: 1.2}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: 1
+        grade: {x: 0.15, y: 0.3}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents: []
+      - ore: {fileID: 11400000, guid: 028349ab45517db4984a7ae07bcf9347, type: 2}
+        nodesPerCell: 0.5
+        minDepth: 8
+        maxDepth: 24
+        peakProbability: 0.45
+        spread: {x: 1, y: 0.8, z: 1}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: 2
+        grade: {x: 0.15, y: 0.3}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents: []
     trees:
-      cellSize: 8
-      chance: 1
-      forestCover: 1
+      cellSize: 10
+      chance: 0.75
+      forestCover: 0.45
       forestScale: 300
-      fieldChance: 1
+      fieldChance: 0.03
       youngestSize: 0.45
       maxSlope: 12
-      height: {x: 3.5, y: 4.5}
+      height: {x: 11, y: 16}
       trunkRadius: 0.25
-      mapleHeight: {x: 3.5, y: 4.5}
+      mapleHeight: {x: 14, y: 20}
       mapleTrunkRadius: 0.4
       branches: {x: 3, y: 5}
       minBranchRadius: 0.22
@@ -149,13 +210,13 @@ MonoBehaviour:
       mapleStump: {fileID: 11400000, guid: d570f35c2c56a2c48a23a8e185f47289, type: 2}
       stumpHeight: 0.75
     startArea:
-      enabled: 0
+      enabled: 1
       min: {x: -32, y: 0}
       size: 32
       minTrees: 2
       clay: 1
     water:
-      enabled: 0
+      enabled: 1
       areaSize: 640
       flowCellSize: 4
       riverArea: 12000
