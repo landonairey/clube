@@ -847,7 +847,7 @@ GL250 (ambient wildlife).
 - [x] **GL511** Trade carts appear.
 
 **Batch 7 — Tutorial and title page**
-- [ ] **GL512** Title page diorama built from real world generation (trees, campfire, stump, ores).
+- [x] **GL512** Title page diorama built from real world generation (trees, campfire, stump, ores). *(Done 2026-11-10: `MenuDiorama` now shows a 16 m `MenuWorldConfig` area run by a real `WorldView`; `MenuOres` stamps the ores into its cut face.)*
 - [x] **GL513** Quest arrow over the crew lead and on the minimap when told to talk to them. *(Done 2026-11-10: `QuestArrow` over the lead at the talk step; `Minimap.Marker` draws a yellow square, held at the map's edge when far.)*
 - [x] **GL514** A separate tutorial map: a company warehouse (spawn behind it, dorm hall, crew lead's room with a crate, crates outside), name entry, working fields against a mountain on three sides, company pickaxe. *(Done 2026-11-10: the `Tutorial` scene, a copy of WorldLab on `TutorialWorldConfig` (a heightmap from `CompanyWork.Height`, written by *Clube → Tutorial → Build map*, `TutorialMapTools`); `CompanyWarehouse` built in code with `LockedDoor`s, beds (the bunk is a `SleepingRoll`) and `CompanyCrate`s; the name is typed for the lead and saved by `PlayerName` (`ISavedValues`); theft is only taking from a crate; caught, the world scene loads with the coins (`GameSession.CarriedCoins`).)*
 - [x] **GL515** Bug: the tutorial auto-flags theft on spawn (leaves and stick in the inventory). *(Replaced by the new tutorial map, GL514.)*

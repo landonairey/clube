@@ -247,6 +247,63 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!1 &691416620
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 691416622}
+  - component: {fileID: 691416621}
+  m_Layer: 0
+  m_Name: Menu world
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &691416621
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 691416620}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9cefe58c5492334ba9ecc434b7f67a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.WorldView
+  config: {fileID: 11400000, guid: 2c2479a6d1d6c0347a8c9d8f825a7459, type: 2}
+  chunkMaterials:
+  - {fileID: 2100000, guid: ae35e53838faf9a41b52f47d227d1236, type: 2}
+  focus: {fileID: 691416622}
+  renderDistance: 4
+  frameBudgetMilliseconds: 3
+  loadingBudgetMilliseconds: 8
+  farLoadingBudgetMilliseconds: 8
+  overlayRadius: 32
+  detailDistance: 0
+  maxJobsInFlight: 0
+  chunkColliders: 0
+  colliderRadius: 24
+--- !u!4 &691416622
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 691416620}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1861159259}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1689597848
 GameObject:
   m_ObjectHideFlags: 0
@@ -326,6 +383,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.MenuDiorama
   view: {fileID: 454366836}
+  world: {fileID: 691416621}
   material: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
   campfirePrefab: {fileID: 5762353483625990904, guid: c859784cae52d43499c37a1bf6a1e621, type: 3}
   shiftRight: 0.38
@@ -342,7 +400,8 @@ Transform:
   m_LocalPosition: {x: 0, y: -100, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 691416622}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807

@@ -720,3 +720,5 @@ starts behind it facing the lead (`PlayerController.LookTowards`) and types a na
 `PlayerName`); at the talk step a `QuestArrow` bobs over the lead and `Minimap.Marker` marks him. With no parcels the whole map
 is minable (GL516), and theft is only taking from a `CompanyCrate`, never what's held (GL515). Caught, the inventory is emptied
 and WorldLab loads as a new game, with the wages carried in `GameSession.CarriedCoins`. Tests: `CompanyWorkTests`.
+
+Title page from real world generation (GL512, branch `gl512/title-worldgen`): `MenuDiorama` no longer builds boxes; the MainMenu scene has a `WorldView` on `MenuWorldConfig` (16 m fixed area, 3 chunk layers, seed 512, sealed faces so it reads cut open, small trees, no water/ores of its own), so the grass, dirt, stone, trees, boulders and fallen log are the game's own. When it has loaded, `MenuOres` (Game/Menu) stamps ore balls through `World.SetMaterial` into the cut face (gold at the bottom, then silver, chalcopyrite, malachite, tin) plus a raised tin lump and a stump (`World.SetDensity`); the campfire and the mining `KeeperFigure` are placed on the measured ground. Camera framing and menu layout are unchanged.
