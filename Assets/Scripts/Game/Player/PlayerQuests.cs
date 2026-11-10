@@ -34,11 +34,11 @@ namespace Clube.Game
         {
             ["pick-up-stone"] = "Loose stones on the surface can be collected by hand; hard rock stone needs a tool to gather.",
             ["hand-axe"] = "With a stone selected in the hotbar, right click a boulder to shape it into a hand axe.",
-            ["gather-wood"] = "Use the hand axe to cut down a birch tree. Maple trees need a better tool.",
+            ["gather-wood"] = "Use the hand axe to cut down a birch tree. Maple trees need a better tool. Climb trees by holding SPACE to cut off smaller sections of limbs. As your Woodcutting level increases so does your tree cutting yield.",
             ["campfire"] = "Raise your Crafting skill by making more hand axes or crafting at the stump, then build a campfire at the stump.",
             ["first-ore"] = "Tin ore shows at the surface; gather it with a tool. Shovels clear soft dirt and grass best, the stone pick works hard ore.",
             ["smelt-bun"] = "Use the campfire, with fuel, to smelt the tin ore.",
-            ["bronze"] = "Copper ore is buried below the surface; dig for it with tools. If you get stuck, you can climb out of a hole.",
+            ["bronze"] = "Copper ore is buried below the surface; dig for it with tools. If you get stuck, you can climb out of a hole by holding SPACE.",
             ["flat-rock"] = "Use the chisel to carve a level 3 x 3 working area on solid stone.",
         };
 

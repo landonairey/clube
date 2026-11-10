@@ -804,16 +804,16 @@ GL250 (ambient wildlife).
 
 ### Playtest 2026-11-09 *(added 2026-11-09, from `Docs/backlogs/20261109c clube-backlog.md`; seven batches, one branch and PR each)*
 **Batch 1 — Quick fixes** (`gl481/quick-fixes`)
-- [ ] **GL481** `Game` Crafting station recipes sorted by unlock level, then the current order within a level.
-- [ ] **GL482** `Game` The left bracket of the quest items box is no longer clipped.
-- [ ] **GL483** `Game` The "climb out of the hole" text says to press SPACE.
-- [ ] **GL484** `Game` Tip on the tree quest: hold SPACE to climb and cut limbs; Woodcutting level raises the yield.
-- [ ] **GL485** `Game` Crushing ore shows the prospect grade name (per Prospecting level), not the exact quality %.
-- [ ] **GL486** `Game` The orange refine text fades fast enough to be gone before the next, while refining a held stack.
-- [ ] **GL487** `Game` Stone can be refined on a boulder (hand axe still possible).
-- [ ] **GL488** `Game` "Saw oak boards" and "Saw maple boards" at the stump worktop.
-- [ ] **GL489** `Game` The merchant table is no longer placed on the starting parcel (stays in the debug cheats).
-- [ ] **GL490** `Debug` Free camera default speed and shift multiplier doubled.
+- [x] **GL481** `Game` Crafting station recipes sorted by unlock level, then the current order within a level.
+- [x] **GL482** `Game` The left bracket of the quest items box is no longer clipped.
+- [x] **GL483** `Game` The "climb out of the hole" text says to press SPACE.
+- [x] **GL484** `Game` Tip on the tree quest: hold SPACE to climb and cut limbs; Woodcutting level raises the yield.
+- [x] **GL485** `Game` Crushing ore shows the prospect grade name (per Prospecting level), not the exact quality %.
+- [x] **GL486** `Game` The orange refine text fades fast enough to be gone before the next, while refining a held stack.
+- [x] **GL487** `Game` Stone can be refined on a boulder (hand axe still possible).
+- [x] **GL488** `Game` "Saw oak boards" and "Saw maple boards" at the stump worktop.
+- [x] **GL489** `Game` The merchant table is no longer placed on the starting parcel (stays in the debug cheats).
+- [x] **GL490** `Debug` Free camera default speed and shift multiplier doubled.
 
 **Batch 2 — Sounds and effects**
 - [ ] **GL491** Menu button clicks; Back buttons pitched slightly down.

@@ -21,11 +21,11 @@ namespace Clube.Debug
 
         [Tooltip("Base movement speed in world units per second.")]
         [SerializeField, Min(0.01f)]
-        private float moveSpeed = 3f;
+        private float moveSpeed = 6f;
 
         [Tooltip("Speed multiplier while Shift is held.")]
         [SerializeField, Min(1f)]
-        private float fastMultiplier = 4f;
+        private float fastMultiplier = 8f;
 
         [Tooltip("Degrees of rotation per pixel of mouse movement.")]
         [SerializeField, Min(0f)]
