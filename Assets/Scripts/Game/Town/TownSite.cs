@@ -431,11 +431,14 @@ namespace Clube.Game
             }
             if (Plan.Cave != null)
             {
-                // The cave's tunnel opens outside the wall (GL475).
-                foreach (Vector3 point in Plan.Cave.Tunnel)
+                // The cave's tunnels reach the parcel's faces (GL509).
+                foreach (List<Vector3> tunnel in Plan.Cave.Tunnels)
                 {
-                    area = Rect.MinMaxRect(Mathf.Min(area.xMin, point.x - 2f), Mathf.Min(area.yMin, point.z - 2f),
-                        Mathf.Max(area.xMax, point.x + 2f), Mathf.Max(area.yMax, point.z + 2f));
+                    foreach (Vector3 point in tunnel)
+                    {
+                        area = Rect.MinMaxRect(Mathf.Min(area.xMin, point.x - 2f), Mathf.Min(area.yMin, point.z - 2f),
+                            Mathf.Max(area.xMax, point.x + 2f), Mathf.Max(area.yMax, point.z + 2f));
+                    }
                 }
             }
             return area;
