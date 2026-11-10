@@ -54,6 +54,9 @@ namespace Clube.Game
 
         public bool IsOpen { get; private set; }
 
+        /// <summary>While true the log cannot be opened (the tutorial has no journals yet, GL540).</summary>
+        public bool Blocked { get; set; }
+
         /// <summary>The key that opens and closes the log (Q); the inventory switches to the log on it (GL384).</summary>
         public InputAction ToggleAction => toggleAction != null ? toggleAction.action : null;
 
@@ -85,6 +88,10 @@ namespace Clube.Game
 
         private void Update()
         {
+            if (Blocked)
+            {
+                return;
+            }
             if (player != null && !player.enabled)
             {
                 return;
