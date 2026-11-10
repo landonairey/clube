@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Brick mix
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
   id: brick-mix
-  displayName: Brick mix
+  displayName: Firebrick mix
   icon: {fileID: 2800000, guid: 69b43d3ea95062640a185d5d7db450a1, type: 3}
   maxStack: 256
   unitVolume: 1

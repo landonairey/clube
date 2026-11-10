@@ -6276,6 +6276,7 @@ GameObject:
   - component: {fileID: 1697135608}
   - component: {fileID: 1697135609}
   - component: {fileID: 1697135610}
+  - component: {fileID: 1697135611}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -6755,6 +6756,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3b915b6e75ae6fe4883f76455350ed82, type: 2}
   - {fileID: 11400000, guid: d60685b224db7664a9af1c897162e558, type: 2}
   - {fileID: 11400000, guid: 6e1d0ec0bd2d48440b2b96a163e7b96b, type: 2}
+  - {fileID: 11400000, guid: 0ce319f9af19832499bb1b6d96511e3b, type: 2}
+  - {fileID: 11400000, guid: 2f2e8808d61f59549a0331d7d86525b1, type: 2}
+  - {fileID: 11400000, guid: 08594d0fdd8ba66419aaffeb6ae837d5, type: 2}
   kinds:
   - Material: {fileID: 11400000, guid: a7a179311785ad14bab47c68162a300f, type: 2}
     Name: Flat Rock
@@ -6949,6 +6953,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 8631d3965ce9c6242a9e08353f96e6c7, type: 2}
   - {fileID: 11400000, guid: d60685b224db7664a9af1c897162e558, type: 2}
   - {fileID: 11400000, guid: 6e1d0ec0bd2d48440b2b96a163e7b96b, type: 2}
+  - {fileID: 11400000, guid: 0ce319f9af19832499bb1b6d96511e3b, type: 2}
+  - {fileID: 11400000, guid: 2f2e8808d61f59549a0331d7d86525b1, type: 2}
+  - {fileID: 11400000, guid: 08594d0fdd8ba66419aaffeb6ae837d5, type: 2}
 --- !u!114 &1697135589
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7010,6 +7017,8 @@ MonoBehaviour:
   boulderMaterials:
   - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
   - {fileID: 11400000, guid: 5004c68df5599dd4fa11f8a4d8b920fd, type: 2}
+  flatRock: {fileID: 11400000, guid: a7a179311785ad14bab47c68162a300f, type: 2}
+  flatRockBatches: 2
   loosePieceSize: 3
   stone: {fileID: 11400000, guid: 2c26c5c4f4a60ca449a71671d88094ad, type: 2}
   handAxe: {fileID: 11400000, guid: a56a1ea3071fb444faf3aa4d3fba77a8, type: 2}
@@ -7380,6 +7389,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c2e80bbb435f750458c8c4918e5b17ae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerVolumeLedger
+--- !u!114 &1697135611
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c69ed2e521606ce44abacee1ac4e00d9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerConsumables
+  placeAction: {fileID: 9082728051176153063, guid: 052faaac586de48259a63d0c4782560b, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

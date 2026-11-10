@@ -459,6 +459,40 @@ namespace Clube.Debug.Editor
         private static readonly Color Lashing = new Color(0.78f, 0.68f, 0.45f);
 
         // A plain stick, slightly bent, with a knot.
+        /// <summary>Writes only the coffee icon (GL456), leaving the rest as they are.</summary>
+        [MenuItem("Clube/Items/Generate coffee icon")]
+        public static void GenerateCoffeeIcon()
+        {
+            Write("coffee", "Coffee", PaintCoffee());
+            AssetDatabase.SaveAssets();
+        }
+
+        // A mug of coffee with a handle and a curl of steam (GL456).
+        private static Texture2D PaintCoffee()
+        {
+            Texture2D texture = Blank();
+            var mug = new Color(0.9f, 0.88f, 0.82f);
+            var shade = new Color(0.72f, 0.7f, 0.65f);
+            var coffee = new Color(0.32f, 0.2f, 0.12f);
+            FillQuad(texture, new Vector2(16f, 10f), new Vector2(44f, 10f), new Vector2(46f, 42f), new Vector2(14f, 42f), mug);
+            FillQuad(texture, new Vector2(36f, 10f), new Vector2(44f, 10f), new Vector2(46f, 42f), new Vector2(38f, 42f), shade);
+            FillQuad(texture, new Vector2(15f, 38f), new Vector2(45f, 38f), new Vector2(45f, 42f), new Vector2(15f, 42f), coffee);
+            // The handle: a ring on the right side.
+            for (int i = 0; i < 16; i++)
+            {
+                float a = Mathf.Lerp(-1.4f, 1.4f, i / 15f), b = Mathf.Lerp(-1.4f, 1.4f, (i + 1) / 15f);
+                Line(texture, new Vector2(46f + 8f * Mathf.Cos(a), 26f + 9f * Mathf.Sin(a)), new Vector2(46f + 8f * Mathf.Cos(b), 26f + 9f * Mathf.Sin(b)), 2.4f, mug);
+            }
+            // Steam.
+            Line(texture, new Vector2(24f, 46f), new Vector2(21f, 52f), 1.4f, new Color(0.85f, 0.85f, 0.85f, 0.8f));
+            Line(texture, new Vector2(21f, 52f), new Vector2(25f, 58f), 1.4f, new Color(0.85f, 0.85f, 0.85f, 0.7f));
+            Line(texture, new Vector2(34f, 46f), new Vector2(31f, 53f), 1.4f, new Color(0.85f, 0.85f, 0.85f, 0.8f));
+            Line(texture, new Vector2(31f, 53f), new Vector2(35f, 59f), 1.4f, new Color(0.85f, 0.85f, 0.85f, 0.7f));
+            Outline(texture, new Color(0.12f, 0.12f, 0.14f));
+            texture.Apply();
+            return texture;
+        }
+
         private static Texture2D PaintStick()
         {
             Texture2D texture = Blank();

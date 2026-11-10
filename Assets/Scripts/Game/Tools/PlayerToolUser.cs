@@ -67,6 +67,7 @@ namespace Clube.Game
         private readonly List<ItemDefinition> collected = new List<ItemDefinition>();
         private readonly List<MinedSample> minedFrom = new List<MinedSample>();
         private PlayerController player;
+        private PlayerConsumables consumables;
         private PlayerInteractor interactor;
         private PlayerParcels parcels;
         private OreKnowledge knowledge;
@@ -169,6 +170,7 @@ namespace Clube.Game
         private void Awake()
         {
             player = GetComponent<PlayerController>();
+            consumables = GetComponent<PlayerConsumables>();
             interactor = GetComponent<PlayerInteractor>();
             parcels = GetComponent<PlayerParcels>();
             knowledge = GetComponent<OreKnowledge>();
@@ -483,7 +485,7 @@ namespace Clube.Game
         /// </summary>
         public float CooldownFor(ToolDefinition tool)
         {
-            return ToolCooldown.SecondsFor(tool == hand, Hour);
+            return ToolCooldown.SecondsFor(tool == hand, Hour, consumables != null ? consumables.CooldownShare : 1f);
         }
 
         /// <summary>True at dawn, when tools are quicker (the early bird's bonus, GL270).</summary>

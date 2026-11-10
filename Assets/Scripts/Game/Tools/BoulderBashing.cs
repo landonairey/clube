@@ -46,6 +46,14 @@ namespace Clube.Game
         [SerializeField]
         private List<VoxelMaterial> boulderMaterials = new List<VoxelMaterial>();
 
+        [Tooltip("The flat rock (GL454): crushing and refining work on it too, two batches a cycle.")]
+        [SerializeField]
+        private VoxelMaterial flatRock;
+
+        [Tooltip("How many batches a cycle on the flat rock (GL454): the boulder does one.")]
+        [SerializeField, Min(1)]
+        private int flatRockBatches = 2;
+
         [Tooltip("The largest piece of boulder material that counts as a loose stone, not a boulder (GL149).")]
         [SerializeField, Range(1, 32)]
         private int loosePieceSize = 3;
@@ -167,23 +175,28 @@ namespace Clube.Game
             if (refineProgress >= secondsPerVolume)
             {
                 refineProgress = 0f;
-                if (crushing)
+                // The flat rock works twice the batch of a boulder (GL454).
+                int batches = AimsAtFlatRock() ? flatRockBatches : 1;
+                for (int batch = 0; batch < batches; batch++)
                 {
-                    Bash();
-                }
-                else
-                {
-                    RefinePass(slot);
+                    if (crushing ? !Bash() : !RefinePass(slot))
+                    {
+                        break;
+                    }
                 }
             }
         }
 
-        // One pass: the stack keeps its slot, smaller and purer; what came out goes back as stacks of its own materials.
-        private void RefinePass(int slot)
+        // One pass, false when there was nothing to refine or nothing is left: the stack keeps its slot, smaller and purer; what came out goes back as stacks of its own materials.
+        private bool RefinePass(int slot)
         {
             Inventory items = inventory.Inventory;
             MaterialRegistry materials = worldView.Config.Materials;
             ItemStack held = items[slot];
+            if (held.IsEmpty || !Refining.CanRefine(held, materials))
+            {
+                return false;
+            }
             pickedOut.Clear();
             ItemStack refined = Refining.Pass(held, materials, refineVolume, pickedOut, UnityEngine.Random.value, UnityEngine.Random.value, out bool failed);
             // Crushed ore is prospecting work (GL388); anything else picked over is crafting.
@@ -194,7 +207,7 @@ namespace Clube.Game
             {
                 // The purer the stack, the more passes find nothing to pick out (GL386).
                 Message?.Invoke($"Found nothing to pick out of the {held.Item.DisplayName.ToLowerInvariant()} ({QualityText.Percent(held.Quality)})");
-                return;
+                return true;
             }
             items.Replace(slot, refined);
             foreach (Content picked in pickedOut)
@@ -216,6 +229,7 @@ namespace Clube.Game
             Message?.Invoke(refined.IsEmpty
                 ? $"Nothing of the {held.Item.DisplayName.ToLowerInvariant()} was left"
                 : $"Picked over the {held.Item.DisplayName.ToLowerInvariant()}: {QualityText.Percent(refined.Quality)} now");
+            return !refined.IsEmpty;
         }
 
         // The crushed item for a raw ore, from the crush table; the item itself when it has none (stone).
@@ -355,6 +369,23 @@ namespace Clube.Game
             return TryGetAimedBoulder(out _);
         }
 
+        // Boulder material, or the flat rock (GL454).
+        private bool IsWorkSurface(VoxelMaterial material)
+        {
+            return material != null && (boulderMaterials.Contains(material) || material == flatRock);
+        }
+
+        // The crosshair on the flat rock (GL454), where crushing and refining go two batches a cycle.
+        private bool AimsAtFlatRock()
+        {
+            if (flatRock == null || !TryGetAimedBoulder(out Vector3Int sample))
+            {
+                return false;
+            }
+            byte? id = worldView.World.GetMaterial(sample);
+            return id.HasValue && worldView.Config.Materials.Get(id.Value) == flatRock;
+        }
+
         /// <summary>
         /// The boulder sample under the crosshair within reach (boulder material in a piece too big to be a loose stone), for
         /// the interact outline (GL368); false when the crosshair isn't on one.
@@ -380,7 +411,7 @@ namespace Clube.Game
                 Vector3Int sample = voxel + new Vector3Int(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1);
                 float? density = world.GetDensity(sample);
                 byte? id = world.GetMaterial(sample);
-                if (!density.HasValue || density.Value < iso || !id.HasValue || materials == null || !boulderMaterials.Contains(materials.Get(id.Value)))
+                if (!density.HasValue || density.Value < iso || !id.HasValue || materials == null || !IsWorkSurface(materials.Get(id.Value)))
                 {
                     continue;
                 }

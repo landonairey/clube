@@ -30,10 +30,13 @@ namespace Clube.Core
             return h >= DawnFrom && h < DawnTo;
         }
 
-        /// <summary>Seconds to wait after a use, with bare hands or a tool, at an hour of the day.</summary>
-        public static float SecondsFor(bool hands, float hour)
+        /// <summary>
+        /// Seconds to wait after a use, with bare hands or a tool, at an hour of the day; <paramref name="boost"/> is a share
+        /// from a drink on top (GL456: coffee, 0.75).
+        /// </summary>
+        public static float SecondsFor(bool hands, float hour, float boost = 1f)
         {
-            return Seconds * (hands ? HandShare : 1f) * (IsDawn(hour) ? DawnShare : 1f);
+            return Seconds * (hands ? HandShare : 1f) * (IsDawn(hour) ? DawnShare : 1f) * Mathf.Clamp(boost, 0.1f, 1f);
         }
     }
 }
