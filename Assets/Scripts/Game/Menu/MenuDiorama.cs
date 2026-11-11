@@ -33,7 +33,7 @@ namespace Clube.Game
         [SerializeField, Range(0f, 1f)]
         private float shiftRight = 0.38f;
 
-        [Tooltip("Degrees a minute the block turns back and forth, so it never sits quite still.")]
+        [Tooltip("Degrees the camera swings round the block back and forth, so it never sits quite still.")]
         [SerializeField, Min(0f)]
         private float sway = 4f;
 
@@ -44,7 +44,6 @@ namespace Clube.Game
         private Transform block;
         private Light fireLight;
         private FlameCluster flame;
-        private float lastAspect;
         private bool dressed;
         private float frameHeight = 26f;
         private float frameCentreY = 36f;
@@ -75,8 +74,9 @@ namespace Clube.Game
                 dressed = true;
                 Dress();
             }
-            block.localRotation = Quaternion.Euler(0f, Mathf.Sin(Time.time * 0.12f) * sway, 0f);
-            if (view != null && !Mathf.Approximately(view.aspect, lastAspect))
+            // The camera swings round the block rather than the block turning: the terrain shader's textures and ore glints
+            // are in world space, so a turning block made them slide over the ground and the ore nodes look fixed.
+            if (view != null)
             {
                 Frame();
             }
@@ -111,20 +111,19 @@ namespace Clube.Game
             frameCentreY = low + (high - low) * 0.5f + 1f;
             frameHeight = Mathf.Max(22f * scale, (high - low) * 0.7f + 14f);
             UnityEngine.Debug.Log($"MenuDiorama: ground {low:0.0}-{high:0.0} m, framing {frameCentreY:0.0} +- {frameHeight:0.0}");
+            ores.StripSoilFromSkirt();
             ores.StampAll();
             Vector3 tin = ores.TinOnSurface;
             Vector2 fire = new Vector2(-1.5f * scale, -half + 5.5f);
             BuildCampfire(new Vector3(fire.x, ores.SurfaceAt(fire.x, fire.y), fire.y));
             BuildMiner(new Vector3(tin.x, ores.SurfaceAt(tin.x, tin.z + 2.2f), tin.z + 2.2f));
-            lastAspect = 0f;
         }
 
         // Points the camera down at the block from the front, then slides it so the block sits right of the menu.
         private void Frame()
         {
-            lastAspect = view.aspect;
             var centre = new Vector3(0f, frameCentreY, 0f);
-            Vector3 from = Quaternion.Euler(cameraPitch, -22f, 0f) * Vector3.back;
+            Vector3 from = Quaternion.Euler(cameraPitch, -22f + Mathf.Sin(Time.time * 0.12f) * sway, 0f) * Vector3.back;
             float halfHeight = Mathf.Tan(view.fieldOfView * 0.5f * Mathf.Deg2Rad);
             // Far enough for the block (and its trees) to fill about two thirds of the screen's height.
             float distance = frameHeight * 1.35f / halfHeight;
