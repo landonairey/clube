@@ -915,9 +915,9 @@ GL250 (ambient wildlife).
 - [ ] **GL551** `Game` Tutorial workers sleep in their beds inside.
 - [ ] **GL552** `Game` Workers get the player's mining sounds, particles and tool-area effects, and walk between spots (no teleporting).
 - [ ] **GL556** `Game` By day 4–5 the workers stop advancing along the wall: fix.
-- [ ] **GL557** `Game` The stone at the foot of the tutorial mountain wall still gives grass particles and grass items: make the material really stone.
+- [x] **GL557** `Game` The stone at the foot of the tutorial mountain wall still gives grass particles and grass items: make the material really stone.
 - [ ] **GL558** `Game` Crafting menu: the input amount as "have/recipe" (e.g. "90.74/1") at the bottom of the input item slot.
-- [ ] **GL559** `Game` River trout missing: no jumps, no sound.
+- [x] **GL559** `Game` River trout missing: no jumps, no sound.
 - [ ] **GL560** `Game` FPS drops to 20–30 after roaming (35 at render distance 8): find and fix the bottlenecks.
 - [ ] **GL561** `Game` Shovel 3D model becomes a spade, matching its icon.
 - [ ] **GL562** `Game` Refining on a rock shows the % quality before Prospecting unlocks it: hide it.
@@ -927,7 +927,7 @@ GL250 (ambient wildlife).
 - [x] **GL568** `Game` Tip after gathering wood: raise Crafting toward the campfire by making sticks at a Stump or hand axes on a boulder.
 - [x] **GL569** `Game` Tip after building a campfire: raise Crafting to unlock tools.
 - [ ] **GL570** `Game` Bridges where roads cross rivers: two small cobblestone footings, maple boards across, the parcel fences as side rails (with colliders).
-- [ ] **GL571** `Game` Crushed stone: POOR–PURE grades, a crushed-stone texture, and droppable on the ground, piling and falling like sand.
+- [x] **GL571** `Game` Crushed stone: POOR–PURE grades, a crushed-stone texture, and droppable on the ground, piling and falling like sand.
 - [x] **GL572** `Game` The Prospecting level 1 message says you can now see the second item in a material mix.
 - [x] **GL573** `Game` Skills notebook tab in the journals: one chapter per skill, listing what's unlocked so far and a preview of the next level only.
 - [ ] **GL574** `Game` Non-primary components in a mix: Dominant ≥50%, Abundant 25–49%, Moderate 10–24%, Minor 1–9%, Trace <1%, uncoloured (the primary keeps its grade).
