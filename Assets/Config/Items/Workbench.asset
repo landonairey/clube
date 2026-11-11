@@ -21,3 +21,4 @@ MonoBehaviour:
   purityAs: {fileID: 0}
   hidesContents: 0
   prefab: {fileID: 5762353483625990904, guid: 3e40ac4be8479954da25669e0f71c38d, type: 3}
+  dropsMix: 1

@@ -34,7 +34,8 @@ namespace Clube.Game
         /// <summary>True when a stack's shares read as grades, not numbers (GL457): a gathered mix below Prospecting 10.</summary>
         public static bool ReadsAsGrades(ItemStack stack)
         {
-            return !stack.IsEmpty && stack.Contents != null && ProspectingLevel < ProspectReading.ExactLevel;
+            // Better than ordinary (maple, GL151) reads as a grade too (GL564): above 100% is PURE, not "140%".
+            return !stack.IsEmpty && (stack.Contents != null || stack.Quality > 1.005f) && ProspectingLevel < ProspectReading.ExactLevel;
         }
 
         // Every stack shows how well it was made, in the upper right, 100% included (GL158): its quality

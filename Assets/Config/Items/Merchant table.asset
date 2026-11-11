@@ -17,3 +17,4 @@ MonoBehaviour:
   icon: {fileID: 2800000, guid: 39c2093e8dfc9da4fa309d1a4775ec5c, type: 3}
   maxStack: 1
   prefab: {fileID: 1496179932686027658, guid: 2c8f8540ab1a5e143af6ed63263d7486, type: 3}
+  dropsMix: 1

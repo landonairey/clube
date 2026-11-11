@@ -314,7 +314,9 @@ namespace Clube.Game
                 int read = ProspectReading.ComponentsRead(ItemSlotGui.ProspectingLevel);
                 for (int i = 0; i < parts.Count; i++)
                 {
-                    text += i < read ? $"\n{GradeText(parts[i].Fraction)} {parts[i].Material.DisplayName}" : "\n? ?";
+                    // The primary keeps its grade; the rest read as how big a part they are, uncoloured (GL574).
+                    string share = i == 0 ? GradeText(parts[i].Fraction) : ProspectReading.ShareWord(parts[i].Fraction);
+                    text += i < read ? $"\n{share} {parts[i].Material.DisplayName}" : "\n? ?";
                 }
             }
             else

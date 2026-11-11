@@ -16,6 +16,20 @@ namespace Clube.Core
 
         public GameObject Prefab => prefab;
 
+        [Tooltip("Crafting it leaves out what its inputs were made of (GL563): a crate carries no \"0.1% leaves\". Off for furnaces, whose quality is their clay's mix.")]
+        [SerializeField]
+        private bool dropsMix;
+
+        /// <summary>True when what its inputs were made of means nothing in it and is not passed on (GL563).</summary>
+        public bool DropsMix => dropsMix;
+
+        /// <summary>Sets <see cref="DropsMix"/>, for items made in code (tests).</summary>
+        public PlaceableDefinition WithDropsMix(bool drops = true)
+        {
+            dropsMix = drops;
+            return this;
+        }
+
         /// <summary>Makes a placeable in code (tests); the game's are assets.</summary>
         public static PlaceableDefinition Create(string id, string displayName)
         {
