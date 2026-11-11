@@ -479,7 +479,8 @@ namespace Clube.Core.Tests
         public void WakeChunk_WakesOnlyWaterThatCanMove()
         {
             // The lake chunk woken again (as when it streams back in with edits): its wet samples wake, its dry land
-            // doesn't (GL560).
+            // doesn't (GL560). Counted in the chunk itself: its border samples are the unloaded neighbours' to the world.
+            Assert.That(world.TryGetChunk(Vector3Int.zero, out Chunk chunk));
             int wet = 0;
             for (int z = 0; z <= 8; z++)
             {
@@ -487,7 +488,7 @@ namespace Clube.Core.Tests
                 {
                     for (int x = 0; x <= 8; x++)
                     {
-                        wet += At(x, y, z) > 0f ? 1 : 0;
+                        wet += chunk.GetWater(new Vector3Int(x, y, z)) > 0f ? 1 : 0;
                     }
                 }
             }
