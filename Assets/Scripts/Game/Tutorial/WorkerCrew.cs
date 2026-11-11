@@ -36,6 +36,9 @@ namespace Clube.Game
         private const float StepUpSpeed = 3f;
         private const float Gravity = 20f;
         private const float MaxFall = 25f;
+        // GL586: a digger with no strike landing on rock for this long re-plans.
+        private const float StallSeconds = 8f;
+        private const int ReplanLookAhead = 12;
 
         private sealed class Worker
         {
@@ -56,6 +59,7 @@ namespace Clube.Game
             public Vector3[] Route;
             public int RouteAt;
             public float Fall;
+            public StallTimer Stall;
         }
 
         private Worker[] workers;
@@ -297,6 +301,7 @@ namespace Clube.Game
                         w.Swings = 0;
                         w.Clear = 0;
                         w.LastBeat = w.Figure.MineBeat;
+                        w.Stall.Reset();
                     }
                     break;
                 case Phase.ToSpot:
@@ -306,6 +311,7 @@ namespace Clube.Game
                         w.Swings = 0;
                         w.Clear = 0;
                         w.LastBeat = w.Figure.MineBeat;
+                        w.Stall.Reset();
                     }
                     break;
                 case Phase.Work:
@@ -350,6 +356,11 @@ namespace Clube.Game
                 return;
             }
             w.Figure.Pose = KeeperPose.Mine;
+            if (w.Stall.Tick(dt, StallSeconds))
+            {
+                Replan(w);
+                return;
+            }
             t.localRotation = Quaternion.RotateTowards(t.localRotation, Quaternion.identity, TurnSpeed * dt);
             float beat = w.Figure.MineBeat;
             bool landed = (w.LastBeat < KeeperFigure.MineImpact && beat >= KeeperFigure.MineImpact);
@@ -384,6 +395,7 @@ namespace Clube.Game
                 return;
             }
             w.Clear = 0;
+            w.Stall.Reset();
             Strikes++;
             MaterialRegistry materials = world.Config.Materials;
             float iso = world.Config.IsoLevel;
@@ -426,6 +438,33 @@ namespace Clube.Game
             w.Pass = pass;
             w.Figure.Pose = KeeperPose.Walk;
             w.Phase = Phase.ToSpot;
+        }
+
+        // GL586: eight seconds of digging with nothing struck (the face out of reach after a drop, or the next post blocked by
+        // rock the swings can't reach, so NextSpot kept digging on here) -> pick another post, looking ahead for a clear one,
+        // and walk out by the lane to it. Never stays silently stuck.
+        private void Replan(Worker w)
+        {
+            float along = w.Along;
+            int pass = w.Pass;
+            for (int i = 0; i <= ReplanLookAhead; i++)
+            {
+                along += StepAlong;
+                if (along > w.To)
+                {
+                    along = w.From;
+                    pass++;
+                }
+                if (i == ReplanLookAhead || !BodyBlocked(along, pass))
+                {
+                    break;
+                }
+            }
+            w.Along = along;
+            w.Pass = pass;
+            w.Fall = 0f;
+            w.Figure.Pose = KeeperPose.Walk;
+            StartApproach(w);
         }
 
         private static void StartRoute(Worker w, params Vector3[] points)
