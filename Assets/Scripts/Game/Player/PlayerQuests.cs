@@ -165,7 +165,7 @@ namespace Clube.Game
 
         private void Update()
         {
-            if (Time.unscaledTime < nextCheck)
+            if (Log.Frozen || Time.unscaledTime < nextCheck)
             {
                 return;
             }
@@ -355,7 +355,7 @@ namespace Clube.Game
         private void OnGUI()
         {
             GameUi.Apply();
-            if (notice != null && Time.unscaledTime < noticeUntil)
+            if (!Log.Frozen && notice != null && Time.unscaledTime < noticeUntil)
             {
                 JournalBook.Notice(notice);
             }

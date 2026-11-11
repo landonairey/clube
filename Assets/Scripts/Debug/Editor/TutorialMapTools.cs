@@ -65,6 +65,8 @@ namespace Clube.Debug.Editor
             terrain.FindPropertyRelative("trees.fieldChance").floatValue = 0f;
             terrain.FindPropertyRelative("startArea.enabled").boolValue = false;
             terrain.FindPropertyRelative("layers.rockChance").floatValue = 0f;
+            // GL578: all the mountain is stone in the generator itself, at every level of detail: the fields' 20 m is the only grass.
+            terrain.FindPropertyRelative("layers.baseAboveHeight").floatValue = CompanyWork.Ground + 0.1f;
             terrain.FindPropertyRelative("water.enabled").boolValue = false;
             config.ApplyModifiedPropertiesWithoutUndo();
             // Assigning the heightmap resets the level, amplitude and scale (OnValidate): set them again.

@@ -182,7 +182,7 @@ namespace Clube.Core
                 }
             }
 
-            var steep = new NativeArray<byte>(Settings.Layers.SteepGradient > 0f ? count.x * count.z : 0, Allocator.Temp);
+            var steep = new NativeArray<byte>(Settings.Layers.HasBareRock ? count.x * count.z : 0, Allocator.Temp);
             for (int z = 0; z < count.z && steep.Length > 0; z++)
             {
                 for (int x = 0; x < count.x; x++)

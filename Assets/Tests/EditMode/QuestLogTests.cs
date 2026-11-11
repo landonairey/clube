@@ -31,6 +31,21 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Frozen_CompletesNothingAndRaisesNothing()
+        {
+            QuestLog log = TwoSections();
+            int raised = 0;
+            log.Completed += _ => raised++;
+            log.Frozen = true;
+            Assert.IsFalse(log.Complete("a"));
+            Assert.IsFalse(log.IsDone("a"));
+            Assert.AreEqual(0, raised);
+            log.Frozen = false;
+            Assert.IsTrue(log.Complete("a"));
+            Assert.AreEqual(1, raised);
+        }
+
+        [Test]
         public void Complete_RaisesOnce_AndRestoreIsQuiet()
         {
             QuestLog log = TwoSections();
