@@ -141,8 +141,16 @@ namespace Clube.Game
                     break;
                 case HeldShape.Shovel:
                     model.Prism(new Vector3(0f, -0.2f, 0f), new Vector3(0f, 0.55f, 0f), 0.017f, 0.016f, 5, Wood);
-                    model.Box(new Vector3(0f, -0.2f, 0f), new Vector3(0.1f, 0.025f, 0.03f), Quaternion.identity, Wood);
-                    model.Box(new Vector3(0f, 0.66f, 0.01f), new Vector3(0.16f, 0.2f, 0.012f), Quaternion.Euler(-12f, 0f, 0f), head);
+                    // A spade (GL561, as its icon): a D-handle at the shaft's foot (a grip bar closed by two short uprights
+                    // to the shaft), a socket, and a rounded blade narrowing to a point.
+                    model.Box(new Vector3(0f, -0.2f, 0f), new Vector3(0.11f, 0.025f, 0.03f), Quaternion.identity, Wood);
+                    model.Box(new Vector3(-0.055f, -0.17f, 0f), new Vector3(0.022f, 0.07f, 0.03f), Quaternion.identity, Wood);
+                    model.Box(new Vector3(0.055f, -0.17f, 0f), new Vector3(0.022f, 0.07f, 0.03f), Quaternion.identity, Wood);
+                    model.Box(new Vector3(0f, -0.135f, 0f), new Vector3(0.12f, 0.022f, 0.03f), Quaternion.identity, Wood);
+                    model.Prism(new Vector3(0f, 0.5f, 0f), new Vector3(0f, 0.6f, 0.01f), 0.022f, 0.028f, 5, head * 0.85f);
+                    model.Blade(new Vector3(0f, 0.6f, 0.01f), new Vector3(0f, 0.7f, 0.025f), 0.12f, 0.19f, 0.012f, 0.01f, head);
+                    model.Blade(new Vector3(0f, 0.7f, 0.025f), new Vector3(0f, 0.78f, 0.035f), 0.19f, 0.14f, 0.01f, 0.008f, head);
+                    model.Blade(new Vector3(0f, 0.78f, 0.035f), new Vector3(0f, 0.84f, 0.04f), 0.14f, 0.03f, 0.008f, 0.006f, head * 1.15f);
                     break;
                 case HeldShape.Hammer:
                     model.Prism(new Vector3(0f, -0.12f, 0f), new Vector3(0f, 0.36f, 0f), 0.017f, 0.015f, 5, Wood);

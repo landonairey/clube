@@ -24,8 +24,8 @@ namespace Clube.Game
         private const float PostWidth = 0.12f;
 
         // Maple wood (GL463): reddish brown posts, the rails a little lighter.
-        private static readonly Color PostWood = new Color(0.5f, 0.3f, 0.18f);
-        private static readonly Color RailWood = new Color(0.62f, 0.38f, 0.23f);
+        public static readonly Color PostWood = new Color(0.5f, 0.3f, 0.18f);
+        public static readonly Color RailWood = new Color(0.62f, 0.38f, 0.23f);
 
         [Tooltip("A transparent material that draws vertex colours (e.g. LabVertexColorTransparent).")]
         [SerializeField]

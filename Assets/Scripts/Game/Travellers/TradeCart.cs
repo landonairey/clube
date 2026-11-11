@@ -71,6 +71,8 @@ namespace Clube.Game
         private World placedIn;
         private DayNightCycle clock;
         private Transform root;
+        private System.Collections.Generic.List<RouteBridges.Span> bridges;
+        private bool[] bridgeBuilt;
         private TradeCartModel cart;
         private CartTrack track;
         private Rect? area;
@@ -119,6 +121,7 @@ namespace Clube.Game
             WorldConfig config = worldView.Config;
             MaterialRegistry materials = config.Materials;
             track.Step(worldView.World, config, Natural, materials != null ? materials.Find(roadMaterial) : null, writeBudgetMilliseconds);
+            BuildBridges();
             if (!yardBuilt && YardLoaded())
             {
                 BuildYard();
@@ -133,11 +136,42 @@ namespace Clube.Game
                 Destroy(root.gameObject);
             }
             root = null;
+            bridges = null;
             cart = null;
             Route = null;
             track = null;
             yardBuilt = false;
             filledTrip = int.MinValue;
+        }
+
+        // A bridge (GL570) is built once the chunks round its ends and middle have loaded, so its colliders meet the ground.
+        private void BuildBridges()
+        {
+            if (bridges == null || material == null)
+            {
+                return;
+            }
+            World world = worldView.World;
+            for (int i = 0; i < bridges.Count; i++)
+            {
+                if (bridgeBuilt[i])
+                {
+                    continue;
+                }
+                RouteBridges.Span span = bridges[i];
+                bool loaded = true;
+                for (int k = 0; k <= 4 && loaded; k++)
+                {
+                    Vector2 p = Vector2.Lerp(span.From, span.To, k / 4f);
+                    float y = Mathf.Lerp(span.FromHeight, span.ToHeight, k / 4f);
+                    loaded = world.IsLoaded(world.Grid.WorldToChunk(new Vector3(p.x, y, p.y)));
+                }
+                if (loaded)
+                {
+                    bridgeBuilt[i] = true;
+                    RoadBridge.Build(span, material, root, seed + i);
+                }
+            }
         }
 
         private float Top => worldView.Config.WorldHeightInChunks * worldView.World.Grid.ChunkWorldSize.y;
@@ -179,6 +213,8 @@ namespace Clube.Game
 
             root = new GameObject("Trade road").transform;
             root.SetParent(transform, false);
+            bridges = RouteBridges.Find(Route, worldView.Generator is HeightfieldGenerator heightfield ? heightfield.Water : WaterMap.None);
+            bridgeBuilt = new bool[bridges.Count];
             // Read on the way out of the gate.
             Sign(root, $"To {DistantName}", start - outward * 1.5f + new Vector2(-outward.y, outward.x) * 2.2f, -outward);
             var cartObject = new GameObject("Trade cart");
