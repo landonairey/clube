@@ -16,8 +16,8 @@ namespace Clube.Game
         private const float CrateSize = 0.8f;
 
         // Metres from the axle to the carter, and from the axle to where the bed's ends meet the ground for tilting.
-        private const float CarterAhead = 2.1f;
-        private const float TiltReach = 1.1f;
+        public const float CarterAhead = 2.1f;
+        public const float TiltReach = 1.1f;
 
         private static readonly Color Wood = new Color(0.5f, 0.35f, 0.2f);
         private static readonly Color DarkWood = new Color(0.36f, 0.24f, 0.14f);
@@ -30,6 +30,9 @@ namespace Clube.Game
         private KeeperFigure carterFigure;
         private float lastDistance = float.NaN;
         private float wheelTurn;
+
+        /// <summary>The bed and wheels as one piece, which tilts with the slope (and tips, GL583).</summary>
+        public Transform Bed => body;
 
         /// <summary>The crates on the bed.</summary>
         public IReadOnlyList<StorageChest> Crates => crates;
@@ -149,16 +152,25 @@ namespace Clube.Game
             Vector3 front = route.At(distance + ahead * TiltReach);
             Vector3 back = route.At(distance - ahead * TiltReach);
             Vector3 carterAt = route.At(distance + ahead * CarterAhead);
-            Vector3 forward = local.TransformDirection(front - back);
-            Vector3 flatForward = local.TransformDirection(carterAt - axle);
+            PlaceAt(local.TransformPoint(axle), local.TransformPoint(carterAt), local.TransformDirection(front - back), 0f, moving, distance);
+        }
+
+        /// <summary>
+        /// Puts the cart in the scene (world space) with its axle at <paramref name="axle"/> and the carter at
+        /// <paramref name="carterAt"/>, the bed lying along <paramref name="bedForward"/> and tipped back by
+        /// <paramref name="tipDegrees"/> (its front up, GL583). <paramref name="distance"/> is how far it has gone, for the wheels.
+        /// </summary>
+        public void PlaceAt(Vector3 axle, Vector3 carterAt, Vector3 bedForward, float tipDegrees, bool moving, float distance)
+        {
+            Vector3 flatForward = carterAt - axle;
             flatForward.y = 0f;
-            transform.position = local.TransformPoint(axle);
-            if (forward.sqrMagnitude > 1e-6f && flatForward.sqrMagnitude > 1e-6f)
+            transform.position = axle;
+            if (bedForward.sqrMagnitude > 1e-6f && flatForward.sqrMagnitude > 1e-6f)
             {
                 transform.rotation = Quaternion.LookRotation(flatForward);
-                body.rotation = Quaternion.LookRotation(forward);
+                body.rotation = Quaternion.LookRotation(bedForward) * Quaternion.Euler(-tipDegrees, 0f, 0f);
             }
-            carter.position = local.TransformPoint(carterAt);
+            carter.position = carterAt;
             carter.rotation = transform.rotation;
             carterFigure.Pose = moving ? KeeperPose.Walk : KeeperPose.Stand;
             if (!float.IsNaN(lastDistance))

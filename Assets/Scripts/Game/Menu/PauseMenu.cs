@@ -54,6 +54,11 @@ namespace Clube.Game
 
         public bool IsOpen { get; private set; }
 
+        /// <summary>True while any pause menu is open: hotkeys that read the keyboard directly (the lab's F2 and F3) check it.</summary>
+        public static bool IsPaused { get; private set; }
+
+        private readonly PausedInput pausedInput = new PausedInput();
+
         private void Awake()
         {
             if (player != null)
@@ -153,6 +158,17 @@ namespace Clube.Game
             audioPage = null;
             // The game stops under the popup: the clock, stations and the player.
             Time.timeScale = open ? 0f : 1f;
+            IsPaused = open;
+            // GL584: no game hotkey works behind the popup. The input actions go off (and come back); Esc is read from the
+            // keyboard here, so it still closes the popup, and CloseOpenScreen runs before it ever opens.
+            if (open)
+            {
+                pausedInput.Suspend(player != null ? player.InputAsset : null);
+            }
+            else
+            {
+                pausedInput.Resume();
+            }
             if (open)
             {
                 cursorBefore = Cursor.lockState;

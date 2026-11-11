@@ -31,6 +31,9 @@ namespace Clube.Game
         /// <summary>True for a new game that opens with the Mining Corp tutorial (GL479), until the tutorial ends.</summary>
         public static bool Tutorial { get; private set; }
 
+        /// <summary>True from the end of the tutorial until the game scene has played the cart arrival (GL583); never for a loaded game.</summary>
+        public static bool ArrivesByCart { get; set; }
+
         /// <summary>The character's name, typed for the crew lead in the tutorial (GL514); empty until then.</summary>
         public static string CharacterName { get; set; } = "";
 
@@ -48,6 +51,7 @@ namespace Clube.Game
             Seed = seed;
             WorldName = NameOrDefault(worldName);
             Tutorial = tutorial;
+            ArrivesByCart = false;
             CharacterName = "";
             CarriedCoins = 0f;
             Loaded = null;
@@ -57,6 +61,7 @@ namespace Clube.Game
         public static void FinishTutorial()
         {
             Tutorial = false;
+            ArrivesByCart = true;
         }
 
         /// <summary>Carries on a saved game: its mode, seed and world name, and everything else once the scene starts.</summary>
@@ -67,6 +72,7 @@ namespace Clube.Game
             Seed = save.Header.Seed;
             WorldName = NameOrDefault(save.Header.WorldName);
             Tutorial = false;
+            ArrivesByCart = false;
             Loaded = save;
         }
 
@@ -87,6 +93,7 @@ namespace Clube.Game
         {
             IsActive = false;
             Tutorial = false;
+            ArrivesByCart = false;
             CarriedCoins = 0f;
             Loaded = null;
         }

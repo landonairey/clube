@@ -191,7 +191,7 @@ namespace Clube.Debug
         private void Update()
         {
             Keyboard keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.f2Key.wasPressedThisFrame)
+            if (keyboard != null && !PauseMenu.IsPaused && keyboard.f2Key.wasPressedThisFrame)
             {
                 open = !open;
                 if (!open)
