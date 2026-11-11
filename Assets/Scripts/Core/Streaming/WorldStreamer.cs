@@ -165,6 +165,11 @@ namespace Clube.Core
         private float budget;
         // The chunk the focus was in when far colliders were last dropped.
         private Vector3Int? collidersCentre;
+        // Set when a mesh changes or a bake finishes: the chunks round the focus are checked for bakes only then, or when
+        // the focus enters another chunk (checking every frame cost 0.5 ms with nothing to do, GL560).
+        private bool collidersDirty = true;
+        private float collidersRadius = -1f;
+        private Vector3 collidersFocus;
         private StreamingStats stats;
         private double lapStart;
 
@@ -407,6 +412,7 @@ namespace Clube.Core
             wantedLoaded = 0;
             bulkLoading = true;
             collidersCentre = null;
+            collidersDirty = true;
         }
 
         /// <summary>
@@ -662,6 +668,7 @@ namespace Clube.Core
             stats.Vertices -= chunkRenderer.LastBuildStats.VertexCount;
             stats.Triangles -= chunkRenderer.LastBuildStats.TriangleCount;
             chunkRenderer.ApplyMesh(result);
+            collidersDirty = true;
             stats.Vertices += chunkRenderer.LastBuildStats.VertexCount;
             stats.Triangles += chunkRenderer.LastBuildStats.TriangleCount;
             if (settings.DetailDistance > 0 && world.IsEdited(coord))
@@ -685,6 +692,7 @@ namespace Clube.Core
                 stats.Triangles -= chunkRenderer.LastBuildStats.TriangleCount;
                 chunkRenderer.ClearMesh();
                 chunkRenderer.Collider?.Clear();
+                collidersDirty = true;
             }
             ChunkMeshed?.Invoke(coord, chunkRenderer);
         }
@@ -694,6 +702,7 @@ namespace Clube.Core
         {
             if (!settings.Colliders)
             {
+                collidersDirty = true;
                 return;
             }
 
@@ -707,6 +716,7 @@ namespace Clube.Core
                 {
                     chunkRenderer.Collider.Assign(chunkRenderer.Mesh, version);
                 }
+                collidersDirty = true;
             }
 
             // Shapes only exist near the focus, so far ones are dropped only when the focus moves to
@@ -725,8 +735,17 @@ namespace Clube.Core
                         chunkCollider.Clear();
                     }
                 }
+                collidersDirty = true;
             }
 
+            // Nothing changed and the focus has hardly moved: no chunk can need a bake it didn't need last time.
+            if (!collidersDirty && collidersRadius == settings.ColliderRadius && (focus - collidersFocus).sqrMagnitude < 1f)
+            {
+                return;
+            }
+            collidersDirty = false;
+            collidersRadius = settings.ColliderRadius;
+            collidersFocus = focus;
             int reach = Mathf.CeilToInt(settings.ColliderRadius / chunkWidth) + 1;
             for (int dz = -reach; dz <= reach; dz++)
             {
