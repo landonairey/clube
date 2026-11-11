@@ -29,6 +29,7 @@ namespace Clube.Game
         private LowPolyMeshBuilder mesh;
         private Material material;
         private Material textMaterial;
+        private GameObject cratePrefab;
         private TextMesh bunkName;
         private TextMesh bunkNameBack;
 
@@ -51,13 +52,14 @@ namespace Clube.Game
         /// Builds the warehouse, the beds and the crates under a parent placed like the world (map space), filling the yard's
         /// crates from one list and the crew lead's crate from another.
         /// </summary>
-        public static CompanyWarehouse Build(Transform map, Material material, MiningCorpTutorial tutorial, ItemDefinition[] supplies, ItemDefinition[] valuables, Material textMaterial = null)
+        public static CompanyWarehouse Build(Transform map, Material material, MiningCorpTutorial tutorial, ItemDefinition[] supplies, ItemDefinition[] valuables, Material textMaterial = null, GameObject cratePrefab = null)
         {
             var go = new GameObject("Company warehouse");
             go.transform.SetParent(map, false);
             CompanyWarehouse house = go.AddComponent<CompanyWarehouse>();
             house.material = material;
             house.textMaterial = textMaterial;
+            house.cratePrefab = cratePrefab;
             house.mesh = new LowPolyMeshBuilder();
             house.BuildShell();
             house.BuildRooms();
@@ -249,31 +251,36 @@ namespace Clube.Game
             return roll;
         }
 
+        // The game's own wooden crate (GL553), a StorageChest with an inventory; taking from it is theft (CompanyCrate).
         private void Crate(Vector3 at, float yaw, MiningCorpTutorial tutorial, ItemDefinition[] loot, string title)
         {
-            var crate = new LowPolyMeshBuilder();
-            crate.Box(new Vector3(0f, 0.35f, 0f), new Vector3(1f, 0.7f, 0.7f), Quaternion.identity, Plank);
-            crate.Box(new Vector3(0f, 0.72f, 0f), new Vector3(1.04f, 0.06f, 0.74f), Quaternion.identity, DarkPlank);
-            foreach (float x in new[] { -0.4f, 0.4f })
+            if (cratePrefab == null)
             {
-                crate.Box(new Vector3(x, 0.35f, 0f), new Vector3(0.08f, 0.72f, 0.74f), Quaternion.identity, DarkPlank);
+                return;
             }
-            var go = new GameObject(title);
-            go.transform.SetParent(transform, false);
+            GameObject go = Instantiate(cratePrefab, transform);
+            go.name = title;
             go.transform.localPosition = new Vector3(at.x, G + 0.1f, at.z);
             go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
-            go.AddComponent<MeshFilter>().sharedMesh = crate.Make("Crate");
-            go.AddComponent<MeshRenderer>().sharedMaterial = material;
-            var box = go.AddComponent<BoxCollider>();
-            box.center = new Vector3(0f, 0.38f, 0f);
-            box.size = new Vector3(1.04f, 0.76f, 0.74f);
-            CompanyCrate company = go.AddComponent<CompanyCrate>();
-            company.Tutorial = tutorial;
+            if (go.TryGetComponent(out PlacedObject placed))
+            {
+                placed.Fixed = true;
+                placed.Item = null;
+            }
+            if (!go.TryGetComponent(out StorageChest chest))
+            {
+                return;
+            }
+            chest.MadeOf(1f);
+            chest.Rename(title + " (company property: do not take)");
             if (loot != null)
             {
-                company.Loot.AddRange(loot);
+                foreach (ItemDefinition item in loot)
+                {
+                    chest.Storage.Add(item);
+                }
             }
-            company.Title = title;
+            go.AddComponent<CompanyCrate>().Watch(chest, tutorial);
         }
 
         /// <summary>Writes the player's name on the placard over their bunk (GL530).</summary>

@@ -68,8 +68,10 @@ namespace Clube.Debug
         private void Update()
         {
             Keyboard keyboard = Keyboard.current;
-            if (IsSetUp && keyboard != null && keyboard.pKey.wasPressedThisFrame)
+            if (IsSetUp && keyboard != null && keyboard.pKey.wasPressedThisFrame
+                && FindFirstObjectByType<Clube.Game.MiningCorpTutorial>() == null)
             {
+                // The tutorial is played as the player: P doesn't fly out of it (GL550).
                 IsPlayer = !IsPlayer;
             }
         }

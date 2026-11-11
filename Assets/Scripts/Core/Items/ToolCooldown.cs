@@ -26,8 +26,14 @@ namespace Clube.Core
         /// <summary>True at dawn, when the early bird's bonus holds.</summary>
         public static bool IsDawn(float hour)
         {
+            return IsDawn(hour, DawnFrom, DawnTo);
+        }
+
+        /// <summary>True when the hour falls in a bonus window (the tutorial's is its first work hours, GL565).</summary>
+        public static bool IsDawn(float hour, float from, float to)
+        {
             float h = Mathf.Repeat(hour, 24f);
-            return h >= DawnFrom && h < DawnTo;
+            return h >= from && h < to;
         }
 
         /// <summary>
@@ -36,7 +42,13 @@ namespace Clube.Core
         /// </summary>
         public static float SecondsFor(bool hands, float hour, float boost = 1f)
         {
-            return Seconds * (hands ? HandShare : 1f) * (IsDawn(hour) ? DawnShare : 1f) * Mathf.Clamp(boost, 0.1f, 1f);
+            return SecondsFor(hands, hour, boost, DawnFrom, DawnTo);
+        }
+
+        /// <summary>The same with its own bonus window.</summary>
+        public static float SecondsFor(bool hands, float hour, float boost, float dawnFrom, float dawnTo)
+        {
+            return Seconds * (hands ? HandShare : 1f) * (IsDawn(hour, dawnFrom, dawnTo) ? DawnShare : 1f) * Mathf.Clamp(boost, 0.1f, 1f);
         }
     }
 }

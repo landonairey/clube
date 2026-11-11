@@ -25,6 +25,12 @@ namespace Clube.Game
 
         public string DisplayName => displayName;
 
+        /// <summary>Gives the chest another name (GL553: the tutorial's crates are company property).</summary>
+        public void Rename(string name)
+        {
+            displayName = name;
+        }
+
         /// <summary>What's inside.</summary>
         public Inventory Storage { get; private set; }
 

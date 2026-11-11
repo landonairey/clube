@@ -1,31 +1,53 @@
-using Clube.Core;
 using UnityEngine;
 
 namespace Clube.Game
 {
     /// <summary>
-    /// A Mining Corp crate on the tutorial map (GL514): Interact opens it to look inside (GL521). Looking is fine; it's
-    /// theft only when an item goes into the player's inventory (<see cref="MiningCorpTutorial.Steal"/>).
+    /// Marks a tutorial <see cref="StorageChest"/> as company property (GL514, GL553): the player can open it and look
+    /// (GL521), but it's theft the moment anything leaves it (<see cref="MiningCorpTutorial.Steal"/>).
     /// </summary>
-    public class CompanyCrate : MonoBehaviour, IInteractable
+    public class CompanyCrate : MonoBehaviour
     {
-        /// <summary>The tutorial that sees the theft.</summary>
-        public MiningCorpTutorial Tutorial { get; set; }
+        private StorageChest chest;
+        private MiningCorpTutorial tutorial;
+        private float total;
 
-        /// <summary>What's inside.</summary>
-        public System.Collections.Generic.List<ItemDefinition> Loot { get; } = new System.Collections.Generic.List<ItemDefinition>();
-
-        /// <summary>The crate's name in its prompt.</summary>
-        public string Title { get; set; } = "A crate";
-
-        public string Prompt => $"{Title} (company property): Do not take";
-
-        public void Interact(PlayerInteractor by)
+        /// <summary>Starts watching the chest's contents; call after it has been filled.</summary>
+        public void Watch(StorageChest watched, MiningCorpTutorial sees)
         {
-            if (Tutorial != null)
+            chest = watched;
+            tutorial = sees;
+            total = Total();
+            chest.Storage.Changed += OnChanged;
+        }
+
+        private void OnDestroy()
+        {
+            if (chest != null && chest.Storage != null)
             {
-                Tutorial.OpenCrate(this);
+                chest.Storage.Changed -= OnChanged;
             }
+        }
+
+        private void OnChanged()
+        {
+            float now = Total();
+            bool lost = now < total - 1e-4f;
+            total = now;
+            if (lost && tutorial != null)
+            {
+                tutorial.Steal();
+            }
+        }
+
+        private float Total()
+        {
+            float sum = 0f;
+            for (int slot = 0; slot < chest.Storage.SlotCount; slot++)
+            {
+                sum += chest.Storage[slot].IsEmpty ? 0f : chest.Storage[slot].Amount;
+            }
+            return sum;
         }
     }
 }

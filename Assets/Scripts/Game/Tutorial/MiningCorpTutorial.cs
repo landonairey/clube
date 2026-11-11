@@ -67,6 +67,10 @@ namespace Clube.Game
         [SerializeField]
         private Material textMaterial;
 
+        [Tooltip("The game's wooden crate prefab (Wooden Chest) the company's crates are made from (GL553).")]
+        [SerializeField]
+        private GameObject cratePrefab;
+
         [Tooltip("What the supply crates round the yard hold, one item each.")]
         [SerializeField]
         private ItemDefinition[] supplies = new ItemDefinition[0];
@@ -108,7 +112,6 @@ namespace Clube.Game
         private Quaternion lastLook;
         private string typedName = "";
         private CompanyWarehouse warehouse;
-        private CompanyCrate openCrate;
         private float regroundAt;
         private string speech = "";
         private string note = "";
@@ -121,6 +124,7 @@ namespace Clube.Game
         private ToolShed shed;
         private readonly System.Collections.Generic.List<string> foundOres = new System.Collections.Generic.List<string>();
         private bool talking;
+        private bool oreDiscussed;
         private readonly DailyQuota quota = new DailyQuota();
         private readonly System.Collections.Generic.HashSet<string> discussedOres = new System.Collections.Generic.HashSet<string>();
         private FieldLogScreen fieldLog;
@@ -179,6 +183,9 @@ namespace Clube.Game
             if (tools != null)
             {
                 tools.Collected += OnCollected;
+                // GL555: digging only 09:00-17:00 once the job is on; GL565: the early bird's bonus is the first two work hours, every day.
+                tools.Lockout = DiggingLockout;
+                tools.SetEarlyBirdWindow(CompanyWork.WorkStartHour, CompanyWork.WorkStartHour + 2f);
             }
             step = Step.Arriving;
         }
@@ -188,6 +195,7 @@ namespace Clube.Game
             if (tools != null)
             {
                 tools.Collected -= OnCollected;
+                tools.Lockout = null;
             }
         }
 
@@ -228,10 +236,6 @@ namespace Clube.Game
             {
                 minimap.Marker = talk && lead != null ? lead.transform : null;
             }
-            if (openCrate != null && (openCrate.transform.position - player.transform.position).sqrMagnitude > 25f)
-            {
-                CloseCrate();
-            }
             if (inventoryScreen != null)
             {
                 // GL539: no inventory while typing the name.
@@ -241,6 +245,16 @@ namespace Clube.Game
             Teach();
             lastPosition = player.transform.position;
             lastLook = LookRotation;
+        }
+
+        // The hint while digging isn't allowed (GL555): by hand or tool, outside work hours, once the job has begun.
+        private string DiggingLockout()
+        {
+            if (dayNight == null || step < Step.Free || step >= Step.Caught || CompanyWork.IsWorkHour(dayNight.ClockHour))
+            {
+                return null;
+            }
+            return $"Work hours are {(int)CompanyWork.WorkStartHour}:00 to {(int)CompanyWork.QuotaHour}:00: no digging now.";
         }
 
         private int QuotaDay => dayNight != null ? dayNight.Day : 1;
@@ -274,10 +288,12 @@ namespace Clube.Game
         {
             values["quotaStone"] = quota.Stone.ToString();
             values["quotaDay"] = quota.Day.ToString();
+            values["oreDiscussed"] = oreDiscussed ? "1" : "0";
         }
 
         public void RestoreValues(System.Collections.Generic.IReadOnlyDictionary<string, string> values)
         {
+            oreDiscussed = values.TryGetValue("oreDiscussed", out string said) && said == "1";
             if (values.TryGetValue("quotaStone", out string saved) && int.TryParse(saved, out int count))
             {
                 values.TryGetValue("quotaDay", out string savedDay);
@@ -311,7 +327,7 @@ namespace Clube.Game
             }
             if (!placing)
             {
-                warehouse = CompanyWarehouse.Build(worldView.transform, material, this, supplies, valuables, textMaterial);
+                warehouse = CompanyWarehouse.Build(worldView.transform, material, this, supplies, valuables, textMaterial, cratePrefab);
                 spawn.SetDownOver(OnMap(CompanyWarehouse.Spawn) + Vector3.up);
                 placing = true;
             }
@@ -427,13 +443,10 @@ namespace Clube.Game
             }
             if (step > Step.Talk && step < Step.Caught)
             {
-                if (foundOres.Count > 0)
-                {
-                    talking = true;
-                    player.IsInMenu = true;
-                    return;
-                }
-                HandIn();
+                // GL554: E always opens the choice: discuss ore (once), hand in, or exit.
+                talking = true;
+                player.IsInMenu = true;
+                return;
             }
             else if (step < Step.Talk && step > Step.Name)
             {
@@ -486,7 +499,7 @@ namespace Clube.Game
             bool closeKey = e.type == EventType.KeyDown && (e.keyCode == KeyCode.E || e.keyCode == KeyCode.Escape);
             float width = Mathf.Min(Screen.width - 32f, 420f * GameUi.FontScale);
             float row = GameUi.Font(17) + 14f;
-            float height = 70f + row * (foundOres.Count + 2);
+            float height = 70f + row * 3;
             var panel = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
             GUI.Box(panel, "", cardStyle);
             GUI.Label(new Rect(panel.x + 14f, panel.y + 10f, width - 28f, 28f), "The crew lead");
@@ -498,20 +511,24 @@ namespace Clube.Game
                 return;
             }
             y += row;
-            foreach (string ore in foundOres)
+            GUI.enabled = !oreDiscussed;
+            if (GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), "Discuss ore"))
             {
-                if (GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), $"Discuss the {ore}"))
+                // GL542, GL554: he never cares, and the topic is closed for good (greyed out afterwards).
+                speech = NotInterested;
+                oreDiscussed = true;
+                foreach (string ore in foundOres)
                 {
-                    // GL542: once discussed, an ore's option doesn't come back.
-                    speech = NotInterested;
                     discussedOres.Add(ore);
-                    foundOres.Remove(ore);
-                    CloseTalk();
-                    return;
                 }
-                y += row;
+                foundOres.Clear();
+                CloseTalk();
+                GUI.enabled = true;
+                return;
             }
-            if (GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), "Goodbye (E)") || closeKey)
+            GUI.enabled = true;
+            y += row;
+            if (GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), "Exit (E)") || closeKey)
             {
                 CloseTalk();
             }
@@ -578,61 +595,6 @@ namespace Clube.Game
             }
         }
 
-        /// <summary>The player opened a company crate to look inside (GL521): nothing is stolen until they take an item.</summary>
-        public void OpenCrate(CompanyCrate crate)
-        {
-            if (step <= Step.Name || step >= Step.Caught || openCrate != null)
-            {
-                return;
-            }
-            openCrate = crate;
-            player.IsInMenu = true;
-        }
-
-        private void CloseCrate()
-        {
-            if (openCrate == null)
-            {
-                return;
-            }
-            openCrate = null;
-            player.IsInMenu = false;
-        }
-
-        // The open crate's contents: a button per item; taking one is theft.
-        private void DrawCrate()
-        {
-            Event e = Event.current;
-            bool closeKey = e.type == EventType.KeyDown && (e.keyCode == KeyCode.E || e.keyCode == KeyCode.Escape);
-            float width = Mathf.Min(Screen.width - 32f, 420f * GameUi.FontScale);
-            float row = GameUi.Font(17) + 14f;
-            float height = 70f + row * (openCrate.Loot.Count + 1);
-            var panel = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
-            GUI.Box(panel, "", cardStyle);
-            GUI.Label(new Rect(panel.x + 14f, panel.y + 10f, width - 28f, 28f), $"{openCrate.Title}: company property. Do not take.");
-            float y = panel.y + 44f;
-            ItemDefinition taken = null;
-            foreach (ItemDefinition item in openCrate.Loot)
-            {
-                if (GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), $"{item.DisplayName}  (take)"))
-                {
-                    taken = item;
-                }
-                y += row;
-            }
-            if (GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), "Close (E)") || closeKey)
-            {
-                CloseCrate();
-            }
-            if (taken != null)
-            {
-                CompanyCrate crate = openCrate;
-                crate.Loot.Remove(taken);
-                CloseCrate();
-                Steal(new[] { taken });
-            }
-        }
-
         // Anything dug counts towards the dig step: the whole map is company land.
         private void OnCollected(ItemStack collected)
         {
@@ -655,19 +617,12 @@ namespace Clube.Game
             }
         }
 
-        /// <summary>The player took from a company crate: they get the goods, and get caught.</summary>
-        public void Steal(ItemDefinition[] taken)
+        /// <summary>The player took from a company crate (GL553: the goods are already theirs): they get caught.</summary>
+        public void Steal()
         {
             if (step <= Step.Name || step >= Step.Caught)
             {
                 return;
-            }
-            foreach (ItemDefinition item in taken)
-            {
-                if (item != null)
-                {
-                    inventory.Inventory.Add(item);
-                }
             }
             outcome = "Caught stealing from the Mining Corp, you are thrown out\nand left on the only land your family still owns.\n\nTime to start something of your own.";
             ThrowOut($"Crew lead: \"Thief! I told you not to take anything that isn't yours, {Name}! Get out!\"");
@@ -684,7 +639,6 @@ namespace Clube.Game
             {
                 talking = false;
             }
-            openCrate = null;
             if (arrow != null)
             {
                 arrow.gameObject.SetActive(false);
@@ -693,12 +647,31 @@ namespace Clube.Game
             {
                 minimap.Marker = null;
             }
+            // GL567: the player freezes and the crew lead turns up beside them (front right); Thrown() swings the view to him.
+            ChestPanel chestPanel = player.GetComponent<ChestPanel>();
+            if (chestPanel != null && chestPanel.IsOpen)
+            {
+                chestPanel.Close();
+            }
+            player.InputLocked = true;
+            if (lead != null)
+            {
+                Vector3 here = player.transform.position;
+                Vector3 beside = (player.transform.forward + player.transform.right).normalized;
+                lead.Appear(here + beside * 1.8f, here);
+            }
             player.IsInMenu = true;
         }
 
         // Caught: once the screen is black, everything but the coins is taken, the story shows, and the world scene loads.
         private void Thrown()
         {
+            if (lead != null && lead.gameObject.activeSelf)
+            {
+                // About half a second for a half turn (GL567).
+                player.TurnTowards(lead.transform.position + Vector3.up * 1.6f, 360f);
+                lead.Face(player.transform.position);
+            }
             if (fade < 1f)
             {
                 return;
@@ -791,10 +764,6 @@ namespace Clube.Game
             {
                 DrawCard();
                 DrawQuota();
-                if (openCrate != null)
-                {
-                    DrawCrate();
-                }
                 if (talking)
                 {
                     DrawTalk();

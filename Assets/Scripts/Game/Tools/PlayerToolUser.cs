@@ -215,6 +215,17 @@ namespace Clube.Game
                 return;
             }
 
+            string locked = Lockout?.Invoke();
+            if (locked != null)
+            {
+                if (useAction != null && useAction.action.WasPressedThisFrame())
+                {
+                    lockHint = locked;
+                    lockHintUntil = Time.time + 2.5f;
+                }
+                return;
+            }
+
             // A bush in front of the ground: Attack picks it whole (GL238), and the ground behind is left alone.
             if (AimBush(out Bush bush))
             {
@@ -485,11 +496,32 @@ namespace Clube.Game
         /// </summary>
         public float CooldownFor(ToolDefinition tool)
         {
-            return ToolCooldown.SecondsFor(tool == hand, Hour, consumables != null ? consumables.CooldownShare : 1f);
+            return ToolCooldown.SecondsFor(tool == hand, Hour, consumables != null ? consumables.CooldownShare : 1f, dawnFrom, dawnTo);
         }
 
         /// <summary>True at dawn, when tools are quicker (the early bird's bonus, GL270).</summary>
-        public bool EarlyBird => ToolCooldown.IsDawn(Hour);
+        public bool EarlyBird => ToolCooldown.IsDawn(Hour, dawnFrom, dawnTo);
+
+        /// <summary>Hour the early bird's bonus ends.</summary>
+        public float EarlyBirdEnds => dawnTo;
+
+        /// <summary>
+        /// Moves the early bird's window (GL565): the tutorial's workers can't dig before 09:00, so its bonus is the first
+        /// work hours instead of the small hours, and holds every day.
+        /// </summary>
+        public void SetEarlyBirdWindow(float from, float to)
+        {
+            dawnFrom = from;
+            dawnTo = to;
+        }
+
+        /// <summary>Asked before every swing (GL555): a hint while digging is not allowed (the tutorial's work hours), or null.</summary>
+        public System.Func<string> Lockout { get; set; }
+
+        private float dawnFrom = ToolCooldown.DawnFrom;
+        private float dawnTo = ToolCooldown.DawnTo;
+        private string lockHint;
+        private float lockHintUntil;
 
         /// <summary>How far through the wait after the last use, 0 just used to 1 ready.</summary>
         public float Readiness
@@ -871,6 +903,10 @@ namespace Clube.Game
             if (Time.time < brokenUntil)
             {
                 GUI.Label(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f + 48f, 300f, 28f), $"Your {brokenName.ToLowerInvariant()} broke!");
+            }
+            if (Time.time < lockHintUntil && lockHint != null)
+            {
+                GUI.Label(new Rect(Screen.width * 0.5f - 250f, Screen.height * 0.5f + 48f, 500f, 28f), lockHint);
             }
             ToolDefinition tool = Current;
             if (tool == null || !player.enabled || player.IsCursorFree)

@@ -1,8 +1,8 @@
 namespace Clube.Core
 {
     /// <summary>
-    /// The stone handed in on the current day against that day's quota (GL544). Each day starts again from zero, and day N
-    /// needs <see cref="CompanyWork.Quota"/> (1024 x N) mined that day alone, not a running total. Plain C#, so it can be tested.
+    /// The stone handed in on the current day against that day's quota (GL544, GL555). Each day starts again from zero, and day N
+    /// needs <see cref="CompanyWork.Quota"/> (1024 x 2^(N-1), GL555) mined that day alone, not a running total. Plain C#, so it can be tested.
     /// </summary>
     public class DailyQuota
     {

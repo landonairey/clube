@@ -14,11 +14,33 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void QuotaGrowsByTheStepEachDay()
+        public void QuotaDoublesEachDay()
         {
             Assert.AreEqual(1024, CompanyWork.Quota(1));
             Assert.AreEqual(2048, CompanyWork.Quota(2));
+            Assert.AreEqual(4096, CompanyWork.Quota(3));
+            Assert.AreEqual(8192, CompanyWork.Quota(4));
+            Assert.Greater(CompanyWork.Quota(60), 0, "no overflow far out");
             Assert.AreEqual(1024, CompanyWork.Quota(0));
+        }
+
+        [Test]
+        public void EarlyBirdWindowCanBeMovedToTheWorkHours()
+        {
+            Assert.AreEqual(0.75f, ToolCooldown.SecondsFor(false, 10f, 1f, 9f, 11f), 1e-5f);
+            Assert.AreEqual(1f, ToolCooldown.SecondsFor(false, 12f, 1f, 9f, 11f), 1e-5f);
+            Assert.AreEqual(1f, ToolCooldown.SecondsFor(false, 4f, 1f, 9f, 11f), 1e-5f, "the small hours no longer count");
+        }
+
+        [Test]
+        public void DiggingIsAllowedOnlyFromNineToFive()
+        {
+            Assert.IsFalse(CompanyWork.IsWorkHour(8.99f));
+            Assert.IsTrue(CompanyWork.IsWorkHour(9f));
+            Assert.IsTrue(CompanyWork.IsWorkHour(16.99f));
+            Assert.IsFalse(CompanyWork.IsWorkHour(17f));
+            Assert.IsFalse(CompanyWork.IsWorkHour(2f));
+            Assert.IsTrue(CompanyWork.IsWorkHour(33f), "wraps past 24");
         }
 
         [Test]

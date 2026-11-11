@@ -363,7 +363,7 @@ namespace Clube.Game
                 fontSize = GameUi.Font(13),
                 normal = { textColor = new Color(1f, 0.85f, 0.45f) },
             };
-            GUI.Label(new Rect(Screen.width * 0.5f - 300f, Screen.height - GameUi.SlotSize - 80f, 600f, 30f), $"Early bird: tools 25% quicker until {Mathf.FloorToInt(ToolCooldown.DawnTo):00}:{Mathf.RoundToInt(ToolCooldown.DawnTo % 1f * 60f):00}", noteStyle);
+            GUI.Label(new Rect(Screen.width * 0.5f - 300f, Screen.height - GameUi.SlotSize - 80f, 600f, 30f), $"Early bird: tools 25% quicker until {Mathf.FloorToInt(toolUser.EarlyBirdEnds):00}:{Mathf.RoundToInt(toolUser.EarlyBirdEnds % 1f * 60f):00}", noteStyle);
         }
     }
 }

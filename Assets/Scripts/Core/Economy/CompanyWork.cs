@@ -16,16 +16,26 @@ namespace Clube.Core
         /// <summary>Height of the work fields and the warehouse floor.</summary>
         public const float Ground = 20f;
 
-        /// <summary>Stone the company wants handed in by <see cref="QuotaHour"/> on day 1; each day adds this much more (GL534).</summary>
+        /// <summary>Stone the company wants handed in by <see cref="QuotaHour"/> on day 1; each day doubles it (GL534, GL555).</summary>
         public const int QuotaStep = 1024;
 
-        /// <summary>The hour of the day the quota is checked.</summary>
+        /// <summary>The hour work starts; nobody digs before it (GL555).</summary>
+        public const float WorkStartHour = 9f;
+
+        /// <summary>The hour work ends, and the quota is checked; nobody digs after it.</summary>
         public const float QuotaHour = 17f;
 
-        /// <summary>The total stone that must be handed in by the end of a day (1-based): 1024, 2048, ...</summary>
+        /// <summary>True during work hours, 09:00 to 17:00, the only time digging is allowed (GL555).</summary>
+        public static bool IsWorkHour(float hour)
+        {
+            float h = Mathf.Repeat(hour, 24f);
+            return h >= WorkStartHour && h < QuotaHour;
+        }
+
+        /// <summary>The stone that must be mined and handed in on a day (1-based): 1024, 2048, 4096, 8192, ... (GL555).</summary>
         public static int Quota(int day)
         {
-            return QuotaStep * Mathf.Max(1, day);
+            return QuotaStep << Mathf.Clamp(day - 1, 0, 20);
         }
 
         /// <summary>The work fields (and the warehouse south of them): x from <see cref="Fields"/>.xMin to xMax, z up to yMax.</summary>
