@@ -51,6 +51,12 @@ namespace Clube.Game
         /// <summary>The pose being shown.</summary>
         public KeeperPose Pose { get; set; }
 
+        /// <summary>Where the mining swing is, 0 to 1: the pick lands on the face as it passes 0.7 (GL552).</summary>
+        public float MineBeat => Mathf.Repeat((Time.time + phase) * 0.7f, 1f);
+
+        /// <summary>The beat at which the mining swing lands.</summary>
+        public const float MineImpact = 0.7f;
+
         /// <summary>Builds the body for a trade, in a material for vertex-coloured models.</summary>
         public void Build(ShopKind kind, Material material, int seed)
         {
@@ -93,6 +99,38 @@ namespace Clube.Game
                 Hat = new Color(0.3f, 0.28f, 0.25f), HatStyle = 1,
             };
             Build(look, null, material, seed);
+        }
+
+        /// <summary>Builds one of the company's diggers (GL566): dull, faded cloth with patches and ragged hems, a worn cap, a pick.</summary>
+        public void BuildWorker(Material material, int seed)
+        {
+            var random = new System.Random(seed);
+            Color[] cloth =
+            {
+                new Color(0.42f, 0.38f, 0.33f), new Color(0.36f, 0.38f, 0.34f), new Color(0.45f, 0.4f, 0.32f), new Color(0.34f, 0.34f, 0.37f),
+            };
+            Color[] patch =
+            {
+                new Color(0.52f, 0.42f, 0.3f), new Color(0.3f, 0.33f, 0.27f), new Color(0.5f, 0.46f, 0.38f),
+            };
+            var look = new Look
+            {
+                Shirt = cloth[random.Next(cloth.Length)], Patch = patch[random.Next(patch.Length)], Patched = true,
+                Hair = new Color(0.25f, 0.18f, 0.12f) * (0.7f + (float)random.NextDouble() * 0.5f), Hat = new Color(0.3f, 0.28f, 0.25f), HatStyle = 1,
+                Beard = random.Next(3) > 0,
+            };
+            Build(look, Prop(ShopKind.Mining), material, seed);
+        }
+
+        /// <summary>Builds the crew lead (GL566): a fine long coat with gold buttons, a cravat and a tall hat, a grey beard.</summary>
+        public void BuildCrewLead(Material material, int seed)
+        {
+            var look = new Look
+            {
+                Shirt = new Color(0.4f, 0.1f, 0.16f), Hair = new Color(0.6f, 0.58f, 0.55f), Hat = new Color(0.1f, 0.1f, 0.12f), HatStyle = 4,
+                Beard = true, Coat = true,
+            };
+            Build(look, Prop(ShopKind.Mining), material, seed);
         }
 
         private void Build(Look look, Mesh propMesh, Material material, int seed)
@@ -305,6 +343,9 @@ namespace Clube.Game
             public int HatStyle;
             public bool Beard;
             public bool Robe;
+            public bool Coat;
+            public bool Patched;
+            public Color Patch;
         }
 
         private static Look LookOf(ShopKind kind)
@@ -347,6 +388,33 @@ namespace Clube.Game
             {
                 model.Box(new Vector3(0f, -0.25f, 0f), new Vector3(0.48f, 0.5f, 0.3f), Quaternion.identity, look.Shirt * 0.92f);
             }
+            if (look.Coat)
+            {
+                // A fine long coat: skirts to the knee, a cream cravat, two rows of gold buttons and gold trim.
+                var gold = new Color(0.85f, 0.68f, 0.25f);
+                model.Box(new Vector3(0f, -0.2f, 0f), new Vector3(0.5f, 0.55f, 0.32f), Quaternion.identity, look.Shirt * 0.95f);
+                model.Box(new Vector3(0f, -0.46f, 0f), new Vector3(0.52f, 0.05f, 0.34f), Quaternion.identity, gold);
+                model.Box(new Vector3(0f, 0.6f, 0.12f), new Vector3(0.18f, 0.12f, 0.06f), Quaternion.identity, new Color(0.92f, 0.9f, 0.82f));
+                for (int i = 0; i < 4; i++)
+                {
+                    float y = 0.5f - i * 0.17f;
+                    model.Box(new Vector3(-0.07f, y, 0.14f), new Vector3(0.04f, 0.04f, 0.02f), Quaternion.identity, gold);
+                    model.Box(new Vector3(0.07f, y, 0.14f), new Vector3(0.04f, 0.04f, 0.02f), Quaternion.identity, gold);
+                }
+                model.Box(new Vector3(0f, 0.06f, 0.15f), new Vector3(0.48f, 0.06f, 0.02f), Quaternion.identity, gold);
+            }
+            if (look.Patched)
+            {
+                // Patches in a clashing cloth, and a ragged hem of torn tails.
+                model.Box(new Vector3(-0.1f, 0.42f, 0.135f), new Vector3(0.14f, 0.14f, 0.02f), Quaternion.identity, look.Patch);
+                model.Box(new Vector3(0.12f, 0.2f, 0.135f), new Vector3(0.1f, 0.12f, 0.02f), Quaternion.identity, look.Patch * 0.85f);
+                model.Box(new Vector3(0.05f, 0.5f, -0.135f), new Vector3(0.16f, 0.12f, 0.02f), Quaternion.identity, look.Patch);
+                for (int i = 0; i < 4; i++)
+                {
+                    float x = -0.17f + i * 0.115f;
+                    model.Box(new Vector3(x, -0.04f - (i % 2) * 0.05f, 0f), new Vector3(0.07f, 0.1f, 0.27f), Quaternion.identity, look.Shirt * 0.85f);
+                }
+            }
             return model.Make("Keeper torso");
         }
 
@@ -381,6 +449,12 @@ namespace Clube.Game
                     model.Box(new Vector3(0.15f, 0.2f, -0.02f), new Vector3(0.04f, 0.3f, 0.3f), Quaternion.identity, look.Hat);
                     model.Box(new Vector3(0f, 0.16f, -0.15f), new Vector3(0.3f, 0.36f, 0.06f), Quaternion.identity, look.Hat * 0.9f);
                     break;
+                case 4:
+                    // A tall hat with a gold band (GL566).
+                    model.Box(new Vector3(0f, 0.34f, 0f), new Vector3(0.38f, 0.03f, 0.38f), Quaternion.identity, look.Hat);
+                    model.Box(new Vector3(0f, 0.5f, 0f), new Vector3(0.24f, 0.3f, 0.24f), Quaternion.identity, look.Hat);
+                    model.Box(new Vector3(0f, 0.38f, 0f), new Vector3(0.25f, 0.05f, 0.25f), Quaternion.identity, new Color(0.85f, 0.68f, 0.25f));
+                    break;
                 default:
                     model.Box(new Vector3(0f, 0.32f, -0.02f), new Vector3(0.27f, 0.06f, 0.27f), Quaternion.identity, look.Hair);
                     break;
@@ -394,6 +468,14 @@ namespace Clube.Game
         {
             var model = new LowPolyMeshBuilder();
             model.Box(new Vector3(0f, -0.24f, 0f), new Vector3(0.12f, 0.48f, 0.13f), Quaternion.identity, look.Shirt * 0.95f);
+            if (look.Coat)
+            {
+                model.Box(new Vector3(0f, -0.47f, 0f), new Vector3(0.14f, 0.06f, 0.15f), Quaternion.identity, new Color(0.85f, 0.68f, 0.25f));
+            }
+            if (look.Patched)
+            {
+                model.Box(new Vector3(0f, -0.2f, 0.07f), new Vector3(0.1f, 0.1f, 0.02f), Quaternion.identity, look.Patch);
+            }
             model.Box(new Vector3(0f, -0.53f, 0f), new Vector3(0.1f, 0.11f, 0.11f), Quaternion.identity, Skin);
             return model.Make("Keeper arm");
         }

@@ -45,6 +45,31 @@ namespace Clube.Game
         /// <summary>Where the tool shed stands (map space), off to the side of the fields, its door facing the yard.</summary>
         public static readonly Vector3 ShedSpot = new Vector3(34f, CompanyWork.Ground, 27f);
 
+        // The dorm hall's bunks along its north wall, head to +z: the six diggers sleep here (GL551).
+        private static readonly float[] WorkerBedX = { 37f, 40f, 43f, 46f, 50f, 54f };
+        private const float BedZ = 9.4f;
+
+        /// <summary>Where a worker lies in the dorm hall bunk <paramref name="index"/> (map space, middle of the mattress), and the way it points (+z).</summary>
+        public static Vector3 WorkerBedSpot(int index)
+        {
+            return new Vector3(WorkerBedX[index % WorkerBedX.Length], G + 0.55f, BedZ - 0.05f);
+        }
+
+        /// <summary>Number of bunks the diggers have.</summary>
+        public static int WorkerBedCount => WorkerBedX.Length;
+
+        /// <summary>Just inside the back door, in the dorm hall (map space): the diggers pass it to reach their bunks.</summary>
+        public static readonly Vector3 DoorInside = new Vector3(44f, CompanyWork.Ground, 14f);
+
+        /// <summary>Just outside the back door (map space).</summary>
+        public static readonly Vector3 DoorOutside = new Vector3(44f, CompanyWork.Ground, 17.6f);
+
+        /// <summary>Where a digger stops beside its bunk's head before lying down (map space).</summary>
+        public static Vector3 WorkerBedSide(int index)
+        {
+            return new Vector3(WorkerBedX[index % WorkerBedX.Length], CompanyWork.Ground, 11.6f);
+        }
+
         /// <summary>The player's bunk.</summary>
         public SleepingRoll Bunk { get; private set; }
 
@@ -67,10 +92,10 @@ namespace Clube.Game
             filter.sharedMesh = house.mesh.Make("Company warehouse");
             go.AddComponent<MeshRenderer>().sharedMaterial = material;
 
-            house.Bunk = house.Bed(new Vector3(34f, 0f, 9.4f), 0f, true);
-            foreach (float x in new[] { 37f, 40f, 43f, 46f, 54f })
+            house.Bunk = house.Bed(new Vector3(34f, 0f, BedZ), 0f, true);
+            foreach (float x in WorkerBedX)
             {
-                house.Bed(new Vector3(x, 0f, 9.4f), 0f, false);
+                house.Bed(new Vector3(x, 0f, BedZ), 0f, false);
             }
             house.Bed(new Vector3(66.4f, 0f, 14.2f), 90f, false);
             house.Crate(new Vector3(64.8f, 0f, 14.2f), 90f, tutorial, valuables, "The crew lead's crate");
