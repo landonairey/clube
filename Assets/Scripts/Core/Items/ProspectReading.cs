@@ -86,6 +86,21 @@ namespace Clube.Core
             return percent >= 50f ? "Dominant" : percent >= 25f ? "Abundant" : percent >= 10f ? "Moderate" : percent >= 1f ? "Minor" : "Trace";
         }
 
+        private static readonly string[] Ordinals = { "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth" };
+
+        /// <summary>
+        /// What reaching a Prospecting level lets the player read of a material mix (GL572): the next item in it, and exact
+        /// shares from <see cref="ExactLevel"/>. Null for level 0 or beyond.
+        /// </summary>
+        public static string UnlockAt(int level)
+        {
+            if (level == ExactLevel)
+            {
+                return "you can now read exact shares in a material mix";
+            }
+            return level >= 1 && level < ExactLevel ? $"you can now see the {Ordinals[level]} item in a material mix" : null;
+        }
+
         /// <summary>How many components a level reads: the stack's own material, plus one a level; all from <see cref="ExactLevel"/>.</summary>
         public static int ComponentsRead(int level)
         {
