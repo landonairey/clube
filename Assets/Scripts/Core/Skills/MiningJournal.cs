@@ -39,6 +39,9 @@ namespace Clube.Core
         private readonly Dictionary<VoxelMaterial, Entry> entries = new Dictionary<VoxelMaterial, Entry>();
         private readonly HashSet<Recipe> made = new HashSet<Recipe>();
 
+        /// <summary>While set (the tutorial, GL587) nothing is recorded, so no entry, event or notice follows, in any journal that reads this data.</summary>
+        public bool Frozen { get; set; }
+
         /// <summary>Raised the first time an ore is found.</summary>
         public event Action<Entry> Discovered;
 
@@ -79,7 +82,7 @@ namespace Clube.Core
         /// </summary>
         public bool Record(VoxelMaterial ore, float depth, float grade)
         {
-            if (ore == null)
+            if (Frozen || ore == null)
             {
                 return false;
             }
@@ -101,7 +104,7 @@ namespace Clube.Core
         /// <summary>Records a recipe the player has finished.</summary>
         public void RecordMade(Recipe recipe)
         {
-            if (recipe != null && made.Add(recipe))
+            if (!Frozen && recipe != null && made.Add(recipe))
             {
                 Changed?.Invoke();
             }

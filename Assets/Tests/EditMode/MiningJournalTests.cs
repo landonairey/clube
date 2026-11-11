@@ -56,5 +56,25 @@ namespace Clube.Core.Tests
             journal.RecordMade(smelt);
             Assert.IsTrue(journal.HasMade(smelt));
         }
+
+        [Test]
+        public void Frozen_RecordsNothingAndRaisesNothing()
+        {
+            var journal = new MiningJournal();
+            int raised = 0;
+            journal.Discovered += _ => raised++;
+            journal.Changed += () => raised++;
+            journal.Frozen = true;
+
+            Assert.IsFalse(journal.Record(tin, 2f, 0.4f));
+            journal.RecordMade(smelt);
+
+            Assert.AreEqual(0, raised);
+            Assert.IsFalse(journal.HasFound(tin));
+            Assert.IsFalse(journal.HasMade(smelt));
+
+            journal.Frozen = false;
+            Assert.IsTrue(journal.Record(tin, 2f, 0.4f), "Thawed, the first find still counts as a discovery.");
+        }
     }
 }
