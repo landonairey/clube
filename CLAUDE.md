@@ -63,6 +63,15 @@ voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adju
 testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD) and P16
 (render distance in metres) are what let the world be seen far.
 
+## Backlog → objectives traceability
+- Every playtest note or piece of feedback that leads to a new objective goes into a dated
+  backlog file, `Docs/backlogs/<yyyymmdd> clube-backlog.md`, in the user's own words (a later
+  add-on on the same day goes in a new suffixed file, `20261111b`, `c`...). Never edit an
+  existing backlog file.
+- Every new GL entry names its backlog file with a link to the line, e.g.
+  `*(added 2026-11-11, from [20261111b clube-backlog.md](backlogs/20261111b%20clube-backlog.md#L7))*`,
+  and keeps the user's concrete details (numbers, lists, names), not a one-line summary.
+
 ## Conventions
 - Assemblies (A1): `Clube.Core`, `Clube.Debug`, `Clube.Game`. Debug and
   Game reference Core; **Core never references Debug or Game.** Debug also

@@ -65,8 +65,26 @@ namespace Clube.Game
         /// <summary>True while the player is still in the cutscene (saving waits for it).</summary>
         public static bool IsPlaying { get; private set; }
 
+        /// <summary>
+        /// Hooks scene loads once per play session (GL588). <c>AfterSceneLoad</c> alone runs only for the first scene, so the
+        /// game scene loaded after the tutorial never checked <see cref="GameSession.ArrivesByCart"/>.
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void HookSceneLoads()
+        {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        private static void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            if (mode == UnityEngine.SceneManagement.LoadSceneMode.Single)
+            {
+                Bootstrap();
+            }
+        }
+
         /// <summary>Starts the cutscene in a freshly loaded game scene after the tutorial.</summary>
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
             if (!GameSession.ArrivesByCart)
