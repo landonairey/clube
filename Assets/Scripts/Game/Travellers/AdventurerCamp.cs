@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// The lone adventurer's camp (GL476): from the dawn after the fifth night (<see cref="AdventurerVisit"/>) an
+    /// The lone adventurer's camp (GL476): from sunset on the fifth day (<see cref="AdventurerVisit"/>, GL585) an
     /// <see cref="Adventurer"/> stands by a campfire on the highest ground within <see cref="searchRadius"/> of the parcel
     /// the player started on (<see cref="PeakSearch"/> over the generated surface). The fire's flames dance all the time
     /// and its light shines out at night, so the peak can be picked out from below. Saves whether they've come, their
@@ -99,7 +99,7 @@ namespace Clube.Game
             {
                 clock = FindAnyObjectByType<DayNightCycle>();
             }
-            if (!Arrived && clock != null && AdventurerVisit.HasArrived(clock.Day, clock.Hour, DayNightCycle.SunriseHour))
+            if (!Arrived && clock != null && AdventurerVisit.HasArrived(clock.Day, clock.Hour, DayNightCycle.SunsetHour))
             {
                 Arrived = true;
             }
@@ -244,7 +244,7 @@ namespace Clube.Game
                     Disposition.Restore(value, carried);
                 }
             }
-            // A save from before they came: no camp until the dawn comes round again.
+            // A save from before they came: no camp until the sunset comes round again.
             if (!Arrived && camp != null)
             {
                 Destroy(camp.gameObject);

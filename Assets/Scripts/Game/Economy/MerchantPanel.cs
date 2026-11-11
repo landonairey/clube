@@ -169,7 +169,11 @@ namespace Clube.Game
             {
                 if (GameUi.Button(new Rect(x, y, width - Padding * 2f, RowHeight), deal.Label))
                 {
-                    deal.Accept(wallet.Wallet);
+                    if (!deal.Accept(wallet.Wallet) && deal.RefusalText(wallet.Wallet) is string why)
+                    {
+                        refusal = why;
+                        refusalUntil = Time.unscaledTime + 3f;
+                    }
                 }
                 y += RowHeight + 6f;
             }
