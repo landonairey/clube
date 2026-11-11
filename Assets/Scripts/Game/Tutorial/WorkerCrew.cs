@@ -31,6 +31,11 @@ namespace Clube.Game
         // A standing worker's body, as balls at these heights, for checking that a post is clear of rock (GL580).
         private static readonly float[] BodyHeights = { 0.5f, 1.2f, 1.7f };
         private const float BodyRadius = 0.3f;
+        private const float GroundCastUp = 0.6f;
+        private const float GroundCastDown = 30f;
+        private const float StepUpSpeed = 3f;
+        private const float Gravity = 20f;
+        private const float MaxFall = 25f;
 
         private sealed class Worker
         {
@@ -50,6 +55,7 @@ namespace Clube.Game
             public Vector3 Queue;
             public Vector3[] Route;
             public int RouteAt;
+            public float Fall;
         }
 
         private Worker[] workers;
@@ -203,7 +209,54 @@ namespace Clube.Game
             for (int i = 0; i < workers.Length; i++)
             {
                 Tick(workers[i], outAndAbout, digging, dt);
+                Ground(workers[i], dt);
             }
+        }
+
+        // GL582: workers stand on the live terrain, whatever the player digs: a cast down against the chunk colliders every frame.
+        // They drop (with gravity) when the ground under them is dug away, and step up onto rising ground. Where no collider is loaded
+        // (far from the player) they keep their height. A NavMesh over voxels the player edits all day would be rebuilt around every dig
+        // and the colliders only exist near the player, so this is the cheap, robust choice for now.
+        private static readonly RaycastHit[] GroundHits = new RaycastHit[8];
+
+        private void Ground(Worker w, float dt)
+        {
+            if (w.Phase == Phase.Sleep)
+            {
+                w.Fall = 0f;
+                return;
+            }
+            Transform t = w.Figure.transform;
+            Vector3 local = t.localPosition;
+            Vector3 origin = map.TransformPoint(local + Vector3.up * GroundCastUp);
+            int count = Physics.RaycastNonAlloc(origin, Vector3.down, GroundHits, GroundCastUp + GroundCastDown, ~0, QueryTriggerInteraction.Ignore);
+            float best = float.MaxValue;
+            float groundY = 0f;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit hit = GroundHits[i];
+                if (hit.distance < best && hit.collider.GetComponent<ChunkCollider>() != null)
+                {
+                    best = hit.distance;
+                    groundY = map.InverseTransformPoint(hit.point).y;
+                }
+            }
+            if (best == float.MaxValue)
+            {
+                w.Fall = 0f;
+                return;
+            }
+            if (groundY >= local.y)
+            {
+                local.y = Mathf.Min(groundY, local.y + StepUpSpeed * dt);
+                w.Fall = 0f;
+            }
+            else
+            {
+                w.Fall = Mathf.Min(w.Fall + Gravity * dt, MaxFall);
+                local.y = Mathf.Max(groundY, local.y - w.Fall * dt);
+            }
+            t.localPosition = local;
         }
 
         private void Tick(Worker w, bool upAndAbout, bool digging, float dt)

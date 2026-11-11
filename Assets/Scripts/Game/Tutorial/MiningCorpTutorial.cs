@@ -98,6 +98,7 @@ namespace Clube.Game
         private InventoryScreen inventoryScreen;
         private QuestHud questHud;
         private PlayerQuests quests;
+        private BoulderBashing bashing;
         private Minimap minimap;
 
         private Step step;
@@ -189,6 +190,12 @@ namespace Clube.Game
             {
                 quests.Log.Frozen = true;
             }
+            // GL581: the stone hand axe can't be sold, so the tutorial doesn't offer it (restored when the tutorial goes).
+            bashing = player.GetComponentInChildren<BoulderBashing>(true);
+            if (bashing != null)
+            {
+                bashing.HandAxeDisabled = true;
+            }
             if (tools != null)
             {
                 tools.Collected += OnCollected;
@@ -201,6 +208,10 @@ namespace Clube.Game
 
         private void OnDestroy()
         {
+            if (bashing != null)
+            {
+                bashing.HandAxeDisabled = false;
+            }
             if (tools != null)
             {
                 tools.Collected -= OnCollected;
