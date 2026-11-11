@@ -5,13 +5,15 @@ namespace Clube.Game
 {
     /// <summary>
     /// The tutorial map's terrain touches, written through the world's edit path once the ground has streamed in
-    /// (GL545, GL547): a stone wall along each side of the warehouse, and rock instead of grass at the mountain's foot.
+    /// (GL545, GL547): a short stone wall from each side of the warehouse into the mountain, and rock instead of grass at the mountain's foot.
     /// Both only add to the ground, so they can be run again as more of it loads.
     /// </summary>
     public static class TutorialTerrain
     {
         private const float WallHeight = 4f;
         private const float WallThickness = 1.5f;
+        // How far the walls reach out from the building (the mountain starts 2 m past it).
+        private const float WallReach = 8f;
 
         // The mountain's grass reaches this far up and out from the fields' edge; past it the face is already rock.
         private const float FootHeight = 5f;
@@ -38,22 +40,15 @@ namespace Clube.Game
             }
         }
 
-        // Along each side of the building and across the back corners, so the only way to the front doors is through the
-        // building (GL532); the mountain rises right behind each side wall.
+        // One short wall from the middle of each side of the building out into the mountain, so the only way to the front
+        // doors is through the building (GL532). The mountain is steeper than a player can walk, so the wall ends well
+        // inside its face, with no gap round the end.
         private static void StampWalls(World world, byte material, float iso)
         {
             Rect r = CompanyWork.Warehouse;
-            const float gap = 4f;
-            float backZ = r.yMax + 1.2f;
-            float frontZ = r.yMin - 3f;
-            foreach (float sign in new[] { -1f, 1f })
-            {
-                float sideX = sign < 0f ? r.xMin - 1.4f : r.xMax + 1.4f;
-                float from = sign < 0f ? r.xMin - gap : r.xMax - 0.3f;
-                float to = sign < 0f ? r.xMin + 0.3f : r.xMax + gap;
-                TownStructures.StampWallRun(world, new Vector2(sideX, frontZ), new Vector2(sideX, backZ), WallThickness, WallHeight, Ground, material, iso);
-                TownStructures.StampWallRun(world, new Vector2(from, backZ), new Vector2(to, backZ), WallThickness, WallHeight, Ground, material, iso);
-            }
+            float midZ = r.center.y;
+            TownStructures.StampWallRun(world, new Vector2(r.xMin + 0.3f, midZ), new Vector2(r.xMin - WallReach, midZ), WallThickness, WallHeight, Ground, material, iso);
+            TownStructures.StampWallRun(world, new Vector2(r.xMax - 0.3f, midZ), new Vector2(r.xMax + WallReach, midZ), WallThickness, WallHeight, Ground, material, iso);
         }
 
         private static float Ground(Vector2 at)
