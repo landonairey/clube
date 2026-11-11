@@ -104,7 +104,7 @@ namespace Clube.Game
                 if (chance > 0f && Random.value < chance)
                 {
                     // Most random spots are not river, so look at many (GL497).
-                    for (int tries = 0; tries < 60 && !TryStart(view.transform.position); tries++)
+                    for (int tries = 0; tries < 200 &&!TryStart(view.transform.position); tries++)
                     {
                     }
                 }
@@ -173,8 +173,9 @@ namespace Clube.Game
             {
                 return false;
             }
-            // The live water must still stand there (a dug-out or drained river has none).
-            if (!WaterQuery.IsUnderwater(worldView.World, start - Vector3.up * 0.2f))
+            // The live water must still stand there (a dug-out or drained river has none). The simulated water is thinner than
+            // the river map's depth (0.2 m down it was dry at three cells in four, GL559), so look just under the surface.
+            if (!WaterQuery.IsUnderwater(worldView.World, start - Vector3.up * 0.05f))
             {
                 return false;
             }

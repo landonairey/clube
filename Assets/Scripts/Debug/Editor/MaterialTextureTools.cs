@@ -106,6 +106,8 @@ namespace Clube.Debug.Editor
                 // Boards (GL411): sawn planks a voxel wide, oak a warm light brown, maple a redder brown.
                 { "oak boards", (new Color(0.62f, 0.47f, 0.3f), new Color(0.71f, 0.56f, 0.37f), null, Wear.Planks) },
                 { "maple boards", (new Color(0.56f, 0.35f, 0.22f), new Color(0.65f, 0.43f, 0.28f), null, Wear.Planks) },
+                // Crushed stone (GL571): grey gravel, lighter than stone, lying loose like sand. Added last, so no seed moves.
+                { "crushed stone", (new Color(0.55f, 0.55f, 0.57f), new Color(0.68f, 0.67f, 0.66f), null, Wear.Loose) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]

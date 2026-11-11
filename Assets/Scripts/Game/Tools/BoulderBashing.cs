@@ -332,7 +332,10 @@ namespace Clube.Game
             inventory.Notify(crush.Crushed, left);
             if (crushedStone != null && knockedOff > 0f)
             {
-                items.Add(crushedStone, 0, null, 0, 1f, knockedOff * amount);
+                // Crushed stone is a material of its own now (GL571), so its stack reads as grades and drops as ground.
+                VoxelMaterial gravel = materials != null ? materials.Find("Crushed stone") : null;
+                Composition gravelContents = gravel != null ? Composition.From(new Content(gravel, 1f)) : null;
+                items.Add(crushedStone, 0, gravelContents, 0, 1f, knockedOff * amount);
                 inventory.Notify(crushedStone, knockedOff * amount);
             }
             // Crushing needs Mining (crushSkill) but trains Prospecting (GL388).
