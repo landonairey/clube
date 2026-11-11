@@ -47,15 +47,24 @@ namespace Clube.Game
 
         private void OnStruck(StrikeResult result)
         {
+            StrikeSound(tools.Current, tools.HitMaterial, result, source);
+        }
+
+        /// <summary>
+        /// The sound of a hit on a source: the player's own, and what the tutorial's workers play on their own (GL552)
+        /// through the same sets.
+        /// </summary>
+        public void StrikeSound(ToolDefinition tool, VoxelMaterial material, StrikeResult result, AudioSource on)
+        {
             if (sounds == null)
             {
                 return;
             }
-            sounds.Play(sounds.HitWith(tools.Current, tools.HitMaterial), source, result.Broken > 0 ? 1f : missVolume);
+            sounds.Play(sounds.HitWith(tool, material), on, result.Broken > 0 ? 1f : missVolume);
             // Ground that came away crumbles, thuds or rustles by what it was (GL271).
             if (result.Removed > 0)
             {
-                sounds.Play(sounds.BreakOf(tools.HitMaterial), source, Mathf.Lerp(0.6f, 1f, Mathf.Clamp01(result.Removed / 8f)));
+                sounds.Play(sounds.BreakOf(material), on, Mathf.Lerp(0.6f, 1f, Mathf.Clamp01(result.Removed / 8f)));
             }
         }
 

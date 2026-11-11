@@ -37,7 +37,7 @@ namespace Clube.Game
             CrewLead lead = go.AddComponent<CrewLead>();
             lead.Tutorial = tutorial;
             lead.figure = go.AddComponent<KeeperFigure>();
-            lead.figure.Build(ShopKind.Mining, material, 479);
+            lead.figure.BuildCrewLead(material, 479);
             lead.figure.Pose = KeeperPose.Stand;
             return lead;
         }

@@ -111,13 +111,25 @@ namespace Clube.Game
 
         private void OnStruck(StrikeResult result)
         {
-            int took = Mathf.Max(result.Removed, result.Broken);
-            if (result.Reached <= 0 || tools.WorldView == null)
+            if (tools.WorldView == null)
             {
                 return;
             }
-            VoxelMaterial hit = tools.HitMaterial;
-            MaterialRegistry registry = tools.WorldView.Config.Materials;
+            Vector3 at = tools.WorldView.transform.TransformPoint(tools.ImpactCentre);
+            StrikeAt(result, tools.HitMaterial, tools.WorldView.Config.Materials, at, OutwardFrom(at));
+        }
+
+        /// <summary>
+        /// The crumbs and sparks of a strike at a world point, flying out along <paramref name="outward"/>: what the player's hit
+        /// throws, also used by the tutorial's workers (GL552).
+        /// </summary>
+        public void StrikeAt(StrikeResult result, VoxelMaterial hit, MaterialRegistry registry, Vector3 at, Vector3 outward)
+        {
+            int took = Mathf.Max(result.Removed, result.Broken);
+            if (result.Reached <= 0)
+            {
+                return;
+            }
             if (registry != null)
             {
                 hit = registry.Shown(hit);
@@ -127,9 +139,8 @@ namespace Clube.Game
                 return;
             }
             int shape = hit.Kind == MaterialKind.Rock ? 0 : hit.Kind == MaterialKind.Soil ? 1 : 2;
-            Vector3 at = tools.WorldView.transform.TransformPoint(tools.ImpactCentre);
             // Sparks now and then off rock (GL460).
-            Burst(at, Earthy(hit.DebugColor), shape, Mathf.Clamp(8 + took * 3, 8, 22), OutwardFrom(at), hit.Kind == MaterialKind.Rock ? rockSparkChance : 0f);
+            Burst(at, Earthy(hit.DebugColor), shape, Mathf.Clamp(8 + took * 3, 8, 22), outward, hit.Kind == MaterialKind.Rock ? rockSparkChance : 0f);
         }
 
         // Ore crushed on a boulder (GL459): fragments of the ore fly off the boulder, with sparks now and then.
