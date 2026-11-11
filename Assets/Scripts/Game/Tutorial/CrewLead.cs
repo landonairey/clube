@@ -60,6 +60,32 @@ namespace Clube.Game
             }
         }
 
+        /// <summary>
+        /// Stands at a spot (world space) facing a point, whether he was standing about or had walked off (GL567: he turns up
+        /// beside a player who is being thrown out).
+        /// </summary>
+        public void Appear(Vector3 at, Vector3 lookAt)
+        {
+            IsLeaving = false;
+            walked = 0f;
+            gameObject.SetActive(true);
+            if (Physics.Raycast(at + Vector3.up * 3f, Vector3.down, out RaycastHit hit, 8f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                at.y = hit.point.y;
+            }
+            transform.position = at;
+            figure.Pose = KeeperPose.Stand;
+            foreach (Collider body in GetComponentsInChildren<Collider>(true))
+            {
+                body.enabled = true;
+            }
+            Vector3 flat = Vector3.ProjectOnPlane(lookAt - at, Vector3.up);
+            if (flat.sqrMagnitude > 1e-4f)
+            {
+                transform.rotation = Quaternion.LookRotation(flat);
+            }
+        }
+
         /// <summary>Sets off walking towards a point (world space).</summary>
         public void Leave(Vector3 towards)
         {

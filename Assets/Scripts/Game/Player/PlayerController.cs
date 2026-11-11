@@ -309,6 +309,30 @@ namespace Clube.Game
             slideSpeed = 0f;
         }
 
+        /// <summary>
+        /// Turns the view towards a point (world space) a little each call, at most <paramref name="degreesPerSecond"/>
+        /// (GL567: the camera swings to the crew lead). Returns true once it faces it.
+        /// </summary>
+        public bool TurnTowards(Vector3 point, float degreesPerSecond)
+        {
+            Vector3 eye = head != null ? head.position : transform.position + Vector3.up * 1.6f;
+            Vector3 to = point - eye;
+            if (to.sqrMagnitude < 1e-6f)
+            {
+                return true;
+            }
+            Quaternion look = Quaternion.LookRotation(to);
+            float step = degreesPerSecond * Time.deltaTime;
+            yaw = Mathf.MoveTowardsAngle(yaw, look.eulerAngles.y, step);
+            pitch = Mathf.MoveTowards(pitch, Mathf.Clamp(Mathf.DeltaAngle(0f, look.eulerAngles.x), -MaxPitch, MaxPitch), step);
+            transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            if (head != null)
+            {
+                head.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+            }
+            return Mathf.Abs(Mathf.DeltaAngle(yaw, look.eulerAngles.y)) < 0.5f;
+        }
+
         /// <summary>Turns the player to face a point (world space), looking level.</summary>
         public void LookTowards(Vector3 point)
         {

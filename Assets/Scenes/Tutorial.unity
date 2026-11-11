@@ -5392,6 +5392,7 @@ MonoBehaviour:
   pick: {fileID: 11400000, guid: 950dfde7ea687974caddd2269cd51cd5, type: 2}
   material: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
   textMaterial: {fileID: 2100000, guid: e9c1e17c90ccf8b4e922e9392fda6ee5, type: 2}
+  cratePrefab: {fileID: 3729972786520127726, guid: c468d4c25adbf874b90f327ad3d70fac, type: 3}
   supplies:
   - {fileID: 11400000, guid: 781da9aaba956e543b3c7da3e7b05bee, type: 2}
   - {fileID: 11400000, guid: 33028a6509cc10f4f8906fcc55fabb01, type: 2}
@@ -6084,6 +6085,7 @@ MonoBehaviour:
   flowBudgetMs: 2.5
   minFlowSlope: 0.25
   buildBudgetMs: 1.5
+  drawFarWater: 1
 --- !u!114 &1350119487
 MonoBehaviour:
   m_ObjectHideFlags: 0

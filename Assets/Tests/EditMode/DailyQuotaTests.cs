@@ -37,7 +37,7 @@ namespace Clube.Core.Tests
             quota.Add(3, 10);
             Assert.AreEqual(3, quota.Day);
             Assert.AreEqual(10, quota.Stone);
-            Assert.AreEqual(3072, quota.Required);
+            Assert.AreEqual(4096, quota.Required);
         }
 
         [Test]
@@ -47,7 +47,7 @@ namespace Clube.Core.Tests
             quota.Restore(4, 77);
             quota.Advance(4);
             Assert.AreEqual(77, quota.Stone);
-            Assert.AreEqual(4096, quota.Required);
+            Assert.AreEqual(8192, quota.Required);
         }
     }
 }
