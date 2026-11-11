@@ -179,6 +179,20 @@ namespace Clube.Core
             return total;
         }
 
+        /// <summary>How much of an item the inventory holds across all slots, part items included (GL558: 90.74).</summary>
+        public float AmountOf(ItemDefinition item)
+        {
+            float total = 0f;
+            foreach (ItemStack stack in slots)
+            {
+                if (stack.Item == item)
+                {
+                    total += stack.Amount;
+                }
+            }
+            return total;
+        }
+
         /// <summary>
         /// Moves the stack in one slot into another inventory (a station's slots, a chest),
         /// as much as fits there, a part item with the whole ones; the rest stays. Returns how many whole items moved.

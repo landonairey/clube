@@ -19,3 +19,4 @@ MonoBehaviour:
   unitVolume: 1
   burnSeconds: 0
   prefab: {fileID: 5762353483625990904, guid: c859784cae52d43499c37a1bf6a1e621, type: 3}
+  dropsMix: 1

@@ -496,7 +496,7 @@ namespace Clube.Core
                 // jammed the furnace at 1.75).
                 return Inventory.Combines(waiting, item) && item.MaxStack - waiting.Amount + 1e-4f >= recipe.Output.Count * YieldOf(recipe);
             }
-            Composition madeOf = item is PlaceableDefinition ? InputContents(recipe) : null;
+            Composition madeOf = item is PlaceableDefinition { DropsMix: false } ? InputContents(recipe) : null;
             return waiting.Item == recipe.Output.Item
                 && Inventory.Stacks(waiting, recipe.Output.Item, madeOf, OutputQuality(recipe))
                 && waiting.Space >= (int)Math.Ceiling(recipe.Output.Count * YieldOf(recipe) - 1e-4f);
@@ -613,7 +613,7 @@ namespace Clube.Core
                 done = 0f;
                 // Something built (a furnace) keeps what it was made of, so a mix of 76% clay makes one
                 // that works at 76% (GL100, MaterialRegistry.Quality).
-                Composition madeOf = finished.Output.Item is PlaceableDefinition ? InputContents(finished) : null;
+                Composition madeOf = finished.Output.Item is PlaceableDefinition { DropsMix: false } ? InputContents(finished) : null;
                 float quality = OutputQuality(finished);
                 float made = TakeYield(finished);
                 foreach (ItemAmount input in finished.Inputs)

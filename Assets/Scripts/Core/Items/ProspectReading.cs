@@ -70,6 +70,22 @@ namespace Clube.Core
             }
         }
 
+        /// <summary>A quality as the player may read it (GL562): "87%" from <see cref="ExactLevel"/>, the grade's word below.</summary>
+        public static string QualityAt(float quality, int level)
+        {
+            return level >= ExactLevel ? QualityText.Percent(quality) : Name(GradeOf(quality));
+        }
+
+        /// <summary>
+        /// How big a part a non-primary component of a mix is (GL574): Dominant 50% and up, Abundant 25-49%, Moderate 10-24%,
+        /// Minor 1-9%, Trace under 1%. Read from the share's whole percent, like the grades.
+        /// </summary>
+        public static string ShareWord(float share)
+        {
+            float percent = share * 100f + 0.01f;
+            return percent >= 50f ? "Dominant" : percent >= 25f ? "Abundant" : percent >= 10f ? "Moderate" : percent >= 1f ? "Minor" : "Trace";
+        }
+
         /// <summary>How many components a level reads: the stack's own material, plus one a level; all from <see cref="ExactLevel"/>.</summary>
         public static int ComponentsRead(int level)
         {

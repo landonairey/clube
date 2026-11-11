@@ -69,6 +69,11 @@ namespace Clube.Game
         public void Open(StationObject station)
         {
             Current = station;
+            // A worktop (the Stump) opens with no recipe picked (GL575); a smelter keeps the one it is working on.
+            if (station.Station != null && !station.Station.WorksUnattended)
+            {
+                station.Station.Chosen = null;
+            }
             drag.Reset();
             openedFrame = Time.frameCount;
             if (player != null)
@@ -375,7 +380,7 @@ namespace Clube.Game
                 {
                     var cell = new Rect(topLeft.x + at * (slot + gap), topLeft.y, slot, slot);
                     // Have / need on each input (GL500): red, with the icon greyed, when short.
-                    countStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperLeft, fontStyle = FontStyle.Bold, fontSize = GameUi.Font(12) };
+                    countStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.LowerCenter, fontStyle = FontStyle.Bold, fontSize = GameUi.Font(12) };
                     countStyle.normal.textColor = isShort ? new Color(1f, 0.25f, 0.2f) : new Color(0.9f, 0.9f, 0.85f);
                     if (isShort && have == 0)
                     {
@@ -388,7 +393,8 @@ namespace Clube.Game
                         GUI.DrawTexture(new Rect(cell.x + 2f, cell.y + 2f, slot - 4f, slot - 4f), Texture2D.whiteTexture);
                         GUI.color = previous;
                     }
-                    GameUi.OutlinedLabel(new Rect(cell.x + 3f, cell.y + 1f, slot, 18f), $"{have}/{need.Count}", countStyle);
+                    ItemSlotGui.Fill(new Rect(cell.x + 1f, cell.y + slot - 21f, slot - 2f, 20f), new Color(0.08f, 0.08f, 0.1f, 0.9f));
+                    GameUi.OutlinedLabel(new Rect(cell.x, cell.y + slot - 20f, slot, 18f), $"{station.Input.AmountOf(need.Item):0.##}/{need.Count}", countStyle);
                     if (isShort)
                     {
                         GameUi.OutlinedLabel(new Rect(cell.x + 3f, cell.y + 3f, slot - 9f, slot - 6f), "X", xStyle);

@@ -193,6 +193,9 @@ namespace Clube.Game
             }
         }
 
+        // The player's Prospecting level: below ExactLevel qualities read as grade words (GL562).
+        private int ProspectingLevel => skills != null ? skills.Skills.Level(SkillType.Prospecting) : 0;
+
         // One pass, false when there was nothing to refine or nothing is left: the stack keeps its slot, smaller and purer; what came out goes back as stacks of its own materials.
         private bool RefinePass(int slot)
         {
@@ -213,7 +216,7 @@ namespace Clube.Game
             if (failed)
             {
                 // The purer the stack, the more passes find nothing to pick out (GL386).
-                Message?.Invoke($"Found nothing to pick out of the {held.Item.DisplayName.ToLowerInvariant()} ({QualityText.Percent(held.Quality)})");
+                Message?.Invoke($"Found nothing to pick out of the {held.Item.DisplayName.ToLowerInvariant()} ({ProspectReading.QualityAt(held.Quality, ProspectingLevel)})");
                 return true;
             }
             items.Replace(slot, refined);
@@ -235,7 +238,7 @@ namespace Clube.Game
             }
             Message?.Invoke(refined.IsEmpty
                 ? $"Nothing of the {held.Item.DisplayName.ToLowerInvariant()} was left"
-                : $"Picked over the {held.Item.DisplayName.ToLowerInvariant()}: {QualityText.Percent(refined.Quality)} now");
+                : $"Picked over the {held.Item.DisplayName.ToLowerInvariant()}: {ProspectReading.QualityAt(refined.Quality, ProspectingLevel)} now");
             return !refined.IsEmpty;
         }
 
@@ -279,7 +282,7 @@ namespace Clube.Game
             // Above the crosshair (GL244): under it are the tool hint and the pickup notices, which wrote over this.
             var bar = new Rect(Screen.width * 0.5f - 90f, Screen.height * 0.5f - 52f, 180f, 10f);
             string doing = HoldsSomethingToBash(out _, out Crush crush) && crush.Raw != null ? "Crushing" : "Refining";
-            GUI.Label(new Rect(bar.x - 30f, bar.y - 22f, bar.width + 60f, 28f), $"{doing} {stack.Item.DisplayName.ToLowerInvariant()} ({QualityText.Percent(stack.Quality)})");
+            GUI.Label(new Rect(bar.x - 30f, bar.y - 22f, bar.width + 60f, 28f), $"{doing} {stack.Item.DisplayName.ToLowerInvariant()} ({ProspectReading.QualityAt(stack.Quality, ProspectingLevel)})");
             GUI.Box(bar, GUIContent.none);
             GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(refineProgress / secondsPerVolume), bar.height), Texture2D.whiteTexture);
         }
@@ -347,7 +350,7 @@ namespace Clube.Game
                 }
             }
             // A grade name, not the exact share, until Prospecting reads exactly (GL485), as PlayerProspecting.Taste does.
-            int level = skills != null ? skills.Skills.Level(SkillType.Prospecting) : 0;
+            int level = ProspectingLevel;
             float share = crushed != null && ore != null ? crushed.FractionOf(ore) : quality;
             string grade = level >= ProspectReading.ExactLevel ? QualityText.Percent(share) : ProspectReading.Name(ProspectReading.GradeOf(share));
             Message?.Invoke($"Crushed into {crush.Crushed.DisplayName.ToLowerInvariant()} ({grade})");

@@ -45,5 +45,26 @@ namespace Clube.Core.Tests
                 Object.DestroyImmediate(silver);
             }
         }
+
+        [Test]
+        public void ShareWord_NamesTheBandsOfANonPrimaryComponent()
+        {
+            Assert.AreEqual("Dominant", ProspectReading.ShareWord(0.5f));
+            Assert.AreEqual("Abundant", ProspectReading.ShareWord(0.49f));
+            Assert.AreEqual("Abundant", ProspectReading.ShareWord(0.25f));
+            Assert.AreEqual("Moderate", ProspectReading.ShareWord(0.24f));
+            Assert.AreEqual("Moderate", ProspectReading.ShareWord(0.10f));
+            Assert.AreEqual("Minor", ProspectReading.ShareWord(0.09f));
+            Assert.AreEqual("Minor", ProspectReading.ShareWord(0.01f));
+            Assert.AreEqual("Trace", ProspectReading.ShareWord(0.009f));
+            Assert.AreEqual("Trace", ProspectReading.ShareWord(0.001f));
+        }
+
+        [Test]
+        public void QualityAt_IsAGradeWordBelowExactLevel_APercentFromIt()
+        {
+            Assert.AreEqual("Good", ProspectReading.QualityAt(0.8f, 3));
+            Assert.AreEqual("80%", ProspectReading.QualityAt(0.8f, ProspectReading.ExactLevel));
+        }
     }
 }
