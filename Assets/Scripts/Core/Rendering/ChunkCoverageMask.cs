@@ -55,6 +55,18 @@ namespace Clube.Core
 
         public int Size => size;
 
+        /// <summary>Changes whenever the texture does (after <see cref="Update"/>).</summary>
+        public int Version { get; private set; }
+
+        /// <summary>
+        /// Whether the texture marks the column covered, as the shaders read it: false outside the window (GL560).
+        /// </summary>
+        public bool Covers(Vector2Int column)
+        {
+            Vector2Int texel = column - origin;
+            return hasOrigin && texel.x >= 0 && texel.y >= 0 && texel.x < size && texel.y < size && texels[texel.x + texel.y * size] != 0;
+        }
+
         /// <summary>The column of texel (0, 0).</summary>
         public Vector2Int Origin => origin;
 
@@ -73,6 +85,7 @@ namespace Clube.Core
             {
                 Texture.SetPixelData(texels, 0);
                 Texture.Apply(false, false);
+                Version++;
                 dirty = false;
             }
         }

@@ -67,6 +67,16 @@ namespace Clube.Core
         private ClipState[] lastClips;
         private readonly Dictionary<(int, Vector3Int), MeshRenderer> shown = new Dictionary<(int, Vector3Int), MeshRenderer>();
         private readonly Stack<MeshRenderer> pool = new Stack<MeshRenderer>();
+        // Each shown chunk's ground in world metres (x, z), to switch off the chunks the clipping leaves nothing of.
+        private readonly Dictionary<(int, Vector3Int), Rect> shownAreas = new Dictionary<(int, Vector3Int), Rect>();
+        private bool hiddenDirty;
+        private int hiddenCoverageVersion = -1;
+
+        /// <summary>
+        /// Shown chunks switched off because the clipping would leave none of them (GL560): they lie wholly where the finer
+        /// level or the world's own chunks draw. Their renderers cost a draw call each in every pass, for nothing.
+        /// </summary>
+        public int HiddenCount { get; private set; }
 
         public bool Show
         {
@@ -210,6 +220,10 @@ namespace Clube.Core
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
             builder.Update(worldView.transform.InverseTransformPoint(worldView.Focus.position));
             UpdateClips();
+            if (hiddenDirty || coverage.Version != hiddenCoverageVersion)
+            {
+                UpdateHidden();
+            }
             // The world hides its chunks past the detail distance only once this draws the ground there (P18).
             worldView.CoarseTerrainReady = builder.TryGetShown(0, out _);
             LastUpdateMilliseconds = (System.Diagnostics.Stopwatch.GetTimestamp() - started) * 1000f / System.Diagnostics.Stopwatch.Frequency;
@@ -223,8 +237,13 @@ namespace Clube.Core
             chunk.transform.localPosition = builder.GridOf(i).ChunkOrigin(coord);
             chunk.GetComponent<MeshFilter>().sharedMesh = mesh;
             chunk.sharedMaterial = levelMaterials[i];
+            chunk.enabled = true;
             chunk.gameObject.SetActive(true);
             shown[(level, coord)] = chunk;
+            Vector3 low = chunk.transform.TransformPoint(mesh.bounds.min);
+            Vector3 high = chunk.transform.TransformPoint(mesh.bounds.max);
+            shownAreas[(level, coord)] = Rect.MinMaxRect(low.x, low.z, high.x, high.z);
+            hiddenDirty = true;
         }
 
         void TerrainLodBuilder.ISink.Hide(int level, Vector3Int coord)
@@ -232,6 +251,7 @@ namespace Clube.Core
             if (shown.TryGetValue((level, coord), out MeshRenderer chunk))
             {
                 shown.Remove((level, coord));
+                shownAreas.Remove((level, coord));
                 chunk.GetComponent<MeshFilter>().sharedMesh = null;
                 chunk.gameObject.SetActive(false);
                 pool.Push(chunk);
@@ -347,6 +367,7 @@ namespace Clube.Core
                     continue;
                 }
                 lastClips[i] = clipState;
+                hiddenDirty = true;
 
                 Material material = levelMaterials[i];
                 if (recopy)
@@ -360,6 +381,58 @@ namespace Clube.Core
                 material.SetVector(LodCoverageId, coverageArea);
                 material.SetColor(LodTintId, tint);
             }
+        }
+
+        // Switches off the shown chunks the clipping leaves nothing of, and back on those it leaves some of. Run when the
+        // chunks, the holes or the coverage change.
+        private void UpdateHidden()
+        {
+            hiddenDirty = false;
+            hiddenCoverageVersion = coverage.Version;
+            Vector3 origin = worldView.transform.position;
+            WorldConfig config = worldView.Config;
+            float chunkWidth = config.ChunkSize.x * config.VoxelSize;
+            int hidden = 0;
+            foreach (KeyValuePair<(int, Vector3Int), MeshRenderer> entry in shown)
+            {
+                int i = entry.Key.Item1 - builder.FirstLevel;
+                bool hide = shownAreas.TryGetValue(entry.Key, out Rect area) && DrawsNothing(lastClips[i], area, origin, chunkWidth);
+                if (entry.Value.enabled == hide)
+                {
+                    entry.Value.enabled = !hide;
+                }
+                hidden += hide ? 1 : 0;
+            }
+            HiddenCount = hidden;
+        }
+
+        // True when the shader's clipping (ClipLod in TerrainMaterials.shader) leaves out every point of the area: it lies
+        // inside the finer level's hole, or every column within the margin of it is covered by the world's own chunks.
+        private bool DrawsNothing(ClipState clip, Rect area, Vector3 origin, float chunkWidth)
+        {
+            if (clip.Mode > 2.5f && area.xMin > clip.Hole.x && area.yMin > clip.Hole.y && area.xMax < clip.Hole.z && area.yMax < clip.Hole.w)
+            {
+                return true;
+            }
+            int x0 = Mathf.FloorToInt((area.xMin - underlap - origin.x) / chunkWidth);
+            int x1 = Mathf.FloorToInt((area.xMax + underlap - origin.x) / chunkWidth);
+            int z0 = Mathf.FloorToInt((area.yMin - underlap - origin.z) / chunkWidth);
+            int z1 = Mathf.FloorToInt((area.yMax + underlap - origin.z) / chunkWidth);
+            if (x1 - x0 >= coverage.Size || z1 - z0 >= coverage.Size)
+            {
+                return false;
+            }
+            for (int z = z0; z <= z1; z++)
+            {
+                for (int x = x0; x <= x1; x++)
+                {
+                    if (!coverage.Covers(new Vector2Int(x, z)))
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
 
         // What a level's material was last given, to set it only when it changes.
@@ -404,6 +477,7 @@ namespace Clube.Core
                 }
             }
             shown.Clear();
+            shownAreas.Clear();
             while (pool.Count > 0)
             {
                 MeshRenderer chunk = pool.Pop();
