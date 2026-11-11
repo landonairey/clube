@@ -51,6 +51,50 @@ namespace Clube.Game
             return 0f;
         }
 
+        /// <summary>
+        /// Turns the soil on the block's outer faces to stone, so the cut skirt
+        /// shows stone and ore, not hanging bars of dirt where a soil layer happens to meet the edge (GL535).
+        /// </summary>
+        public void StripSoilFromSkirt()
+        {
+            byte? dirt = registry.Find("Dirt")?.Id;
+            byte? stone = registry.Find("Stone")?.Id;
+            if (dirt == null || stone == null)
+            {
+                return;
+            }
+            float step = world.Grid.VoxelSize;
+            // The lowest ground round the rim: a tree or rock on the edge makes SurfaceAt too high to bound the soil.
+            float lowest = float.MaxValue;
+            for (float a = -half + 0.5f; a < half; a += 2f)
+            {
+                lowest = Mathf.Min(lowest, SurfaceAt(a, -half + 0.5f), SurfaceAt(a, half - 0.5f), SurfaceAt(-half + 0.5f, a), SurfaceAt(half - 0.5f, a));
+            }
+            for (float a = -half; a <= half; a += step)
+            {
+                for (float b = -half; b < -half + step * 6f; b += step)
+                {
+                    StripColumn(a, b, lowest, dirt.Value, stone.Value);
+                    StripColumn(a, -b, lowest, dirt.Value, stone.Value);
+                    StripColumn(b, a, lowest, dirt.Value, stone.Value);
+                    StripColumn(-b, a, lowest, dirt.Value, stone.Value);
+                }
+            }
+        }
+
+        private void StripColumn(float x, float z, float lowest, byte dirt, byte stone)
+        {
+            float step = world.Grid.VoxelSize;
+            for (float y = top - step; y > lowest - 8f; y -= step)
+            {
+                Vector3Int sample = world.Grid.WorldToNearestSample(new Vector3(x, y, z));
+                if (world.GetMaterial(sample) == dirt)
+                {
+                    world.SetMaterial(sample, stone);
+                }
+            }
+        }
+
         /// <summary>Puts every ore, and the surface tin in, measured down from <paramref name="ground"/>.</summary>
         public void StampAll()
         {
