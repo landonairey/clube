@@ -918,7 +918,7 @@ GL250 (ambient wildlife).
 - [x] **GL557** `Game` The stone at the foot of the tutorial mountain wall still gives grass particles and grass items: make the material really stone.
 - [ ] **GL558** `Game` Crafting menu: the input amount as "have/recipe" (e.g. "90.74/1") at the bottom of the input item slot.
 - [x] **GL559** `Game` River trout missing: no jumps, no sound.
-- [ ] **GL560** `Game` FPS drops to 20–30 after roaming (35 at render distance 8): find and fix the bottlenecks.
+- [x] **GL560** `Game` FPS drops to 20–30 after roaming (35 at render distance 8): find and fix the bottlenecks.
 - [ ] **GL561** `Game` Shovel 3D model becomes a spade, matching its icon.
 - [ ] **GL562** `Game` Refining on a rock shows the % quality before Prospecting unlocks it: hide it.
 - [ ] **GL563** `Game` A crafted crate carries no leftover composition (no "0.1% leaves").

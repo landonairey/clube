@@ -546,7 +546,8 @@ Self-contained jobs for a later session: each names the code, how to measure
 it, and when it's done. None needs the big picture changed. Measure with
 *Clube → Benchmarks → World streaming (P3)* (frames) and *World meshing (K32)*
 (stages), Burst safety checks off for real numbers; record results in
-`benchmarks.md`. Rough value order.
+`benchmarks.md`. In the built demo: `clube.exe -townbench` (the town) and `-roambench` (walking the whole map,
+GL560). Rough value order.
 
 1. **Budget the job starts too.** `WorldStreamer.StartGenerating` / `StartMeshing`
    aren't held to the frame budget (scheduling 38 jobs with their ore lookups and
@@ -613,6 +614,19 @@ it, and when it's done. None needs the big picture changed. Measure with
     pass 16.7 ms (worst 36 ms) and the grass's full look (every renderer, each metre the focus moves) still peaks
     at 14 ms. Distant trees cost a steady 1.9 ms. *Measure:* `clube.exe -townbench` at 1440p (`townbench.txt`).
     *Done when:* the last 10 s have no frame over 20 ms.
+
+16. **Distant trees from a GPU buffer.** `DistantTreeView.Draw` copies every visible tree's matrix into arrays
+    (`Collect`, each frame the camera moves or turns) and hands them to `Graphics.RenderMeshInstanced` in batches of
+    1,023 every frame: 1.3-1.9 ms of main thread, standing or walking. Keep each tile's matrices in a GPU buffer and
+    draw them procedurally as the grass does (`InstanceBatches.DrawFromBuffer`), culling whole tiles.
+    *Measure:* `clube.exe -roambench` (`roambench.txt`, "distant trees"). *Done when:* under 0.3 ms.
+
+17. **Fewer chunk renderers.** Walking the demo draws 3,000-4,500 draw calls from about 4,000 renderers (1,500 world
+    chunks, 300 per coarse level, water, flames); rendering takes 2.7-3.7 ms of main thread and scripts' LateUpdate
+    4.5-5.8 ms (GL560). Merge neighbouring chunks' meshes into one renderer (or draw them through the GPU Resident
+    Drawer, which needs the chunk shaders to support DOTS instancing). Also find the 1-1.4 s hitch about 650 m into
+    the roam. *Measure:* `clube.exe -roambench`, draw calls and "cpu main". *Done when:* walking stays under 8 ms on
+    the reference machine.
 
 When one of these is done, move it into `benchmarks.md` with its numbers and
 delete it here.
