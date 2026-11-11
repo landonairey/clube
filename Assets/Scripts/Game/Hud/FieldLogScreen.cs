@@ -8,7 +8,7 @@ namespace Clube.Game
     /// <summary>
     /// The field log (GL215): one graph-paper notebook (<see cref="JournalBook"/>) for the player's journals. Journal
     /// (Q) opens and closes it; tabs down its left side pick the journal: Quests (the checklist, <see cref="PlayerQuests"/>,
-    /// GL216), Ores (the mining journal, <see cref="JournalScreen"/>) and Tools (the crafting journal,
+    /// GL216), Ores (the mining journal, <see cref="JournalScreen"/>), Skills (<see cref="SkillsJournalScreen"/>, GL573) and Tools (the crafting journal,
     /// <see cref="CraftingJournalScreen"/>). CraftingJournal (J) still opens it straight on the tools. It reopens on the
     /// journal last shown.
     /// </summary>
@@ -21,6 +21,7 @@ namespace Clube.Game
             Quests,
             Ores,
             Tools,
+            Skills,
         }
 
         private static readonly (Page Page, string Label)[] Tabs =
@@ -28,6 +29,7 @@ namespace Clube.Game
             (Page.Quests, "Quests"),
             (Page.Ores, "Ore journal"),
             (Page.Tools, "Tool journal"),
+            (Page.Skills, "Skills"),
         };
 
         [Tooltip("Opens and closes the field log (Q).")]
@@ -45,6 +47,7 @@ namespace Clube.Game
         private ChestPanel chestPanel;
         private JournalScreen ores;
         private CraftingJournalScreen tools;
+        private SkillsJournalScreen skillBook;
         private PlayerQuests quests;
         private GUIStyle tabStyle;
         private GUIStyle questStyle;
@@ -72,6 +75,12 @@ namespace Clube.Game
             chestPanel = GetComponent<ChestPanel>();
             ores = GetComponent<JournalScreen>();
             tools = GetComponent<CraftingJournalScreen>();
+            // Added here so the scenes need no new component (GL573).
+            skillBook = GetComponent<SkillsJournalScreen>();
+            if (skillBook == null)
+            {
+                skillBook = gameObject.AddComponent<SkillsJournalScreen>();
+            }
             quests = GetComponent<PlayerQuests>();
         }
 
@@ -159,6 +168,10 @@ namespace Clube.Game
         private void Show(Page page)
         {
             Current = page;
+            if (page == Page.Skills && skillBook != null)
+            {
+                skillBook.Refresh();
+            }
             if (page == Page.Tools && tools != null)
             {
                 // Written from what the player knows now.
@@ -177,6 +190,9 @@ namespace Clube.Game
             {
                 case Page.Ores when ores != null:
                     ores.DrawBook();
+                    break;
+                case Page.Skills when skillBook != null:
+                    skillBook.DrawBook();
                     break;
                 case Page.Tools when tools != null:
                     tools.DrawBook();

@@ -65,6 +65,10 @@ namespace Clube.Game
                     unlocked.Add($"you can tell {ores} apart");
                 }
             }
+            if (skill == SkillType.Prospecting && ProspectReading.UnlockAt(level) != null)
+            {
+                unlocked.Add(ProspectReading.UnlockAt(level));
+            }
             notice = $"{skill} level {level}!" + (unlocked.Count > 0 ? "  Unlocked: " + string.Join(", ", unlocked) : "");
             noticeUntil = Time.time + NoticeSeconds;
         }
