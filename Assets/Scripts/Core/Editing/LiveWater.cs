@@ -53,11 +53,11 @@ namespace Clube.Core
         private readonly float iso;
         private readonly float voxel;
         private readonly HashSet<Vector3Int> flowing = new HashSet<Vector3Int>();
-        private HashSet<Vector3Int> awake = new HashSet<Vector3Int>();
-        private HashSet<Vector3Int> stepping = new HashSet<Vector3Int>();
+        private readonly HashSet<Vector3Int> awake = new HashSet<Vector3Int>();
         private readonly List<Vector3Int> batch = new List<Vector3Int>();
-        private readonly List<Vector3Int> carry = new List<Vector3Int>();
-        private readonly HashSet<Vector3Int> carried = new HashSet<Vector3Int>();
+        // Counts per nearness band and per height, for picking a step's samples without sorting every awake one (GL560).
+        private int[] bandCounts = new int[64];
+        private int[] heightCounts = new int[64];
         private Comparison<Vector3Int> byNearness;
         private readonly List<Vector3Int> targets = new List<Vector3Int>();
 
@@ -79,7 +79,7 @@ namespace Clube.Core
         public IReadOnlyCollection<Vector3Int> Flowing => flowing;
 
         /// <summary>Samples waiting to be looked at.</summary>
-        public int AwakeCount => awake.Count + carry.Count;
+        public int AwakeCount => awake.Count;
 
         /// <summary>Wakes a sample and the six round it.</summary>
         public void Wake(Vector3Int sample)
@@ -116,8 +116,11 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Wakes every sample of a chunk that holds water or is near the map's water: a chunk loaded with edits (a saved
-        /// game, or one streamed back in) gets its flooded holes back this way.
+        /// Wakes the samples of a chunk that holds water or is near the map's water: a chunk loaded with edits (a saved
+        /// game, or one streamed back in) gets its flooded holes back this way. Only samples that can move are woken: wet
+        /// ones (they spread into the holes beside them) and open ones under a river's level (they draw from it). A dry
+        /// sample does nothing when looked at, and waking every sample of each edited chunk that streamed back in kept
+        /// 80,000 awake (GL560).
         /// </summary>
         public void WakeChunk(Vector3Int coord)
         {
@@ -140,7 +143,12 @@ namespace Clube.Core
                 {
                     for (int x = 0; x <= size.x; x++)
                     {
-                        awake.Add(first + new Vector3Int(x, y, z));
+                        var local = new Vector3Int(x, y, z);
+                        bool wet = chunk.HasWater && chunk.GetWater(local) > 0f;
+                        if (wet || (near && chunk.GetDensity(local) < iso && SourceAt(first + local) > 0f))
+                        {
+                            awake.Add(first + local);
+                        }
                     }
                 }
             }
@@ -154,33 +162,15 @@ namespace Clube.Core
         public int Step(int max = 5000, float budgetMs = 0f)
         {
             RefillSoil();
-            if (awake.Count == 0 && carry.Count == 0)
+            if (awake.Count == 0)
             {
                 return 0;
             }
             timer.Restart();
             ownerCoord = new Vector3Int(int.MinValue, 0, 0);
             ownerChunk = null;
-            batch.Clear();
-            batch.AddRange(awake);
-            HashSet<Vector3Int> now = awake;
-            awake = stepping;
-            awake.Clear();
-            stepping = now;
-            // What the last step had no time for joins in; then nearest the focus first, lowest first (ByNearness).
-            if (carry.Count > 0)
-            {
-                carried.Clear();
-                carried.UnionWith(batch);
-                foreach (Vector3Int sample in carry)
-                {
-                    if (carried.Add(sample))
-                    {
-                        batch.Add(sample);
-                    }
-                }
-                carry.Clear();
-            }
+            // Nearest the focus first, lowest first (ByNearness); what's woken while stepping waits for the next step.
+            TakeNearest(max);
             batch.Sort(byNearness ??= ByNearness);
             int changed = 0;
             int done = batch.Count;
@@ -196,11 +186,78 @@ namespace Clube.Core
                     changed++;
                 }
             }
+            // What the step had no time for waits with the rest.
             for (int i = done; i < batch.Count; i++)
             {
-                carry.Add(batch[i]);
+                awake.Add(batch[i]);
             }
             return changed;
+        }
+
+        // Moves about the max nearest awake samples (in ByNearness's order) into the batch. Sorting every awake sample each
+        // step cost 20 ms a frame once streaming woke 80,000 of them, and ran the budget out before any was looked at;
+        // counting passes find the band and height where the batch ends instead (GL560).
+        private void TakeNearest(int max)
+        {
+            batch.Clear();
+            if (awake.Count <= max)
+            {
+                batch.AddRange(awake);
+                awake.Clear();
+                return;
+            }
+            System.Array.Clear(bandCounts, 0, bandCounts.Length);
+            int lowest = int.MaxValue, highest = int.MinValue;
+            foreach (Vector3Int sample in awake)
+            {
+                int band = Band(sample);
+                if (band >= bandCounts.Length)
+                {
+                    System.Array.Resize(ref bandCounts, Mathf.Max(band + 1, bandCounts.Length * 2));
+                }
+                bandCounts[band]++;
+                lowest = Mathf.Min(lowest, sample.y);
+                highest = Mathf.Max(highest, sample.y);
+            }
+            // The last band the batch reaches, and how many of it fit.
+            int lastBand = 0, room = max;
+            while (bandCounts[lastBand] < room)
+            {
+                room -= bandCounts[lastBand];
+                lastBand++;
+            }
+            // Within that band, lowest first: the height where the batch ends.
+            int heights = highest - lowest + 1;
+            if (heightCounts.Length < heights)
+            {
+                heightCounts = new int[Mathf.Max(heights, heightCounts.Length * 2)];
+            }
+            System.Array.Clear(heightCounts, 0, heights);
+            foreach (Vector3Int sample in awake)
+            {
+                if (Band(sample) == lastBand)
+                {
+                    heightCounts[sample.y - lowest]++;
+                }
+            }
+            int lastHeight = 0;
+            for (int filled = heightCounts[0]; filled < room; filled += heightCounts[lastHeight])
+            {
+                lastHeight++;
+            }
+            lastHeight += lowest;
+            foreach (Vector3Int sample in awake)
+            {
+                int band = Band(sample);
+                if (band < lastBand || (band == lastBand && sample.y <= lastHeight))
+                {
+                    batch.Add(sample);
+                }
+            }
+            foreach (Vector3Int sample in batch)
+            {
+                awake.Remove(sample);
+            }
         }
 
         // Nearest the focus first (in 8 m bands), so a long spill far off never holds up the water by the player; lowest

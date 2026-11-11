@@ -452,5 +452,48 @@ namespace Clube.Core.Tests
             }
             Assert.That(At(7, 3, 4), Is.GreaterThan(0.5f), "the stream reaches the far end and fills it");
         }
+
+        [Test]
+        public void ManyAwakeFarOff_WaterByTheFocusStillMoves()
+        {
+            // 30,000 awake samples far away (in no loaded chunk) and one unit of water in the air by the focus (GL560): a
+            // short step looks at the nearest first and leaves the far ones waiting.
+            DryWorld((x, y, z) => y <= 1);
+            for (int i = 0; i < 30000; i++)
+            {
+                water.Wake(new Vector3Int(1000 + i % 100, i / 100 % 30, i / 3000 * 2));
+            }
+            world.SetWater(new Vector3Int(4, 5, 4), 1f);
+            water.Wake(new Vector3Int(4, 5, 4));
+            water.Focus = new Vector3Int(4, 2, 4);
+            int awake = water.AwakeCount;
+            water.Step(max: 200);
+            Assert.That(At(4, 5, 4), Is.LessThan(1f), "the water by the focus fell");
+            Assert.That(water.AwakeCount, Is.GreaterThan(awake - 400), "most far samples wait for later steps");
+            Settle(2000);
+            Assert.That(water.AwakeCount, Is.EqualTo(0), "the far ones are looked at in the end");
+            Assert.That(Total(), Is.EqualTo(1f).Within(0.01f));
+        }
+
+        [Test]
+        public void WakeChunk_WakesOnlyWaterThatCanMove()
+        {
+            // The lake chunk woken again (as when it streams back in with edits): its wet samples wake, its dry land
+            // doesn't (GL560).
+            int wet = 0;
+            for (int z = 0; z <= 8; z++)
+            {
+                for (int y = 0; y <= 8; y++)
+                {
+                    for (int x = 0; x <= 8; x++)
+                    {
+                        wet += At(x, y, z) > 0f ? 1 : 0;
+                    }
+                }
+            }
+            water.WakeChunk(Vector3Int.zero);
+            Assert.That(wet, Is.GreaterThan(0));
+            Assert.That(water.AwakeCount, Is.EqualTo(wet));
+        }
     }
 }
