@@ -100,6 +100,9 @@ namespace Clube.Game
         /// <summary>The cart's model, once built.</summary>
         public TradeCartModel Cart => cart;
 
+        /// <summary>The low-poly material the cart is made of, so another cart can be built (GL583).</summary>
+        public Material LowPolyMaterial => material;
+
         private void Update()
         {
             if (worldView == null || !worldView.IsReady || town == null)

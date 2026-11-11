@@ -1,4 +1,5 @@
 using Clube.Core;
+using Clube.Game;
 using UnityEngine;
 
 namespace Clube.Debug
@@ -40,7 +41,7 @@ namespace Clube.Debug
         private void Update()
         {
             UnityEngine.InputSystem.Keyboard keyboard = UnityEngine.InputSystem.Keyboard.current;
-            if (keyboard != null && keyboard.f3Key.wasPressedThisFrame)
+            if (keyboard != null && !PauseMenu.IsPaused && keyboard.f3Key.wasPressedThisFrame)
             {
                 shown = !shown;
             }

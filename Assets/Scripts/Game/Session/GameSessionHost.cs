@@ -183,6 +183,12 @@ namespace Clube.Game
                 problem = "The tutorial can't be saved.";
                 return false;
             }
+            if (ArrivalCutscene.IsPlaying)
+            {
+                // The player is on a cart, in the air or on the ground (GL583): a save now would load mid-ride.
+                problem = "Wait for the arrival to finish.";
+                return false;
+            }
             string name = SaveNames.Clean(saveName);
             return SaveSlots.Write(Capture(name.Length > 0 ? name : DefaultSaveName), out problem);
         }

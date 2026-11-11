@@ -176,6 +176,9 @@ namespace Clube.Game
         /// <summary>Where the player looks from.</summary>
         public Transform Head => head;
 
+        /// <summary>The input asset the player's actions come from (what the pause menu switches off, GL584); null when none is set.</summary>
+        public InputActionAsset InputAsset => moveAction != null ? moveAction.asset : null;
+
         public bool IsGrounded => Body.isGrounded;
 
         private float submersion;
