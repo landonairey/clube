@@ -902,6 +902,37 @@ GL250 (ambient wildlife).
 - [x] **GL548** `Game` The extra workers actually dig voxels, working back along the whole west-to-east mountain wall.
 - [x] **GL549** `Game` Workers hand in their day's stone and go to bed at 5pm.
 
+### Playtest 2026-11-10c *(added 2026-11-10, from `Docs/backlogs/20261110c clube-backlog.md`; seven batches Q1–Q7, in order)*
+**Q1 — Tutorial rules** (`gl550/tutorial-rules`)
+- [ ] **GL550** `Game` Tutorial: P doesn't switch to debug mode.
+- [ ] **GL553** `Game` Tutorial crates are the game's real wooden crates, with an inventory.
+- [ ] **GL554** `Game` Crew Lead dialogue (E): Discuss ore / Hand in / Exit. Discuss ore greys out after its first use.
+- [ ] **GL555** `Game` Quota doubles daily (1024, 2048, 4096, 8192…), counted from that day's mining; strict 9am–5pm, no digging by hand or tool outside those hours (replaces GL544's linear quota).
+- [ ] **GL565** `Game` The early bird bonus every day, not just day 1.
+- [ ] **GL567** `Game` Caught stealing or failing the quota: player freezes, the Crew Lead appears beside them, the camera turns to face him, he says you're kicked out.
+
+**Q2+ — Workers, terrain, world, crafting, skills** *(batches decided by the orchestrator)*
+- [ ] **GL551** `Game` Tutorial workers sleep in their beds inside.
+- [ ] **GL552** `Game` Workers get the player's mining sounds, particles and tool-area effects, and walk between spots (no teleporting).
+- [ ] **GL556** `Game` By day 4–5 the workers stop advancing along the wall: fix.
+- [ ] **GL557** `Game` The stone at the foot of the tutorial mountain wall still gives grass particles and grass items: make the material really stone.
+- [ ] **GL558** `Game` Crafting menu: the input amount as "have/recipe" (e.g. "90.74/1") at the bottom of the input item slot.
+- [ ] **GL559** `Game` River trout missing: no jumps, no sound.
+- [ ] **GL560** `Game` FPS drops to 20–30 after roaming (35 at render distance 8): find and fix the bottlenecks.
+- [ ] **GL561** `Game` Shovel 3D model becomes a spade, matching its icon.
+- [ ] **GL562** `Game` Refining on a rock shows the % quality before Prospecting unlocks it: hide it.
+- [ ] **GL563** `Game` A crafted crate carries no leftover composition (no "0.1% leaves").
+- [ ] **GL564** `Game` Maple wood quality uses the POOR–PURE grades like birch.
+- [ ] **GL566** `Game` Crew Lead dressed wealthier; workers in tattered clothes.
+- [ ] **GL568** `Game` Tip after gathering wood: raise Crafting toward the campfire by making sticks at a Stump or hand axes on a boulder.
+- [ ] **GL569** `Game` Tip after building a campfire: raise Crafting to unlock tools.
+- [ ] **GL570** `Game` Bridges where roads cross rivers: two small cobblestone footings, maple boards across, the parcel fences as side rails (with colliders).
+- [ ] **GL571** `Game` Crushed stone: POOR–PURE grades, a crushed-stone texture, and droppable on the ground, piling and falling like sand.
+- [ ] **GL572** `Game` The Prospecting level 1 message says you can now see the second item in a material mix.
+- [ ] **GL573** `Game` Skills notebook tab in the journals: one chapter per skill, listing what's unlocked so far and a preview of the next level only.
+- [ ] **GL574** `Game` Non-primary components in a mix: Dominant ≥50%, Abundant 25–49%, Moderate 10–24%, Minor 1–9%, Trace <1%, uncoloured (the primary keeps its grade).
+- [ ] **GL575** `Game` The Stump clears its selected recipe when reopened.
+
 ### Eroded landscape *(added 2026-11-03, from `Docs/backlogs/20261103j clube-backlog.md` — first pass of P12; branch `p12/eroded-landscape`)*
 - [x] **P12a** `Core + Debug` *(added 2026-11-03)* An eroded landscape generator after runevision's erosion filter: branching gullies and ridges as a filter on a heightfield, every point worked out on its own, so chunks, levels of detail and the water map agree. *(Done 2026-11-03: `ErosionFilter` + `ErosionSettings` (Generation/Noise, written from the blog's description: stripes blended from 4 x 4 cells, normalised gullies, stacked fading, straight gullies, ridge map), `ErodedLandscapeHeight` and the ErodedLandscape generator (`TerrainGeneratorType.ErodedLandscape`; Landscape's mask, warp, plains and distant ranges, with smooth massifs (`LandscapeHeight.WithSmoothMassifs`) in place of the ridged peaks). Learned on the way (height maps in `Docs/images/20261103 *`): on Landscape's ridged noise the gullies turned to noise (fine ridges) and seams (knife-edge crests flip the slope); clamped noise made flat plateaus with cliff edges; full-strength gullies from the plains up raised a cliff along every range's foot (gullies now deepen over the foothills); 35% of the mountains were over the player's 50° slope limit. With smooth massifs and strength 0.15: 15% (Landscape 8%), peaks at 131 m. Peaks rise by `PeakLift` 0.4 of the gully depth, so they stay inside the 160 m world. Lab panel: Erosion section. Tests: `ErodedLandscapeTests`. Benchmark: *Clube → Benchmarks → Heightfield generation*.)*
 - [x] **P12b** `Core` *(added 2026-11-03)* Rivers start in the eroded valleys and run down into lakes, ponds and other rivers. *(Done 2026-11-03: `HeightfieldGenerator.HasValleys`/`ScheduleValleys` (the ridge map of the biggest `ValleyOctaves` gullies); `Hydrology` on such ground routes water by steepest descent (it follows the gullies), starts a river where a valley is deeper than `WaterGeneration.ValleyDepth` and drains `ValleyHeadArea`, and carries it on downstream, so streams merge and pass through lakes; river beds there follow the ground instead of floating over steep gully floors. `ErosionSettings.MinPondArea` can keep small pits dry (0 by default). Mountain streams are still thin and broken in places on the 1 m map; the live flow carries their water down.)*
