@@ -132,6 +132,7 @@ namespace Clube.Game
         private readonly DailyQuota quota = new DailyQuota();
         private readonly System.Collections.Generic.HashSet<string> discussedOres = new System.Collections.Generic.HashSet<string>();
         private FieldLogScreen fieldLog;
+        private PlayerJournal journal;
         private string outcome = "";
         private GUIStyle quotaStyle;
 
@@ -178,6 +179,12 @@ namespace Clube.Game
             {
                 fieldLog.Blocked = true;
             }
+            // GL587: and the journal data itself records nothing, so no entry, notice or toast fires for any journal.
+            journal = player.GetComponentInChildren<PlayerJournal>(true);
+            if (journal != null)
+            {
+                journal.Journal.Frozen = true;
+            }
             minimap = player.GetComponentInChildren<Minimap>();
             dayNight = FindAnyObjectByType<DayNightCycle>();
             if (questHud != null)
@@ -208,6 +215,10 @@ namespace Clube.Game
 
         private void OnDestroy()
         {
+            if (journal != null)
+            {
+                journal.Journal.Frozen = false;
+            }
             if (bashing != null)
             {
                 bashing.HandAxeDisabled = false;
