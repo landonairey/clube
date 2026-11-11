@@ -41,6 +41,10 @@ namespace Clube.Core
         [SerializeField]
         private float steepMinHeight = 24f;
 
+        [Tooltip("Surface height (metres) above which every column shows the base material whatever its slope, on flat tops and gentle benches too (GL578). 0 turns it off.")]
+        [SerializeField]
+        private float baseAboveHeight;
+
         [Tooltip("Ridges and gullies down slopes (GL293), in the terrain itself: how far they stand in and out of the face, in metres. 0 turns them off.")]
         [SerializeField, Range(0f, 2f)]
         private float ridgeDepth = 0.6f;
@@ -134,6 +138,13 @@ namespace Clube.Core
         {
             get => steepMinHeight;
             set => steepMinHeight = value;
+        }
+
+        /// <summary>Surface height above which all ground is the base material, steep or not (GL578); 0 is off.</summary>
+        public float BaseAboveHeight
+        {
+            get => baseAboveHeight;
+            set => baseAboveHeight = Mathf.Max(0f, value);
         }
 
         /// <summary>How far slope ridges stand in and out of a face, in metres (GL293); 0 is off.</summary>

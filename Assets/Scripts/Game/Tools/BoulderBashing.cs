@@ -122,6 +122,9 @@ namespace Clube.Game
         /// <summary>A pass of picking over a stack while refining (GL493).</summary>
         public event Action RefinePassed;
 
+        /// <summary>While true a stone is not knocked into a hand axe (the tutorial, GL581: it could not be sold).</summary>
+        public bool HandAxeDisabled { get; set; }
+
         /// <summary>True when Place would bash this frame: a stone or crushable ore in hand, aimed at a boulder within reach.</summary>
         public bool CanBash => (HoldsSomethingToBash(out _, out _) || HoldsSomethingToRefine(out _)) && AimsAtBoulder();
 
@@ -379,7 +382,7 @@ namespace Clube.Game
             {
                 return false;
             }
-            if (item == stone && handAxe != null && !(worldView != null && worldView.IsReady && Refining.CanRefine(stack, worldView.Config.Materials)))
+            if (item == stone && handAxe != null && !HandAxeDisabled && !(worldView != null && worldView.IsReady && Refining.CanRefine(stack, worldView.Config.Materials)))
             {
                 return stack.Count > 0;
             }

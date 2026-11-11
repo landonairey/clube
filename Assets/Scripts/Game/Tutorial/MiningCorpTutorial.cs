@@ -97,6 +97,8 @@ namespace Clube.Game
         private PlayerToolUser tools;
         private InventoryScreen inventoryScreen;
         private QuestHud questHud;
+        private PlayerQuests quests;
+        private BoulderBashing bashing;
         private Minimap minimap;
 
         private Step step;
@@ -125,6 +127,8 @@ namespace Clube.Game
         private readonly System.Collections.Generic.List<string> foundOres = new System.Collections.Generic.List<string>();
         private bool talking;
         private bool oreDiscussed;
+        /// <summary>GL576: set once the player has dug up ore; "Discuss ore" is offered only after that (or while holding ore).</summary>
+        private bool oreMined;
         private readonly DailyQuota quota = new DailyQuota();
         private readonly System.Collections.Generic.HashSet<string> discussedOres = new System.Collections.Generic.HashSet<string>();
         private FieldLogScreen fieldLog;
@@ -180,6 +184,18 @@ namespace Clube.Game
             {
                 questHud.enabled = false;
             }
+            // GL579: no quests at all in the tutorial: nothing completes, notifies or shows until the job is over.
+            quests = player.GetComponentInChildren<PlayerQuests>(true);
+            if (quests != null)
+            {
+                quests.Log.Frozen = true;
+            }
+            // GL581: the stone hand axe can't be sold, so the tutorial doesn't offer it (restored when the tutorial goes).
+            bashing = player.GetComponentInChildren<BoulderBashing>(true);
+            if (bashing != null)
+            {
+                bashing.HandAxeDisabled = true;
+            }
             if (tools != null)
             {
                 tools.Collected += OnCollected;
@@ -192,6 +208,10 @@ namespace Clube.Game
 
         private void OnDestroy()
         {
+            if (bashing != null)
+            {
+                bashing.HandAxeDisabled = false;
+            }
             if (tools != null)
             {
                 tools.Collected -= OnCollected;
@@ -289,11 +309,13 @@ namespace Clube.Game
             values["quotaStone"] = quota.Stone.ToString();
             values["quotaDay"] = quota.Day.ToString();
             values["oreDiscussed"] = oreDiscussed ? "1" : "0";
+            values["oreMined"] = oreMined ? "1" : "0";
         }
 
         public void RestoreValues(System.Collections.Generic.IReadOnlyDictionary<string, string> values)
         {
             oreDiscussed = values.TryGetValue("oreDiscussed", out string said) && said == "1";
+            oreMined = values.TryGetValue("oreMined", out string mined) && mined == "1";
             if (values.TryGetValue("quotaStone", out string saved) && int.TryParse(saved, out int count))
             {
                 values.TryGetValue("quotaDay", out string savedDay);
@@ -339,6 +361,11 @@ namespace Clube.Game
             CompanyWarehouse.ClearGround(worldView);
             TutorialTerrain.Apply(worldView);
             regroundAt = Time.time + 4f;
+            // GL577: the tutorial starts when work does (09:00), so the player can dig at once; the crew gets up from bed on the usual schedule.
+            if (dayNight != null && dayNight.Day == 1 && dayNight.ClockHour < CompanyWork.WorkStartHour)
+            {
+                dayNight.SetTime(CompanyWork.WorkStartHour);
+            }
             Vector3 leadAt = OnMap(CompanyWarehouse.LeadSpot);
             lead = CrewLead.Build(leadAt, player.transform.position, material, this);
             arrow = QuestArrow.Build(lead.transform, 2.6f, material);
@@ -486,6 +513,31 @@ namespace Clube.Game
         /// <summary>What the lead adds while the player is off mining (GL541).</summary>
         private const string OutThere = "Let me know if you find anything interesting too while you're out there.";
 
+        /// <summary>GL576: the topic exists only once the player has mined or holds ore; it stays (greyed out) after use (GL554).</summary>
+        private bool OfferDiscussOre()
+        {
+            if (oreMined || oreDiscussed || foundOres.Count > 0 || discussedOres.Count > 0)
+            {
+                return true;
+            }
+            Inventory items = inventory.Inventory;
+            for (int slot = 0; slot < items.SlotCount; slot++)
+            {
+                ItemStack stack = items[slot];
+                if (!stack.IsEmpty && stack.Contents != null)
+                {
+                    foreach (Content part in stack.Contents.Parts)
+                    {
+                        if (part.Material != null && part.Material.Category == VoxelMaterialCategory.Ore)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
         private void CloseTalk()
         {
             talking = false;
@@ -499,7 +551,8 @@ namespace Clube.Game
             bool closeKey = e.type == EventType.KeyDown && (e.keyCode == KeyCode.E || e.keyCode == KeyCode.Escape);
             float width = Mathf.Min(Screen.width - 32f, 420f * GameUi.FontScale);
             float row = GameUi.Font(17) + 14f;
-            float height = 70f + row * 3;
+            bool offerOre = OfferDiscussOre();
+            float height = 70f + row * (offerOre ? 3 : 2);
             var panel = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
             GUI.Box(panel, "", cardStyle);
             GUI.Label(new Rect(panel.x + 14f, panel.y + 10f, width - 28f, 28f), "The crew lead");
@@ -512,7 +565,7 @@ namespace Clube.Game
             }
             y += row;
             GUI.enabled = !oreDiscussed;
-            if (GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), "Discuss ore"))
+            if (offerOre && GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), "Discuss ore"))
             {
                 // GL542, GL554: he never cares, and the topic is closed for good (greyed out afterwards).
                 speech = NotInterested;
@@ -527,7 +580,10 @@ namespace Clube.Game
                 return;
             }
             GUI.enabled = true;
-            y += row;
+            if (offerOre)
+            {
+                y += row;
+            }
             if (GUI.Button(new Rect(panel.x + 14f, y, width - 28f, row - 4f), "Exit (E)") || closeKey)
             {
                 CloseTalk();
@@ -607,6 +663,10 @@ namespace Clube.Game
                     foreach (Content part in collected.Contents.Parts)
                     {
                         string ore = part.Material != null && part.Material.Category == VoxelMaterialCategory.Ore ? part.Material.DisplayName : null;
+                        if (ore != null)
+                        {
+                            oreMined = true;
+                        }
                         if (ore != null && !foundOres.Contains(ore) && !discussedOres.Contains(ore))
                         {
                             foundOres.Add(ore);

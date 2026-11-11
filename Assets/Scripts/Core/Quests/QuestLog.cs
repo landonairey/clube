@@ -18,6 +18,9 @@ namespace Clube.Core
         /// <summary>Raised once when a quest is first done.</summary>
         public event Action<Quest> Completed;
 
+        /// <summary>While true no quest can be completed: no progress, no <see cref="Completed"/> events (the tutorial, GL579).</summary>
+        public bool Frozen { get; set; }
+
         /// <summary>Every quest, in section order and then the order added.</summary>
         public IReadOnlyList<Quest> Quests => quests;
 
@@ -120,7 +123,7 @@ namespace Clube.Core
         /// <summary>Marks a quest done; true the first time, false when it was done already or doesn't exist.</summary>
         public bool Complete(string id)
         {
-            if (!byId.TryGetValue(id, out Quest quest) || quest.Done)
+            if (Frozen || !byId.TryGetValue(id, out Quest quest) || quest.Done)
             {
                 return false;
             }

@@ -102,6 +102,7 @@ MonoBehaviour:
       baseMaterial: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
       steepAngle: 35
       steepMinHeight: 24
+      baseAboveHeight: 20.1
       ridgeDepth: 0.6
       ridgeWidth: 3.5
       ridgeLength: 30

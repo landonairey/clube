@@ -15,7 +15,8 @@ namespace Clube.Game
     /// </summary>
     public class WorkerCrew : MonoBehaviour
     {
-        private enum Phase { ToSpot, Work, ToLead, HandIn, ToBed, Sleep, ToWork }
+        // Approach: the walk from the yard to the post by way of the lane in front of the face (GL580).
+        private enum Phase { ToSpot, Work, ToLead, HandIn, ToBed, Sleep, ToWork, Approach }
 
         private const float WakeHour = CompanyWork.WorkStartHour - 1f;
         private const float WalkSpeed = 1.8f;
@@ -27,6 +28,14 @@ namespace Clube.Game
         private const float HandInSeconds = 2.5f;
         private const float TurnSpeed = 240f;
         private static readonly float[] StrikeHeights = { 0.9f, 1.7f, 2.5f };
+        // A standing worker's body, as balls at these heights, for checking that a post is clear of rock (GL580).
+        private static readonly float[] BodyHeights = { 0.5f, 1.2f, 1.7f };
+        private const float BodyRadius = 0.3f;
+        private const float GroundCastUp = 0.6f;
+        private const float GroundCastDown = 30f;
+        private const float StepUpSpeed = 3f;
+        private const float Gravity = 20f;
+        private const float MaxFall = 25f;
 
         private sealed class Worker
         {
@@ -46,6 +55,7 @@ namespace Clube.Game
             public Vector3 Queue;
             public Vector3[] Route;
             public int RouteAt;
+            public float Fall;
         }
 
         private Worker[] workers;
@@ -127,10 +137,47 @@ namespace Clube.Game
                 w.Along = w.From;
                 w.LastBeat = 0f;
                 result.workers[i] = w;
-                go.transform.localPosition = PostOf(w);
-                figure.Pose = KeeperPose.Mine;
+                // GL577: the day starts in bed; they get up and walk to work on the usual schedule.
+                w.Phase = Phase.Sleep;
+                go.transform.localPosition = CompanyWarehouse.WorkerBedSpot(i) - Vector3.up * 0.55f;
+                go.transform.localRotation = Quaternion.identity;
+                figure.Pose = KeeperPose.Lie;
+                figure.LieAlong(true, map.TransformPoint(CompanyWarehouse.WorkerBedSpot(i)), map.TransformDirection(Vector3.forward));
             }
             return result;
+        }
+
+        // Where the face meets the open ground: the lane workers walk along to reach their post, or leave by, so they never
+        // cut through the mountain (GL580). Same x as the post: the trench is dug there.
+        private static Vector3 LaneOf(Worker w)
+        {
+            return new Vector3(w.Along, CompanyWork.Ground, CompanyWork.Fields.yMax - StandOff);
+        }
+
+        private static void StartApproach(Worker w)
+        {
+            StartRoute(w, LaneOf(w), PostOf(w));
+            w.Phase = Phase.Approach;
+        }
+
+        // True when a worker standing at a post (this spot, this pass) would be inside terrain (GL580).
+        private bool BodyBlocked(float along, int pass)
+        {
+            if (world == null || world.World == null)
+            {
+                return false;
+            }
+            var probe = new Worker { Along = along, Pass = pass };
+            Vector3 post = PostOf(probe);
+            foreach (float up in BodyHeights)
+            {
+                SphereStrike.FindTargets(world.World, post + Vector3.up * up, BodyRadius, targets);
+                if (targets.Count > 0)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private static float Depth(Worker w) => w.Pass * StepDeeper;
@@ -162,7 +209,54 @@ namespace Clube.Game
             for (int i = 0; i < workers.Length; i++)
             {
                 Tick(workers[i], outAndAbout, digging, dt);
+                Ground(workers[i], dt);
             }
+        }
+
+        // GL582: workers stand on the live terrain, whatever the player digs: a cast down against the chunk colliders every frame.
+        // They drop (with gravity) when the ground under them is dug away, and step up onto rising ground. Where no collider is loaded
+        // (far from the player) they keep their height. A NavMesh over voxels the player edits all day would be rebuilt around every dig
+        // and the colliders only exist near the player, so this is the cheap, robust choice for now.
+        private static readonly RaycastHit[] GroundHits = new RaycastHit[8];
+
+        private void Ground(Worker w, float dt)
+        {
+            if (w.Phase == Phase.Sleep)
+            {
+                w.Fall = 0f;
+                return;
+            }
+            Transform t = w.Figure.transform;
+            Vector3 local = t.localPosition;
+            Vector3 origin = map.TransformPoint(local + Vector3.up * GroundCastUp);
+            int count = Physics.RaycastNonAlloc(origin, Vector3.down, GroundHits, GroundCastUp + GroundCastDown, ~0, QueryTriggerInteraction.Ignore);
+            float best = float.MaxValue;
+            float groundY = 0f;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit hit = GroundHits[i];
+                if (hit.distance < best && hit.collider.GetComponent<ChunkCollider>() != null)
+                {
+                    best = hit.distance;
+                    groundY = map.InverseTransformPoint(hit.point).y;
+                }
+            }
+            if (best == float.MaxValue)
+            {
+                w.Fall = 0f;
+                return;
+            }
+            if (groundY >= local.y)
+            {
+                local.y = Mathf.Min(groundY, local.y + StepUpSpeed * dt);
+                w.Fall = 0f;
+            }
+            else
+            {
+                w.Fall = Mathf.Min(w.Fall + Gravity * dt, MaxFall);
+                local.y = Mathf.Max(groundY, local.y - w.Fall * dt);
+            }
+            t.localPosition = local;
         }
 
         private void Tick(Worker w, bool upAndAbout, bool digging, float dt)
@@ -178,11 +272,13 @@ namespace Clube.Game
                 }
                 else if (w.Phase == Phase.ToLead || w.Phase == Phase.HandIn || w.Phase == Phase.ToBed)
                 {
-                    w.Phase = Phase.ToSpot;
+                    StartApproach(w);
                 }
             }
-            else if (w.Phase == Phase.Work || w.Phase == Phase.ToSpot || w.Phase == Phase.ToWork)
+            else if (w.Phase == Phase.Work || w.Phase == Phase.ToSpot || w.Phase == Phase.ToWork || w.Phase == Phase.Approach)
             {
+                // Out by the lane, not through the rock, then across the yard to the lead.
+                StartRoute(w, LaneOf(w), w.Queue);
                 w.Phase = Phase.ToLead;
             }
 
@@ -191,7 +287,16 @@ namespace Clube.Game
                 case Phase.ToWork:
                     if (WalkRoute(w, t, dt))
                     {
-                        w.Phase = Phase.ToSpot;
+                        StartApproach(w);
+                    }
+                    break;
+                case Phase.Approach:
+                    if (WalkRoute(w, t, dt))
+                    {
+                        w.Phase = Phase.Work;
+                        w.Swings = 0;
+                        w.Clear = 0;
+                        w.LastBeat = w.Figure.MineBeat;
                     }
                     break;
                 case Phase.ToSpot:
@@ -207,7 +312,7 @@ namespace Clube.Game
                     Dig(w, t, digging, dt);
                     break;
                 case Phase.ToLead:
-                    if (WalkTo(w, t, w.Queue, dt))
+                    if (WalkRoute(w, t, dt))
                     {
                         w.Phase = Phase.HandIn;
                         w.Wait = HandInSeconds;
@@ -303,12 +408,22 @@ namespace Clube.Game
         // On to the next spot along the stretch; after the last, a sweep is done and the next goes a step deeper.
         private void NextSpot(Worker w)
         {
-            w.Along += StepAlong;
-            if (w.Along > w.To)
+            float along = w.Along + StepAlong;
+            int pass = w.Pass;
+            if (along > w.To)
             {
-                w.Along = w.From;
-                w.Pass++;
+                along = w.From;
+                pass++;
             }
+            // GL580: never step to a post that is inside rock (hard stone the picks haven't cleared yet): dig on here instead.
+            if (BodyBlocked(along, pass))
+            {
+                w.Swings = 0;
+                w.Clear = 0;
+                return;
+            }
+            w.Along = along;
+            w.Pass = pass;
             w.Figure.Pose = KeeperPose.Walk;
             w.Phase = Phase.ToSpot;
         }
