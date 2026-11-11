@@ -6,7 +6,8 @@ namespace Clube.Game
 {
     /// <summary>
     /// The lone adventurer by their campfire (GL476): buys everything on the price list and sells all of it too, dearer
-    /// than the town (<see cref="AdventurerVisit.SellMarkup"/>), out of one purse that isn't refilled each day. Their
+    /// than the town (<see cref="AdventurerVisit.SellMarkup"/>), out of one purse that isn't refilled each day. They
+    /// also teach climbing for <see cref="AdventurerVisit.ClimbingPrice"/> coins, once (GL585, <see cref="PlayerUpgrades"/>). Their
     /// disposition sets their prices like a shopkeeper's (GL471). Built by <see cref="AdventurerCamp"/>, which saves them.
     /// </summary>
     public class Adventurer : MonoBehaviour, IClosableInteractable, ITrader
@@ -80,7 +81,8 @@ namespace Clube.Game
 
         public Disposition Disposition { get; private set; }
 
-        public ITraderDeal Deal => null;
+        /// <summary>The climbing upgrade (GL585), set up when the player talks to them; null before that.</summary>
+        public ITraderDeal Deal { get; private set; }
 
         public bool IsTrading => isActiveAndEnabled;
 
@@ -92,6 +94,8 @@ namespace Clube.Game
 
         public void Interact(PlayerInteractor by)
         {
+            PlayerUpgrades upgrades = by.GetComponent<PlayerUpgrades>();
+            Deal = upgrades != null ? upgrades.ClimbingDeal(Purse) : null;
             MerchantPanel panel = by.GetComponent<MerchantPanel>();
             if (panel != null)
             {

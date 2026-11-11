@@ -217,7 +217,10 @@ namespace Clube.Game
         public bool IsClimbing { get; private set; }
 
         /// <summary>Climbing speed in metres a second (GL467): a share of the walk.</summary>
-        public float ClimbSpeed => walkSpeed * climbSpeedShare;
+        public float ClimbSpeed => walkSpeed * climbSpeedShare * ClimbSpeedMultiplier;
+
+        /// <summary>What bought upgrades multiply the climbing speed by (GL585, <see cref="PlayerUpgrades"/>); 1 for none.</summary>
+        public float ClimbSpeedMultiplier { get; set; } = 1f;
 
         /// <summary>True while the capsule is lower than standing: crouching or sliding (GL219).</summary>
         public bool IsCrouching => currentHeight < standingHeight - 0.01f;
@@ -359,6 +362,10 @@ namespace Clube.Game
             standingCenter = Body.center;
             currentHeight = standingHeight;
             headStandingY = head != null ? head.localPosition.y : 0f;
+            if (!TryGetComponent(out PlayerUpgrades _))
+            {
+                gameObject.AddComponent<PlayerUpgrades>(); // bought upgrades (GL585); no scene needs editing
+            }
         }
 
         private void OnEnable()

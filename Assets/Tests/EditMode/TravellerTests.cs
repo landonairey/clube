@@ -139,14 +139,41 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void AdventurerVisit_ArrivesAtTheDawnAfterTheFifthNight()
+        public void AdventurerVisit_ArrivesAtSunsetOnTheFifthDay()
         {
-            const float Sunrise = 4f;
-            Assert.IsFalse(AdventurerVisit.HasArrived(1, 7f, Sunrise));
-            Assert.IsFalse(AdventurerVisit.HasArrived(5, 23f, Sunrise));
-            Assert.IsFalse(AdventurerVisit.HasArrived(6, 3.9f, Sunrise));
-            Assert.IsTrue(AdventurerVisit.HasArrived(6, 4f, Sunrise));
-            Assert.IsTrue(AdventurerVisit.HasArrived(9, 1f, Sunrise));
+            const float Sunset = 20f;
+            Assert.IsFalse(AdventurerVisit.HasArrived(1, 22f, Sunset));
+            Assert.IsFalse(AdventurerVisit.HasArrived(5, 7f, Sunset));
+            Assert.IsFalse(AdventurerVisit.HasArrived(5, 19.9f, Sunset));
+            Assert.IsTrue(AdventurerVisit.HasArrived(5, 20f, Sunset));
+            Assert.IsTrue(AdventurerVisit.HasArrived(6, 1f, Sunset));
+        }
+
+        [Test]
+        public void UpgradeSale_IsBoughtOnceForItsPriceAndPaysTheSeller()
+        {
+            var sale = new UpgradeSale(1000);
+            var player = new Wallet(2500f);
+            var seller = new Wallet(0f);
+            Assert.IsTrue(sale.TryBuy(player, seller));
+            Assert.IsTrue(sale.Owned);
+            Assert.AreEqual(1500f, player.Coins, 1e-3f);
+            Assert.AreEqual(1000f, seller.Coins, 1e-3f);
+            Assert.IsFalse(sale.TryBuy(player, seller), "once only");
+            Assert.AreEqual(1500f, player.Coins, 1e-3f);
+        }
+
+        [Test]
+        public void UpgradeSale_IsRefusedWithoutEnoughCoins()
+        {
+            var sale = new UpgradeSale(1000);
+            var player = new Wallet(999f);
+            var seller = new Wallet(0f);
+            Assert.IsFalse(sale.TryBuy(player, seller));
+            Assert.IsFalse(sale.Owned);
+            Assert.AreEqual(999f, player.Coins, 1e-3f);
+            Assert.AreEqual(0f, seller.Coins, 1e-3f);
+            Assert.IsFalse(sale.TryBuy(null, seller));
         }
     }
 }
