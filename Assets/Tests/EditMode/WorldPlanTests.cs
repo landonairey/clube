@@ -124,8 +124,10 @@ namespace Clube.Core.Tests
             EconomySpecialty merchant = all.Single(s => s.Id == "merchant");
             Assert.That(merchant.BuysEverything && merchant.SellsVariety && merchant.Needs.Length == 0);
             Assert.That(all.Where(s => s != merchant).All(s => s.Needs.Length > 0 && s.Buys.Length > 0 && s.Sells.Length > 0));
-            // The textile goods aren't in the game yet: names only.
-            Assert.That(all.Where(s => s.Chain == SupplyChains.Textile).SelectMany(s => s.Sells).All(g => !g.InGame && g.Name.Length > 0));
+            // What the textile shops make isn't in the game yet (names only); the hides the tannery passes on are (GL603).
+            Assert.That(all.Where(s => s.Chain == SupplyChains.Textile).SelectMany(s => s.Sells)
+                .All(g => g.InGame ? g.ItemId.EndsWith("-hide") : g.Name.Length > 0));
+            Assert.That(all.Where(s => s.Chain == SupplyChains.Textile).SelectMany(s => s.Sells).Count(g => !g.InGame), Is.GreaterThan(4));
         }
 
         [Test]
