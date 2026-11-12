@@ -31,7 +31,7 @@ namespace Clube.Game
         /// <summary>True for a new game that opens with the Mining Corp tutorial (GL479), until the tutorial ends.</summary>
         public static bool Tutorial { get; private set; }
 
-        /// <summary>True from the end of the tutorial until the game scene has played the cart arrival (GL583); never for a loaded game.</summary>
+        /// <summary>True for a new game reaching the family parcel (after the tutorial, or with it skipped) until the game scene has played the cart arrival (GL583, GL619); never for a loaded game.</summary>
         public static bool ArrivesByCart { get; set; }
 
         /// <summary>The character's name, typed for the crew lead in the tutorial (GL514); empty until then.</summary>
@@ -51,7 +51,8 @@ namespace Clube.Game
             Seed = seed;
             WorldName = NameOrDefault(worldName);
             Tutorial = tutorial;
-            ArrivesByCart = false;
+            // A new game skipping the tutorial also arrives at the family parcel by cart (GL619).
+            ArrivesByCart = !tutorial;
             CharacterName = "";
             CarriedCoins = 0f;
             Loaded = null;

@@ -97,7 +97,8 @@ namespace Clube.Game
             {
                 return;
             }
-            PlayerController found = FindFirstObjectByType<PlayerController>();
+            // The player is still switched off here: PlayerCameraToggle.Start switches it on after scene load (GL619).
+            PlayerController found = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
             if (found != null && found.TryGetComponent(out PlayerSpawn _))
             {
                 new GameObject("Arrival cutscene").AddComponent<ArrivalCutscene>();
@@ -107,7 +108,7 @@ namespace Clube.Game
         private void Awake()
         {
             IsPlaying = true;
-            player = FindFirstObjectByType<PlayerController>();
+            player = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
             spawn = player != null ? player.GetComponent<PlayerSpawn>() : null;
             worldView = FindFirstObjectByType<WorldView>();
             head = player != null ? player.Head : null;
