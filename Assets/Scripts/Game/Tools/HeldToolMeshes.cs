@@ -23,8 +23,8 @@ namespace Clube.Game
     /// </summary>
     public static class HeldToolMeshes
     {
-        private static readonly Color Skin = new Color(0.78f, 0.56f, 0.42f);
-        private static readonly Color Sleeve = new Color(0.24f, 0.28f, 0.36f);
+        private static readonly Color Skin = FigureLooks.Of(FigurePreset.Player).Skin;
+        private static readonly Color Sleeve = FigureLooks.Of(FigurePreset.Player).Shirt;
         private static readonly Color Wood = new Color(0.42f, 0.28f, 0.15f);
         private static readonly Color Stone = new Color(0.5f, 0.5f, 0.52f);
         private static readonly Color Flint = new Color(0.36f, 0.35f, 0.38f);
@@ -110,15 +110,14 @@ namespace Clube.Game
             // The forearm, back and down to the bottom right of the view, and the fist round the grip.
             if (withHand)
             {
-                model.Prism(new Vector3(0.06f, -0.2f, -0.5f), new Vector3(0.01f, -0.03f, -0.06f), 0.05f, 0.042f, 6, Sleeve);
-                model.Box(new Vector3(0f, 0f, 0f), new Vector3(0.085f, 0.075f, 0.09f), Quaternion.identity, Skin);
+                Arm(model);
             }
             switch (shape)
             {
                 case HeldShape.Hand:
                     // Knuckles a little forward, a thumb over the side.
-                    model.Box(new Vector3(0f, 0.01f, 0.05f), new Vector3(0.08f, 0.045f, 0.03f), Quaternion.identity, Skin * 0.95f);
-                    model.Box(new Vector3(-0.045f, 0.02f, 0.02f), new Vector3(0.025f, 0.025f, 0.06f), Quaternion.Euler(0f, 20f, 0f), Skin * 0.92f);
+                    model.Blob(new Vector3(0f, 0.012f, 0.04f), new Vector3(0.042f, 0.026f, 0.026f), Quaternion.identity, Shade(Skin, 0.95f), 5, 3);
+                    model.Prism(new Vector3(-0.042f, 0.012f, -0.015f), new Vector3(-0.03f, 0.03f, 0.055f), 0.017f, 0.011f, 4, Shade(Skin, 0.92f));
                     break;
                 case HeldShape.HandAxe:
                     // A knapped stone, pointed end forward, held in the fist.
@@ -208,8 +207,7 @@ namespace Clube.Game
             var model = new LowPolyMeshBuilder();
             if (withHand)
             {
-                model.Prism(new Vector3(0.06f, -0.2f, -0.5f), new Vector3(0.01f, -0.03f, -0.06f), 0.05f, 0.042f, 6, Sleeve);
-                model.Box(new Vector3(0f, 0f, 0f), new Vector3(0.085f, 0.075f, 0.09f), Quaternion.identity, Skin);
+                Arm(model);
             }
             model.Prism(new Vector3(0f, -0.14f, 0f), new Vector3(0.005f, 0.34f, 0.03f), 0.018f, 0.016f, 5, Wood);
             model.Prism(new Vector3(0.005f, 0.3f, 0.027f), new Vector3(0.006f, 0.4f, 0.035f), 0.032f, 0.026f, 6, Charcoal);
@@ -226,8 +224,7 @@ namespace Clube.Game
             var model = new LowPolyMeshBuilder();
             if (withHand)
             {
-                model.Prism(new Vector3(0.06f, -0.2f, -0.5f), new Vector3(0.01f, -0.03f, -0.06f), 0.05f, 0.042f, 6, Sleeve);
-                model.Box(new Vector3(0f, 0f, 0f), new Vector3(0.085f, 0.075f, 0.09f), Quaternion.identity, Skin);
+                Arm(model);
             }
             // The handle: a rope from the fist down to each side of the rim.
             model.Prism(new Vector3(-0.01f, -0.01f, 0f), new Vector3(-0.1f, -0.13f, 0.02f), 0.007f, 0.007f, 4, Cord);
@@ -237,6 +234,28 @@ namespace Clube.Game
             model.Prism(new Vector3(0f, -0.33f, 0.02f), new Vector3(0f, -0.31f, 0.02f), 0.092f, 0.093f, 8, Charcoal);
             model.Prism(new Vector3(0f, -0.18f, 0.02f), new Vector3(0f, -0.16f, 0.02f), 0.102f, 0.103f, 8, Charcoal);
             return model.Make("Held bucket");
+        }
+
+        // The player's forearm and fist (GL608), in the figures' look: a tapered six-sided sleeve from the bottom right of
+        // the view, a cuff, a bare wrist and a faceted fist round the grip at the origin.
+        private static void Arm(LowPolyMeshBuilder model)
+        {
+            Vector3 elbow = new Vector3(0.06f, -0.2f, -0.5f), wrist = new Vector3(0.01f, -0.03f, -0.06f);
+            float length = (wrist - elbow).magnitude;
+            Matrix4x4 before = model.Placement;
+            model.Placement = before * Matrix4x4.TRS(elbow, Quaternion.FromToRotation(Vector3.up, wrist - elbow), Vector3.one);
+            model.Loft(new[] { Vector3.zero, Vector3.up * (length - 0.1f) }, new[] { new Vector2(0.06f, 0.06f), new Vector2(0.046f, 0.046f) }, 6, Sleeve);
+            model.Loft(new[] { Vector3.up * (length - 0.13f), Vector3.up * (length - 0.085f) }, new[] { new Vector2(0.052f, 0.052f), new Vector2(0.05f, 0.05f) }, 6,
+                Shade(Sleeve, 0.8f));
+            model.Loft(new[] { Vector3.up * (length - 0.1f), Vector3.up * (length - 0.02f) }, new[] { new Vector2(0.037f, 0.037f), new Vector2(0.034f, 0.034f) }, 6,
+                Shade(Skin, 0.95f));
+            model.Placement = before;
+            model.Blob(Vector3.zero, new Vector3(0.047f, 0.042f, 0.052f), Quaternion.identity, Skin, 6, 3);
+        }
+
+        private static Color Shade(Color color, float by)
+        {
+            return new Color(color.r * by, color.g * by, color.b * by, color.a);
         }
     }
 }

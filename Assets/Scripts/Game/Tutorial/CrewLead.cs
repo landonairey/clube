@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// The Mining Corp's crew lead in the opening tutorial (GL479): a miner's figure (<see cref="KeeperFigure"/>) at the
+    /// The Mining Corp's crew lead in the opening tutorial (GL479): a miner's figure (<see cref="FigureRig"/>) at the
     /// quarry's rim that Interact talks to, who later walks off towards the town and is gone.
     /// </summary>
     public class CrewLead : MonoBehaviour, IInteractable
@@ -12,7 +12,7 @@ namespace Clube.Game
         private const float WalkSpeed = 1.4f;
         private const float GoneAfter = 25f;
 
-        private KeeperFigure figure;
+        private FigureRig figure;
         private Vector3 leavingTo;
         private float walked;
 
@@ -36,9 +36,9 @@ namespace Clube.Game
             }
             CrewLead lead = go.AddComponent<CrewLead>();
             lead.Tutorial = tutorial;
-            lead.figure = go.AddComponent<KeeperFigure>();
-            lead.figure.BuildCrewLead(material, 479);
-            lead.figure.Pose = KeeperPose.Stand;
+            lead.figure = go.AddComponent<FigureRig>();
+            lead.figure.Build(FigurePreset.Foreman, material, 479);
+            lead.figure.Pose = FigureAction.Stand;
             return lead;
         }
 
@@ -74,7 +74,7 @@ namespace Clube.Game
                 at.y = hit.point.y;
             }
             transform.position = at;
-            figure.Pose = KeeperPose.Stand;
+            figure.Pose = FigureAction.Stand;
             foreach (Collider body in GetComponentsInChildren<Collider>(true))
             {
                 body.enabled = true;
@@ -91,7 +91,7 @@ namespace Clube.Game
         {
             IsLeaving = true;
             leavingTo = towards;
-            figure.Pose = KeeperPose.Walk;
+            figure.Pose = FigureAction.Walk;
             // Nothing more to say, and the ground ray below mustn't land on the lead's own body.
             foreach (Collider body in GetComponentsInChildren<Collider>())
             {

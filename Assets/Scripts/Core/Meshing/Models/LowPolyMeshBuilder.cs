@@ -72,6 +72,37 @@ namespace Clube.Core
             return centre + turn * new Vector3(Mathf.Cos(around) * ring * radii.x, Mathf.Sin(around) * ring * radii.y, Mathf.Cos(polar) * radii.z);
         }
 
+        /// <summary>
+        /// A skin over rings stacked along Y (GL608: the figures' torsos and limbs): ring i is an ellipse about
+        /// <paramref name="centres"/>[i], <paramref name="radii"/>[i].x across x and .y across z, with a flat face to the
+        /// front and back when <paramref name="sides"/> is 6. Both ends are closed.
+        /// </summary>
+        public void Loft(IReadOnlyList<Vector3> centres, IReadOnlyList<Vector2> radii, int sides, Color color)
+        {
+            int last = centres.Count - 1;
+            for (int r = 0; r < last; r++)
+            {
+                Vector3 middle = (centres[r] + centres[r + 1]) * 0.5f;
+                for (int s = 0; s < sides; s++)
+                {
+                    Quad(LoftPoint(centres[r], radii[r], s, sides), LoftPoint(centres[r + 1], radii[r + 1], s, sides),
+                        LoftPoint(centres[r + 1], radii[r + 1], s + 1, sides), LoftPoint(centres[r], radii[r], s + 1, sides), middle, color);
+                }
+            }
+            Vector3 inside = (centres[0] + centres[last]) * 0.5f;
+            for (int s = 0; s < sides; s++)
+            {
+                Triangle(centres[0], LoftPoint(centres[0], radii[0], s, sides), LoftPoint(centres[0], radii[0], s + 1, sides), inside, color);
+                Triangle(centres[last], LoftPoint(centres[last], radii[last], s, sides), LoftPoint(centres[last], radii[last], s + 1, sides), inside, color);
+            }
+        }
+
+        private static Vector3 LoftPoint(Vector3 centre, Vector2 radii, int side, int sides)
+        {
+            float around = Mathf.PI * 2f * side / sides;
+            return centre + new Vector3(Mathf.Cos(around) * radii.x, 0f, Mathf.Sin(around) * radii.y);
+        }
+
         /// <summary>A tapered prism along a line, with its ends closed.</summary>
         public void Prism(Vector3 from, Vector3 to, float fromRadius, float toRadius, int sides, Color color)
         {
