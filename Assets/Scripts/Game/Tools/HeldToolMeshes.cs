@@ -30,6 +30,7 @@ namespace Clube.Game
         private static readonly Color Flint = new Color(0.36f, 0.35f, 0.38f);
         private static readonly Color Bronze = new Color(0.72f, 0.46f, 0.2f);
         private static readonly Color Iron = new Color(0.55f, 0.57f, 0.6f);
+        private static readonly Color Steel = new Color(0.7f, 0.74f, 0.8f);
         private static readonly Color Cord = new Color(0.62f, 0.52f, 0.34f);
         private static readonly Color Copper = new Color(0.8f, 0.43f, 0.25f);
         private static readonly Color Patina = new Color(0.33f, 0.62f, 0.5f);
@@ -84,6 +85,10 @@ namespace Clube.Game
             if (name.Contains("bronze"))
             {
                 return Bronze;
+            }
+            if (name.Contains("steel"))
+            {
+                return Steel; // GL624: paler and bluer than iron
             }
             if (name.Contains("copper"))
             {

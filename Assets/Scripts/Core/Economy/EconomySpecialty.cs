@@ -128,16 +128,19 @@ namespace Clube.Core
 
         // ---- The table ----
 
-        private static readonly string[] RawOres = { "cassiterite", "chalcopyrite", "malachite", "gold-ore", "silver-ore" };
+        private static readonly string[] RawOres = { "cassiterite", "chalcopyrite", "malachite", "gold-ore", "silver-ore", "magnetite", "hematite", "coal" };
         private static readonly string[] CrushedOres =
         {
             "crushed-cassiterite", "crushed-chalcopyrite", "crushed-malachite", "crushed-gold-ore", "crushed-silver-ore",
+            "crushed-magnetite", "crushed-hematite",
         };
-        private static readonly string[] Buns = { "copper-bun", "tin-bun", "bronze-bun", "gold-bun", "silver-bun" };
-        private static readonly string[] Ingots = { "copper-ingot", "tin-ingot", "bronze-ingot", "gold-ingot", "silver-ingot" };
+        private static readonly string[] Buns = { "copper-bun", "tin-bun", "bronze-bun", "gold-bun", "silver-bun", "iron-bun", "steel-bun" };
+        private static readonly string[] Ingots = { "copper-ingot", "tin-ingot", "bronze-ingot", "gold-ingot", "silver-ingot", "iron-ingot", "steel-ingot" };
         private static readonly string[] Furnaces = { "furnace", "clay-furnace", "brick-furnace", "refractory-furnace" };
-        private static readonly string[] Picks = { "stone-pick", "copper-pick", "bronze-pick" };
-        private static readonly string[] Hatchets = { "stone-hatchet", "copper-hatchet", "bronze-hatchet" };
+        private static readonly string[] Picks = { "stone-pick", "copper-pick", "bronze-pick", "iron-pick", "steel-pick" };
+        private static readonly string[] Hatchets = { "stone-hatchet", "copper-hatchet", "bronze-hatchet", "iron-hatchet", "steel-hatchet" };
+        private static readonly string[] Shovels = { "shovel", "bronze-shovel", "iron-shovel", "steel-shovel" };
+        private static readonly string[] Chisels = { "bronze-chisel", "iron-chisel", "steel-chisel" };
         private static readonly string[] Boards = { "oak-boards", "maple-boards" };
         private static readonly string[] Woods = { "wood", "maple-wood" };
 
@@ -165,7 +168,7 @@ namespace Clube.Core
                 {
                     Id = "tool-componentry", Name = "Tool Componentry", Chain = SupplyChains.Lumber, Kind = ShopKind.Lumber, CraftLevel = 1,
                     Needs = new[] { "wood" }, Buys = Goods(Woods, new[] { "stick" }),
-                    Sells = Goods(new[] { "stick", "bronze-chisel", "hand-axe" }, Hatchets, new[] { "shovel", "bronze-shovel" }),
+                    Sells = Goods(new[] { "stick", "hand-axe" }, Chisels, Hatchets, Shovels),
                 },
 
                 // Ore.
@@ -190,6 +193,7 @@ namespace Clube.Core
                     Needs = new[] { "ore" }, Buys = Goods(Ingots, new[] { "anvil" }),
                     Sells = Goods(
                         new[] { "anvil", "copper-pick", "bronze-pick", "copper-hatchet", "bronze-hatchet", "bronze-shovel", "bronze-chisel", "spear" },
+                        new[] { "iron-pick", "iron-hatchet", "iron-shovel", "iron-chisel", "steel-pick", "steel-hatchet", "steel-shovel", "steel-chisel" },
                         Later("Armor", "Weapons")),
                     SubSpecialties = new[] { "Armory", "Weaponsmith", "Toolsmith" },
                 },

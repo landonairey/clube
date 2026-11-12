@@ -20,6 +20,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2c26c5c4f4a60ca449a71671d88094ad, type: 2}
   - {fileID: 11400000, guid: e6ec90f8b46ea6747b89bbc179234604, type: 2}
   - {fileID: 11400000, guid: abc86bcbe8361da41bd3f644418bc0a3, type: 2}
+  - {fileID: 11400000, guid: eb884b9f1a537401528a6b54933c4438, type: 2}
+  - {fileID: 11400000, guid: da5184627884b8e1264796bf9aa012e4, type: 2}
   - {fileID: 11400000, guid: 9feabda89ca47d5479fc62960a078576, type: 2}
   - {fileID: 11400000, guid: 1e3311289ece4ce428134389e92a4e43, type: 2}
   - {fileID: 11400000, guid: 77d0fe700a4ca9f439cd43a5d6581c2d, type: 2}
@@ -31,7 +33,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 491e33a691a865b42bde1489ab967008, type: 2}
   - {fileID: 11400000, guid: e03060fe9ac797745b8b656d593b7671, type: 2}
   - {fileID: 11400000, guid: 75884212da9ef2040ac6fa7449e6da69, type: 2}
+  - {fileID: 11400000, guid: c21236b3d7bb41cbae68ffff2b1cd1fb, type: 2}
+  - {fileID: 11400000, guid: 5a4ec1d0c49892139b0e9c2ef76ef806, type: 2}
   - {fileID: 11400000, guid: d4b92ab0b8562f24f9e291f710d099c2, type: 2}
+  - {fileID: 11400000, guid: e44fbc1474a13a174b3ca6967b4e327b, type: 2}
+  - {fileID: 11400000, guid: 457693145b7e7d70b77020b4b6b2df32, type: 2}
   - {fileID: 11400000, guid: 781da9aaba956e543b3c7da3e7b05bee, type: 2}
   - {fileID: 11400000, guid: 4843d7b7f1c8d204baec0cd100bc7a91, type: 2}
   sells:
@@ -39,9 +45,14 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 491e33a691a865b42bde1489ab967008, type: 2}
   - {fileID: 11400000, guid: e03060fe9ac797745b8b656d593b7671, type: 2}
   - {fileID: 11400000, guid: 75884212da9ef2040ac6fa7449e6da69, type: 2}
+  - {fileID: 11400000, guid: c21236b3d7bb41cbae68ffff2b1cd1fb, type: 2}
+  - {fileID: 11400000, guid: 5a4ec1d0c49892139b0e9c2ef76ef806, type: 2}
   - {fileID: 11400000, guid: d4b92ab0b8562f24f9e291f710d099c2, type: 2}
+  - {fileID: 11400000, guid: e44fbc1474a13a174b3ca6967b4e327b, type: 2}
+  - {fileID: 11400000, guid: 457693145b7e7d70b77020b4b6b2df32, type: 2}
   - {fileID: 11400000, guid: 781da9aaba956e543b3c7da3e7b05bee, type: 2}
   - {fileID: 11400000, guid: 4843d7b7f1c8d204baec0cd100bc7a91, type: 2}
+  - {fileID: 11400000, guid: 981cc1854cc996a08ab08041a7d5f449, type: 2}
   sellMarkup: 1.5
   trains: 03000000
   coinsPerExperience: 2

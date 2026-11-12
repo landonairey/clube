@@ -826,6 +826,10 @@ namespace Clube.Game
                     return "a copper tool";
                 case 4:
                     return "a bronze tool";
+                case 5:
+                    return "an iron tool";
+                case 6:
+                    return "a steel tool";
                 default:
                     return $"a tier {tier} tool";
             }
