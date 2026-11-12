@@ -670,7 +670,9 @@ namespace Clube.Debug.Editor
 
         // A chunky wooden handle, a dark ferrule, and a broad flat bronze blade flaring out to a wide,
         // bright cutting edge (GL87, GL93): the blade's width is what reads as a chisel, not a stick.
-        private static Texture2D PaintChisel()
+        private static Texture2D PaintChisel() => PaintChisel(Bronze, BronzeLight, BronzeDark);
+
+        private static Texture2D PaintChisel(Color metal, Color metalLight, Color metalDark)
         {
             Texture2D texture = Blank();
             var along = new Vector2(1f, 1f).normalized;
@@ -679,14 +681,14 @@ namespace Clube.Debug.Editor
             Line(texture, new Vector2(9f, 9f), new Vector2(25f, 25f), 10f, Handle);
             Line(texture, new Vector2(8f, 12f), new Vector2(23f, 27f), 2.5f, HandleLight);
             // Ferrule.
-            Line(texture, new Vector2(25f, 25f), new Vector2(29f, 29f), 11f, BronzeDark);
+            Line(texture, new Vector2(25f, 25f), new Vector2(29f, 29f), 11f, metalDark);
             // Blade: narrow at the ferrule, wide at the edge.
             var neck = new Vector2(29f, 29f);
             var tip = new Vector2(52f, 52f);
-            FillQuad(texture, neck - across * 3.5f, tip - across * 9f, tip + across * 9f, neck + across * 3.5f, Bronze);
+            FillQuad(texture, neck - across * 3.5f, tip - across * 9f, tip + across * 9f, neck + across * 3.5f, metal);
             // A light face along one half, and the bevel and edge at the tip.
-            FillQuad(texture, neck, tip, tip + across * 9f, neck + across * 3.5f, Color.Lerp(Bronze, BronzeLight, 0.55f));
-            FillQuad(texture, tip - along * 5f - across * 8f, tip - across * 9f, tip + across * 9f, tip - along * 5f + across * 8f, BronzeLight);
+            FillQuad(texture, neck, tip, tip + across * 9f, neck + across * 3.5f, Color.Lerp(metal, metalLight, 0.55f));
+            FillQuad(texture, tip - along * 5f - across * 8f, tip - across * 9f, tip + across * 9f, tip - along * 5f + across * 8f, metalLight);
             Line(texture, tip - across * 9f, tip + across * 9f, 1.5f, new Color(1f, 0.97f, 0.88f));
             Outline(texture, new Color(0.12f, 0.12f, 0.14f));
             texture.Apply();
@@ -844,6 +846,35 @@ namespace Clube.Debug.Editor
             Outline(texture, new Color(0.12f, 0.12f, 0.14f));
             texture.Apply();
             return texture;
+        }
+
+        // Iron is a dark grey, steel a paler, bluer one (GL623).
+        private static readonly Color Iron = new Color(0.42f, 0.43f, 0.46f);
+        private static readonly Color IronLight = new Color(0.68f, 0.7f, 0.74f);
+        private static readonly Color IronDark = new Color(0.17f, 0.17f, 0.2f);
+        private static readonly Color SteelDark = new Color(0.28f, 0.31f, 0.37f);
+
+        /// <summary>Writes the iron and steel icons only (GL621, GL623, GL624), leaving the rest as they are.</summary>
+        [MenuItem("Clube/Items/Generate iron and steel icons")]
+        public static void GenerateIronAndSteel()
+        {
+            Directory.CreateDirectory(Folder);
+            Write("crushed magnetite", "Crushed magnetite", PaintGravel(new Color(0.5f, 0.5f, 0.52f), MaterialTextureTools.MagnetiteFleck));
+            Write("crushed hematite", "Crushed hematite", PaintGravel(new Color(0.5f, 0.5f, 0.52f), MaterialTextureTools.HematiteFleck));
+            WriteMetal("iron", "Iron", Iron, IronLight, IronDark);
+            WriteMetal("steel", "Steel", Steel, SteelLight, SteelDark);
+            AssetDatabase.SaveAssets();
+        }
+
+        // A metal's bun and ingot, and the pick, hatchet, shovel and chisel made of it.
+        private static void WriteMetal(string file, string item, Color metal, Color light, Color dark)
+        {
+            Write($"{file} bun", $"{item} bun", PaintBun(metal, light, dark));
+            Write($"{file} ingot", $"{item} ingot", PaintIngot(metal, light, dark));
+            Write($"{file} pick", $"{item} pick", PaintPickaxe(metal));
+            Write($"{file} hatchet", $"{item} hatchet", PaintHatchet(metal, light));
+            Write($"{file} shovel", $"{item} shovel", PaintShovel(metal, light));
+            Write($"{file} chisel", $"{item} chisel", PaintChisel(metal, light, dark));
         }
 
         /// <summary>Writes the brick mix and refractory brick icons (GL321), leaving the rest as they are.</summary>

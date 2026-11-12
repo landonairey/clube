@@ -41,6 +41,12 @@ namespace Clube.Game
             if (name.Contains("malachite")) return new Color(0.25f, 0.6f, 0.4f);
             if (name.Contains("tin") || name.Contains("cassiterite")) return new Color(0.55f, 0.52f, 0.48f);
             if (name.Contains("charcoal")) return new Color(0.12f, 0.11f, 0.1f);
+            // Iron and steel, their two ores and coal (GL621-GL624); charcoal is caught above, before "coal".
+            if (name.Contains("steel")) return new Color(0.7f, 0.74f, 0.8f);
+            if (name.Contains("magnetite")) return new Color(0.16f, 0.16f, 0.18f);
+            if (name.Contains("hematite")) return new Color(0.55f, 0.2f, 0.16f);
+            if (name.Contains("iron")) return new Color(0.45f, 0.46f, 0.5f);
+            if (name.Contains("coal")) return new Color(0.1f, 0.1f, 0.11f);
             if (name.Contains("maple")) return new Color(0.6f, 0.35f, 0.2f);
             if (name.Contains("oak")) return new Color(0.7f, 0.53f, 0.33f);
             if (name.Contains("wood") || name.Contains("stick")) return Wood;
@@ -67,7 +73,8 @@ namespace Clube.Game
             {
                 model.Prism(new Vector3(0f, 0f, 0f), new Vector3(0f, 0.06f, 0f), 0.08f, 0.05f, 8, colour);
             }
-            else if (name.Contains("ore") || name.Contains("cassiterite") || name.Contains("chalcopyrite") || name.Contains("malachite"))
+            else if (name.Contains("ore") || name.Contains("cassiterite") || name.Contains("chalcopyrite") || name.Contains("malachite")
+                || name.Contains("magnetite") || name.Contains("hematite") || name == "coal")
             {
                 Color rock = Color.Lerp(Stone, colour, name.Contains("crushed") ? 0.5f : 0.7f);
                 model.Diamond(new Vector3(0f, 0.06f, 0f), new Vector3(0.08f, 0.06f, 0.07f), rock);

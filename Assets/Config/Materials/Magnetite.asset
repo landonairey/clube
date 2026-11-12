@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d59954c0fdd2f5d4c9594a66c55f0fc1, type: 3}
+  m_Name: Magnetite
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.VoxelMaterial
+  id: 31
+  displayName: Magnetite
+  category: 1
+  albedo: {fileID: 2800000, guid: 12ec06954f6092f469a3020bb055e5ae, type: 3}
+  debugColor: {r: 0.12, g: 0.12, b: 0.14, a: 1}
+  hardness: 4.5
+  drop: {fileID: 11400000, guid: eb884b9f1a537401528a6b54933c4438, type: 2}
+  pileShape: 1
+  reposeAngle: 40
+  pickUpPieceSize: 0
+  pickedFromPiles: 0
+  toolTier: 3
+  requiredSkill: 0
+  requiredLevel: 0
+  windSway: 0
+  fallenForm: {fileID: 0}
+  shine: 0
+  fall: 1
+  stabilityLoss: 0
+  breaksInto: {fileID: 0}
+  buildsSquare: 0
+  isWorktop: 0
+  isSoft: 0
+  driesInto: {fileID: 0}
+  dryingDays: 2
+  notes:
+    Hardness: 5.5 to 6.5 on Mohs' scale; scratches glass
+    Luster: metallic to dull
+    Colour: iron black, streaks black
+    Feel: very heavy; pulls at a lodestone and clings to iron
