@@ -106,6 +106,9 @@ namespace Clube.Game
         /// <summary>Raised when an Attack press picks the bush aimed at (GL238): it's gone, and drops its leaves and sticks.</summary>
         public event Action<Bush> BushPicked;
 
+        /// <summary>Raised when Attack strikes an <see cref="IToolTarget"/> (an animal, GL607) with the tool.</summary>
+        public event Action<ToolDefinition> TargetStruck;
+
         /// <summary>Raised when Attack swings at nothing in reach (GL302): the swing and a whoosh, no hit.</summary>
         public event Action<ToolDefinition> Missed;
 
@@ -240,6 +243,16 @@ namespace Clube.Game
                 return;
             }
 
+            // An animal in front of the ground: Attack strikes it with the held tool (GL607), and the ground is left alone.
+            if (AimToolTarget(out IToolTarget struck))
+            {
+                if (useAction != null && useAction.action.WasPressedThisFrame() && Time.time >= nextHitTime)
+                {
+                    Strike(struck, tool);
+                }
+                return;
+            }
+
             // The press that picked a bush doesn't go on to dig the grass that was behind it (GL241).
             if (waitForRelease)
             {
@@ -271,6 +284,46 @@ namespace Clube.Game
                 Collected?.Invoke(stack);
             }
         }
+
+        /// <summary>
+        /// Hits a tool target with a tool (GL607), as an Attack press on it does: the swing's cooldown and wear, and
+        /// <see cref="TargetStruck"/>. The press doesn't go on to dig what was behind it.
+        /// </summary>
+        public void Strike(IToolTarget target, ToolDefinition tool)
+        {
+            Transform head = player.Head != null ? player.Head : transform;
+            nextHitTime = Time.time + CooldownFor(tool);
+            target.Strike(tool, head.position);
+            WearTool(tool);
+            TargetStruck?.Invoke(tool);
+            waitForRelease = true;
+        }
+
+        // What the view is on within reach that a tool can strike, when nothing (ground, a wall) stands in front of it.
+        private bool AimToolTarget(out IToolTarget target)
+        {
+            target = null;
+            Transform head = player.Head != null ? player.Head : transform;
+            int count = Physics.RaycastNonAlloc(head.position, head.forward, targetHits, reach, ~0, QueryTriggerInteraction.Ignore);
+            float nearest = float.PositiveInfinity;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit hit = targetHits[i];
+                if (hit.collider.transform.IsChildOf(transform) || hit.distance >= nearest)
+                {
+                    continue;
+                }
+                nearest = hit.distance;
+                target = hit.collider.GetComponentInParent<IToolTarget>();
+            }
+            if (target != null && !target.CanBeStruck)
+            {
+                target = null;
+            }
+            return target != null;
+        }
+
+        private readonly RaycastHit[] targetHits = new RaycastHit[8];
 
         // The bush the view is on within reach, when no ground stands in front of it.
         private bool AimBush(out Bush bush)
