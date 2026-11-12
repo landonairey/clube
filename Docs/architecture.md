@@ -84,7 +84,11 @@ Core/
                  CoarseWaterMesher: far water as a quadtree of level sheets per region, cells at shores and rivers (GL626)
     Recording/   MeshingRecorder (A11)
     Models/      LowPolyMeshBuilder (flat, vertex-coloured models from boxes and prisms: held tools, the town, GL269, GL400),
-                 TownMeshes (the town's wall, gate, shops and props, drawn with `Clube/Low Poly`)
+                 TownMeshes (the town's wall, gate, shops and props, drawn with `Clube/Low Poly`),
+                 Figures/ (GL608, every person): FigureLook (a person as data), FigureLooks (the presets, one row per look, and
+                 the variation a seed gives), FigureSkeleton (joints), FigureMeshes (seven part meshes per look, shared by
+                 matching looks), FigureProps, FigurePoses (pure: action + time + step -> joint angles). `Clube.Game`'s
+                 FigureRig hangs the parts on the joints and plays the pose; a new NPC look is a new FigurePreset row
   Editing/       GroundLeveling (flat ground with a ramp, or the land as it lies, trees cut down, paths paved: the town and merchant table, GL38, GL400, GL413), SquareVoxels (square blocks and flat-walled tunnels on the chisel's carving: boards, shops, shafts, GL411-GL414), NodeMining (one ore sample at a time, the miner, GL415), TreeFelling (cut-off limbs and how they land, GL344), TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5; slivers GL79), TerrainPile (I4), GroundDrying (GL34), ChiselStrike + FlatTop (GL87, GL88), GroundSettling (falling dirt and sand, GL308), LiveWater (the water's cellular flow: falls, runs downhill, fills dug holes, GL313, GL315), WaterScoop (the bucket, GL319), IDensityField, IEditableTerrain
   Queries/       SurfaceRaycast, VoxelRaycast, SurfacePoints (GL4), WaterQuery (what's under water: swimming, GL316)
   Volume/        VoxelVolume, ChunkVolume (V11, V12, K30), RegionVolume (the mesh volume round some samples: what a hit gathers, GL288)

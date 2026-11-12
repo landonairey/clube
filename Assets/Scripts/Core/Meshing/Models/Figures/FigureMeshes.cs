@@ -113,10 +113,10 @@ namespace Clube.Core
                 // A bib on the chest and a skirt to the knee, a little off the body.
                 model.Quad(new Vector3(-0.1f * b, 0.42f, 0.128f), new Vector3(0.1f * b, 0.42f, 0.128f), new Vector3(0.15f * b, 0.1f, 0.122f),
                     new Vector3(-0.15f * b, 0.1f, 0.122f), Vector3.zero, look.Accent);
-                model.Quad(new Vector3(-0.15f * b, 0.1f, 0.122f), new Vector3(0.15f * b, 0.1f, 0.122f), new Vector3(0.17f * b, -0.36f, 0.15f),
-                    new Vector3(-0.17f * b, -0.36f, 0.15f), Vector3.zero, Shade(look.Accent, 0.93f));
-                model.Quad(new Vector3(-0.15f * b, 0.1f, 0.12f), new Vector3(0.15f * b, 0.1f, 0.12f), new Vector3(0.17f * b, -0.36f, 0.148f),
-                    new Vector3(-0.17f * b, -0.36f, 0.148f), new Vector3(0f, 0f, 1f), Shade(look.Accent, 0.8f));
+                model.Quad(new Vector3(-0.15f * b, 0.1f, 0.122f), new Vector3(0.15f * b, 0.1f, 0.122f), new Vector3(0.17f * b, -0.36f, 0.135f),
+                    new Vector3(-0.17f * b, -0.36f, 0.135f), Vector3.zero, Shade(look.Accent, 0.93f));
+                model.Quad(new Vector3(-0.15f * b, 0.1f, 0.12f), new Vector3(0.15f * b, 0.1f, 0.12f), new Vector3(0.17f * b, -0.36f, 0.133f),
+                    new Vector3(-0.17f * b, -0.36f, 0.133f), new Vector3(0f, 0f, 1f), Shade(look.Accent, 0.8f));
             }
             if (look.Has(FigureOutfit.Coat))
             {
@@ -168,7 +168,7 @@ namespace Clube.Core
             var model = new LowPolyMeshBuilder { Placement = Matrix4x4.Scale(Vector3.one * look.HeadSize) };
             model.Blob(new Vector3(0f, 0.18f, 0f), new Vector3(0.15f, 0.16f, 0.17f), Upright, look.Skin);
             model.Blob(new Vector3(0f, 0.08f, 0.025f), new Vector3(0.105f, 0.105f, 0.08f), Upright, Shade(look.Skin, 0.97f), 6, 3);
-            model.Prism(new Vector3(0f, 0.17f, 0.125f), new Vector3(0f, 0.125f, 0.175f), 0.03f, 0.014f, 4, Shade(look.Skin, 0.9f));
+            model.Prism(new Vector3(0f, 0.17f, 0.125f), new Vector3(0f, 0.13f, 0.165f), 0.03f, 0.016f, 4, Shade(look.Skin, 0.9f));
             model.Box(new Vector3(-0.058f, 0.2f, 0.13f), new Vector3(0.03f, 0.036f, 0.02f), Quaternion.identity, Eye);
             model.Box(new Vector3(0.058f, 0.2f, 0.13f), new Vector3(0.03f, 0.036f, 0.02f), Quaternion.identity, Eye);
             if (look.Has(FigureOutfit.Beard))

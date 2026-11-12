@@ -47,6 +47,7 @@ namespace Clube.Core
     /// A low-poly person described as data (GL608): proportions, colours, outfit pieces and the prop for the hand.
     /// <see cref="FigureMeshes"/> turns it into meshes; <see cref="FigureLooks"/> holds the presets and the seeded variation.
     /// </summary>
+    [Serializable]
     public struct FigureLook
     {
         /// <summary>Overall scale: 1 is 1.76 m to the top of the head.</summary>
