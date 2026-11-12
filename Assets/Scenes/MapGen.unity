@@ -5499,6 +5499,7 @@ GameObject:
   - component: {fileID: 1350119484}
   - component: {fileID: 1350119487}
   - component: {fileID: 1350119486}
+  - component: {fileID: 1350119488}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -6082,6 +6083,7 @@ MonoBehaviour:
   minFlowSlope: 0.25
   buildBudgetMs: 1.5
   drawFarWater: 1
+  farDetailMetres: 256
 --- !u!114 &1350119484
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6155,6 +6157,26 @@ MonoBehaviour:
   player: {fileID: 1697135562}
   flyCamera: {fileID: 159121160}
   surveyCellSize: 40
+--- !u!114 &1350119488
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4dec3b5b7ae2c2b4a9306e3003e810ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.AnimalHerds
+  catalog: {fileID: 11400000, guid: 529535e765d597b47b63cf6a57402d86, type: 2}
+  material: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
+  dayNight: {fileID: 1350119474}
+  spawnRadius: 90
+  despawnRadius: 130
+  maxAnimals: 40
+  emptiedCarcassSeconds: 15
+  carcassSeconds: 600
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
