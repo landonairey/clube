@@ -29,6 +29,7 @@ MonoBehaviour:
   windSway: 0
   fallenForm: {fileID: 0}
   shine: 0
+  sketchStyle: 2
   fall: 1
   stabilityLoss: 0
   breaksInto: {fileID: 0}
