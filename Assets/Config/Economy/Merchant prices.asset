@@ -317,3 +317,39 @@ MonoBehaviour:
     Coins: 65
     Units: 1
     ByVolume: 0
+  - Item: {fileID: 11400000, guid: 0c2db36199ba79141878c84da4fd5b59, type: 2}
+    Coins: 4
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 2d9217f697d4a54488fe12358e8ee519, type: 2}
+    Coins: 5
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: ab2efbb25daf4e04c8f44170ff7dae48, type: 2}
+    Coins: 4
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 2596e97d9ef555d40b4e53a5ae8babb1, type: 2}
+    Coins: 7
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 45adfaf20f54aa9409398b39ee430604, type: 2}
+    Coins: 8
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 6bd98d3ae3393294a8bfb38a59be47a3, type: 2}
+    Coins: 12
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 06ea4c8964853c342b09cbcdaabf3410, type: 2}
+    Coins: 10
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: c18eb0979f77c85419d0b03b44595054, type: 2}
+    Coins: 16
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 0c0ae588e3a20ef4e847fa3dcdad5096, type: 2}
+    Coins: 20
+    Units: 1
+    ByVolume: 0

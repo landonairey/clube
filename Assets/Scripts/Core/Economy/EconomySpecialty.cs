@@ -136,6 +136,9 @@ namespace Clube.Core
         };
         private static readonly string[] Buns = { "copper-bun", "tin-bun", "bronze-bun", "gold-bun", "silver-bun", "iron-bun", "steel-bun" };
         private static readonly string[] Ingots = { "copper-ingot", "tin-ingot", "bronze-ingot", "gold-ingot", "silver-ingot", "iron-ingot", "steel-ingot" };
+        // What the animals leave (GL603), by AnimalSpeciesTable's drops.
+        private static readonly string[] FursAndWools = { "rabbit-fur", "goat-wool", "sheep-wool", "yak-wool", "alpaca-wool" };
+        private static readonly string[] Hides = { "cow-hide", "deer-hide", "elk-hide", "bison-hide" };
         private static readonly string[] Furnaces = { "furnace", "clay-furnace", "brick-furnace", "refractory-furnace" };
         private static readonly string[] Picks = { "stone-pick", "copper-pick", "bronze-pick", "iron-pick", "steel-pick" };
         private static readonly string[] Hatchets = { "stone-hatchet", "copper-hatchet", "bronze-hatchet", "iron-hatchet", "steel-hatchet" };
@@ -243,11 +246,11 @@ namespace Clube.Core
                     Needs = new[] { "clay" }, Buys = Goods(new[] { "clay" }), Sells = Goods(new[] { "clay" }),
                 },
 
-                // Textile (6I): none of its goods are in the game yet.
+                // Textile (6I): the animals' furs, wools and hides are in the game (GL603); what is made of them is not yet.
                 new EconomySpecialty
                 {
                     Id = "fabrics", Name = "Fabric Maker", Chain = SupplyChains.Textile, CraftLevel = 0, Needs = new[] { "grazing" },
-                    Buys = Goods(Later("Fur", "Wool")), Sells = Goods(Later("Cloth", "String", "Twine", "Silk")),
+                    Buys = Goods(FursAndWools), Sells = Goods(Later("Cloth", "String", "Twine", "Silk")),
                 },
                 new EconomySpecialty
                 {
@@ -257,7 +260,7 @@ namespace Clube.Core
                 new EconomySpecialty
                 {
                     Id = "tannery", Name = "Tannery", Chain = SupplyChains.Textile, CraftLevel = 0, Needs = new[] { "game" },
-                    Buys = Goods(Later("Hides")), Sells = Goods(Later("Hides", "Tanned hides")),
+                    Buys = Goods(Hides), Sells = Goods(Hides, Later("Tanned hides")),
                 },
                 new EconomySpecialty
                 {

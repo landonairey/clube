@@ -1142,6 +1142,123 @@ namespace Clube.Debug.Editor
             }
         }
 
+        // ---- GL603: what the animals leave ----
+
+        // Id, name, coins each, tuft or hide, colour.
+        private static readonly (string Id, string Name, int Coins, bool Hide, Color Color)[] AnimalGoods =
+        {
+            ("rabbit-fur", "Rabbit fur", 4, false, new Color(0.62f, 0.52f, 0.42f)),
+            ("goat-wool", "Goat wool", 5, false, new Color(0.8f, 0.76f, 0.68f)),
+            ("sheep-wool", "Sheep wool", 4, false, new Color(0.93f, 0.91f, 0.85f)),
+            ("yak-wool", "Yak wool", 7, false, new Color(0.3f, 0.23f, 0.18f)),
+            ("alpaca-wool", "Alpaca wool", 8, false, new Color(0.85f, 0.68f, 0.48f)),
+            ("cow-hide", "Cow hide", 12, true, new Color(0.56f, 0.36f, 0.22f)),
+            ("deer-hide", "Deer hide", 10, true, new Color(0.72f, 0.52f, 0.32f)),
+            ("elk-hide", "Elk hide", 16, true, new Color(0.5f, 0.38f, 0.27f)),
+            ("bison-hide", "Bison hide", 20, true, new Color(0.3f, 0.2f, 0.14f)),
+        };
+
+        /// <summary>
+        /// Makes the animals' furs, wools and hides (GL603): an item asset each where there is none, its icon, and its
+        /// price in the merchant's list. Safe to run again.
+        /// </summary>
+        [MenuItem("Clube/Items/Create animal goods")]
+        public static void CreateAnimalGoods()
+        {
+            Directory.CreateDirectory(Folder);
+            var prices = AssetDatabase.LoadAssetAtPath<PriceList>("Assets/Config/Economy/Merchant prices.asset");
+            var priced = new SerializedObject(prices);
+            SerializedProperty rows = priced.FindProperty("prices");
+            foreach (var good in AnimalGoods)
+            {
+                string path = $"{ItemFolder}/{good.Name}.asset";
+                var item = AssetDatabase.LoadAssetAtPath<ItemDefinition>(path);
+                if (item == null)
+                {
+                    item = ItemDefinition.Create(good.Id, good.Name);
+                    AssetDatabase.CreateAsset(item, path);
+                }
+                Write(good.Name.ToLowerInvariant(), good.Name, good.Hide ? PaintHide(good.Color) : PaintTuft(good.Color));
+                item = AssetDatabase.LoadAssetAtPath<ItemDefinition>(path);
+                if (!prices.TryGetLot(item, out _, out _))
+                {
+                    rows.arraySize++;
+                    SerializedProperty row = rows.GetArrayElementAtIndex(rows.arraySize - 1);
+                    row.FindPropertyRelative("Item").objectReferenceValue = item;
+                    row.FindPropertyRelative("Coins").intValue = good.Coins;
+                    row.FindPropertyRelative("Units").intValue = 1;
+                    row.FindPropertyRelative("ByVolume").boolValue = false;
+                }
+            }
+            priced.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.SaveAssets();
+        }
+
+        // A tuft of fleece: a heap of soft curls lit from the upper left.
+        private static Texture2D PaintTuft(Color wool)
+        {
+            Texture2D texture = Blank();
+            var random = new System.Random(23);
+            Color dark = Color.Lerp(wool, Color.black, 0.45f), light = Color.Lerp(wool, Color.white, 0.4f);
+            for (int i = 0; i < 26; i++)
+            {
+                float angle = (float)random.NextDouble() * Mathf.PI * 2f, far = Mathf.Sqrt((float)random.NextDouble());
+                var centre = new Vector2(Size * 0.5f + Mathf.Cos(angle) * far * Size * 0.27f, Size * 0.46f + Mathf.Sin(angle) * far * Size * 0.2f);
+                float radius = Size * (0.09f + 0.06f * (float)random.NextDouble());
+                for (int y = 0; y < Size; y++)
+                {
+                    for (int x = 0; x < Size; x++)
+                    {
+                        Vector2 p = (new Vector2(x, y) - centre) / radius;
+                        if (p.sqrMagnitude > 1f)
+                        {
+                            continue;
+                        }
+                        float shade = Mathf.Clamp01(0.5f + 0.5f * Vector2.Dot(p, new Vector2(-0.6f, 0.8f)));
+                        Color color = shade > 0.5f ? Color.Lerp(wool, light, (shade - 0.5f) * 2f) : Color.Lerp(dark, wool, shade * 2f);
+                        color.a = 1f;
+                        texture.SetPixel(x, y, color);
+                    }
+                }
+            }
+            Outline(texture, Color.Lerp(dark, Color.black, 0.4f));
+            texture.Apply();
+            return texture;
+        }
+
+        // A hide pegged out flat: the body with a neck and four legs, darker along the spine.
+        private static Texture2D PaintHide(Color hide)
+        {
+            Texture2D texture = Blank();
+            Color dark = Color.Lerp(hide, Color.black, 0.4f), light = Color.Lerp(hide, Color.white, 0.25f);
+            var random = new System.Random(31);
+            for (int y = 0; y < Size; y++)
+            {
+                for (int x = 0; x < Size; x++)
+                {
+                    var p = new Vector2((x - Size * 0.5f) / (Size * 0.5f), (y - Size * 0.5f) / (Size * 0.5f));
+                    float ax = Mathf.Abs(p.x), ay = Mathf.Abs(p.y);
+                    bool body = (ax / 0.48f) * (ax / 0.48f) + (p.y / 0.66f) * (p.y / 0.66f) < 1f;
+                    // Legs splay out from the four corners, and the neck from the top.
+                    var leg = new Vector2(ax - 0.52f, ay - 0.52f);
+                    bool legs = Mathf.Abs(leg.x - leg.y) < 0.2f && leg.x + leg.y < 0.5f && leg.x + leg.y > -0.5f;
+                    bool neck = ax < 0.2f && p.y > 0.5f && p.y < 0.86f;
+                    if (!body && !legs && !neck)
+                    {
+                        continue;
+                    }
+                    float spine = Mathf.Clamp01(1f - ax / 0.16f);
+                    Color color = Color.Lerp(Color.Lerp(hide, light, Mathf.Clamp01(ax * 1.6f)), dark, spine * 0.6f);
+                    color *= 0.93f + 0.12f * (float)random.NextDouble();
+                    color.a = 1f;
+                    texture.SetPixel(x, y, color);
+                }
+            }
+            Outline(texture, Color.Lerp(dark, Color.black, 0.5f));
+            texture.Apply();
+            return texture;
+        }
+
         private static Texture2D Blank()
         {
             var texture = new Texture2D(Size, Size, TextureFormat.RGBA32, false);
