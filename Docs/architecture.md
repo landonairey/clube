@@ -80,6 +80,8 @@ Core/
     Jobs/        ChunkMeshJob: the Burst mesh build the world runs; CarvedVoxels: walls round chiselled voxels (GL92)
     Far/         FarTerrainGrid (one clipmap level), FarTerrainMeshJob (its mesh): the far terrain (P7a)
     Water/       WaterMesher: marching cubes over a chunk's water samples (managed, per wet chunk, GL315)
+                 WaterSheetMesh: a far sheet's vertex streams, and two triangles per map cell (the detailed far tiles)
+                 CoarseWaterMesher: far water as a quadtree of level sheets per region, cells at shores and rivers (GL626)
     Recording/   MeshingRecorder (A11)
     Models/      LowPolyMeshBuilder (flat, vertex-coloured models from boxes and prisms: held tools, the town, GL269, GL400),
                  TownMeshes (the town's wall, gate, shops and props, drawn with `Clube/Low Poly`)
@@ -265,6 +267,15 @@ flowchart LR
   settlement colours); the world map and `BoundedMapPreviewMenu` both draw with it. The scene's world is 104 chunk
   layers tall because the streamer loads whole columns from y = 0: ground below 0 (the void, deep sea floor) and above
   the top (the ridge) is drawn by the coarse and far terrain only.
+- **Far water** (GL626): past the drawn chunks `WaterView` draws the water map in two layers. Within
+  `farDetailMetres` (256 m) of the viewer: 64 m tiles of two triangles per cell (`WaterSheetMesh.AddCell`), built as
+  the viewer nears (a tile's width ahead) and dropped behind; they ripple, fading to nothing at the square's edge.
+  Past it: `CoarseWaterMesher`'s meshes, one per 512 m region, built once: a square of the quadtree is one sheet when
+  every cell in it is *flat* (wet, not river, level with every wet cell touching it), else it splits down to single
+  cells; a sheet with smaller squares along its rim is a fan through their corners. The `Clube/Water` shader's
+  `_Detail` (centre, half width, side) draws the tiles inside the square and the regions outside, and stills the
+  ripples outside, so the layers meet at one height and nothing is rebuilt as the viewer moves. Both are clipped by
+  the chunk coverage mask (GL323). Rivers are not merged: a river cell is a quad at any distance.
 - **The sea past the map** (GL600): the water map covers the map plus `WaterMargin`; `WaterView.BuildOuterSea` adds one
   flat mesh at sea level from its edge to 40 km, in cells growing from 256 m, wherever `MapShape.IsSeaSide`.
 
