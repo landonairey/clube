@@ -29,5 +29,8 @@ namespace Clube.Core
 
         /// <summary>Landscape with branching gullies and ridges eroded into its mountains, and rivers starting in their valleys (P12).</summary>
         ErodedLandscape,
+
+        /// <summary>A bounded map (GL589-GL591): the eroded landscape inside a square whose sides are ocean, desert, a void cliff or a ridge, with one great peak, a sea and biomes.</summary>
+        BoundedMap,
     }
 }
