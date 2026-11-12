@@ -256,6 +256,17 @@ flowchart LR
   `RoadPlanner` (paved, then dirt, then footpaths, each from its settlement to the nearest point of the network so far),
   `WaterRoutePlanner` (sea routes from the capital's harbour, river routes, named vessels). Roads are cell-centre
   polylines: building them (GL613) refines them on the real ground, with `RouteBridges` for the spans.
+- **The map in a scene** (GL598-GL601, `Game/Map/`): `MapSession` (one per scene, `MapSession.Current`) watches
+  `WorldView.Generator`; when it is a `BoundedMapGenerator` it builds the survey and the plan once (main thread: the
+  survey completes height jobs; about 4 s at 5 km) and raises `Rebuilt`, again after every regenerate. Everything that
+  needs the map reads `Map`, `Survey`, `Plan` from it: `MapMarkers` (posts at sites and along nearby roads),
+  `WorldMapScreen` (M), later the settlements. `MapStart.Pick` (Core) chooses where the player is set down.
+  `MapPicture` (Core) is the one place the map's colours live (terrain pixels, road colours and widths, route and
+  settlement colours); the world map and `BoundedMapPreviewMenu` both draw with it. The scene's world is 104 chunk
+  layers tall because the streamer loads whole columns from y = 0: ground below 0 (the void, deep sea floor) and above
+  the top (the ridge) is drawn by the coarse and far terrain only.
+- **The sea past the map** (GL600): the water map covers the map plus `WaterMargin`; `WaterView.BuildOuterSea` adds one
+  flat mesh at sea level from its edge to 40 km, in cells growing from 256 m, wherever `MapShape.IsSeaSide`.
 
 **Adding a generator:** write an `IHeightField` (or `IVolumeField`) struct in
 `Fields/`; a generator class in `Generators/` deriving from

@@ -5859,7 +5859,7 @@ MonoBehaviour:
   worldView: {fileID: 1350119460}
   material: {fileID: 2100000, guid: 5b7150ee6f9d759419b90967e177ee79, type: 2}
   show: 1
-  range: 3000
+  range: 5000
   levelEnds: {x: 220, y: 520, z: 1100}
   fadeWidth: 60
   birchBark: {r: 0.65, g: 0.63, b: 0.57, a: 1}

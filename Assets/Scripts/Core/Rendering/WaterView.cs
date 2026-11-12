@@ -128,6 +128,7 @@ namespace Clube.Core
             {
                 builtFor = generator;
                 Reset(generator is HeightfieldGenerator heightfield ? heightfield.Water : default);
+                BuildOuterSea(generator as BoundedMapGenerator);
             }
             World world = worldView.World;
             if (water.IsCreated && world != null && (Live == null || Live.World != world))
@@ -225,6 +226,8 @@ namespace Clube.Core
             {
                 DestroyMeshObject(chunk);
             }
+            DestroyMeshObject(outerSea);
+            outerSea = null;
             tiles.Clear();
             chunkMeshes.Clear();
             dirtyTiles.Clear();
@@ -280,6 +283,79 @@ namespace Clube.Core
                 }
             }
             MarkAllTiles();
+        }
+
+        private GameObject outerSea;
+
+        // The sea past the water map (GL600): a bounded map's ocean goes on to the horizon as one flat mesh at sea level,
+        // in cells that grow with the distance, wherever the map's shape says the low ground is sea (not past a void
+        // cliff, a desert or a ridge). The water map's own cells draw the sea inside it.
+        private void BuildOuterSea(BoundedMapGenerator map)
+        {
+            if (map == null || !water.IsCreated || !water.HasSea || !drawFarWater || farMaterial == null)
+            {
+                return;
+            }
+            const float firstStep = 256f, fineReach = 4096f, reach = 40000f;
+            var offsets = new List<float> { 0f };
+            for (float d = 0f, step = firstStep; d < reach; step = d >= fineReach ? step * 2f : step)
+            {
+                d += step;
+                offsets.Add(d);
+            }
+            float2 min = water.Origin, max = water.Origin + new float2(water.Size.x, water.Size.y) * water.CellSize;
+            // Breakpoints along an axis: outwards from the water map's two edges, the map itself one span in the middle.
+            List<float> Axis(float low, float high)
+            {
+                var points = new List<float>();
+                for (int i = offsets.Count - 1; i >= 0; i--)
+                {
+                    points.Add(low - offsets[i]);
+                }
+                foreach (float offset in offsets)
+                {
+                    points.Add(high + offset);
+                }
+                return points;
+            }
+            List<float> xs = Axis(min.x, max.x), zs = Axis(min.y, max.y);
+            int middle = offsets.Count - 1;
+            MapShape shape = map.Layout.Shape;
+            float y = water.SeaLevel;
+            sheet.Clear();
+            for (int z = 0; z + 1 < zs.Count; z++)
+            {
+                for (int x = 0; x + 1 < xs.Count; x++)
+                {
+                    if (x == middle && z == middle)
+                    {
+                        continue;
+                    }
+                    float x0 = xs[x], x1 = xs[x + 1], z0 = zs[z], z1 = zs[z + 1];
+                    // Judged at the cell's point nearest the map, so the sea starts where the water map's sea stops.
+                    float px = Mathf.Clamp(0f, x0, x1), pz = Mathf.Clamp(0f, z0, z1);
+                    if (!shape.IsSeaSide(px, pz))
+                    {
+                        continue;
+                    }
+                    Vector3 a = new Vector3(x0, y, z0), b = new Vector3(x1, y, z0), c = new Vector3(x1, y, z1), d = new Vector3(x0, y, z1);
+                    sheet.Add(a, d, c, Vector4.zero, Vector4.zero, Vector4.zero, Vector2.zero, 2f);
+                    sheet.Add(a, c, b, Vector4.zero, Vector4.zero, Vector4.zero, Vector2.zero, 2f);
+                }
+            }
+            if (sheet.Triangles.Count == 0)
+            {
+                return;
+            }
+            var mesh = new Mesh { name = "Outer sea", indexFormat = sheet.Vertices.Count > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16 };
+            mesh.SetVertices(sheet.Vertices);
+            mesh.SetUVs(0, sheet.Flows);
+            mesh.SetUVs(1, sheet.Looks);
+            mesh.SetUVs(2, sheet.Ripples);
+            mesh.SetTriangles(sheet.Triangles, 0);
+            mesh.RecalculateNormals();
+            outerSea = MakeMeshObject("Outer sea", mesh, farMaterial);
+            TriangleCount += sheet.Triangles.Count / 3;
         }
 
         private void MarkAllTiles()
