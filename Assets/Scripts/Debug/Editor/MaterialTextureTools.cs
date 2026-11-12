@@ -65,8 +65,10 @@ namespace Clube.Debug.Editor
         // Chalcopyrite reads coppery orange next to gold's yellow (GL346; was brass yellow, 0.86, 0.72, 0.22).
         internal static readonly Color ChalcopyriteFleck = new Color(0.90f, 0.52f, 0.16f);
         private static readonly Color MalachiteFleck = new Color(0.48f, 0.66f, 0.30f);
-        // Magnetite is blackish, hematite reddish (GL621).
-        internal static readonly Color MagnetiteFleck = new Color(0.09f, 0.09f, 0.11f);
+        // Magnetite is a blackish steel blue with a bright facet on each crystal (GL627: black specks read as cassiterite's
+        // dark brown ones, and near coal); hematite reddish (GL621).
+        internal static readonly Color MagnetiteFleck = new Color(0.11f, 0.17f, 0.30f);
+        private static readonly Color MagnetiteFacet = new Color(0.56f, 0.68f, 0.86f);
         internal static readonly Color HematiteFleck = new Color(0.58f, 0.16f, 0.12f);
         private const float MalachiteFleckScale = 1.7f;
 
@@ -111,8 +113,8 @@ namespace Clube.Debug.Editor
                 { "maple boards", (new Color(0.56f, 0.35f, 0.22f), new Color(0.65f, 0.43f, 0.28f), null, Wear.Planks) },
                 // Crushed stone (GL571): grey gravel, lighter than stone, lying loose like sand. Added last, so no seed moves.
                 { "crushed stone", (new Color(0.55f, 0.55f, 0.57f), new Color(0.68f, 0.67f, 0.66f), null, Wear.Loose) },
-                // The iron ores and coal (GL621, GL622), after the rest, so no seed moves: magnetite's specks blackish, hematite's
-                // reddish, coal a black seam.
+                // The iron ores and coal (GL621, GL622), after the rest, so no seed moves: magnetite's crystals steel blue (GL627), hematite's
+                // specks reddish, coal a black seam.
                 { "magnetite", (StoneBase, StoneMix, MagnetiteFleck, Wear.Whole) },
                 { "hematite", (StoneBase, StoneMix, HematiteFleck, Wear.Whole) },
                 { "coal", (new Color(0.1f, 0.1f, 0.11f), new Color(0.2f, 0.2f, 0.22f), new Color(0.34f, 0.34f, 0.38f), Wear.Whole) },
@@ -281,7 +283,13 @@ namespace Clube.Debug.Editor
             string path = $"{PlaceholderFolder}/{key}.png";
             // Malachite's specks are bigger (GL354), so its picture reads apart from plain stone.
             float fleckScale = key.EndsWith("malachite") ? MalachiteFleckScale : 1f;
-            Texture2D texture = Paint(entry.Base, entry.Mix, entry.Fleck, entry.Wear, seed, fleckScale);
+            // Magnetite's ore is crystals, not round specks (GL627).
+            bool crystals = key == "magnetite" && entry.Fleck.HasValue;
+            Texture2D texture = Paint(entry.Base, entry.Mix, crystals ? null : entry.Fleck, entry.Wear, seed, fleckScale);
+            if (crystals)
+            {
+                AddCrystals(texture, entry.Fleck.Value, MagnetiteFacet, seed * 7919);
+            }
             if (key == "gold" && entry.Fleck.HasValue)
             {
                 // Gold shines (GL251), so it reads apart from chalcopyrite's duller brass.
@@ -294,6 +302,54 @@ namespace Clube.Debug.Editor
             importer.wrapMode = TextureWrapMode.Repeat;
             importer.textureCompression = TextureImporterCompression.Uncompressed;
             importer.SaveAndReimport();
+        }
+
+        /// <summary>
+        /// Writes magnetite's texture and its crushed-ore icon again in their current look (GL627), and rebuilds the texture
+        /// array; nothing else changes.
+        /// </summary>
+        [MenuItem("Clube/Materials/Regenerate magnetite textures")]
+        public static void RegenerateMagnetite()
+        {
+            Regenerate("magnetite");
+            ItemIconTools.WriteCrushedMagnetite();
+            BuildTextureArrays();
+        }
+
+        // Octahedral crystals seen end on (GL627): diamonds of the ore's dark colour, big enough to read as shapes
+        // (cassiterite's and coal's marks are round specks), the upper left half of each a bright facet, as metal
+        // catching the light. Wraps so it tiles.
+        private static void AddCrystals(Texture2D texture, Color dark, Color facet, int seed)
+        {
+            var random = new System.Random(seed);
+            int size = texture.width;
+            Color[] pixels = texture.GetPixels();
+            int crystals = size * size / 230;
+            for (int i = 0; i < crystals; i++)
+            {
+                int cx = random.Next(size);
+                int cy = random.Next(size);
+                int reach = 3 + random.Next(5);
+                float shade = 0.85f + 0.3f * (float)random.NextDouble();
+                for (int dy = -reach; dy <= reach; dy++)
+                {
+                    for (int dx = -reach; dx <= reach; dx++)
+                    {
+                        if (Mathf.Abs(dx) + Mathf.Abs(dy) > reach)
+                        {
+                            continue;
+                        }
+                        // Lit from the upper left: that half is the bright facet, with a thin dark ridge between the two.
+                        int side = dy - dx;
+                        Color colour = side > 1 ? Color.Lerp(dark, facet, 0.75f) : side < 0 ? dark : dark * 0.7f;
+                        colour *= shade;
+                        colour.a = 1f;
+                        pixels[((cy + dy + size) % size) * size + (cx + dx + size) % size] = colour;
+                    }
+                }
+            }
+            texture.SetPixels(pixels);
+            texture.Apply();
         }
 
         // Polished-looking flecks (GL251): each fleck pixel brighter and warmer, lit from the upper left, and on some of

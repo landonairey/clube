@@ -43,7 +43,7 @@ namespace Clube.Game
             if (name.Contains("charcoal")) return new Color(0.12f, 0.11f, 0.1f);
             // Iron and steel, their two ores and coal (GL621-GL624); charcoal is caught above, before "coal".
             if (name.Contains("steel")) return new Color(0.7f, 0.74f, 0.8f);
-            if (name.Contains("magnetite")) return new Color(0.16f, 0.16f, 0.18f);
+            if (name.Contains("magnetite")) return new Color(0.15f, 0.21f, 0.33f);
             if (name.Contains("hematite")) return new Color(0.55f, 0.2f, 0.16f);
             if (name.Contains("iron")) return new Color(0.45f, 0.46f, 0.5f);
             if (name.Contains("coal")) return new Color(0.1f, 0.1f, 0.11f);

@@ -84,6 +84,12 @@ namespace Clube.Debug.Editor
             Write("crushed chalcopyrite", "Crushed chalcopyrite", PaintGravel(new Color(0.5f, 0.5f, 0.52f), MaterialTextureTools.ChalcopyriteFleck));
         }
 
+        /// <summary>Writes the crushed magnetite icon again, in magnetite's current colour (GL627).</summary>
+        internal static void WriteCrushedMagnetite()
+        {
+            Write("crushed magnetite", "Crushed magnetite", PaintGravel(new Color(0.5f, 0.5f, 0.52f), MaterialTextureTools.MagnetiteFleck));
+        }
+
         /// <summary>Writes the crushed silver and gold ore icons (GL389).</summary>
         public static void WriteCrushedPreciousOres()
         {
