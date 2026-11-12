@@ -10,14 +10,19 @@ namespace Clube.Core
     /// Water lives in the voxel data: each chunk that loads gets the map's water in its samples (<see cref="WaterFill"/>),
     /// <see cref="Live"/> moves it (water falls down drops and runs downhill into dug holes; placed ground replaces it), and
     /// every chunk holding water gets a mesh of its surface (<see cref="WaterMesher"/>: marching cubes, the terrain's own
-    /// facets), rebuilt when its water changes. Past the chunks the world draws, the map's water is drawn as flat sheets of
-    /// two triangles per metre cell over the coarse terrain, each wet cell's ring of dry neighbours too, at the lowest water
-    /// beside it, so the far banks hide the sheets' edges. Both are drawn in the <c>Clube/Water</c> shader.
+    /// facets), rebuilt when its water changes. Past the chunks the world draws, the map's water is drawn as sheets over
+    /// the coarse terrain, in two layers (GL626): within <see cref="farDetailMetres"/> of the viewer, tiles of two
+    /// triangles per map cell (<see cref="WaterSheetMesh.AddCell"/>), which ripple; past it, a few big meshes built once
+    /// (<see cref="CoarseWaterMesher"/>: level water as large sheets, single cells only along shores and rivers). The
+    /// shader draws the first inside a square round the viewer and the second outside it, so nothing is rebuilt as the
+    /// viewer moves but the handful of tiles entering the square. All are drawn in the <c>Clube/Water</c> shader.
     /// </summary>
     [RequireComponent(typeof(WorldView))]
     public sealed class WaterView : MonoBehaviour
     {
         private const int Tile = 32;
+        // Cells along a coarse region, the largest single sheet (512 m of 2 m cells).
+        private const int Region = 256;
 
         private static readonly Vector3Int[] Faces =
         {
@@ -50,14 +55,24 @@ namespace Clube.Core
         [SerializeField]
         private bool drawFarWater = true;
 
+        [Tooltip("Far water within this many metres of the viewer keeps two triangles per map cell and its ripples; past it, level water is drawn as big sheets (GL626). The chunks' own water, nearer still, is not affected.")]
+        [SerializeField, Range(0f, 1024f)]
+        private float farDetailMetres = 256f;
+
         private WorldView worldView;
         private ITerrainGenerator builtFor;
         private WaterMap water;
         private World filledWorld;
-        // Far sheets, per map cell: the water height drawn there, and the wet cell it takes its look from (-1: not drawn).
-        private float[] level;
-        private int[] from;
         private int tilesAcross;
+        // Far water past the detail square: one mesh per region of the map, built once.
+        private CoarseWaterMesher coarse;
+        private readonly List<GameObject> regions = new List<GameObject>();
+        private readonly List<int> dirtyRegions = new List<int>();
+        private readonly List<int> droppedTiles = new List<int>();
+        private Vector2Int detailTile;
+        private bool detailTilesKnown;
+        private Material detailMaterial;
+        private Material coarseMaterial;
         private int drawVersion = -1;
         private readonly Dictionary<int, GameObject> tiles = new Dictionary<int, GameObject>();
         private readonly HashSet<int> dirtyTiles = new HashSet<int>();
@@ -70,7 +85,7 @@ namespace Clube.Core
         private readonly System.Diagnostics.Stopwatch budget = new System.Diagnostics.Stopwatch();
         private readonly System.Diagnostics.Stopwatch frameTimer = new System.Diagnostics.Stopwatch();
         private readonly List<Vector3Int> changed = new List<Vector3Int>();
-        private readonly SheetMesh sheet = new SheetMesh();
+        private readonly WaterSheetMesh sheet = new WaterSheetMesh();
         private readonly WaterMesher mesher = new WaterMesher();
         private float nextFlowStep;
         // Every water mesh hangs under this, so Show switches one object.
@@ -82,10 +97,25 @@ namespace Clube.Core
         /// <summary>Milliseconds the last LateUpdate took (flow, fills, mesh builds), for timing.</summary>
         public float LastUpdateMilliseconds { get; private set; }
 
-        /// <summary>Chunk water meshes and far tiles waiting to be built.</summary>
+        /// <summary>Chunk water meshes and far water meshes (detailed tiles, coarse regions) waiting to be built.</summary>
         public int PendingChunks => dirtyChunks.Count;
 
-        public int PendingTiles => dirtyTiles.Count;
+        public int PendingTiles => dirtyTiles.Count + dirtyRegions.Count;
+
+        /// <summary>Triangles in the far water's detailed tiles, its coarse regions, and the sea past the map.</summary>
+        public int DetailTriangleCount => Triangles(tiles.Values);
+
+        public int CoarseTriangleCount => Triangles(regions);
+
+        private static int Triangles(IEnumerable<GameObject> objects)
+        {
+            int count = 0;
+            foreach (GameObject go in objects)
+            {
+                count += (int)go.GetComponent<MeshFilter>().sharedMesh.GetIndexCount(0) / 3;
+            }
+            return count;
+        }
 
         /// <summary>Chunks with a water mesh.</summary>
         public int ChunkMeshCount => chunkMeshes.Count;
@@ -168,7 +198,8 @@ namespace Clube.Core
             }
             budget.Restart();
             RebuildChunks();
-            RebuildTiles();
+            UpdateDetailTiles();
+            RebuildRegions();
             UpdateFarClip(world);
             if (holder != null && holder.activeSelf != show)
             {
@@ -181,6 +212,7 @@ namespace Clube.Core
         private static readonly int CoverageMaskId = Shader.PropertyToID("_CoverageMask");
         private static readonly int CoverageId = Shader.PropertyToID("_Coverage");
         private static readonly int ClipCoveredId = Shader.PropertyToID("_ClipCovered");
+        private static readonly int DetailId = Shader.PropertyToID("_Detail");
         private ChunkCoverageMask coverage;
         private Material farMaterial;
 
@@ -197,16 +229,29 @@ namespace Clube.Core
             coverage.Update(new Vector2Int(focusChunk.x, focusChunk.z));
             float chunkWidth = world.Grid.ChunkWorldSize.x;
             Vector3 origin = worldView.transform.position;
-            farMaterial.SetTexture(CoverageMaskId, coverage.Texture);
-            farMaterial.SetVector(CoverageId, new Vector4(
-                origin.x + coverage.Origin.x * chunkWidth, origin.z + coverage.Origin.y * chunkWidth, chunkWidth, coverage.Size));
+            var area = new Vector4(
+                origin.x + coverage.Origin.x * chunkWidth, origin.z + coverage.Origin.y * chunkWidth, chunkWidth, coverage.Size);
+            // The detail square, in world space (the sheets hang under this object, which is not turned or scaled).
+            Vector2 centre = DetailCentre();
+            Vector3 middle = transform.TransformPoint(new Vector3(centre.x, 0f, centre.y));
+            foreach (Material far in new[] { farMaterial, detailMaterial, coarseMaterial })
+            {
+                far.SetTexture(CoverageMaskId, coverage.Texture);
+                far.SetVector(CoverageId, area);
+            }
+            detailMaterial.SetVector(DetailId, new Vector4(middle.x, middle.z, farDetailMetres, 1f));
+            coarseMaterial.SetVector(DetailId, new Vector4(middle.x, middle.z, farDetailMetres, 2f));
         }
+
         private void OnDestroy()
         {
             coverage?.Dispose();
-            if (farMaterial != null)
+            foreach (Material far in new[] { farMaterial, detailMaterial, coarseMaterial })
             {
-                Destroy(farMaterial);
+                if (far != null)
+                {
+                    Destroy(far);
+                }
             }
             if (Live != null)
             {
@@ -226,8 +271,16 @@ namespace Clube.Core
             {
                 DestroyMeshObject(chunk);
             }
+            foreach (GameObject region in regions)
+            {
+                DestroyMeshObject(region);
+            }
             DestroyMeshObject(outerSea);
             outerSea = null;
+            regions.Clear();
+            dirtyRegions.Clear();
+            coarse = null;
+            detailTilesKnown = false;
             tiles.Clear();
             chunkMeshes.Clear();
             dirtyTiles.Clear();
@@ -265,24 +318,36 @@ namespace Clube.Core
                 return;
             }
             int2 size = water.Size;
-            level = new float[size.x * size.y];
-            from = new int[size.x * size.y];
             tilesAcross = (size.x + Tile - 1) / Tile;
             if (farMaterial == null)
             {
                 farMaterial = new Material(material) { name = material.name + " (far)" };
                 farMaterial.SetFloat(ClipCoveredId, 1f);
+                // The sea past the map: level like the coarse sheets it meets, and drawn everywhere.
+                farMaterial.SetVector(DetailId, new Vector4(0f, 0f, 0f, 3f));
+                detailMaterial = new Material(farMaterial) { name = material.name + " (far, detailed)" };
+                coarseMaterial = new Material(farMaterial) { name = material.name + " (far, coarse)" };
             }
             wetTiles.Clear();
-            for (int i = 0; i < from.Length; i++)
+            if (!drawFarWater)
             {
-                Recompute(i);
-                if (from[i] >= 0)
+                return;
+            }
+            for (int i = 0; i < water.Kind.Length; i++)
+            {
+                if (water.Kind[i] != (byte)WaterKind.Dry)
                 {
                     wetTiles.Add(i % size.x / Tile + i / size.x / Tile * tilesAcross);
                 }
             }
-            MarkAllTiles();
+            coarse = new CoarseWaterMesher(water, Region);
+            for (int region = 0; region < coarse.RegionCount; region++)
+            {
+                if (coarse.HasWater(region))
+                {
+                    dirtyRegions.Add(region);
+                }
+            }
         }
 
         private GameObject outerSea;
@@ -347,24 +412,7 @@ namespace Clube.Core
             {
                 return;
             }
-            var mesh = new Mesh { name = "Outer sea", indexFormat = sheet.Vertices.Count > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16 };
-            mesh.SetVertices(sheet.Vertices);
-            mesh.SetUVs(0, sheet.Flows);
-            mesh.SetUVs(1, sheet.Looks);
-            mesh.SetUVs(2, sheet.Ripples);
-            mesh.SetTriangles(sheet.Triangles, 0);
-            mesh.RecalculateNormals();
-            outerSea = MakeMeshObject("Outer sea", mesh, farMaterial);
-            TriangleCount += sheet.Triangles.Count / 3;
-        }
-
-        private void MarkAllTiles()
-        {
-            if (!water.IsCreated || !drawFarWater)
-            {
-                return;
-            }
-            dirtyTiles.UnionWith(wetTiles);
+            outerSea = MakeMeshObject("Outer sea", SheetToMesh("Outer sea"), farMaterial);
         }
 
         // The live water starts on a world whose chunks may already be loaded: they get their water first.
@@ -532,28 +580,71 @@ namespace Clube.Core
             TriangleCount += mesher.Triangles.Count / 3;
         }
 
-        // What a far cell draws: its own water when wet, nothing when dry (GL323: the dry ring drawn at the lowest water
-        // beside it stood as a skirt under the banks).
-        private void Recompute(int i)
+        // Far water, coarse (GL626): the whole map's water in a few big meshes, built once (CoarseWaterMesher). They
+        // take what's left of the frame's budget after the chunks and the detailed tiles (one at least).
+        private void RebuildRegions()
         {
-            from[i] = -1;
-            if (water.Kind[i] != 0)
+            bool first = dirtyChunks.Count == 0 && dirtyTiles.Count == 0;
+            while (dirtyRegions.Count > 0 && (budget.Elapsed.TotalMilliseconds < buildBudgetMs || first))
             {
-                from[i] = i;
-                level[i] = water.Surface[i];
-                return;
+                first = false;
+                int region = dirtyRegions[dirtyRegions.Count - 1];
+                dirtyRegions.RemoveAt(dirtyRegions.Count - 1);
+                sheet.Clear();
+                coarse.Build(region, sheet);
+                if (sheet.Triangles.Count > 0)
+                {
+                    regions.Add(MakeMeshObject("Far water region", SheetToMesh("Far water (coarse)"), coarseMaterial));
+                }
             }
         }
 
-        // Far tiles take what's left of the frame's budget (one at least once the chunks are all built).
-        private void RebuildTiles()
+        // Far water, detailed: the tiles within the detail square round the viewer (and a tile's width past it, so a
+        // tile is there before the square reaches it) are two triangles per cell and ripple; the rest are dropped.
+        private void UpdateDetailTiles()
         {
-            if (dirtyTiles.Count == 0 || !water.IsCreated || !drawFarWater || worldView.World == null)
+            if (!water.IsCreated || !drawFarWater || worldView.World == null || coarse == null)
             {
                 return;
             }
-            bool first = true;
-            while (dirtyTiles.Count > 0 && (budget.Elapsed.TotalMilliseconds < buildBudgetMs || (first && dirtyChunks.Count == 0)))
+            float tileWidth = Tile * water.CellSize;
+            Vector2 centre = DetailCentre();
+            float2 local = (new float2(centre.x, centre.y) - water.Origin) / tileWidth;
+            var at = new Vector2Int(Mathf.FloorToInt(local.x), Mathf.FloorToInt(local.y));
+            if (at != detailTile || !detailTilesKnown)
+            {
+                detailTile = at;
+                detailTilesKnown = true;
+                int reach = Mathf.CeilToInt(farDetailMetres / tileWidth) + 1;
+                int tilesDeep = (water.Size.y + Tile - 1) / Tile;
+                dirtyTiles.Clear();
+                for (int z = Mathf.Max(0, at.y - reach); z <= Mathf.Min(tilesDeep - 1, at.y + reach); z++)
+                {
+                    for (int x = Mathf.Max(0, at.x - reach); x <= Mathf.Min(tilesAcross - 1, at.x + reach); x++)
+                    {
+                        int tile = x + z * tilesAcross;
+                        if (wetTiles.Contains(tile) && !tiles.ContainsKey(tile))
+                        {
+                            dirtyTiles.Add(tile);
+                        }
+                    }
+                }
+                droppedTiles.Clear();
+                foreach (int tile in tiles.Keys)
+                {
+                    if (Mathf.Abs(tile % tilesAcross - at.x) > reach + 1 || Mathf.Abs(tile / tilesAcross - at.y) > reach + 1)
+                    {
+                        droppedTiles.Add(tile);
+                    }
+                }
+                foreach (int tile in droppedTiles)
+                {
+                    DestroyMeshObject(tiles[tile]);
+                    tiles.Remove(tile);
+                }
+            }
+            bool first = dirtyChunks.Count == 0;
+            while (dirtyTiles.Count > 0 && (budget.Elapsed.TotalMilliseconds < buildBudgetMs || first))
             {
                 first = false;
                 int tile = -1;
@@ -567,129 +658,47 @@ namespace Clube.Core
             }
         }
 
+        // The middle of the detail square, in the water map's space: under the viewer.
+        private Vector2 DetailCentre()
+        {
+            Vector3 focus = worldView.Focus != null ? transform.InverseTransformPoint(worldView.Focus.position) : Vector3.zero;
+            return new Vector2(focus.x, focus.z);
+        }
+
         private void BuildTile(int tile)
         {
             int2 size = water.Size;
             int tx = tile % tilesAcross * Tile, tz = tile / tilesAcross * Tile;
             sheet.Clear();
-            World world = worldView.World;
             for (int z = tz; z < Mathf.Min(tz + Tile, size.y); z++)
             {
                 for (int x = tx; x < Mathf.Min(tx + Tile, size.x); x++)
                 {
-                    int i = x + z * size.x;
-                    if (from[i] < 0)
+                    if (water.Kind[x + z * size.x] != (byte)WaterKind.Dry)
                     {
-                        continue;
+                        sheet.AddCell(water, x, z);
                     }
-                    AddCell(x, z);
                 }
-            }
-            if (tiles.TryGetValue(tile, out GameObject old))
-            {
-                DestroyMeshObject(old);
-                tiles.Remove(tile);
             }
             if (sheet.Triangles.Count > 0)
             {
-                var mesh = new Mesh { name = "Far water", indexFormat = sheet.Vertices.Count > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16 };
-                mesh.SetVertices(sheet.Vertices);
-                mesh.SetUVs(0, sheet.Flows);
-                mesh.SetUVs(1, sheet.Looks);
-                mesh.SetUVs(2, sheet.Ripples);
-                mesh.SetTriangles(sheet.Triangles, 0);
-                mesh.RecalculateNormals();
-                tiles[tile] = MakeMeshObject("Far water tile", mesh, farMaterial);
-                TriangleCount += sheet.Triangles.Count / 3;
+                tiles[tile] = MakeMeshObject("Far water tile", SheetToMesh("Far water"), detailMaterial);
             }
         }
 
-        // Two triangles over a cell, the diagonal alternating like a checkerboard, so the facets don't line up. Corners
-        // are shared, at the average height of the cells round them, so the sheet never cracks.
-        private void AddCell(int x, int z)
+        private Mesh SheetToMesh(string name)
         {
-            int2 size = water.Size;
-            float cell = water.CellSize;
-            Vector3 At(int cx, int cz, out Vector4 ripple)
-            {
-                float sum = 0f, river = 0f;
-                var flow = Vector2.zero;
-                int count = 0;
-                for (int dz = -1; dz <= 0; dz++)
-                {
-                    for (int dx = -1; dx <= 0; dx++)
-                    {
-                        int nx = cx + dx, nz = cz + dz;
-                        int n = nx + nz * size.x;
-                        if (nx >= 0 && nz >= 0 && nx < size.x && nz < size.y && from[n] >= 0)
-                        {
-                            sum += level[n];
-                            float2 f = water.Flow[from[n]];
-                            flow += new Vector2(f.x, f.y);
-                            river += water.Kind[from[n]] == (byte)WaterKind.River ? 1f : 0f;
-                            count++;
-                        }
-                    }
-                }
-                count = Mathf.Max(1, count);
-                ripple = new Vector4(flow.x / count, flow.y / count, river / count, 0f);
-                return new Vector3(water.Origin.x + cx * cell, sum / count, water.Origin.y + cz * cell);
-            }
-
-            Vector3 a = At(x, z, out Vector4 ra), b = At(x + 1, z, out Vector4 rb);
-            Vector3 c = At(x + 1, z + 1, out Vector4 rc), d = At(x, z + 1, out Vector4 rd);
-            int source = from[x + z * size.x];
-            float2 riverFlow = water.Flow[source];
-            bool river = water.Kind[source] == (byte)WaterKind.River;
-            Vector2 flow = river && math.lengthsq(riverFlow) > 1e-6f ? new Vector2(riverFlow.x, riverFlow.y).normalized * 0.4f : Vector2.zero;
-            float kind = river ? 1f : 2f;
-            if (((x + z) & 1) == 0)
-            {
-                sheet.Add(a, d, c, ra, rd, rc, flow, kind);
-                sheet.Add(a, c, b, ra, rc, rb, flow, kind);
-            }
-            else
-            {
-                sheet.Add(a, d, b, ra, rd, rb, flow, kind);
-                sheet.Add(b, d, c, rb, rd, rc, flow, kind);
-            }
-        }
-
-        // A far tile's vertex streams while it's built, in the same layout as a chunk's water (WaterMesher).
-        private sealed class SheetMesh
-        {
-            public readonly List<Vector3> Vertices = new List<Vector3>();
-            public readonly List<Vector2> Flows = new List<Vector2>();
-            public readonly List<Vector4> Looks = new List<Vector4>();
-            public readonly List<Vector4> Ripples = new List<Vector4>();
-            public readonly List<int> Triangles = new List<int>();
-
-            public void Clear()
-            {
-                Vertices.Clear();
-                Flows.Clear();
-                Looks.Clear();
-                Ripples.Clear();
-                Triangles.Clear();
-            }
-
-            public void Add(Vector3 p, Vector3 q, Vector3 r, Vector4 rp, Vector4 rq, Vector4 rr, Vector2 flow, float kind)
-            {
-                Vector3 centre = (p + q + r) / 3f;
-                var look = new Vector4(centre.x, centre.y, centre.z, kind);
-                Add(p, rp, flow, look);
-                Add(q, rq, flow, look);
-                Add(r, rr, flow, look);
-            }
-
-            private void Add(Vector3 position, Vector4 ripple, Vector2 flow, Vector4 look)
-            {
-                Triangles.Add(Vertices.Count);
-                Vertices.Add(position);
-                Flows.Add(flow);
-                Looks.Add(look);
-                Ripples.Add(ripple);
-            }
+            var mesh = new Mesh { name = name, indexFormat = sheet.Vertices.Count > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16 };
+            mesh.SetVertices(sheet.Vertices);
+            mesh.SetUVs(0, sheet.Flows);
+            mesh.SetUVs(1, sheet.Looks);
+            mesh.SetUVs(2, sheet.Ripples);
+            mesh.SetTriangles(sheet.Triangles, 0);
+            mesh.RecalculateNormals();
+            // The sheets are never read back: keep the one copy on the graphics card.
+            mesh.UploadMeshData(true);
+            TriangleCount += sheet.Triangles.Count / 3;
+            return mesh;
         }
 
         private GameObject MakeMeshObject(string name, Mesh mesh, Material look)
