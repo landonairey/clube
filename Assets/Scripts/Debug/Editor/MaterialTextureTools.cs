@@ -65,6 +65,9 @@ namespace Clube.Debug.Editor
         // Chalcopyrite reads coppery orange next to gold's yellow (GL346; was brass yellow, 0.86, 0.72, 0.22).
         internal static readonly Color ChalcopyriteFleck = new Color(0.90f, 0.52f, 0.16f);
         private static readonly Color MalachiteFleck = new Color(0.48f, 0.66f, 0.30f);
+        // Magnetite is blackish, hematite reddish (GL621).
+        internal static readonly Color MagnetiteFleck = new Color(0.09f, 0.09f, 0.11f);
+        internal static readonly Color HematiteFleck = new Color(0.58f, 0.16f, 0.12f);
         private const float MalachiteFleckScale = 1.7f;
 
         // Natural colours for the placeholders: a base, a second colour mixed in by noise, for
@@ -108,6 +111,11 @@ namespace Clube.Debug.Editor
                 { "maple boards", (new Color(0.56f, 0.35f, 0.22f), new Color(0.65f, 0.43f, 0.28f), null, Wear.Planks) },
                 // Crushed stone (GL571): grey gravel, lighter than stone, lying loose like sand. Added last, so no seed moves.
                 { "crushed stone", (new Color(0.55f, 0.55f, 0.57f), new Color(0.68f, 0.67f, 0.66f), null, Wear.Loose) },
+                // The iron ores and coal (GL621, GL622), after the rest, so no seed moves: magnetite's specks blackish, hematite's
+                // reddish, coal a black seam.
+                { "magnetite", (StoneBase, StoneMix, MagnetiteFleck, Wear.Whole) },
+                { "hematite", (StoneBase, StoneMix, HematiteFleck, Wear.Whole) },
+                { "coal", (new Color(0.1f, 0.1f, 0.11f), new Color(0.2f, 0.2f, 0.22f), new Color(0.34f, 0.34f, 0.38f), Wear.Whole) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]

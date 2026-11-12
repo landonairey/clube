@@ -24,7 +24,8 @@ namespace Clube.Core.Tests
             wood = Material(6, "Wood");
             leaves = Material(7, "Leaves");
             gold = Material(8, "Gold", VoxelMaterialCategory.Ore);
-            iron = Material(9, "Iron", VoxelMaterialCategory.Ore);
+            // The iron ore by its real name (GL621): the plan knows iron by its ores (hematite, magnetite).
+            iron = Material(9, "Magnetite", VoxelMaterialCategory.Ore);
 
             survey = ResourceSurvey.Build(Settings(5, 3072f, copper, gold));
             plan = WorldPlanner.Build(survey, 5);
