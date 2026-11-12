@@ -33,8 +33,9 @@ change starts pulling in a later chapter's direction.
 
 ## Current state
 Milestone 1 (Chapters 0–3) is built; work is Milestone 2's gameplay passes (GL items),
-tracked in the objectives doc. **This week: "Week of 2026-11-09" (GL428–GL477), batches
-A–I, one branch and PR per batch.**
+tracked in the objectives doc. **Now: "Bounded world, models and animals" (GL589–GL618), batches
+A–J, one branch and PR per batch, each branch cut from the one before; the world is a
+bounded 5 km map (P15 decided), scene `MapGen`.**
 
 What's built, pass by pass, with class names: [Docs/history.md](Docs/history.md). Don't
 read it whole — grep it for a class name or ID (`GL344`, `TreeFeller`) to find how and
