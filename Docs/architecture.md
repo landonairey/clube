@@ -58,7 +58,7 @@ Core/
   Generation/    TerrainSettings, ITerrainGenerator, TerrainGenerators, ChunkGenerator, TerrainSurface (GL56)
     Generators/  managed generator classes (Flat, Sine, FractalPerlin2D, Spline, Perlin3D)
     Map/         the bounded map (GL589-GL592): MapDefinition, MapLayout, MapBoundaryType, MapShape, BiomeDefinition,
-                 BiomeField, BiomeMap, ResourceSurvey
+                 BiomeField, BiomeMap, ResourceSurvey, SurveyResource + ResourceReach (GL595)
     Heightmaps/  Heightmap import, HeightmapGenerator, HeightmapExport (K29)
     Noise/       PerlinNoise (struct), VoxelHash, ErosionFilter + ErosionSettings (gullies as a filter on a heightfield, P12a)
     Rocks/       BoulderField (large faceted boulders, stamped as TreePart.Boulder parts with the trees, GL342)
@@ -246,6 +246,16 @@ flowchart LR
   (`OreField.AppendTries` + `MarkPlaced`, `TreeField.TryGetSpot` + `IsFlatEnough`, `ChunkFillKernel.ClayDepthAt`,
   `WaterMap.MaterialAt`, `LayerTable.IsSteep`, `BiomeField.IndexAt`) and gets every ground height from
   `SchedulePointHeights` jobs, a band of ore columns at a time. Don't place nodes with `NodesInCell` over a wide area (§7).
+- **The world plan** (GL593-GL597, `Generation/Settlements/`, `Economy/EconomySpecialty.cs`): `WorldPlanner.Build(survey, seed,
+  rules)` makes a `WorldPlan`, plain data (settlements with type, cell, name, shops and reasons; roads; water routes), from
+  the survey alone, in about 0.3 s for 5 km. The tables are `WorldPlanRules`: `SettlementType.Defaults()`,
+  `EconomySpecialty.Defaults()`, `RoadClassDefinition.Defaults()`, `NamedVessel.Defaults()`; a new type, specialty or
+  vessel is a row, and the steps read fields, never ids. Steps, each its own class over a shared `PlanContext` (the cells,
+  `ResourceReach` summed-area tables, a Dijkstra over the 40 m cells): `SettlementPlacer` (largest first, by `SiteRule`),
+  `SpecialtyAssigner` (fit = the scarcest needed resource nearby; then every specialty is made to exist),
+  `RoadPlanner` (paved, then dirt, then footpaths, each from its settlement to the nearest point of the network so far),
+  `WaterRoutePlanner` (sea routes from the capital's harbour, river routes, named vessels). Roads are cell-centre
+  polylines: building them (GL613) refines them on the real ground, with `RouteBridges` for the spans.
 
 **Adding a generator:** write an `IHeightField` (or `IVolumeField`) struct in
 `Fields/`; a generator class in `Generators/` deriving from
