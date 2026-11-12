@@ -10,9 +10,10 @@ For the planning chat. Read this file and nothing else to pick up the work; keep
 - Start a fresh planning chat when this one passes about 100k tokens: this file is the handoff.
 
 ## State (updated 2026-11-12)
-- **Chain tip:** `gl627/ore-looks-skills` (batch E is on `gl608/character-models`, cut from it).
-- **Open PRs, to merge in order:** #132 A map · #133 B settlements and roads plan · #134 C MapGen scene and M map · #135 K iron, coal, steel · #136 sea LOD · #137 D animals · #138 L ore looks, 10x XP, skill cheats. Each PR shows the earlier ones until they merge. The user merges; the planning chat does not.
-- **Running:** batch E (GL608, character models), a background agent of the previous planning chat; it reports there.
+- **Chain tip:** `gl608/character-models` (the checkout is on it, clean).
+- **Open PRs, to merge in order:** #132 A map · #133 B settlements and roads plan · #134 C MapGen scene and M map · #135 K iron, coal, steel · #136 sea LOD · #137 D animals · #138 L ore looks, 10x XP, skill cheats · #139 E character models. Each PR shows the earlier ones until they merge. The user merges; the planning chat does not.
+- **Running:** nothing. Next to dispatch: batch M.
+- **Batch E's leftovers:** the player's shadow body and new first-person arm, the tutorial crew, the adventurer, the carter and the menu miner were never seen on screen (only the WorldLab shopkeepers were); no figure LOD or instancing yet for a 24–32 NPC city (11 renderers and 822–1048 triangles per figure: matters for batches H and I); the shadow body does not mirror tool swings; a recompile during Play mode once wiped the rigs' look (now serializable, not re-tested). The shared figure system is `FigureLook`/`FigureLooks`/`FigureMeshes`/`FigurePoses` (Core, `Meshing/Models/Figures/`) and `FigureRig` (Game); a new NPC look is a `FigurePreset` row.
 
 ## Queue, in order
 1. **M — map screen and new-game preview** (GL635, GL636), branch `gl635/map-polish`. Grows `WorldMapScreen` and `MapPicture` (`Assets/Scripts/Game/Map/`, `Core/Generation/Map/`); the new-game menu preview must be fast for a seed change (a coarse height sample, not the full water and survey build, which takes 6–8 s).
