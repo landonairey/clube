@@ -92,7 +92,8 @@ Core/
   Sky/           SkyPositions (the sun, the moon's orbit and phases, the stars' sidereal turn, GL248, GL253),
                  SkyWeather (each
                  sunset's colour and each day's cloud cover, GL262, GL263)
-  Fauna/         BirdFlock (a group of birds flying a pattern, then leaving, GL250)
+  Fauna/         BirdFlock (a group of birds flying a pattern, then leaving, GL250); AnimalSpecies, HerdSites, AnimalBrain
+                 (the animals as data, where herds live, one animal's decisions, GL602-GL606)
   Audio/         SoundSynth (sound effects made in code, GL271)
   Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea, FarTerrainBuilder (far terrain levels),
                  TerrainLodRing + TerrainLodBuilder (coarse terrain levels, P7c), DistantTreeBuilder (GL162)
@@ -574,6 +575,26 @@ Three things to know before it grows further:
   and `WorldDebugView` show the pattern.
 
 ---
+
+### Animals (GL602-GL607)
+
+Data and decisions are Core (`Core/Fauna/`), bodies are Game (`Game/Fauna/`):
+
+- `AnimalSpeciesTable` holds the species rows (`AnimalSpecies`: biomes by name, herd size, body, speeds, health,
+  skittishness, `AnimalRoutine`, `AnimalDrop`s by item id). A new species is a row there plus an `AnimalLook` in
+  `AnimalLooks` (its model recipe).
+- `HerdSites` says where herds are from the world's seed alone: one possible herd per 96 m cell, its species picked from
+  those living in the biome at its home. Nothing is stored. `AnimalHerds` (on the World object) asks for the sites
+  round the player once a second, makes a herd when its home is within `spawnRadius` and its ground is loaded, removes
+  it past `despawnRadius`, and keeps the keys of killed animals (`ISavedValues`). The biome comes from
+  `BiomeMap.For(generator)`; a world without one uses `HerdSites.StandInBiome` on the ground's material.
+- `AnimalBrain` is one animal's state machine (graze, wander, gather, rest, flee, dead) with no GameObject: it reads
+  `AnimalSenses` and leaves a heading and a speed. `Animal` moves the body along it, with `AnimalHerds.TryGround`
+  (a short `World.Raycast` down, and `WaterQuery`) looking ahead every 0.15 s so it stays on dry ground without drops,
+  and poses the `AnimalRig` built by `AnimalModels` (`LowPolyMeshBuilder` shapes on the LowPoly material).
+- Tools reach animals through `IToolTarget`: `PlayerToolUser` strikes whatever target its view ray lands on first,
+  with damage by the tool's power. A dead `Animal` gains a `StorageChest` holding its rolled drops, so the interaction
+  system and `ChestPanel` open it like any chest.
 
 ## 7. Where the next systems plug in
 
