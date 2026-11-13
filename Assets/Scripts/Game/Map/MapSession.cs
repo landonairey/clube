@@ -130,6 +130,7 @@ namespace Clube.Game
             Vector2 at = MapStart.Pick(Plan, Survey);
             StartPosition = worldView.transform.TransformPoint(new Vector3(at.x, generator.Height(at.x, at.y), at.y));
             PlacePlayer();
+            BindLimit();
             UnityEngine.Debug.Log(
                 $"Map session: seed {terrain.Seed}, {Plan.Settlements.Count} settlements, {Plan.Roads.Count} roads, {Plan.WaterRoutes.Count} water routes; "
                 + $"survey and plan {LastBuildSeconds:0.0} s ({Survey.Timings}); start {StartPosition}", this);
@@ -155,6 +156,20 @@ namespace Clube.Game
                 // Whatever enables the player spawns it at its own x and z.
                 player.transform.position = StartPosition;
             }
+        }
+
+        // The player is held inside the map's edges (GL640); the limit rides on the player and reads this session.
+        private void BindLimit()
+        {
+            if (player == null || player.GetComponent<PlayerController>() == null)
+            {
+                return;
+            }
+            if (!player.TryGetComponent(out MapBoundaryLimit limit))
+            {
+                limit = player.gameObject.AddComponent<MapBoundaryLimit>();
+            }
+            limit.Bind(this);
         }
 
         private void OnGUI()
