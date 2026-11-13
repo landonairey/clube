@@ -274,6 +274,26 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void DeadGrass_IsTheRegistrysLastMaterial_AndBurnsWorseThanGrass()
+        {
+            var registry = UnityEditor.AssetDatabase.LoadAssetAtPath<MaterialRegistry>("Assets/Config/Materials/MaterialRegistry.asset");
+            IReadOnlyList<VoxelMaterial> all = registry.Materials;
+            VoxelMaterial dead = all[all.Count - 1], grass = registry.Find("Grass");
+            Assert.AreEqual("Dead Grass", dead.DisplayName, "appended last, so no earlier material's id or texture layer moved");
+            Assert.AreEqual(34, dead.Id);
+            Assert.AreEqual(MaterialKind.Soil, dead.Kind);
+            Assert.AreNotSame(grass.Albedo, dead.Albedo, "its own, yellower texture");
+            Assert.AreEqual("dead-grass", dead.Drop.Id);
+            Assert.IsTrue(registry.IsMaterialItem(dead.Drop));
+            Assert.Less(dead.Drop.BurnSeconds, grass.Drop.BurnSeconds, "burns even worse as a fuel source");
+            Assert.Less(dead.Drop.FuelQuality, grass.Drop.FuelQuality);
+            foreach (RoadClassDefinition road in RoadClassDefinition.Defaults())
+            {
+                Assert.IsNotNull(registry.Find(road.Surface),  is surfaced with a material that exists ({road.Surface})");
+            }
+        }
+
+        [Test]
         public void RoadLine_AnswersLikeTheRouteItCameFrom()
         {
             var line = new RoadLine(new[] { new Vector2(0f, 0f), new Vector2(10f, 0f), new Vector2(10f, 10f) }, (x, z) => x + z);

@@ -55,9 +55,10 @@ namespace Clube.Core.Tests
         {
             IReadOnlyList<VoxelMaterial> all = registry.Materials;
             Assert.That(all.Select(m => m.Id).Distinct().Count(), Is.EqualTo(all.Count), "no id is used twice");
-            // Appended, so no earlier material's id or texture layer moved.
-            Assert.That(all.Skip(all.Count - 3).Select(m => m.DisplayName), Is.EqualTo(new[] { "Magnetite", "Hematite", "Coal" }));
-            Assert.That(all.Skip(all.Count - 3).Select(m => (int)m.Id), Is.EqualTo(new[] { 31, 32, 33 }));
+            // Appended in their turn (Dead Grass, GL633, came after them), so no earlier material's id or texture layer moved.
+            int first = all.ToList().FindIndex(m => m.DisplayName == "Magnetite");
+            Assert.That(all.Skip(first).Take(3).Select(m => m.DisplayName), Is.EqualTo(new[] { "Magnetite", "Hematite", "Coal" }));
+            Assert.That(all.Skip(first).Take(3).Select(m => (int)m.Id), Is.EqualTo(new[] { 31, 32, 33 }));
             foreach (string name in new[] { "Magnetite", "Hematite", "Coal" })
             {
                 VoxelMaterial material = registry.Find(name);
