@@ -140,6 +140,7 @@ namespace Clube.Game
                 toolUser.Blocked += OnBlocked;
                 toolUser.BushPicked += OnBushPicked;
                 toolUser.Missed += OnMissed;
+                toolUser.TargetStruck += OnMissed;
             }
             if (bashing != null)
             {
@@ -155,6 +156,7 @@ namespace Clube.Game
                 toolUser.Blocked -= OnBlocked;
                 toolUser.BushPicked -= OnBushPicked;
                 toolUser.Missed -= OnMissed;
+                toolUser.TargetStruck -= OnMissed;
             }
             if (bashing != null)
             {

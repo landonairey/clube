@@ -87,7 +87,7 @@ namespace Clube.Debug
             return $"{hour:0.#}:00, moon {cycle.MoonPhase * 100f:0}% through its month";
         }
 
-        // "level mining 3", "level all 5", "xp smelting 40" (GL47).
+        // "level mining 3", "level all 5", "xp smelting 40" (GL47); every skill there is, from SkillSet.Types.
         private static string Skills(string[] words, PlayerSkills skills)
         {
             if (skills == null)
@@ -102,9 +102,9 @@ namespace Clube.Debug
             SkillType one = SkillType.None;
             if (!all && (!System.Enum.TryParse(words[1], true, out one) || one == SkillType.None))
             {
-                return $"No skill called \"{words[1]}\" (crafting, woodcutting, mining, smelting, blacksmithing)";
+                return $"No skill called \"{words[1]}\" ({string.Join(", ", SkillSet.Types).ToLowerInvariant()})";
             }
-            foreach (SkillType skill in new[] { SkillType.Crafting, SkillType.Woodcutting, SkillType.Mining, SkillType.Smelting, SkillType.Blacksmithing, SkillType.Prospecting, SkillType.Goldsmithing })
+            foreach (SkillType skill in SkillSet.Types)
             {
                 if (!all && skill != one)
                 {
@@ -112,7 +112,8 @@ namespace Clube.Debug
                 }
                 if (words[0].ToLowerInvariant() == "level")
                 {
-                    skills.Skills.RaiseTo(skill, (int)amount);
+                    // Exactly that level, down as well as up (GL630).
+                    skills.Skills.SetLevel(skill, (int)amount);
                 }
                 else
                 {
@@ -120,6 +121,31 @@ namespace Clube.Debug
                 }
             }
             return all ? $"All skills: {words[0]} {amount}" : $"{words[1]}: level {skills.Skills.Level(one)} ({skills.Skills.Experience(one):0} xp)";
+        }
+
+        /// <summary>Puts one skill at exactly a level, up or down (GL630).</summary>
+        public static string SetSkill(PlayerSkills skills, SkillType skill, int level)
+        {
+            if (skills == null)
+            {
+                return "The player has no skills (Play mode only)";
+            }
+            skills.Skills.SetLevel(skill, level);
+            return $"{skill}: level {skills.Skills.Level(skill)}";
+        }
+
+        /// <summary>Puts every skill there is (<see cref="SkillSet.Types"/>) at a level (GL630): the top one maxes them all.</summary>
+        public static string SetAllSkills(PlayerSkills skills, int level)
+        {
+            if (skills == null)
+            {
+                return "The player has no skills (Play mode only)";
+            }
+            foreach (SkillType skill in SkillSet.Types)
+            {
+                skills.Skills.SetLevel(skill, level);
+            }
+            return $"All {SkillSet.Types.Count} skills: level {UnityEngine.Mathf.Clamp(level, 0, SkillSet.MaxLevel)}";
         }
 
         public static string GiveCoins(PlayerWallet wallet, int coins)

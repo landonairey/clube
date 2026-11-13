@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ecb6323010a92224e80cbf8eb67bfd7b, type: 3}
+  m_Name: Steel chisel
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.ToolDefinition
+  id: steel-chisel
+  displayName: Steel chisel
+  icon: {fileID: 2800000, guid: 209fd975649c1d540bae47e42e959c56, type: 3}
+  maxStack: 1
+  unitVolume: 1
+  burnSeconds: 0
+  fuelQuality: 1
+  purityAs: {fileID: 0}
+  hidesContents: 0
+  impactSize: 1
+  impactShape: 0
+  wideOn: 0
+  power: 2
+  maxHits: 800
+  hitsPerSecond: 3.5
+  hitsOn: []
+  chisels: 1
+  hitsOnAnything: 0
+  tier: 6
+  efficiency: 1
+  reachScale: 1
+  softFactor: 1
+  aimedOnly: 0
+  repairItem: {fileID: 11400000, guid: 9b95ddb7870a07cd6171db16b357ea54, type: 2}
+  repairShare: 0.5
+  wearLostPerRepair: 0.05

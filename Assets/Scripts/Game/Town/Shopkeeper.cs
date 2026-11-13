@@ -59,7 +59,7 @@ namespace Clube.Game
         private ShopHours hours;
         private DayNightCycle clock;
         private TownContext town;
-        private KeeperFigure figure;
+        private FigureRig figure;
         private TownLayout.ShopPlot plot;
         private TownLayout.ChoreSpot[] chores;
         private readonly Queue<Waypoint> route = new Queue<Waypoint>();
@@ -110,7 +110,7 @@ namespace Clube.Game
             Reprice();
             plot = TownLayout.PlotOf(shop.Kind);
             chores = TownLayout.ChoresOf(shop.Kind);
-            figure = gameObject.AddComponent<KeeperFigure>();
+            figure = gameObject.AddComponent<FigureRig>();
             figure.Build(shop.Kind, material, seed);
         }
 
@@ -387,7 +387,7 @@ namespace Clube.Game
             Vector3 to = target.At - local;
             Vector3 flat = new Vector3(to.x, 0f, to.z);
             float step = speed * Time.deltaTime;
-            figure.Pose = sweeping ? KeeperPose.Sweep : KeeperPose.Walk;
+            figure.Pose = sweeping ? FigureAction.Sweep : FigureAction.Walk;
             float remaining = target.Exact ? to.magnitude : flat.magnitude;
             if (remaining <= step)
             {
@@ -436,7 +436,7 @@ namespace Clube.Game
                     local = InShop(TownLayout.CounterSpot).At;
                     MoveFigure();
                     Face(plot.Yaw);
-                    figure.Pose = KeeperPose.Stand;
+                    figure.Pose = FigureAction.Stand;
                     break;
                 case Place.Bed:
                 {
@@ -445,7 +445,7 @@ namespace Clube.Game
                     Vector3 centre = town.ToScene(InShop(TownLayout.BedCentre).At);
                     Vector3 along = town.SceneRotation(Plan.Yaw + plot.Yaw) * Vector3.right;
                     figure.LieAlong(true, centre, along);
-                    figure.Pose = KeeperPose.Lie;
+                    figure.Pose = FigureAction.Lie;
                     break;
                 }
                 case Place.Shaft when shaft != null && shaft.IsPit:
@@ -454,7 +454,7 @@ namespace Clube.Game
                     StandInPit();
                     Vector2 towards = Plan.Centre - shaft.PitCentre;
                     transform.rotation = town.SceneRotation(Mathf.Atan2(towards.x, towards.y) * Mathf.Rad2Deg);
-                    figure.Pose = KeeperPose.Mine;
+                    figure.Pose = FigureAction.Mine;
                     mineTime = 0f;
                     break;
                 }
@@ -464,7 +464,7 @@ namespace Clube.Game
                     MoveFigure();
                     Vector3 toNode = shaft.Node - local;
                     transform.rotation = town.SceneRotation(Mathf.Atan2(toNode.x, toNode.z) * Mathf.Rad2Deg);
-                    figure.Pose = KeeperPose.Mine;
+                    figure.Pose = FigureAction.Mine;
                     mineTime = 0f;
                     break;
                 }
@@ -495,7 +495,7 @@ namespace Clube.Game
                 route.Enqueue(OnGround(spot.At, Plan.GroundAt(spot.At)));
                 // Sweeping goes slowly, broom in hand, along the line.
                 sweeping = true;
-                figure.Pose = KeeperPose.Sweep;
+                figure.Pose = FigureAction.Sweep;
                 return;
             }
             if (chores.Length > 1 && choreTime > ChoreSwitchSeconds)
@@ -547,20 +547,20 @@ namespace Clube.Game
             MoveFigure();
         }
 
-        private KeeperPose ChorePose(int index)
+        private FigureAction ChorePose(int index)
         {
             switch (shop.Kind)
             {
                 case ShopKind.Blacksmith:
-                    return index == 0 ? KeeperPose.Hammer : KeeperPose.Stoke;
+                    return index == 0 ? FigureAction.Hammer : FigureAction.Stoke;
                 case ShopKind.Lumber:
-                    return KeeperPose.Whittle;
+                    return FigureAction.Whittle;
                 case ShopKind.Mining:
-                    return KeeperPose.Sit;
+                    return FigureAction.Sit;
                 case ShopKind.Prospector:
-                    return index == 0 ? KeeperPose.Examine : KeeperPose.Read;
+                    return index == 0 ? FigureAction.Examine : FigureAction.Read;
                 default:
-                    return KeeperPose.Sweep;
+                    return FigureAction.Sweep;
             }
         }
     }
