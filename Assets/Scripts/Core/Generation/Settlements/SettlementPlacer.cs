@@ -145,6 +145,7 @@ namespace Clube.Core
                 (Mathf.Sqrt(type.Parcels) * rules.ParcelSide * 0.5f - context.CellSize * 0.5f) / context.CellSize));
             int coastReach = Mathf.Max(1, Mathf.RoundToInt(rules.CoastReach / context.CellSize));
             int reach = context.ReachOf(type);
+            float flatness = rules.FlatnessFor(type);
             int target = -1;
             if (type.Site == SiteRule.OneResource && context.TypeResources.Count > 0)
             {
@@ -174,8 +175,13 @@ namespace Clube.Core
                         continue;
                     }
                     int x = i % size, z = i / size;
+                    // How steep its ground may be goes by the road it must be reached by (GL642): a cart can't climb to a terrace a walker can.
+                    if (!anyGround && context.Cells[i].Flatness < flatness)
+                    {
+                        continue;
+                    }
                     if (!anyGround && footprint > 0
-                        && (Mean(dryTable, x, z, footprint) < 0.8f || Mean(flatTable, x, z, footprint) < rules.TerraceFlatness))
+                        && (Mean(dryTable, x, z, footprint) < 0.8f || Mean(flatTable, x, z, footprint) < flatness * 0.9f))
                     {
                         continue;
                     }

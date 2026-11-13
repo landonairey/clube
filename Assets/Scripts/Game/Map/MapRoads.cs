@@ -19,6 +19,10 @@ namespace Clube.Game
         // Pieces looked at each frame for whether their chunks have loaded.
         private const int ChecksPerFrame = 24;
 
+        // A tunnel is this much wider than its road, and this high at the middle of its arch (GL642).
+        private const float TunnelExtraWidth = 1f;
+        private const float TunnelHeight = 3.5f;
+
         [SerializeField]
         private MapSession session;
 
@@ -45,10 +49,13 @@ namespace Clube.Game
             public RoadWriter Writer;
             public List<RouteBridges.Span> Bridges;
             public bool[] BridgeBuilt;
+            public List<TunnelWriter> Tunnels = new List<TunnelWriter>();
+            public bool[] PortalBuilt;
         }
 
         private readonly List<(int Road, int Piece, float Distance)> pending = new List<(int, int, float)>();
         private readonly List<int> found = new List<int>();
+        private readonly List<(int Road, int Tunnel, int Piece, float Distance)> boring = new List<(int, int, int, float)>();
         private KeptHeights heights;
         private readonly Dictionary<string, string> restored = new Dictionary<string, string>();
         private Rect[] bounds;
@@ -78,6 +85,11 @@ namespace Clube.Game
         public int BridgesBuilt { get; private set; }
 
         public int SignpostsBuilt { get; private set; }
+
+        /// <summary>Metres of tunnel bored and portals standing (GL642).</summary>
+        public int TunnelPiecesBored { get; private set; }
+
+        public int PortalsBuilt { get; private set; }
 
         /// <summary>Pieces near the viewer still waiting for their chunks.</summary>
         public int PiecesWaiting => pending.Count;
@@ -141,7 +153,8 @@ namespace Clube.Game
             pending.Clear();
             heights = new KeptHeights(session.Map.Height);
             collectedTime = float.MinValue;
-            RoadsWorkedOut = PiecesWritten = BridgesBuilt = SignpostsBuilt = 0;
+            boring.Clear();
+            RoadsWorkedOut = PiecesWritten = BridgesBuilt = SignpostsBuilt = TunnelPiecesBored = PortalsBuilt = 0;
         }
 
         // The ground as generated, kept as it is asked for: road pieces ask for the same square metres over and over.
@@ -166,7 +179,9 @@ namespace Clube.Game
             RoadClassDefinition definition = plan.Rules.Road(road.Class);
             // The line keeps its own heights, so it asks the generator itself rather than filling the store with a road's length of them.
             float started = Time.realtimeSinceStartup;
-            var line = new RoadLine(road.Points, session.Map.Height, 1f, WorldRoads.HeightsOf(session.Map));
+            // In a tunnel (GL642) the line runs on the tunnel's floor, so the bed leads into it.
+            var line = new RoadLine(road.Points, RoadTunnels.HeightAt(road, session.Map.Height), 1f,
+                RoadTunnels.HeightsAt(road, WorldRoads.HeightsOf(session.Map)));
             List<RouteBridges.Span> bridges = RouteBridges.Find(line, session.Map.Water, true);
             // Where it ends on another road, its bed meets that road's bed.
             float endHeight = float.NaN;
@@ -199,6 +214,24 @@ namespace Clube.Game
                     made.Writer.Skip(piece);
                 }
             }
+            // Its tunnels: the bore is carved by a writer of its own, and the road leaves the ground over it alone.
+            foreach (RoadTunnel tunnel in road.Tunnels)
+            {
+                var bore = new TunnelWriter(tunnel, definition.Width + TunnelExtraWidth, TunnelHeight, definition.Surface, session.Map.Height);
+                if (restored.TryGetValue(KeyPrefix + index + ".t" + made.Tunnels.Count, out string bored))
+                {
+                    bore.Restore(bored);
+                }
+                made.Tunnels.Add(bore);
+                for (int piece = 0; piece < made.Writer.Pieces; piece++)
+                {
+                    if (bore.IsBored(made.Writer.Middle(piece)))
+                    {
+                        made.Writer.Skip(piece);
+                    }
+                }
+            }
+            made.PortalBuilt = new bool[made.Tunnels.Count * 2];
             if (restored.TryGetValue(KeyPrefix + index, out string saved))
             {
                 made.Writer.Restore(saved);
@@ -216,6 +249,7 @@ namespace Clube.Game
             collectedTime = Time.unscaledTime;
             moreToWorkOut = false;
             pending.Clear();
+            boring.Clear();
             World world = session.WorldView.World;
             bool workedOutOne = false;
             for (int i = 0; i < bounds.Length; i++)
@@ -247,14 +281,16 @@ namespace Clube.Game
                     pending.Add((i, piece, (road.Writer.Middle(piece) - viewer).sqrMagnitude));
                 }
                 BuildBridges(i, road, viewer, world);
+                CollectTunnels(i, road, viewer, world);
             }
             pending.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            boring.Sort((a, b) => a.Distance.CompareTo(b.Distance));
             BuildSignposts(viewer, world);
         }
 
         private void Write()
         {
-            if (pending.Count == 0)
+            if (pending.Count == 0 && boring.Count == 0)
             {
                 return;
             }
@@ -281,6 +317,60 @@ namespace Clube.Game
                 if ((Time.realtimeSinceStartup - started) * 1000f >= writeBudgetMilliseconds)
                 {
                     return;
+                }
+            }
+            // Then the tunnels, a metre of bore at a time.
+            VoxelMaterial lining = config.Materials != null ? config.Materials.Find("Stone") : null;
+            for (int i = 0; i < boring.Count && checks < ChecksPerFrame * 2; i++)
+            {
+                (int Road, int Tunnel, int Piece, float Distance) next = boring[i];
+                TunnelWriter bore = built[next.Road].Tunnels[next.Tunnel];
+                checks++;
+                if (!bore.Loaded(world, config.WorldHeightInChunks, next.Piece))
+                {
+                    continue;
+                }
+                float before = Time.realtimeSinceStartup;
+                bore.Write(world, config.Materials, lining, config.IsoLevel, next.Piece);
+                boring.RemoveAt(i--);
+                TunnelPiecesBored++;
+                float took = (Time.realtimeSinceStartup - before) * 1000f;
+                LongestMilliseconds = Mathf.Max(LongestMilliseconds, took);
+                TotalMilliseconds += took;
+                if ((Time.realtimeSinceStartup - started) * 1000f >= writeBudgetMilliseconds)
+                {
+                    return;
+                }
+            }
+        }
+
+        // The metres of bore near the viewer still to carve, and a portal at each end of a bore once its ground has loaded.
+        private void CollectTunnels(int index, Built road, Vector2 viewer, World world)
+        {
+            for (int t = 0; t < road.Tunnels.Count; t++)
+            {
+                TunnelWriter bore = road.Tunnels[t];
+                found.Clear();
+                bore.Unwritten(viewer, buildRange, found);
+                foreach (int piece in found)
+                {
+                    Vector3 middle = bore.Middle(piece);
+                    boring.Add((index, t, piece, (new Vector2(middle.x, middle.z) - viewer).sqrMagnitude));
+                }
+                for (int end = 0; end < 2 && bore.Pieces > 0 && material != null; end++)
+                {
+                    Vector3 at = bore.At(end == 0 ? bore.BoreStart : bore.BoreEnd);
+                    if (road.PortalBuilt[t * 2 + end] || (new Vector2(at.x, at.z) - viewer).sqrMagnitude > buildRange * buildRange
+                        || !world.IsLoaded(world.Grid.WorldToChunk(at)))
+                    {
+                        continue;
+                    }
+                    road.PortalBuilt[t * 2 + end] = true;
+                    Vector2 outward = (end == 0 ? bore.Tunnel.From - bore.Tunnel.To : bore.Tunnel.To - bore.Tunnel.From).normalized;
+                    GameObject portal = TunnelPortal.Build(bore.Width, bore.Height, material, root, session.Plan.Seed + index * 53 + t * 2 + end);
+                    portal.transform.localPosition = at;
+                    portal.transform.localRotation = Quaternion.LookRotation(new Vector3(outward.x, 0f, outward.y), Vector3.up);
+                    PortalsBuilt++;
                 }
             }
         }
@@ -359,6 +449,13 @@ namespace Clube.Game
                 {
                     values[KeyPrefix + i] = built[i].Writer.Save();
                 }
+                for (int t = 0; built[i] != null && t < built[i].Tunnels.Count; t++)
+                {
+                    if (built[i].Tunnels[t].Written > 0)
+                    {
+                        values[KeyPrefix + i + ".t" + t] = built[i].Tunnels[t].Save();
+                    }
+                }
             }
         }
 
@@ -381,6 +478,13 @@ namespace Clube.Game
                 if (built[i] != null && restored.TryGetValue(KeyPrefix + i, out string saved))
                 {
                     built[i].Writer.Restore(saved);
+                }
+                for (int t = 0; built[i] != null && t < built[i].Tunnels.Count; t++)
+                {
+                    if (restored.TryGetValue(KeyPrefix + i + ".t" + t, out string bored))
+                    {
+                        built[i].Tunnels[t].Restore(bored);
+                    }
                 }
             }
         }

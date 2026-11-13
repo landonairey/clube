@@ -88,6 +88,8 @@ namespace Clube.Core
         public bool Refined;
         public float Length;
         public List<RoadBridge> Bridges = new List<RoadBridge>();
+        /// <summary>Its tunnels (GL642), in the road's own direction: each a straight part of <see cref="Points"/>, bored under a ridge.</summary>
+        public List<RoadTunnel> Tunnels = new List<RoadTunnel>();
         /// <summary>The steepest step along it, rise over run between cells.</summary>
         public float SteepestSlope;
         /// <summary>Metres of it steeper than its class should be: where no gentler way exists.</summary>
@@ -179,6 +181,18 @@ namespace Clube.Core
         public float MinFlatness = 0.6f;
         /// <summary>GL642: least flatness of a site and of its footprint's mean. Below <see cref="MinFlatness"/> the settlement is cut into the slope in terraces (0.2 is a mean slope of 32%).</summary>
         public float TerraceFlatness = 0.2f;
+        /// <summary>GL642: least flatness of a site that must be reached by a dirt cart path (0.45 is a mean slope of 22%: about the path's own limit).</summary>
+        public float CartFlatness = 0.45f;
+
+        /// <summary>
+        /// The least flatness of a settlement type's site (GL642): terraces fit a settlement to a hillside, but its road has
+        /// to reach it. One reached on foot may stand on any ground that can be terraced, one that needs a dirt cart path on
+        /// a gentler hillside, one that needs a paved road on level ground.
+        /// </summary>
+        public float FlatnessFor(SettlementType type)
+        {
+            return type.MinimumRoad == RoadClass.PavedCartPath ? MinFlatness : type.MinimumRoad == RoadClass.DirtCartPath ? CartFlatness : TerraceFlatness;
+        }
         /// <summary>GL643: the fewest survey cells a piece of land other than the largest needs to get a settlement of its own.</summary>
         public int IslandCells = 6;
         /// <summary>GL643: land parcels an island must have for each parcel of the settlement type it is given (a village of 4 needs 160: about 400 m square).</summary>

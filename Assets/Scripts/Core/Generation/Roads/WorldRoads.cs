@@ -30,9 +30,11 @@ namespace Clube.Core
             float started = Time.realtimeSinceStartup;
             var refiner = new RoadRefiner(plan.Area, heightAt, water.IsCreated ? WaterOf(water) : null, closedAt) { HeightsAt = heightsAt };
             refiner.Refine(plan);
+            // GL642: where a cart path is still over its limit for a long stretch, a tunnel under it.
+            int tunnels = RoadTunnels.Bore(plan, heightAt, heightsAt, water.IsCreated ? WaterOf(water) : null);
             plan.Signposts = SignpostPlanner.Plan(plan);
             float seconds = Time.realtimeSinceStartup - started;
-            plan.Timings += $", roads on the ground {seconds * 1000f:0} ms ({refiner.Refined} refined, {refiner.Kept} kept, {plan.Signposts.Count} signposts)";
+            plan.Timings += $", roads on the ground {seconds * 1000f:0} ms ({refiner.Refined} refined, {refiner.Kept} kept, {tunnels} tunnels, {plan.Signposts.Count} signposts)";
             return seconds;
         }
 
