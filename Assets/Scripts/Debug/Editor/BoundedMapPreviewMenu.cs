@@ -7,13 +7,13 @@ using UnityEngine;
 namespace Clube.Debug.Editor
 {
     /// <summary>
-    /// A quick look at the bounded map (GL589-GL592) before it has a scene: surveys the map the streamed lab's terrain
+    /// A quick look at the bounded map (GL589-GL592) without playing it: surveys the map the MapGen scene's terrain
     /// settings give with the BoundedMap generator, and writes it as a picture to <c>Temp/BoundedMapPreview.png</c>
     /// (biome colours shaded by height, sea, rivers and lakes, bare rock, and a dot per cell holding ore).
     /// </summary>
     public static class BoundedMapPreviewMenu
     {
-        private const string ConfigPath = "Assets/Config/ProceduralWorldLabWorldConfig.asset";
+        private const string ConfigPath = "Assets/Config/MapGenWorldConfig.asset";
         private const float CellSize = 40f;
         private const int Scale = 6;
 

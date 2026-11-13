@@ -78,14 +78,16 @@ namespace Clube.Core
         {
             elevation = height - Shape.SeaLevel;
             Shape.EdgeClimate(x, z, out float edgeTemperature, out float edgeMoisture);
-            float wander = ValueNoise.At(Seed, x / (RegionSize * 1.3f), z / (RegionSize * 1.3f), 0, TemperatureSalt) * 2f - 1f;
-            float north = Shape.Half > 0f ? math.clamp(z / Shape.Half, -1.5f, 1.5f) : 0f;
+            // Read at the map's own bent position, so the wet, dry, warm and cold regions wander with the land's
+            // lines and none of their borders runs straight (GL637).
+            float2 bent = Shape.IsCreated ? Shape.Warp(new float2(x, z)) : new float2(x, z);
+            uint seed = math.hash(new int2(Seed, TemperatureSalt));
+            float wander = math.clamp(GradientNoise.Fractal(seed, bent.x / (RegionSize * 1.3f), bent.y / (RegionSize * 1.3f), 2) * 1.5f, -1f, 1f);
+            float north = Shape.Half > 0f ? math.clamp(bent.y / Shape.Half, -1.5f, 1.5f) : 0f;
             temperature = BaseTemperature - NorthCooling * north - LapseRate * math.max(0f, elevation)
                           + wander * TemperatureNoise + edgeTemperature;
-            float noise = 0.65f * ValueNoise.At(Seed, x / RegionSize, z / RegionSize, 0, MoistureSalt)
-                          + 0.35f * ValueNoise.At(Seed, x / (RegionSize * 0.4f), z / (RegionSize * 0.4f), 1, MoistureSalt);
-            // The octaves' sum gathers round 0.5; stretched so dry and wet regions both turn up.
-            moisture = math.saturate(0.5f + (noise - 0.5f) * 2.6f + edgeMoisture);
+            float noise = GradientNoise.Fractal(math.hash(new int2(Seed, MoistureSalt)), bent.x / RegionSize, bent.y / RegionSize, 3);
+            moisture = math.saturate(0.5f + noise * 0.95f + edgeMoisture);
         }
 
         /// <summary>The biome's index in the table for a column whose ground is at <paramref name="height"/>; the last when none matches.</summary>

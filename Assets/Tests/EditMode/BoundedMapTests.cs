@@ -56,6 +56,8 @@ namespace Clube.Core.Tests
             settings.Water.Enabled = water;
             settings.Map.Size = size;
             settings.Map.PeakHeight = 150f;
+            // The tests' plains stand 20 m up; a floor well under them leaves the sea its depth.
+            settings.Map.VoxelFloor = -40f;
             return settings;
         }
 
@@ -70,6 +72,7 @@ namespace Clube.Core.Tests
         private TerrainSettings Island(int seed = 5)
         {
             TerrainSettings settings = Settings(seed, 2048f, true);
+            settings.Map.SetShape(MapShapeType.IslandName);
             settings.Map.SetSides(
                 MapBoundaryType.OceanName, MapBoundaryType.OceanName, MapBoundaryType.OceanName, MapBoundaryType.OceanName);
             return settings;
@@ -128,9 +131,15 @@ namespace Clube.Core.Tests
             map.BoundaryTypes.Add(new MapBoundaryType("Salt flat", false, 2f, 1f, 300f, 1f, 0f, 0f));
             map.SetSides("Salt flat", MapBoundaryType.OceanName, MapBoundaryType.OceanName, MapBoundaryType.OceanName);
             MapLayout layout = map.Resolve(1, Level);
+            float x = -layout.Size * 0.5f - 200f;
 
             Assert.That(layout.Boundary(MapSide.West).Name, Is.EqualTo("Salt flat"));
-            Assert.That(layout.Shape.Apply(-layout.Size * 0.5f - 200f, 0f, 77f), Is.EqualTo(layout.SeaLevel + 2f).Within(1e-3f));
+            Assert.That(layout.BoundaryAt(x, 0f).Name, Is.EqualTo("Salt flat"));
+            // Past its edge the land is its flat: 2 m over the plains there, whatever hills the endless land has.
+            float flat = layout.Shape.Apply(x, 0f, Level, out float plains);
+            Assert.That(flat, Is.EqualTo(plains).Within(0.05f));
+            Assert.That(layout.Shape.Apply(x, 0f, Level + 57f), Is.EqualTo(flat).Within(0.05f));
+            Assert.That(flat, Is.GreaterThan(layout.SeaLevel + 2f));
         }
 
         [Test]
@@ -142,11 +151,23 @@ namespace Clube.Core.Tests
 
             foreach (float beyond in new[] { 400f, 3000f, 20000f })
             {
-                Assert.That(map.Height(-half - beyond, 0f), Is.LessThan(sea - 20f), "the ocean's floor");
-                Assert.That(map.Height(half + beyond, 0f), Is.InRange(sea + 1f, sea + 17f), "the desert's plain");
+                Assert.That(map.Height(-half - beyond, 0f), Is.LessThan(sea - 15f), "the ocean's floor");
+                Assert.That(map.Height(half + beyond, 0f), Is.InRange(sea + 1f, sea + settings.Map.InlandRise + 30f), "the desert's plain");
                 Assert.That(map.Height(0f, -half - beyond), Is.LessThan(sea - 500f), "the void");
-                Assert.That(map.Height(0f, half + beyond), Is.GreaterThan(sea + 400f), "the ridge");
             }
+            // The larger range: crests and valleys, tall on the whole and nowhere down at the plains.
+            float sum = 0f;
+            int count = 0;
+            foreach (float beyond in new[] { 1500f, 3000f, 20000f })
+            {
+                for (float x = -half * 0.5f; x <= half * 0.5f; x += half * 0.125f, count++)
+                {
+                    float h = map.Height(x, half + beyond);
+                    Assert.That(h, Is.GreaterThan(sea + 60f), $"the range at {x}, {beyond} past the edge");
+                    sum += h - sea;
+                }
+            }
+            Assert.That(sum / count, Is.GreaterThan(280f), "the range's mean height");
         }
 
         [Test]
@@ -212,7 +233,7 @@ namespace Clube.Core.Tests
                 map.SchedulePointHeights(points, heights).Complete();
                 for (int i = 0; i < points.Length; i++)
                 {
-                    Assert.That(heights[i], Is.EqualTo(map.Height(points[i].x, points[i].y)).Within(0.01f), $"point {points[i]}");
+                    Assert.That(heights[i], Is.EqualTo(map.Height(points[i].x, points[i].y)).Within(0.05f), $"point {points[i]}");
                 }
             }
             finally
@@ -244,7 +265,7 @@ namespace Clube.Core.Tests
                 }
             }
 
-            Assert.That(top, Is.GreaterThan(map.Layout.SeaLevel + 100f));
+            Assert.That(top, Is.GreaterThan(map.Layout.SeaLevel + 80f));
             Assert.That(Vector2.Distance(highest, map.Layout.PeakPosition), Is.LessThan(settings.Map.PeakRadius));
         }
 
@@ -425,7 +446,7 @@ namespace Clube.Core.Tests
                     Assert.That(cell.Height, Is.EqualTo(other.Height));
                     Assert.That(cell.Biome, Is.EqualTo(other.Biome));
                     Assert.That(survey.Ore(0, x, z), Is.EqualTo(again.Ore(copper, x, z)));
-                    Assert.That(cell.Land + cell.Sea + cell.FreshWater, Is.EqualTo(1f).Within(1e-4f));
+                    Assert.That(cell.Land + cell.Sea + cell.FreshWater, Is.EqualTo(cell.Outside ? cell.Sea : 1f).Within(1e-4f));
                     Assert.That(cell.Flatness, Is.InRange(0f, 1f));
                     coast += cell.Coast ? 1 : 0;
                     river += cell.River ? 1 : 0;

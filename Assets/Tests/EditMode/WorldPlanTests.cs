@@ -65,6 +65,8 @@ namespace Clube.Core.Tests
             settings.Water.Enabled = true;
             settings.Map.Size = size;
             settings.Map.PeakHeight = 150f;
+            settings.Map.VoxelFloor = -40f;
+            settings.Map.SetShape(MapShapeType.IslandName);
             settings.Map.SetSides(
                 MapBoundaryType.OceanName, MapBoundaryType.OceanName, MapBoundaryType.OceanName, MapBoundaryType.OceanName);
             settings.Trees.Chance = 0.5f;

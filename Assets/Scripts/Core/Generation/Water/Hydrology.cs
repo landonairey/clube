@@ -177,12 +177,14 @@ namespace Clube.Core
                 seen[i] = true;
                 float deepest = 0f;
                 bool touchesDry = false;
+                int soaked = 0;
                 while (stack.Count > 0)
                 {
                     int c = stack.Pop();
                     basin.Add(c);
                     deepest = Mathf.Max(deepest, filled[c] - h[c]);
                     touchesDry |= dryCoarse.Contains(CellCentre(origin, flowCell, n, c));
+                    soaked += extent?.IsDry != null && extent.IsDry(CellCentre(origin, flowCell, n, c)) ? 1 : 0;
                     int cx = c % n, cz = c / n;
                     foreach (int2 d in Neighbours)
                     {
@@ -199,7 +201,9 @@ namespace Clube.Core
                         }
                     }
                 }
-                if (deepest >= settings.LakeMinDepth && basin.Count >= 2 && basin.Count * flowCell * flowCell >= minLakeArea && !touchesDry)
+                // A hollow that lies mostly on ground that soaks water up (a desert's sand) holds no lake either.
+                if (deepest >= settings.LakeMinDepth && basin.Count >= 2 && basin.Count * flowCell * flowCell >= minLakeArea && !touchesDry
+                    && soaked * 2 <= basin.Count)
                 {
                     foreach (int c in basin)
                     {

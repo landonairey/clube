@@ -69,6 +69,7 @@ namespace Clube.Core
                 CellSize = map.WaterCellSize,
                 SeaLevel = layout.SeaLevel,
                 IsSea = point => shape.IsSeaSide(point.x, point.y),
+                IsDry = point => IsDesert(shape, point),
             };
             string key = $"bounded|{settings.Seed}|{settings.SurfaceLevel}|{settings.Amplitude}|{settings.FeatureSize}|"
                 + $"{settings.MountainCoverage}|{settings.Lacunarity}|{settings.Persistence}|{settings.Erosion.Key}|{map.Key(settings.Seed)}";
@@ -76,6 +77,14 @@ namespace Clube.Core
             WaterMap water = Hydrology.For(
                 key, dry, settings.Water, TerrainGenerators.BanksFor(settings), keepDry, settings.Erosion.MinPondArea, extent);
             return dry.WithWater(water);
+        }
+
+
+        // True where an edge has dried the climate right out (the desert and its margin): no lake stands in its hollows.
+        private static bool IsDesert(MapShape shape, Vector2 point)
+        {
+            shape.EdgeClimate(point.x, point.y, out _, out float moisture);
+            return moisture < -0.4f;
         }
 
         /// <summary>
@@ -141,6 +150,9 @@ namespace Clube.Core
         /// <summary>True where ground below <see cref="SeaLevel"/> and joined to the area's edge is sea (x, z); null for no sea.</summary>
         public System.Func<Vector2, bool> IsSea;
 
-        public string Key => $"{AreaSize}|{FlowCellSize}|{CellSize}|{SeaLevel}|{IsSea != null}";
+        /// <summary>True where the ground soaks water up, so a hollow there holds no lake (a desert's dunes); null for nowhere.</summary>
+        public System.Func<Vector2, bool> IsDry;
+
+        public string Key => $"{AreaSize}|{FlowCellSize}|{CellSize}|{SeaLevel}|{IsSea != null}|{IsDry != null}";
     }
 }

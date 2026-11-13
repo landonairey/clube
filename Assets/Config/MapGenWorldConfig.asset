@@ -29,7 +29,7 @@ MonoBehaviour:
   buildCellSize: 1
   terrain:
     generator: 9
-    surfaceLevel: 20
+    surfaceLevel: 36
     amplitude: 110
     frequency: 0.048485477
     octaves: 5
@@ -108,7 +108,7 @@ MonoBehaviour:
       bandDepth: 4
       baseMaterial: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
       steepAngle: 35
-      steepMinHeight: 24
+      steepMinHeight: 40
       baseAboveHeight: 0
       ridgeDepth: 0.6
       ridgeWidth: 3.5
@@ -356,48 +356,80 @@ MonoBehaviour:
       boundaryTypes:
       - name: Ocean
         ocean: 1
-        edgeHeight: -30
+        edgeHeight: -26
         flatten: 1
-        blendWidth: 500
+        blendWidth: 260
+        blendPast: 0
         sharpness: 1
-        wobble: 220
+        wobble: 0
         roughness: 0
         temperatureShift: 0
-        moistureShift: 0.15
+        moistureShift: 0.12
+        weight: 1
+        range: 0
+        limitDistance: 170
+        limitSoftness: 140
+        limitMessage: The open sea is too cold and its current too strong. Turn back.
+        horizonColor: {r: 0.45, g: 0.45, b: 0.24, a: 1}
+        horizonTint: 0
       - name: Desert
         ocean: 0
         edgeHeight: 6
         flatten: 1
         blendWidth: 800
+        blendPast: 0
         sharpness: 1
         wobble: 150
-        roughness: 5
+        roughness: 9
         temperatureShift: 16
         moistureShift: -1.6
+        weight: 1
+        range: 0
+        limitDistance: 150
+        limitSoftness: 130
+        limitMessage: The deep desert's heat is more than anyone can bear. Turn back.
+        horizonColor: {r: 0.8, g: 0.66, b: 0.4, a: 1}
+        horizonTint: 1
       - name: Void cliff
         ocean: 0
         edgeHeight: -600
         flatten: 1
         blendWidth: 30
+        blendPast: 0
         sharpness: 1
         wobble: 45
         roughness: 0
         temperatureShift: 0
         moistureShift: 0
+        weight: 0.45
+        range: 0
+        limitDistance: -36
+        limitSoftness: 5
+        limitMessage: The world ends here.
+        horizonColor: {r: 0.06, g: 0.07, b: 0.1, a: 1}
+        horizonTint: 1
       - name: Mountain ridge
         ocean: 0
         edgeHeight: 650
         flatten: 0
-        blendWidth: 550
+        blendWidth: 520
+        blendPast: 700
         sharpness: 1.6
         wobble: 90
-        roughness: 90
+        roughness: 60
         temperatureShift: 0
         moistureShift: 0
+        weight: 1.2
+        range: 1
+        limitDistance: 60
+        limitSoftness: 70
+        limitMessage: The air is too thin and the cold too bitter to climb on. Turn back.
+        horizonColor: {r: 0.44, g: 0.43, b: 0.42, a: 1}
+        horizonTint: 0.8
       coastHeight: 5
       inlandRise: 40
       peakHeight: 320
-      peakRadius: 1100
+      peakRadius: 700
       waterMargin: 256
       flowCellSize: 8
       waterCellSize: 2
