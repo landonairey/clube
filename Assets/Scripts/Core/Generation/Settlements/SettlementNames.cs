@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Clube.Core
@@ -35,6 +36,24 @@ namespace Clube.Core
                 end = Ends[(hash / (uint)Starts.Length + 1) % (uint)Ends.Length];
             }
             return start + end;
+        }
+
+        /// <summary>
+        /// The name of a settlement of the bounded world (GL597), ending in its type ("Brookmere Village"), and unlike any
+        /// name in <paramref name="taken"/>, which it is added to.
+        /// </summary>
+        public static string Generate(int seed, Vector2Int cell, string typeName, ISet<string> taken)
+        {
+            string name = null;
+            for (int attempt = 0; attempt < 64; attempt++)
+            {
+                name = Generate(seed + attempt * 7919, cell) + " " + typeName;
+                if (taken == null || taken.Add(name))
+                {
+                    break;
+                }
+            }
+            return name;
         }
 
         // A small integer hash (a few rounds of multiply and shift), the same on every platform.
