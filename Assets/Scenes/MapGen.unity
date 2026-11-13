@@ -5502,6 +5502,8 @@ GameObject:
   - component: {fileID: 1350119488}
   - component: {fileID: 1350119489}
   - component: {fileID: 1350119490}
+  - component: {fileID: 1350119491}
+  - component: {fileID: 1350119492}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -6241,6 +6243,39 @@ MonoBehaviour:
     PeoplePerHouse: 2
     Margin: 24
   build: 1
+--- !u!114 &1350119491
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0d78ea688caea747b555b392d6adfd8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.SettlementPeople
+  session: {fileID: 1350119487}
+  settlements: {fileID: 1350119490}
+  material: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
+  catalog: {fileID: 11400000, guid: 529535e765d597b47b63cf6a57402d86, type: 2}
+  liveRange: 150
+  leaveMargin: 50
+  mostPeople: 64
+--- !u!114 &1350119492
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b0d05c6ee1991c489607fa2253dd44f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.FallenLeaves
+  worldView: {fileID: 1350119460}
+  clock: {fileID: 1350119469}
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -6508,6 +6543,7 @@ GameObject:
   - component: {fileID: 1697135612}
   - component: {fileID: 1697135613}
   - component: {fileID: 1697135614}
+  - component: {fileID: 1697135615}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -7720,6 +7756,26 @@ MonoBehaviour:
   toggleAction: {fileID: -6694151744374951791, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   resolution: 1024
   labLayer: 0
+--- !u!114 &1697135615
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfe65f025f153bb4983f6df670fc3b28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.TreeFeller
+  worldView: {fileID: 1350119460}
+  toolUser: {fileID: 1697135569}
+  view: {fileID: 0}
+  dustMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
+  dustColour: {r: 0.62, g: 0.55, b: 0.45, a: 0.75}
+  burstMaterial: {fileID: 2100000, guid: 4d599372257648141b207c3dbd8d5b8f, type: 2}
+  fallenLeaves: {fileID: 1350119492}
+  skills: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

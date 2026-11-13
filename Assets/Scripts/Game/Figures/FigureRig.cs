@@ -1,8 +1,22 @@
+using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
 
 namespace Clube.Game
 {
+    /// <summary>How much of a figure is drawn (GL615), by its distance from the camera (<see cref="FigureLod"/>).</summary>
+    public enum FigureDetail
+    {
+        /// <summary>Every part, casting shadows.</summary>
+        Full,
+
+        /// <summary>Every part, no shadows.</summary>
+        NoShadow,
+
+        /// <summary>One mesh of the figure standing: no moving limbs, no shadow.</summary>
+        Far,
+    }
+
     /// <summary>
     /// A low-poly person in the scene (GL608; replaces the blocky FigureRig of GL404): hangs <see cref="FigureMeshes"/>'
     /// parts on <see cref="FigureSkeleton"/>'s joints and turns them each frame by <see cref="FigurePoses"/> for the
@@ -33,6 +47,28 @@ namespace Clube.Game
         private bool propAlways;
         private float phase;
         private float step;
+        private FigureDetail detail;
+        private bool shadowOnly;
+        private GameObject far;
+        private Mesh farMesh;
+
+        /// <summary>
+        /// How much of the figure is drawn (GL615): a crowd's cost is its renderers (11 a figure, each drawn again for
+        /// depth and for every shadow cascade), so a figure further off drops its shadow, and a far one is a single mesh
+        /// of itself standing, which no longer moves its limbs. Set by <see cref="FigureLod"/> from the camera's distance.
+        /// </summary>
+        public FigureDetail Detail
+        {
+            get => detail;
+            set
+            {
+                if (detail != value)
+                {
+                    detail = value;
+                    ApplyDetail();
+                }
+            }
+        }
 
         /// <summary>The pose being shown.</summary>
         public FigureAction Pose { get; set; }
@@ -95,6 +131,81 @@ namespace Clube.Game
             capsule.height = 1.8f;
             capsule.radius = 0.3f;
             Show(Pose, phase);
+            ClearFar();
+            ApplyDetail();
+            if (GetComponent<FigureLod>() == null)
+            {
+                gameObject.AddComponent<FigureLod>();
+            }
+        }
+
+        private void OnDestroy()
+        {
+            ClearFar();
+        }
+
+        private void ClearFar()
+        {
+            if (far != null)
+            {
+                Destroy(far);
+                far = null;
+            }
+            if (farMesh != null)
+            {
+                Destroy(farMesh);
+                farMesh = null;
+            }
+        }
+
+        // Full: every part, with shadows. NoShadow: every part. Far: one mesh of the figure standing, no shadow.
+        private void ApplyDetail()
+        {
+            if (body == null || shadowOnly)
+            {
+                return;
+            }
+            bool isFar = detail == FigureDetail.Far;
+            if (isFar && far == null)
+            {
+                BuildFar();
+            }
+            if (far != null)
+            {
+                far.SetActive(isFar);
+            }
+            var shadows = detail == FigureDetail.Full ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
+            foreach (MeshRenderer renderer in body.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (far != null && renderer.gameObject == far)
+                {
+                    renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    continue;
+                }
+                renderer.enabled = !isFar;
+                renderer.shadowCastingMode = shadows;
+            }
+        }
+
+        // The whole figure as one mesh, standing, in the body's own frame (so it lies down and turns with it).
+        private void BuildFar()
+        {
+            Show(FigureAction.Stand, 0f);
+            var pieces = new List<CombineInstance>();
+            foreach (MeshFilter filter in body.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh != null && (prop == null || filter.gameObject != prop))
+                {
+                    pieces.Add(new CombineInstance { mesh = filter.sharedMesh, transform = body.worldToLocalMatrix * filter.transform.localToWorldMatrix });
+                }
+            }
+            farMesh = new Mesh { name = "Figure far" };
+            farMesh.CombineMeshes(pieces.ToArray(), true, true);
+            far = new GameObject("Far");
+            far.transform.SetParent(body, false);
+            far.AddComponent<MeshFilter>().sharedMesh = farMesh;
+            far.AddComponent<MeshRenderer>().sharedMaterial = material;
+            Show(Pose, Time.time + phase);
         }
 
         /// <summary>Puts a thing in the right hand in place of the look's prop (null empties the hand).</summary>
@@ -115,6 +226,13 @@ namespace Clube.Game
         /// <summary>Makes the figure cast its shadow without being drawn or looked at: the player's own body (GL608).</summary>
         public void CastShadowOnly()
         {
+            shadowOnly = true;
+            ClearFar();
+            FigureLod lod = GetComponent<FigureLod>();
+            if (lod != null)
+            {
+                Destroy(lod);
+            }
             foreach (MeshRenderer renderer in GetComponentsInChildren<MeshRenderer>(true))
             {
                 renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
@@ -176,6 +294,10 @@ namespace Clube.Game
 
         private void Update()
         {
+            if (detail == FigureDetail.Far && !shadowOnly)
+            {
+                return;
+            }
             if (Pose == FigureAction.Walk)
             {
                 step += Time.deltaTime * FigurePoses.StepRate * Mathf.Clamp(Speed / FigurePoses.WalkSpeed, 0.5f, 2.5f);

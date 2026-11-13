@@ -134,6 +134,13 @@ namespace Clube.Game
             return WorkOut(settlement).Site;
         }
 
+        /// <summary>A settlement once all of it stands in the terrain (GL615: its people move in then); null before, and it is not laid out by asking.</summary>
+        public SettlementSite BuiltSite(int settlement)
+        {
+            Built made = built != null && version == session.Version && settlement < built.Length ? built[settlement] : null;
+            return made != null && made.Writer.Done ? made.Site : null;
+        }
+
         /// <summary>How many pieces a settlement is written in, and how many are written; (0, 0) until it is laid out.</summary>
         public Vector2Int Progress(int settlement)
         {
