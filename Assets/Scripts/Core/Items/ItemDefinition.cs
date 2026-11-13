@@ -29,6 +29,14 @@ namespace Clube.Core
         [SerializeField]
         private Color iconTint = Color.white;
 
+        [Tooltip("How much the material's texture is enlarged on the icon's model (GL612): 1 shows the texture at the size of the ground; 3 makes an ore's flecks three times as big, so they show in a slot.")]
+        [SerializeField, Range(0.25f, 6f)]
+        private float iconTextureZoom = 1f;
+
+        [Tooltip("How much the icon's texture is pushed in colour and contrast (GL612), 0-1: 0 as the ground looks, 1 for flecks that stand out of the stone.")]
+        [SerializeField, Range(0f, 1f)]
+        private float iconVividness;
+
         [Tooltip("Most of it one inventory slot holds (GL6). 1 for tools.")]
         [SerializeField, Min(1)]
         private int maxStack = 64;
@@ -121,6 +129,12 @@ namespace Clube.Core
 
         /// <summary>The colour of the icon's model (GL612), or the tint over its material's texture.</summary>
         public Color IconTint => iconTint;
+
+        /// <summary>How much the material's texture is enlarged on the icon (GL612); 1 is the ground's own size.</summary>
+        public float IconTextureZoom => iconTextureZoom;
+
+        /// <summary>How much the icon's texture is pushed in colour and contrast, 0-1 (GL612).</summary>
+        public float IconVividness => iconVividness;
 
         /// <summary>Sets the icon's shape and tint, for items made in code (tests).</summary>
         public ItemDefinition WithIcon(ItemIconShape shape, Color? tint = null)

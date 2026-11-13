@@ -16,7 +16,9 @@ MonoBehaviour:
   displayName: Steel bun
   icon: {fileID: 2800000, guid: ef05ddd187fb6ae46bed2778bd36e191, type: 3}
   iconShape: 9
-  iconTint: {r: 0.57, g: 0.61, b: 0.67, a: 1}
+  iconTint: {r: 0.42, g: 0.53, b: 0.7, a: 1}
+  iconTextureZoom: 1
+  iconVividness: 0
   maxStack: 32
   unitVolume: 0.5
   burnSeconds: 0

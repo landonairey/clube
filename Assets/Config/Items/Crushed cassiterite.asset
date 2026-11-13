@@ -17,6 +17,8 @@ MonoBehaviour:
   icon: {fileID: 2800000, guid: e6aafaec7d3c33c48b37f56e92dbd002, type: 3}
   iconShape: 4
   iconTint: {r: 1, g: 1, b: 1, a: 1}
+  iconTextureZoom: 1.7
+  iconVividness: 0.4
   maxStack: 256
   unitVolume: 1
   burnSeconds: 0

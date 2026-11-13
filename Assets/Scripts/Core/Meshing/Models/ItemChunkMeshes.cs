@@ -240,11 +240,23 @@ namespace Clube.Core
         // A soft tuft: a few round locks pressed together.
         private static void Tuft(LowPolyMeshBuilder model, Color wool)
         {
-            model.Blob(new Vector3(0f, 0.3f, 0f), new Vector3(0.34f, 0.3f, 0.3f), Quaternion.Euler(10f, 0f, 0f), wool, 6, 4);
-            model.Blob(new Vector3(-0.3f, 0.2f, 0.12f), new Vector3(0.22f, 0.2f, 0.2f), Quaternion.Euler(0f, 30f, 0f), Shade(wool, 0.93f), 5, 3);
-            model.Blob(new Vector3(0.3f, 0.18f, 0.14f), new Vector3(0.2f, 0.18f, 0.19f), Quaternion.Euler(0f, 70f, 0f), Shade(wool, 1.05f), 5, 3);
-            model.Blob(new Vector3(0.06f, 0.16f, 0.3f), new Vector3(0.2f, 0.16f, 0.17f), Quaternion.Euler(20f, 10f, 0f), Shade(wool, 0.97f), 5, 3);
-            model.Blob(new Vector3(0.1f, 0.52f, -0.06f), new Vector3(0.16f, 0.14f, 0.15f), Quaternion.Euler(0f, 50f, 0f), Shade(wool, 1.06f), 5, 3);
+            // A fleece is many small curls, not a few lumps (which read as stones): a ring of them round the foot, a
+            // smaller ring above and one on top, every other curl a shade darker so each shows.
+            int curl = 0;
+            for (int ring = 0; ring < 3; ring++)
+            {
+                int count = ring == 0 ? 7 : ring == 1 ? 5 : 1;
+                float out_ = ring == 0 ? 0.33f : ring == 1 ? 0.19f : 0f;
+                float height = 0.14f + ring * 0.17f;
+                for (int i = 0; i < count; i++, curl++)
+                {
+                    float around = Mathf.PI * 2f * (i + ring * 0.5f) / count;
+                    float size = 0.17f - ring * 0.012f + 0.03f * Hash(11, curl);
+                    var centre = new Vector3(Mathf.Cos(around) * out_, height + 0.03f * Hash(12, curl), Mathf.Sin(around) * out_ * 0.9f);
+                    model.Blob(centre, new Vector3(size, size * 0.9f, size), Quaternion.Euler(90f * Hash(13, curl), around * Mathf.Rad2Deg, 0f),
+                        Shade(wool, curl % 2 == 0 ? 1.07f : 0.84f), 7, 4);
+                }
+            }
         }
 
         // A stick with a kink in it and a twig stub.

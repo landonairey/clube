@@ -62,7 +62,11 @@ namespace Clube.Debug.Editor
                 else
                 {
                     var box = new Vector3[8];
-                    IconFraming.Corners(model.Mesh.bounds, placed, box, 0);
+                    // A long tool is framed on its head end only; the handle runs out of the picture.
+                    Bounds bounds = model.Mesh.bounds;
+                    float kept = bounds.size.y * Mathf.Clamp(model.Keep, 0.1f, 1f);
+                    bounds.SetMinMax(new Vector3(bounds.min.x, bounds.max.y - kept, bounds.min.z), bounds.max);
+                    IconFraming.Corners(bounds, placed, box, 0);
                     corners.AddRange(box);
                 }
                 if (corners.Count == 0)
@@ -84,6 +88,8 @@ namespace Clube.Debug.Editor
                     if (model.Albedo != null)
                     {
                         material.SetTexture("_MainTex", model.Albedo);
+                        material.SetFloat("_Tiling", 1f / Mathf.Max(0.01f, model.TextureZoom));
+                        material.SetFloat("_Vivid", model.Vividness);
                     }
                 }
                 int pixels = size * Oversample;

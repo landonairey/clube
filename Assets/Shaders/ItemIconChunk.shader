@@ -8,6 +8,7 @@ Shader "Clube/ItemIconChunk"
         _MainTex ("Albedo", 2D) = "white" {}
         _Tint ("Tint", Color) = (1, 1, 1, 1)
         _Tiling ("Texture repeats across one unit", Float) = 1
+        _Vivid ("Colour and contrast push", Range(0, 1)) = 0
     }
 
     SubShader
@@ -31,6 +32,7 @@ Shader "Clube/ItemIconChunk"
             CBUFFER_START(UnityPerMaterial)
                 half4 _Tint;
                 float _Tiling;
+                float _Vivid;
             CBUFFER_END
 
             struct Attributes
@@ -68,6 +70,10 @@ Shader "Clube/ItemIconChunk"
                 half3 albedo = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, p.zy).rgb * weight.x
                     + SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, p.xz).rgb * weight.y
                     + SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, p.xy).rgb * weight.z;
+                // Pushed apart from its own grey and from mid-grey, so flecks stand out at the size of a slot.
+                half grey = dot(albedo, half3(0.3, 0.59, 0.11));
+                albedo = saturate(lerp(half3(grey, grey, grey), albedo, 1.0 + 0.9 * _Vivid));
+                albedo = saturate((albedo - 0.4) * (1.0 + 0.25 * _Vivid) + 0.4);
                 float3 normalWS = normalize(input.normalWS);
                 Light mainLight = GetMainLight();
                 half3 light = mainLight.color * (saturate(dot(normalWS, mainLight.direction)) * 0.8 + 0.2) + SampleSH(normalWS);

@@ -21,7 +21,7 @@ namespace Clube.Debug.Editor
         public const int Size = 128;
 
         // Raise when the renderer's lights, shaders or framing change, so every icon is taken again.
-        private const string Look = "v4";
+        private const string Look = "v6";
         private const string Folder = "Assets/Textures/Items";
         private const string CatalogPath = "Assets/Config/Items/ItemCatalog.asset";
         private const string RegistryPath = "Assets/Config/Materials/MaterialRegistry.asset";
@@ -127,7 +127,8 @@ namespace Clube.Debug.Editor
         // What a picture was taken of, in a line: the same line means the same picture.
         private static string KeyOf(ItemIconModel model)
         {
-            var parts = new List<string> { Look, Size.ToString(), Round(model.Turn.eulerAngles), Round(model.View.eulerAngles), ColorUtility.ToHtmlStringRGBA(model.Tint) };
+            var parts = new List<string> { Look, Size.ToString(), Round(model.Turn.eulerAngles), Round(model.View.eulerAngles), ColorUtility.ToHtmlStringRGBA(model.Tint),
+                $"{model.TextureZoom:0.00},{model.Vividness:0.00},{model.Keep:0.00}" };
             if (model.Prefab != null)
             {
                 parts.Add(AssetDatabase.GetAssetDependencyHash(AssetDatabase.GetAssetPath(model.Prefab)).ToString());

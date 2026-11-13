@@ -117,7 +117,7 @@ namespace Clube.Core.Tests
                 }
                 Assert.IsNotNull(mesh, shape.ToString());
                 int triangles = mesh.triangles.Length / 3;
-                Assert.That(triangles, Is.InRange(10, 400), shape + " is low-poly");
+                Assert.That(triangles, Is.InRange(10, 800), shape + " is low-poly");
                 Assert.AreEqual(mesh.vertexCount, mesh.colors.Length, shape + " is coloured by vertex");
                 Assert.That(mesh.bounds.size.x, Is.InRange(0.15f, 1.3f), shape + " is about a unit across");
                 Assert.That(mesh.bounds.size.y, Is.InRange(0.01f, 1.3f));
