@@ -18,7 +18,7 @@ namespace Clube.Core
         public const float Clearance = 0.6f;
 
         // How much longer a metre through a building counts than one in the open.
-        private const float BlockedCost = 12f;
+        private const float BlockedCost = 1000f;
 
         private readonly SettlementSite site;
         private readonly List<Vector2> nodes = new List<Vector2>();
@@ -82,10 +82,10 @@ namespace Clube.Core
             return site.Buildings[building].ToWorld(new Vector2(across, TownLayout.ShopDepth * 0.5f + forward));
         }
 
-        /// <summary>True when a point is inside a building (or within <see cref="Clearance"/> of its walls).</summary>
-        public bool IsBlocked(Vector2 point)
+        /// <summary>True when a point is inside a building, or within <paramref name="clearance"/> metres of its walls.</summary>
+        public bool IsBlocked(Vector2 point, float clearance = Clearance)
         {
-            float halfWidth = TownLayout.ShopWidth * 0.5f + Clearance, halfDepth = TownLayout.ShopDepth * 0.5f + Clearance;
+            float halfWidth = TownLayout.ShopWidth * 0.5f + clearance, halfDepth = TownLayout.ShopDepth * 0.5f + clearance;
             foreach (SettlementBuilding building in site.Buildings)
             {
                 Vector2 local = TownLayout.Turn(point - building.Centre, -building.Yaw);
@@ -101,7 +101,7 @@ namespace Clube.Core
         public float StraightCost(Vector2 from, Vector2 to)
         {
             float length = Vector2.Distance(from, to);
-            int steps = Mathf.Max(1, Mathf.CeilToInt(length / 0.75f));
+            int steps = Mathf.Max(1, Mathf.CeilToInt(length / 0.4f));
             float cost = 0f;
             for (int s = 0; s < steps; s++)
             {

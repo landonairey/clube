@@ -74,7 +74,7 @@ namespace Clube.Core
                     for (int w = 0; w < width * 2 - 1; w++)
                     {
                         Vector2 at = middle + across * (w * 0.5f - half);
-                        var voxel = new Vector3Int(Mathf.RoundToInt(at.x), mouth.y + y, Mathf.RoundToInt(at.y));
+                        var voxel = new Vector3Int(Mathf.FloorToInt(at.x + 0.5f), mouth.y + y, Mathf.FloorToInt(at.y + 0.5f));
                         if (seen.Add(voxel))
                         {
                             plan.voxels.Add(voxel);

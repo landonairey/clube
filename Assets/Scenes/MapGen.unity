@@ -5504,6 +5504,7 @@ GameObject:
   - component: {fileID: 1350119490}
   - component: {fileID: 1350119491}
   - component: {fileID: 1350119492}
+  - component: {fileID: 1350119493}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -6276,6 +6277,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.FallenLeaves
   worldView: {fileID: 1350119460}
   clock: {fileID: 1350119469}
+--- !u!114 &1350119493
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fca53a9e874568b47a8526d30e6dfefc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.MapCarts
+  session: {fileID: 1350119487}
+  roads: {fileID: 1350119489}
+  material: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
+  catalog: {fileID: 11400000, guid: 529535e765d597b47b63cf6a57402d86, type: 2}
+  cratePrefab: {fileID: 3729972786520127726, guid: c468d4c25adbf874b90f327ad3d70fac, type: 3}
+  showRange: 170
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0

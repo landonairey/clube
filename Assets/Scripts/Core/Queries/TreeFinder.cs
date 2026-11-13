@@ -1,12 +1,13 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Clube.Core
 {
     /// <summary>
-    /// Finds standing wood to chop (GL615): looks at spots round a place for a tree's crown from above, then for wood at
-    /// chopping height under it. What it finds is what is in the world now, so a felled tree is not found again, and a
-    /// log lying on the ground is (it gets cut up too).
+    /// Finds standing trees to chop (GL615). Where trees were planted comes from the <see cref="TreeField"/> (the same
+    /// every time, and cheap to ask); whether one still stands is read from the world, so a felled tree is not found
+    /// again.
     /// </summary>
     public static class TreeFinder
     {
@@ -14,46 +15,66 @@ namespace Clube.Core
         public const float ChopHeight = 0.75f;
 
         /// <summary>
-        /// Tries <paramref name="tries"/> spots between two distances from <paramref name="around"/> (x, z), nearer ones
-        /// first; true with a wood sample at chopping height (<paramref name="trunk"/>) at the first that has a tree.
+        /// Every spot the field plants a tree at between two distances of <paramref name="around"/> (x, z), nearest first.
+        /// Some have no tree after all (ground too steep), and some trees are gone: <see cref="FindTrunk"/> looks.
+        /// </summary>
+        public static void SpotsNear(TreeField field, Vector2 around, float from, float to, List<Vector2> spots)
+        {
+            spots.Clear();
+            float size = field.CellSize;
+            int span = Mathf.CeilToInt(to / size) + 1;
+            var middle = new Vector2Int(Mathf.FloorToInt(around.x / size), Mathf.FloorToInt(around.y / size));
+            for (int z = -span; z <= span; z++)
+            {
+                for (int x = -span; x <= span; x++)
+                {
+                    if (field.TryGetSpot(new Vector2Int(middle.x + x, middle.y + z), out Vector2 spot))
+                    {
+                        float distance = (spot - around).sqrMagnitude;
+                        if (distance >= from * from && distance <= to * to)
+                        {
+                            spots.Add(spot);
+                        }
+                    }
+                }
+            }
+            spots.Sort((a, b) => (a - around).sqrMagnitude.CompareTo((b - around).sqrMagnitude));
+        }
+
+        /// <summary>
+        /// Looks at up to <paramref name="budget"/> spots from <paramref name="cursor"/> on for a standing trunk; true with
+        /// a wood sample at chopping height. The cursor stays on a tree that is found (it is asked about again until it
+        /// is felled) and on a spot whose ground is not loaded; it passes spots with no tree.
         /// </summary>
         /// <param name="ground">The ground's height at (x, z).</param>
-        /// <param name="allowed">False for a spot nothing may be felled at (inside a settlement, say); may be null.</param>
-        public static bool FindTrunk(World world, ChunkMeshSettings mesh, TreeMaterials trees, Vector2 around, float from, float to,
-            Func<float, float, float> ground, Func<Vector2, bool> allowed, System.Random random, int tries, float isoLevel, out Vector3Int trunk)
+        /// <param name="allowed">False for a spot nothing may be felled at (on a road, say); may be null.</param>
+        public static bool FindTrunk(World world, TreeMaterials trees, IReadOnlyList<Vector2> spots, ref int cursor, int budget,
+            Func<float, float, float> ground, Func<Vector2, bool> allowed, float isoLevel, out Vector3Int trunk)
         {
             trunk = default;
-            for (int i = 0; i < tries; i++)
+            for (int looked = 0; looked < budget && cursor < spots.Count; looked++)
             {
-                float distance = Mathf.Lerp(from, to, (i + (float)random.NextDouble()) / tries);
-                float angle = (float)random.NextDouble() * Mathf.PI * 2f;
-                Vector2 spot = around + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * distance;
-                if (allowed != null && !allowed(spot))
+                Vector2 spot = spots[cursor];
+                if (allowed == null || allowed(spot))
                 {
-                    continue;
+                    Vector3Int at = world.Grid.WorldToNearestSample(new Vector3(spot.x, ground(spot.x, spot.y) + ChopHeight, spot.y));
+                    if (!world.GetDensity(at).HasValue)
+                    {
+                        return false;
+                    }
+                    if (WoodNear(world, trees, spot, ground, 1.5f, isoLevel, out trunk))
+                    {
+                        return true;
+                    }
                 }
-                float height = ground(spot.x, spot.y);
-                var down = new Ray(new Vector3(spot.x, height + 40f, spot.y), Vector3.down);
-                if (!world.Raycast(down, mesh, 39f, out WorldHit hit))
-                {
-                    continue;
-                }
-                byte? top = world.GetMaterial(world.Grid.WorldToNearestSample(hit.Point + Vector3.down * (world.Grid.VoxelSize * 0.5f)));
-                if (!top.HasValue || !trees.IsTree(top.Value))
-                {
-                    continue;
-                }
-                if (WoodNear(world, trees, spot, ground, 4f, isoLevel, allowed, out trunk))
-                {
-                    return true;
-                }
+                cursor++;
             }
             return false;
         }
 
         /// <summary>The wood sample at chopping height nearest a spot (x, z), within <paramref name="reach"/> metres of it.</summary>
         public static bool WoodNear(World world, TreeMaterials trees, Vector2 spot, Func<float, float, float> ground, float reach, float isoLevel,
-            Func<Vector2, bool> allowed, out Vector3Int wood)
+            out Vector3Int wood)
         {
             wood = default;
             float voxel = world.Grid.VoxelSize;
@@ -70,10 +91,6 @@ namespace Clube.Core
                         continue;
                     }
                     float wx = (middle.x + x) * voxel, wz = (middle.z + z) * voxel;
-                    if (allowed != null && !allowed(new Vector2(wx, wz)))
-                    {
-                        continue;
-                    }
                     var sample = new Vector3Int(middle.x + x, Mathf.RoundToInt((ground(wx, wz) + ChopHeight) / voxel), middle.z + z);
                     if (IsWood(world, trees, sample, isoLevel))
                     {

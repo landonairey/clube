@@ -228,7 +228,21 @@ namespace Clube.Game
         private bool Walk(Vector2 to, bool indoors, float speed)
         {
             var here = new Vector2(at.x, at.z);
-            if (!hasPath || (to - pathEnd).sqrMagnitude > 0.6f * 0.6f)
+            float moved = hasPath ? (to - pathEnd).sqrMagnitude : float.MaxValue;
+            if (moved > 1e-4f && moved < 1.5f * 1.5f)
+            {
+                // The place shifted a little (the next voxel of a pit, an animal's step): the way there just ends elsewhere.
+                pathEnd = to;
+                if (path.Count > 0)
+                {
+                    path[path.Count - 1] = to;
+                }
+                else
+                {
+                    path.Add(to);
+                }
+            }
+            else if (moved > 1e-4f)
             {
                 hasPath = true;
                 pathEnd = to;

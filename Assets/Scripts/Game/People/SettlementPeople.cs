@@ -107,15 +107,7 @@ namespace Clube.Game
         /// <summary>The terrain's height under a point, looking down from a little over <paramref name="near"/>; false with none loaded there.</summary>
         public bool TryGround(float x, float z, float near, out float height)
         {
-            height = 0f;
-            World world = View.World;
-            var ray = new Ray(new Vector3(x, near + 1.2f, z), Vector3.down);
-            if (world == null || !world.Raycast(ray, View.Config.MeshSettings, 8f, out WorldHit hit))
-            {
-                return false;
-            }
-            height = hit.Point.y;
-            return true;
+            return GroundProbe.TryGround(View, x, z, near, out height);
         }
 
         /// <summary>A scene position in the world's own metres, and back.</summary>

@@ -71,7 +71,7 @@ namespace Clube.Core
                 new Duty
                 {
                     Id = "fell", Name = "felling trees", Place = DutyPlace.Field, Pose = FigureAction.Mine, Work = "fell", Tool = "Hand axe",
-                    Range = 120f, StrokeSeconds = 1.1f,
+                    Range = 250f, StrokeSeconds = 1.1f,
                 },
                 new Duty { Id = "saw", Name = "cutting boards", Place = DutyPlace.Yard, Pose = FigureAction.Whittle },
 

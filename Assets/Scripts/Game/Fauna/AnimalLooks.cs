@@ -131,6 +131,12 @@ namespace Clube.Game
                 Legs = 0.56f, LegThickness = 0.12f, Neck = 0.26f, NeckRise = 55f, Head = 0.2f, Ears = 0.4f, Horns = AnimalHorns.GreatAntlers,
                 Tail = 0f, GrazeDip = 80f,
             },
+            // The cart horse (GL616): not a wild species, only a look for the one between the shafts.
+            ["horse"] = new AnimalLook
+            {
+                Coat = new Color(0.42f, 0.27f, 0.16f), Skin = new Color(0.2f, 0.14f, 0.1f), Trunk = 0.62f, Girth = 0.36f,
+                Legs = 0.55f, LegThickness = 0.13f, Neck = 0.26f, NeckRise = 50f, Head = 0.24f, Ears = 0.3f, Tail = 0.4f,
+            },
             ["bison"] = new AnimalLook
             {
                 Coat = new Color(0.33f, 0.22f, 0.14f), Skin = new Color(0.17f, 0.12f, 0.09f), Horn = new Color(0.2f, 0.18f, 0.16f),

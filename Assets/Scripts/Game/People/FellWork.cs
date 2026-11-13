@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
 
@@ -6,12 +7,16 @@ namespace Clube.Game
     /// <summary>
     /// Felling (GL615): the worker walks out to the nearest standing tree outside the settlement and chops through its
     /// trunk with the duty's tool; the cut tree falls the way the player's does (<see cref="TreeFeller"/>), away from
-    /// the worker, and lies there until it is cut up in turn. Then the next tree.
+    /// the worker, and lies where it lands. Then the next tree, further out as the nearer ones go.
     /// </summary>
     public sealed class FellWork : IDutyWork
     {
         private const float StandOff = 0.9f;
+        private const int SpotsASeek = 40;
 
+        private readonly List<Vector2> spots = new List<Vector2>();
+        private bool listed;
+        private int cursor;
         private Vector3Int cut;
         private bool hasCut;
 
@@ -21,30 +26,24 @@ namespace Clube.Game
             SettlementPeople people = worker.People;
             World world = people.View.World;
             float iso = people.View.Config.IsoLevel;
-            if (people.Trees == null)
+            if (people.Trees == null || people.View.Trees == null)
             {
                 return false;
             }
-            var from = new Vector2(worker.At.x, worker.At.z);
-            if (hasCut)
+            if (!listed)
             {
-                // The same trunk, wherever wood is left of it at chopping height.
-                Vector3 at = world.Grid.SampleToWorld(cut);
-                hasCut = TreeFinder.WoodNear(world, people.Trees, new Vector2(at.x, at.z), people.Ground, 0.8f, iso, null, out cut);
-            }
-            if (!hasCut)
-            {
+                listed = true;
                 Rect town = worker.Site.Bounds;
                 float edge = Mathf.Max(town.width, town.height) * 0.5f;
-                hasCut = TreeFinder.FindTrunk(world, people.View.Config.MeshSettings, people.Trees, town.center, edge + 4f, edge + worker.Duty.Range,
-                    people.Ground, spot => worker.MayWorkAt(spot, 3f), worker.Random, 16, iso, out cut);
+                TreeFinder.SpotsNear(people.View.Trees, town.center, 0f, edge + worker.Duty.Range, spots);
             }
+            hasCut = TreeFinder.FindTrunk(world, people.Trees, spots, ref cursor, SpotsASeek, people.Ground, spot => worker.MayWorkAt(spot, 3f), iso, out cut);
             if (!hasCut)
             {
                 return false;
             }
             face = world.Grid.SampleToWorld(cut);
-            Vector2 away = from - new Vector2(face.x, face.z);
+            Vector2 away = new Vector2(worker.At.x, worker.At.z) - new Vector2(face.x, face.z);
             away = away.sqrMagnitude > 0.01f ? away.normalized : Vector2.right;
             stand = new Vector3(face.x + away.x * StandOff, face.y - TreeFinder.ChopHeight, face.z + away.y * StandOff);
             return true;

@@ -97,6 +97,15 @@ namespace Clube.Game
         /// <summary>Pieces near the viewer still waiting for their chunks.</summary>
         public int PiecesWaiting => pending.Count;
 
+        /// <summary>A road as it runs on the ground, with its bridges, once it has been worked out (the viewer came near it); false before (GL616: carts ride it).</summary>
+        public bool TryLine(int road, out RoadLine line, out IReadOnlyList<RouteBridges.Span> bridges)
+        {
+            Built made = built != null && session != null && version == session.Version && road >= 0 && road < built.Length ? built[road] : null;
+            line = made?.Line;
+            bridges = made?.Bridges;
+            return made != null && made.Line != null;
+        }
+
         /// <summary>The longest a road took to work out (its line, heights, bridges and bed), in milliseconds: once per road, as the viewer nears it.</summary>
         public float LongestWorkOutMilliseconds { get; private set; }
 
