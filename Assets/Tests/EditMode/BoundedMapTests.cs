@@ -528,5 +528,64 @@ namespace Clube.Core.Tests
 
             Assert.Throws<System.ArgumentException>(() => ResourceSurvey.Build(settings));
         }
+
+        [Test]
+        public void TheDryMapHasTheFinishedMapsGround()
+        {
+            // GL636: the preview's land is the game's land; only the water is left out.
+            TerrainSettings settings = Island();
+            BoundedMapGenerator dry = BoundedMapGenerator.CreateDry(settings);
+            BoundedMapGenerator wet = BoundedMapGenerator.Create(settings);
+            Assert.IsFalse(dry.Water.IsCreated);
+            foreach (var p in new[] { new Vector2(0f, 0f), new Vector2(310f, -420f), new Vector2(-900f, 650f) })
+            {
+                Assert.AreEqual(wet.Height(p.x, p.y), dry.Height(p.x, p.y), 1e-3f);
+            }
+        }
+
+        [Test]
+        public void ContoursFollowTheHeights()
+        {
+            // A ramp rising 1 m a pixel to the east, from 10 m under the sea: lines every 10 m.
+            const int size = 64;
+            var heights = new float[size * size];
+            for (int i = 0; i < heights.Length; i++)
+            {
+                heights[i] = i % size - 10f;
+            }
+            Color32[] pixels = MapContours.Render(heights, size, 0f, 10f);
+            int row = 20 * size;
+            Assert.AreEqual(MapContours.SeaWash, pixels[row + 4], "under the sea: the wash, no lines");
+            Assert.AreEqual(MapContours.ShoreInk, pixels[row + 10], "the shore");
+            Assert.AreEqual(MapContours.Paper, pixels[row + 15], "between lines");
+            Assert.AreNotEqual(MapContours.Paper, pixels[row + 20], "the 10 m line");
+            Assert.AreEqual(MapContours.Ink, pixels[row + 50], "the 40 m line is an index line, full ink");
+            Assert.AreEqual(MapContours.Paper, pixels[row + 45]);
+        }
+
+        [Test]
+        public void ContoursChangeWithTheSeedAndShowAnIslandsSea()
+        {
+            const int size = 96;
+            Color32[] first = MapContours.Render(BoundedMapGenerator.CreateDry(Island(5)), size, margin: 0.1f);
+            Color32[] again = MapContours.Render(BoundedMapGenerator.CreateDry(Island(5)), size, margin: 0.1f);
+            Color32[] other = MapContours.Render(BoundedMapGenerator.CreateDry(Island(6)), size, margin: 0.1f);
+            CollectionAssert.AreEqual(first, again);
+            CollectionAssert.AreNotEqual(first, other);
+            // An island: sea in every corner, land with lines in the middle.
+            foreach (int corner in new[] { 0, size - 1, size * (size - 1), size * size - 1 })
+            {
+                Assert.AreEqual(MapContours.SeaWash, first[corner]);
+            }
+            int lined = 0;
+            foreach (Color32 pixel in first)
+            {
+                if (!pixel.Equals(MapContours.Paper) && !pixel.Equals(MapContours.SeaWash))
+                {
+                    lined++;
+                }
+            }
+            Assert.Greater(lined, size * 4);
+        }
     }
 }

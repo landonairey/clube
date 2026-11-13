@@ -52,25 +52,14 @@ namespace Clube.Core
         /// </summary>
         public static BoundedMapGenerator Create(TerrainSettings settings)
         {
-            MapDefinition map = settings.Map;
-            MapLayout layout = map.Resolve(settings.Seed, settings.SurfaceLevel);
-            LandscapeHeight land = new LandscapeHeight(
-                settings.Seed, settings.SurfaceLevel, settings.Amplitude, settings.FeatureSize, settings.MountainCoverage,
-                settings.Erosion.BaseOctaves, settings.Lacunarity, settings.Persistence).WithSmoothMassifs();
-            var field = new BoundedMapHeight(
-                land, settings.Erosion.ToFilter(settings.Seed), layout.Shape, settings.SurfaceLevel,
-                Mathf.Max(settings.Amplitude, map.PeakHeight));
-
-            LayerTable layers = LayerTable.From(settings.Layers);
-            List<BiomeDefinition> biomes = map.Biomes.Count > 0
-                ? map.Biomes
-                : BiomeDefinition.Defaults(settings.Water.Sand, settings.Layers?.Band, settings.Layers?.Base);
-            BiomeField biomeField = Clube.Core.BiomeField.From(biomes, map.Climate, layout.Shape, layers);
-            var dry = new BoundedMapGenerator(field, layout, biomes, biomeField);
+            BoundedMapGenerator dry = CreateDry(settings);
             if (!settings.Water.Enabled)
             {
                 return dry;
             }
+
+            MapDefinition map = settings.Map;
+            MapLayout layout = dry.Layout;
 
             MapShape shape = layout.Shape;
             var extent = new WaterExtent
@@ -87,6 +76,29 @@ namespace Clube.Core
             WaterMap water = Hydrology.For(
                 key, dry, settings.Water, TerrainGenerators.BanksFor(settings), keepDry, settings.Erosion.MinPondArea, extent);
             return dry.WithWater(water);
+        }
+
+        /// <summary>
+        /// The map's land alone, with no rivers, lakes or sea water worked out (GL636): its heights are the finished
+        /// map's, but it builds in a moment, where the water takes seconds. The new-game preview draws from it.
+        /// </summary>
+        public static BoundedMapGenerator CreateDry(TerrainSettings settings)
+        {
+            MapDefinition map = settings.Map;
+            MapLayout layout = map.Resolve(settings.Seed, settings.SurfaceLevel);
+            LandscapeHeight land = new LandscapeHeight(
+                settings.Seed, settings.SurfaceLevel, settings.Amplitude, settings.FeatureSize, settings.MountainCoverage,
+                settings.Erosion.BaseOctaves, settings.Lacunarity, settings.Persistence).WithSmoothMassifs();
+            var field = new BoundedMapHeight(
+                land, settings.Erosion.ToFilter(settings.Seed), layout.Shape, settings.SurfaceLevel,
+                Mathf.Max(settings.Amplitude, map.PeakHeight));
+
+            LayerTable layers = LayerTable.From(settings.Layers);
+            List<BiomeDefinition> biomes = map.Biomes.Count > 0
+                ? map.Biomes
+                : BiomeDefinition.Defaults(settings.Water.Sand, settings.Layers?.Band, settings.Layers?.Base);
+            BiomeField biomeField = Clube.Core.BiomeField.From(biomes, map.Climate, layout.Shape, layers);
+            return new BoundedMapGenerator(field, layout, biomes, biomeField);
         }
 
         public override JobHandle ScheduleValleys(NativeArray<float2> points, NativeArray<float> valleys, JobHandle dependsOn = default)
