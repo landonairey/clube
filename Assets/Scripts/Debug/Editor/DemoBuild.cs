@@ -31,6 +31,12 @@ namespace Clube.Debug.Editor
 
         private const string Output = "Builds/Demo/clube.exe";
 
+        // The bounded 5 km map for playtests: MapGen alone, so the exe starts in it. The menu's Start still
+        // loads WorldLab (the user's decision at GL636); this is a separate exe for trying the map's features.
+        private static readonly string[] MapGenScenes = { "Assets/Scenes/MapGen.unity" };
+
+        private const string MapGenOutput = "Builds/MapGen/clube.exe";
+
         private const string BuildInfoAsset = "Assets/Resources/BuildInfo.txt";
 
         // Keeps step-through recording in the exe (see MeshingRecorder).
@@ -46,10 +52,25 @@ namespace Clube.Debug.Editor
             }
         }
 
-        /// <summary>Builds the demo; also callable from batch mode with <c>-executeMethod Clube.Debug.Editor.DemoBuild.Build</c>.</summary>
-        public static BuildReport Build()
+        [MenuItem("Clube/Build/MapGen playtest")]
+        private static void BuildMapGenFromMenu()
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(Output));
+            BuildReport report = BuildMapGen();
+            if (report.summary.result == BuildResult.Succeeded)
+            {
+                EditorUtility.RevealInFinder(MapGenOutput);
+            }
+        }
+
+        /// <summary>Builds the demo; also callable from batch mode with <c>-executeMethod Clube.Debug.Editor.DemoBuild.Build</c>.</summary>
+        public static BuildReport Build() => Build(Scenes, Output);
+
+        /// <summary>Builds the MapGen playtest exe; batch mode: <c>-executeMethod Clube.Debug.Editor.DemoBuild.BuildMapGen</c>.</summary>
+        public static BuildReport BuildMapGen() => Build(MapGenScenes, MapGenOutput);
+
+        private static BuildReport Build(string[] scenes, string output)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(output));
             // The texture array is gitignored (generated): rebuild it, so a fresh clone never ships a stale one
             // missing the newest materials (sand once drew as the last layer, maple bark).
             MaterialTextureTools.BuildTextureArrays();
@@ -61,8 +82,8 @@ namespace Clube.Debug.Editor
             {
                 var options = new BuildPlayerOptions
                 {
-                    scenes = Scenes,
-                    locationPathName = Output,
+                    scenes = scenes,
+                    locationPathName = output,
                     target = BuildTarget.StandaloneWindows64,
                     options = BuildOptions.None,
                     extraScriptingDefines = new[] { LabBuildSymbol },
@@ -77,7 +98,7 @@ namespace Clube.Debug.Editor
             BuildSummary summary = report.summary;
             UnityEngine.Debug.Log(
                 $"Game demo build {summary.result} ({version}): {summary.totalErrors} errors, " +
-                $"{summary.totalSize / (1024f * 1024f):0.0} MB in {summary.totalTime.TotalSeconds:0} s → {Output}");
+                $"{summary.totalSize / (1024f * 1024f):0.0} MB in {summary.totalTime.TotalSeconds:0} s → {output}");
             return report;
         }
 
