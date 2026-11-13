@@ -147,6 +147,46 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void ACampByTheSea_HasAPirateCutter_OutOnItsSorties_AndHomeWithItsHaul()
+        {
+            WorldPlan plan = Plan(out PlannedSettlement camp);
+            plan.WaterRoutes.Add(new WaterRoute
+            {
+                Kind = WaterRouteKind.Sea, From = 0, To = 1,
+                Points = new List<Vector2> { new Vector2(0f, 800f), new Vector2(400f, 700f), new Vector2(800f, 800f) },
+            });
+            Assert.IsEmpty(RaiderRuns.Plan(plan, VesselClass.Defaults(), 40f, 700f), "a camp with no water has no boat");
+            camp.Harbour = new Vector2Int(60, 62);
+
+            RaiderRun run = RaiderRuns.Plan(plan, VesselClass.Defaults(), 40f, 700f).Single();
+
+            Assert.AreEqual(VesselClass.SeaRaider, run.Class.Id);
+            Assert.AreEqual(camp.Index, run.Camp);
+            Assert.AreEqual(0, run.Route);
+            const float length = 200f;
+            Assert.IsFalse(run.Step(false, length, 30f));
+            Assert.AreEqual(RaiderPhase.Moored, run.Phase);
+            run.Step(true, length, 10f);
+            Assert.AreEqual(RaiderPhase.Out, run.Phase);
+            Assert.AreEqual(run.Class.Speed * 10f, run.Along, 1e-3f);
+            run.Step(true, length, 1000f);
+            Assert.AreEqual(RaiderPhase.Waiting, run.Phase);
+            Assert.AreEqual(length, run.Along, 1e-3f);
+            // With a haul aboard it goes home though the sortie is not over, and says when it is in.
+            run.Loaded = true;
+            Assert.IsFalse(run.Step(true, length, 5f));
+            Assert.AreEqual(RaiderPhase.Home, run.Phase);
+            Assert.IsTrue(run.Step(true, length, 1000f));
+            Assert.AreEqual(RaiderPhase.Moored, run.Phase);
+
+            Occupation pirate = Occupation.Find(Occupation.Defaults(), Occupation.Pirate);
+            Duty prowl = Duty.Find(Duty.Defaults(), pirate.DutyAt(2, 9f));
+            Assert.AreEqual(Duty.Board, prowl.Work);
+            Assert.AreEqual(Duty.Stash, prowl.LootTo);
+            Assert.AreNotEqual(Duty.Board, Duty.Find(Duty.Defaults(), pirate.DutyAt(2, 12.5f)).Work, "in between the two sorties");
+        }
+
+        [Test]
         public void ARobbery_MovesStacksAndAShareOfThePurse_AndNothingIsMadeOrLost()
         {
             ItemDefinition ore = ItemDefinition.Create("ore", "Ore"), wood = ItemDefinition.Create("wood", "Wood"), pick = ItemDefinition.Create("pick", "Pick");

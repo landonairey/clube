@@ -57,6 +57,9 @@ namespace Clube.Game
         /// <summary>Vessels in the world now.</summary>
         public int Showing { get; private set; }
 
+        /// <summary>Metres from the viewer within which a vessel is in the world.</summary>
+        public float ShowRange => showRange;
+
         /// <summary>The longest a lane took to find, in milliseconds.</summary>
         public float LongestLaneMilliseconds { get; private set; }
 

@@ -27,7 +27,7 @@ namespace Clube.Game
         public float LeavesPlayerUntil;
 
         /// <summary>Hold-ups, burglaries and robberies of the player that came off, since the map was made.</summary>
-        public int CartsRobbed, TownsRobbed, PlayerRobbed;
+        public int CartsRobbed, TownsRobbed, PlayerRobbed, VesselsRobbed;
 
         internal StorageChest Chest;
         internal CoinPouch Pouch;
@@ -155,7 +155,8 @@ namespace Clube.Game
         /// <summary>A thief within <paramref name="reach"/> of the player takes from bag and purse, as his duty's row says.</summary>
         public void RobPlayer(Villager thief, ThievesCamp camp, float reach)
         {
-            if (!FindPlayer() || (people.ToLocal(playerBag.transform.position) - thief.At).magnitude > reach)
+            // One robbery at a time: the rest of the band, already on its way, comes up empty-handed.
+            if (Time.time < camp.LeavesPlayerUntil || !FindPlayer() || (people.ToLocal(playerBag.transform.position) - thief.At).magnitude > reach)
             {
                 return;
             }
@@ -315,7 +316,13 @@ namespace Clube.Game
         /// <summary>Says something of the thieves on screen when the player is near enough to the thief to know of it.</summary>
         public void Heard(Villager thief, string text)
         {
-            if (FindPlayer() && (people.ToLocal(playerBag.transform.position) - thief.At).magnitude < 90f)
+            HeardAt(thief.transform.position, text);
+        }
+
+        /// <summary>Says something on screen when the player is within earshot of a place in the scene.</summary>
+        public void HeardAt(Vector3 place, string text, float earshot = 110f)
+        {
+            if (FindPlayer() && (playerBag.transform.position - place).magnitude < earshot)
             {
                 Say(text);
             }

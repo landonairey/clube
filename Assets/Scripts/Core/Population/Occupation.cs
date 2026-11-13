@@ -55,6 +55,9 @@ namespace Clube.Core
 
         public const float NightFrom = 21f, NightTo = 6f;
 
+        /// <summary>The id of the occupation of a thieves' boat's crew.</summary>
+        public const string Pirate = "pirate";
+
         public static readonly string[] DayNames = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
 
         public string Id;
@@ -197,6 +200,12 @@ namespace Clube.Core
                         new DutyShift(0, 6, 18f, 22f, "lurk"),
                         new DutyShift(0, 6, 22f, 3f, "burgle"),
                     },
+                },
+                // The crew of a camp's boat (GL617), where the camp has water: two sorties a day.
+                new Occupation
+                {
+                    Id = Pirate, Name = "pirate", Look = FigurePreset.Thief, Outlaw = true,
+                    Week = new[] { new DutyShift(0, 6, 7f, 11.5f, "prowl"), new DutyShift(0, 6, 14f, 18.5f, "prowl") },
                 },
             };
         }

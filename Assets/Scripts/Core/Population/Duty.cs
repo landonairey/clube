@@ -68,6 +68,9 @@ namespace Clube.Core
         public const string Stroll = "stroll";
         public const string Stash = "stash";
 
+        /// <summary>The work of a thieves' boat on a sortie: boarding the vessels of a water route.</summary>
+        public const string Board = "board";
+
         /// <summary>Every duty the default occupations use.</summary>
         public static List<Duty> Defaults()
         {
@@ -134,6 +137,12 @@ namespace Clube.Core
                 {
                     Id = "lurk", Name = "keeping watch", Place = DutyPlace.Field, Pose = FigureAction.Stand, Work = "rob",
                     Range = 40f, StrokeSeconds = 2f, LootTo = Stash, Stacks = 2, Share = 0.3f, Notice = 32f,
+                },
+                // Their boat's crew: out to the nearest water route to board what comes by (the work is the boat's, GL617).
+                new Duty
+                {
+                    Id = "prowl", Name = "out after a vessel", Place = DutyPlace.Field, Pose = FigureAction.Stand, Work = Board,
+                    Range = 700f, StrokeSeconds = 3f, LootTo = Stash, Stacks = 3,
                 },
             };
         }
