@@ -289,7 +289,7 @@ namespace Clube.Core.Tests
             Assert.Less(dead.Drop.FuelQuality, grass.Drop.FuelQuality);
             foreach (RoadClassDefinition road in RoadClassDefinition.Defaults())
             {
-                Assert.IsNotNull(registry.Find(road.Surface),  is surfaced with a material that exists ({road.Surface})");
+                Assert.IsNotNull(registry.Find(road.Surface), road.Name + " is surfaced with a material that exists: " + road.Surface);
             }
         }
 
