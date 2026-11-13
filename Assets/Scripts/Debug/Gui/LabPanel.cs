@@ -90,6 +90,7 @@ namespace Clube.Debug
         private bool farTerrainOpen;
         private bool coarseTerrainOpen;
         private bool distantTreesOpen;
+        private bool mapOpen = true;
 
         [Tooltip("Every item, for the Cheats section's item picker and give command (GL43).")]
         [SerializeField]
@@ -124,6 +125,9 @@ namespace Clube.Debug
         private FarTerrainView farTerrain;
         private TerrainLodView coarseTerrain;
         private DistantTreeView distantTrees;
+        private MapSession mapSession;
+        private MapMarkers mapMarkers;
+        private WorldMapScreen mapScreen;
 
         private bool partsFound;
         private LabPanelFrame frame;
@@ -181,6 +185,9 @@ namespace Clube.Debug
             farTerrain = FindFirstObjectByType<FarTerrainView>();
             coarseTerrain = FindFirstObjectByType<TerrainLodView>();
             distantTrees = FindFirstObjectByType<DistantTreeView>();
+            mapSession = FindFirstObjectByType<MapSession>();
+            mapMarkers = FindFirstObjectByType<MapMarkers>();
+            mapScreen = FindFirstObjectByType<WorldMapScreen>(FindObjectsInactive.Include);
         }
 
         private void OnDisable()
@@ -234,7 +241,7 @@ namespace Clube.Debug
             foreach (Object part in new Object[]
                      {
                          Config, worldView, testFill, brush, chunkFocus, chunkVolume, selector, corners, volumeLab,
-                         stepThrough, flyCamera, playerToggle, player, PlayerPart<PlayerToolUser>(), PlayerPart<ToolCursor>(), PlayerPart<PlayerInventory>(), Sounds, labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView, oreView, coarseTerrain, distantTrees, farTerrain,
+                         stepThrough, flyCamera, playerToggle, player, PlayerPart<PlayerToolUser>(), PlayerPart<ToolCursor>(), PlayerPart<PlayerInventory>(), Sounds, labels, normals, flipFaces, debugView, worldDebug, axesHud, buildGrid, storageView, oreView, coarseTerrain, distantTrees, farTerrain, mapSession, mapMarkers, mapScreen,
                      })
             {
                 if (part != null)
@@ -273,6 +280,10 @@ namespace Clube.Debug
             if ((worldView != null || terrainFill != null) && frame.Section("Terrain", ref terrainOpen))
             {
                 DrawTerrain(frame, config);
+            }
+            if (mapSession != null && frame.Section("Map", ref mapOpen))
+            {
+                MapControls.Draw(frame, config, mapSession, mapMarkers, mapScreen);
             }
             if (brush != null && frame.Section("Brush", ref brushOpen))
             {

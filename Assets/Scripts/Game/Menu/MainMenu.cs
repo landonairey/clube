@@ -23,6 +23,10 @@ namespace Clube.Game
         [SerializeField]
         private Texture2D splash;
 
+        [Tooltip("The bounded map's world config: the new-game page previews its map for the seed typed (GL636). None: no preview.")]
+        [SerializeField]
+        private WorldConfig mapConfig;
+
         [Tooltip("The cut-open parcel behind the menu (GL480); the splash shows without one.")]
         [SerializeField]
         private MenuDiorama diorama;
@@ -35,6 +39,7 @@ namespace Clube.Game
 
         private MenuStyles styles;
         private NewGamePage newGame;
+        private MapPreview mapPreview;
         private LoadGamePage loadGame;
         private List<SaveEntry> saves;
         private string problem;
@@ -57,6 +62,7 @@ namespace Clube.Game
 
         private void OnDestroy()
         {
+            mapPreview?.Dispose();
             if (Application.isEditor)
             {
                 // Runtime changes to the quality settings can stick in the Editor: put them back.
@@ -142,6 +148,30 @@ namespace Clube.Game
                     GameSession.StartNew(newGame.Mode, newGame.Seed, newGame.WorldName, newGame.WithTutorial);
                     GameScenes.LoadGame();
                     break;
+            }
+            DrawMapPreview(panel);
+        }
+
+        // The seed's map as contour lines (GL636), beside the page.
+        private void DrawMapPreview(Rect panel)
+        {
+            if (newGame == null || mapConfig == null)
+            {
+                return;
+            }
+            float side = Mathf.Min(520f, Screen.width - panel.xMax - 40f, Screen.height - 120f);
+            if (side < 160f)
+            {
+                return;
+            }
+            mapPreview ??= new MapPreview(mapConfig);
+            Texture2D picture = mapPreview.For(newGame.Seed);
+            var frame = new Rect(panel.xMax + 20f, panel.center.y - (side + 44f) * 0.5f, side + 24f, side + 56f);
+            Shade(frame);
+            GUI.Label(new Rect(frame.x, frame.y + 6f, frame.width, 22f), "The map this seed makes", styles.Caption);
+            if (picture != null)
+            {
+                GUI.DrawTexture(new Rect(frame.x + 12f, frame.y + 32f, side, side), picture);
             }
         }
 

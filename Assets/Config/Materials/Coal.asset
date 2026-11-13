@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d59954c0fdd2f5d4c9594a66c55f0fc1, type: 3}
+  m_Name: Coal
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.VoxelMaterial
+  id: 33
+  displayName: Coal
+  category: 1
+  albedo: {fileID: 2800000, guid: 78410fa0ba4000044a85b27b82716566, type: 3}
+  debugColor: {r: 0.06, g: 0.06, b: 0.07, a: 1}
+  hardness: 2.5
+  drop: {fileID: 11400000, guid: 981cc1854cc996a08ab08041a7d5f449, type: 2}
+  pileShape: 1
+  reposeAngle: 40
+  pickUpPieceSize: 0
+  pickedFromPiles: 0
+  toolTier: 1
+  requiredSkill: 0
+  requiredLevel: 0
+  windSway: 0
+  fallenForm: {fileID: 0}
+  shine: 0
+  sketchStyle: 2
+  fall: 1
+  stabilityLoss: 0
+  breaksInto: {fileID: 0}
+  buildsSquare: 0
+  isWorktop: 0
+  isSoft: 0
+  driesInto: {fileID: 0}
+  dryingDays: 2
+  notes:
+    Hardness: 2 to 2.5 on Mohs' scale; a fingernail marks it
+    Luster: dull to glassy
+    Colour: black, streaks black
+    Feel: light for its size, brittle and sooty; it burns

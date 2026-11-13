@@ -15,6 +15,12 @@ MonoBehaviour:
   id: bronze-ingot
   displayName: Bronze ingot
   icon: {fileID: 2800000, guid: b231e6ba315024345bd8297e8a3e3208, type: 3}
+  iconShape: 8
+  iconTint: {r: 0.66, g: 0.49, b: 0.25, a: 1}
   maxStack: 32
   unitVolume: 0.4
   burnSeconds: 0
+  fuelQuality: 1
+  purityAs: {fileID: 0}
+  hidesContents: 0
+  dropForm: 0

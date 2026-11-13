@@ -23,14 +23,12 @@ namespace Clube.Core
         private const float HeightSpacing = 1f;
 
         private readonly List<Vector2> points = new List<Vector2>();
-        private readonly List<float> distances = new List<float>();
-        private readonly float[] heights;
 
         /// <summary>The road's corners, from the trading post's end to the distant town's.</summary>
         public IReadOnlyList<Vector2> Points => points;
 
         /// <summary>The road's length in metres.</summary>
-        public float Length { get; }
+        public float Length => Line.Length;
 
         /// <summary>
         /// Where the distant town is (a parcel's centre): <see cref="MinParcels"/> to <see cref="MinParcels"/> +
@@ -200,71 +198,34 @@ namespace Clube.Core
             }
             points.Add(rough[rough.Count - 1]);
 
-            float length = 0f;
-            distances.Add(0f);
-            for (int i = 1; i < points.Count; i++)
-            {
-                length += (points[i] - points[i - 1]).magnitude;
-                distances.Add(length);
-            }
-            Length = length;
-            heights = new float[Mathf.CeilToInt(length / HeightSpacing) + 2];
-            for (int i = 0; i < heights.Length; i++)
-            {
-                Vector2 p = Flat(i * HeightSpacing);
-                heights[i] = heightAt(p.x, p.y);
-            }
+            Line = new RoadLine(points, heightAt, HeightSpacing);
         }
+
+        /// <summary>The road as a line over the ground: what the track writer and the bridges work from.</summary>
+        public RoadLine Line { get; }
 
         /// <summary>The point (x, z) <paramref name="distance"/> metres along the road from the trading post's end.</summary>
         public Vector2 Flat(float distance)
         {
-            distance = Mathf.Clamp(distance, 0f, Length);
-            int low = 0, high = distances.Count - 1;
-            while (high - low > 1)
-            {
-                int middle = (low + high) / 2;
-                if (distances[middle] <= distance)
-                {
-                    low = middle;
-                }
-                else
-                {
-                    high = middle;
-                }
-            }
-            float span = distances[high] - distances[low];
-            float t = span > 1e-5f ? (distance - distances[low]) / span : 0f;
-            return Vector2.Lerp(points[low], points[high], t);
+            return Line.Flat(distance);
         }
 
         /// <summary>The ground height <paramref name="distance"/> metres along the road, from the heights kept.</summary>
         public float HeightAlong(float distance)
         {
-            float f = Mathf.Clamp(distance, 0f, Length) / HeightSpacing;
-            int i = Mathf.Min((int)f, heights.Length - 2);
-            return Mathf.Lerp(heights[i], heights[i + 1], f - i);
+            return Line.HeightAlong(distance);
         }
 
         /// <summary>The point on the ground <paramref name="distance"/> metres along the road (x, height, z).</summary>
         public Vector3 At(float distance)
         {
-            Vector2 p = Flat(distance);
-            return new Vector3(p.x, HeightAlong(distance), p.y);
+            return Line.At(distance);
         }
 
         /// <summary>Metres from (x, z) to the nearest part of the road between corners <paramref name="first"/> and <paramref name="last"/>.</summary>
         public float DistanceTo(Vector2 point, int first, int last)
         {
-            float best = float.MaxValue;
-            for (int i = Mathf.Max(0, first); i < Mathf.Min(last, points.Count - 1); i++)
-            {
-                Vector2 a = points[i], b = points[i + 1];
-                Vector2 ab = b - a;
-                float t = ab.sqrMagnitude > 1e-6f ? Mathf.Clamp01(Vector2.Dot(point - a, ab) / ab.sqrMagnitude) : 0f;
-                best = Mathf.Min(best, (a + ab * t - point).magnitude);
-            }
-            return best;
+            return Line.DistanceTo(point, first, last);
         }
     }
 }
