@@ -15,10 +15,14 @@ MonoBehaviour:
   id: sleeping-roll
   displayName: Sleeping roll
   icon: {fileID: 2800000, guid: d98231ddf7381614db8a7e1d452a40c9, type: 3}
+  iconShape: 14
+  iconTint: {r: 1, g: 1, b: 1, a: 1}
   maxStack: 1
   unitVolume: 1
   burnSeconds: 0
+  fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0
   prefab: {fileID: 7854643536770524401, guid: 285133e8568374f40bed56df93428099, type: 3}
   dropsMix: 1

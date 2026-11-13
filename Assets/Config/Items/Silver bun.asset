@@ -15,8 +15,14 @@ MonoBehaviour:
   id: silver-bun
   displayName: Silver button
   icon: {fileID: 2800000, guid: 21af94c094a38284e9fb4c6a147d40bb, type: 3}
+  iconShape: 9
+  iconTint: {r: 0.88, g: 0.89, b: 0.92, a: 1}
+  iconTextureZoom: 1
+  iconVividness: 0
   maxStack: 32
   unitVolume: 0.5
   burnSeconds: 0
+  fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0

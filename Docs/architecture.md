@@ -57,6 +57,9 @@ Core/
   Quests/        QuestLog: the checklist in sections, done once each (GL216); what counts is decided in Game (PlayerQuests)
   Generation/    TerrainSettings, ITerrainGenerator, TerrainGenerators, ChunkGenerator, TerrainSurface (GL56)
     Generators/  managed generator classes (Flat, Sine, FractalPerlin2D, Spline, Perlin3D)
+    Map/         the bounded map (GL589-GL592, GL637-GL641): MapDefinition, MapLayout, MapBoundaryType, MapShapeType,
+                 MapShape, MapLandBuilder, MapLimit, MapHorizon, BiomeDefinition,
+                 BiomeField, BiomeMap, ResourceSurvey, SurveyResource + ResourceReach (GL595)
     Heightmaps/  Heightmap import, HeightmapGenerator, HeightmapExport (K29)
     Noise/       PerlinNoise (struct), VoxelHash, ErosionFilter + ErosionSettings (gullies as a filter on a heightfield, P12a)
     Rocks/       BoulderField (large faceted boulders, stamped as TreePart.Boulder parts with the trees, GL342)
@@ -78,17 +81,30 @@ Core/
     Jobs/        ChunkMeshJob: the Burst mesh build the world runs; CarvedVoxels: walls round chiselled voxels (GL92)
     Far/         FarTerrainGrid (one clipmap level), FarTerrainMeshJob (its mesh): the far terrain (P7a)
     Water/       WaterMesher: marching cubes over a chunk's water samples (managed, per wet chunk, GL315)
+                 WaterSheetMesh: a far sheet's vertex streams, and two triangles per map cell (the detailed far tiles)
+                 CoarseWaterMesher: far water as a quadtree of level sheets per region, cells at shores and rivers (GL626)
     Recording/   MeshingRecorder (A11)
     Models/      LowPolyMeshBuilder (flat, vertex-coloured models from boxes and prisms: held tools, the town, GL269, GL400),
-                 TownMeshes (the town's wall, gate, shops and props, drawn with `Clube/Low Poly`)
+                 TownMeshes (the town's wall, gate, shops and props, drawn with `Clube/Low Poly`),
+                 Figures/ (GL608, every person): FigureLook (a person as data), FigureLooks (the presets, one row per look, and
+                 the variation a seed gives), FigureSkeleton (joints), FigureMeshes (seven part meshes per look, shared by
+                 matching looks), FigureProps, FigurePoses (pure: action + time + step -> joint angles). `Clube.Game`'s
+                 FigureRig hangs the parts on the joints and plays the pose; a new NPC look is a new FigurePreset row
   Editing/       GroundLeveling (flat ground with a ramp, or the land as it lies, trees cut down, paths paved: the town and merchant table, GL38, GL400, GL413), SquareVoxels (square blocks and flat-walled tunnels on the chisel's carving: boards, shops, shafts, GL411-GL414), NodeMining (one ore sample at a time, the miner, GL415), TreeFelling (cut-off limbs and how they land, GL344), TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5; slivers GL79), TerrainPile (I4), GroundDrying (GL34), ChiselStrike + FlatTop (GL87, GL88), GroundSettling (falling dirt and sand, GL308), LiveWater (the water's cellular flow: falls, runs downhill, fills dug holes, GL313, GL315), WaterScoop (the bucket, GL319), IDensityField, IEditableTerrain
-  Queries/       SurfaceRaycast, VoxelRaycast, SurfacePoints (GL4), WaterQuery (what's under water: swimming, GL316)
+  Queries/       SurfaceRaycast, VoxelRaycast, SurfacePoints (GL4), WaterQuery (what's under water: swimming, GL316),
+                 TreeFinder (standing trees round a place, GL615)
   Volume/        VoxelVolume, ChunkVolume (V11, V12, K30), RegionVolume (the mesh volume round some samples: what a hit gathers, GL288)
   Saving/        GameSave (plain data), GameSaveFile (versioned binary, S1), WorldSaving (edited chunks, S2), StackSaving (GL205), SaveNames (GL207)
   Sky/           SkyPositions (the sun, the moon's orbit and phases, the stars' sidereal turn, GL248, GL253),
                  SkyWeather (each
                  sunset's colour and each day's cloud cover, GL262, GL263)
-  Fauna/         BirdFlock (a group of birds flying a pattern, then leaving, GL250)
+  Fauna/         BirdFlock (a group of birds flying a pattern, then leaving, GL250); AnimalSpecies, HerdSites, AnimalBrain
+                 (the animals as data, where herds live, one animal's decisions, GL602-GL606)
+  Population/    the people of settlements as data (GL615, GL616): Duty and Occupation rows, DutyShift (a week of duties),
+                 SettlementRoster (who lives where), SettlementWalks (the ways through the lanes), DigPlan (a pit or a
+                 tunnel, voxel by voxel), CartKind and CartRuns (which carts run which roads, and where by the clock),
+                 VesselClass and BoatRuns (the same for vessels on the water routes, GL618), ThiefHaunts, Robbery and
+                 RaiderRuns (where a thieves' camp steals, what a robbery moves, its boat, GL617)
   Audio/         SoundSynth (sound effects made in code, GL271)
   Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea, FarTerrainBuilder (far terrain levels),
                  TerrainLodRing + TerrainLodBuilder (coarse terrain levels, P7c), DistantTreeBuilder (GL162)
@@ -225,6 +241,133 @@ flowchart LR
   within ~4 µm): all world chunks are generated by the same Burst code, so this
   never shows at a border. Cross-platform determinism (saves shared between
   machines, PK2) would need `FloatMode.Deterministic` — not set.
+
+- **The bounded map** (GL589-GL592, GL637-GL641, `Generation/Map/`): `TerrainGeneratorType.BoundedMap` is the eroded
+  landscape shaped into a map centred on the origin. `TerrainSettings.Map` (`MapDefinition`) resolves by seed to a
+  `MapLayout`: an outline (`MapShapeType`, data: continent, peninsulas, island and satellites, island chain, archipelago),
+  as many sea sides as the outline wants, and a `MapBoundaryType` (data) for each other side by weight.
+  `MapLandBuilder` lays the outline out as plain points: round lands, the sea's reaches into a mainland, islets, bays, and
+  the ranges as chains of bumps (a main range with one highest summit, spurs, forks or other islands' spines; it comes in
+  from a side whose kind has a range). The plain-value `MapShape` holds them and `MapShape.Apply` turns the endless land's
+  height into the map's inside `BoundedMapHeight`, before the erosion:
+  - the coast is the zero line of a land field in metres inland (the lands joined with a soft maximum, bays and sea
+    reaches cut with a soft minimum, read at a position bent by `Warp`, plus a fractal wander and the ranges' own lift);
+    the ground rises from it to the plains and on inland (rivers run to the sea) and the sea floor falls away from it;
+  - the ranges' sum stands on the land, with the endless land's own hills at full size by a range and lower on the plains;
+  - `EdgeInside` is metres inside the playable edge, a rounded square that wanders (`MapLayout.Contains`), and
+    `SideWeights` shares every point between the four sides across wandering borders; an ocean side lets no land near
+    the edge, any other side keeps land at it and blends its own change in (a desert's plain and dunes over the plains
+    there, the larger range's wall of winding crests, the void's cliff);
+  - `LimitAt` is how far into a side's limit a point is (0 free, 1 at the stop line, `MapBoundaryType` data), and
+    ground short of the stop line is kept between `Floor` and `Ceiling`, the voxel world's bottom and top
+    (`MapDefinition.VoxelFloor`, `VoxelCeiling`; `MapShape.Keep`, applied again after the erosion).
+  `GradientNoise` (hashed 2D gradient noise, no table) is the broad noise of all of it. The water is `Hydrology` with a
+  `WaterExtent`: the whole map plus a margin, 2 m cells by default (1 m would be about 700 MB for 5 km), a sea, which
+  is every low cell joined to the area's edge where `IsSea` says so (everywhere but by the void), an outlet at sea level
+  that the rest reads as one lake (`WaterMap.IsSea`), and `IsDry`, ground that holds no lake (the desert's dunes). Past
+  the water map the edge cell answers where it is sea, so the ocean has no far shore.
+- **The map's limit** (GL640): `MapLimit.Held` (Core) takes back the outward part of a step by `LimitAt`;
+  `MapBoundaryLimit` (Game, added to the player by `MapSession`) applies it in `LateUpdate` through the
+  `CharacterController` and shows the side's `LimitMessage`. `ResourceSurvey` marks cells where the player does not
+  walk freely (`MapLayout.WalksFreely`: past the playable edge, or inside a limit)
+  `Outside` and empties them, so no settlement or road is planned there.
+- **The map's horizons** (GL641): `MapHorizon.Colours` lays each side's `HorizonColor` out past the playable edge;
+  `FarTerrainView` uploads it as a texture and the far terrain shader tints its ground by it (`_HorizonTint`,
+  `_HorizonRect`), under the rock and snow it already draws by slope and height.
+- **Biomes** (GL591): `BiomeDefinition` rows, first match wins, picked from elevation over the sea, temperature (latitude,
+  height, a noise) and moisture (a noise), both read at the map's bent position and shifted near the edges by the boundary types
+  (`MapShape.EdgeClimate`, over a wider band than the land's own change). `BiomeField` holds them inline
+  for jobs (`ChunkFillSettings.Biomes`): the kernel's `StampBiomes` swaps each column's top and band layer for its biome's,
+  after the layers and before clay, banks and ore. `BiomeMap` (`BoundedMapGenerator.Biomes`, `BiomeMap.For(generator)`) is
+  the main-thread query; trees read it through `TreeGeneration.Climate` (`TreeForests.ChanceIn`, `TreeShape.IsMaple`), from a
+  16 m grid filled by one job on first use, so the voxel trees and the distant trees agree.
+- **The resource survey** (GL592): `ResourceSurvey.Build` grids the map without voxels. It calls what the chunks call
+  (`OreField.AppendTries` + `MarkPlaced`, `TreeField.TryGetSpot` + `IsFlatEnough`, `ChunkFillKernel.ClayDepthAt`,
+  `WaterMap.MaterialAt`, `LayerTable.IsSteep`, `BiomeField.IndexAt`) and gets every ground height from
+  `SchedulePointHeights` jobs, a band of ore columns at a time. Don't place nodes with `NodesInCell` over a wide area (§7).
+- **The world plan** (GL593-GL597, `Generation/Settlements/`, `Economy/EconomySpecialty.cs`): `WorldPlanner.Build(survey, seed,
+  rules)` makes a `WorldPlan`, plain data (settlements with type, cell, name, shops and reasons; roads; water routes), from
+  the survey alone, in about 0.3 s for 5 km. The tables are `WorldPlanRules`: `SettlementType.Defaults()`,
+  `EconomySpecialty.Defaults()`, `RoadClassDefinition.Defaults()`, `NamedVessel.Defaults()`; a new type, specialty or
+  vessel is a row, and the steps read fields, never ids. Steps, each its own class over a shared `PlanContext` (the cells,
+  `ResourceReach` summed-area tables, a Dijkstra over the 40 m cells): `SettlementPlacer` (largest first, by `SiteRule`, on any piece of land: `PlanContext.Land`; after the capital every
+  other land with resources gets a settlement of its own, GL643; how steep a site may be goes by the road its type
+  needs, `WorldPlanRules.FlatnessFor`, GL642),
+  `SpecialtyAssigner` (fit = the scarcest needed resource nearby; then every specialty is made to exist),
+  `RoadPlanner` (paved, then dirt, then footpaths, each from its settlement to the nearest point of the network so far;
+  a settlement with no way by land starts a network of its own land, `PlannedSettlement.RoadNetwork`),
+  `WaterRoutePlanner` (sea routes from the capital's harbour, river routes, named vessels). Roads leave the planner as
+  cell-centre polylines; `WorldRoads.Finish(plan, map)` (`Generation/Roads/`), called right after by whoever has
+  the generator, puts them on the real ground: `RoadRefiner` (each road searched again on an 8 m grid in a 64 m corridor,
+  three times as wide where the planned line is steep or over a lake; forty-eight ways from a point, the long shallow
+  ones being what lets a cart path cross a steep face; a cart path's slope read from ground evened out as its bed will
+  be; a bridge pays for its climb as well as its water; ground where `MapLayout.WalksFreely` is false is closed; heights
+  for a whole corridor from one job, `WorldRoads.HeightsOf`; a state is a grid point and the way it was come to by, so
+  `RoadClassDefinition.TurnCost` makes
+  switchbacks long-legged; slope by `StretchCost`; then eased and corner-cut) and `SignpostPlanner` (a graph of the roads;
+  `WorldPlan.Signposts`). A road class is one `RoadClassDefinition` row: slope limit as a share of the walkable angle
+  (`WorldPlanRules.SetWalkableSlope`), width, surface material, grading, bridge width. `RoadLine` (points, distances,
+  heights every metre) is what a refined road and the trade cart's `CartRoute` both are; `RouteBridges.Find` takes one.
+- **Roads in the terrain** (GL613): `RoadBed` (Core) is a road's shape from its class (bed height along it, evened out
+  for cart paths; half width with a wandering edge; shoulders), `RoadWriter` (`Editing/`) writes it in 1 m pieces through
+  `GroundLeveling` (`Area.Surface` for a per-column height, `Inside` so a piece touches only its own strip, `TreeReach`
+  so a tree cut does not spread through a wood). `MapRoads` (Game) decides when: roads whose box is within 150 m of the
+  viewer are worked out once (heights, bridges, bed), their unwritten pieces queued nearest first and written when their
+  chunks are loaded, 3 ms a frame; bridges (`RoadBridge`) and `Signpost`s stand once their ground loads; written pieces
+  are saved. Far terrain and the coarse levels know nothing of roads.
+- **Tunnels** (GL642): `RoadTunnels.Bore` runs inside `WorldRoads.Finish`, after the refiner. For each cart path still
+  over its limit it scores every pair of its points a straight bore could join (grade within a share of the class's
+  limit, ground never far under the floor and well over it for a third of the length, no water over it, no junction or
+  settlement between) by the over-limit metres taken out less a price per metre of bore, takes the best, and repeats
+  (`RoadTunnelRules`). The bore becomes one straight part of `PlannedRoad.Points` and a `RoadTunnel` in
+  `PlannedRoad.Tunnels`. A road's `RoadLine` is made with `RoadTunnels.HeightAt(road, ...)`, which gives the tunnel's
+  floor inside a tunnel: the bed then leads in on the floor, and `RoadWriter` digs the open cutting at each end.
+  `TunnelWriter` (`Editing/`) carves the part with 4.5 m of ground overhead a metre at a time (`SquareVoxels.Carve`, an
+  arch, the floor surfaced as the road); `MapRoads` skips the road's pieces over the bore (`TunnelWriter.IsBored`),
+  queues the bore's metres after the road's pieces, stands a `TunnelPortal` at each end and saves what is bored.
+- **Settlements in the terrain** (GL613, GL614, GL642): `SettlementLayout.Plan` (Core) lays one `PlannedSettlement` out
+  as a `SettlementSite`, from the land's heights on a 2 m grid (one job). Rows run along whichever axis lies across the
+  slope (buildings turn by quarters: they are whole voxels); a row is a street, then buildings 9 m apart facing
+  downhill; rows are 18 m apart. Places are taken nearest the centre first, shops before houses; a place is refused on
+  water or closed ground, within 3 m of a planned road's own ground, or where the land rises more than 9 m across it.
+  Each run of neighbours in a row is a `SettlementTerrace` at the mean of their ground (land under a run may differ by
+  2 m), so rows step up a hillside. `SettlementSite.HeightAt(x, z, ground)` is the one definition of the settlement's
+  ground: level on a terrace, a smooth bank back to the land over 3 m, and the land itself on and beside a planned road
+  (the road writes that). Lanes are a street a row and a climb between rows at alternate ends, doubled back where it
+  would be steeper than 30%. `SettlementWriter` (`Editing/`) writes a site in a fixed order of pieces: 3 m tiles of
+  ground (`GroundLeveling` with `Area.Surface` = the site's heights, `KeepTop` so cut ground keeps its grass, banks
+  faced with stone), the lanes (each a `RoadWriter` over `SettlementSite.HeightAt`), the buildings in four slices
+  (`SettlementStructures.Blocks`: the trading post's shop, or a house with a door and a window). `MapSettlements`
+  (Game) lays a settlement out when the viewer is within 160 m of its edge and writes the next piece whenever its
+  chunks are loaded, 3 ms a frame; a shop that stands is fitted (`TownBuilder.FitShop`: sign, sleeping roll, wares)
+  and gets a `SettlementKeeper`, an `ITrader` whose shop is `EconomySpecialty.ToShop` and whose prices, purse and
+  disposition are a `ShopTrade` (shared with the trading post's `Shopkeeper`). The parcels under a settlement are locked;
+  progress is saved as "written/pieces". `KeptHeights` (Core) is the store of generated heights both `MapRoads` and
+  `MapSettlements` write through. Not done: houses are empty (the people are GL615), thieves' camps build nothing
+  (GL617), and far terrain shows no settlements.
+- **The map in a scene** (GL598-GL601, `Game/Map/`): `MapSession` (one per scene, `MapSession.Current`) watches
+  `WorldView.Generator`; when it is a `BoundedMapGenerator` it builds the survey and the plan once (main thread: the
+  survey completes height jobs; about 4 s at 5 km) and raises `Rebuilt`, again after every regenerate. Everything that
+  needs the map reads `Map`, `Survey`, `Plan` from it: `MapMarkers` (posts at sites; road posts off now), `MapRoads` (the roads themselves),
+  `MapSettlements` (the settlements), `WorldMapScreen` (M). `MapStart.Pick` (Core) chooses where the player is set down.
+  `MapPicture` (Core) is the one place the map's colours live (terrain pixels, road colours, widths and line types as
+  `MapLineStyle`, route and
+  settlement colours); the world map and `BoundedMapPreviewMenu` both draw with it, and `MapLegend` (Game) lists the
+  styles as legend rows. `MapContours` (Core) is the other picture: contour lines from a coarse height grid of
+  `BoundedMapGenerator.CreateDry` (no water worked out, so milliseconds), shown by the menu's `MapPreview` (GL636). The scene's world is 104 chunk
+  layers tall because the streamer loads whole columns from y = 0: ground below 0 (the void, deep sea floor) and above
+  the top (the ridge) is drawn by the coarse and far terrain only.
+- **Far water** (GL626): past the drawn chunks `WaterView` draws the water map in two layers. Within
+  `farDetailMetres` (256 m) of the viewer: 64 m tiles of two triangles per cell (`WaterSheetMesh.AddCell`), built as
+  the viewer nears (a tile's width ahead) and dropped behind; they ripple, fading to nothing at the square's edge.
+  Past it: `CoarseWaterMesher`'s meshes, one per 512 m region, built once: a square of the quadtree is one sheet when
+  every cell in it is *flat* (wet, not river, level with every wet cell touching it), else it splits down to single
+  cells; a sheet with smaller squares along its rim is a fan through their corners. The `Clube/Water` shader's
+  `_Detail` (centre, half width, side) draws the tiles inside the square and the regions outside, and stills the
+  ripples outside, so the layers meet at one height and nothing is rebuilt as the viewer moves. Both are clipped by
+  the chunk coverage mask (GL323). Rivers are not merged: a river cell is a quad at any distance.
+- **The sea past the map** (GL600): the water map covers the map plus `WaterMargin`; `WaterView.BuildOuterSea` adds one
+  flat mesh at sea level from its edge to 40 km, in cells growing from 256 m, wherever `MapShape.IsSeaSide`.
 
 **Adding a generator:** write an `IHeightField` (or `IVolumeField`) struct in
 `Fields/`; a generator class in `Generators/` deriving from
@@ -521,6 +664,127 @@ Three things to know before it grows further:
   and `WorldDebugView` show the pattern.
 
 ---
+
+### Animals (GL602-GL607)
+
+Data and decisions are Core (`Core/Fauna/`), bodies are Game (`Game/Fauna/`):
+
+- `AnimalSpeciesTable` holds the species rows (`AnimalSpecies`: biomes by name, herd size, body, speeds, health,
+  skittishness, `AnimalRoutine`, `AnimalDrop`s by item id). A new species is a row there plus an `AnimalLook` in
+  `AnimalLooks` (its model recipe).
+- `HerdSites` says where herds are from the world's seed alone: one possible herd per 96 m cell, its species picked from
+  those living in the biome at its home. Nothing is stored. `AnimalHerds` (on the World object) asks for the sites
+  round the player once a second, makes a herd when its home is within `spawnRadius` and its ground is loaded, removes
+  it past `despawnRadius`, and keeps the keys of killed animals (`ISavedValues`). The biome comes from
+  `BiomeMap.For(generator)`; a world without one uses `HerdSites.StandInBiome` on the ground's material.
+- `AnimalBrain` is one animal's state machine (graze, wander, gather, rest, flee, dead) with no GameObject: it reads
+  `AnimalSenses` and leaves a heading and a speed. `Animal` moves the body along it, with `AnimalHerds.TryGround`
+  (a short `World.Raycast` down, and `WaterQuery`) looking ahead every 0.15 s so it stays on dry ground without drops,
+  and poses the `AnimalRig` built by `AnimalModels` (`LowPolyMeshBuilder` shapes on the LowPoly material).
+- Tools reach animals through `IToolTarget`: `PlayerToolUser` strikes whatever target its view ray lands on first,
+  with damage by the tool's power. A dead `Animal` gains a `StorageChest` holding its rolled drops, so the interaction
+  system and `ChestPanel` open it like any chest.
+
+### Tool models and dropped items (GL609-GL611)
+
+- `HeldToolMeshes` (Game) builds every tool model in code from `LowPolyMeshBuilder` parts, with or without the hand; a
+  tool's head is a `HeadMaterial` row (colour, shine, wear) found by a word in its name. It needs no scene, so an
+  editor tool can build a model to draw an icon. `LowPolyMeshBuilder.Surface` writes what each part is made of (wood,
+  metal and how much it shines) into the mesh's first UV; only `Clube/Held Item` reads it (grain, glint, gleam).
+  Other meshes leave it unset and get no UV channel.
+- What a dropped item becomes is data: `ItemDefinition.DropsAs` (`DropForm`), the asset's field or its kind's default
+  (`KindDropForm`: tools, torches and buckets a model, placeables a bag, the rest a pile). `ItemDropper` piles
+  materials into the terrain as before and hands everything else to `DroppedItems` (on the player, added by the
+  dropper at Awake, so no scene holds it): one `DroppedItem` per model or bag, a rigid body with a convex collider,
+  an `IInteractable` for E. Items are simulated only within 30 m of the player and are held still (kinematic)
+  otherwise, and after a load until a collider is under them, so nothing falls through ground that isn't there yet.
+  They are saved as text in the save's named values (`DroppedItemSaving` in Core, `ISavedValues`); restoring finds
+  items through `GameSessionHost.Catalog`.
+
+### Inventory icons (GL612)
+
+Icons are pictures of the 3D models, baked in the Editor and read by the inventory as plain textures
+(`ItemDefinition.Icon`, as before). Four steps, one class each:
+
+- **Which model** is data (Core, `Items/`): `ItemDefinition.IconShape` (`ItemIconShape`) and `IconTint`, plus
+  `IconTextureZoom` and `IconVividness` (how much the material's texture is enlarged and pushed in colour on the
+  model: 1.7 and 0.4 on ores, so their flecks show in a slot).
+  `ItemIconShapes.Resolve` settles Auto by kind: a tool, torch, bucket or placeable is its own `Model`; a material's
+  drop is a `Chunk` (rock) or `Mound` (soil) of the material found by `MaterialOf` (a crushed ore's is its ore's,
+  through `PurityAs`); an item of no material is a chunk in its tint. A new item needs no code.
+- **The models** with no model of their own are `ItemChunkMeshes` (Core, `Meshing/Models/`): chunk, mound, gravel,
+  log, leaves, boards, ingot, bun, brick, hide, tuft, stick, each about a unit across from `LowPolyMeshBuilder` parts.
+  `ItemIconModels` (Game) puts it together: mesh or prefab, the terrain texture it wears, how it is turned and viewed.
+- **The camera** is `IconFraming` (Core): an orthographic view that holds the model's corners, centred, with a margin;
+  pure arithmetic, tested without a camera.
+- **The picture** is `ItemIconRenderer` (Debug/Editor): a `PreviewRenderUtility` scene with its own lights, drawing
+  vertex-coloured models with `HeldItem.mat` and textured chunks with `Clube/ItemIconChunk` (three-axis mapping; never
+  drawn in the world, so no depth passes). It shoots on black and on white and takes alpha from the difference.
+  `ItemIconBaker` (*Clube > Items > Bake icons from models*) walks the catalog, writes
+  `Assets/Textures/Items/<item>.png` and links it. Its cache is a key in each PNG's importer `userData`: a hash of the
+  mesh's corners and colours, the texture's or prefab's dependency hash, the turn, the view and a `Look` version to
+  raise when lights or shaders change. `ItemIconContactSheet` writes every icon into one picture.
+- `ItemIconTools` (the old painter) now only writes items whose shape is `Painted`.
+
+### People and carts (GL615, GL616)
+
+Who lives in a settlement and what they do is Core data (`Core/Population/`, an algorithm-layer folder that reads the
+settlements of `Generation/`); the bodies are Game (`Game/People/`, `Game/Travellers/`, `Game/Map/MapCarts`).
+
+- **Rows.** A `Duty` is one thing a resident does: a `DutyPlace` (bed, home, the shop's yard, the streets, the field),
+  a `FigureAction` to hold there, and for field work the name of a work, the item id of its tool, target species and a
+  range. An `Occupation` names the `EconomySpecialty` ids whose shops employ it, a `FigurePreset` and a week of
+  `DutyShift`s; `DutyAt(dayOfWeek, hour)` is the first shift that holds (else bed at night, home by day).
+  `Occupation.For` gives a shop's occupation; the row with no specialties is anybody else. A new duty or occupation is a
+  row in `Defaults()`; `SettlementPeople.Duties` and `.Occupations` are the lists the scene runs on.
+- **Works.** A duty's `Work` is looked up in `DutyWorks` (name → maker), which makes an `IDutyWork` for the villager
+  each time the duty begins: `Seek` says where to stand and what to face (asked again after every stroke, so the place
+  can move), `Stroke` does one blow. `FellWork`, `DigWork`, `HuntWork` and `ShearWork` are the four. Terrain work goes
+  through `WorkerStrike.Hit`, which is `ToolStrike.FindTargets` and `ToolStrike.Hit` with the worker's own
+  `StrikeDamage`: the same edit path, hits and drops as the player's. A felled tree goes through the scene's
+  `TreeFeller.TryFell(box, fall)`. A new kind of work is a class and a `DutyWorks.Register` line.
+- **Who and where.** `SettlementRoster.Build(site, occupations, seed)` gives the `Resident`s (population less one
+  keeper a shop, shared among the shops, housed in the site's houses). `SettlementWalks` turns a site's lanes into a
+  web of points 2 m apart and routes over it (Dijkstra, a metre through a building costing a thousand), so a walk
+  goes by the streets. `DigPlan.Pit` and `.Tunnel` list voxels in digging order; `Next` finds the first still solid in
+  the world, so a pit holds no progress of its own and goes on from whatever is there.
+- **In the scene.** `SettlementPeople` (on the World object, beside `MapSettlements`) looks twice a second: a
+  settlement that `MapSettlements.BuiltSite` says stands, within `liveRange` of the viewer, gets its `Villager`s (up
+  to `mostPeople`); past `liveRange + leaveMargin` they are destroyed. A `Villager` reads its duty from the clock each
+  frame, walks (no physics: `GroundProbe.TryGround`, a short `World.Raycast` down from near its own height, keeps its
+  feet on the terrain, a pit's floor included) and poses its `FigureRig`. Nothing of a villager is saved: where it is
+  follows from the clock, and what it did to the terrain is in the world.
+- **Figure detail.** `FigureLod` (added by `FigureRig.Build`) sets `FigureRig.Detail` from the camera's distance every
+  0.4 s: `Full` to 30 m, `NoShadow` to 60 m, then `Far`, one combined mesh of the figure standing (built on first
+  use) with the limbs' renderers off and the pose no longer updated. The distances are statics on `FigureLod`.
+- **Carts.** `CartRuns.Plan(plan, kinds, seed)` gives each cart path its `CartRun`s; `CartRun.At(seconds)` is a
+  `RunPlace` (fraction along the road, outbound or not, moving or standing, the trip's number) from the clock alone.
+  `MapCarts` asks `MapRoads.TryLine(road)` for the `RoadLine` and bridge spans of roads worked out near the viewer and
+  keeps a `RoadCart` for each cart within `showRange`; `RoadCart` sets `TradeCartModel` (and a `CartHorse`) on the
+  ground with `GroundProbe`, on a bridge between the deck's end heights.
+- **Boats (GL618).** A vessel class is a `VesselClass` row (the water it sails, speed, rest, the hull's measures and
+  fittings, crew and crates); `BoatRuns.Plan(plan, classes, seed)` gives each `WaterRoute` its `BoatRun`s (a river boat
+  on a river route, a sea trader on a sea route, and a route's `NamedVessel` in the class its row names: the *Edmund
+  Fitzgerald* is an `ore-freighter`), and `BoatRun.At(seconds)` is the same `RunPlace` timetable. The plan's routes run
+  through 40 m survey cells, so `WaterLanes.For(route, class, water)` finds the lane on the real `WaterMap` the first
+  time a vessel of a route comes within `MapBoats.showRange`: a grid search inside a corridor round the planned line
+  over cells `WaterLanes.Floats` says float that class (the sea, deep and wide enough; any river water, widened by a
+  cell because streams are one cell wide), a cell by the bank costing more, then smoothed; where the water does not
+  join end to end the vessel plies the longest stretch. `MapBoats` keeps a `Boat` (hull from `BoatMeshes`, hands,
+  crates as real storage loaded by `CargoLoad`, which carts share) for each vessel near the viewer, at most
+  `mostBoats`; far ones are only `MapBoats.PositionOf(run)`, which the world map draws as dots.
+- **Thieves (GL617).** A thieves' camp is a settlement whose type has a `Band` and names its `Residents` occupation:
+  `SettlementLayout` houses the band, `SettlementRoster` makes them residents, and they are `Villager`s like anyone
+  (plus a `Bandit`, the `IToolTarget` that makes a struck thief drop his sack and lie dazed; there is no health). Their
+  duties are rows (`waylay`, `burgle`, `lurk`, with `LootTo`, `Stacks`, `Share`, `Notice`) naming works built on
+  `ThiefWork` (`WaylayWork`, `BurgleWork`, `RobWork`). `ThiefHaunts` reads each camp's ambush (nearest cart path, out
+  of sight of settlements), mark (nearest settlement with shops) and water route off the plan; `Robbery` moves stacks
+  and coins and never makes or loses any. A work may name a far post (`IDutyWork.TryPost`): `SettlementPeople` then
+  puts the band in the world when the viewer is near the post, though the camp is far and unbuilt. `ThievesCamps`
+  keeps each camp's stash (a chest and a `CoinPouch` by the first hut) and the scene's side of a robbery;
+  `MapCarts.HoldFor` and `MapBoats.HoldFor` stop a cart or a vessel, whose timetable slips by as long.
+  `RaiderRuns` gives a camp with water of its own a boat of a `Raider` class; `PirateBoats` sails it on the `pirate`
+  occupation's `prowl` shifts, boards a vessel that passes, and lands the haul in the stash.
 
 ## 7. Where the next systems plug in
 

@@ -1,0 +1,442 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 791bd2f032751fe438513fb5dd86f0c3, type: 3}
+  m_Name: MapGenWorldConfig
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.WorldConfig
+  chunkSize: {x: 16, y: 16, z: 16}
+  worldHeightInChunks: 104
+  sealEdges: 0
+  fixedArea: 0
+  fixedAreaSize: 100
+  voxelSize: 0.25
+  isoLevel: 0.5
+  edgePlacement: 0
+  shading: 0
+  mesher: 0
+  materialDisplay: 2
+  materials: {fileID: 11400000, guid: 115a733b281448b47abfa44225ff27cc, type: 2}
+  storage: 1
+  octreeMaxDepth: 4
+  buildCellSize: 1
+  terrain:
+    generator: 9
+    surfaceLevel: 36
+    amplitude: 110
+    frequency: 0.048485477
+    octaves: 5
+    lacunarity: 2
+    persistence: 0.5
+    shapes:
+    - IsSet: 1
+      SurfaceLevel: 28
+      Amplitude: 13
+      Frequency: 0.048
+      Octaves: 4
+      Lacunarity: 2
+      Persistence: 0.5
+    - IsSet: 1
+      SurfaceLevel: 28
+      Amplitude: 13
+      Frequency: 0.048
+      Octaves: 4
+      Lacunarity: 2
+      Persistence: 0.5
+    - IsSet: 1
+      SurfaceLevel: 28
+      Amplitude: 13
+      Frequency: 0.048
+      Octaves: 4
+      Lacunarity: 2
+      Persistence: 0.5
+    - IsSet: 1
+      SurfaceLevel: 28
+      Amplitude: 13
+      Frequency: 0.048
+      Octaves: 4
+      Lacunarity: 2
+      Persistence: 0.5
+    - IsSet: 1
+      SurfaceLevel: 28
+      Amplitude: 13
+      Frequency: 0.048
+      Octaves: 4
+      Lacunarity: 2
+      Persistence: 0.5
+    - IsSet: 1
+      SurfaceLevel: 28
+      Amplitude: 13
+      Frequency: 0.048
+      Octaves: 4
+      Lacunarity: 2
+      Persistence: 0.5
+    - IsSet: 1
+      SurfaceLevel: 28
+      Amplitude: 13
+      Frequency: 0.048
+      Octaves: 4
+      Lacunarity: 2
+      Persistence: 0.5
+    - IsSet: 1
+      SurfaceLevel: 20
+      Amplitude: 110
+      Frequency: 0.048485477
+      Octaves: 5
+      Lacunarity: 2
+      Persistence: 0.5
+    - IsSet: 1
+      SurfaceLevel: 20
+      Amplitude: 110
+      Frequency: 0.048485477
+      Octaves: 5
+      Lacunarity: 2
+      Persistence: 0.5
+    shapeOwner: 9
+    seed: 1
+    layers:
+      top: {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
+      topDepth: 0.25
+      band: {fileID: 11400000, guid: 0554987880d556d4cafb280d1242eb09, type: 2}
+      bandDepth: 4
+      baseMaterial: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+      steepAngle: 35
+      steepMinHeight: 40
+      baseAboveHeight: 0
+      ridgeDepth: 0.6
+      ridgeWidth: 3.5
+      ridgeLength: 30
+      ridgeFromAngle: 22
+      ridgeFullAngle: 50
+      rock: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+      rockChance: 0.004
+      buriedStoneChance: 0.002
+      clay: {fileID: 11400000, guid: b167c5abf07b4be419155d7e54a546e6, type: 2}
+      clayCellSize: 24
+      clayChance: 0.3
+      clayRadius: 3
+      clayDepth: 0.75
+    ores:
+      cellSize: 16
+      ores:
+      - ore: {fileID: 11400000, guid: fcb47a3195818b0449ad72b166340337, type: 2}
+        nodesPerCell: 1.5
+        minDepth: 0
+        maxDepth: 6
+        peakProbability: 0.6
+        spread: {x: 1.5, y: 1, z: 1.5}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        - {fileID: 11400000, guid: 0554987880d556d4cafb280d1242eb09, type: 2}
+        - {fileID: 11400000, guid: 21aa5aaa953efb74c8960db188f48969, type: 2}
+        priority: 0
+        grade: {x: 0.25, y: 0.55}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents: []
+      - ore: {fileID: 11400000, guid: 7dd4ef8828d011f43bc9ca002487e682, type: 2}
+        nodesPerCell: 1
+        minDepth: 4
+        maxDepth: 16
+        peakProbability: 0.6
+        spread: {x: 1.5, y: 1, z: 1.5}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: 0
+        grade: {x: 0.12, y: 0.3}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents:
+        - Material: {fileID: 11400000, guid: 7cbb344bf40f2c04bad682cdb7df7c8b, type: 2}
+          Min: 0
+          Max: 0.03
+      - ore: {fileID: 11400000, guid: 8d7e9d76247091549940794050b1d237, type: 2}
+        nodesPerCell: 1
+        minDepth: 4
+        maxDepth: 16
+        peakProbability: 0.6
+        spread: {x: 1.5, y: 1, z: 1.5}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: 0
+        grade: {x: 0.24, y: 0.6}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents:
+        - Material: {fileID: 11400000, guid: 7cbb344bf40f2c04bad682cdb7df7c8b, type: 2}
+          Min: 0
+          Max: 0.03
+      - ore: {fileID: 11400000, guid: 7cbb344bf40f2c04bad682cdb7df7c8b, type: 2}
+        nodesPerCell: 1
+        minDepth: 6
+        maxDepth: 20
+        peakProbability: 0.5
+        spread: {x: 1.2, y: 0.8, z: 1.2}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: 1
+        grade: {x: 0.15, y: 0.3}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents: []
+      - ore: {fileID: 11400000, guid: 028349ab45517db4984a7ae07bcf9347, type: 2}
+        nodesPerCell: 0.5
+        minDepth: 8
+        maxDepth: 24
+        peakProbability: 0.45
+        spread: {x: 1, y: 0.8, z: 1}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: 2
+        grade: {x: 0.15, y: 0.3}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents: []
+      - ore: {fileID: 11400000, guid: 11e29b19add5cd0da55692fe04588706, type: 2}
+        nodesPerCell: 0.8
+        minDepth: 6
+        maxDepth: 20
+        peakProbability: 0.55
+        spread: {x: 1.4, y: 1, z: 1.4}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: -1
+        grade: {x: 0.3, y: 0.6}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents: []
+      - ore: {fileID: 11400000, guid: c89eb894a093b3e6439384ad24b93cbf, type: 2}
+        nodesPerCell: 0.6
+        minDepth: 10
+        maxDepth: 26
+        peakProbability: 0.55
+        spread: {x: 1.3, y: 0.9, z: 1.3}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: -1
+        grade: {x: 0.35, y: 0.65}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents: []
+      - ore: {fileID: 11400000, guid: 7c4cc19bae15d8920c81e465114698ad, type: 2}
+        nodesPerCell: 1
+        minDepth: 3
+        maxDepth: 14
+        peakProbability: 0.6
+        spread: {x: 2.2, y: 0.7, z: 2.2}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: -1
+        grade: {x: 0.7, y: 0.95}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents: []
+    trees:
+      cellSize: 10
+      chance: 0.75
+      forestCover: 0.45
+      forestScale: 300
+      fieldChance: 0.03
+      youngestSize: 0.45
+      maxSlope: 12
+      height: {x: 11, y: 16}
+      trunkRadius: 0.25
+      mapleHeight: {x: 14, y: 20}
+      mapleTrunkRadius: 0.4
+      branches: {x: 3, y: 5}
+      minBranchRadius: 0.22
+      leafRadius: {x: 0.55, y: 0.9}
+      wood: {fileID: 11400000, guid: cf152efb35813624a9fcb26da0602f3f, type: 2}
+      leaves: {fileID: 11400000, guid: c3a9464decc6a0d4386f7028c5aa4060, type: 2}
+      mapleWood: {fileID: 11400000, guid: f2efc1bf44f8e3f48bb3f4a5e2c6d017, type: 2}
+      mapleLeaves: {fileID: 11400000, guid: 6a6becb24902ad048ae804ce275d0102, type: 2}
+      mapleShare: 0.35
+      stump: {fileID: 11400000, guid: 952ddae6481d48843915df3131af25ce, type: 2}
+      mapleStump: {fileID: 11400000, guid: d570f35c2c56a2c48a23a8e185f47289, type: 2}
+      stumpHeight: 0.75
+    startArea:
+      enabled: 0
+      min: {x: -32, y: 0}
+      size: 32
+      minTrees: 2
+      clay: 1
+    water:
+      enabled: 1
+      areaSize: 640
+      flowCellSize: 4
+      riverArea: 12000
+      riverWidth: {x: 1.5, y: 6}
+      riverDepth: {x: 0.8, y: 2}
+      riverFill: 0.75
+      lakeMinDepth: 0.6
+      valleyRivers: 1
+      valleyDepth: 0.2
+      valleyHeadArea: 1000
+      soilWater: 0.3
+      holdSoilWaterFull: 1
+      sand: {fileID: 11400000, guid: 3e3ca126ca1953d4ab4c916ecbbec1b1, type: 2}
+      sandDepth: 1.25
+      clayDepth: 1
+      clayFloorDepth: 1
+      shoreSand: 2.5
+      bankClay: 3
+      bankClayCover: 0.55
+    featureSize: 250
+    mountainCoverage: 0.35
+    distantRangeHeight: 1500
+    distantRangeWidth: 5000
+    distantRangeStart: 2500
+    erosion:
+      baseOctaves: 3
+      gullySize: 110
+      strength: 0.15
+      octaves: 5
+      gullyWeight: 0.5
+      detail: 1.5
+      onset: 1.25
+      assumedSlope: 0.7
+      ridgeRounding: 0.1
+      creaseRounding: 0.05
+      peakLift: 0.4
+      minPondArea: 0
+      valleyOctaves: 2
+    heightCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.4
+        value: 0.15
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.8246006
+        value: 0.95385665
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    heightmap: {fileID: 0}
+    heightmapRaw: {fileID: 0}
+    rawIs16Bit: 1
+    heightmapUnitsPerPixel: 1
+    map:
+      size: 5000
+      pickSidesFromSeed: 1
+      sides:
+      - Ocean
+      - Ocean
+      - Ocean
+      - Ocean
+      boundaryTypes:
+      - name: Ocean
+        ocean: 1
+        edgeHeight: -26
+        flatten: 1
+        blendWidth: 260
+        blendPast: 0
+        sharpness: 1
+        wobble: 0
+        roughness: 0
+        temperatureShift: 0
+        moistureShift: 0.12
+        weight: 1
+        range: 0
+        limitDistance: 170
+        limitSoftness: 140
+        limitMessage: The open sea is too cold and its current too strong. Turn back.
+        horizonColor: {r: 0.45, g: 0.45, b: 0.24, a: 1}
+        horizonTint: 0
+      - name: Desert
+        ocean: 0
+        edgeHeight: 6
+        flatten: 1
+        blendWidth: 800
+        blendPast: 0
+        sharpness: 1
+        wobble: 150
+        roughness: 9
+        temperatureShift: 16
+        moistureShift: -1.6
+        weight: 1
+        range: 0
+        limitDistance: 150
+        limitSoftness: 130
+        limitMessage: The deep desert's heat is more than anyone can bear. Turn back.
+        horizonColor: {r: 0.8, g: 0.66, b: 0.4, a: 1}
+        horizonTint: 1
+      - name: Void cliff
+        ocean: 0
+        edgeHeight: -600
+        flatten: 1
+        blendWidth: 30
+        blendPast: 0
+        sharpness: 1
+        wobble: 45
+        roughness: 0
+        temperatureShift: 0
+        moistureShift: 0
+        weight: 0.45
+        range: 0
+        limitDistance: -36
+        limitSoftness: 5
+        limitMessage: The world ends here.
+        horizonColor: {r: 0.06, g: 0.07, b: 0.1, a: 1}
+        horizonTint: 1
+      - name: Mountain ridge
+        ocean: 0
+        edgeHeight: 650
+        flatten: 0
+        blendWidth: 520
+        blendPast: 700
+        sharpness: 1.6
+        wobble: 90
+        roughness: 60
+        temperatureShift: 0
+        moistureShift: 0
+        weight: 1.2
+        range: 1
+        limitDistance: 60
+        limitSoftness: 70
+        limitMessage: The air is too thin and the cold too bitter to climb on. Turn back.
+        horizonColor: {r: 0.44, g: 0.43, b: 0.42, a: 1}
+        horizonTint: 0.8
+      coastHeight: 5
+      inlandRise: 40
+      peakHeight: 320
+      peakRadius: 700
+      waterMargin: 256
+      flowCellSize: 8
+      waterCellSize: 2
+      climate:
+        BaseTemperature: 13
+        LapseRate: 0.045
+        NorthCooling: 4
+        TemperatureNoise: 4
+        RegionSize: 1400
+      biomes: []
