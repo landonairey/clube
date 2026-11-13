@@ -192,8 +192,8 @@ namespace Clube.Core.Tests
                 for (int k = 0; k <= 4; k++)
                 {
                     Vector2 p = Vector2.Lerp(road.Points[i], road.Points[i + 1], k / 4f);
-                    // Rounding the route may shave a corner of it by less than a grid step.
-                    Assert.IsFalse(Closed(p.x - 4f, p.y + 4f) && Closed(p.x + 4f, p.y + 4f), $"on closed ground at {p}");
+                    // Rounding the route may shave a corner of the closed ground, by less than half a grid step.
+                    Assert.IsFalse(Closed(p.x - 4f, p.y - 4f) && Closed(p.x + 4f, p.y - 4f), $"on closed ground at {p}");
                 }
             }
         }
