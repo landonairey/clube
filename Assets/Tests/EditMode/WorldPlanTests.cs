@@ -197,8 +197,8 @@ namespace Clube.Core.Tests
                 Assert.That(settlement.Reasons, Is.Not.Empty, settlement.Name);
                 Assert.That(settlement.Population, Is.InRange(settlement.Type.PopulationMin, settlement.Type.PopulationMax));
             }
-            // Most keep to level ground; only a crowded map makes one give way (and says so in the notes).
-            int level = plan.Settlements.Count(s => survey.Cell(s.Cell.x, s.Cell.y).Flatness >= plan.Rules.MinFlatness);
+            // All keep to ground that is level or can be terraced (GL642); only a crowded map makes one give way (and says so in the notes).
+            int level = plan.Settlements.Count(s => survey.Cell(s.Cell.x, s.Cell.y).Flatness >= plan.Rules.TerraceFlatness);
             Assert.That(level, Is.GreaterThanOrEqualTo(plan.Settlements.Count - plan.Notes.Count(n => n.Contains("no level dry site"))));
         }
 
@@ -261,6 +261,12 @@ namespace Clube.Core.Tests
                     continue;
                 }
                 Assert.That(settlement.BestRoad, Is.GreaterThanOrEqualTo(settlement.Type.MinimumRoad), settlement.Name);
+                if (settlement.RoadNetwork > 0 && plan.RoadsOf(settlement.Index).Count == 0)
+                {
+                    // GL643: the first of a cut-off land needs no road, and the plan says how it is reached.
+                    Assert.That(plan.Notes.Any(note => note.StartsWith(settlement.Name) && note.Contains("reached by water")), settlement.Name);
+                    continue;
+                }
                 // The class it claims is a road that really passes its centre.
                 Assert.That(plan.Roads.Any(road => road.Class == settlement.BestRoad && road.Points.Contains(settlement.Position)), settlement.Name);
             }
@@ -285,7 +291,10 @@ namespace Clube.Core.Tests
         {
             List<PlannedSettlement> onRoads = plan.Settlements.Where(s => s.Type.MinimumRoad != RoadClass.None).ToList();
 
-            Assert.That(Groups(plan.Roads, onRoads), Is.EqualTo(1), "every settlement but the camps is on one network");
+            // GL643: one network on each land; the capital's is number 0.
+            Assert.That(Groups(plan.Roads, onRoads), Is.EqualTo(onRoads.Select(s => s.RoadNetwork).Distinct().Count()), "one network a land");
+            Assert.That(Groups(plan.Roads, onRoads.Where(s => s.RoadNetwork == 0).ToList()), Is.EqualTo(1), "the capital's network is one");
+            Assert.That(onRoads.Where(s => s.RoadNetwork != 0).All(s => s.Land != plan.Capital.Land), "only other lands are cut off");
             List<PlannedRoad> paved = plan.Roads.Where(road => road.Class == RoadClass.PavedCartPath).ToList();
             List<PlannedSettlement> pavedPlaces = onRoads.Where(s => s.Type.MinimumRoad == RoadClass.PavedCartPath).ToList();
             Assert.That(Groups(paved, pavedPlaces), Is.EqualTo(1), "the capital and the cities are joined by paved roads alone");
@@ -428,6 +437,79 @@ namespace Clube.Core.Tests
             Assert.That(MapPicture.RoadColour(RoadClass.DirtCartPath), Is.EqualTo(MapPicture.Dirt));
             Color paved = MapPicture.RoadColour(RoadClass.PavedCartPath);
             Assert.That(Mathf.Abs(paved.r - paved.b), Is.LessThan(0.05f), "stone-grey");
+        }
+
+        // ---- GL643: settlements on every land with resources ----
+
+        [Test]
+        public void EveryIslandOfAChainHasASettlement_ReachedBySeaNotByRoad()
+        {
+            TerrainSettings settings = Settings(6, 3072f, copper, gold);
+            settings.Map.SetShape(MapShapeType.IslandChainName);
+            ResourceSurvey chain = ResourceSurvey.Build(settings);
+            WorldPlan world = WorldPlanner.Build(chain, settings.Seed);
+            UnityEngine.Debug.Log($"Island chain: lands with settlements {string.Join(", ", world.Settlements.GroupBy(s => s.Land).Select(g => $"{g.Key}: {g.Count()}"))}; "
+                + $"networks {world.Settlements.Select(s => s.RoadNetwork).Distinct().Count()}; notes: {string.Join(" | ", world.Notes)}");
+
+            // The pieces of land, as the planner sees them: cells that are not sea, joined through their eight neighbours.
+            int size = chain.Size;
+            var land = new int[size * size];
+            var counts = new List<int> { 0 };
+            for (int i = 0; i < land.Length; i++)
+            {
+                if (land[i] != 0 || chain.Cell(i % size, i / size).Sea >= 0.5f)
+                {
+                    continue;
+                }
+                var open = new Stack<int>();
+                open.Push(i);
+                land[i] = counts.Count;
+                int count = 0;
+                while (open.Count > 0)
+                {
+                    int cell = open.Pop();
+                    count++;
+                    for (int n = 0; n < 9; n++)
+                    {
+                        int x = cell % size + n % 3 - 1, z = cell / size + n / 3 - 1;
+                        if (x >= 0 && z >= 0 && x < size && z < size && land[x + z * size] == 0 && chain.Cell(x, z).Sea < 0.5f)
+                        {
+                            land[x + z * size] = counts.Count;
+                            open.Push(x + z * size);
+                        }
+                    }
+                }
+                counts.Add(count);
+            }
+            PlannedSettlement capital = world.Capital;
+            Assert.That(counts[land[capital.Cell.x + capital.Cell.y * size]], Is.EqualTo(counts.Max()), "the capital stands on the largest land");
+            Assert.That(world.Settlements.Select(s => s.Land).Distinct().Count(), Is.GreaterThan(1), "not only the largest land is settled");
+            for (int id = 1; id < counts.Count; id++)
+            {
+                // A land of a tenth of a square kilometre and more has wood or stone at least: it has resources.
+                if (counts[id] >= 60)
+                {
+                    Assert.That(world.Settlements.Any(s => land[s.Cell.x + s.Cell.y * size] == id), $"land {id} of {counts[id]} cells has a settlement");
+                }
+            }
+            foreach (PlannedSettlement settlement in world.Settlements)
+            {
+                Assert.That(settlement.Land, Is.EqualTo(land[settlement.Cell.x + settlement.Cell.y * size]), settlement.Name);
+                if (settlement.Land == capital.Land)
+                {
+                    continue;
+                }
+                // Cut off: no road leads off its land, and its own land's roads are a network apart.
+                Assert.That(settlement.RoadNetwork, Is.Not.EqualTo(0), settlement.Name);
+                foreach (PlannedRoad road in world.RoadsOf(settlement.Index))
+                {
+                    Assert.That(road.Points.All(p => chain.TryCell(p, out Vector2Int at) && land[at.x + at.y * size] == settlement.Land), "its roads stay on its land");
+                }
+            }
+            List<PlannedSettlement> ports = world.Settlements.Where(s => s.Land != capital.Land && s.IsCoastal && !s.Type.Hostile).ToList();
+            Assert.That(ports, Is.Not.Empty, "an island settlement stands by the sea");
+            Assert.That(ports.Count(port => world.WaterRoutes.Any(route => route.Kind == WaterRouteKind.Sea && route.To == port.Index)),
+                Is.GreaterThanOrEqualTo(ports.Count - 2), "vessels reach the island settlements (a shared harbour serves one route)");
         }
 
         // ---- GL642: the roads on the natural terrain (GL637-GL641) ----

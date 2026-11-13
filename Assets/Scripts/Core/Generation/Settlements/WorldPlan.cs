@@ -22,6 +22,13 @@ namespace Clube.Core
         /// <summary>Its centre (x, z), the middle of its survey cell.</summary>
         public Vector2 Position;
         public Vector2Int Cell;
+        /// <summary>The piece of land it stands on (GL643): settlements with the same number can be walked between.</summary>
+        public int Land;
+        /// <summary>
+        /// The road network it is on (GL643): 0 the capital's, a higher number a network of its own land (an island's, with no
+        /// road to the rest: it is reached by water), -1 for none (camps).
+        /// </summary>
+        public int RoadNetwork = -1;
         /// <summary>Mean ground height at its cell.</summary>
         public float Ground;
         /// <summary>Its name, ending in its type (GL597).</summary>
@@ -168,8 +175,14 @@ namespace Clube.Core
         public float AreaRadius = 900f;
         /// <summary>Side of a land parcel in metres, for the level ground a type needs.</summary>
         public float ParcelSide = 32f;
-        /// <summary>Least flatness (0 to 1) of a site and of its footprint's mean.</summary>
+        /// <summary>The flatness (0 to 1) of ground that counts as level: a settlement there needs no terraces.</summary>
         public float MinFlatness = 0.6f;
+        /// <summary>GL642: least flatness of a site and of its footprint's mean. Below <see cref="MinFlatness"/> the settlement is cut into the slope in terraces (0.2 is a mean slope of 32%).</summary>
+        public float TerraceFlatness = 0.2f;
+        /// <summary>GL643: the fewest survey cells a piece of land other than the largest needs to get a settlement of its own.</summary>
+        public int IslandCells = 6;
+        /// <summary>GL643: land parcels an island must have for each parcel of the settlement type it is given (a village of 4 needs 160: about 400 m square).</summary>
+        public float IslandLandPerParcel = 40f;
         /// <summary>Metres kept from the map's edge.</summary>
         public float EdgeMargin = 120f;
         /// <summary>How far from its centre a settlement's harbour may lie, in metres.</summary>

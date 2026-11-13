@@ -5,9 +5,10 @@ using UnityEngine;
 namespace Clube.Core
 {
     /// <summary>
-    /// Picks the site of every settlement from the resource survey (GL595): each type's count, on level dry ground of the
-    /// main land, kept apart, scored by what lies nearby as its type's <see cref="SiteRule"/> asks. The largest go first, so
-    /// the capital and the cities get the best ground. Each site keeps its reasons, and gets its name (GL597).
+    /// Picks the site of every settlement from the resource survey (GL595): each type's count, on dry ground of any
+    /// land that is level or can be terraced (GL642), kept apart, scored by what lies nearby as its type's <see cref="SiteRule"/> asks. The largest go first, so
+    /// the capital and the cities get the best ground. The capital stands on the largest land; every other piece of land with
+    /// resources gets a settlement of its own first (GL643), then the rest go wherever the resources are richest. Each site keeps its reasons, and gets its name (GL597).
     /// </summary>
     internal sealed class SettlementPlacer
     {
@@ -38,8 +39,8 @@ namespace Clube.Core
             {
                 SurveyCell cell = context.Cells[i];
                 int x = i % size, z = i / size;
-                dry[i] = context.MainLand[i] && cell.Land >= 0.9f && cell.Sea <= 0.01f && cell.FreshWater <= 0.1f
-                    && cell.Flatness >= rules.MinFlatness && x >= margin && z >= margin && x < size - margin && z < size - margin;
+                dry[i] = context.Land[i] != 0 && cell.Land >= 0.9f && cell.Sea <= 0.01f && cell.FreshWater <= 0.1f
+                    && cell.Flatness >= rules.TerraceFlatness && x >= margin && z >= margin && x < size - margin && z < size - margin;
             }
             dryTable = Table(i => dry[i] ? 1f : 0f);
             flatTable = Table(i => context.Cells[i].Flatness);
@@ -57,11 +58,23 @@ namespace Clube.Core
                 return byHostile != 0 ? byHostile : byOcean != 0 ? byOcean : bySize != 0 ? bySize
                     : rules.Types.IndexOf(a).CompareTo(rules.Types.IndexOf(b));
             });
+            var left = new Dictionary<SettlementType, int>();
             foreach (SettlementType type in order)
             {
-                for (int n = 0; n < type.Count; n++)
+                left[type] = type.Count;
+            }
+            bool islandsServed = false;
+            foreach (SettlementType type in order)
+            {
+                if (!type.NeedsOcean && !islandsServed)
                 {
-                    if (!PlaceOne(plan, type))
+                    // After the capital, before the rest: each other land with resources gets its own settlement.
+                    islandsServed = true;
+                    ServeIslands(plan, order, left);
+                }
+                for (int n = type.Count - left[type]; n < type.Count; n++)
+                {
+                    if (!PlaceOne(plan, type, type.NeedsOcean ? context.MainLandId : 0))
                     {
                         plan.Notes.Add($"No site left for {type.Name} {n + 1} of {type.Count}.");
                         break;
@@ -70,7 +83,63 @@ namespace Clube.Core
             }
         }
 
-        private bool PlaceOne(WorldPlan plan, SettlementType type)
+        // GL643: a settlement for every piece of land, other than the largest, that has resources within reach: the largest
+        // type its ground has room for (never one that must have a paved road), by the sea when it can be, so vessels reach it.
+        private void ServeIslands(WorldPlan plan, List<SettlementType> order, Dictionary<SettlementType, int> left)
+        {
+            var lands = new List<int>();
+            for (int land = 1; land < context.LandCells.Length; land++)
+            {
+                if (land != context.MainLandId && context.LandCells[land] >= rules.IslandCells && HasResources(land))
+                {
+                    lands.Add(land);
+                }
+            }
+            lands.Sort((a, b) => context.LandCells[b] != context.LandCells[a] ? context.LandCells[b].CompareTo(context.LandCells[a]) : a.CompareTo(b));
+            foreach (int land in lands)
+            {
+                float parcels = context.LandCells[land] * context.CellSize * context.CellSize / (rules.ParcelSide * rules.ParcelSide);
+                foreach (SettlementType type in order)
+                {
+                    if (type.Hostile || type.NeedsOcean || type.MinimumRoad == RoadClass.PavedCartPath || left[type] <= 0
+                        || type.Parcels * rules.IslandLandPerParcel > parcels)
+                    {
+                        continue;
+                    }
+                    if (PlaceOne(plan, type, land, true) || PlaceOne(plan, type, land))
+                    {
+                        left[type]--;
+                        PlannedSettlement placed = plan.Settlements[plan.Settlements.Count - 1];
+                        placed.Reasons.Add("The settlement of its island: every land with resources has one.");
+                        break;
+                    }
+                }
+            }
+        }
+
+        private bool HasResources(int land)
+        {
+            foreach (int r in context.TypeResources)
+            {
+                if (r == freshWater)
+                {
+                    continue;
+                }
+                float[] richness = context.Reach.Richness(r, context.NearCells);
+                for (int i = 0; i < richness.Length; i++)
+                {
+                    if (context.Land[i] == land && richness[i] > 0f)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /// <param name="land">The piece of land it must stand on, or 0 for any.</param>
+        /// <param name="byTheSea">True to take only sites with the sea within reach, whatever the type.</param>
+        private bool PlaceOne(WorldPlan plan, SettlementType type, int land = 0, bool byTheSea = false)
         {
             int footprint = Mathf.Max(0, Mathf.CeilToInt(
                 (Mathf.Sqrt(type.Parcels) * rules.ParcelSide * 0.5f - context.CellSize * 0.5f) / context.CellSize));
@@ -96,13 +165,17 @@ namespace Clube.Core
                 float bestScore = float.NegativeInfinity;
                 for (int i = 0; i < dry.Length; i++)
                 {
-                    if (!(anyGround ? context.MainLand[i] && context.Cells[i].Land >= 0.6f && context.Cells[i].FreshWater <= 0.3f : dry[i]))
+                    if (land != 0 && context.Land[i] != land)
+                    {
+                        continue;
+                    }
+                    if (!(anyGround ? context.Land[i] != 0 && context.Cells[i].Land >= 0.6f && context.Cells[i].FreshWater <= 0.3f : dry[i]))
                     {
                         continue;
                     }
                     int x = i % size, z = i / size;
                     if (!anyGround && footprint > 0
-                        && (Mean(dryTable, x, z, footprint) < 0.8f || Mean(flatTable, x, z, footprint) < rules.MinFlatness * 0.9f))
+                        && (Mean(dryTable, x, z, footprint) < 0.8f || Mean(flatTable, x, z, footprint) < rules.TerraceFlatness))
                     {
                         continue;
                     }
@@ -110,7 +183,7 @@ namespace Clube.Core
                     {
                         continue;
                     }
-                    if (type.NeedsOcean && attempt < 13 && context.NearestCell(new Vector2Int(x, z), coastReach, context.IsSea) < 0)
+                    if ((byTheSea || (type.NeedsOcean && attempt < 13)) && context.NearestCell(new Vector2Int(x, z), coastReach, context.IsSea) < 0)
                     {
                         continue;
                     }
@@ -220,7 +293,7 @@ namespace Clube.Core
             var at = new Vector2Int(cell % size, cell / size);
             var settlement = new PlannedSettlement
             {
-                Index = plan.Settlements.Count, Type = type, Cell = at, Position = context.Centre(cell), Ground = context.Cells[cell].Height,
+                Index = plan.Settlements.Count, Type = type, Cell = at, Land = context.Land[cell], Position = context.Centre(cell), Ground = context.Cells[cell].Height,
                 Name = SettlementNames.Generate(context.Seed, at, type.Name, names),
                 Population = type.PopulationMin
                     + Mathf.FloorToInt(context.Hash01(cell, 3, 5) * (type.PopulationMax - type.PopulationMin + 1)),

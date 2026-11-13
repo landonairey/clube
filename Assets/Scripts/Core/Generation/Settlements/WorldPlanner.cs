@@ -63,7 +63,7 @@ namespace Clube.Core
                 foreach (PlannedSettlement other in plan.Settlements)
                 {
                     bool has = context.Reach.Richness(r, context.ReachOf(other.Type))[other.Cell.x + other.Cell.y * context.Size] > 0f;
-                    if (has && other.BestRoad != RoadClass.None
+                    if (has && other.RoadNetwork == 0
                         && (source == null || (other.Position - capital.Position).sqrMagnitude < (source.Position - capital.Position).sqrMagnitude))
                     {
                         source = other;

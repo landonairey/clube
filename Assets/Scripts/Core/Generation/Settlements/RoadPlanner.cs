@@ -7,7 +7,9 @@ namespace Clube.Core
     /// Lays the road network over the survey's cells (GL596): the cheapest way by slope and water, class by class. Paved
     /// roads first, from the capital out to the cities and its nearest towns; then dirt cart paths from the towns and
     /// villages; then footpaths from the outposts. Each new road runs from its settlement to the nearest point of the
-    /// network laid so far, so the whole is one connected network. Camps get no paths.
+    /// network laid so far, so the whole is one connected network. Camps get no paths. A settlement with no way by land to
+    /// the network (on an island, GL643) needs no road: it starts a network of its own land, which later settlements of
+    /// that land join, and is reached by water.
     /// </summary>
     /// <remarks>
     /// A step steeper than the class allows is not forbidden but costs so much that a road only takes it where there is
@@ -21,6 +23,8 @@ namespace Clube.Core
         private readonly RoadClass[] network;
         private readonly int[] roadAt;
         private readonly int[] settlementAt;
+        private readonly int[] networkAt;
+        private int networks = 1;
 
         public RoadPlanner(PlanContext context)
         {
@@ -29,6 +33,7 @@ namespace Clube.Core
             network = new RoadClass[count];
             roadAt = new int[count];
             settlementAt = new int[count];
+            networkAt = new int[count];
             for (int i = 0; i < count; i++)
             {
                 roadAt[i] = -1;
@@ -85,6 +90,7 @@ namespace Clube.Core
             foreach (PlannedSettlement settlement in onRoads)
             {
                 settlement.BestRoad = network[CellOf(settlement)];
+                settlement.RoadNetwork = networkAt[CellOf(settlement)];
             }
         }
 
@@ -100,7 +106,10 @@ namespace Clube.Core
             int goal = context.Search(start, (from, to, metres) => StepCost(definition, from, to, metres), cell => network[cell] >= roadClass);
             if (goal < 0)
             {
-                plan.Notes.Add($"{settlement.Name}: no way by land to the road network.");
+                // GL643: it needs no road. Its land's later settlements join it, as a network of their own.
+                network[start] = roadClass;
+                networkAt[start] = networks++;
+                plan.Notes.Add($"{settlement.Name}: no way by land to the road network; it is reached by water.");
                 return;
             }
             List<int> cells = context.PathTo(goal);
@@ -141,6 +150,7 @@ namespace Clube.Core
                 {
                     network[cell] = roadClass;
                     roadAt[cell] = road.Index;
+                    networkAt[cell] = networkAt[goal];
                 }
             }
             plan.Roads.Add(road);

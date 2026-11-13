@@ -49,7 +49,14 @@ namespace Clube.Core
             heap = new int[Size * Size];
             heapAt = new int[Size * Size];
             Parent = new int[Size * Size];
-            MainLand = LargestLand();
+            Land = Lands(out int main, out int[] counts);
+            MainLandId = main;
+            LandCells = counts;
+            MainLand = new bool[Size * Size];
+            for (int i = 0; i < MainLand.Length; i++)
+            {
+                MainLand[i] = main != 0 && Land[i] == main;
+            }
         }
 
         public ResourceSurvey Survey { get; }
@@ -69,6 +76,12 @@ namespace Clube.Core
         public List<int> TypeResources { get; } = new List<int>();
         /// <summary>True for the cells of the largest piece of land: everything there can be reached on foot.</summary>
         public bool[] MainLand { get; }
+        /// <summary>The piece of land each cell belongs to (GL643), from 1; 0 for the sea. Cells of one piece can be walked between.</summary>
+        public int[] Land { get; }
+        /// <summary>The largest piece of land's number in <see cref="Land"/>; 0 on a map with no land.</summary>
+        public int MainLandId { get; }
+        /// <summary>How many cells each piece of land has, by its number (index 0 unused).</summary>
+        public int[] LandCells { get; }
         /// <summary>After <see cref="Search"/>: the cell each reached cell was come to from (the start points to itself).</summary>
         public int[] Parent { get; }
 
@@ -190,10 +203,12 @@ namespace Clube.Core
             return path;
         }
 
-        private bool[] LargestLand()
+        private int[] Lands(out int best, out int[] counts)
         {
             var group = new int[Size * Size];
-            int best = 0, bestCount = 0, groups = 0;
+            var sizes = new List<int> { 0 };
+            int bestCount = 0, groups = 0;
+            best = 0;
             var open = new Stack<int>();
             for (int i = 0; i < group.Length; i++)
             {
@@ -221,18 +236,15 @@ namespace Clube.Core
                         open.Push(nx + nz * Size);
                     }
                 }
+                sizes.Add(count);
                 if (count > bestCount)
                 {
                     bestCount = count;
                     best = groups;
                 }
             }
-            var main = new bool[group.Length];
-            for (int i = 0; i < main.Length; i++)
-            {
-                main[i] = best != 0 && group[i] == best;
-            }
-            return main;
+            counts = sizes.ToArray();
+            return group;
         }
 
         // A binary heap of cells by cost, with each cell's place kept so a cheaper cost moves it up.
