@@ -34,7 +34,7 @@ namespace Clube.Game
             Disposition = disposition;
             Disposition.Changed += Reprice;
             Reprice();
-            gameObject.AddComponent<KeeperFigure>().BuildAdventurer(material, seed);
+            gameObject.AddComponent<FigureRig>().Build(FigurePreset.Adventurer, material, seed);
         }
 
         private void Reprice()
