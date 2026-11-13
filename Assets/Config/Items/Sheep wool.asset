@@ -15,9 +15,12 @@ MonoBehaviour:
   id: sheep-wool
   displayName: Sheep wool
   icon: {fileID: 2800000, guid: 04f9ba53f0b7bfa4fb4860e1258be9ea, type: 3}
+  iconShape: 12
+  iconTint: {r: 0.84, g: 0.82, b: 0.77, a: 1}
   maxStack: 64
   unitVolume: 1
   burnSeconds: 0
   fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0

@@ -15,9 +15,12 @@ MonoBehaviour:
   id: crushed-magnetite
   displayName: Crushed magnetite
   icon: {fileID: 2800000, guid: 90bc2153fe05bb7459403a7af449d222, type: 3}
+  iconShape: 4
+  iconTint: {r: 1, g: 1, b: 1, a: 1}
   maxStack: 256
   unitVolume: 1
   burnSeconds: 0
   fuelQuality: 1
   purityAs: {fileID: 11400000, guid: eb884b9f1a537401528a6b54933c4438, type: 2}
   hidesContents: 0
+  dropForm: 0

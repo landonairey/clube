@@ -15,8 +15,12 @@ MonoBehaviour:
   id: crushed-chalcopyrite
   displayName: Crushed chalcopyrite
   icon: {fileID: 2800000, guid: 61aa9919ee6e40c4e98fba5d2ae2dc68, type: 3}
+  iconShape: 4
+  iconTint: {r: 1, g: 1, b: 1, a: 1}
   maxStack: 256
   unitVolume: 1
   burnSeconds: 0
+  fuelQuality: 1
   purityAs: {fileID: 11400000, guid: 9feabda89ca47d5479fc62960a078576, type: 2}
   hidesContents: 0
+  dropForm: 0

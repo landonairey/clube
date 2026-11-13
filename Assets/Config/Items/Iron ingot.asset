@@ -15,9 +15,12 @@ MonoBehaviour:
   id: iron-ingot
   displayName: Iron ingot
   icon: {fileID: 2800000, guid: ec41cef84a8cc3443941e1c563e83e33, type: 3}
+  iconShape: 8
+  iconTint: {r: 0.41, g: 0.42, b: 0.46, a: 1}
   maxStack: 100
   unitVolume: 0.4
   burnSeconds: 0
   fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0

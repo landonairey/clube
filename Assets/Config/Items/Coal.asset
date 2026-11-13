@@ -14,10 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
   id: coal
   displayName: Coal
-  icon: {fileID: 2800000, guid: 78410fa0ba4000044a85b27b82716566, type: 3}
+  icon: {fileID: 2800000, guid: 3fd6a53cf35e85a43a98bb8e7971e868, type: 3}
+  iconShape: 0
+  iconTint: {r: 1, g: 1, b: 1, a: 1}
   maxStack: 256
   unitVolume: 1
   burnSeconds: 120
   fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0

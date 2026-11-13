@@ -21,6 +21,14 @@ namespace Clube.Core
         [SerializeField]
         private Texture2D icon;
 
+        [Tooltip("What the icon is a picture of (GL612): icons are rendered from low-poly models (Clube > Items > Bake icons from models). Auto picks by kind: a tool or placeable is its model, a material's drop a chunk or mound of it. Painted keeps the picture above as it is.")]
+        [SerializeField]
+        private ItemIconShape iconShape = ItemIconShape.Auto;
+
+        [Tooltip("The colour of the icon's model (GL612), for an item that is no material's drop (an ingot, a hide); a material's drop wears the material's texture, and this tints it.")]
+        [SerializeField]
+        private Color iconTint = Color.white;
+
         [Tooltip("Most of it one inventory slot holds (GL6). 1 for tools.")]
         [SerializeField, Min(1)]
         private int maxStack = 64;
@@ -107,6 +115,20 @@ namespace Clube.Core
         public string DisplayName => displayName;
 
         public Texture2D Icon => icon;
+
+        /// <summary>What the icon is a picture of (GL612); <see cref="ItemIconShapes.Resolve"/> settles Auto.</summary>
+        public ItemIconShape IconShape => iconShape;
+
+        /// <summary>The colour of the icon's model (GL612), or the tint over its material's texture.</summary>
+        public Color IconTint => iconTint;
+
+        /// <summary>Sets the icon's shape and tint, for items made in code (tests).</summary>
+        public ItemDefinition WithIcon(ItemIconShape shape, Color? tint = null)
+        {
+            iconShape = shape;
+            iconTint = tint ?? iconTint;
+            return this;
+        }
 
         /// <summary>Most of it one inventory slot holds (GL6).</summary>
         public int MaxStack => maxStack;

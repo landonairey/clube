@@ -6,6 +6,8 @@ using UnityEngine;
 namespace Clube.Debug.Editor
 {
     /// <summary>
+    /// Superseded by <see cref="ItemIconBaker"/> (GL612), which renders icons from the 3D models; this still paints
+    /// the few items whose <see cref="ItemDefinition.IconShape"/> is Painted (coffee, the sleeping roll, "? ore").
     /// Paints stand-in icons (GL7, GL31, GL39), until real art exists: the pickaxe and shovel, the copper bun (a rough dome,
     /// as a smelt leaves it), the copper ingot (a bar seen from above at an angle), wood (a log
     /// end-on, with its rings) and leaves (one leaf). <i>Clube → Items → Generate icons</i> writes them to
@@ -99,6 +101,13 @@ namespace Clube.Debug.Editor
 
         private static void Write(string file, string item, Texture2D texture)
         {
+            // GL612: icons are baked from models now (ItemIconBaker); only an item set to Painted keeps a picture from here.
+            var modelled = AssetDatabase.LoadAssetAtPath<ItemDefinition>($"{ItemFolder}/{item}.asset");
+            if (modelled != null && modelled.IconShape != ItemIconShape.Painted)
+            {
+                Object.DestroyImmediate(texture);
+                return;
+            }
             string path = $"{Folder}/{file}.png";
             File.WriteAllBytes(path, texture.EncodeToPNG());
             Object.DestroyImmediate(texture);

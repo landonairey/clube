@@ -15,9 +15,12 @@ MonoBehaviour:
   id: goat-wool
   displayName: Goat wool
   icon: {fileID: 2800000, guid: 64edb27e9ffe6f646a7e729651d3f475, type: 3}
+  iconShape: 12
+  iconTint: {r: 0.73, g: 0.7, b: 0.63, a: 1}
   maxStack: 64
   unitVolume: 1
   burnSeconds: 0
   fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0

@@ -15,9 +15,12 @@ MonoBehaviour:
   id: steel-ingot
   displayName: Steel ingot
   icon: {fileID: 2800000, guid: b1148211d12f9ad4e9f137808f2e1d14, type: 3}
+  iconShape: 8
+  iconTint: {r: 0.58, g: 0.62, b: 0.68, a: 1}
   maxStack: 32
   unitVolume: 0.4
   burnSeconds: 0
   fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0

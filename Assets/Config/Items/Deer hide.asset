@@ -15,9 +15,12 @@ MonoBehaviour:
   id: deer-hide
   displayName: Deer hide
   icon: {fileID: 2800000, guid: e4b58fe14dd354143ba34cc9a8266942, type: 3}
+  iconShape: 11
+  iconTint: {r: 0.7, g: 0.54, b: 0.38, a: 1}
   maxStack: 64
   unitVolume: 1
   burnSeconds: 0
   fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0
