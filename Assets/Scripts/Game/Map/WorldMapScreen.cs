@@ -9,7 +9,8 @@ namespace Clube.Game
     /// <summary>
     /// The world map (GL599), a player screen on M: the scene's bounded map (<see cref="MapSession"/>) as a picture of
     /// its terrain, biomes and water (<see cref="MapPicture"/>, drawn once per map), with each side's boundary kind,
-    /// the roads by class, the water routes, every settlement's icon (<see cref="MapIcons"/>) and name, and the player.
+    /// the roads in three line types and the water routes (<see cref="MapPicture.RoadStyle"/>), bridges, every settlement's
+    /// icon (<see cref="MapIcons"/>) with its name below, the player, and a legend of them all (<see cref="MapLegend"/>, GL635).
     /// The wheel zooms on the pointer and a drag pans. The lab layer adds a resource of the survey and, under the
     /// pointer, why a site and its shops were picked (ST7). In a scene with no map session the key does nothing.
     /// </summary>
@@ -42,7 +43,11 @@ namespace Clube.Game
         private Vector2 centre = new Vector2(0.5f, 0.5f);
         private Rect view;
         private int openedFrame = -1;
-        private GUIStyle nameStyle, noteStyle, sideStyle;
+        private GUIStyle nameStyle, smallNameStyle, noteStyle, sideStyle, legendStyle;
+        private List<MapLegendRow> legend;
+        private Rect legendBox;
+        // What lines are cut to: the map frame, or the whole screen for the legend.
+        private Rect clip;
 
         public bool IsOpen { get; private set; }
 
@@ -169,6 +174,7 @@ namespace Clube.Game
             picture.Apply(false);
             pictureVersion = session.Version;
             resources = SurveyResource.For(session.Survey);
+            legend = MapLegend.For(session.Plan);
             resourceBuilt = -2;
             resourceShown = Mathf.Min(resourceShown, resources.Count - 1);
             zoom = 1f;
@@ -184,6 +190,8 @@ namespace Clube.Game
             }
             nameStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter, fontSize = GameUi.Font(14), fontStyle = FontStyle.Bold, wordWrap = false };
             nameStyle.normal.textColor = Color.white;
+            smallNameStyle = new GUIStyle(nameStyle) { fontSize = GameUi.Font(11), fontStyle = FontStyle.Normal };
+            legendStyle = new GUIStyle(nameStyle) { alignment = TextAnchor.MiddleLeft, fontSize = GameUi.Font(13), fontStyle = FontStyle.Normal };
             sideStyle = new GUIStyle(nameStyle) { alignment = TextAnchor.MiddleCenter, fontSize = GameUi.Font(16) };
             noteStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperLeft, fontSize = GameUi.Font(13), wordWrap = true };
             noteStyle.normal.textColor = Color.white;
@@ -238,12 +246,19 @@ namespace Clube.Game
             float span = 1f / zoom;
             GUI.DrawTextureWithTexCoords(view, picture, new Rect(centre.x - span * 0.5f, centre.y - span * 0.5f, span, span));
 
+            float ui = GameUi.Font(100) / 100f;
+            legendBox = MapLegend.Place(view, legend.Count, Screen.width, ui);
+            GUI.color = new Color(0f, 0f, 0f, 0.7f);
+            GUI.DrawTexture(legendBox, Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
             if (Event.current.type == EventType.Repaint)
             {
-                DrawShapes(session, area);
+                DrawShapes(session, area, ui);
             }
             DrawSides(session);
             PlannedSettlement hovered = DrawNames(session, area);
+            DrawLegendLabels(ui);
             DrawNotes(session, hovered);
         }
 
@@ -271,7 +286,7 @@ namespace Clube.Game
 
         // ---- Shapes: roads, routes, icons, the player, drawn with GL over the picture ----
 
-        private void DrawShapes(MapSession session, Rect area)
+        private void DrawShapes(MapSession session, Rect area, float ui)
         {
             if (shapes == null)
             {
@@ -287,6 +302,7 @@ namespace Clube.Game
             GL.LoadPixelMatrix(0f, Screen.width, Screen.height, 0f);
             GL.Begin(GL.TRIANGLES);
             float scale = view.width / 750f;
+            clip = view;
 
             if (labLayer)
             {
@@ -294,25 +310,33 @@ namespace Clube.Game
             }
             foreach (WaterRoute route in session.Plan.WaterRoutes)
             {
-                Path(area, route.Points, 1.2f * scale, MapPicture.RouteColour(route.Kind), 6f * scale);
+                Path(area, route.Points, MapPicture.RouteStyle(route.Kind), scale, false);
             }
+            // Roads by class, the smallest first so the larger lie on top; a cased class draws its dark edges first.
+            float grow = scale * Mathf.Lerp(1f, 2f, (zoom - 1f) / (MaxZoom - 1f));
             for (RoadClass roadClass = RoadClass.Footpath; roadClass <= RoadClass.PavedCartPath; roadClass++)
             {
-                foreach (PlannedRoad road in session.Plan.Roads)
+                MapLineStyle style = MapPicture.RoadStyle(roadClass);
+                for (int pass = style.Casing > 0f ? 0 : 1; pass < 2; pass++)
                 {
-                    if (road.Class != roadClass)
+                    foreach (PlannedRoad road in session.Plan.Roads)
                     {
-                        continue;
-                    }
-                    float width = MapPicture.RoadWidth(roadClass) * scale * Mathf.Lerp(1f, 2f, (zoom - 1f) / (MaxZoom - 1f));
-                    Path(area, road.Points, width, MapPicture.RoadColour(roadClass), 0f);
-                    foreach (Clube.Core.RoadBridge bridge in road.Bridges)
-                    {
-                        Vector2 at = ToScreen(area, bridge.Position);
-                        if (view.Contains(at))
+                        if (road.Class == roadClass)
                         {
-                            Quad(at, width + 2f * scale, MapPicture.Bridge);
+                            Path(area, road.Points, style, grow, pass == 0);
                         }
+                    }
+                }
+            }
+            // Bridges over every road, so a crossing is never hidden under a line.
+            foreach (PlannedRoad road in session.Plan.Roads)
+            {
+                foreach (Clube.Core.RoadBridge bridge in road.Bridges)
+                {
+                    Vector2 at = ToScreen(area, bridge.Position);
+                    if (view.Contains(at))
+                    {
+                        BridgeMark(at, MapPicture.RoadStyle(road.Class).Width * grow, scale);
                     }
                 }
             }
@@ -329,6 +353,8 @@ namespace Clube.Game
                 Shape(icon, at, size, 0f, MapPicture.SettlementColour(settlement.Type));
             }
             DrawPlayer(session, area, scale);
+            clip = new Rect(0f, 0f, Screen.width, Screen.height);
+            DrawLegendSymbols(scale, ui);
             GL.End();
             GL.PopMatrix();
         }
@@ -401,45 +427,122 @@ namespace Clube.Game
             }
         }
 
-        private void Path(Rect area, List<Vector2> points, float width, Color colour, float dash)
+        // A route in its line type; the casing pass draws only the dark edges of a cased type.
+        private void Path(Rect area, List<Vector2> points, MapLineStyle style, float grow, bool casing)
         {
-            GL.Color(colour);
             float drawn = 0f;
             for (int i = 1; i < points.Count; i++)
             {
-                Vector2 from = ToScreen(area, points[i - 1]), to = ToScreen(area, points[i]);
-                float length = Vector2.Distance(from, to);
-                if (length < 0.01f)
-                {
-                    continue;
-                }
-                if (dash <= 0f)
-                {
-                    Segment(from, to, width);
-                }
-                else
-                {
-                    // Dashes keep their phase along the whole path.
-                    for (float d = -(drawn % (2f * dash)); d < length; d += 2f * dash)
-                    {
-                        float a = Mathf.Max(0f, d), b = Mathf.Min(length, d + dash);
-                        if (b > a)
-                        {
-                            Segment(Vector2.Lerp(from, to, a / length), Vector2.Lerp(from, to, b / length), width);
-                        }
-                    }
-                }
-                drawn += length;
+                Stroke(ToScreen(area, points[i - 1]), ToScreen(area, points[i]), style, grow, casing, ref drawn);
             }
         }
 
-        // A thick line, cut to the map's frame (Liang-Barsky).
+        // One straight piece of a route (screen pixels); dashes keep their phase along the whole route through drawn.
+        private void Stroke(Vector2 from, Vector2 to, MapLineStyle style, float grow, bool casing, ref float drawn)
+        {
+            float length = Vector2.Distance(from, to);
+            if (length < 0.01f)
+            {
+                return;
+            }
+            if (casing)
+            {
+                GL.Color(MapPicture.Casing);
+                Segment(from, to, (style.Width + 2f * style.Casing) * grow);
+                return;
+            }
+            GL.Color(style.Colour);
+            float width = style.Width * grow;
+            if (!style.IsDashed)
+            {
+                Segment(from, to, width);
+            }
+            else
+            {
+                float dash = style.Dash * grow, period = dash + style.Gap * grow;
+                for (float d = -(drawn % period); d < length; d += period)
+                {
+                    float a = Mathf.Max(0f, d), b = Mathf.Min(length, d + dash);
+                    if (b > a)
+                    {
+                        Segment(Vector2.Lerp(from, to, a / length), Vector2.Lerp(from, to, b / length), width);
+                    }
+                }
+            }
+            drawn += length;
+        }
+
+        // A bridge: a white block wider than its road, edged dark.
+        private static void BridgeMark(Vector2 at, float roadWidth, float scale)
+        {
+            Quad(at, roadWidth + 5f * scale, MapPicture.Casing);
+            Quad(at, roadWidth + 2.5f * scale, MapPicture.Bridge);
+        }
+
+        // ---- The legend: each row's symbol drawn the way the map draws it ----
+
+        private Rect LegendRow(int index, float ui)
+        {
+            return new Rect(legendBox.x + 6f, legendBox.y + 6f + index * MapLegend.RowHeight * ui, legendBox.width - 12f, MapLegend.RowHeight * ui);
+        }
+
+        private void DrawLegendSymbols(float scale, float ui)
+        {
+            for (int i = 0; i < legend.Count; i++)
+            {
+                MapLegendRow row = legend[i];
+                Rect rect = LegendRow(i, ui);
+                var mid = new Vector2(rect.x + MapLegend.SymbolWidth * ui * 0.5f, rect.center.y);
+                var reach = new Vector2(MapLegend.SymbolWidth * ui * 0.42f, 0f);
+                float drawn = 0f;
+                switch (row.Symbol)
+                {
+                    case MapLegendSymbol.Line:
+                    case MapLegendSymbol.Bridge:
+                        if (row.Line.Casing > 0f)
+                        {
+                            Stroke(mid - reach, mid + reach, row.Line, scale, true, ref drawn);
+                        }
+                        Stroke(mid - reach, mid + reach, row.Line, scale, false, ref drawn);
+                        if (row.Symbol == MapLegendSymbol.Bridge)
+                        {
+                            BridgeMark(mid, row.Line.Width * scale, scale);
+                        }
+                        break;
+                    case MapLegendSymbol.Swatch:
+                        Quad(mid, 14f * ui + 2f, MapPicture.Casing);
+                        Quad(mid, 14f * ui, row.Colour);
+                        break;
+                    case MapLegendSymbol.Icon:
+                        Vector2[] icon = MapIcons.Triangles(row.Type.Icon);
+                        Shape(icon, mid, 7f * ui + 2f, 0f, Color.black);
+                        Shape(icon, mid, 7f * ui, 0f, MapPicture.SettlementColour(row.Type));
+                        break;
+                    case MapLegendSymbol.Player:
+                        Shape(Arrow, mid, 8f * ui, 0f, Color.black);
+                        Shape(Arrow, mid, 6f * ui, 0f, new Color(1f, 0.25f, 0.2f));
+                        break;
+                }
+            }
+        }
+
+        private void DrawLegendLabels(float ui)
+        {
+            for (int i = 0; i < legend.Count; i++)
+            {
+                Rect rect = LegendRow(i, ui);
+                rect.xMin += MapLegend.SymbolWidth * ui + 4f;
+                GUI.Label(rect, legend[i].Label, legendStyle);
+            }
+        }
+
+        // A thick line, cut to the clip rectangle (Liang-Barsky).
         private void Segment(Vector2 from, Vector2 to, float width)
         {
             float t0 = 0f, t1 = 1f;
             Vector2 d = to - from;
-            if (!Clip(-d.x, from.x - view.xMin, ref t0, ref t1) || !Clip(d.x, view.xMax - from.x, ref t0, ref t1)
-                || !Clip(-d.y, from.y - view.yMin, ref t0, ref t1) || !Clip(d.y, view.yMax - from.y, ref t0, ref t1))
+            if (!Clip(-d.x, from.x - clip.xMin, ref t0, ref t1) || !Clip(d.x, clip.xMax - from.x, ref t0, ref t1)
+                || !Clip(-d.y, from.y - clip.yMin, ref t0, ref t1) || !Clip(d.y, clip.yMax - from.y, ref t0, ref t1))
             {
                 return;
             }
@@ -541,11 +644,9 @@ namespace Clube.Game
                     nearest = distance;
                     hovered = settlement;
                 }
-                // The smallest places are named once zoomed in, so the whole map stays readable.
-                if (settlement.Type.Parcels >= 4f || zoom >= 2f)
-                {
-                    GameUi.OutlinedLabel(new Rect(at.x - 120f, at.y + size + 1f, 240f, 22f), settlement.Name, nameStyle);
-                }
+                // Every place is named under its icon; the smallest in smaller letters until zoomed in, so the whole map stays readable.
+                bool small = settlement.Type.Parcels < 4f && zoom < 2f;
+                GameUi.OutlinedLabel(new Rect(at.x - 120f, at.y + size + 1f, 240f, 22f), settlement.Name, small ? smallNameStyle : nameStyle);
             }
             return hovered;
         }

@@ -102,6 +102,33 @@ namespace Clube.Core
             return roadClass == RoadClass.PavedCartPath ? 3f : roadClass == RoadClass.DirtCartPath ? 2.6f : 1f;
         }
 
+        /// <summary>The dark edge of a cased line (<see cref="MapLineStyle.Casing"/>) and of the map's symbols.</summary>
+        public static readonly Color Casing = new Color(0.1f, 0.08f, 0.06f);
+
+        /// <summary>
+        /// How a road class is drawn on the world map (GL635), three line types told apart without their colour: the
+        /// walking path a thin dotted line, the dirt cart path a solid brown one, the paved cart path a wide pale line
+        /// between dark edges.
+        /// </summary>
+        public static MapLineStyle RoadStyle(RoadClass roadClass)
+        {
+            switch (roadClass)
+            {
+                case RoadClass.PavedCartPath:
+                    return new MapLineStyle("Paved cart path", Cobble, RoadWidth(roadClass), casing: 1f);
+                case RoadClass.DirtCartPath:
+                    return new MapLineStyle("Dirt cart path", Dirt, RoadWidth(roadClass));
+                default:
+                    return new MapLineStyle("Walking path", Dirt, 1.7f, dash: 2.4f, gap: 2.6f);
+            }
+        }
+
+        /// <summary>How a water route is drawn on the world map: long dashes, white at sea and cyan on a river.</summary>
+        public static MapLineStyle RouteStyle(WaterRouteKind kind)
+        {
+            return new MapLineStyle(kind == WaterRouteKind.Sea ? "Sea route" : "River route", RouteColour(kind), 1.2f, dash: 6f, gap: 6f);
+        }
+
         /// <summary>A water route's colour: white at sea, cyan on a river.</summary>
         public static Color RouteColour(WaterRouteKind kind)
         {
