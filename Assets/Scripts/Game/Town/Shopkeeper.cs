@@ -52,10 +52,7 @@ namespace Clube.Game
         }
 
         private ShopSpecialty shop;
-        private PriceList prices;
-        private List<ItemPrice> offers;
-        private PriceList fairPrices;
-        private List<ItemPrice> fairOffers;
+        private ShopTrade trade;
         private ShopHours hours;
         private DayNightCycle clock;
         private TownContext town;
@@ -74,8 +71,6 @@ namespace Clube.Game
         private bool placed;
         private bool sweeping;
         private float lastHour;
-        private float dailyCoins;
-        private int purseDay;
 
         /// <summary>The shop this keeper keeps.</summary>
         public ShopSpecialty Shop => shop;
@@ -100,42 +95,16 @@ namespace Clube.Game
             this.hours = hours;
             this.clock = clock;
             this.town = town;
-            this.dailyCoins = dailyCoins;
-            Purse = new Wallet(dailyCoins);
-            purseDay = clock != null ? clock.Day : 0;
-            fairPrices = shop.BuyingPrices(master);
-            fairOffers = shop.Offers(master);
-            Disposition = disposition ?? new Disposition();
-            Disposition.Changed += Reprice;
-            Reprice();
+            trade = new ShopTrade(shop, master, dailyCoins, clock != null ? clock.Day : 0, disposition);
             plot = TownLayout.PlotOf(shop.Kind);
             chores = TownLayout.ChoresOf(shop.Kind);
             figure = gameObject.AddComponent<FigureRig>();
             figure.Build(shop.Kind, material, seed);
         }
 
-        // The prices for the disposition (GL471): a point of markup on what they sell and a point off what they pay for each
-        // point under 100.
-        private void Reprice()
-        {
-            if (prices != null && prices != fairPrices)
-            {
-                Destroy(prices);
-            }
-            prices = fairPrices.Scaled(Disposition.PayShare);
-            offers = new List<ItemPrice>(fairOffers.Count);
-            foreach (ItemPrice offer in fairOffers)
-            {
-                offers.Add(new ItemPrice(offer.Item, Disposition.SellingPrice(offer.Coins), offer.Units, offer.ByVolume));
-            }
-        }
-
         private void OnDestroy()
         {
-            if (Disposition != null)
-            {
-                Disposition.Changed -= Reprice;
-            }
+            trade?.Release();
         }
 
         private float Hour => clock != null ? clock.Hour : 12f;
@@ -149,9 +118,9 @@ namespace Clube.Game
 
         public string DisplayName => shop != null ? shop.ShopName : "Shop";
 
-        public PriceList Prices => prices;
+        public PriceList Prices => trade.Prices;
 
-        public IReadOnlyList<ItemPrice> Offers => offers;
+        public IReadOnlyList<ItemPrice> Offers => trade.Offers;
 
         public IReadOnlyList<SkillType> Trains => shop.Trains;
 
@@ -162,10 +131,10 @@ namespace Clube.Game
         public bool IsTrading => AtCounter;
 
         /// <summary>The coins the keeper has to buy with today (GL426): back to the day's amount each morning.</summary>
-        public Wallet Purse { get; private set; }
+        public Wallet Purse => trade.Purse;
 
         /// <summary>How the keeper feels about the player (GL471), saved by the <see cref="TradingPost"/>.</summary>
-        public Disposition Disposition { get; private set; }
+        public Disposition Disposition => trade.Disposition;
 
         /// <summary>Something special the keeper offers (GL473: the merchant sells the trading post); null for none.</summary>
         public ITraderDeal Deal { get; set; }
@@ -214,12 +183,7 @@ namespace Clube.Game
             }
             float hour = Hour;
             // A new day: the purse is full again (GL426).
-            int day = clock != null ? clock.Day : 0;
-            if (day != purseDay)
-            {
-                purseDay = day;
-                Purse = new Wallet(dailyCoins);
-            }
+            trade.OnDay(clock != null ? clock.Day : 0);
             activity = hours.At(hour);
             Place wanted = activity == KeeperActivity.Counter ? Place.Counter
                 : activity == KeeperActivity.Sleep ? Place.Bed

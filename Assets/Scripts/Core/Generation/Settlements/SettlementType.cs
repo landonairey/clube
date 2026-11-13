@@ -150,6 +150,8 @@ namespace Clube.Core
         /// <summary>Metres it keeps from others on a 5 km map (the mean of the two types' spacings; scaled with the map).</summary>
         public float Spacing;
         public SiteRule Site;
+        /// <summary>GL613: what its own streets are surfaced with, by name in the <see cref="MaterialRegistry"/>: trodden grass for the smallest, dirt for a village, cobbles from a town up.</summary>
+        public string Street = "Loose stone";
         /// <summary>True for thieves: no shops, and no name on the player's map until found.</summary>
         public bool Hostile;
 
@@ -161,22 +163,22 @@ namespace Clube.Core
                 new SettlementType
                 {
                     Id = "camp", Name = "Camp", Icon = "tent", MinimumRoad = RoadClass.None, ParcelSize = "<1", Parcels = 0.5f,
-                    PopulationMin = 1, PopulationMax = 1, Count = 12, Shops = 1, CraftLevel = 0, Spacing = 220f, Site = SiteRule.OneResource,
+                    PopulationMin = 1, PopulationMax = 1, Count = 12, Shops = 1, CraftLevel = 0, Spacing = 220f, Site = SiteRule.OneResource, Street = "Dead Grass",
                 },
                 new SettlementType
                 {
                     Id = "thieves-camp", Name = "Thieves' Camp", Icon = "tent", MinimumRoad = RoadClass.None, ParcelSize = "<1", Parcels = 0.5f,
-                    PopulationMin = 0, PopulationMax = 0, Count = 4, Shops = 0, CraftLevel = 0, Spacing = 350f, Site = SiteRule.Hidden, Hostile = true,
+                    PopulationMin = 0, PopulationMax = 0, Count = 4, Shops = 0, CraftLevel = 0, Spacing = 350f, Site = SiteRule.Hidden, Hostile = true, Street = "Dead Grass",
                 },
                 new SettlementType
                 {
                     Id = "outpost", Name = "Outpost", Icon = "house", MinimumRoad = RoadClass.Footpath, ParcelSize = "~1", Parcels = 1f,
-                    PopulationMin = 2, PopulationMax = 4, Count = 12, Shops = 1, CraftLevel = 0, Spacing = 300f, Site = SiteRule.OneResource,
+                    PopulationMin = 2, PopulationMax = 4, Count = 12, Shops = 1, CraftLevel = 0, Spacing = 300f, Site = SiteRule.OneResource, Street = "Dead Grass",
                 },
                 new SettlementType
                 {
                     Id = "village", Name = "Village", Icon = "houses", MinimumRoad = RoadClass.DirtCartPath, ParcelSize = "~4", Parcels = 4f,
-                    PopulationMin = 4, PopulationMax = 8, Count = 10, Shops = 2, CraftLevel = 1, Spacing = 450f, Site = SiteRule.SeveralResources,
+                    PopulationMin = 4, PopulationMax = 8, Count = 10, Shops = 2, CraftLevel = 1, Spacing = 450f, Site = SiteRule.SeveralResources, Street = "Dirt",
                 },
                 new SettlementType
                 {

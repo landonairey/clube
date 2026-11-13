@@ -88,6 +88,12 @@ namespace Clube.Core
             /// </summary>
             public float TreeReach;
 
+            /// <summary>
+            /// GL642: ground that is cut down keeps what its surface was made of (a terrace cut into a grassy hillside is
+            /// grass again, not the bare stone under it). Ground built up always takes the old surface's material.
+            /// </summary>
+            public bool KeepTop;
+
             /// <summary>The height a column inside the rectangle is set to.</summary>
             public readonly float TargetAt(float x, float z, float ground)
             {
@@ -143,6 +149,8 @@ namespace Clube.Core
                     // Ground already within a hair of its height keeps its shape: only its surface material changes.
                     bool keepShape = area.Natural != null
                         && ((area.FollowGround && area.Surface == null) || Mathf.Abs(target - ground) < KeepShapeWithin);
+                    // What the surface was made of: new ground is topped with it (dirt stays dirt, sand sand), not always grass.
+                    VoxelMaterial was = Mathf.Abs(target - ground) >= KeepShapeWithin ? TopOf(world, materials, grid, column, ground, iso) : null;
                     int air = 0;
                     for (int y = y0; y <= y1 + headroom; y++)
                     {
@@ -178,7 +186,8 @@ namespace Clube.Core
                         bool surface = depth < voxel * 1.5f;
                         VoxelMaterial made = paved && surface ? area.Paving
                             : covered && surface ? area.Ground
-                            : before < iso ? (depth < TopsoilDepth ? grass : dirt)
+                            : before < iso ? (depth < TopsoilDepth ? was ?? grass : dirt)
+                            : area.KeepTop && depth < TopsoilDepth ? was
                             : null;
                         if (made != null && made.Id != material)
                         {
@@ -187,6 +196,27 @@ namespace Clube.Core
                     }
                 }
             }
+        }
+
+        // The material of the ground's surface at a column, as it lies now: the first solid sample under the height that is
+        // bulk ground (not a tree, not ore). Null when there is none within a metre.
+        private static VoxelMaterial TopOf(World world, MaterialRegistry materials, WorldGrid grid, Vector3 column, float ground, float iso)
+        {
+            if (materials == null)
+            {
+                return null;
+            }
+            Vector3Int sample = grid.WorldToNearestSample(new Vector3(column.x, ground, column.z));
+            int steps = Mathf.CeilToInt(1f / grid.VoxelSize) + 1;
+            for (int i = 0; i < steps; i++, sample.y--)
+            {
+                if (Read(world, sample, out byte id) >= iso)
+                {
+                    VoxelMaterial material = materials.Get(id);
+                    return material != null && material.Category == VoxelMaterialCategory.Aggregate ? material : null;
+                }
+            }
+            return null;
         }
 
         // A sample's density and material by its owning chunk: much quicker than the world's border-aware lookups, for

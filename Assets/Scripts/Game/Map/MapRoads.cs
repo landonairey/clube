@@ -19,9 +19,6 @@ namespace Clube.Game
         // Pieces looked at each frame for whether their chunks have loaded.
         private const int ChecksPerFrame = 24;
 
-        // Ground heights kept before the store is emptied (a few megabytes).
-        private const int MostHeightsKept = 200000;
-
         [SerializeField]
         private MapSession session;
 
@@ -52,7 +49,7 @@ namespace Clube.Game
 
         private readonly List<(int Road, int Piece, float Distance)> pending = new List<(int, int, float)>();
         private readonly List<int> found = new List<int>();
-        private readonly Dictionary<long, float> heights = new Dictionary<long, float>();
+        private KeptHeights heights;
         private readonly Dictionary<string, string> restored = new Dictionary<string, string>();
         private Rect[] bounds;
         private Built[] built;
@@ -142,34 +139,15 @@ namespace Clube.Game
                 bounds[i] = Rect.MinMaxRect(min.x, min.y, max.x, max.y);
             }
             pending.Clear();
-            heights.Clear();
+            heights = new KeptHeights(session.Map.Height);
             collectedTime = float.MinValue;
             RoadsWorkedOut = PiecesWritten = BridgesBuilt = SignpostsBuilt = 0;
         }
 
-        // The ground as generated. Road pieces ask for the same square metres over and over (each takes a grid of
-        // heights round itself, and neighbours overlap), and a generator's height is costly: the heights at whole
-        // metres are kept, and a point between them read from the four round it.
+        // The ground as generated, kept as it is asked for: road pieces ask for the same square metres over and over.
         private float Natural(float x, float z)
         {
-            int ix = Mathf.FloorToInt(x), iz = Mathf.FloorToInt(z);
-            float fx = x - ix, fz = z - iz;
-            return Mathf.Lerp(Mathf.Lerp(Kept(ix, iz), Kept(ix + 1, iz), fx), Mathf.Lerp(Kept(ix, iz + 1), Kept(ix + 1, iz + 1), fx), fz);
-        }
-
-        private float Kept(int x, int z)
-        {
-            long key = ((long)x << 32) | (uint)z;
-            if (!heights.TryGetValue(key, out float height))
-            {
-                if (heights.Count > MostHeightsKept)
-                {
-                    heights.Clear();
-                }
-                height = session.Map.Height(x, z);
-                heights[key] = height;
-            }
-            return height;
+            return heights.At(x, z);
         }
 
         // Works out a road in detail: its line with heights, its bridges, its bed and its writer.

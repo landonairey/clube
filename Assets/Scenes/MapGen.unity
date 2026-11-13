@@ -5501,6 +5501,7 @@ GameObject:
   - component: {fileID: 1350119486}
   - component: {fileID: 1350119488}
   - component: {fileID: 1350119489}
+  - component: {fileID: 1350119490}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -6196,6 +6197,49 @@ MonoBehaviour:
   textMaterial: {fileID: 2100000, guid: e9c1e17c90ccf8b4e922e9392fda6ee5, type: 2}
   buildRange: 150
   writeBudgetMilliseconds: 3
+  build: 1
+--- !u!114 &1350119490
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 399c6614f90571140b060f4b892c52c6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.MapSettlements
+  session: {fileID: 1350119487}
+  material: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
+  textMaterial: {fileID: 2100000, guid: e9c1e17c90ccf8b4e922e9392fda6ee5, type: 2}
+  prices: {fileID: 11400000, guid: 44577251d34951d40bd1ac9b329bc569, type: 2}
+  catalog: {fileID: 11400000, guid: 529535e765d597b47b63cf6a57402d86, type: 2}
+  sleepingRollPrefab: {fileID: 7854643536770524401, guid: 285133e8568374f40bed56df93428099, type: 3}
+  hours:
+    Open: 9
+    Close: 17
+    Sleep: 21
+    Wake: 4
+  dailyCoins: 525
+  buildRange: 160
+  writeBudgetMilliseconds: 3
+  bankMaterial: Loose stone
+  merchantVariety: 8
+  rules:
+    RowDepth: 18
+    Pitch: 9
+    StreetWidth: 2.5
+    FrontSetback: 4.5
+    BackYard: 1
+    Ramp: 3
+    MaxRelief: 9
+    TerraceRelief: 2
+    RoadBlend: 3
+    ClimbSlope: 0.3
+    MaxSwing: 16
+    PeoplePerHouse: 2
+    Margin: 24
   build: 1
 --- !u!1 &1429470163
 GameObject:
