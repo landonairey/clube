@@ -23,6 +23,9 @@ namespace Clube.Game
         private const float TunnelExtraWidth = 1f;
         private const float TunnelHeight = 3.5f;
 
+        // Metres a parcel's fence keeps clear of a road's edge.
+        private const float FenceGap = 0.75f;
+
         [SerializeField]
         private MapSession session;
 
@@ -152,6 +155,12 @@ namespace Clube.Game
             }
             pending.Clear();
             heights = new KeptHeights(session.Map.Height);
+            // A parcel's fence leaves a gap where a road crosses its border.
+            ParcelBorders borders = FindAnyObjectByType<ParcelBorders>();
+            if (borders != null)
+            {
+                borders.SetOpenings(point => plan.IsOnRoad(point, FenceGap));
+            }
             collectedTime = float.MinValue;
             boring.Clear();
             RoadsWorkedOut = PiecesWritten = BridgesBuilt = SignpostsBuilt = TunnelPiecesBored = PortalsBuilt = 0;

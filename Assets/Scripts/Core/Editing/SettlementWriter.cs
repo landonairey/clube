@@ -15,7 +15,7 @@ namespace Clube.Core
     public sealed class SettlementWriter
     {
         /// <summary>The side of a tile of ground, in metres: small, so one piece is a few milliseconds.</summary>
-        public const float TileSize = 6f;
+        public const float TileSize = 3f;
 
         // Metres of air made over a terrace, for what stands on it.
         private const float Headroom = 3f;
@@ -50,7 +50,7 @@ namespace Clube.Core
         private readonly int[] buildingPiece;
 
         // A building is written in slices across its width, so no one piece is long.
-        private const int BuildingSlices = 4;
+        private const int BuildingSlices = 8;
 
         /// <param name="street">The numbers streets are cut with (width, surface, how they are evened out).</param>
         /// <param name="climb">The same for the climbs between rows.</param>

@@ -262,6 +262,29 @@ namespace Clube.Core
             return Roads.FindAll(road => road.From == settlement || road.To == settlement);
         }
 
+        /// <summary>True when (x, z) lies on a road of the plan, or within a margin of its edge (a fence leaves a gap there).</summary>
+        public bool IsOnRoad(Vector2 point, float margin = 0f)
+        {
+            foreach (PlannedRoad road in Roads)
+            {
+                float reach = Rules.Road(road.Class).Width * 0.5f + margin;
+                for (int i = 1; i < road.Points.Count; i++)
+                {
+                    Vector2 a = road.Points[i - 1], b = road.Points[i];
+                    if (Mathf.Min(a.x, b.x) - reach > point.x || Mathf.Max(a.x, b.x) + reach < point.x
+                        || Mathf.Min(a.y, b.y) - reach > point.y || Mathf.Max(a.y, b.y) + reach < point.y)
+                    {
+                        continue;
+                    }
+                    if (SettlementSite.Distance(point, a, b) <= reach)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         /// <summary>The settlement nearest a position (x, z) within a distance, or null.</summary>
         public PlannedSettlement Nearest(Vector2 position, float within = float.MaxValue)
         {

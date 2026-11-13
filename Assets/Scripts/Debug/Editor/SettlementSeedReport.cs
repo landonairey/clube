@@ -81,16 +81,18 @@ namespace Clube.Debug.Editor
             {
                 PlannedSettlement s = site.Settlement;
                 int want = SettlementLayout.BuildingsWanted(s, site.Rules);
-                float cut = 0f, fill = 0f;
+                float cut = 0f, fill = 0f, lowest = float.MaxValue, highest = float.MinValue;
                 foreach (SettlementTerrace terrace in site.Terraces)
                 {
+                    lowest = Mathf.Min(lowest, terrace.Height);
+                    highest = Mathf.Max(highest, terrace.Height);
                     cut = Mathf.Max(cut, terrace.Cut);
                     fill = Mathf.Max(fill, terrace.Fill);
                 }
                 int doubled = site.Lanes.FindAll(lane => lane.Switchback).Count;
                 wanted += want;
                 placed += site.Buildings.Count;
-                terraced += site.Levels > 1 ? 1 : 0;
+                terraced += highest - lowest >= 2f ? 1 : 0;
                 switchbacks += doubled;
                 short_ += site.Buildings.Count < want ? 1 : 0;
                 islands += s.Land != plan.Capital.Land ? 1 : 0;
@@ -98,7 +100,7 @@ namespace Clube.Debug.Editor
                 report.AppendLine($"{s.Name,-28} land {s.Land} network {s.RoadNetwork,2}  slope {site.Slope * 100f,3:0}%  buildings {site.Buildings.Count}/{want}  "
                     + $"levels {site.Levels}  cut {cut:0.0} m  fill {fill:0.0} m  lanes {site.Lanes.Count} ({doubled} doubled back)  at {s.Position}");
             }
-            return $"{placed} of {wanted} buildings placed, {short_} settlements short; {terraced} on more than one level, deepest cut {deepest:0.0} m, "
+            return $"{placed} of {wanted} buildings placed, {short_} settlements short; {terraced} terraced over 2 m or more of height, deepest cut {deepest:0.0} m, "
                 + $"{switchbacks} climbs doubled back; {islands} off the capital's land; laid out in {seconds:0.00} s";
         }
     }

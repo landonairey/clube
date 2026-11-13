@@ -284,9 +284,12 @@ flowchart LR
   the survey alone, in about 0.3 s for 5 km. The tables are `WorldPlanRules`: `SettlementType.Defaults()`,
   `EconomySpecialty.Defaults()`, `RoadClassDefinition.Defaults()`, `NamedVessel.Defaults()`; a new type, specialty or
   vessel is a row, and the steps read fields, never ids. Steps, each its own class over a shared `PlanContext` (the cells,
-  `ResourceReach` summed-area tables, a Dijkstra over the 40 m cells): `SettlementPlacer` (largest first, by `SiteRule`),
+  `ResourceReach` summed-area tables, a Dijkstra over the 40 m cells): `SettlementPlacer` (largest first, by `SiteRule`, on any piece of land: `PlanContext.Land`; after the capital every
+  other land with resources gets a settlement of its own, GL643; how steep a site may be goes by the road its type
+  needs, `WorldPlanRules.FlatnessFor`, GL642),
   `SpecialtyAssigner` (fit = the scarcest needed resource nearby; then every specialty is made to exist),
-  `RoadPlanner` (paved, then dirt, then footpaths, each from its settlement to the nearest point of the network so far),
+  `RoadPlanner` (paved, then dirt, then footpaths, each from its settlement to the nearest point of the network so far;
+  a settlement with no way by land starts a network of its own land, `PlannedSettlement.RoadNetwork`),
   `WaterRoutePlanner` (sea routes from the capital's harbour, river routes, named vessels). Roads leave the planner as
   cell-centre polylines; `WorldRoads.Finish(plan, map)` (`Generation/Roads/`), called right after by whoever has
   the generator, puts them on the real ground: `RoadRefiner` (each road searched again on an 8 m grid in a 64 m corridor,
@@ -306,11 +309,41 @@ flowchart LR
   viewer are worked out once (heights, bridges, bed), their unwritten pieces queued nearest first and written when their
   chunks are loaded, 3 ms a frame; bridges (`RoadBridge`) and `Signpost`s stand once their ground loads; written pieces
   are saved. Far terrain and the coarse levels know nothing of roads.
+- **Tunnels** (GL642): `RoadTunnels.Bore` runs inside `WorldRoads.Finish`, after the refiner. For each cart path still
+  over its limit it scores every pair of its points a straight bore could join (grade within a share of the class's
+  limit, ground never far under the floor and well over it for a third of the length, no water over it, no junction or
+  settlement between) by the over-limit metres taken out less a price per metre of bore, takes the best, and repeats
+  (`RoadTunnelRules`). The bore becomes one straight part of `PlannedRoad.Points` and a `RoadTunnel` in
+  `PlannedRoad.Tunnels`. A road's `RoadLine` is made with `RoadTunnels.HeightAt(road, ...)`, which gives the tunnel's
+  floor inside a tunnel: the bed then leads in on the floor, and `RoadWriter` digs the open cutting at each end.
+  `TunnelWriter` (`Editing/`) carves the part with 4.5 m of ground overhead a metre at a time (`SquareVoxels.Carve`, an
+  arch, the floor surfaced as the road); `MapRoads` skips the road's pieces over the bore (`TunnelWriter.IsBored`),
+  queues the bore's metres after the road's pieces, stands a `TunnelPortal` at each end and saves what is bored.
+- **Settlements in the terrain** (GL613, GL614, GL642): `SettlementLayout.Plan` (Core) lays one `PlannedSettlement` out
+  as a `SettlementSite`, from the land's heights on a 2 m grid (one job). Rows run along whichever axis lies across the
+  slope (buildings turn by quarters: they are whole voxels); a row is a street, then buildings 9 m apart facing
+  downhill; rows are 18 m apart. Places are taken nearest the centre first, shops before houses; a place is refused on
+  water or closed ground, within 3 m of a planned road's own ground, or where the land rises more than 9 m across it.
+  Each run of neighbours in a row is a `SettlementTerrace` at the mean of their ground (land under a run may differ by
+  2 m), so rows step up a hillside. `SettlementSite.HeightAt(x, z, ground)` is the one definition of the settlement's
+  ground: level on a terrace, a smooth bank back to the land over 3 m, and the land itself on and beside a planned road
+  (the road writes that). Lanes are a street a row and a climb between rows at alternate ends, doubled back where it
+  would be steeper than 30%. `SettlementWriter` (`Editing/`) writes a site in a fixed order of pieces: 3 m tiles of
+  ground (`GroundLeveling` with `Area.Surface` = the site's heights, `KeepTop` so cut ground keeps its grass, banks
+  faced with stone), the lanes (each a `RoadWriter` over `SettlementSite.HeightAt`), the buildings in four slices
+  (`SettlementStructures.Blocks`: the trading post's shop, or a house with a door and a window). `MapSettlements`
+  (Game) lays a settlement out when the viewer is within 160 m of its edge and writes the next piece whenever its
+  chunks are loaded, 3 ms a frame; a shop that stands is fitted (`TownBuilder.FitShop`: sign, sleeping roll, wares)
+  and gets a `SettlementKeeper`, an `ITrader` whose shop is `EconomySpecialty.ToShop` and whose prices, purse and
+  disposition are a `ShopTrade` (shared with the trading post's `Shopkeeper`). The parcels under a settlement are locked;
+  progress is saved as "written/pieces". `KeptHeights` (Core) is the store of generated heights both `MapRoads` and
+  `MapSettlements` write through. Not done: houses are empty (the people are GL615), thieves' camps build nothing
+  (GL617), and far terrain shows no settlements.
 - **The map in a scene** (GL598-GL601, `Game/Map/`): `MapSession` (one per scene, `MapSession.Current`) watches
   `WorldView.Generator`; when it is a `BoundedMapGenerator` it builds the survey and the plan once (main thread: the
   survey completes height jobs; about 4 s at 5 km) and raises `Rebuilt`, again after every regenerate. Everything that
   needs the map reads `Map`, `Survey`, `Plan` from it: `MapMarkers` (posts at sites; road posts off now), `MapRoads` (the roads themselves),
-  `WorldMapScreen` (M), later the settlements. `MapStart.Pick` (Core) chooses where the player is set down.
+  `MapSettlements` (the settlements), `WorldMapScreen` (M). `MapStart.Pick` (Core) chooses where the player is set down.
   `MapPicture` (Core) is the one place the map's colours live (terrain pixels, road colours, widths and line types as
   `MapLineStyle`, route and
   settlement colours); the world map and `BoundedMapPreviewMenu` both draw with it, and `MapLegend` (Game) lists the
