@@ -474,6 +474,15 @@ namespace Clube.Core
             return Shape.LimitAt(x, z);
         }
 
+        /// <summary>
+        /// True where the player walks freely (GL639, GL640): inside the playable edge and short of every edge's limit.
+        /// What the map sites and builds (settlements, roads) keeps to this ground.
+        /// </summary>
+        public bool WalksFreely(float x, float z)
+        {
+            return Contains(x, z) && LimitAt(x, z) <= 0f;
+        }
+
         /// <summary>The direction out of the map at a point (x, z; length 1): the way a limit holds the player back from.</summary>
         public Vector2 OutwardAt(float x, float z)
         {

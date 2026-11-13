@@ -93,13 +93,15 @@ namespace Clube.Core
 
         /// <summary>
         /// What a stretch of this class costs a route: its length, dearer the steeper it is (three times at
-        /// <see cref="EasySlope"/>), and far dearer past <see cref="MaxSlope"/>, so that is taken only where there is no other way.
+        /// <see cref="EasySlope"/>), and far dearer the further it is past <see cref="MaxSlope"/>, so that is taken only
+        /// where there is no other way. The price rises from the limit without a jump: a route made of level steps and
+        /// steps a little over the limit, which rounds into an even climb just under it, is not priced out.
         /// </summary>
         public float StretchCost(float metres, float slope)
         {
             float ease = slope / UnityEngine.Mathf.Max(0.01f, EasySlope);
             float cost = metres * (1f + 2f * ease * ease);
-            return slope > MaxSlope ? cost + metres * 25f * slope / MaxSlope : cost;
+            return slope > MaxSlope ? cost + metres * 50f * (slope / MaxSlope - 1f) : cost;
         }
     }
 

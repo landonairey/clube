@@ -55,7 +55,8 @@ namespace Clube.Core
         public float Game;
 
         /// <summary>
-        /// True when the cell's middle lies past the playable edge (GL639). Such a cell keeps its height, biome and
+        /// True when the cell's middle lies past the playable edge (GL639) or inside an edge's limit (GL640), where the
+        /// player is held back. Such a cell keeps its height, biome and
         /// sea, and holds nothing else: no land, fresh water or resources.
         /// </summary>
         public bool Outside;
@@ -205,7 +206,7 @@ namespace Clube.Core
             return survey;
         }
 
-        // Past the playable edge (GL639) nothing is the map's to use: those cells keep their height, biome and sea,
+        // Past the playable edge (GL639), and where an edge's limit holds the player back (GL640), nothing is the map's to use: those cells keep their height, biome and sea,
         // and hold no land, fresh water, wood, game, grazing or ore, so nothing is sited on them or counts them.
         private void MarkOutside(MapLayout layout)
         {
@@ -214,7 +215,7 @@ namespace Clube.Core
                 for (int cx = 0; cx < Size; cx++)
                 {
                     Vector2 centre = CellCentre(cx, cz);
-                    if (layout.Contains(centre.x, centre.y))
+                    if (layout.WalksFreely(centre.x, centre.y))
                     {
                         continue;
                     }

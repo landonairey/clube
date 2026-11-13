@@ -117,8 +117,98 @@ namespace Clube.Core.Tests
                 Vector2 a = paved.Points[i] - paved.Points[i - 1], b = paved.Points[i + 1] - paved.Points[i];
                 Assert.Less(a.magnitude, 13f, "points close enough to read as a curve");
                 Assert.Less(Vector2.Angle(a, b), 50f, $"no sharp corner at point {i}");
-                Assert.Less(Mathf.Abs(paved.Points[i].y - 300f), RoadRefiner.Corridor * 2.5f + 1f, "inside its corridor");
+                Assert.Less(Mathf.Abs(paved.Points[i].y - 300f), RoadRefiner.Corridor * RoadRefiner.HardReach + 1f, "inside its corridor");
             }
+        }
+
+
+        // A hillside 144 m high across the whole area, rising 90% (steeper than anyone walks) between z = 200 and z = 360.
+        private static float Hillside(float x, float z)
+        {
+            return 20f + 0.9f * Mathf.Clamp(z - 200f, 0f, 160f);
+        }
+
+        [Test]
+        public void Refining_ClimbsASteepHillsideInSwitchbacks_EachClassWithinItsSlope()
+        {
+            PlannedRoad Up(RoadClass roadClass, out RoadClassDefinition definition)
+            {
+                WorldPlan plan = Plan();
+                definition = plan.Rules.Road(roadClass);
+                PlannedRoad road = Road(plan, roadClass, -1, -1, -1, new Vector2(500f, 100f), new Vector2(500f, 460f));
+                Assert.IsTrue(new RoadRefiner(plan.Area, Hillside, null).Refine(plan, road));
+                return road;
+            }
+            PlannedRoad paved = Up(RoadClass.PavedCartPath, out RoadClassDefinition pavedClass);
+            PlannedRoad dirt = Up(RoadClass.DirtCartPath, out RoadClassDefinition dirtClass);
+            PlannedRoad foot = Up(RoadClass.Footpath, out RoadClassDefinition footClass);
+            // 144 m of climb at the class's limit is the least road there can be; straight up is 360 m.
+            Assert.Greater(paved.Length, 144f / pavedClass.MaxSlope, "the paved road doubles back up the hillside");
+            Assert.Greater(dirt.Length, 144f / dirtClass.MaxSlope);
+            Assert.Less(foot.Length, dirt.Length, "a walker climbs more directly than a cart");
+            Assert.LessOrEqual(dirt.Length, paved.Length + 100f, "and a dirt path no less directly than a paved one");
+            Assert.Less(paved.SteepestSlope, pavedClass.MaxSlope * 1.6f, "nowhere much over its limit, hairpins included");
+            Assert.Less(paved.SteepLength, paved.Length * 0.1f, "and over it for little of its length");
+            Assert.Less(dirt.SteepestSlope, dirtClass.MaxSlope * 1.6f);
+            Assert.Less(dirt.SteepLength, dirt.Length * 0.1f);
+            Assert.AreEqual(0f, foot.SteepLength, "the footpath stays walkable");
+            Assert.Less(foot.SteepestSlope, footClass.MaxSlope);
+            float reach = RoadRefiner.Corridor * RoadRefiner.HardReach + 1f;
+            foreach (Vector2 p in paved.Points)
+            {
+                Assert.Less(Mathf.Abs(p.x - 500f), reach, "inside the wide corridor a steep stretch is given");
+            }
+        }
+
+        [Test]
+        public void Refining_DoesNotClimbAHillsideUpItsStream()
+        {
+            // A stream runs straight down the hillside under the planned line: it is water to bridge, not a way up.
+            RoadWater Water(float x, float z)
+            {
+                return Mathf.Abs(x - 500f) <= 3f && z >= 150f && z <= 420f ? RoadWater.River : RoadWater.Dry;
+            }
+            WorldPlan plan = Plan();
+            PlannedRoad road = Road(plan, RoadClass.DirtCartPath, -1, -1, -1, new Vector2(500f, 100f), new Vector2(500f, 460f));
+            Assert.IsTrue(new RoadRefiner(plan.Area, Hillside, Water).Refine(plan, road));
+            Assert.Greater(road.Length, 144f / plan.Rules.Road(RoadClass.DirtCartPath).MaxSlope, "still in switchbacks");
+            Assert.Less(road.SteepLength, road.Length * 0.1f);
+            foreach (RoadBridge bridge in road.Bridges)
+            {
+                Assert.Less(bridge.Length, 30f, "each crossing is short: across the stream, never along it");
+            }
+        }
+
+        [Test]
+        public void Refining_KeepsOffClosedGround()
+        {
+            // Closed ground (past the map's playable edge) lies across the straight line; the way round is to the south.
+            bool Closed(float x, float z) => x >= 380f && x <= 460f && z >= 180f;
+            WorldPlan plan = Plan(("town", new Vector2(180f, 300f)), ("town", new Vector2(700f, 300f)));
+            PlannedRoad road = Road(plan, RoadClass.DirtCartPath, 0, 1, -1, plan.Settlements[0].Position, new Vector2(420f, 140f), plan.Settlements[1].Position);
+            Assert.IsTrue(new RoadRefiner(plan.Area, (x, z) => 20f, null, Closed).Refine(plan, road));
+            for (int i = 0; i < road.Points.Count - 1; i++)
+            {
+                for (int k = 0; k <= 4; k++)
+                {
+                    Vector2 p = Vector2.Lerp(road.Points[i], road.Points[i + 1], k / 4f);
+                    // Rounding the route may shave a corner of it by less than a grid step.
+                    Assert.IsFalse(Closed(p.x - 4f, p.y + 4f) && Closed(p.x + 4f, p.y + 4f), $"on closed ground at {p}");
+                }
+            }
+        }
+
+        [Test]
+        public void Refining_BridgesAStraitOfTheSea_OnlyWhereThereIsNoWayRound()
+        {
+            // A strait 16 m wide cuts the whole area in two: too narrow for the plan's 40 m cells to have seen.
+            RoadWater Water(float x, float z) => x >= 392f && x <= 408f ? RoadWater.Sea : RoadWater.Dry;
+            WorldPlan plan = Plan(("town", new Vector2(180f, 300f)), ("town", new Vector2(620f, 300f)));
+            PlannedRoad road = Road(plan, RoadClass.DirtCartPath, 0, 1, -1, plan.Settlements[0].Position, plan.Settlements[1].Position);
+            Assert.IsTrue(new RoadRefiner(plan.Area, (x, z) => 20f, Water).Refine(plan, road), "the road gets across");
+            Assert.AreEqual(1, road.Bridges.Count);
+            Assert.That(road.Bridges[0].Length, Is.InRange(16f, 40f), "straight across the strait");
+            Assert.IsTrue(plan.Notes.Exists(note => note.Contains("strait")), "and the plan says so");
         }
 
         [Test]

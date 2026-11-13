@@ -429,5 +429,63 @@ namespace Clube.Core.Tests
             Color paved = MapPicture.RoadColour(RoadClass.PavedCartPath);
             Assert.That(Mathf.Abs(paved.r - paved.b), Is.LessThan(0.05f), "stone-grey");
         }
+
+        // ---- GL642: the roads on the natural terrain (GL637-GL641) ----
+
+        [Test]
+        public void RoadsOnTheNaturalMap_KeepToFreeGround_OffTheSea_AndMostlyWithinTheirSlopes()
+        {
+            // A continent with a mountain ridge and a desert at two sides: ranges to climb, and edges with limits.
+            TerrainSettings settings = Settings(4, 3072f, copper, gold);
+            settings.SurfaceLevel = 36f;
+            settings.Amplitude = 110f;
+            settings.Map.PeakHeight = 320f;
+            settings.Map.SetShape(MapShapeType.ContinentName);
+            settings.Map.SetSides(
+                MapBoundaryType.OceanName, MapBoundaryType.MountainRidgeName, MapBoundaryType.OceanName, MapBoundaryType.DesertName);
+            var map = (BoundedMapGenerator)TerrainGenerators.Create(settings);
+            MapLayout layout = map.Layout;
+            ResourceSurvey natural = ResourceSurvey.Build(settings, map, null, null, 40f);
+            WorldPlan world = WorldPlanner.Build(natural, settings.Seed);
+            WorldRoads.Finish(world, map);
+            System.Func<float, float, RoadWater> waterAt = WorldRoads.WaterOf(map.Water);
+            UnityEngine.Debug.Log($"Natural map: {world.Settlements.Count} settlements, {world.Roads.Count} roads; {world.Timings}; "
+                + $"notes: {string.Join(" | ", world.Notes.Where(note => note.StartsWith("Road")))}");
+
+            Assert.That(world.Roads.Count, Is.GreaterThan(8), "a network to judge");
+            foreach (PlannedSettlement settlement in world.Settlements)
+            {
+                Assert.IsTrue(layout.WalksFreely(settlement.Position.x, settlement.Position.y), $"{settlement.Name} stands where the player can walk");
+            }
+            Assert.IsFalse(world.Notes.Any(note => note.Contains("keeps its planned line")), "every road found its way over the real ground");
+            float cartLength = 0f, cartSteep = 0f;
+            foreach (PlannedRoad road in world.Roads)
+            {
+                Assert.IsTrue(road.Refined, $"road {road.Index}");
+                bool strait = world.Notes.Any(note => note.StartsWith($"Road {road.Index}:") && note.Contains("strait"));
+                foreach (Vector2 p in road.Points)
+                {
+                    Assert.IsTrue(layout.WalksFreely(p.x, p.y), $"road {road.Index} leaves the free ground at {p}");
+                    Assert.IsTrue(strait || waterAt(p.x, p.y) != RoadWater.Sea, $"road {road.Index} is in the sea at {p}");
+                }
+                foreach (RoadBridge bridge in road.Bridges)
+                {
+                    Assert.That(bridge.Length, Is.LessThan(45f), $"road {road.Index}: a bridge crosses water, it does not follow it");
+                }
+                RoadClassDefinition definition = world.Rules.Road(road.Class);
+                if (road.Class == RoadClass.Footpath)
+                {
+                    Assert.That(road.SteepLength, Is.LessThan(road.Length * 0.05f + 10f), $"footpath {road.Index} stays walkable");
+                }
+                else
+                {
+                    cartLength += road.Length;
+                    cartSteep += road.SteepLength;
+                    Assert.That(road.SteepestSlope, Is.LessThan(definition.MaxSlope * 6f), $"cart path {road.Index} goes up no cliff");
+                }
+            }
+            Assert.That(cartSteep, Is.LessThan(cartLength * 0.08f), "the cart paths are over their slope limits for little of their length");
+            Assert.That(world.Signposts.Count, Is.GreaterThan(world.Roads.Count), "signposts at the settlements and junctions");
+        }
     }
 }

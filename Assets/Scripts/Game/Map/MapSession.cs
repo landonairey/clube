@@ -133,7 +133,7 @@ namespace Clube.Game
             }
             Plan = WorldPlanner.Build(Survey, terrain.Seed, rules);
             // The plan is from the survey's 40 m cells: its roads are put on the real ground, and signposts on them (GL631, GL632).
-            WorldRoads.Finish(Plan, generator.Height, generator.Water);
+            WorldRoads.Finish(Plan, generator);
             Map = generator;
             built = generator;
             IsBuilding = false;

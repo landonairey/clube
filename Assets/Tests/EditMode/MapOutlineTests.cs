@@ -418,7 +418,7 @@ namespace Clube.Core.Tests
                 {
                     SurveyCell cell = survey.Cell(x, z);
                     Vector2 centre = survey.CellCentre(x, z);
-                    Assert.That(cell.Outside, Is.EqualTo(!map.Layout.Contains(centre.x, centre.y)));
+                    Assert.That(cell.Outside, Is.EqualTo(!map.Layout.WalksFreely(centre.x, centre.y)));
                     if (cell.Outside)
                     {
                         outside++;

@@ -152,11 +152,9 @@ namespace Clube.Core
             {
                 return -1f;
             }
-            if (IsWater(to))
-            {
-                return metres + definition.BridgeCost;
-            }
-            return definition.StretchCost(metres, Mathf.Abs(context.Cells[to].Height - context.Cells[from].Height) / metres);
+            // A water cell is bridged at a price over what its slope costs: a river coming down a mountain is no way up it.
+            float stretch = definition.StretchCost(metres, Mathf.Abs(context.Cells[to].Height - context.Cells[from].Height) / metres);
+            return IsWater(to) ? stretch + definition.BridgeCost : stretch;
         }
 
         private bool IsWater(int cell)
