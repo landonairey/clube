@@ -53,6 +53,12 @@ namespace Clube.Core
 
         /// <summary>How much game the cell holds, 0 to 1, from its biomes.</summary>
         public float Game;
+
+        /// <summary>
+        /// True when the cell's middle lies past the playable edge (GL639). Such a cell keeps its height, biome and
+        /// sea, and holds nothing else: no land, fresh water or resources.
+        /// </summary>
+        public bool Outside;
     }
 
     /// <summary>
@@ -194,8 +200,41 @@ namespace Clube.Core
             {
                 survey.SurveyOres(map, oreField);
             }
+            survey.MarkOutside(map.Layout);
             survey.Timings = $"ground {ground} ms, water {water - ground} ms, trees {treesDone - water} ms, ores {watch.ElapsedMilliseconds - treesDone} ms";
             return survey;
+        }
+
+        // Past the playable edge (GL639) nothing is the map's to use: those cells keep their height, biome and sea,
+        // and hold no land, fresh water, wood, game, grazing or ore, so nothing is sited on them or counts them.
+        private void MarkOutside(MapLayout layout)
+        {
+            for (int cz = 0; cz < Size; cz++)
+            {
+                for (int cx = 0; cx < Size; cx++)
+                {
+                    Vector2 centre = CellCentre(cx, cz);
+                    if (layout.Contains(centre.x, centre.y))
+                    {
+                        continue;
+                    }
+                    ref SurveyCell cell = ref cells[cx + cz * Size];
+                    cell.Outside = true;
+                    cell.Land = 0f;
+                    cell.FreshWater = 0f;
+                    cell.River = false;
+                    cell.Coast = false;
+                    cell.Wood = 0f;
+                    cell.Limestone = 0f;
+                    cell.Grazing = 0f;
+                    cell.Game = 0f;
+                    cell.Flatness = 0f;
+                    foreach (float[] counts in ore)
+                    {
+                        counts[cx + cz * Size] = 0f;
+                    }
+                }
+            }
         }
 
         // Height, flatness, biome and the surface materials, from a grid of ground samples in each cell.

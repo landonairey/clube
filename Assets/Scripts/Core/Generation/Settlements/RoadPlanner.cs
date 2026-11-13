@@ -148,7 +148,7 @@ namespace Clube.Core
 
         private float StepCost(RoadClassDefinition definition, int from, int to, float metres)
         {
-            if (context.IsSea(to))
+            if (context.IsSea(to) || context.Cells[to].Outside)
             {
                 return -1f;
             }
