@@ -10,20 +10,22 @@ For the planning chat. Read this file and nothing else to pick up the work; keep
 - Start a fresh planning chat when this one passes about 100k tokens: this file is the handoff.
 
 ## State (updated 2026-11-12)
-- **Chain tip:** `gl608/character-models` (the checkout is on it, clean).
-- **Open PRs, to merge in order:** #132 A map · #133 B settlements and roads plan · #134 C MapGen scene and M map · #135 K iron, coal, steel · #136 sea LOD · #137 D animals · #138 L ore looks, 10x XP, skill cheats · #139 E character models. Each PR shows the earlier ones until they merge. The user merges; the planning chat does not.
-- **Running:** nothing. Next to dispatch: batch M.
+- **Chain tip:** `gl613/roads` (the checkout is on it, clean).
+- **Open PRs, to merge in order:** #132 A map · #133 B settlements and roads plan · #134 C MapGen scene and M map · #135 K iron, coal, steel · #136 sea LOD · #137 D animals · #138 L ore looks, 10x XP, skill cheats · #139 E character models · #140 M map legend and new-game preview · #141 H1 roads in the world. Each PR shows the earlier ones until they merge. The user merges; the planning chat does not.
+- **Running:** nothing. Next to dispatch: batch H2 (settlements on their parcels, shops; GL613's settlement half and GL614).
+- **Done:** H1 — roads in the world (GL620, GL631–GL634 and the roads half of GL613), PR #141. Roads are refined on the real ground after the plan (`WorldRoads.Finish`), written into the terrain round the viewer (`MapRoads`, `RoadWriter`), with bridges and signposts; Dead Grass is material 34. Leftovers: roads exist in the ground only within 150 m of the viewer, so the far terrain shows none; a dirt cart path does not show on a biome whose ground is dirt; writing a paved road costs about 4 ms a metre (one piece a frame while walking it) and the first pieces of a session hitch (about 0.1 s); the bounded tree cut and the junction fix were not seen in Play mode; a tree on a road is cut within 4 m, so a far branch can be left hanging; switchbacks were only seen in a test (seed 1's roads never pass 13% slope); saving and loading the written pieces was not tried in a real save; settlements are still marker posts, so roads end at a post.
+- **Done earlier:** M — map screen and new-game preview (GL635, GL636), PR #140. Leftovers: the preview shows the bounded map while Start still loads WorldLab; typing a seed and Random were not tried by hand; names overlap where places are close at zoom 1; `BoundedMapTests.Survey_CoversTheMap_AndIsTheSameEveryTime` is flaky (two survey builds differ in the last float digit about one run in three).
 - **Batch E's leftovers:** the player's shadow body and new first-person arm, the tutorial crew, the adventurer, the carter and the menu miner were never seen on screen (only the WorldLab shopkeepers were); no figure LOD or instancing yet for a 24–32 NPC city (11 renderers and 822–1048 triangles per figure: matters for batches H and I); the shadow body does not mirror tool swings; a recompile during Play mode once wiped the rigs' look (now serializable, not re-tested). The shared figure system is `FigureLook`/`FigureLooks`/`FigureMeshes`/`FigurePoses` (Core, `Meshing/Models/Figures/`) and `FigureRig` (Game); a new NPC look is a `FigurePreset` row.
 
 ## Queue, in order
-1. **M — map screen and new-game preview** (GL635, GL636), branch `gl635/map-polish`. Grows `WorldMapScreen` and `MapPicture` (`Assets/Scripts/Game/Map/`, `Core/Generation/Map/`); the new-game menu preview must be fast for a seed change (a coarse height sample, not the full water and survey build, which takes 6–8 s).
-2. **H — settlements and roads in the world** (GL613, GL614, GL620, GL631–GL634). Large: split in two if needed. H1 roads: smoothing, slope rules from the player's walkable limit, a Dead Grass material and item appended at the end of `MaterialRegistry`, dirt and cobble surfaces, signposts, bridges. H2 settlements on their parcels growing `TownPlan` and `TownBuilder`, shops per `EconomySpecialty`. Roads today are 40 m polylines in `WorldPlan`.
-3. **F — tools and dropped items** (GL609–GL611).
-4. **G — inventory icons** (GL612), after F (icons come from the new tool models).
-5. **I — NPC work** (GL615, GL616), uses E's figure system and D's animals.
-6. **J — thieves and boats** (GL617, GL618); the *Edmund Fitzgerald* already has its route in `WorldPlan`.
+1. **H2 — settlements in the world** (GL613's settlement half, GL614): settlements on their parcels growing `TownPlan` and `TownBuilder`, shops per `EconomySpecialty`. Roads are built (H1): a settlement's roads end at its centre (`PlannedSettlement.Position`), a signpost stands where each leaves it (`WorldPlan.Signposts`, `AtSettlement`), and `MapRoads` writes the road through the site, so H2 decides how a town's own ground meets it.
+2. **F — tools and dropped items** (GL609–GL611).
+3. **G — inventory icons** (GL612), after F (icons come from the new tool models).
+4. **I — NPC work** (GL615, GL616), uses E's figure system and D's animals.
+5. **J — thieves and boats** (GL617, GL618); the *Edmund Fitzgerald* already has its route in `WorldPlan`.
 
 ## Open with the user
+- New-game preview: the sea has a faint wash and a blue shore line, beyond "contour lines and no other detail": keep?
 - Anvil: sells for 60 coins but costs 100 iron ingots at 48 each; one must change.
 - Magnetite was made dark steel-blue, not black: keep?
 - Blocky dark patches on the sea after the sea LOD fix: not compared with a before picture.
