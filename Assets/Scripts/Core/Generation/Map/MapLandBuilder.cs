@@ -10,7 +10,7 @@ namespace Clube.Core
     /// </summary>
     /// <remarks>
     /// <list type="bullet">
-    /// <item>Each side that isn't sea gets a mainland: a great round land centred past that edge, reaching into the
+    /// <item>Each side that isn't sea gets a mainland: a broad front of land reaching into the
     /// map as far as the outline says.</item>
     /// <item>The outline's lands are scattered, or strung along arms: a chain of islands across the sea, or
     /// peninsulas reaching out from a mainland.</item>
@@ -42,9 +42,11 @@ namespace Clube.Core
             var random = new Random(math.hash(new int2(shape.Seed, 0x4C414E44)) | 1u);
             float half = shape.Half, edge = shape.EdgeRadius;
 
-            // Mainlands, one per side that isn't sea.
+            // Mainlands, one per side that isn't sea: a broad front reaching in from that side, centred far out so
+            // its rim crosses the whole side as one gentle arc.
             var lands = new List<float4>();
             var landSides = new List<int>();
+            var reachOf = new float[4];
             float2 anchor = float2.zero;
             for (int i = 0; i < 4; i++)
             {
@@ -53,15 +55,16 @@ namespace Clube.Core
                     continue;
                 }
                 float2 normal = Normal(i), along = Perpendicular(normal);
-                float reach = math.lerp(type.Mainland.x, type.Mainland.y, random.NextFloat());
-                lands.Add(new float4(normal * half * 1.35f + along * half * random.NextFloat(-0.4f, 0.4f), half * (0.35f + 2f * reach), MapShape.Mainland));
+                reachOf[i] = math.lerp(type.Mainland.x, type.Mainland.y, random.NextFloat());
+                lands.Add(new float4(normal * half * 3f + along * half * random.NextFloat(-0.6f, 0.6f), half * (2f + 2f * reachOf[i]), MapShape.Mainland));
                 landSides.Add(i);
                 anchor += normal;
             }
             int mainlands = lands.Count;
 
-            // The sea's own reach into a map that has a mainland: a great round bite in from each sea side, so the
-            // coast is where land and sea meet, well inside the map, and not a line kept just off the edge.
+            // The sea's own reach into a map that has a mainland, so the coast is where land and sea meet, well
+            // inside the map, and not a line kept just off the edge: from a sea side facing a mainland, as far as
+            // that mainland's front; from one facing another sea, a lesser bite.
             for (int i = 0; i < 4 && mainlands > 0; i++)
             {
                 if (!sides[i].IsOcean)
@@ -69,8 +72,8 @@ namespace Clube.Core
                     continue;
                 }
                 float2 normal = Normal(i), along = Perpendicular(normal);
-                float reach = 1f - math.lerp(type.Mainland.x, type.Mainland.y, random.NextFloat());
-                // Centred far out, so its rim crosses the whole side as one broad arc.
+                int facing = i ^ 1;
+                float reach = sides[facing].IsOcean ? random.NextFloat(0.16f, 0.4f) : 1f - reachOf[facing];
                 lands.Add(new float4(normal * half * 3f + along * half * random.NextFloat(-0.6f, 0.6f), half * (2f + 2f * reach), MapShape.SeaReach));
             }
             int firstOwn = lands.Count;

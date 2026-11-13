@@ -57,7 +57,8 @@ Core/
   Quests/        QuestLog: the checklist in sections, done once each (GL216); what counts is decided in Game (PlayerQuests)
   Generation/    TerrainSettings, ITerrainGenerator, TerrainGenerators, ChunkGenerator, TerrainSurface (GL56)
     Generators/  managed generator classes (Flat, Sine, FractalPerlin2D, Spline, Perlin3D)
-    Map/         the bounded map (GL589-GL592): MapDefinition, MapLayout, MapBoundaryType, MapShape, BiomeDefinition,
+    Map/         the bounded map (GL589-GL592, GL637-GL641): MapDefinition, MapLayout, MapBoundaryType, MapShapeType,
+                 MapShape, MapLandBuilder, MapLimit, MapHorizon, BiomeDefinition,
                  BiomeField, BiomeMap, ResourceSurvey, SurveyResource + ResourceReach (GL595)
     Heightmaps/  Heightmap import, HeightmapGenerator, HeightmapExport (K29)
     Noise/       PerlinNoise (struct), VoxelHash, ErosionFilter + ErosionSettings (gullies as a filter on a heightfield, P12a)
@@ -235,16 +236,40 @@ flowchart LR
   never shows at a border. Cross-platform determinism (saves shared between
   machines, PK2) would need `FloatMode.Deterministic` — not set.
 
-- **The bounded map** (GL589-GL592, `Generation/Map/`): `TerrainGeneratorType.BoundedMap` is the eroded landscape inside a
-  square centred on the origin. `TerrainSettings.Map` (`MapDefinition`) resolves by seed to a `MapLayout` (size, a
-  `MapBoundaryType` per side, sea level, peak); its plain-value `MapShape` is applied inside `BoundedMapHeight` before the
-  erosion: the great peak, a tilt towards the sea, then each side's change blended in over its width and held past the edge
-  forever (corners average the two sides by strength and depth into their zones, so the height stays continuous). The water
-  is `Hydrology` with a `WaterExtent`: the whole map plus a margin, 2 m cells by default (1 m would be about 700 MB for 5 km),
-  and a sea, which is every low cell joined to an ocean edge, an outlet at sea level that the rest reads as one lake
-  (`WaterMap.IsSea`). Past the water map the edge cell answers where it is sea, so the ocean has no far shore.
+- **The bounded map** (GL589-GL592, GL637-GL641, `Generation/Map/`): `TerrainGeneratorType.BoundedMap` is the eroded
+  landscape shaped into a map centred on the origin. `TerrainSettings.Map` (`MapDefinition`) resolves by seed to a
+  `MapLayout`: an outline (`MapShapeType`, data: continent, peninsulas, island and satellites, island chain, archipelago),
+  as many sea sides as the outline wants, and a `MapBoundaryType` (data) for each other side by weight.
+  `MapLandBuilder` lays the outline out as plain points: round lands, the sea's reaches into a mainland, islets, bays, and
+  the ranges as chains of bumps (a main range with one highest summit, spurs, forks or other islands' spines; it comes in
+  from a side whose kind has a range). The plain-value `MapShape` holds them and `MapShape.Apply` turns the endless land's
+  height into the map's inside `BoundedMapHeight`, before the erosion:
+  - the coast is the zero line of a land field in metres inland (the lands joined with a soft maximum, bays and sea
+    reaches cut with a soft minimum, read at a position bent by `Warp`, plus a fractal wander and the ranges' own lift);
+    the ground rises from it to the plains and on inland (rivers run to the sea) and the sea floor falls away from it;
+  - the ranges' sum stands on the land, with the endless land's own hills at full size by a range and lower on the plains;
+  - `EdgeInside` is metres inside the playable edge, a rounded square that wanders (`MapLayout.Contains`), and
+    `SideWeights` shares every point between the four sides across wandering borders; an ocean side lets no land near
+    the edge, any other side keeps land at it and blends its own change in (a desert's plain and dunes over the plains
+    there, the larger range's wall of winding crests, the void's cliff);
+  - `LimitAt` is how far into a side's limit a point is (0 free, 1 at the stop line, `MapBoundaryType` data), and
+    ground short of the stop line is kept between `Floor` and `Ceiling`, the voxel world's bottom and top
+    (`MapDefinition.VoxelFloor`, `VoxelCeiling`; `MapShape.Keep`, applied again after the erosion).
+  `GradientNoise` (hashed 2D gradient noise, no table) is the broad noise of all of it. The water is `Hydrology` with a
+  `WaterExtent`: the whole map plus a margin, 2 m cells by default (1 m would be about 700 MB for 5 km), a sea, which
+  is every low cell joined to the area's edge where `IsSea` says so (everywhere but by the void), an outlet at sea level
+  that the rest reads as one lake (`WaterMap.IsSea`), and `IsDry`, ground that holds no lake (the desert's dunes). Past
+  the water map the edge cell answers where it is sea, so the ocean has no far shore.
+- **The map's limit** (GL640): `MapLimit.Held` (Core) takes back the outward part of a step by `LimitAt`;
+  `MapBoundaryLimit` (Game, added to the player by `MapSession`) applies it in `LateUpdate` through the
+  `CharacterController` and shows the side's `LimitMessage`. `ResourceSurvey` marks cells past the playable edge
+  `Outside` and empties them, so no settlement or road is planned there.
+- **The map's horizons** (GL641): `MapHorizon.Colours` lays each side's `HorizonColor` out past the playable edge;
+  `FarTerrainView` uploads it as a texture and the far terrain shader tints its ground by it (`_HorizonTint`,
+  `_HorizonRect`), under the rock and snow it already draws by slope and height.
 - **Biomes** (GL591): `BiomeDefinition` rows, first match wins, picked from elevation over the sea, temperature (latitude,
-  height, a noise) and moisture (a noise), both shifted near the edges by the boundary types. `BiomeField` holds them inline
+  height, a noise) and moisture (a noise), both read at the map's bent position and shifted near the edges by the boundary types
+  (`MapShape.EdgeClimate`, over a wider band than the land's own change). `BiomeField` holds them inline
   for jobs (`ChunkFillSettings.Biomes`): the kernel's `StampBiomes` swaps each column's top and band layer for its biome's,
   after the layers and before clay, banks and ore. `BiomeMap` (`BoundedMapGenerator.Biomes`, `BiomeMap.For(generator)`) is
   the main-thread query; trees read it through `TreeGeneration.Climate` (`TreeForests.ChanceIn`, `TreeShape.IsMaple`), from a
