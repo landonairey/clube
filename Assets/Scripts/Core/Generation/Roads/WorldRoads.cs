@@ -16,7 +16,7 @@ namespace Clube.Core
         public static float Finish(WorldPlan plan, BoundedMapGenerator map)
         {
             MapLayout layout = map.Layout;
-            return Finish(plan, map.Height, map.Water, (x, z) => !layout.WalksFreely(x, z), points => Heights(map, points));
+            return Finish(plan, map.Height, map.Water, (x, z) => !layout.WalksFreely(x, z), HeightsOf(map));
         }
 
         /// <param name="heightAt">The ground's height at (x, z).</param>
@@ -36,7 +36,12 @@ namespace Clube.Core
             return seconds;
         }
 
-        // A corridor's heights in one job: asked one by one they are most of the time the roads take.
+        /// <summary>A map's heights at many points in one job: asked one by one they are most of the time its roads take.</summary>
+        public static Func<Vector2[], float[]> HeightsOf(HeightfieldGenerator map)
+        {
+            return points => Heights(map, points);
+        }
+
         private static float[] Heights(HeightfieldGenerator map, Vector2[] at)
         {
             var points = new NativeArray<float2>(at.Length, Allocator.TempJob);

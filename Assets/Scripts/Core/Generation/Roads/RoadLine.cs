@@ -18,7 +18,8 @@ namespace Clube.Core
         /// <param name="corners">The road's corners in order; at least two.</param>
         /// <param name="heightAt">The ground's height at (x, z).</param>
         /// <param name="heightSpacing">Metres between the heights kept along the road.</param>
-        public RoadLine(IReadOnlyList<Vector2> corners, Func<float, float, float> heightAt, float heightSpacing = 1f)
+        /// <param name="heightsAt">The ground's heights at many points at once, where the map has that (a job): a long road asks for thousands.</param>
+        public RoadLine(IReadOnlyList<Vector2> corners, Func<float, float, float> heightAt, float heightSpacing = 1f, Func<Vector2[], float[]> heightsAt = null)
         {
             if (corners == null || corners.Count < 2)
             {
@@ -41,6 +42,16 @@ namespace Clube.Core
             Bounds = Rect.MinMaxRect(min.x, min.y, max.x, max.y);
             HeightSpacing = Mathf.Max(0.25f, heightSpacing);
             heights = new float[Mathf.CeilToInt(Length / HeightSpacing) + 2];
+            if (heightsAt != null)
+            {
+                var along = new Vector2[heights.Length];
+                for (int i = 0; i < along.Length; i++)
+                {
+                    along[i] = Flat(i * HeightSpacing);
+                }
+                heights = heightsAt(along);
+                return;
+            }
             for (int i = 0; i < heights.Length; i++)
             {
                 Vector2 p = Flat(i * HeightSpacing);

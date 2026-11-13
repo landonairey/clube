@@ -85,6 +85,9 @@ namespace Clube.Game
         /// <summary>Pieces near the viewer still waiting for their chunks.</summary>
         public int PiecesWaiting => pending.Count;
 
+        /// <summary>The longest a road took to work out (its line, heights, bridges and bed), in milliseconds: once per road, as the viewer nears it.</summary>
+        public float LongestWorkOutMilliseconds { get; private set; }
+
         /// <summary>Milliseconds the longest piece took to write, and all of them together.</summary>
         public float LongestMilliseconds { get; private set; }
 
@@ -184,7 +187,8 @@ namespace Clube.Game
             }
             RoadClassDefinition definition = plan.Rules.Road(road.Class);
             // The line keeps its own heights, so it asks the generator itself rather than filling the store with a road's length of them.
-            var line = new RoadLine(road.Points, session.Map.Height);
+            float started = Time.realtimeSinceStartup;
+            var line = new RoadLine(road.Points, session.Map.Height, 1f, WorldRoads.HeightsOf(session.Map));
             List<RouteBridges.Span> bridges = RouteBridges.Find(line, session.Map.Water, true);
             // Where it ends on another road, its bed meets that road's bed.
             float endHeight = float.NaN;
@@ -203,12 +207,14 @@ namespace Clube.Game
             var made = new Built { Line = line, Writer = new RoadWriter(bed), Bridges = bridges, BridgeBuilt = new bool[bridges.Count] };
             if (joinedRoad != null)
             {
-                // Its last metres lie on the joined road's own surface: that road keeps it.
+                // Its last metres lie on the joined road's own surface: that road keeps it. A piece is left out only
+                // when its middle lies well inside that road's width, so the two surfaces meet and no strip of ground is
+                // left between them.
                 RoadBed other = joinedRoad.Writer.Bed;
                 for (int piece = made.Writer.Pieces - 1; piece >= 0; piece--)
                 {
                     float distance = joinedRoad.Line.DistanceTo(made.Writer.Middle(piece), out float at);
-                    if (distance > other.HalfWidthAt(at) + definition.Width * 0.25f)
+                    if (distance > other.HalfWidthAt(at) - RoadWriter.PieceLength * 0.5f)
                     {
                         break;
                     }
@@ -221,6 +227,7 @@ namespace Clube.Game
             }
             built[index] = made;
             RoadsWorkedOut++;
+            LongestWorkOutMilliseconds = Mathf.Max(LongestWorkOutMilliseconds, (Time.realtimeSinceStartup - started) * 1000f);
             return made;
         }
 

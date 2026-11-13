@@ -262,7 +262,8 @@ flowchart LR
   the water map the edge cell answers where it is sea, so the ocean has no far shore.
 - **The map's limit** (GL640): `MapLimit.Held` (Core) takes back the outward part of a step by `LimitAt`;
   `MapBoundaryLimit` (Game, added to the player by `MapSession`) applies it in `LateUpdate` through the
-  `CharacterController` and shows the side's `LimitMessage`. `ResourceSurvey` marks cells past the playable edge
+  `CharacterController` and shows the side's `LimitMessage`. `ResourceSurvey` marks cells where the player does not
+  walk freely (`MapLayout.WalksFreely`: past the playable edge, or inside a limit)
   `Outside` and empties them, so no settlement or road is planned there.
 - **The map's horizons** (GL641): `MapHorizon.Colours` lays each side's `HorizonColor` out past the playable edge;
   `FarTerrainView` uploads it as a texture and the far terrain shader tints its ground by it (`_HorizonTint`,
@@ -287,9 +288,13 @@ flowchart LR
   `SpecialtyAssigner` (fit = the scarcest needed resource nearby; then every specialty is made to exist),
   `RoadPlanner` (paved, then dirt, then footpaths, each from its settlement to the nearest point of the network so far),
   `WaterRoutePlanner` (sea routes from the capital's harbour, river routes, named vessels). Roads leave the planner as
-  cell-centre polylines; `WorldRoads.Finish(plan, heightAt, water)` (`Generation/Roads/`), called right after by whoever has
-  the generator, puts them on the real ground: `RoadRefiner` (each road searched again on an 8 m grid in a 64 m corridor
-  round its line; a state is a grid point and the way it was come to by, so `RoadClassDefinition.TurnCost` makes
+  cell-centre polylines; `WorldRoads.Finish(plan, map)` (`Generation/Roads/`), called right after by whoever has
+  the generator, puts them on the real ground: `RoadRefiner` (each road searched again on an 8 m grid in a 64 m corridor,
+  three times as wide where the planned line is steep or over a lake; forty-eight ways from a point, the long shallow
+  ones being what lets a cart path cross a steep face; a cart path's slope read from ground evened out as its bed will
+  be; a bridge pays for its climb as well as its water; ground where `MapLayout.WalksFreely` is false is closed; heights
+  for a whole corridor from one job, `WorldRoads.HeightsOf`; a state is a grid point and the way it was come to by, so
+  `RoadClassDefinition.TurnCost` makes
   switchbacks long-legged; slope by `StretchCost`; then eased and corner-cut) and `SignpostPlanner` (a graph of the roads;
   `WorldPlan.Signposts`). A road class is one `RoadClassDefinition` row: slope limit as a share of the walkable angle
   (`WorldPlanRules.SetWalkableSlope`), width, surface material, grading, bridge width. `RoadLine` (points, distances,
