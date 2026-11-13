@@ -45,12 +45,22 @@ namespace Clube.Core
                     houses.Add(b);
                 }
             }
+            int perHouse = System.Math.Max(1, site.Rules.PeoplePerHouse);
             if (shops.Count == 0)
             {
+                // No shop to work for: a thieves' camp (GL617), whose band lives by the occupation its type names.
+                Occupation band = Occupation.Find(occupations, site.Settlement.Type.Residents);
+                for (int i = 0; band != null && houses.Count > 0 && i < site.Settlement.Type.Band; i++)
+                {
+                    int home = houses[System.Math.Min(i / perHouse, houses.Count - 1)];
+                    residents.Add(new Resident
+                    {
+                        Index = i, Occupation = band, Shop = home, Home = home, Seed = unchecked(seed * 31 + site.Settlement.Index * 7919 + i * 613),
+                    });
+                }
                 return residents;
             }
             int workers = System.Math.Max(0, site.Settlement.Population - shops.Count);
-            int perHouse = System.Math.Max(1, site.Rules.PeoplePerHouse);
             for (int i = 0; i < workers; i++)
             {
                 int shop = shops[i % shops.Count];

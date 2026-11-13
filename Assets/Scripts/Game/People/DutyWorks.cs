@@ -16,6 +16,10 @@ namespace Clube.Game
             { "dig-tunnel", () => new DigWork(tunnel: true) },
             { "hunt", () => new HuntWork() },
             { "shear", () => new ShearWork() },
+            // GL617: thieves.
+            { "waylay", () => new WaylayWork() },
+            { "burgle", () => new BurgleWork() },
+            { "rob", () => new RobWork() },
         };
 
         /// <summary>Adds a work, or replaces the one of that name.</summary>

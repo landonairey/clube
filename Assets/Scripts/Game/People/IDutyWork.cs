@@ -19,5 +19,18 @@ namespace Clube.Game
 
         /// <summary>One stroke, made standing where <see cref="Seek"/> last said.</summary>
         void Stroke(Villager worker);
+
+        /// <summary>
+        /// Where the work is done when that is one known place far from the settlement (GL617: a band's ambush by a road):
+        /// a worker put in the world in the middle of the duty stands there already. False for work found by looking.
+        /// </summary>
+        bool TryPost(Villager worker, out Vector2 post)
+        {
+            post = default;
+            return false;
+        }
+
+        /// <summary>How fast the worker goes to where <see cref="Seek"/> last said, as a share of a worker's usual pace.</summary>
+        float Pace => 1f;
     }
 }

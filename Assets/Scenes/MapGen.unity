@@ -5506,6 +5506,7 @@ GameObject:
   - component: {fileID: 1350119492}
   - component: {fileID: 1350119493}
   - component: {fileID: 1350119494}
+  - component: {fileID: 1350119495}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -6314,6 +6315,26 @@ MonoBehaviour:
   cratePrefab: {fileID: 3729972786520127726, guid: c468d4c25adbf874b90f327ad3d70fac, type: 3}
   showRange: 380
   mostBoats: 10
+--- !u!114 &1350119495
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c18ad81335e68c44489c23cc1d32ec2e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.ThievesCamps
+  session: {fileID: 1350119487}
+  settlements: {fileID: 1350119490}
+  people: {fileID: 1350119491}
+  carts: {fileID: 1350119493}
+  material: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
+  cratePrefab: {fileID: 3729972786520127726, guid: c468d4c25adbf874b90f327ad3d70fac, type: 3}
+  robberyRest: 75
+  routedRest: 120
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0

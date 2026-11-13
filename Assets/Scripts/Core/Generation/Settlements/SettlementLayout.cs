@@ -116,10 +116,10 @@ namespace Clube.Core
             return roads;
         }
 
-        /// <summary>How many buildings a settlement wants: its shops, and houses for the rest of its people.</summary>
+        /// <summary>How many buildings a settlement wants: its shops, and houses for the rest of its people (and for a thieves' camp's band, GL617).</summary>
         public static int BuildingsWanted(PlannedSettlement settlement, SettlementSiteRules rules)
         {
-            int housed = Mathf.Max(0, settlement.Population - settlement.Shops.Count);
+            int housed = Mathf.Max(0, settlement.Population - settlement.Shops.Count) + settlement.Type.Band;
             return settlement.Shops.Count + Mathf.CeilToInt(housed / (float)Mathf.Max(1, rules.PeoplePerHouse));
         }
 

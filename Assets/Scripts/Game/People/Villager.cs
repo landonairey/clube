@@ -39,6 +39,8 @@ namespace Clube.Game
         private Mesh toolMesh;
         private bool toolShown;
         private float heading;
+        private Inventory sack;
+        private float dazeTimer;
 
         public SettlementPeople People { get; private set; }
 
@@ -65,6 +67,27 @@ namespace Clube.Game
 
         public string Name { get; private set; }
 
+        /// <summary>What the resident carries that is not its own (GL617: a thief's loot); made on first use.</summary>
+        public Inventory Sack => sack ??= new Inventory(8);
+
+        /// <summary>Coins the resident carries (a thief's takings).</summary>
+        public Wallet Purse { get; } = new Wallet();
+
+        /// <summary>True while the sack or the purse holds anything.</summary>
+        public bool IsLoaded => Purse.Coins > 0f || (sack != null && !Robbery.IsEmpty(sack));
+
+        /// <summary>True while knocked down.</summary>
+        public bool IsDazed => dazeTimer > 0f;
+
+        /// <summary>Knocks the resident down for a while (GL617: a thief struck by the player); it does nothing until it gets up.</summary>
+        public void Daze(float seconds)
+        {
+            dazeTimer = Mathf.Max(dazeTimer, seconds);
+            hasPath = false;
+            hasJob = false;
+            seekTimer = 0f;
+        }
+
         private SettlementBuilding Home => Site.Buildings[Resident.Home];
 
         /// <summary>Sets the resident up where its duty of the moment is done; called once, before the first frame.</summary>
@@ -82,6 +105,11 @@ namespace Clube.Game
             Begin(people.DutyNow(resident.Occupation));
             Vector2 start = Duty.Place == DutyPlace.Bed ? BedSide() : Duty.Place == DutyPlace.Home ? HomeSpot() : YardSpot();
             at = new Vector3(start.x, site.HeightAt(start.x, start.y), start.y);
+            // Work done at one far place (a band by its road): whoever comes on it in the middle of the duty finds them there.
+            if (Duty.Place == DutyPlace.Field && work != null && work.TryPost(this, out Vector2 post) && people.StartsAtPost(site, post))
+            {
+                at = new Vector3(post.x, people.Ground(post.x, post.y), post.y);
+            }
             groundHeight = at.y;
             heading = Home.Yaw;
             Place();
@@ -109,6 +137,7 @@ namespace Clube.Game
         public bool IsAvailable => false;
 
         public string Prompt => Duty == null ? Name
+            : Resident.Occupation.Outlaw ? $"A {Resident.Occupation.Name}, {(IsDazed ? "knocked down" : Duty.Name)}" + (IsLoaded ? " (carrying loot)" : string.Empty)
             : $"{Name} the {Resident.Occupation.Name}, {Duty.Name}" + (Carried > 0 ? $" ({Carried} got today)" : string.Empty);
 
         public void Interact(PlayerInteractor by)
@@ -138,6 +167,17 @@ namespace Clube.Game
             {
                 return;
             }
+            if (dazeTimer > 0f)
+            {
+                // Flat on the ground where it was struck.
+                dazeTimer -= Time.deltaTime;
+                figure.Pose = FigureAction.Lie;
+                ShowTool(false);
+                Ground(false);
+                Place();
+                figure.LieAlong(dazeTimer > 0f, People.ToWorld(at), transform.forward);
+                return;
+            }
             Duty now = People.DutyNow(Resident.Occupation);
             if (now != Duty)
             {
@@ -164,7 +204,7 @@ namespace Clube.Game
             {
                 // Workers on the same job stand round it, not in one another.
                 float turn = Resident.Index * 2.4f;
-                arrived = Walk(new Vector2(stand.x + Mathf.Cos(turn) * 0.45f, stand.z + Mathf.Sin(turn) * 0.45f), false, WorkSpeed);
+                arrived = Walk(new Vector2(stand.x + Mathf.Cos(turn) * 0.45f, stand.z + Mathf.Sin(turn) * 0.45f), false, WorkSpeed * work.Pace);
                 working = arrived;
                 look = new Vector2(face.x - at.x, face.z - at.z);
             }
@@ -266,7 +306,16 @@ namespace Clube.Game
                 }
                 if (from != to)
                 {
-                    walks.Route(from, indoors ? DoorFront() : to, leg);
+                    if (!indoors && SettlementSite.Beyond(Site.Bounds, from) > 12f && SettlementSite.Beyond(Site.Bounds, to) > 12f)
+                    {
+                        // Out in the country both ends: straight there, the settlement's lanes are no help.
+                        leg.Clear();
+                        leg.Add(to);
+                    }
+                    else
+                    {
+                        walks.Route(from, indoors ? DoorFront() : to, leg);
+                    }
                     path.AddRange(leg);
                     if (indoors)
                     {

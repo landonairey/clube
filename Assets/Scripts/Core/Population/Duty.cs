@@ -53,9 +53,20 @@ namespace Clube.Core
         /// <summary>Real seconds between two strokes of the work.</summary>
         public float StrokeSeconds = 1.2f;
 
+        /// <summary>GL617, for work that takes what is not the worker's: where the loot ends up (<see cref="Stash"/>: the hoard at the worker's settlement).</summary>
+        public string LootTo = string.Empty;
+
+        /// <summary>Stacks of goods taken at a stroke, and the share of a purse's coins.</summary>
+        public int Stacks = 1;
+        public float Share = 0.25f;
+
+        /// <summary>Metres within which the worker notices the player and goes for them instead; 0 for never.</summary>
+        public float Notice;
+
         public const string Sleep = "sleep";
         public const string AtHome = "home";
         public const string Stroll = "stroll";
+        public const string Stash = "stash";
 
         /// <summary>Every duty the default occupations use.</summary>
         public static List<Duty> Defaults()
@@ -107,6 +118,23 @@ namespace Clube.Core
                     Targets = new[] { "deer", "bison", "cow", "elk" }, Range = 220f, StrokeSeconds = 1.4f,
                 },
                 new Duty { Id = "tan", Name = "scraping hides", Place = DutyPlace.Yard, Pose = FigureAction.Sweep },
+                // Thieves (GL617): by a cart path to stop the carts and take their crates, into a town by night for its
+                // shops' goods and coins, and about the camp, going for the player who comes near. All of it to the camp's stash.
+                new Duty
+                {
+                    Id = "waylay", Name = "lying in wait by the road", Place = DutyPlace.Field, Pose = FigureAction.Examine, Work = "waylay",
+                    Range = 900f, StrokeSeconds = 2.5f, LootTo = Stash, Stacks = 2, Share = 0.3f, Notice = 28f,
+                },
+                new Duty
+                {
+                    Id = "burgle", Name = "stealing from the town", Place = DutyPlace.Field, Pose = FigureAction.Examine, Work = "burgle",
+                    Range = 1400f, StrokeSeconds = 5f, LootTo = Stash, Stacks = 2, Share = 0.15f, Notice = 18f,
+                },
+                new Duty
+                {
+                    Id = "lurk", Name = "keeping watch", Place = DutyPlace.Field, Pose = FigureAction.Stand, Work = "rob",
+                    Range = 40f, StrokeSeconds = 2f, LootTo = Stash, Stacks = 2, Share = 0.3f, Notice = 32f,
+                },
             };
         }
 

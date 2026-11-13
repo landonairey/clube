@@ -214,15 +214,16 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void ACampIsOneShop_AndThievesBuildNothing()
+        public void ACampIsOneShop_AndAThievesCampIsHousesForItsBand()
         {
             SettlementSite camp = SettlementLayout.Plan(Settlement("camp", 1, 1, new Vector2(500f, 500f)), 32f, null, (x, z) => 12f);
             SettlementSite thieves = SettlementLayout.Plan(Settlement("thieves-camp", 0, 0, new Vector2(500f, 500f)), 32f, null, (x, z) => 12f);
 
             Assert.AreEqual(1, camp.Buildings.Count);
             Assert.AreEqual(SettlementBuildingKind.Shop, camp.Buildings[0].Kind);
-            Assert.IsEmpty(thieves.Buildings);
-            Assert.IsEmpty(thieves.Lanes);
+            // GL617: no shops, and a roof over the band (four, two to a house).
+            Assert.AreEqual(2, thieves.Buildings.Count);
+            Assert.IsTrue(thieves.Buildings.TrueForAll(building => building.Kind == SettlementBuildingKind.House));
         }
 
         [Test]

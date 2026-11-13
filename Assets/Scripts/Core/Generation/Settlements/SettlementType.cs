@@ -155,6 +155,15 @@ namespace Clube.Core
         /// <summary>True for thieves: no shops, and no name on the player's map until found.</summary>
         public bool Hostile;
 
+        /// <summary>
+        /// GL617: people who live there beside GL593's population (which counts a settlement's honest folk): a thieves'
+        /// camp's band. They are housed as residents are and work the occupation <see cref="Residents"/> names.
+        /// </summary>
+        public int Band;
+
+        /// <summary>The id of the <see cref="Occupation"/> of a settlement's band.</summary>
+        public string Residents;
+
         /// <summary>The seven types and their numbers, exactly as GL593's table has them.</summary>
         public static List<SettlementType> Defaults()
         {
@@ -169,6 +178,7 @@ namespace Clube.Core
                 {
                     Id = "thieves-camp", Name = "Thieves' Camp", Icon = "tent", MinimumRoad = RoadClass.None, ParcelSize = "<1", Parcels = 0.5f,
                     PopulationMin = 0, PopulationMax = 0, Count = 4, Shops = 0, CraftLevel = 0, Spacing = 350f, Site = SiteRule.Hidden, Hostile = true, Street = "Dead Grass",
+                    Band = 4, Residents = "bandit",
                 },
                 new SettlementType
                 {

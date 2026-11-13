@@ -274,7 +274,7 @@ namespace Clube.Game
                 PlannedSettlement settlement = plan.Settlements[i];
                 float half = SettlementLayout.SideOf(settlement.Type, plan.Rules.ParcelSide) * 0.5f;
                 float distance = Mathf.Max(0f, Vector2.Distance(viewer, settlement.Position) - half);
-                if (distance > buildRange || settlement.Shops.Count + settlement.Population == 0)
+                if (distance > buildRange || settlement.Shops.Count + settlement.Population + settlement.Type.Band == 0)
                 {
                     continue;
                 }

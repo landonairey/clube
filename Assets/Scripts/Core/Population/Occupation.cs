@@ -67,6 +67,9 @@ namespace Clube.Core
 
         public FigurePreset Look = FigurePreset.Worker;
 
+        /// <summary>True for thieves (GL617): no shop employs them, and a blow from the player's tool makes them drop what they carry.</summary>
+        public bool Outlaw;
+
         public DutyShift[] Week = Array.Empty<DutyShift>();
 
         /// <summary>The day of the week (0 Monday to 6 Sunday) of a day of the game (1 the first).</summary>
@@ -98,12 +101,25 @@ namespace Clube.Core
                 {
                     return occupation;
                 }
-                if (occupation.Specialties.Length == 0 && anybody == null)
+                if (occupation.Specialties.Length == 0 && anybody == null && !occupation.Outlaw)
                 {
                     anybody = occupation;
                 }
             }
             return anybody;
+        }
+
+        /// <summary>The occupation with an id, or null.</summary>
+        public static Occupation Find(IReadOnlyList<Occupation> occupations, string id)
+        {
+            foreach (Occupation occupation in occupations)
+            {
+                if (occupation.Id == id)
+                {
+                    return occupation;
+                }
+            }
+            return null;
         }
 
         // A working week: the morning's and the afternoon's duty Monday to Saturday (the afternoon's alternating with a
@@ -168,6 +184,19 @@ namespace Clube.Core
                 {
                     Id = "resident", Name = "townsman", Look = FigurePreset.Merchant,
                     Week = WorkingWeek("sweep", Duty.Stroll, start: 8f),
+                },
+                // A thieves' camp's band (GL617): every day of the week the same, the roads by day and the towns by night.
+                new Occupation
+                {
+                    Id = "bandit", Name = "thief", Look = FigurePreset.Thief, Outlaw = true,
+                    Week = new[]
+                    {
+                        new DutyShift(0, 6, 6f, 11f, "waylay"),
+                        new DutyShift(0, 6, 11f, 13f, "lurk"),
+                        new DutyShift(0, 6, 13f, 18f, "waylay"),
+                        new DutyShift(0, 6, 18f, 22f, "lurk"),
+                        new DutyShift(0, 6, 22f, 3f, "burgle"),
+                    },
                 },
             };
         }

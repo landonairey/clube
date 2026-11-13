@@ -69,6 +69,21 @@ namespace Clube.Game
 
         public AnimalHerds Herds { get; private set; }
 
+        /// <summary>The thieves' camps (GL617); null in a scene without them.</summary>
+        public ThievesCamps Thieves { get; private set; }
+
+        /// <summary>Where the viewer was at the last look, in the world's own metres (x, z).</summary>
+        public Vector2 Viewer { get; private set; }
+
+        /// <summary>
+        /// True when someone put in the world in the middle of a duty done at a far post should stand at the post: the
+        /// viewer is nearer it than the settlement.
+        /// </summary>
+        public bool StartsAtPost(SettlementSite site, Vector2 post)
+        {
+            return (Viewer - post).sqrMagnitude < (Viewer - site.Settlement.Position).sqrMagnitude;
+        }
+
         /// <summary>Which materials are trees in this world.</summary>
         public TreeMaterials Trees { get; private set; }
 
@@ -156,11 +171,13 @@ namespace Clube.Game
             nextLook = Time.unscaledTime + 0.5f;
             Vector3 local = ToLocal(view.transform.position);
             var viewer = new Vector2(local.x, local.z);
+            Viewer = viewer;
             leaving.Clear();
             foreach (KeyValuePair<int, List<Villager>> each in living)
             {
                 SettlementSite site = settlements.BuiltSite(each.Key);
-                if (site == null || SettlementSite.Beyond(site.Bounds, viewer) > liveRange + leaveMargin)
+                bool home = site != null && SettlementSite.Beyond(site.Bounds, viewer) <= liveRange + leaveMargin;
+                if (!home && !NearPost(each.Key, viewer, liveRange + leaveMargin))
                 {
                     leaving.Add(each.Key);
                 }
@@ -188,7 +205,19 @@ namespace Clube.Game
                 {
                     Settle(i, site);
                 }
+                else if (NearPost(i, viewer, liveRange))
+                {
+                    // A band out at its post (GL617): it is there for whoever comes by, though its camp is far and unbuilt.
+                    Settle(i, settlements.SiteOf(i));
+                }
             }
+        }
+
+        // True when a settlement's people are out at one far place by their duty of the hour, and the viewer is near it.
+        private bool NearPost(int settlement, Vector2 viewer, float within)
+        {
+            return Thieves != null && session.Plan.Settlements[settlement].Type.Band > 0 && Thieves.TryPost(settlement, out Vector2 post)
+                && (post - viewer).sqrMagnitude <= within * within;
         }
 
         private void StartOver()
@@ -202,6 +231,7 @@ namespace Clube.Game
             root.SetParent(View.transform, false);
             living.Clear();
             Living = 0;
+            Thieves = FindAnyObjectByType<ThievesCamps>();
             heights = new KeptHeights(session.Map.Height);
             water = WorldRoads.WaterOf(session.Map.Water);
             clock = View.GetComponent<DayNightCycle>();
@@ -235,6 +265,10 @@ namespace Clube.Game
                 body.transform.SetParent(root, false);
                 Villager villager = body.AddComponent<Villager>();
                 villager.Setup(this, site, walks, resident, material);
+                if (resident.Occupation.Outlaw)
+                {
+                    body.AddComponent<Bandit>().Setup(villager, Thieves);
+                }
                 people.Add(villager);
                 Living++;
             }

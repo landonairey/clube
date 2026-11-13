@@ -42,7 +42,7 @@ namespace Clube.Game
         private List<BoatRun> runs = new List<BoatRun>();
         private Boat[] boats = System.Array.Empty<Boat>();
         private double[] delays = System.Array.Empty<double>();
-        private int[] heldFrame = System.Array.Empty<int>();
+        private double[] heldUntil = System.Array.Empty<double>();
         private DayNightCycle clock;
         private Transform root;
         private int version = -1;
@@ -92,14 +92,14 @@ namespace Clube.Game
         }
 
         /// <summary>
-        /// Holds a vessel where it is for this frame (GL617: boarded); called every frame it is held. Its timetable slips
-        /// by as long, so it sails on from where it lay.
+        /// Holds a vessel where it is for some real seconds from now (GL617: boarded). Its timetable slips by as long as
+        /// it lay, so it sails on from there.
         /// </summary>
-        public void Hold(int run)
+        public void HoldFor(int run, float seconds)
         {
-            if (run >= 0 && run < heldFrame.Length)
+            if (run >= 0 && run < heldUntil.Length)
             {
-                heldFrame[run] = Time.frameCount;
+                heldUntil[run] = System.Math.Max(heldUntil[run], Seconds + seconds);
             }
         }
 
@@ -158,12 +158,14 @@ namespace Clube.Game
             lastSeconds = seconds;
             for (int i = 0; i < runs.Count; i++)
             {
-                if (heldFrame[i] >= Time.frameCount - 1)
-                {
-                    delays[i] += passed;
-                }
+                bool held = seconds < heldUntil[i];
+                delays[i] += held ? passed : 0.0;
                 BoatRun run = runs[i];
                 RunPlace state = run.At(seconds - delays[i]);
+                if (held)
+                {
+                    state = new RunPlace(state.Fraction, state.Outbound, false, state.Trip);
+                }
                 WaterRoute route = session.Plan.WaterRoutes[run.Route];
                 float distance = (WaterLanes.Along(route.Points, state.Fraction * route.Length) - viewer).magnitude;
                 if (boats[i] == null && distance <= showRange && Showing < mostBoats && material != null && TryLane(run.Route, run.Class, out _))
@@ -233,11 +235,7 @@ namespace Clube.Game
             runs = BoatRuns.Plan(session.Plan, classes, session.Plan.Seed);
             boats = new Boat[runs.Count];
             delays = new double[runs.Count];
-            heldFrame = new int[runs.Count];
-            for (int i = 0; i < heldFrame.Length; i++)
-            {
-                heldFrame[i] = -10;
-            }
+            heldUntil = new double[runs.Count];
             lanes.Clear();
             Showing = 0;
             clock = CargoLoad.ClockOf(session.WorldView);

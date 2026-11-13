@@ -38,6 +38,8 @@ namespace Clube.Game
         private readonly List<ItemDefinition> goods = new List<ItemDefinition>();
         private List<CartRun> runs = new List<CartRun>();
         private RoadCart[] carts = System.Array.Empty<RoadCart>();
+        private double[] delays = System.Array.Empty<double>(), heldUntil = System.Array.Empty<double>();
+        private double lastSeconds;
         private DayNightCycle clock;
         private Transform root;
         private int version = -1;
@@ -60,6 +62,24 @@ namespace Clube.Game
         /// <summary>Real seconds since the clock started, at its normal rate: what the carts' timetables run on.</summary>
         public double Seconds => CargoLoad.Seconds(clock);
 
+        /// <summary>
+        /// Holds a cart where it is for some real seconds from now (GL617: stopped by thieves). Its timetable slips by as
+        /// long as it stood, so it goes on from there.
+        /// </summary>
+        public void HoldFor(int run, float seconds)
+        {
+            if (run >= 0 && run < heldUntil.Length)
+            {
+                heldUntil[run] = System.Math.Max(heldUntil[run], Seconds + seconds);
+            }
+        }
+
+        /// <summary>True while a cart is held.</summary>
+        public bool IsHeld(int run)
+        {
+            return run >= 0 && run < heldUntil.Length && Seconds < heldUntil[run];
+        }
+
         private void Update()
         {
             if (session == null || roads == null || !session.IsReady || session.Plan == null)
@@ -78,15 +98,23 @@ namespace Clube.Game
             Vector3 local = session.WorldView.transform.InverseTransformPoint(view.transform.position);
             var viewer = new Vector2(local.x, local.z);
             double seconds = Seconds;
+            double passed = System.Math.Max(0.0, seconds - lastSeconds);
+            lastSeconds = seconds;
             for (int i = 0; i < runs.Count; i++)
             {
                 CartRun run = runs[i];
+                bool held = seconds < heldUntil[i];
+                delays[i] += held ? passed : 0.0;
                 if (!roads.TryLine(run.Road, out RoadLine line, out IReadOnlyList<RouteBridges.Span> bridges))
                 {
                     Hide(i);
                     continue;
                 }
-                RunPlace state = run.At(seconds);
+                RunPlace state = run.At(seconds - delays[i]);
+                if (held)
+                {
+                    state = new RunPlace(state.Fraction, state.Outbound, false, state.Trip);
+                }
                 float distance = (line.Flat(state.Fraction * line.Length) - viewer).magnitude;
                 if (carts[i] == null && distance <= showRange && material != null)
                 {
@@ -129,6 +157,8 @@ namespace Clube.Game
             root.SetParent(session.WorldView.transform, false);
             runs = CartRuns.Plan(session.Plan, kinds, session.Plan.Seed);
             carts = new RoadCart[runs.Count];
+            delays = new double[runs.Count];
+            heldUntil = new double[runs.Count];
             Showing = 0;
             clock = CargoLoad.ClockOf(session.WorldView);
         }
