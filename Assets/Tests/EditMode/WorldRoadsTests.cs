@@ -243,18 +243,18 @@ namespace Clube.Core.Tests
             var rules = new WorldPlanRules();
             var line = new RoadLine(new[] { new Vector2(4f, 8f), new Vector2(40f, 8f) }, (x, z) => 4.2f);
             var writer = new RoadWriter(new RoadBed(line, rules.Road(RoadClass.Footpath), null, 3));
-            Assert.AreEqual(18, writer.Pieces);
-            Assert.IsTrue(writer.Loaded(world, 1, 2));
-            Assert.IsFalse(writer.Loaded(world, 1, 14), "its chunks (x = 3) are not loaded");
+            Assert.AreEqual(36, writer.Pieces);
+            Assert.IsTrue(writer.Loaded(world, 1, 4));
+            Assert.IsFalse(writer.Loaded(world, 1, 28), "its chunks (x = 3) are not loaded");
 
             var near = new List<int>();
             writer.Unwritten(new Vector2(9f, 8f), 5f, near);
-            CollectionAssert.AreEqual(new[] { 0, 1, 2, 3, 4 }, near);
+            CollectionAssert.AreEqual(new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, near);
             foreach (int piece in near)
             {
                 writer.Write(world, registry, (x, z) => 4.2f, 0.5f, piece);
             }
-            Assert.AreEqual(5, writer.Written);
+            Assert.AreEqual(10, writer.Written);
             WorldGrid grid = world.Grid;
             Assert.AreEqual(dead.Id, world.GetMaterial(grid.WorldToNearestSample(new Vector3(8f, 4f, 8f))).Value, "dead grass on the path");
             Assert.AreNotEqual(dead.Id, world.GetMaterial(grid.WorldToNearestSample(new Vector3(8f, 4f, 11f))).Value, "not beside it");
@@ -263,11 +263,14 @@ namespace Clube.Core.Tests
 
             var again = new RoadWriter(new RoadBed(line, rules.Road(RoadClass.Footpath), null, 3));
             again.Restore(writer.Save());
-            Assert.AreEqual(5, again.Written);
-            Assert.IsTrue(again.IsWritten(4));
-            Assert.IsFalse(again.IsWritten(5));
+            Assert.AreEqual(10, again.Written);
+            Assert.IsTrue(again.IsWritten(9));
+            Assert.IsFalse(again.IsWritten(10));
+            again.Skip(20);
+            Assert.AreEqual(1, again.Skipped);
+            Assert.IsTrue(again.IsWritten(20), "a skipped piece is never written");
             again.Restore("7:ff");
-            Assert.AreEqual(5, again.Written, "a save for a road of another length is ignored");
+            Assert.AreEqual(11, again.Written, "a save for a road of another length is ignored");
         }
 
         [Test]

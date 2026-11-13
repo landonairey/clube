@@ -81,6 +81,13 @@ namespace Clube.Core
             /// </summary>
             public Func<float, float, bool> Inside;
 
+            /// <summary>
+            /// Metres round the rectangle past which a tree standing on it is not cut (its far branches are left); 0: the
+            /// whole tree goes, and whatever its crown touches. For a narrow strip through a wood (a road), where whole
+            /// trees joined crown to crown would be the wood.
+            /// </summary>
+            public float TreeReach;
+
             /// <summary>The height a column inside the rectangle is set to.</summary>
             public readonly float TargetAt(float x, float z, float ground)
             {
@@ -309,6 +316,10 @@ namespace Clube.Core
                 for (int x = low.x; x <= high.x; x++)
                 {
                     Vector3 column = grid.SampleToWorld(new Vector3Int(x, 0, z));
+                    if (area.Inside != null && !area.Inside(column.x, column.z))
+                    {
+                        continue;
+                    }
                     float ground = natural.At(column.x, column.z);
                     float level = area.TargetAt(column.x, column.z, ground);
                     float bottom = Mathf.Min(ground, level) - grid.VoxelSize;
@@ -327,11 +338,14 @@ namespace Clube.Core
                 }
             }
             // A wide area may hold a small wood: room for a few dozen trees.
-            FloodClear(world, materials, front, seen, floorY, iso, MaxTreeSamples * 20);
+            // A road through a wood (TreeReach): the cut stops a little way out, or touching crowns would take the wood with them.
+            int reach = area.TreeReach > 0f ? Mathf.CeilToInt(area.TreeReach / grid.VoxelSize) : int.MaxValue / 4;
+            var within = new RectInt(low.x - reach, low.z - reach, high.x - low.x + 2 * reach, high.z - low.z + 2 * reach);
+            FloodClear(world, materials, front, seen, floorY, iso, MaxTreeSamples * 20, area.TreeReach > 0f ? within : (RectInt?)null);
         }
 
         // Empties every solid plant sample joined to the ones in front, never below floorY.
-        private static void FloodClear(World world, MaterialRegistry materials, Stack<Vector3Int> front, HashSet<Vector3Int> seen, int floorY, float iso, int most)
+        private static void FloodClear(World world, MaterialRegistry materials, Stack<Vector3Int> front, HashSet<Vector3Int> seen, int floorY, float iso, int most, RectInt? within = null)
         {
             while (front.Count > 0 && seen.Count < most)
             {
@@ -340,6 +354,10 @@ namespace Clube.Core
                 foreach (Vector3Int step in Around)
                 {
                     Vector3Int next = sample + step;
+                    if (within.HasValue && (next.x < within.Value.xMin || next.x > within.Value.xMax || next.z < within.Value.yMin || next.z > within.Value.yMax))
+                    {
+                        continue;
+                    }
                     if (next.y >= floorY && !seen.Contains(next) && Read(world, next, out _) >= iso && IsPlant(world, materials, next))
                     {
                         seen.Add(next);

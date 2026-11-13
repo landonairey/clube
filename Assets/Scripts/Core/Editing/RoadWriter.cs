@@ -16,7 +16,10 @@ namespace Clube.Core
     public sealed class RoadWriter
     {
         /// <summary>Metres of road in a piece: short, so one piece is a few milliseconds.</summary>
-        public const float PieceLength = 2f;
+        public const float PieceLength = 1f;
+
+        // Metres round a piece within which a tree standing on the road is cut: its trunk and the crown over the road.
+        private const float TreeReach = 4f;
 
         // Metres of headroom cleared over the road (a fallen rock, a branch).
         private const float Headroom = 3f;
@@ -49,6 +52,20 @@ namespace Clube.Core
         /// <summary>Pieces that lie under a bridge and are never written.</summary>
         public int OnBridges { get; }
 
+        /// <summary>Leaves a piece unwritten for good (where the road runs onto the bed of the road it joins).</summary>
+        public void Skip(int piece)
+        {
+            if (!written[piece])
+            {
+                written[piece] = true;
+                Written++;
+                Skipped++;
+            }
+        }
+
+        /// <summary>Pieces left out by <see cref="Skip"/>.</summary>
+        public int Skipped { get; private set; }
+
         public bool IsWritten(int piece)
         {
             return written[piece];
@@ -77,20 +94,28 @@ namespace Clube.Core
             }
         }
 
-        // The piece's flat rectangle: the box round its stretch of road (sampled every half metre), widened by the bed.
+        // The piece's flat rectangle: the box round its own strip of the bed, from edge to edge across the road every half
+        // metre along it (not the stretch's box widened all round: most of that is its neighbours' ground, and every
+        // column of the rectangle costs a look). The road's two ends take the half circle beyond them as well.
         private Rect Bounds(int piece, out float low, out float high)
         {
+            const float Margin = 0.5f;
             RoadLine line = Bed.Line;
             float from = piece * PieceLength;
             float to = Mathf.Min(line.Length, from + PieceLength);
+            float reach = Bed.Reach;
             Vector2 min = Vector2.positiveInfinity, max = Vector2.negativeInfinity;
             low = float.MaxValue;
             high = float.MinValue;
             for (float d = from; ; d = Mathf.Min(to, d + 0.5f))
             {
                 Vector2 p = line.Flat(d);
-                min = Vector2.Min(min, p);
-                max = Vector2.Max(max, p);
+                Vector2 way = line.Direction(d);
+                Vector2 across = new Vector2(-way.y, way.x) * reach;
+                bool end = (piece == 0 && d <= 0f) || (piece == written.Length - 1 && d >= to);
+                Vector2 round = end ? Vector2.one * reach : new Vector2(Mathf.Abs(across.x), Mathf.Abs(across.y));
+                min = Vector2.Min(min, p - round);
+                max = Vector2.Max(max, p + round);
                 float ground = line.HeightAlong(d), bed = Bed.HeightAlong(d);
                 low = Mathf.Min(low, Mathf.Min(ground, bed));
                 high = Mathf.Max(high, Mathf.Max(ground, bed));
@@ -99,8 +124,7 @@ namespace Clube.Core
                     break;
                 }
             }
-            float reach = Bed.Reach;
-            return Rect.MinMaxRect(min.x - reach, min.y - reach, max.x + reach, max.y + reach);
+            return Rect.MinMaxRect(min.x - Margin, min.y - Margin, max.x + Margin, max.y + Margin);
         }
 
         /// <summary>True when every chunk a piece may change is loaded.</summary>
@@ -143,6 +167,9 @@ namespace Clube.Core
             Rect box = Bounds(piece, out _, out _);
             RoadBed bed = Bed;
             List<Vector2Int> stretches = bed.StretchesNear(box, bed.Reach);
+            // This piece's own stretch, with a sample's overlap onto its neighbours; the road's ends take what lies beyond them.
+            float from = piece == 0 ? float.MinValue : piece * PieceLength - 0.3f;
+            float to = piece == written.Length - 1 ? float.MaxValue : (piece + 1) * PieceLength + 0.3f;
             VoxelMaterial surface = materials != null && !string.IsNullOrEmpty(bed.Definition.Surface) ? materials.Find(bed.Definition.Surface) : null;
             GroundLeveling.Level(world, materials, new GroundLeveling.Area
             {
@@ -151,8 +178,9 @@ namespace Clube.Core
                 FollowGround = true,
                 Natural = natural,
                 Headroom = Headroom,
+                TreeReach = TreeReach,
                 Paving = surface,
-                Inside = (x, z) => bed.IsBed(new Vector2(x, z), stretches),
+                Inside = (x, z) => bed.IsBed(new Vector2(x, z), stretches, from, to),
                 Paved = (x, z) => bed.IsRoad(new Vector2(x, z), stretches),
                 Surface = bed.FollowsGround ? (Func<float, float, float, float>)null : (x, z, ground) => bed.Surface(new Vector2(x, z), ground, stretches),
             }, iso);

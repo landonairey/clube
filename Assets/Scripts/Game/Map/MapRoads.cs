@@ -19,6 +19,9 @@ namespace Clube.Game
         // Pieces looked at each frame for whether their chunks have loaded.
         private const int ChecksPerFrame = 24;
 
+        // Ground heights kept before the store is emptied (a few megabytes).
+        private const int MostHeightsKept = 200000;
+
         [SerializeField]
         private MapSession session;
 
@@ -49,6 +52,7 @@ namespace Clube.Game
 
         private readonly List<(int Road, int Piece, float Distance)> pending = new List<(int, int, float)>();
         private readonly List<int> found = new List<int>();
+        private readonly Dictionary<long, float> heights = new Dictionary<long, float>();
         private readonly Dictionary<string, string> restored = new Dictionary<string, string>();
         private Rect[] bounds;
         private Built[] built;
@@ -135,13 +139,34 @@ namespace Clube.Game
                 bounds[i] = Rect.MinMaxRect(min.x, min.y, max.x, max.y);
             }
             pending.Clear();
+            heights.Clear();
             collectedTime = float.MinValue;
             RoadsWorkedOut = PiecesWritten = BridgesBuilt = SignpostsBuilt = 0;
         }
 
+        // The ground as generated. Road pieces ask for the same square metres over and over (each takes a grid of
+        // heights round itself, and neighbours overlap), and a generator's height is costly: the heights at whole
+        // metres are kept, and a point between them read from the four round it.
         private float Natural(float x, float z)
         {
-            return session.Map.Height(x, z);
+            int ix = Mathf.FloorToInt(x), iz = Mathf.FloorToInt(z);
+            float fx = x - ix, fz = z - iz;
+            return Mathf.Lerp(Mathf.Lerp(Kept(ix, iz), Kept(ix + 1, iz), fx), Mathf.Lerp(Kept(ix, iz + 1), Kept(ix + 1, iz + 1), fx), fz);
+        }
+
+        private float Kept(int x, int z)
+        {
+            long key = ((long)x << 32) | (uint)z;
+            if (!heights.TryGetValue(key, out float height))
+            {
+                if (heights.Count > MostHeightsKept)
+                {
+                    heights.Clear();
+                }
+                height = session.Map.Height(x, z);
+                heights[key] = height;
+            }
+            return height;
         }
 
         // Works out a road in detail: its line with heights, its bridges, its bed and its writer.
@@ -158,13 +183,16 @@ namespace Clube.Game
                 return null;
             }
             RoadClassDefinition definition = plan.Rules.Road(road.Class);
-            var line = new RoadLine(road.Points, Natural);
+            // The line keeps its own heights, so it asks the generator itself rather than filling the store with a road's length of them.
+            var line = new RoadLine(road.Points, session.Map.Height);
             List<RouteBridges.Span> bridges = RouteBridges.Find(line, session.Map.Water, true);
             // Where it ends on another road, its bed meets that road's bed.
             float endHeight = float.NaN;
+            Built joinedRoad = null;
             if (road.To < 0 && road.Joins >= 0 && road.Joins < index)
             {
                 Built joined = WorkOut(road.Joins);
+                joinedRoad = joined;
                 if (joined != null)
                 {
                     joined.Line.DistanceTo(line.Flat(line.Length), out float along);
@@ -173,6 +201,20 @@ namespace Clube.Game
             }
             var bed = new RoadBed(line, definition, bridges, plan.Seed + index, endHeight);
             var made = new Built { Line = line, Writer = new RoadWriter(bed), Bridges = bridges, BridgeBuilt = new bool[bridges.Count] };
+            if (joinedRoad != null)
+            {
+                // Its last metres lie on the joined road's own surface: that road keeps it.
+                RoadBed other = joinedRoad.Writer.Bed;
+                for (int piece = made.Writer.Pieces - 1; piece >= 0; piece--)
+                {
+                    float distance = joinedRoad.Line.DistanceTo(made.Writer.Middle(piece), out float at);
+                    if (distance > other.HalfWidthAt(at) + definition.Width * 0.25f)
+                    {
+                        break;
+                    }
+                    made.Writer.Skip(piece);
+                }
+            }
             if (restored.TryGetValue(KeyPrefix + index, out string saved))
             {
                 made.Writer.Restore(saved);
@@ -328,7 +370,7 @@ namespace Clube.Game
             }
             for (int i = 0; i < built.Length; i++)
             {
-                if (built[i] != null && built[i].Writer.Written > built[i].Writer.OnBridges)
+                if (built[i] != null && built[i].Writer.Written > built[i].Writer.OnBridges + built[i].Writer.Skipped)
                 {
                     values[KeyPrefix + i] = built[i].Writer.Save();
                 }

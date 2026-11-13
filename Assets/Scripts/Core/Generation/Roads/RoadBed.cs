@@ -14,6 +14,9 @@ namespace Clube.Core
         private readonly float[] bed;
         private readonly IReadOnlyList<RouteBridges.Span> bridges;
         private readonly float wanderOffset;
+        private List<Vector2Int> lastStretches;
+        private Vector2 lastPoint;
+        private float lastAlong, lastDistance;
 
         /// <param name="endHeight">
         /// The height its far end must meet (the bed of the road it joins there), or NaN for the ground's own.
@@ -113,8 +116,14 @@ namespace Clube.Core
         }
 
         // Metres from a point to the nearest of some stretches of the road, and how far along the road that is.
+        // The last answer is kept: the same column is asked about several times running (is it bed, how high, is it road).
         private float Nearest(Vector2 point, List<Vector2Int> stretches, out float along)
         {
+            if (ReferenceEquals(stretches, lastStretches) && point == lastPoint)
+            {
+                along = lastAlong;
+                return lastDistance;
+            }
             float best = float.MaxValue;
             along = 0f;
             foreach (Vector2Int stretch in stretches)
@@ -126,6 +135,10 @@ namespace Clube.Core
                     along = at;
                 }
             }
+            lastStretches = stretches;
+            lastPoint = point;
+            lastAlong = along;
+            lastDistance = best;
             return best;
         }
 
@@ -136,11 +149,15 @@ namespace Clube.Core
             return distance <= HalfWidthAt(along);
         }
 
-        /// <summary>True where (x, z) is on the road or its shoulder: outside it the road changes nothing.</summary>
-        public bool IsBed(Vector2 point, List<Vector2Int> stretches)
+        /// <summary>
+        /// True where (x, z) is on the road or its shoulder (outside it the road changes nothing) and the nearest part
+        /// of the road to it lies between <paramref name="from"/> and <paramref name="to"/> metres along: the stretch one
+        /// piece of the road is answerable for, so neighbouring pieces do not do each other's work.
+        /// </summary>
+        public bool IsBed(Vector2 point, List<Vector2Int> stretches, float from = float.MinValue, float to = float.MaxValue)
         {
             float distance = Nearest(point, stretches, out float along);
-            return distance <= HalfWidthAt(along) + (FollowsGround ? 0f : Definition.Shoulder);
+            return along >= from && along <= to && distance <= HalfWidthAt(along) + (FollowsGround ? 0f : Definition.Shoulder);
         }
 
         /// <summary>
