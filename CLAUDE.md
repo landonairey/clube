@@ -80,7 +80,7 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   Game reference Core; **Core never references Debug or Game.** Debug also
   references Game (lab tools tune the player, M16); Game never references Debug.
 - Namespaces match assembly names (`Clube.Core`, `Clube.Debug`, `Clube.Game`).
-- Scenes (A9): `MainMenu` (the exe's first scene), `Tutorial` (GL514), `VoxelLab`, `ChunkLab`, `WorldLab` (fixed area), `ProceduralWorldLab` (streamed), `Game`. The `Game` scene
+- Scenes (A9): `MainMenu` (the exe's first scene), `Tutorial` (GL514), `VoxelLab`, `ChunkLab`, `WorldLab` (fixed area), `ProceduralWorldLab` (streamed), `MapGen` (the bounded 5 km map, GL598), `Game`. The `Game` scene
   contains no `Clube.Debug` components (A10).
 - Docs go in `Docs/` (capital D, G5).
 - Workflow (G2): one objective = one GitHub issue; one sub-section = one

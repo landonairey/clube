@@ -86,6 +86,7 @@ namespace Clube.Core
             int seed = ores?.Seed ?? 0;
             var settings = new ChunkFillSettings(LayerTable.From(layers, start, seed), seed, format);
             settings.Water = generator is HeightfieldGenerator heightfield ? heightfield.Water : WaterMap.None;
+            settings.Biomes = generator is BoundedMapGenerator bounded ? bounded.BiomeField : BiomeField.None;
             return settings;
         }
 

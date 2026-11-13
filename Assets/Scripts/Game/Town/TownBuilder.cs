@@ -423,7 +423,7 @@ namespace Clube.Game
             var thiefObject = new GameObject("Thief");
             thiefObject.transform.SetParent(root, false);
             thiefObject.transform.SetPositionAndRotation(town.ToScene(room + outward * 0.4f - across * 0.6f), town.SceneRotation(facingOut));
-            thiefObject.AddComponent<KeeperFigure>().BuildThief(parts.Material, town.Plan.Seed + 475);
+            thiefObject.AddComponent<FigureRig>().Build(FigurePreset.Thief, parts.Material, town.Plan.Seed + 475);
             thiefObject.AddComponent<TownThief>();
         }
 
