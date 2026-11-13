@@ -58,7 +58,9 @@ Map of the game (details in the history):
   (`Wallet`, `PriceList`, `MerchantPanel`, `ITrader`), skills (`SkillSet`, `PlayerSkills`),
   quests (`QuestLog`, `PlayerQuests`, `QuestHud`), journals (`FieldLogScreen`), saving
   (`Core/Saving`, `GameSessionHost`, `SaveSlots`; small new state implements `ISavedValues`
-  instead of raising the save version), town (`Game/Town`, `TownPlan`).
+  instead of raising the save version), town (`Game/Town`, `TownPlan`), people (`Core/Population`:
+  `Duty`, `Occupation` rows; `Game/People`: `SettlementPeople`, `Villager`, `IDutyWork`), carts
+  (`CartRuns`, `MapCarts`).
 - Demo exe: *Clube → Build → Game demo* (`DemoBuild`) → `Builds/Demo/`.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
@@ -143,7 +145,11 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   it rather than switching to batch mode.
 - MCP gotcha: Play mode doesn't tick while the editor window is unfocused.
   To test frame-driven behaviour, pause and advance with
-  `EditorApplication.Step()` from `RunCommand`. `Camera_Capture` skips
+  `EditorApplication.Step()` from `RunCommand`. Or set `Application.runInBackground = true`
+  from `RunCommand` once in Play mode: frames then come in bursts while commands run, and
+  `Time.timeScale = 12` makes game hours pass in a few commands. Don't write files under
+  `Assets` during Play mode: the Editor picks them up, recompiles, and non-serialized state
+  (the map session's plan) is gone. `Camera_Capture` skips
   IMGUI; use `ScreenCapture.CaptureScreenshot` to see `OnGUI` HUDs.
   A faster way for one object's components: in Play mode, loop
   `go.SendMessage("Update")` (and `"LateUpdate"`) with a short sleep between

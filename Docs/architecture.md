@@ -91,7 +91,8 @@ Core/
                  matching looks), FigureProps, FigurePoses (pure: action + time + step -> joint angles). `Clube.Game`'s
                  FigureRig hangs the parts on the joints and plays the pose; a new NPC look is a new FigurePreset row
   Editing/       GroundLeveling (flat ground with a ramp, or the land as it lies, trees cut down, paths paved: the town and merchant table, GL38, GL400, GL413), SquareVoxels (square blocks and flat-walled tunnels on the chisel's carving: boards, shops, shafts, GL411-GL414), NodeMining (one ore sample at a time, the miner, GL415), TreeFelling (cut-off limbs and how they land, GL344), TerrainBrush (K13–K16), ToolStrike + StrikeDamage (GL2–GL5; slivers GL79), TerrainPile (I4), GroundDrying (GL34), ChiselStrike + FlatTop (GL87, GL88), GroundSettling (falling dirt and sand, GL308), LiveWater (the water's cellular flow: falls, runs downhill, fills dug holes, GL313, GL315), WaterScoop (the bucket, GL319), IDensityField, IEditableTerrain
-  Queries/       SurfaceRaycast, VoxelRaycast, SurfacePoints (GL4), WaterQuery (what's under water: swimming, GL316)
+  Queries/       SurfaceRaycast, VoxelRaycast, SurfacePoints (GL4), WaterQuery (what's under water: swimming, GL316),
+                 TreeFinder (standing trees round a place, GL615)
   Volume/        VoxelVolume, ChunkVolume (V11, V12, K30), RegionVolume (the mesh volume round some samples: what a hit gathers, GL288)
   Saving/        GameSave (plain data), GameSaveFile (versioned binary, S1), WorldSaving (edited chunks, S2), StackSaving (GL205), SaveNames (GL207)
   Sky/           SkyPositions (the sun, the moon's orbit and phases, the stars' sidereal turn, GL248, GL253),
@@ -99,6 +100,9 @@ Core/
                  sunset's colour and each day's cloud cover, GL262, GL263)
   Fauna/         BirdFlock (a group of birds flying a pattern, then leaving, GL250); AnimalSpecies, HerdSites, AnimalBrain
                  (the animals as data, where herds live, one animal's decisions, GL602-GL606)
+  Population/    the people of settlements as data (GL615, GL616): Duty and Occupation rows, DutyShift (a week of duties),
+                 SettlementRoster (who lives where), SettlementWalks (the ways through the lanes), DigPlan (a pit or a
+                 tunnel, voxel by voxel), CartKind and CartRuns (which carts run which roads, and where by the clock)
   Audio/         SoundSynth (sound effects made in code, GL271)
   Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea, FarTerrainBuilder (far terrain levels),
                  TerrainLodRing + TerrainLodBuilder (coarse terrain levels, P7c), DistantTreeBuilder (GL162)
@@ -719,6 +723,43 @@ Icons are pictures of the 3D models, baked in the Editor and read by the invento
   mesh's corners and colours, the texture's or prefab's dependency hash, the turn, the view and a `Look` version to
   raise when lights or shaders change. `ItemIconContactSheet` writes every icon into one picture.
 - `ItemIconTools` (the old painter) now only writes items whose shape is `Painted`.
+
+### People and carts (GL615, GL616)
+
+Who lives in a settlement and what they do is Core data (`Core/Population/`, an algorithm-layer folder that reads the
+settlements of `Generation/`); the bodies are Game (`Game/People/`, `Game/Travellers/`, `Game/Map/MapCarts`).
+
+- **Rows.** A `Duty` is one thing a resident does: a `DutyPlace` (bed, home, the shop's yard, the streets, the field),
+  a `FigureAction` to hold there, and for field work the name of a work, the item id of its tool, target species and a
+  range. An `Occupation` names the `EconomySpecialty` ids whose shops employ it, a `FigurePreset` and a week of
+  `DutyShift`s; `DutyAt(dayOfWeek, hour)` is the first shift that holds (else bed at night, home by day).
+  `Occupation.For` gives a shop's occupation; the row with no specialties is anybody else. A new duty or occupation is a
+  row in `Defaults()`; `SettlementPeople.Duties` and `.Occupations` are the lists the scene runs on.
+- **Works.** A duty's `Work` is looked up in `DutyWorks` (name → maker), which makes an `IDutyWork` for the villager
+  each time the duty begins: `Seek` says where to stand and what to face (asked again after every stroke, so the place
+  can move), `Stroke` does one blow. `FellWork`, `DigWork`, `HuntWork` and `ShearWork` are the four. Terrain work goes
+  through `WorkerStrike.Hit`, which is `ToolStrike.FindTargets` and `ToolStrike.Hit` with the worker's own
+  `StrikeDamage`: the same edit path, hits and drops as the player's. A felled tree goes through the scene's
+  `TreeFeller.TryFell(box, fall)`. A new kind of work is a class and a `DutyWorks.Register` line.
+- **Who and where.** `SettlementRoster.Build(site, occupations, seed)` gives the `Resident`s (population less one
+  keeper a shop, shared among the shops, housed in the site's houses). `SettlementWalks` turns a site's lanes into a
+  web of points 2 m apart and routes over it (Dijkstra, a metre through a building costing a thousand), so a walk
+  goes by the streets. `DigPlan.Pit` and `.Tunnel` list voxels in digging order; `Next` finds the first still solid in
+  the world, so a pit holds no progress of its own and goes on from whatever is there.
+- **In the scene.** `SettlementPeople` (on the World object, beside `MapSettlements`) looks twice a second: a
+  settlement that `MapSettlements.BuiltSite` says stands, within `liveRange` of the viewer, gets its `Villager`s (up
+  to `mostPeople`); past `liveRange + leaveMargin` they are destroyed. A `Villager` reads its duty from the clock each
+  frame, walks (no physics: `GroundProbe.TryGround`, a short `World.Raycast` down from near its own height, keeps its
+  feet on the terrain, a pit's floor included) and poses its `FigureRig`. Nothing of a villager is saved: where it is
+  follows from the clock, and what it did to the terrain is in the world.
+- **Figure detail.** `FigureLod` (added by `FigureRig.Build`) sets `FigureRig.Detail` from the camera's distance every
+  0.4 s: `Full` to 30 m, `NoShadow` to 60 m, then `Far`, one combined mesh of the figure standing (built on first
+  use) with the limbs' renderers off and the pose no longer updated. The distances are statics on `FigureLod`.
+- **Carts.** `CartRuns.Plan(plan, kinds, seed)` gives each cart path its `CartRun`s; `CartRun.At(seconds)` is a
+  `CartPlace` (fraction along the road, outbound or not, moving or standing, the trip's number) from the clock alone.
+  `MapCarts` asks `MapRoads.TryLine(road)` for the `RoadLine` and bridge spans of roads worked out near the viewer and
+  keeps a `RoadCart` for each cart within `showRange`; `RoadCart` sets `TradeCartModel` (and a `CartHorse`) on the
+  ground with `GroundProbe`, on a bridge between the deck's end heights.
 
 ## 7. Where the next systems plug in
 
