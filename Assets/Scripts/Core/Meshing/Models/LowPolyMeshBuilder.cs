@@ -14,6 +14,19 @@ namespace Clube.Core
         private readonly List<Vector3> normals = new List<Vector3>();
         private readonly List<Color> colors = new List<Color>();
         private readonly List<int> triangles = new List<int>();
+        private readonly List<Vector2> surfaces = new List<Vector2>();
+        private bool anySurface;
+
+        public const float PlainSurface = 0f;
+        public const float WoodSurface = 1f;
+        public const float MetalSurface = 2f;
+
+        /// <summary>
+        /// What the parts added next are made of, for shaders that draw a surface (GL609, Clube/Held Item): x is the kind
+        /// (<see cref="PlainSurface"/>, <see cref="WoodSurface"/>, <see cref="MetalSurface"/>), y how much it shines, 0-1.
+        /// Written to the mesh's first UV channel, and only when some part set one.
+        /// </summary>
+        public Vector2 Surface { get; set; }
 
         /// <summary>Where the parts added next go: every point is moved by it. Identity by default.</summary>
         public Matrix4x4 Placement { get; set; } = Matrix4x4.identity;
@@ -226,7 +239,9 @@ namespace Clube.Core
             {
                 normals.Add(normal);
                 colors.Add(color);
+                surfaces.Add(Surface);
             }
+            anySurface |= Surface != Vector2.zero;
             triangles.Add(first);
             triangles.Add(first + 1);
             triangles.Add(first + 2);
@@ -243,6 +258,10 @@ namespace Clube.Core
             mesh.SetVertices(vertices);
             mesh.SetNormals(normals);
             mesh.SetColors(colors);
+            if (anySurface)
+            {
+                mesh.SetUVs(0, surfaces);
+            }
             mesh.SetTriangles(triangles, 0);
             mesh.RecalculateBounds();
             return mesh;
