@@ -118,6 +118,8 @@ namespace Clube.Debug.Editor
                 { "magnetite", (StoneBase, StoneMix, MagnetiteFleck, Wear.Whole) },
                 { "hematite", (StoneBase, StoneMix, HematiteFleck, Wear.Whole) },
                 { "coal", (new Color(0.1f, 0.1f, 0.11f), new Color(0.2f, 0.2f, 0.22f), new Color(0.34f, 0.34f, 0.38f), Wear.Whole) },
+                // Dead grass (GL633): the trodden grass of a walking path, "more yellow/brown in color". Added last, so no seed moves.
+                { "dead grass", (new Color(0.52f, 0.44f, 0.22f), new Color(0.66f, 0.58f, 0.31f), null, Wear.Whole) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]

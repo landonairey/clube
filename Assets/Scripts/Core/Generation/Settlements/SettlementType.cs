@@ -16,28 +16,90 @@ namespace Clube.Core
         PavedCartPath,
     }
 
-    /// <summary>The numbers of one road class (GL596): how steep it may run, how wide it is cut, what a bridge costs it.</summary>
+    /// <summary>
+    /// The numbers of one road class (GL596): how steep it may run, how wide it is cut, what it is surfaced with, what a
+    /// bridge costs it. A row of <see cref="Defaults"/>; routes, the writer and the map read these fields, never the class.
+    /// </summary>
     [Serializable]
     public sealed class RoadClassDefinition
     {
         public RoadClass Class;
         public string Name;
+        /// <summary>
+        /// GL634: the steepest it may run, as a share of the slope angle the player can walk (1: "as steep as our rules
+        /// allow for walkable slope angles"). <see cref="MaxSlope"/> follows from it (<see cref="SetWalkable"/>).
+        /// </summary>
+        public float SlopeShare = 1f;
         /// <summary>Steepest rise over run the class should take; steeper steps are a last resort and are noted on the road.</summary>
         public float MaxSlope;
+        /// <summary>The rise over run it is laid out for: a stretch this steep costs three times a level one, so a route turns along a slope well before the limit.</summary>
+        public float EasySlope = 0.2f;
         /// <summary>Width in metres, for cutting it into the terrain (GL613).</summary>
         public float Width;
         /// <summary>What crossing one cell of river costs the route, in metres of level road: how far it goes round to save a bridge.</summary>
         public float BridgeCost;
+        /// <summary>GL633: the material its top layer is made of, by name in the <see cref="MaterialRegistry"/>.</summary>
+        public string Surface;
+        /// <summary>Metres along the road its height is evened out over (0: it follows the ground as it lies).</summary>
+        public float GradeLength;
+        /// <summary>The most metres it is cut into or built up over the ground to stay even.</summary>
+        public float MaxCut;
+        /// <summary>Metres at each side over which a graded road's bed meets the ground.</summary>
+        public float Shoulder = 1f;
+        /// <summary>How much its edges wander in and out (0 to 1 of its half width): a trodden path's edge is not ruled.</summary>
+        public float EdgeWander;
+        /// <summary>What a right-angle turn costs a route, in metres of level road: a cart wants wide bends, so its switchbacks have long legs.</summary>
+        public float TurnCost = 10f;
+        /// <summary>The width of its bridges' decks in metres.</summary>
+        public float BridgeWidth = 2.2f;
 
-        /// <summary>The three classes: a footpath, a dirt cart path, a paved cart path.</summary>
+        /// <summary>
+        /// The three classes: a footpath, a dirt cart path, a paved cart path. Surfaces are GL633's ("walking paths ... use
+        /// a new grass type called Dead Grass ..., dirt cart paths use dirt, and paved cart paths use cobble stone"; the
+        /// cobbles are the Loose stone the towns' paths are laid with). Slopes are GL634's: shares of the walkable angle.
+        /// </summary>
         public static List<RoadClassDefinition> Defaults()
         {
-            return new List<RoadClassDefinition>
+            var roads = new List<RoadClassDefinition>
             {
-                new RoadClassDefinition { Class = RoadClass.Footpath, Name = "Footpath", MaxSlope = 0.35f, Width = 1.5f, BridgeCost = 200f },
-                new RoadClassDefinition { Class = RoadClass.DirtCartPath, Name = "Dirt cart path", MaxSlope = 0.2f, Width = 3f, BridgeCost = 400f },
-                new RoadClassDefinition { Class = RoadClass.PavedCartPath, Name = "Paved cart path", MaxSlope = 0.12f, Width = 5f, BridgeCost = 600f },
+                new RoadClassDefinition
+                {
+                    Class = RoadClass.Footpath, Name = "Footpath", SlopeShare = 1f, EasySlope = 0.3f, Width = 1.5f, BridgeCost = 200f,
+                    Surface = "Dead Grass", GradeLength = 0f, MaxCut = 0f, EdgeWander = 0.3f, BridgeWidth = 1.6f, TurnCost = 6f,
+                },
+                new RoadClassDefinition
+                {
+                    Class = RoadClass.DirtCartPath, Name = "Dirt cart path", SlopeShare = 0.24f, EasySlope = 0.12f, Width = 3f, BridgeCost = 400f,
+                    Surface = "Dirt", GradeLength = 10f, MaxCut = 0.8f, Shoulder = 1.25f, EdgeWander = 0.12f, BridgeWidth = 2.6f, TurnCost = 14f,
+                },
+                new RoadClassDefinition
+                {
+                    Class = RoadClass.PavedCartPath, Name = "Paved cart path", SlopeShare = 0.16f, EasySlope = 0.08f, Width = 5f, BridgeCost = 600f,
+                    Surface = "Loose stone", GradeLength = 20f, MaxCut = 1.5f, Shoulder = 1.5f, EdgeWander = 0f, BridgeWidth = 4.4f, TurnCost = 22f,
+                },
             };
+            foreach (RoadClassDefinition road in roads)
+            {
+                road.SetWalkable(WorldPlanRules.DefaultWalkableSlope);
+            }
+            return roads;
+        }
+
+        /// <summary>Sets <see cref="MaxSlope"/> from the slope angle the player can walk, in degrees (GL634).</summary>
+        public void SetWalkable(float degrees)
+        {
+            MaxSlope = UnityEngine.Mathf.Tan(UnityEngine.Mathf.Clamp(degrees * SlopeShare, 1f, 80f) * UnityEngine.Mathf.Deg2Rad);
+        }
+
+        /// <summary>
+        /// What a stretch of this class costs a route: its length, dearer the steeper it is (three times at
+        /// <see cref="EasySlope"/>), and far dearer past <see cref="MaxSlope"/>, so that is taken only where there is no other way.
+        /// </summary>
+        public float StretchCost(float metres, float slope)
+        {
+            float ease = slope / UnityEngine.Mathf.Max(0.01f, EasySlope);
+            float cost = metres * (1f + 2f * ease * ease);
+            return slope > MaxSlope ? cost + metres * 25f * slope / MaxSlope : cost;
         }
     }
 

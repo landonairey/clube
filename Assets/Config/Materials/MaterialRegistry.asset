@@ -46,6 +46,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c89eb894a093b3e6439384ad24b93cbf, type: 2}
   - {fileID: 11400000, guid: 11e29b19add5cd0da55692fe04588706, type: 2}
   - {fileID: 11400000, guid: 7c4cc19bae15d8920c81e465114698ad, type: 2}
+  - {fileID: 11400000, guid: 2294cb86e2a67874280d7bc67734667c, type: 2}
   textures: {fileID: 18700000, guid: 2cdac732b1b7ddf46b38cce6e3459565, type: 2}
   terrainMaterial: {fileID: 2100000, guid: dbd2c209c43c7524aba03ebbb4b517ae, type: 2}
   debugMaterial: {fileID: 2100000, guid: e072219e4d296fc468b2ceee6fa890e1, type: 2}

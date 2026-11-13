@@ -5500,6 +5500,7 @@ GameObject:
   - component: {fileID: 1350119487}
   - component: {fileID: 1350119486}
   - component: {fileID: 1350119488}
+  - component: {fileID: 1350119489}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -6138,6 +6139,7 @@ MonoBehaviour:
   session: {fileID: 1350119487}
   markerMaterial: {fileID: 2100000, guid: 17679981c23bcc84892b01294eb16698, type: 2}
   roadPostRange: 220
+  roadPosts: 0
   roadPostSpacing: 12
   settlementPostHeight: 12
   show: 1
@@ -6177,6 +6179,24 @@ MonoBehaviour:
   maxAnimals: 40
   emptiedCarcassSeconds: 15
   carcassSeconds: 600
+--- !u!114 &1350119489
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f0e422bc75744f4f8c00cb394d3906c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.MapRoads
+  session: {fileID: 1350119487}
+  material: {fileID: 2100000, guid: 30c74d43a7ded6b478229bb89f6ecc01, type: 2}
+  textMaterial: {fileID: 2100000, guid: e9c1e17c90ccf8b4e922e9392fda6ee5, type: 2}
+  buildRange: 150
+  writeBudgetMilliseconds: 3
+  build: 1
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0

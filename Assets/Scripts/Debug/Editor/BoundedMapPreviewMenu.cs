@@ -53,6 +53,7 @@ namespace Clube.Debug.Editor
                 Texture2D picture = Draw(generator, survey);
                 double planStart = EditorApplication.timeSinceStartup;
                 WorldPlan plan = WorldPlanner.Build(survey, terrain.Seed);
+                WorldRoads.Finish(plan, generator.Height, generator.Water);
                 double planned = EditorApplication.timeSinceStartup;
                 DrawPlan(picture, survey, plan);
                 File.WriteAllBytes(path, picture.EncodeToPNG());

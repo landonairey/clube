@@ -67,6 +67,25 @@ namespace Clube.Core
             /// <see cref="Height"/>, so only what stands on it (trees, rocks) is cleared and its top layer is paved or covered.
             /// </summary>
             public bool FollowGround;
+
+            /// <summary>
+            /// The height each column (x, z) is set to, given the ground as it was there (GL613: a road's bed, even
+            /// along its length and meeting the ground at its shoulders); null: <see cref="Height"/> or the ground.
+            /// Columns it leaves within a hair of the ground keep their shape.
+            /// </summary>
+            public Func<float, float, float, float> Surface;
+
+            /// <summary>
+            /// Which columns (x, z) of the rectangle are worked on at all; null: every one. A road's piece only touches
+            /// its own bed, so another road's bed inside the same rectangle is left as that road made it.
+            /// </summary>
+            public Func<float, float, bool> Inside;
+
+            /// <summary>The height a column inside the rectangle is set to.</summary>
+            public readonly float TargetAt(float x, float z, float ground)
+            {
+                return Surface != null ? Surface(x, z, ground) : FollowGround ? ground : Height;
+            }
         }
 
         /// <summary>Levels an area: trees on it are cleared, then each column is set to its flat or ramped height.</summary>
@@ -90,9 +109,13 @@ namespace Clube.Core
                 for (int x = low.x; x <= high.x; x++)
                 {
                     Vector3 column = grid.SampleToWorld(new Vector3Int(x, 0, z));
+                    if (area.Inside != null && !area.Inside(column.x, column.z))
+                    {
+                        continue;
+                    }
                     float beyond = Beyond(area, column.x, column.z);
                     float ground = natural.At(column.x, column.z);
-                    float target = area.FollowGround ? ground : area.Height;
+                    float target = area.TargetAt(column.x, column.z, ground);
                     if (beyond > 0f)
                     {
                         if (area.Ramp <= 0f || area.Natural == null)
@@ -111,7 +134,8 @@ namespace Clube.Core
                     int y0 = grid.WorldToNearestSample(new Vector3(column.x, bottom, column.z)).y;
                     int y1 = grid.WorldToNearestSample(new Vector3(column.x, top, column.z)).y;
                     // Ground already within a hair of its height keeps its shape: only its surface material changes.
-                    bool keepShape = area.Natural != null && (area.FollowGround || Mathf.Abs(target - ground) < KeepShapeWithin);
+                    bool keepShape = area.Natural != null
+                        && ((area.FollowGround && area.Surface == null) || Mathf.Abs(target - ground) < KeepShapeWithin);
                     int air = 0;
                     for (int y = y0; y <= y1 + headroom; y++)
                     {
@@ -286,7 +310,7 @@ namespace Clube.Core
                 {
                     Vector3 column = grid.SampleToWorld(new Vector3Int(x, 0, z));
                     float ground = natural.At(column.x, column.z);
-                    float level = area.FollowGround ? ground : area.Height;
+                    float level = area.TargetAt(column.x, column.z, ground);
                     float bottom = Mathf.Min(ground, level) - grid.VoxelSize;
                     float top = Mathf.Max(ground, level) + TrunkBand;
                     int y0 = grid.WorldToNearestSample(new Vector3(column.x, bottom, column.z)).y;

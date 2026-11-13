@@ -72,8 +72,13 @@ namespace Clube.Core
         public int To = -1;
         /// <summary>The road it joins at its end, or -1.</summary>
         public int Joins = -1;
-        /// <summary>The route (x, z), from <see cref="From"/> on, through survey cell centres.</summary>
+        /// <summary>
+        /// The route (x, z), from <see cref="From"/> on: through survey cell centres as planned, then the smoothed line on
+        /// the real ground once <see cref="RoadRefiner"/> has been over it (<see cref="Refined"/>).
+        /// </summary>
         public List<Vector2> Points = new List<Vector2>();
+        /// <summary>True once the route follows the real ground (GL631).</summary>
+        public bool Refined;
         public float Length;
         public List<RoadBridge> Bridges = new List<RoadBridge>();
         /// <summary>The steepest step along it, rise over run between cells.</summary>
@@ -139,6 +144,22 @@ namespace Clube.Core
         public List<RoadClassDefinition> Roads = RoadClassDefinition.Defaults();
         public List<NamedVessel> Vessels = NamedVessel.Defaults();
 
+        /// <summary>The slope angle the player can walk, in degrees, where no player says otherwise (the controller's limit in every scene).</summary>
+        public const float DefaultWalkableSlope = 50f;
+
+        /// <summary>The slope angle the player can walk, in degrees: the road classes' limits are shares of it (GL634).</summary>
+        public float WalkableSlope { get; private set; } = DefaultWalkableSlope;
+
+        /// <summary>Sets the walkable slope angle (the player controller's own limit) and every road class's limit from it.</summary>
+        public void SetWalkableSlope(float degrees)
+        {
+            WalkableSlope = degrees;
+            foreach (RoadClassDefinition road in Roads)
+            {
+                road.SetWalkable(degrees);
+            }
+        }
+
         /// <summary>The map size the distances below are written for; they scale with a smaller or larger map.</summary>
         public float ReferenceMapSize = 5000f;
         /// <summary>"Nearby", in metres: how far a small settlement reaches for its resources.</summary>
@@ -180,6 +201,8 @@ namespace Clube.Core
         public List<PlannedSettlement> Settlements = new List<PlannedSettlement>();
         public List<PlannedRoad> Roads = new List<PlannedRoad>();
         public List<WaterRoute> WaterRoutes = new List<WaterRoute>();
+        /// <summary>Signposts at junctions and settlement edges (GL632); empty until the roads are on the real ground (<see cref="WorldRoads.Finish"/>).</summary>
+        public List<PlannedSignpost> Signposts = new List<PlannedSignpost>();
         /// <summary>Named vessels with no route on this map, each with a <see cref="NamedVessel.Note"/> saying why.</summary>
         public List<NamedVessel> ReservedVessels = new List<NamedVessel>();
         /// <summary>Notes on anything the plan could not do as asked (a type short of sites, a resource the map lacks).</summary>

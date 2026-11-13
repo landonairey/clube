@@ -156,10 +156,7 @@ namespace Clube.Core
             {
                 return metres + definition.BridgeCost;
             }
-            float slope = Mathf.Abs(context.Cells[to].Height - context.Cells[from].Height) / metres;
-            float share = slope / definition.MaxSlope;
-            float cost = metres * (1f + 2f * share * share);
-            return share > 1f ? cost + metres * 25f * share : cost;
+            return definition.StretchCost(metres, Mathf.Abs(context.Cells[to].Height - context.Cells[from].Height) / metres);
         }
 
         private bool IsWater(int cell)

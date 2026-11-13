@@ -22,6 +22,10 @@ namespace Clube.Game
         [SerializeField, Range(40f, 600f)]
         private float roadPostRange = 220f;
 
+        [Tooltip("Posts along the planned roads (off: the roads themselves are built by MapRoads, GL613).")]
+        [SerializeField]
+        private bool roadPosts;
+
         [Tooltip("Metres between road posts.")]
         [SerializeField, Range(4f, 40f)]
         private float roadPostSpacing = 12f;
@@ -33,7 +37,7 @@ namespace Clube.Game
         private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
 
         private readonly List<Transform> labels = new List<Transform>();
-        private readonly List<GameObject> roadPosts = new List<GameObject>();
+        private readonly List<GameObject> roadPostObjects = new List<GameObject>();
         private Transform settlementRoot, roadRoot;
         private MaterialPropertyBlock block;
         private Mesh cube;
@@ -83,7 +87,20 @@ namespace Clube.Game
                 return;
             }
             Vector3 eye = view.transform.position;
-            if (!havePosts || (eye - postsCentre).sqrMagnitude > 20f * 20f)
+            if (!roadPosts)
+            {
+                // The roads are in the ground now (GL613, MapRoads); the posts stay as a way to see the plan's lines.
+                if (RoadPostCount > 0)
+                {
+                    foreach (GameObject post in roadPostObjects)
+                    {
+                        post.SetActive(false);
+                    }
+                    RoadPostCount = 0;
+                    havePosts = false;
+                }
+            }
+            else if (!havePosts || (eye - postsCentre).sqrMagnitude > 20f * 20f)
             {
                 PlaceRoadPosts(eye);
             }
@@ -210,12 +227,12 @@ namespace Clube.Game
                             {
                                 continue;
                             }
-                            GameObject post = used < roadPosts.Count
-                                ? roadPosts[used]
+                            GameObject post = used < roadPostObjects.Count
+                                ? roadPostObjects[used]
                                 : Box(roadRoot, "Road post", Vector3.zero, Vector3.one, colour);
-                            if (used >= roadPosts.Count)
+                            if (used >= roadPostObjects.Count)
                             {
-                                roadPosts.Add(post);
+                                roadPostObjects.Add(post);
                             }
                             used++;
                             post.SetActive(true);
@@ -229,9 +246,9 @@ namespace Clube.Game
                     along += length;
                 }
             }
-            for (int i = used; i < roadPosts.Count; i++)
+            for (int i = used; i < roadPostObjects.Count; i++)
             {
-                roadPosts[i].SetActive(false);
+                roadPostObjects[i].SetActive(false);
             }
             RoadPostCount = used;
         }
