@@ -12,11 +12,9 @@ namespace Clube.Game
     public sealed class FellWork : IDutyWork
     {
         private const float StandOff = 0.9f;
-        private const int SpotsASeek = 40;
-
         private readonly List<Vector2> spots = new List<Vector2>();
+        private readonly HashSet<int> bare = new HashSet<int>();
         private bool listed;
-        private int cursor;
         private Vector3Int cut;
         private bool hasCut;
 
@@ -37,7 +35,7 @@ namespace Clube.Game
                 float edge = Mathf.Max(town.width, town.height) * 0.5f;
                 TreeFinder.SpotsNear(people.View.Trees, town.center, 0f, edge + worker.Duty.Range, spots);
             }
-            hasCut = TreeFinder.FindTrunk(world, people.Trees, spots, ref cursor, SpotsASeek, people.Ground, spot => worker.MayWorkAt(spot, 3f), iso, out cut);
+            hasCut = TreeFinder.FindTrunk(world, people.Trees, spots, bare, people.Ground, spot => worker.MayWorkAt(spot, 3f), iso, out cut);
             if (!hasCut)
             {
                 return false;

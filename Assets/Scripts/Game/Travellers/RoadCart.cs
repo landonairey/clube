@@ -53,13 +53,14 @@ namespace Clube.Game
         /// <summary>Puts the cart where its run has it on the road, heading the way it goes.</summary>
         public void Place(WorldView view, RoadLine line, IReadOnlyList<RouteBridges.Span> bridges, CartPlace state)
         {
-            float distance = state.Fraction * line.Length;
+            // It stops short of each end by its own length, so whoever pulls it is still on the road.
+            float lead = horse != null ? HorseAhead + CartHorse.HalfLength + 0.5f : TradeCartModel.CarterAhead;
+            float distance = Mathf.Clamp(state.Fraction * line.Length, Mathf.Min(lead + 0.5f, line.Length * 0.5f), Mathf.Max(line.Length - lead - 0.5f, line.Length * 0.5f));
             float ahead = state.Outbound ? 1f : -1f;
             Transform world = view.transform;
             Vector3 axle = world.TransformPoint(Surface(view, line, bridges, distance));
             Vector3 front = Surface(view, line, bridges, distance + ahead * TradeCartModel.TiltReach);
             Vector3 back = Surface(view, line, bridges, distance - ahead * TradeCartModel.TiltReach);
-            float lead = horse != null ? HorseAhead + CartHorse.HalfLength + 0.5f : TradeCartModel.CarterAhead;
             Vector3 carter = world.TransformPoint(Surface(view, line, bridges, distance + ahead * lead));
             model.PlaceAt(axle, carter, world.TransformDirection(front - back), 0f, state.Moving, distance);
             if (horse != null)

@@ -162,7 +162,9 @@ namespace Clube.Game
             }
             else if (Duty.Place == DutyPlace.Field && work != null && Seek())
             {
-                arrived = Walk(new Vector2(stand.x, stand.z), false, WorkSpeed);
+                // Workers on the same job stand round it, not in one another.
+                float turn = Resident.Index * 2.4f;
+                arrived = Walk(new Vector2(stand.x + Mathf.Cos(turn) * 0.45f, stand.z + Mathf.Sin(turn) * 0.45f), false, WorkSpeed);
                 working = arrived;
                 look = new Vector2(face.x - at.x, face.z - at.z);
             }

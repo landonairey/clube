@@ -42,32 +42,39 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Looks at up to <paramref name="budget"/> spots from <paramref name="cursor"/> on for a standing trunk; true with
-        /// a wood sample at chopping height. The cursor stays on a tree that is found (it is asked about again until it
-        /// is felled) and on a spot whose ground is not loaded; it passes spots with no tree.
+        /// Looks through the spots, nearest first, for wood at chopping height; true with a sample of it. A spot found
+        /// bare (no tree grew there, or it is felled and cleared) is put in <paramref name="bare"/> and not looked at
+        /// again; one whose ground is not loaded is passed over this time and looked at the next, so only the trees in
+        /// the loaded world round the viewer are found. A fallen trunk lying by its stump counts: it is cut up in turn.
         /// </summary>
         /// <param name="ground">The ground's height at (x, z).</param>
         /// <param name="allowed">False for a spot nothing may be felled at (on a road, say); may be null.</param>
-        public static bool FindTrunk(World world, TreeMaterials trees, IReadOnlyList<Vector2> spots, ref int cursor, int budget,
+        public static bool FindTrunk(World world, TreeMaterials trees, IReadOnlyList<Vector2> spots, HashSet<int> bare,
             Func<float, float, float> ground, Func<Vector2, bool> allowed, float isoLevel, out Vector3Int trunk)
         {
             trunk = default;
-            for (int looked = 0; looked < budget && cursor < spots.Count; looked++)
+            for (int i = 0; i < spots.Count; i++)
             {
-                Vector2 spot = spots[cursor];
-                if (allowed == null || allowed(spot))
+                if (bare.Contains(i))
                 {
-                    Vector3Int at = world.Grid.WorldToNearestSample(new Vector3(spot.x, ground(spot.x, spot.y) + ChopHeight, spot.y));
-                    if (!world.GetDensity(at).HasValue)
-                    {
-                        return false;
-                    }
-                    if (WoodNear(world, trees, spot, ground, 1.5f, isoLevel, out trunk))
-                    {
-                        return true;
-                    }
+                    continue;
                 }
-                cursor++;
+                Vector2 spot = spots[i];
+                if (allowed != null && !allowed(spot))
+                {
+                    bare.Add(i);
+                    continue;
+                }
+                Vector3Int at = world.Grid.WorldToNearestSample(new Vector3(spot.x, ground(spot.x, spot.y) + ChopHeight, spot.y));
+                if (!world.GetDensity(at).HasValue)
+                {
+                    continue;
+                }
+                if (WoodNear(world, trees, spot, ground, 1.5f, isoLevel, out trunk))
+                {
+                    return true;
+                }
+                bare.Add(i);
             }
             return false;
         }
