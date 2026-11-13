@@ -143,15 +143,7 @@ namespace Clube.Game
             root.SetParent(town.Root, false);
             root.SetPositionAndRotation(town.ToScene(At(plan, plot.Centre, floor)), town.SceneRotation(yaw));
 
-            float d = TownLayout.ShopDepth * 0.5f;
-            // The sign hangs under the lintel over the open front.
-            GameObject sign = Local("Sign", root, TownMeshes.SignBoard(shop.Colour), parts.Material, new Vector3(0f, TownLayout.ShopHeight - 0.45f, d + 0.06f));
-            Text(sign.transform, shop.ShopName, new Vector3(0f, 0.2f, 0.045f), parts.TextMaterial, 0.04f);
-            // The game's own sleeping roll, lying along the back wall on the floor (GL417).
-            GameObject roll = ModelCopy.Copy(parts.SleepingRollPrefab, root, "Sleeping roll");
-            roll.transform.localPosition = new Vector3(TownLayout.BedCentre.x, 0f, TownLayout.BedCentre.y);
-            roll.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
-            Display(root, shop, parts);
+            FitShop(root, shop, parts.Material, parts.TextMaterial, parts.SleepingRollPrefab, plan.Seed);
 
             var keeperObject = new GameObject($"{shop.ShopName} keeper");
             keeperObject.transform.SetParent(town.Root, false);
@@ -159,6 +151,26 @@ namespace Clube.Game
             keeper.Setup(shop, parts.Prices, parts.Hours, parts.Clock, town, parts.Material, plan.Seed + (int)shop.Kind * 977, parts.DailyCoins,
                 parts.Post != null ? parts.Post.DispositionOf(shop.Kind) : null);
             return keeper;
+        }
+
+        /// <summary>
+        /// A shop's fittings under its root (at the middle of its floor, its front out of +z): the sign under the lintel, the
+        /// keeper's sleeping roll and the wares on the counter. The town's shops and a planned settlement's (GL613) share it.
+        /// </summary>
+        public static void FitShop(Transform root, ShopSpecialty shop, Material material, Material textMaterial, GameObject sleepingRollPrefab, int seed)
+        {
+            float d = TownLayout.ShopDepth * 0.5f;
+            // The sign hangs under the lintel over the open front.
+            GameObject sign = Local("Sign", root, TownMeshes.SignBoard(shop.Colour), material, new Vector3(0f, TownLayout.ShopHeight - 0.45f, d + 0.06f));
+            Text(sign.transform, shop.ShopName, new Vector3(0f, 0.2f, 0.045f), textMaterial, 0.04f);
+            // The game's own sleeping roll, lying along the back wall on the floor (GL417).
+            if (sleepingRollPrefab != null)
+            {
+                GameObject roll = ModelCopy.Copy(sleepingRollPrefab, root, "Sleeping roll");
+                roll.transform.localPosition = new Vector3(TownLayout.BedCentre.x, 0f, TownLayout.BedCentre.y);
+                roll.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+            }
+            Display(root, shop, material, seed);
         }
 
         // A model in a shop's (or any parent's) own frame.
@@ -202,7 +214,7 @@ namespace Clube.Game
 
         // The items' own models on the counter (GL403, GL424), spread along it and turned a little each. The prospectors'
         // counter shows real ore samples instead, written into the terrain by TownSite.
-        private static void Display(Transform shopRoot, ShopSpecialty shop, Parts parts)
+        private static void Display(Transform shopRoot, ShopSpecialty shop, Material material, int seed)
         {
             if (shop.Kind == ShopKind.Prospector)
             {
@@ -210,7 +222,7 @@ namespace Clube.Game
             }
             IReadOnlyList<ItemDefinition> items = shop.Displayed;
             int count = Mathf.Min(items.Count, 5);
-            var random = new System.Random(parts.Town.Plan.Seed + (int)shop.Kind * 31);
+            var random = new System.Random(seed + (int)shop.Kind * 31);
             float half = TownLayout.CounterLength * 0.5f - 0.3f;
             for (int i = 0; i < count; i++)
             {
@@ -221,7 +233,7 @@ namespace Clube.Game
                 float x = count == 1 ? 0f : Mathf.Lerp(-half, half, i / (float)(count - 1));
                 float z = TownLayout.CounterZ - 0.25f + ((float)random.NextDouble() - 0.5f) * 0.1f;
                 float yaw = ((float)random.NextDouble() - 0.5f) * 40f;
-                GameObject model = DisplayModel(items[i], shopRoot, parts);
+                GameObject model = DisplayModel(items[i], shopRoot, material);
                 model.transform.localPosition += new Vector3(x, TownLayout.CounterHeight, z);
                 model.transform.localRotation = Quaternion.Euler(0f, yaw, 0f) * model.transform.localRotation;
             }
@@ -229,7 +241,7 @@ namespace Clube.Game
 
         // An item as it is in the game: a tool's or bucket's own held model lying on its side, a placeable's own prefab made
         // small (crate, furnace, sleeping roll, torch), anything else its small display model (ingots, buns, bricks).
-        private static GameObject DisplayModel(ItemDefinition item, Transform parent, Parts parts)
+        private static GameObject DisplayModel(ItemDefinition item, Transform parent, Material material)
         {
             string name = $"Display {item.DisplayName}";
             switch (item)
@@ -238,12 +250,12 @@ namespace Clube.Game
                 {
                     // Standing on its handle's end, leaning back a little, so it shows over the counter's edge.
                     Mesh mesh = HeldMesh(tool);
-                    GameObject go = Local(name, parent, mesh, parts.Material, new Vector3(0f, -mesh.bounds.min.y, 0f));
+                    GameObject go = Local(name, parent, mesh, material, new Vector3(0f, -mesh.bounds.min.y, 0f));
                     go.transform.localRotation = Quaternion.Euler(-12f, 0f, 0f);
                     return go;
                 }
                 case BucketDefinition _:
-                    return Local(name, parent, HeldMesh(item), parts.Material, new Vector3(0f, 0.36f, 0f));
+                    return Local(name, parent, HeldMesh(item), material, new Vector3(0f, 0.36f, 0f));
                 case TorchDefinition torch when torch.Prefab != null:
                 {
                     GameObject go = ModelCopy.Copy(torch.Prefab, parent, name);
@@ -254,7 +266,7 @@ namespace Clube.Game
                 case PlaceableDefinition placeable when placeable.Prefab != null:
                     return ModelCopy.Copy(placeable.Prefab, parent, name, false, 0.5f);
                 default:
-                    return Local(name, parent, DisplayItemMeshes.For(item), parts.Material, Vector3.zero);
+                    return Local(name, parent, DisplayItemMeshes.For(item), material, Vector3.zero);
             }
         }
 
@@ -423,7 +435,7 @@ namespace Clube.Game
             var thiefObject = new GameObject("Thief");
             thiefObject.transform.SetParent(root, false);
             thiefObject.transform.SetPositionAndRotation(town.ToScene(room + outward * 0.4f - across * 0.6f), town.SceneRotation(facingOut));
-            thiefObject.AddComponent<KeeperFigure>().BuildThief(parts.Material, town.Plan.Seed + 475);
+            thiefObject.AddComponent<FigureRig>().Build(FigurePreset.Thief, parts.Material, town.Plan.Seed + 475);
             thiefObject.AddComponent<TownThief>();
         }
 

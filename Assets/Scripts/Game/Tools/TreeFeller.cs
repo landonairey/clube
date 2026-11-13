@@ -88,8 +88,8 @@ namespace Clube.Game
             TryFell(box);
         }
 
-        /// <summary>Fells whatever a chop on <paramref name="box"/> cut off, if anything; true when a limb started to fall.</summary>
-        public bool TryFell(VoxelBox box)
+        /// <summary>Fells whatever a chop on <paramref name="box"/> cut off, if anything; true when a limb started to fall. It falls towards <paramref name="fall"/> (a unit step along x or z), or to the right of where the player looks.</summary>
+        public bool TryFell(VoxelBox box, Vector3Int? fall = null)
         {
             if (worldView == null || !worldView.IsReady)
             {
@@ -125,7 +125,7 @@ namespace Clube.Game
             var falling = new GameObject("Falling limb").AddComponent<FallingLimb>();
             falling.transform.SetParent(worldView.transform, false);
             falling.Begin(
-                worldView, limb, trees, mesh, origin, Materials(), FallDirection(), dustMaterial, dustColour, burstMaterial, OnLanded);
+                worldView, limb, trees, mesh, origin, Materials(), fall ?? FallDirection(), dustMaterial, dustColour, burstMaterial, OnLanded);
             Felled?.Invoke(limb);
             return true;
         }

@@ -15,8 +15,12 @@ MonoBehaviour:
   id: gold-ingot
   displayName: Gold ingot
   icon: {fileID: 2800000, guid: 3375be3ef15c48342b356a6262713209, type: 3}
+  iconShape: 8
+  iconTint: {r: 0.8, g: 0.65, b: 0.23, a: 1}
   maxStack: 32
   unitVolume: 0.4
   burnSeconds: 0
+  fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0

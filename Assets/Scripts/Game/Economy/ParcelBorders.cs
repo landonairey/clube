@@ -63,6 +63,21 @@ namespace Clube.Game
         private readonly List<Color> colors = new List<Color>();
         private readonly List<int> triangles = new List<int>();
 
+        private System.Func<Vector2, bool> openAt;
+
+        /// <summary>
+        /// Says where the fence is left open (x, z in the world's local metres): where a road crosses a border, so no
+        /// post or rail stands in it (GL613). Null for a fence all the way round. The fence is built again.
+        /// </summary>
+        public void SetOpenings(System.Func<Vector2, bool> openAt)
+        {
+            this.openAt = openAt;
+            if (parcels != null)
+            {
+                Rebuild();
+            }
+        }
+
         private void Awake()
         {
             player = GetComponent<PlayerParcels>();
@@ -194,19 +209,27 @@ namespace Clube.Game
 
             int posts = Mathf.Max(1, Mathf.RoundToInt(length / postSpacing));
             Vector3 last = default;
+            bool open = true;
             for (int i = 0; i <= posts; i++)
             {
                 Vector2 point = Vector2.Lerp(from, to, (float)i / posts);
+                // A road crosses here: no post, and no rail to or from it.
+                if (openAt != null && openAt(point))
+                {
+                    open = true;
+                    continue;
+                }
                 float ground = Mathf.Min(worldTop, GroundAt(generator, point, worldTop));
                 // Each post a little different, as split wood is.
                 float shade = 0.85f + 0.15f * Mathf.Repeat(Mathf.Sin(point.x * 12.9898f + point.y * 78.233f) * 43758.55f, 1f);
                 wood.Block(new Vector3(point.x, ground - 0.25f, point.y), new Vector3(PostWidth, height + RailHeight + 0.25f, PostWidth), PostWood * shade);
                 var top = new Vector3(point.x, ground, point.y);
-                if (i > 0)
+                if (!open)
                 {
                     AddRail(last, top, height, RailWood);
                     AddRail(last, top, height * 0.5f, RailWood * 0.95f);
                 }
+                open = false;
                 last = top;
             }
         }

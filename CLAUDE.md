@@ -58,7 +58,9 @@ Map of the game (details in the history):
   (`Wallet`, `PriceList`, `MerchantPanel`, `ITrader`), skills (`SkillSet`, `PlayerSkills`),
   quests (`QuestLog`, `PlayerQuests`, `QuestHud`), journals (`FieldLogScreen`), saving
   (`Core/Saving`, `GameSessionHost`, `SaveSlots`; small new state implements `ISavedValues`
-  instead of raising the save version), town (`Game/Town`, `TownPlan`).
+  instead of raising the save version), town (`Game/Town`, `TownPlan`), people (`Core/Population`:
+  `Duty`, `Occupation` rows; `Game/People`: `SettlementPeople`, `Villager`, `IDutyWork`), carts
+  (`CartRuns`, `MapCarts`).
 - Demo exe: *Clube → Build → Game demo* (`DemoBuild`) → `Builds/Demo/`.
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
@@ -80,7 +82,7 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   Game reference Core; **Core never references Debug or Game.** Debug also
   references Game (lab tools tune the player, M16); Game never references Debug.
 - Namespaces match assembly names (`Clube.Core`, `Clube.Debug`, `Clube.Game`).
-- Scenes (A9): `MainMenu` (the exe's first scene), `Tutorial` (GL514), `VoxelLab`, `ChunkLab`, `WorldLab` (fixed area), `ProceduralWorldLab` (streamed), `Game`. The `Game` scene
+- Scenes (A9): `MainMenu` (the exe's first scene), `Tutorial` (GL514), `VoxelLab`, `ChunkLab`, `WorldLab` (fixed area), `ProceduralWorldLab` (streamed), `MapGen` (the bounded 5 km map, GL598), `Game`. The `Game` scene
   contains no `Clube.Debug` components (A10).
 - Docs go in `Docs/` (capital D, G5).
 - Workflow (G2): one objective = one GitHub issue; one sub-section = one
@@ -143,7 +145,11 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   it rather than switching to batch mode.
 - MCP gotcha: Play mode doesn't tick while the editor window is unfocused.
   To test frame-driven behaviour, pause and advance with
-  `EditorApplication.Step()` from `RunCommand`. `Camera_Capture` skips
+  `EditorApplication.Step()` from `RunCommand`. Or set `Application.runInBackground = true`
+  from `RunCommand` once in Play mode: frames then come in bursts while commands run, and
+  `Time.timeScale = 12` makes game hours pass in a few commands. Don't write files under
+  `Assets` during Play mode: the Editor picks them up, recompiles, and non-serialized state
+  (the map session's plan) is gone. `Camera_Capture` skips
   IMGUI; use `ScreenCapture.CaptureScreenshot` to see `OnGUI` HUDs.
   A faster way for one object's components: in Play mode, loop
   `go.SendMessage("Update")` (and `"LateUpdate"`) with a short sleep between
@@ -256,6 +262,11 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging
   to the Editor log. Built game: `clube.exe -townbench -screen-width 2560 -screen-height 1440`
   writes `townbench.txt` (the exe segfaults on quit, after writing it).
+- MCP gotcha: a batch-mode Unity (the test run, in any clone, any session's) registers its own bridge, and the MCP tools
+  then talk to it instead of the Editor, whose bridge file disappears. Finish Play-mode work before starting the suite,
+  and check `ManageEditor GetProjectRoot` before an Editor command while a batch run may be going.
+- Roads (GL613, GL631): a road class is a `RoadClassDefinition` row; `WorldRoads.Finish` must follow `WorldPlanner.Build`
+  wherever a plan is drawn or built, or its roads are still 40 m cell lines without signposts.
 - Token budget: read files in parts (grep first), check compiles through `Editor.log`, take
   screenshots only for visual items, run the batch-mode test suite once per batch.
 

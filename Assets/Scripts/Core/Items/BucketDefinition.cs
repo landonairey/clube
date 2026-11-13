@@ -26,6 +26,9 @@ namespace Clube.Core
         [SerializeField, Min(1f)]
         private float pourRate = 30f;
 
+        // A dropped bucket lies on the ground as its model (GL610).
+        protected override DropForm KindDropForm => DropForm.Model;
+
         public int Capacity => capacity;
 
         /// <summary>

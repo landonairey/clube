@@ -52,14 +52,19 @@ namespace Clube.Core
         {
             // Solid first: raising a sample's density fills in carved voxels round it (World.UncarveAround), so the
             // carving has to come after.
+            // Neighbouring blocks share corners: each sample is written once, with the material of the last block listed.
+            var samples = new Dictionary<Vector3Int, byte>(blocks.Count * 2);
             foreach (KeyValuePair<Vector3Int, byte> block in blocks)
             {
                 for (int corner = 0; corner < 8; corner++)
                 {
-                    Vector3Int sample = block.Key + Corner(corner);
-                    world.SetDensity(sample, 1f);
-                    world.SetMaterial(sample, block.Value);
+                    samples[block.Key + Corner(corner)] = block.Value;
                 }
+            }
+            foreach (KeyValuePair<Vector3Int, byte> sample in samples)
+            {
+                world.SetDensity(sample.Key, 1f);
+                world.SetMaterial(sample.Key, sample.Value);
             }
             var carve = new HashSet<Vector3Int>();
             foreach (Vector3Int voxel in blocks.Keys)

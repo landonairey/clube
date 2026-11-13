@@ -15,12 +15,17 @@ MonoBehaviour:
   id: torch
   displayName: Torch
   icon: {fileID: 2800000, guid: 348ef2f714ba7ff42b3c96f4647f9c9c, type: 3}
+  iconShape: 0
+  iconTint: {r: 1, g: 1, b: 1, a: 1}
   maxStack: 16
   unitVolume: 1
   burnSeconds: 0
+  fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0
   prefab: {fileID: 7166874474169212171, guid: 032319acc9bb9eb44a1eb17a0eeea3cc, type: 3}
+  dropsMix: 0
   lifeSeconds: 1200
   lit: {fileID: 11400000, guid: 4d76d3e1970916349afcd2de783e4e14, type: 2}
   unlit: {fileID: 0}

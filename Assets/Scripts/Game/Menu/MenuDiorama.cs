@@ -8,7 +8,7 @@ namespace Clube.Game
     /// real pipeline (<see cref="WorldView"/> on <c>MenuWorldConfig</c>: a 64 m square (2 x 2 parcels) whose sealed outer faces cut it open like
     /// a cake), so the layers, grass and trees are the game's own. Once it has loaded, the ores are stamped into its cut face
     /// on purpose (<see cref="MenuOres"/>: gold at the bottom, then silver, chalcopyrite, malachite and tin near the top and
-    /// on the surface); a campfire and the player's figure (<see cref="KeeperFigure"/>, mining pose)
+    /// on the surface); a campfire and the player's figure (<see cref="FigureRig"/>, mining pose)
     /// stand on the grass. The camera looks down at it from the front, shifted so the block sits right of the menu's column.
     /// </summary>
     public class MenuDiorama : MonoBehaviour
@@ -169,9 +169,9 @@ namespace Clube.Game
             miner.transform.localPosition = at;
             miner.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
             miner.transform.localScale = Vector3.one * 0.9f;
-            var figure = miner.AddComponent<KeeperFigure>();
+            var figure = miner.AddComponent<FigureRig>();
             figure.Build(ShopKind.Mining, material, 7);
-            figure.Pose = KeeperPose.Mine;
+            figure.Pose = FigureAction.Mine;
             foreach (Collider body in miner.GetComponentsInChildren<Collider>())
             {
                 Destroy(body);
