@@ -128,6 +128,9 @@ namespace Clube.Core
         public string Cargo;
         /// <summary>Words that pick the ore its route must serve (any, in the ore's lower-case name).</summary>
         public string[] OreWords = Array.Empty<string>();
+
+        /// <summary>The id of the <see cref="VesselClass"/> it is one of (GL618).</summary>
+        public string Class = VesselClass.SeaTrader;
         /// <summary>Why it has no route on a map, filled in when it is kept in reserve.</summary>
         public string Note;
 
@@ -139,7 +142,7 @@ namespace Clube.Core
                 new NamedVessel
                 {
                     Name = "Edmund Fitzgerald", Kind = WaterRouteKind.Sea, Cargo = "iron ore",
-                    OreWords = new[] { "iron", "hematite", "magnetite", "taconite" },
+                    OreWords = new[] { "iron", "hematite", "magnetite", "taconite" }, Class = VesselClass.OreFreighter,
                 },
             };
         }

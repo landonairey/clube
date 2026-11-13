@@ -13,7 +13,7 @@ namespace Clube.Game
     public class TradeCartModel : MonoBehaviour
     {
         private const float WheelRadius = 0.45f;
-        private const float CrateSize = 0.8f;
+        public const float CrateSize = 0.8f;
 
         // Metres from the axle to the carter, and from the axle to where the bed's ends meet the ground for tilting.
         public const float CarterAhead = 2.1f;
@@ -78,8 +78,8 @@ namespace Clube.Game
             carterFigure.Build(FigurePreset.Carter, material, seed);
         }
 
-        // Scales a crate to sit on the bed.
-        private static void Fit(GameObject crate)
+        /// <summary>Scales a crate so its footprint is <paramref name="side"/> metres: to sit on a cart's bed or a deck.</summary>
+        public static void Fit(GameObject crate, float side = CrateSize)
         {
             Renderer[] renderers = crate.GetComponentsInChildren<Renderer>();
             if (renderers.Length == 0)
@@ -94,7 +94,7 @@ namespace Clube.Game
             float size = Mathf.Max(bounds.size.x, bounds.size.z);
             if (size > 1e-3f)
             {
-                crate.transform.localScale *= CrateSize / size;
+                crate.transform.localScale *= side / size;
             }
         }
 

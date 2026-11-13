@@ -58,7 +58,7 @@ namespace Clube.Game
         }
 
         /// <summary>Real seconds since the clock started, at its normal rate: what the carts' timetables run on.</summary>
-        public double Seconds => clock != null && clock.Clock != null ? clock.Days * clock.Clock.DayLengthSeconds : Time.timeAsDouble;
+        public double Seconds => CargoLoad.Seconds(clock);
 
         private void Update()
         {
@@ -86,7 +86,7 @@ namespace Clube.Game
                     Hide(i);
                     continue;
                 }
-                CartPlace state = run.At(seconds);
+                RunPlace state = run.At(seconds);
                 float distance = (line.Flat(state.Fraction * line.Length) - viewer).magnitude;
                 if (carts[i] == null && distance <= showRange && material != null)
                 {
@@ -130,31 +130,13 @@ namespace Clube.Game
             runs = CartRuns.Plan(session.Plan, kinds, session.Plan.Seed);
             carts = new RoadCart[runs.Count];
             Showing = 0;
-            clock = session.WorldView.GetComponent<DayNightCycle>();
-            if (clock == null)
-            {
-                clock = FindAnyObjectByType<DayNightCycle>();
-            }
+            clock = CargoLoad.ClockOf(session.WorldView);
         }
 
         // What a settlement's shops sell, of the items that exist.
         private List<ItemDefinition> GoodsOf(int settlement)
         {
-            goods.Clear();
-            if (catalog == null || settlement < 0 || settlement >= session.Plan.Settlements.Count)
-            {
-                return goods;
-            }
-            foreach (PlannedShop shop in session.Plan.Settlements[settlement].Shops)
-            {
-                foreach (ItemDefinition item in shop.Specialty.SellsIn(catalog))
-                {
-                    if (!goods.Contains(item))
-                    {
-                        goods.Add(item);
-                    }
-                }
-            }
+            CargoLoad.GoodsOf(session.Plan, catalog, settlement, goods);
             return goods;
         }
     }

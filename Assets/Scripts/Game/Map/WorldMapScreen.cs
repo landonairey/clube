@@ -44,6 +44,7 @@ namespace Clube.Game
         private Rect view;
         private int openedFrame = -1;
         private GUIStyle nameStyle, smallNameStyle, noteStyle, sideStyle, legendStyle;
+        private MapBoats boats;
         private List<MapLegendRow> legend;
         private Rect legendBox;
         // What lines are cut to: the map frame, or the whole screen for the legend.
@@ -258,6 +259,7 @@ namespace Clube.Game
             }
             DrawSides(session);
             PlannedSettlement hovered = DrawNames(session, area);
+            DrawVesselNames(area);
             DrawLegendLabels(ui);
             DrawNotes(session, hovered);
         }
@@ -352,11 +354,44 @@ namespace Clube.Game
                 Shape(icon, at, size + 2.5f * scale, 0f, Color.black);
                 Shape(icon, at, size, 0f, MapPicture.SettlementColour(settlement.Type));
             }
+            DrawVessels(area, scale);
             DrawPlayer(session, area, scale);
             clip = new Rect(0f, 0f, Screen.width, Screen.height);
             DrawLegendSymbols(scale, ui);
             GL.End();
             GL.PopMatrix();
+        }
+
+        // The vessels on the water routes (GL618), each a dot where its timetable has it now; a named one larger, in its hull's colour.
+        private void DrawVessels(Rect area, float scale)
+        {
+            if (boats == null)
+            {
+                boats = FindAnyObjectByType<MapBoats>();
+            }
+            for (int i = 0; boats != null && i < boats.Runs.Count; i++)
+            {
+                Vector2 at = ToScreen(area, boats.PositionOf(i));
+                if (!view.Contains(at))
+                {
+                    continue;
+                }
+                bool named = boats.Runs[i].Cargo != null;
+                Quad(at, (named ? 9f : 6f) * scale, Color.black);
+                Quad(at, (named ? 6.5f : 3.5f) * scale, named ? boats.Runs[i].Class.Hull * 1.5f : Color.white);
+            }
+        }
+
+        private void DrawVesselNames(Rect area)
+        {
+            for (int i = 0; boats != null && i < boats.Runs.Count; i++)
+            {
+                Vector2 at = ToScreen(area, boats.PositionOf(i));
+                if (boats.Runs[i].Cargo != null && view.Contains(at))
+                {
+                    GameUi.OutlinedLabel(new Rect(at.x - 120f, at.y + 6f, 240f, 20f), boats.Runs[i].Name, smallNameStyle);
+                }
+            }
         }
 
         private static float IconSize(PlannedSettlement settlement)

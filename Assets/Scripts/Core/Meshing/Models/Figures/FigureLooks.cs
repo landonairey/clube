@@ -16,6 +16,7 @@ namespace Clube.Core
         Thief,
         Carter,
         Player,
+        Sailor,
     }
 
     /// <summary>
@@ -170,6 +171,16 @@ namespace Clube.Core
                     look.HatStyle = FigureHat.Cap;
                     look.Outfit = FigureOutfit.Apron | FigureOutfit.Belt;
                     break;
+                case FigurePreset.Sailor:
+                    // A hand on a boat (GL618): a blue shirt with bare arms, pale trousers, a cap.
+                    look.Shirt = new Color(0.25f, 0.36f, 0.5f);
+                    look.Trousers = new Color(0.62f, 0.58f, 0.48f);
+                    look.Accent = new Color(0.7f, 0.66f, 0.56f);
+                    look.Hair = new Color(0.25f, 0.16f, 0.1f);
+                    look.Hat = new Color(0.22f, 0.26f, 0.34f);
+                    look.HatStyle = FigureHat.Cap;
+                    look.Outfit = FigureOutfit.Belt | FigureOutfit.BareArms;
+                    break;
                 default:
                     // The player: the blue-grey sleeve of the first-person arm, a pack on the back.
                     look.Shirt = new Color(0.24f, 0.28f, 0.36f);
@@ -208,7 +219,7 @@ namespace Clube.Core
                 look.Hair = HairTones[hair];
                 look.Outfit = beard ? look.Outfit | FigureOutfit.Beard : look.Outfit & ~FigureOutfit.Beard;
             }
-            else if (preset == FigurePreset.Carter || preset == FigurePreset.Thief)
+            else if (preset == FigurePreset.Carter || preset == FigurePreset.Thief || preset == FigurePreset.Sailor)
             {
                 look.Hair = HairTones[hair];
             }

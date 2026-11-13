@@ -48,10 +48,10 @@ namespace Clube.Core
         }
     }
 
-    /// <summary>Where a cart is on its road at a moment.</summary>
-    public readonly struct CartPlace
+    /// <summary>Where something that plies a route (a cart on its road, a boat on its water route) is at a moment.</summary>
+    public readonly struct RunPlace
     {
-        public CartPlace(float fraction, bool outbound, bool moving, int trip)
+        public RunPlace(float fraction, bool outbound, bool moving, int trip)
         {
             Fraction = fraction;
             Outbound = outbound;
@@ -59,7 +59,7 @@ namespace Clube.Core
             Trip = trip;
         }
 
-        /// <summary>How far along its road it is, 0 at the settlement the road was laid from to 1 at its end.</summary>
+        /// <summary>How far along its route it is, 0 at the settlement the route was laid from to 1 at its end.</summary>
         public float Fraction { get; }
 
         /// <summary>True on the way out (or standing at the far end, loaded there); false on the way back.</summary>
@@ -70,6 +70,33 @@ namespace Clube.Core
 
         /// <summary>Which one-way trip this is, counted from the clock's start: its load changes with it.</summary>
         public int Trip { get; }
+
+        /// <summary>
+        /// The place on a there-and-back timetable, <paramref name="seconds"/> after the clock started: out in
+        /// <paramref name="oneWay"/> seconds, a rest of <paramref name="rest"/>, back, a rest, and round again, the whole
+        /// shifted by <paramref name="offset"/>.
+        /// </summary>
+        public static RunPlace At(double seconds, float offset, float oneWay, float rest)
+        {
+            double round = 2.0 * (oneWay + rest);
+            double shifted = seconds + offset;
+            double rounds = Math.Floor(shifted / round);
+            float into = (float)(shifted - rounds * round);
+            int trip = (int)(rounds * 2);
+            if (into < oneWay)
+            {
+                return new RunPlace(into / oneWay, true, true, trip);
+            }
+            if (into < oneWay + rest)
+            {
+                return new RunPlace(1f, true, false, trip);
+            }
+            if (into < 2f * oneWay + rest)
+            {
+                return new RunPlace(1f - (into - oneWay - rest) / oneWay, false, true, trip + 1);
+            }
+            return new RunPlace(0f, false, false, trip + 1);
+        }
     }
 
     /// <summary>
@@ -99,27 +126,9 @@ namespace Clube.Core
         public float Round => 2f * (OneWay + Kind.RestSeconds);
 
         /// <summary>Where the cart is, <paramref name="seconds"/> real seconds (at the clock's normal rate) after the clock started.</summary>
-        public CartPlace At(double seconds)
+        public RunPlace At(double seconds)
         {
-            double round = Round;
-            double shifted = seconds + Offset;
-            double rounds = Math.Floor(shifted / round);
-            float into = (float)(shifted - rounds * round);
-            int trip = (int)(rounds * 2);
-            float way = OneWay, rest = Kind.RestSeconds;
-            if (into < way)
-            {
-                return new CartPlace(into / way, true, true, trip);
-            }
-            if (into < way + rest)
-            {
-                return new CartPlace(1f, true, false, trip);
-            }
-            if (into < 2f * way + rest)
-            {
-                return new CartPlace(1f - (into - way - rest) / way, false, true, trip + 1);
-            }
-            return new CartPlace(0f, false, false, trip + 1);
+            return RunPlace.At(seconds, Offset, OneWay, Kind.RestSeconds);
         }
     }
 

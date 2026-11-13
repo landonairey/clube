@@ -51,7 +51,7 @@ namespace Clube.Game
         }
 
         /// <summary>Puts the cart where its run has it on the road, heading the way it goes.</summary>
-        public void Place(WorldView view, RoadLine line, IReadOnlyList<RouteBridges.Span> bridges, CartPlace state)
+        public void Place(WorldView view, RoadLine line, IReadOnlyList<RouteBridges.Span> bridges, RunPlace state)
         {
             // It stops short of each end by its own length, so whoever pulls it is still on the road.
             float lead = horse != null ? HorseAhead + CartHorse.HalfLength + 0.5f : TradeCartModel.CarterAhead;
@@ -79,18 +79,7 @@ namespace Clube.Game
             }
             loadedTrip = trip;
             var random = new System.Random(unchecked(seed * 31 + Run.Index * 977 + trip * 131));
-            foreach (StorageChest crate in model.Crates)
-            {
-                if (crate.Storage == null)
-                {
-                    continue;
-                }
-                StorageText.Fill(crate.Storage, "");
-                for (int k = 0; k < 3 && goods.Count > 0; k++)
-                {
-                    crate.Storage.Add(goods[random.Next(goods.Count)], 2 + random.Next(7));
-                }
-            }
+            CargoLoad.Fill(model.Crates, goods, random);
         }
 
         // The road's surface at a distance along it, in the world's own metres: a bridge's deck, else the terrain, else the line.

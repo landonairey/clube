@@ -173,7 +173,7 @@ namespace Clube.Core
         {
             plan.ReservedVessels.Add(new NamedVessel
             {
-                Name = vessel.Name, Kind = vessel.Kind, Cargo = vessel.Cargo, OreWords = vessel.OreWords, Note = note,
+                Name = vessel.Name, Kind = vessel.Kind, Cargo = vessel.Cargo, OreWords = vessel.OreWords, Class = vessel.Class, Note = note,
             });
         }
 
