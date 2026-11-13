@@ -221,6 +221,7 @@ namespace Clube.Game
             {
                 prop = Part("Prop", hand, Vector3.zero, mesh).gameObject;
             }
+            ApplyDetail();
         }
 
         /// <summary>Makes the figure cast its shadow without being drawn or looked at: the player's own body (GL608).</summary>
