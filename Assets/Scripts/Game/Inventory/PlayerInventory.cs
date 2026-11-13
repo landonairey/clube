@@ -107,6 +107,15 @@ namespace Clube.Game
             }
         }
 
+        /// <summary>Shows "Inventory full" for something that could not be taken (GL610: a dropped item picked up).</summary>
+        public void NotifyFull(ItemDefinition item)
+        {
+            if (item != null)
+            {
+                Rejected?.Invoke(item);
+            }
+        }
+
         // What the tools gather comes in as stacks, with their contents and quality.
         private void OnCollected(ItemStack collected)
         {

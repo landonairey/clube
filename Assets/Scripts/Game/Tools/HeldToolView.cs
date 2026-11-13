@@ -119,6 +119,9 @@ namespace Clube.Game
 
         private const float TwoPi = Mathf.PI * 2f;
 
+        /// <summary>The Clube/Held Item material, which dropped items are drawn with too (GL610).</summary>
+        public Material Material => material;
+
         /// <summary>True while a swing plays.</summary>
         public bool Swinging => swingTime < 1f;
 

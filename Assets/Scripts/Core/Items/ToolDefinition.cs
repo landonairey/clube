@@ -225,6 +225,9 @@ namespace Clube.Core
         /// <summary>True for a chisel (GL87): hits go through <see cref="ChiselStrike"/> rather than <see cref="ToolStrike"/>.</summary>
         public bool Chisels => chisels;
 
+        // A dropped tool lies on the ground as its model (GL610).
+        protected override DropForm KindDropForm => DropForm.Model;
+
         /// <summary>
         /// The exact hits this tool takes to remove <paramref name="material"/> whole, when a rule sets
         /// them (an entry for it or its break chain, then one for its category, then

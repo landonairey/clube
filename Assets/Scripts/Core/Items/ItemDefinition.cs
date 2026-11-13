@@ -45,6 +45,26 @@ namespace Clube.Core
         [SerializeField]
         private bool hidesContents;
 
+        [Tooltip("What it turns into when dropped (GL610, GL611). By kind: a tool, torch or bucket drops as its model, a placeable (campfire, furnace) as a canvas bag, the rest into the ground as their material. Set Bag for anything too small to find again (a pearl, a gem).")]
+        [SerializeField]
+        private DropForm dropForm = DropForm.ByKind;
+
+        /// <summary>
+        /// What it turns into when dropped (GL610, GL611): the asset's choice, or its kind's. An item that piles but that no
+        /// material is placed from (an ingot, a hide) goes in a bag: the dropper's call, as it knows the materials.
+        /// </summary>
+        public DropForm DropsAs => dropForm != DropForm.ByKind ? dropForm : KindDropForm;
+
+        /// <summary>What this kind of item drops as when its asset doesn't say.</summary>
+        protected virtual DropForm KindDropForm => DropForm.Pile;
+
+        /// <summary>Sets <see cref="DropsAs"/>, for items made in code (tests).</summary>
+        public ItemDefinition WithDropForm(DropForm form)
+        {
+            dropForm = form;
+            return this;
+        }
+
         /// <summary>Makes an item in code (tests, tools); the game's items are assets.</summary>
         public static ItemDefinition Create(string id, string displayName, int maxStack = 64)
         {

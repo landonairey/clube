@@ -35,6 +35,12 @@ namespace Clube.Game
         // A loaded save still to be put back on the player and the built objects.
         private GameSave restoring;
 
+        /// <summary>Every item, for components that restore their own saved items (GL610: dropped items).</summary>
+        public ItemCatalog Catalog => catalog;
+
+        /// <summary>The world's materials, for the same.</summary>
+        public MaterialRegistry Materials => worldView != null && worldView.Config != null ? worldView.Config.Materials : null;
+
         /// <summary>The game mode saved with the game: the session's, or World when played from the Editor.</summary>
         public GameMode Mode => GameSession.IsActive ? GameSession.Mode : GameMode.World;
 

@@ -679,6 +679,22 @@ Data and decisions are Core (`Core/Fauna/`), bodies are Game (`Game/Fauna/`):
   with damage by the tool's power. A dead `Animal` gains a `StorageChest` holding its rolled drops, so the interaction
   system and `ChestPanel` open it like any chest.
 
+### Tool models and dropped items (GL609-GL611)
+
+- `HeldToolMeshes` (Game) builds every tool model in code from `LowPolyMeshBuilder` parts, with or without the hand; a
+  tool's head is a `HeadMaterial` row (colour, shine, wear) found by a word in its name. It needs no scene, so an
+  editor tool can build a model to draw an icon. `LowPolyMeshBuilder.Surface` writes what each part is made of (wood,
+  metal and how much it shines) into the mesh's first UV; only `Clube/Held Item` reads it (grain, glint, gleam).
+  Other meshes leave it unset and get no UV channel.
+- What a dropped item becomes is data: `ItemDefinition.DropsAs` (`DropForm`), the asset's field or its kind's default
+  (`KindDropForm`: tools, torches and buckets a model, placeables a bag, the rest a pile). `ItemDropper` piles
+  materials into the terrain as before and hands everything else to `DroppedItems` (on the player, added by the
+  dropper at Awake, so no scene holds it): one `DroppedItem` per model or bag, a rigid body with a convex collider,
+  an `IInteractable` for E. Items are simulated only within 30 m of the player and are held still (kinematic)
+  otherwise, and after a load until a collider is under them, so nothing falls through ground that isn't there yet.
+  They are saved as text in the save's named values (`DroppedItemSaving` in Core, `ISavedValues`); restoring finds
+  items through `GameSessionHost.Catalog`.
+
 ## 7. Where the next systems plug in
 
 Notes for upcoming chapters, so new code lands in the right layer.

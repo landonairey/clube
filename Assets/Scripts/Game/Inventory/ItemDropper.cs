@@ -13,8 +13,9 @@ namespace Clube.Game
     /// sample of its material (<see cref="MaterialRegistry.PlacedFrom"/>, e.g. loose stone),
     /// piled where the player is looking (<see cref="TerrainPile"/>), or at their feet when
     /// nothing is in reach; a player the pile would bury is lifted onto it rather than left
-    /// inside. Items no material drops (tools, buns, ingots) can't be dropped yet:
-    /// they need world pickups (I2).
+    /// inside. What an item drops as is its definition's (<see cref="ItemDefinition.DropsAs"/>): a tool is thrown
+    /// down as its model (GL610), large equipment and anything no material is placed from (buns, ingots, hides) as a
+    /// canvas bag (GL611), which holding Drop pours more of the stack into (<see cref="DroppedItems"/>).
     /// </summary>
     [RequireComponent(typeof(PlayerInventory), typeof(Hotbar), typeof(PlayerController))]
     public class ItemDropper : MonoBehaviour
@@ -49,6 +50,9 @@ namespace Clube.Game
         private float pressedAt;
         private float owed;
         private PilePour pour;
+        private DroppedItems dropped;
+        // The bag this press of Drop began (GL611): holding the key pours more of the stack into it.
+        private DroppedItem pourBag;
 
         /// <summary>Raised after items are dropped, with how many.</summary>
         public event Action<ItemDefinition, int> Dropped;
@@ -65,6 +69,12 @@ namespace Clube.Game
             hotbar = GetComponent<Hotbar>();
             player = GetComponent<PlayerController>();
             parcels = GetComponent<PlayerParcels>();
+            // Added here, not in the scenes: every player that can drop keeps (and saves) what it dropped.
+            dropped = GetComponent<DroppedItems>();
+            if (dropped == null)
+            {
+                dropped = gameObject.AddComponent<DroppedItems>();
+            }
         }
 
         private void OnEnable()
@@ -86,6 +96,7 @@ namespace Clube.Game
                 pressedAt = Time.time;
                 owed = 0f;
                 pour = default;
+                pourBag = null;
                 Drop(1, ref pour, exact: true);
             }
             else if (action.IsPressed() && Time.time - pressedAt >= holdSeconds)
@@ -129,10 +140,11 @@ namespace Clube.Game
 
             MaterialRegistry materials = worldView.Config.Materials;
             VoxelMaterial material = materials != null ? materials.PlacedFrom(stack.Item) : null;
-            if (material == null)
+            DropForm form = stack.Item.DropsAs;
+            if (form != DropForm.Pile || material == null)
             {
-                Refused?.Invoke(stack.Item);
-                return 0;
+                // Not into the ground: thrown down as its model (GL610), or in a bag (GL611).
+                return DropLoose(slot, stack, count, bagged: form != DropForm.Model, tap: exact);
             }
 
             Vector3 point = into.Point;
@@ -179,6 +191,57 @@ namespace Clube.Game
             // A pile at the feet, or a big one spreading under them, can bury the player.
             LiftOutOfGround();
             return placed;
+        }
+
+        // An item that doesn't go into the ground. A tap throws one down in front of the player: its model, tumbling
+        // (GL610), or a bag (GL611). Held, the key pours more of the same stack into the bag that tap began; models
+        // go one to a tap.
+        private int DropLoose(int slot, ItemStack stack, int count, bool bagged, bool tap)
+        {
+            if (!tap)
+            {
+                if (pourBag == null || pourBag.Stack.Item != stack.Item)
+                {
+                    return 0;
+                }
+                int more = Mathf.Min(count, stack.Count);
+                pourBag.Add(more);
+                inventory.Inventory.RemoveAt(slot, more);
+                Dropped?.Invoke(stack.Item, more);
+                return more;
+            }
+            if (stack.Count < 1)
+            {
+                return 0;
+            }
+            Transform head = player.Head != null ? player.Head : transform;
+            // From just in front of the chest, or short of a wall that close.
+            Vector3 toward = (head.forward - head.up * 0.35f).normalized;
+            float distance = Physics.Raycast(head.position, toward, out RaycastHit wall, 0.75f, ~0, QueryTriggerInteraction.Ignore) && !wall.collider.transform.IsChildOf(transform) && wall.collider.GetComponent<DroppedItem>() == null
+                ? Mathf.Max(0.1f, wall.distance - 0.25f)
+                : 0.6f;
+            Vector3 from = head.position + toward * distance;
+            Vector3 velocity = player.Body.velocity + head.forward * 2.2f + Vector3.up * 0.8f;
+            var one = new ItemStack(stack.Item, 1, stack.Contents, stack.Wear, stack.Quality);
+            DroppedItem item;
+            if (bagged)
+            {
+                item = dropped.Spawn(one, true, from, Quaternion.Euler(0f, head.eulerAngles.y + 180f, 0f), velocity);
+            }
+            else
+            {
+                // Handle across the view, with a tumble.
+                Quaternion turn = head.rotation * Quaternion.Euler(0f, 0f, 80f);
+                item = dropped.Spawn(one, false, from, turn, velocity, head.TransformDirection(new Vector3(3f, 1f, -5f)));
+            }
+            if (item == null)
+            {
+                return 0;
+            }
+            pourBag = item.IsBag ? item : null;
+            inventory.Inventory.RemoveAt(slot, 1);
+            Dropped?.Invoke(stack.Item, 1);
+            return 1;
         }
 
         // One sample, exactly on the aimed spot (GL394), of the stack's material (a mixed stack's picked at random by share).
