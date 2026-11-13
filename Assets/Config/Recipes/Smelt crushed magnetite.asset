@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb68c50b39e0a91499017be61cd90094, type: 3}
+  m_Name: Smelt crushed magnetite
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.Recipe
+  station: 0
+  inputs:
+  - Item: {fileID: 11400000, guid: 53cb041149a5241225c66ef63e543ecc, type: 2}
+    Count: 5
+  output:
+    Item: {fileID: 11400000, guid: b488be8cf1469b9bee2892df87b62fa8, type: 2}
+    Count: 4
+  work: 0
+  amount: 10
+  experienceSkill: 4
+  experience: 24
+  unlockSkill: 4
+  unlockLevel: 4
+  qualityFactor: 1
+  extracts: {fileID: 11400000, guid: c89eb894a093b3e6439384ad24b93cbf, type: 2}
+  typicalGrade: 0.5

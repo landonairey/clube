@@ -67,6 +67,38 @@ namespace Clube.Core
             /// <see cref="Height"/>, so only what stands on it (trees, rocks) is cleared and its top layer is paved or covered.
             /// </summary>
             public bool FollowGround;
+
+            /// <summary>
+            /// The height each column (x, z) is set to, given the ground as it was there (GL613: a road's bed, even
+            /// along its length and meeting the ground at its shoulders); null: <see cref="Height"/> or the ground.
+            /// Columns it leaves within a hair of the ground keep their shape.
+            /// </summary>
+            public Func<float, float, float, float> Surface;
+
+            /// <summary>
+            /// Which columns (x, z) of the rectangle are worked on at all; null: every one. A road's piece only touches
+            /// its own bed, so another road's bed inside the same rectangle is left as that road made it.
+            /// </summary>
+            public Func<float, float, bool> Inside;
+
+            /// <summary>
+            /// Metres round the rectangle past which a tree standing on it is not cut (its far branches are left); 0: the
+            /// whole tree goes, and whatever its crown touches. For a narrow strip through a wood (a road), where whole
+            /// trees joined crown to crown would be the wood.
+            /// </summary>
+            public float TreeReach;
+
+            /// <summary>
+            /// GL642: ground that is cut down keeps what its surface was made of (a terrace cut into a grassy hillside is
+            /// grass again, not the bare stone under it). Ground built up always takes the old surface's material.
+            /// </summary>
+            public bool KeepTop;
+
+            /// <summary>The height a column inside the rectangle is set to.</summary>
+            public readonly float TargetAt(float x, float z, float ground)
+            {
+                return Surface != null ? Surface(x, z, ground) : FollowGround ? ground : Height;
+            }
         }
 
         /// <summary>Levels an area: trees on it are cleared, then each column is set to its flat or ramped height.</summary>
@@ -90,9 +122,13 @@ namespace Clube.Core
                 for (int x = low.x; x <= high.x; x++)
                 {
                     Vector3 column = grid.SampleToWorld(new Vector3Int(x, 0, z));
+                    if (area.Inside != null && !area.Inside(column.x, column.z))
+                    {
+                        continue;
+                    }
                     float beyond = Beyond(area, column.x, column.z);
                     float ground = natural.At(column.x, column.z);
-                    float target = area.FollowGround ? ground : area.Height;
+                    float target = area.TargetAt(column.x, column.z, ground);
                     if (beyond > 0f)
                     {
                         if (area.Ramp <= 0f || area.Natural == null)
@@ -111,7 +147,10 @@ namespace Clube.Core
                     int y0 = grid.WorldToNearestSample(new Vector3(column.x, bottom, column.z)).y;
                     int y1 = grid.WorldToNearestSample(new Vector3(column.x, top, column.z)).y;
                     // Ground already within a hair of its height keeps its shape: only its surface material changes.
-                    bool keepShape = area.Natural != null && (area.FollowGround || Mathf.Abs(target - ground) < KeepShapeWithin);
+                    bool keepShape = area.Natural != null
+                        && ((area.FollowGround && area.Surface == null) || Mathf.Abs(target - ground) < KeepShapeWithin);
+                    // What the surface was made of: new ground is topped with it (dirt stays dirt, sand sand), not always grass.
+                    VoxelMaterial was = Mathf.Abs(target - ground) >= KeepShapeWithin ? TopOf(world, materials, grid, column, ground, iso) : null;
                     int air = 0;
                     for (int y = y0; y <= y1 + headroom; y++)
                     {
@@ -147,7 +186,8 @@ namespace Clube.Core
                         bool surface = depth < voxel * 1.5f;
                         VoxelMaterial made = paved && surface ? area.Paving
                             : covered && surface ? area.Ground
-                            : before < iso ? (depth < TopsoilDepth ? grass : dirt)
+                            : before < iso ? (depth < TopsoilDepth ? was ?? grass : dirt)
+                            : area.KeepTop && depth < TopsoilDepth ? was
                             : null;
                         if (made != null && made.Id != material)
                         {
@@ -156,6 +196,27 @@ namespace Clube.Core
                     }
                 }
             }
+        }
+
+        // The material of the ground's surface at a column, as it lies now: the first solid sample under the height that is
+        // bulk ground (not a tree, not ore). Null when there is none within a metre.
+        private static VoxelMaterial TopOf(World world, MaterialRegistry materials, WorldGrid grid, Vector3 column, float ground, float iso)
+        {
+            if (materials == null)
+            {
+                return null;
+            }
+            Vector3Int sample = grid.WorldToNearestSample(new Vector3(column.x, ground, column.z));
+            int steps = Mathf.CeilToInt(1f / grid.VoxelSize) + 1;
+            for (int i = 0; i < steps; i++, sample.y--)
+            {
+                if (Read(world, sample, out byte id) >= iso)
+                {
+                    VoxelMaterial material = materials.Get(id);
+                    return material != null && material.Category == VoxelMaterialCategory.Aggregate ? material : null;
+                }
+            }
+            return null;
         }
 
         // A sample's density and material by its owning chunk: much quicker than the world's border-aware lookups, for
@@ -285,8 +346,12 @@ namespace Clube.Core
                 for (int x = low.x; x <= high.x; x++)
                 {
                     Vector3 column = grid.SampleToWorld(new Vector3Int(x, 0, z));
+                    if (area.Inside != null && !area.Inside(column.x, column.z))
+                    {
+                        continue;
+                    }
                     float ground = natural.At(column.x, column.z);
-                    float level = area.FollowGround ? ground : area.Height;
+                    float level = area.TargetAt(column.x, column.z, ground);
                     float bottom = Mathf.Min(ground, level) - grid.VoxelSize;
                     float top = Mathf.Max(ground, level) + TrunkBand;
                     int y0 = grid.WorldToNearestSample(new Vector3(column.x, bottom, column.z)).y;
@@ -303,11 +368,14 @@ namespace Clube.Core
                 }
             }
             // A wide area may hold a small wood: room for a few dozen trees.
-            FloodClear(world, materials, front, seen, floorY, iso, MaxTreeSamples * 20);
+            // A road through a wood (TreeReach): the cut stops a little way out, or touching crowns would take the wood with them.
+            int reach = area.TreeReach > 0f ? Mathf.CeilToInt(area.TreeReach / grid.VoxelSize) : int.MaxValue / 4;
+            var within = new RectInt(low.x - reach, low.z - reach, high.x - low.x + 2 * reach, high.z - low.z + 2 * reach);
+            FloodClear(world, materials, front, seen, floorY, iso, MaxTreeSamples * 20, area.TreeReach > 0f ? within : (RectInt?)null);
         }
 
         // Empties every solid plant sample joined to the ones in front, never below floorY.
-        private static void FloodClear(World world, MaterialRegistry materials, Stack<Vector3Int> front, HashSet<Vector3Int> seen, int floorY, float iso, int most)
+        private static void FloodClear(World world, MaterialRegistry materials, Stack<Vector3Int> front, HashSet<Vector3Int> seen, int floorY, float iso, int most, RectInt? within = null)
         {
             while (front.Count > 0 && seen.Count < most)
             {
@@ -316,6 +384,10 @@ namespace Clube.Core
                 foreach (Vector3Int step in Around)
                 {
                     Vector3Int next = sample + step;
+                    if (within.HasValue && (next.x < within.Value.xMin || next.x > within.Value.xMax || next.z < within.Value.yMin || next.z > within.Value.yMax))
+                    {
+                        continue;
+                    }
                     if (next.y >= floorY && !seen.Contains(next) && Read(world, next, out _) >= iso && IsPlant(world, materials, next))
                     {
                         seen.Add(next);

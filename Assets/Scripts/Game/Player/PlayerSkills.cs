@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Globalization;
 using Clube.Core;
 using UnityEngine;
 
@@ -8,9 +10,10 @@ namespace Clube.Game
     /// smelting (<see cref="SkillSet"/>). Breaking ground with a tool trains woodcutting (wood,
     /// leaves) or mining (stone, ore, soil), by the amounts below; finishing a recipe at a station
     /// trains the skill the recipe names (<see cref="StationObject"/> reports it). Levels unlock
-    /// recipes (GL48) and what the player can see (<see cref="OreKnowledge"/>).
+    /// recipes (GL48) and what the player can see (<see cref="OreKnowledge"/>). A save notes the level curve its
+    /// experience was earned on, so a character keeps its levels when the curve changes (GL629).
     /// </summary>
-    public class PlayerSkills : MonoBehaviour
+    public class PlayerSkills : MonoBehaviour, ISavedValues
     {
         [Header("Experience per sample broken")]
         [Tooltip("Woodcutting: wood and stumps.")]
@@ -37,6 +40,38 @@ namespace Clube.Game
 
         /// <summary>Experience and levels in the four skills.</summary>
         public SkillSet Skills { get; } = new SkillSet();
+
+        private const string CurveKey = "skills.firstLevelCost";
+
+        public void SaveValues(IDictionary<string, string> values)
+        {
+            values[CurveKey] = SkillSet.FirstLevelCost.ToString(CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// Runs after the save's experience is back (<see cref="PlayerSaveState.Restore"/>): experience from a save made on
+        /// another level curve (none noted: from before GL629) is brought onto today's, keeping every level.
+        /// </summary>
+        public void RestoreValues(IReadOnlyDictionary<string, string> values)
+        {
+            float savedCost = 0f;
+            if (values.TryGetValue(CurveKey, out string saved))
+            {
+                float.TryParse(saved, NumberStyles.Float, CultureInfo.InvariantCulture, out savedCost);
+            }
+            if (Mathf.Approximately(savedCost, SkillSet.FirstLevelCost))
+            {
+                return;
+            }
+            foreach (SkillType skill in SkillSet.Types)
+            {
+                float experience = Skills.Experience(skill);
+                if (experience > 0f)
+                {
+                    Skills.SetExperience(skill, SkillSet.FromCurve(experience, savedCost));
+                }
+            }
+        }
 
         private void Awake()
         {

@@ -33,6 +33,10 @@ namespace Clube.Core
             }
 
             WriteLayers(depths, steepColumns, grid, settings.Layers, output.Materials);
+            if (settings.Biomes.IsCreated)
+            {
+                StampBiomes(depths, grid, settings, output.Materials);
+            }
             if (settings.Layers.ClayChance > 0f || settings.Layers.StartClayRadius > 0f)
             {
                 StampClay(depths, steepColumns, grid, settings.Seed, settings.Layers, output.Materials);
@@ -215,6 +219,44 @@ namespace Clube.Core
                         if (depths[i] >= 0f && depths[i] < deposit)
                         {
                             materials[i] = layers.Clay;
+                        }
+                    }
+                }
+            }
+        }
+
+        // A bounded map's biomes (GL591): each column's top and band layers become its biome's (sand in a desert, bare
+        // earth on the steppe). Only those two layers change, by the column's global position and ground height, so
+        // borders agree; bare rock, clay, the water's banks and ore are laid as everywhere else.
+        private static void StampBiomes(NativeArray<float> depths, in ChunkSampleGrid grid, in ChunkFillSettings settings, NativeArray<byte> materials)
+        {
+            int3 count = grid.SampleCount;
+            float lod = settings.LodScale > 0f ? settings.LodScale : 1f;
+            byte top = settings.Layers.Top, band = settings.Layers.Band;
+            BiomeField biomes = settings.Biomes;
+            for (int z = 0; z < count.z; z++)
+            {
+                for (int x = 0; x < count.x; x++)
+                {
+                    float3 foot = grid.Position(x, 0, z);
+                    float ground = foot.y + depths[grid.Index(x, 0, z)] * lod;
+                    BiomeRow row = biomes.Rows[biomes.IndexAt(foot.x, foot.z, ground)];
+                    if (row.Top == top && row.Band == band)
+                    {
+                        continue;
+                    }
+                    for (int y = 0; y < count.y; y++)
+                    {
+                        int i = grid.Index(x, y, z);
+                        byte material = materials[i];
+                        // Top first: where the layers use one material for both, the biome's top wins near the surface.
+                        if (material == top && depths[i] < settings.Layers.TopDepth)
+                        {
+                            materials[i] = row.Top;
+                        }
+                        else if (material == band || material == top)
+                        {
+                            materials[i] = row.Band;
                         }
                     }
                 }

@@ -98,8 +98,8 @@ namespace Clube.Core.Tests
         [Test]
         public void Levels_CostMoreThanBefore()
         {
-            Assert.AreEqual(30f, SkillSet.ExperienceFor(1), 1e-3f);
-            Assert.AreEqual(78f, SkillSet.ExperienceFor(2), 1e-3f, "The second level costs 60% more (GL289).");
+            Assert.AreEqual(300f, SkillSet.ExperienceFor(1), 1e-3f, "Ten times GL289's 30 (GL629).");
+            Assert.AreEqual(780f, SkillSet.ExperienceFor(2), 1e-2f, "The second level costs 60% more (GL289).");
         }
 
         // One 4-voxel chunk of dirt up to y = 1, air above.
