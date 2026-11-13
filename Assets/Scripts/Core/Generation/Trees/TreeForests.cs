@@ -55,7 +55,14 @@ namespace Clube.Core
         /// <summary>The chance that the cell has a tree: the forest's chance, the field's, or between at an edge.</summary>
         public static float ChanceIn(int seed, Vector2Int cell, TreeGeneration settings)
         {
-            return Mathf.Lerp(settings.FieldChance, settings.Chance, ForestAtCell(seed, cell, settings));
+            float chance = Mathf.Lerp(settings.FieldChance, settings.Chance, ForestAtCell(seed, cell, settings));
+            if (settings.Climate == null)
+            {
+                return chance;
+            }
+            // A bounded map's biomes thin or thicken the trees (GL591).
+            float size = settings.CellSize;
+            return Mathf.Clamp01(chance * settings.Climate.TreeDensityAt((cell.x + 0.5f) * size, (cell.y + 0.5f) * size));
         }
 
         /// <summary>Share of a deep forest's trees that lie fallen (GL505).</summary>

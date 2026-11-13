@@ -27,7 +27,7 @@ namespace Clube.Game
         private readonly List<StorageChest> crates = new List<StorageChest>();
         private Transform body;
         private Transform carter;
-        private KeeperFigure carterFigure;
+        private FigureRig carterFigure;
         private float lastDistance = float.NaN;
         private float wheelTurn;
 
@@ -74,8 +74,8 @@ namespace Clube.Game
             }
             carter = new GameObject("Carter").transform;
             carter.SetParent(transform, false);
-            carterFigure = carter.gameObject.AddComponent<KeeperFigure>();
-            carterFigure.BuildCarter(material, seed);
+            carterFigure = carter.gameObject.AddComponent<FigureRig>();
+            carterFigure.Build(FigurePreset.Carter, material, seed);
         }
 
         // Scales a crate to sit on the bed.
@@ -172,7 +172,7 @@ namespace Clube.Game
             }
             carter.position = carterAt;
             carter.rotation = transform.rotation;
-            carterFigure.Pose = moving ? KeeperPose.Walk : KeeperPose.Stand;
+            carterFigure.Pose = moving ? FigureAction.Walk : FigureAction.Stand;
             if (!float.IsNaN(lastDistance))
             {
                 wheelTurn += Mathf.Abs(distance - lastDistance) / WheelRadius * Mathf.Rad2Deg;

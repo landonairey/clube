@@ -58,6 +58,16 @@ namespace Clube.Game
             Storage = sized;
         }
 
+        /// <summary>
+        /// Makes this the container of a ready inventory under a name (GL607: an animal's carcass and its drops), so it
+        /// opens with the chest's screen.
+        /// </summary>
+        public void Hold(string name, Inventory contents)
+        {
+            displayName = name;
+            Storage = contents;
+        }
+
         public void Interact(PlayerInteractor by)
         {
             ChestPanel panel = by.GetComponent<ChestPanel>();
