@@ -695,6 +695,29 @@ Data and decisions are Core (`Core/Fauna/`), bodies are Game (`Game/Fauna/`):
   They are saved as text in the save's named values (`DroppedItemSaving` in Core, `ISavedValues`); restoring finds
   items through `GameSessionHost.Catalog`.
 
+### Inventory icons (GL612)
+
+Icons are pictures of the 3D models, baked in the Editor and read by the inventory as plain textures
+(`ItemDefinition.Icon`, as before). Four steps, one class each:
+
+- **Which model** is data (Core, `Items/`): `ItemDefinition.IconShape` (`ItemIconShape`) and `IconTint`.
+  `ItemIconShapes.Resolve` settles Auto by kind: a tool, torch, bucket or placeable is its own `Model`; a material's
+  drop is a `Chunk` (rock) or `Mound` (soil) of the material found by `MaterialOf` (a crushed ore's is its ore's,
+  through `PurityAs`); an item of no material is a chunk in its tint. A new item needs no code.
+- **The models** with no model of their own are `ItemChunkMeshes` (Core, `Meshing/Models/`): chunk, mound, gravel,
+  log, leaves, boards, ingot, bun, brick, hide, tuft, stick, each about a unit across from `LowPolyMeshBuilder` parts.
+  `ItemIconModels` (Game) puts it together: mesh or prefab, the terrain texture it wears, how it is turned and viewed.
+- **The camera** is `IconFraming` (Core): an orthographic view that holds the model's corners, centred, with a margin;
+  pure arithmetic, tested without a camera.
+- **The picture** is `ItemIconRenderer` (Debug/Editor): a `PreviewRenderUtility` scene with its own lights, drawing
+  vertex-coloured models with `HeldItem.mat` and textured chunks with `Clube/ItemIconChunk` (three-axis mapping; never
+  drawn in the world, so no depth passes). It shoots on black and on white and takes alpha from the difference.
+  `ItemIconBaker` (*Clube > Items > Bake icons from models*) walks the catalog, writes
+  `Assets/Textures/Items/<item>.png` and links it. Its cache is a key in each PNG's importer `userData`: a hash of the
+  mesh's corners and colours, the texture's or prefab's dependency hash, the turn, the view and a `Look` version to
+  raise when lights or shaders change. `ItemIconContactSheet` writes every icon into one picture.
+- `ItemIconTools` (the old painter) now only writes items whose shape is `Painted`.
+
 ## 7. Where the next systems plug in
 
 Notes for upcoming chapters, so new code lands in the right layer.
