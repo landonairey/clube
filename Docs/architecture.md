@@ -700,7 +700,9 @@ Data and decisions are Core (`Core/Fauna/`), bodies are Game (`Game/Fauna/`):
 Icons are pictures of the 3D models, baked in the Editor and read by the inventory as plain textures
 (`ItemDefinition.Icon`, as before). Four steps, one class each:
 
-- **Which model** is data (Core, `Items/`): `ItemDefinition.IconShape` (`ItemIconShape`) and `IconTint`.
+- **Which model** is data (Core, `Items/`): `ItemDefinition.IconShape` (`ItemIconShape`) and `IconTint`, plus
+  `IconTextureZoom` and `IconVividness` (how much the material's texture is enlarged and pushed in colour on the
+  model: 1.7 and 0.4 on ores, so their flecks show in a slot).
   `ItemIconShapes.Resolve` settles Auto by kind: a tool, torch, bucket or placeable is its own `Model`; a material's
   drop is a `Chunk` (rock) or `Mound` (soil) of the material found by `MaterialOf` (a crushed ore's is its ore's,
   through `PurityAs`); an item of no material is a chunk in its tint. A new item needs no code.
