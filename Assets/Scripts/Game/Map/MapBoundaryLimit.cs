@@ -24,6 +24,9 @@ namespace Clube.Game
         // Metres a second a player past the stop line is carried back in.
         private const float ReturnSpeed = 3f;
 
+        // Metres in one frame beyond which a move is no step.
+        private const float LongestStep = 5f;
+
         private MapSession session;
         private PlayerController controller;
         private Vector3 last;
@@ -75,7 +78,11 @@ namespace Clube.Game
             if (haveLast)
             {
                 var step = new Vector2(now.x - last.x, now.z - last.z);
-                correction = MapLimit.Held(step, out2, Limit) - step;
+                // A jump of metres in a frame is a teleport or a respawn, not a step: nothing of it is taken back.
+                if (step.sqrMagnitude < LongestStep * LongestStep)
+                {
+                    correction = MapLimit.Held(step, out2, Limit) - step;
+                }
             }
             if (Limit >= 1f)
             {
