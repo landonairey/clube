@@ -261,12 +261,25 @@ flowchart LR
   `ResourceReach` summed-area tables, a Dijkstra over the 40 m cells): `SettlementPlacer` (largest first, by `SiteRule`),
   `SpecialtyAssigner` (fit = the scarcest needed resource nearby; then every specialty is made to exist),
   `RoadPlanner` (paved, then dirt, then footpaths, each from its settlement to the nearest point of the network so far),
-  `WaterRoutePlanner` (sea routes from the capital's harbour, river routes, named vessels). Roads are cell-centre
-  polylines: building them (GL613) refines them on the real ground, with `RouteBridges` for the spans.
+  `WaterRoutePlanner` (sea routes from the capital's harbour, river routes, named vessels). Roads leave the planner as
+  cell-centre polylines; `WorldRoads.Finish(plan, heightAt, water)` (`Generation/Roads/`), called right after by whoever has
+  the generator, puts them on the real ground: `RoadRefiner` (each road searched again on an 8 m grid in a 64 m corridor
+  round its line; a state is a grid point and the way it was come to by, so `RoadClassDefinition.TurnCost` makes
+  switchbacks long-legged; slope by `StretchCost`; then eased and corner-cut) and `SignpostPlanner` (a graph of the roads;
+  `WorldPlan.Signposts`). A road class is one `RoadClassDefinition` row: slope limit as a share of the walkable angle
+  (`WorldPlanRules.SetWalkableSlope`), width, surface material, grading, bridge width. `RoadLine` (points, distances,
+  heights every metre) is what a refined road and the trade cart's `CartRoute` both are; `RouteBridges.Find` takes one.
+- **Roads in the terrain** (GL613): `RoadBed` (Core) is a road's shape from its class (bed height along it, evened out
+  for cart paths; half width with a wandering edge; shoulders), `RoadWriter` (`Editing/`) writes it in 1 m pieces through
+  `GroundLeveling` (`Area.Surface` for a per-column height, `Inside` so a piece touches only its own strip, `TreeReach`
+  so a tree cut does not spread through a wood). `MapRoads` (Game) decides when: roads whose box is within 150 m of the
+  viewer are worked out once (heights, bridges, bed), their unwritten pieces queued nearest first and written when their
+  chunks are loaded, 3 ms a frame; bridges (`RoadBridge`) and `Signpost`s stand once their ground loads; written pieces
+  are saved. Far terrain and the coarse levels know nothing of roads.
 - **The map in a scene** (GL598-GL601, `Game/Map/`): `MapSession` (one per scene, `MapSession.Current`) watches
   `WorldView.Generator`; when it is a `BoundedMapGenerator` it builds the survey and the plan once (main thread: the
   survey completes height jobs; about 4 s at 5 km) and raises `Rebuilt`, again after every regenerate. Everything that
-  needs the map reads `Map`, `Survey`, `Plan` from it: `MapMarkers` (posts at sites and along nearby roads),
+  needs the map reads `Map`, `Survey`, `Plan` from it: `MapMarkers` (posts at sites; road posts off now), `MapRoads` (the roads themselves),
   `WorldMapScreen` (M), later the settlements. `MapStart.Pick` (Core) chooses where the player is set down.
   `MapPicture` (Core) is the one place the map's colours live (terrain pixels, road colours, widths and line types as
   `MapLineStyle`, route and

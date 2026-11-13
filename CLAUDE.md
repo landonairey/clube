@@ -256,6 +256,11 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging
   to the Editor log. Built game: `clube.exe -townbench -screen-width 2560 -screen-height 1440`
   writes `townbench.txt` (the exe segfaults on quit, after writing it).
+- MCP gotcha: a batch-mode Unity (the test run, in any clone, any session's) registers its own bridge, and the MCP tools
+  then talk to it instead of the Editor, whose bridge file disappears. Finish Play-mode work before starting the suite,
+  and check `ManageEditor GetProjectRoot` before an Editor command while a batch run may be going.
+- Roads (GL613, GL631): a road class is a `RoadClassDefinition` row; `WorldRoads.Finish` must follow `WorldPlanner.Build`
+  wherever a plan is drawn or built, or its roads are still 40 m cell lines without signposts.
 - Token budget: read files in parts (grep first), check compiles through `Editor.log`, take
   screenshots only for visual items, run the batch-mode test suite once per batch.
 
