@@ -102,7 +102,9 @@ Core/
                  (the animals as data, where herds live, one animal's decisions, GL602-GL606)
   Population/    the people of settlements as data (GL615, GL616): Duty and Occupation rows, DutyShift (a week of duties),
                  SettlementRoster (who lives where), SettlementWalks (the ways through the lanes), DigPlan (a pit or a
-                 tunnel, voxel by voxel), CartKind and CartRuns (which carts run which roads, and where by the clock)
+                 tunnel, voxel by voxel), CartKind and CartRuns (which carts run which roads, and where by the clock),
+                 VesselClass and BoatRuns (the same for vessels on the water routes, GL618), ThiefHaunts, Robbery and
+                 RaiderRuns (where a thieves' camp steals, what a robbery moves, its boat, GL617)
   Audio/         SoundSynth (sound effects made in code, GL271)
   Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea, FarTerrainBuilder (far terrain levels),
                  TerrainLodRing + TerrainLodBuilder (coarse terrain levels, P7c), DistantTreeBuilder (GL162)
@@ -756,10 +758,33 @@ settlements of `Generation/`); the bodies are Game (`Game/People/`, `Game/Travel
   0.4 s: `Full` to 30 m, `NoShadow` to 60 m, then `Far`, one combined mesh of the figure standing (built on first
   use) with the limbs' renderers off and the pose no longer updated. The distances are statics on `FigureLod`.
 - **Carts.** `CartRuns.Plan(plan, kinds, seed)` gives each cart path its `CartRun`s; `CartRun.At(seconds)` is a
-  `CartPlace` (fraction along the road, outbound or not, moving or standing, the trip's number) from the clock alone.
+  `RunPlace` (fraction along the road, outbound or not, moving or standing, the trip's number) from the clock alone.
   `MapCarts` asks `MapRoads.TryLine(road)` for the `RoadLine` and bridge spans of roads worked out near the viewer and
   keeps a `RoadCart` for each cart within `showRange`; `RoadCart` sets `TradeCartModel` (and a `CartHorse`) on the
   ground with `GroundProbe`, on a bridge between the deck's end heights.
+- **Boats (GL618).** A vessel class is a `VesselClass` row (the water it sails, speed, rest, the hull's measures and
+  fittings, crew and crates); `BoatRuns.Plan(plan, classes, seed)` gives each `WaterRoute` its `BoatRun`s (a river boat
+  on a river route, a sea trader on a sea route, and a route's `NamedVessel` in the class its row names: the *Edmund
+  Fitzgerald* is an `ore-freighter`), and `BoatRun.At(seconds)` is the same `RunPlace` timetable. The plan's routes run
+  through 40 m survey cells, so `WaterLanes.For(route, class, water)` finds the lane on the real `WaterMap` the first
+  time a vessel of a route comes within `MapBoats.showRange`: a grid search inside a corridor round the planned line
+  over cells `WaterLanes.Floats` says float that class (the sea, deep and wide enough; any river water, widened by a
+  cell because streams are one cell wide), a cell by the bank costing more, then smoothed; where the water does not
+  join end to end the vessel plies the longest stretch. `MapBoats` keeps a `Boat` (hull from `BoatMeshes`, hands,
+  crates as real storage loaded by `CargoLoad`, which carts share) for each vessel near the viewer, at most
+  `mostBoats`; far ones are only `MapBoats.PositionOf(run)`, which the world map draws as dots.
+- **Thieves (GL617).** A thieves' camp is a settlement whose type has a `Band` and names its `Residents` occupation:
+  `SettlementLayout` houses the band, `SettlementRoster` makes them residents, and they are `Villager`s like anyone
+  (plus a `Bandit`, the `IToolTarget` that makes a struck thief drop his sack and lie dazed; there is no health). Their
+  duties are rows (`waylay`, `burgle`, `lurk`, with `LootTo`, `Stacks`, `Share`, `Notice`) naming works built on
+  `ThiefWork` (`WaylayWork`, `BurgleWork`, `RobWork`). `ThiefHaunts` reads each camp's ambush (nearest cart path, out
+  of sight of settlements), mark (nearest settlement with shops) and water route off the plan; `Robbery` moves stacks
+  and coins and never makes or loses any. A work may name a far post (`IDutyWork.TryPost`): `SettlementPeople` then
+  puts the band in the world when the viewer is near the post, though the camp is far and unbuilt. `ThievesCamps`
+  keeps each camp's stash (a chest and a `CoinPouch` by the first hut) and the scene's side of a robbery;
+  `MapCarts.HoldFor` and `MapBoats.HoldFor` stop a cart or a vessel, whose timetable slips by as long.
+  `RaiderRuns` gives a camp with water of its own a boat of a `Raider` class; `PirateBoats` sails it on the `pirate`
+  occupation's `prowl` shifts, boards a vessel that passes, and lands the haul in the stash.
 
 ## 7. Where the next systems plug in
 
