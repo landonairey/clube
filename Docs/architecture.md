@@ -268,8 +268,11 @@ flowchart LR
   survey completes height jobs; about 4 s at 5 km) and raises `Rebuilt`, again after every regenerate. Everything that
   needs the map reads `Map`, `Survey`, `Plan` from it: `MapMarkers` (posts at sites and along nearby roads),
   `WorldMapScreen` (M), later the settlements. `MapStart.Pick` (Core) chooses where the player is set down.
-  `MapPicture` (Core) is the one place the map's colours live (terrain pixels, road colours and widths, route and
-  settlement colours); the world map and `BoundedMapPreviewMenu` both draw with it. The scene's world is 104 chunk
+  `MapPicture` (Core) is the one place the map's colours live (terrain pixels, road colours, widths and line types as
+  `MapLineStyle`, route and
+  settlement colours); the world map and `BoundedMapPreviewMenu` both draw with it, and `MapLegend` (Game) lists the
+  styles as legend rows. `MapContours` (Core) is the other picture: contour lines from a coarse height grid of
+  `BoundedMapGenerator.CreateDry` (no water worked out, so milliseconds), shown by the menu's `MapPreview` (GL636). The scene's world is 104 chunk
   layers tall because the streamer loads whole columns from y = 0: ground below 0 (the void, deep sea floor) and above
   the top (the ridge) is drawn by the coarse and far terrain only.
 - **Far water** (GL626): past the drawn chunks `WaterView` draws the water map in two layers. Within
