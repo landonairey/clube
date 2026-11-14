@@ -33,8 +33,8 @@ change starts pulling in a later chapter's direction.
 
 ## Current state
 Milestone 1 (Chapters 0–3) is built; work is Milestone 2's gameplay passes (GL items),
-tracked in the objectives doc. **Now: "Bounded world, models and animals" (GL589–GL636), batches
-A–M, one branch and PR per batch, each branch cut from the one before; the world is a
+tracked in the objectives doc. **Now: "Bounded world, models and animals" (GL589–GL643), batches
+A–N, one branch and PR per batch, each branch cut from the one before; the world is a
 bounded 5 km map (P15 decided), scene `MapGen`.** A planning chat picks the work up from
 [Docs/planning-handoff.md](Docs/planning-handoff.md) alone; a batch session starts from
 [Docs/batch-brief.md](Docs/batch-brief.md).
@@ -60,8 +60,9 @@ Map of the game (details in the history):
   (`Core/Saving`, `GameSessionHost`, `SaveSlots`; small new state implements `ISavedValues`
   instead of raising the save version), town (`Game/Town`, `TownPlan`), people (`Core/Population`:
   `Duty`, `Occupation` rows; `Game/People`: `SettlementPeople`, `Villager`, `IDutyWork`), carts
-  (`CartRuns`, `MapCarts`).
-- Demo exe: *Clube → Build → Game demo* (`DemoBuild`) → `Builds/Demo/`.
+  (`CartRuns`, `MapCarts`), boats and thieves (batch J, GL617/GL618; see `Docs/history.md`).
+- Demo exe: *Clube → Build → Game demo* (`DemoBuild`) → `Builds/Demo/`. *Clube → Build → MapGen
+  playtest* → `Builds/MapGen/`: MapGen alone, for trying the bounded map (the menu's Start still loads WorldLab).
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
