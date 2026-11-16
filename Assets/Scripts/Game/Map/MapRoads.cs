@@ -65,6 +65,7 @@ namespace Clube.Game
         private Built[] built;
         private bool[] postBuilt;
         private Transform root;
+        private readonly List<VesselClass> vessels = VesselClass.Defaults();
         private int version = -1;
         private Vector2 collectedAt;
         private float collectedTime = float.MinValue;
@@ -251,7 +252,10 @@ namespace Clube.Game
             // In a tunnel (GL642) the line runs on the tunnel's floor, so the bed leads into it.
             var line = new RoadLine(road.Points, RoadTunnels.HeightAt(road, session.Map.Height), 1f,
                 RoadTunnels.HeightsAt(road, WorldRoads.HeightsOf(session.Map)));
-            List<RouteBridges.Span> bridges = RouteBridges.Find(line, session.Map.Water, true);
+            // GL651: over the sea the deck stands high enough for what sails under; a ravine gets a dry span.
+            List<RouteBridges.Span> bridges = RouteBridges.Find(line, session.Map.Water, true, BridgeClearance.For(plan, vessels));
+            bridges.AddRange(RouteBridges.Ravines(line, bridges));
+            bridges.Sort((a, b) => a.Start.CompareTo(b.Start));
             // Where it ends on another road, its bed meets that road's bed.
             float endHeight = float.NaN;
             Built joinedRoad = null;
@@ -470,7 +474,7 @@ namespace Clube.Game
                 for (int k = 0; k <= 4 && loaded; k++)
                 {
                     Vector2 p = Vector2.Lerp(span.From, span.To, k / 4f);
-                    float y = Mathf.Lerp(span.FromHeight, span.ToHeight, k / 4f);
+                    float y = span.HeightAt(k / 4f);
                     loaded = world.IsLoaded(world.Grid.WorldToChunk(new Vector3(p.x, y, p.y)));
                 }
                 if (loaded)

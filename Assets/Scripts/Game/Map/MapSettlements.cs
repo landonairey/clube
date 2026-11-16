@@ -360,7 +360,7 @@ namespace Clube.Game
                 for (int k = 0; k <= 4 && loaded; k++)
                 {
                     Vector2 p = Vector2.Lerp(span.From, span.To, k / 4f);
-                    loaded = world.IsLoaded(world.Grid.WorldToChunk(new Vector3(p.x, Mathf.Lerp(span.FromHeight, span.ToHeight, k / 4f), p.y)));
+                    loaded = world.IsLoaded(world.Grid.WorldToChunk(new Vector3(p.x, span.HeightAt(k / 4f), p.y)));
                 }
                 if (loaded)
                 {

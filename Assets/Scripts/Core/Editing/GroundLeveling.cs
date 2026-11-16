@@ -29,10 +29,10 @@ namespace Clube.Core
             Vector3Int.up, Vector3Int.down, Vector3Int.right, Vector3Int.left, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
         };
 
-        /// <summary>What to level and how.</summary>
         /// <summary>See <see cref="Area.PavingOver"/>.</summary>
         public delegate VoxelMaterial PavingChoice(float x, float z, VoxelMaterial was, out float raise);
 
+        /// <summary>What to level and how.</summary>
         public struct Area
         {
             /// <summary>Centre of the flat rectangle (x, z), in the world's local metres.</summary>
@@ -386,11 +386,86 @@ namespace Clube.Core
             // A road through a wood (TreeReach): the cut stops a little way out, or touching crowns would take the wood with them.
             int reach = area.TreeReach > 0f ? Mathf.CeilToInt(area.TreeReach / grid.VoxelSize) : int.MaxValue / 4;
             var within = new RectInt(low.x - reach, low.z - reach, high.x - low.x + 2 * reach, high.z - low.z + 2 * reach);
-            FloodClear(world, materials, front, seen, floorY, iso, MaxTreeSamples * 20, area.TreeReach > 0f ? within : (RectInt?)null);
+            var cutOff = area.TreeReach > 0f ? new List<Vector3Int>() : null;
+            FloodClear(world, materials, front, seen, floorY, iso, MaxTreeSamples * 20, area.TreeReach > 0f ? within : (RectInt?)null, cutOff);
+            if (cutOff != null)
+            {
+                ClearSevered(world, materials, cutOff, iso);
+            }
+        }
+
+        // GL652: what a cut that stops at a reach leaves behind. The part of a tree past the reach is still there; where
+        // its trunk went with the cut, it hangs in the air (a branch, half a crown). Each such remainder is followed, and
+        // cleared unless some of it still stands on the ground (a neighbouring tree whose crown touched) or runs down
+        // into ground that is not loaded, or it is too large to be the remainder of one tree.
+        private static void ClearSevered(World world, MaterialRegistry materials, List<Vector3Int> cutOff, float iso)
+        {
+            var seen = new HashSet<Vector3Int>();
+            var part = new List<Vector3Int>();
+            var front = new Stack<Vector3Int>();
+            foreach (Vector3Int start in cutOff)
+            {
+                if (seen.Contains(start) || Read(world, start, out _) < iso || !IsPlant(world, materials, start))
+                {
+                    continue;
+                }
+                part.Clear();
+                front.Clear();
+                front.Push(start);
+                seen.Add(start);
+                bool stands = false;
+                while (front.Count > 0 && !stands)
+                {
+                    Vector3Int sample = front.Pop();
+                    part.Add(sample);
+                    if (part.Count > MaxTreeSamples)
+                    {
+                        stands = true;
+                        break;
+                    }
+                    foreach (Vector3Int step in Around)
+                    {
+                        Vector3Int next = sample + step;
+                        if (!world.TryGetOwner(next, out _, out _))
+                        {
+                            // Chunks of air over and beside a crown are often not held at all. Only ground that is not
+                            // loaded under it could hold its trunk.
+                            if (step.y < 0)
+                            {
+                                stands = true;
+                                break;
+                            }
+                            continue;
+                        }
+                        if (Read(world, next, out _) < iso)
+                        {
+                            continue;
+                        }
+                        if (!IsPlant(world, materials, next))
+                        {
+                            // Solid ground under it: a trunk's foot.
+                            stands |= step.y < 0;
+                            continue;
+                        }
+                        if (seen.Add(next))
+                        {
+                            front.Push(next);
+                        }
+                    }
+                }
+                if (stands)
+                {
+                    continue;
+                }
+                foreach (Vector3Int sample in part)
+                {
+                    world.SetDensity(sample, 0f);
+                }
+            }
         }
 
         // Empties every solid plant sample joined to the ones in front, never below floorY.
-        private static void FloodClear(World world, MaterialRegistry materials, Stack<Vector3Int> front, HashSet<Vector3Int> seen, int floorY, float iso, int most, RectInt? within = null)
+        private static void FloodClear(World world, MaterialRegistry materials, Stack<Vector3Int> front, HashSet<Vector3Int> seen, int floorY, float iso, int most, RectInt? within = null, List<Vector3Int> cutOff = null)
         {
             while (front.Count > 0 && seen.Count < most)
             {
@@ -401,6 +476,7 @@ namespace Clube.Core
                     Vector3Int next = sample + step;
                     if (within.HasValue && (next.x < within.Value.xMin || next.x > within.Value.xMax || next.z < within.Value.yMin || next.z > within.Value.yMax))
                     {
+                        cutOff?.Add(next);
                         continue;
                     }
                     if (next.y >= floorY && !seen.Contains(next) && Read(world, next, out _) >= iso && IsPlant(world, materials, next))

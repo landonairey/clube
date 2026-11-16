@@ -285,7 +285,7 @@ namespace Clube.Core.Tests
             var line = new RoadLine(new[] { new Vector2(0f, 50f), new Vector2(120f, 50f) }, Bumpy);
             var paved = new RoadBed(line, rules.Road(RoadClass.PavedCartPath), null, 1);
             var foot = new RoadBed(line, rules.Road(RoadClass.Footpath), null, 1);
-            Assert.IsTrue(foot.FollowsGround);
+            Assert.IsFalse(foot.FollowsGround, "GL646: a footpath has a bed too, level from side to side");
             Assert.IsFalse(paved.FollowsGround);
             float roughGround = 0f, roughBed = 0f;
             for (float d = 30f; d < 90f; d += 1f)
@@ -293,7 +293,7 @@ namespace Clube.Core.Tests
                 roughGround += Mathf.Abs(line.HeightAlong(d + 1f) + line.HeightAlong(d - 1f) - 2f * line.HeightAlong(d));
                 roughBed += Mathf.Abs(paved.HeightAlong(d + 1f) + paved.HeightAlong(d - 1f) - 2f * paved.HeightAlong(d));
                 Assert.LessOrEqual(Mathf.Abs(paved.HeightAlong(d) - line.HeightAlong(d)), rules.Road(RoadClass.PavedCartPath).MaxCut + 1e-3f);
-                Assert.AreEqual(line.HeightAlong(d), foot.HeightAlong(d), 1e-4f);
+                Assert.LessOrEqual(Mathf.Abs(foot.HeightAlong(d) - line.HeightAlong(d)), rules.Road(RoadClass.Footpath).MaxCut + 1e-3f, "it stays close to the ground it is walked on");
             }
             Assert.Less(roughBed, roughGround * 0.2f, "the bed is far smoother than the ground under it");
             Assert.AreEqual(line.HeightAlong(0f), paved.HeightAlong(0f), 1e-3f, "and meets the ground at its ends");
@@ -311,6 +311,117 @@ namespace Clube.Core.Tests
             var hairpin = new RoadLine(new[] { new Vector2(0f, 0f), new Vector2(60f, 0f), new Vector2(64f, 4f), new Vector2(60f, 8f), new Vector2(0f, 8f) }, (x, z) => 0f);
             var bend = new RoadBed(hairpin, rules.Road(RoadClass.Footpath), null, 1);
             Assert.AreEqual(2, bend.StretchesNear(new Rect(20f, 0f, 2f, 1f), 7.5f).Count);
+        }
+
+        [Test]
+        public void Bed_IsLevelAcrossAFootpath_LeavesWaterAlone_AndLevelsAHairpinsTurn()
+        {
+            var rules = new WorldPlanRules();
+            // GL646: a footpath along a hillside (the ground climbs across it): one height from edge to edge.
+            RoadClassDefinition footClass = rules.Road(RoadClass.Footpath);
+            var along = new RoadLine(new[] { new Vector2(0f, 50f), new Vector2(120f, 50f) }, (x, z) => 20f + 0.5f * z);
+            var foot = new RoadBed(along, footClass, null, 1);
+            List<Vector2Int> stretches = foot.StretchesNear(new Rect(59f, 49f, 2f, 2f), foot.Reach);
+            float uphill = foot.Surface(new Vector2(60f, 50.4f), 20f + 0.5f * 50.4f, stretches), downhill = foot.Surface(new Vector2(60f, 49.6f), 20f + 0.5f * 49.6f, stretches);
+            Assert.AreEqual(uphill, downhill, 1e-3f, "cut into the slope on one side, built up on the other");
+            Assert.AreEqual(foot.HeightAlong(60f), uphill, 1e-3f);
+
+            // GL645: nothing of a road is written where water stands.
+            foot.WetAt = (x, z) => x > 70f;
+            Assert.IsTrue(foot.IsBed(new Vector2(60f, 50f), stretches));
+            List<Vector2Int> wetStretches = foot.StretchesNear(new Rect(79f, 49f, 2f, 2f), foot.Reach);
+            Assert.IsFalse(foot.IsBed(new Vector2(80f, 50f), wetStretches));
+            Assert.IsFalse(foot.IsRoad(new Vector2(80f, 50f), wetStretches));
+
+            // GL648: a hairpin up a hillside. Its legs lie side by side at different heights; the bed is one level round the turn.
+            RoadClassDefinition paved = rules.Road(RoadClass.PavedCartPath);
+            var hairpin = new RoadLine(new[] { new Vector2(0f, 0f), new Vector2(60f, 0f), new Vector2(63f, 3f), new Vector2(60f, 6f), new Vector2(0f, 6f) }, (x, z) => 10f + 0.3f * z);
+            var bend = new RoadBed(hairpin, paved, null, 1);
+            float apex = 60f + Mathf.Sqrt(18f);
+            Assert.Greater(Mathf.Abs(hairpin.HeightAlong(apex + 12f) - hairpin.HeightAlong(apex - 12f)), 1.5f, "the ground under the two legs differs");
+            Assert.Less(Mathf.Abs(bend.HeightAlong(apex + 12f) - bend.HeightAlong(apex - 12f)), 0.3f, "the bed does not: no step down the middle of the road");
+        }
+
+        [Test]
+        public void OnRock_AFootpathHasLooseStones_AndACartPathAMixOfItsTwoMaterials()
+        {
+            var rules = new WorldPlanRules();
+            var line = new RoadLine(new[] { new Vector2(0f, 0f), new Vector2(120f, 0f) }, (x, z) => 5f);
+            var foot = new RoadBed(line, rules.Road(RoadClass.Footpath), null, 7);
+            var dirt = new RoadBed(line, rules.Road(RoadClass.DirtCartPath), null, 7);
+            List<Vector2Int> all = foot.StretchesNear(new Rect(0f, -1f, 120f, 2f), 3f);
+            List<Vector2Int> allDirt = dirt.StretchesNear(new Rect(0f, -1f, 120f, 2f), 3f);
+            float highest = 0f;
+            int stones = 0, plain = 0, mixed = 0, looked = 0;
+            for (float x = 2f; x < 118f; x += 0.25f)
+            {
+                for (float z = -0.5f; z <= 0.5f; z += 0.25f)
+                {
+                    foot.OnRock(new Vector2(x, z), all, out bool stone, out float raise);
+                    highest = Mathf.Max(highest, raise);
+                    stones += stone ? 1 : 0;
+                    plain += stone ? 0 : 1;
+                    Assert.IsTrue(!stone || raise > 0f, "a footpath has its second material only as loose stones");
+                    dirt.OnRock(new Vector2(x, z), allDirt, out bool mix, out float bump);
+                    Assert.AreEqual(0f, bump, "a cart path has no stones lying on it");
+                    mixed += mix ? 1 : 0;
+                    looked++;
+                }
+            }
+            Assert.Greater(highest, 0.1f, "stones stand over the path");
+            Assert.LessOrEqual(highest, rules.Road(RoadClass.Footpath).RockBumpHeight + 1e-3f);
+            Assert.Greater(plain, stones * 3, "but most of it is the bare stone");
+            Assert.That(mixed / (float)looked, Is.InRange(0.1f, 0.7f), "a cart path over rock is part crushed stone, part stone");
+            Assert.IsNull(rules.Road(RoadClass.PavedCartPath).RockSurface, "a paved road keeps its cobbles");
+        }
+
+        [Test]
+        public void ATreeCutByARoad_LeavesNoBranchHanging_AndItsNeighbourStands()
+        {
+            VoxelMaterial grass = VoxelMaterial.Create(1, "Grass"), wood = VoxelMaterial.Create(2, "Wood", VoxelMaterialCategory.Plant);
+            made.Add(grass);
+            made.Add(wood);
+            MaterialRegistry registry = MaterialRegistry.Create(grass, wood);
+            made.Add(registry);
+            var world = new World(new Vector3Int(16, 16, 16), 0.5f, samples => new ByteVoxelStorage(samples));
+            var generator = new FlatGenerator(4.2f);
+            for (int z = 0; z <= 2; z++)
+            {
+                for (int x = 0; x <= 3; x++)
+                {
+                    world.Load(new Vector3Int(x, 0, z), generator);
+                    world.Load(new Vector3Int(x, 1, z), generator);
+                }
+            }
+            WorldGrid grid = world.Grid;
+            void Wood(float x, float y, float z)
+            {
+                Vector3Int sample = grid.WorldToNearestSample(new Vector3(x, y, z));
+                world.SetDensity(sample, 1f);
+                world.SetMaterial(sample, wood.Id);
+            }
+            bool IsWood(float x, float y, float z)
+            {
+                Vector3Int sample = grid.WorldToNearestSample(new Vector3(x, y, z));
+                return (world.GetDensity(sample) ?? 0f) >= 0.5f && world.GetMaterial(sample) == wood.Id;
+            }
+            // A tree on the road at x = 10 with a long branch out to x = 17, and a tree of its own at x = 22.
+            for (float y = 4.5f; y <= 8f; y += 0.5f)
+            {
+                Wood(10f, y, 10f);
+                Wood(22f, y, 10f);
+            }
+            for (float x = 10.5f; x <= 17f; x += 0.5f)
+            {
+                Wood(x, 8f, 10f);
+            }
+            GroundLeveling.Level(world, registry, new GroundLeveling.Area
+            {
+                Centre = new Vector2(10f, 10f), Half = new Vector2(1f, 1f), FollowGround = true, Natural = (x, z) => 4.2f, Headroom = 3f, TreeReach = 2f,
+            }, 0.5f);
+            Assert.IsFalse(IsWood(10f, 6f, 10f), "the trunk on the road is cut");
+            Assert.IsFalse(IsWood(16f, 8f, 10f), "GL652: and the branch past the cut's reach goes with it, not left in the air");
+            Assert.IsTrue(IsWood(22f, 6f, 10f), "a tree off the road stands");
         }
 
         [Test]

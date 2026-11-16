@@ -37,6 +37,18 @@ namespace Clube.Core
             return IsOpen(vessel) ? Mathf.Min(0.06f, vessel.Freeboard * 0.3f) : vessel.Freeboard - Mathf.Min(0.35f, vessel.Freeboard * 0.3f);
         }
 
+        /// <summary>The height of a vessel's tallest mast over its deck; 0 without masts.</summary>
+        public static float MastHeight(VesselClass vessel)
+        {
+            return vessel.Masts > 0 ? Mathf.Min(12f, vessel.Length * (vessel.Wheelhouse ? 0.3f : 0.72f)) : 0f;
+        }
+
+        /// <summary>GL651: metres a vessel stands over the water, mast top and all: what a bridge must clear for it to pass under.</summary>
+        public static float AirDraught(VesselClass vessel)
+        {
+            return DeckHeight(vessel) + Mathf.Max(MastHeight(vessel), vessel.Deckhouse || vessel.Wheelhouse ? 3f : 1.4f);
+        }
+
         /// <summary>Half the hull's width at a place along it, 0 the stern to 1 the bow.</summary>
         public static float HalfBeam(VesselClass vessel, float along)
         {
@@ -164,7 +176,7 @@ namespace Clube.Core
             for (int m = 0; m < vessel.Masts; m++)
             {
                 float z = (vessel.Masts == 1 ? 0.1f : m == 0 ? 0.2f : -0.14f) * length;
-                float height = Mathf.Min(12f, length * (vessel.Wheelhouse ? 0.3f : 0.72f)) * (m == 0 ? 1f : 0.85f);
+                float height = MastHeight(vessel) * (m == 0 ? 1f : 0.85f);
                 float wide = Mathf.Min(beam * 1.5f, height * 0.75f);
                 model.Prism(new Vector3(0f, deck, z), new Vector3(0f, deck + height, z), 0.06f + length * 0.006f, 0.04f, 6, vessel.Trim);
                 model.Prism(new Vector3(-wide * 0.5f, deck + height * 0.92f, z), new Vector3(wide * 0.5f, deck + height * 0.92f, z), 0.04f, 0.04f, 5, vessel.Trim);

@@ -88,6 +88,8 @@ namespace Clube.Core
         public bool Refined;
         public float Length;
         public List<RoadBridge> Bridges = new List<RoadBridge>();
+        /// <summary>GL651: true when it was planned across a narrow stretch of sea, to bring an island onto the road network.</summary>
+        public bool CrossesSea;
         /// <summary>Its tunnels (GL642), in the road's own direction: each a straight part of <see cref="Points"/>, bored under a ridge.</summary>
         public List<RoadTunnel> Tunnels = new List<RoadTunnel>();
         /// <summary>The steepest step along it, rise over run between cells.</summary>
@@ -196,6 +198,18 @@ namespace Clube.Core
         {
             return type.MinimumRoad == RoadClass.PavedCartPath ? MinFlatness : type.MinimumRoad == RoadClass.DirtCartPath ? CartFlatness : TerraceFlatness;
         }
+        /// <summary>
+        /// GL651: the longest stretch of sea, in metres, a road bridges to bring an island onto the road network
+        /// ("if the bridge span is small enough to do"); 0 for never.
+        /// </summary>
+        public float SeaBridgeMaxSpan = 130f;
+        /// <summary>
+        /// GL651: the least road a settlement must need for its island to be bridged to ("if there is a large enough
+        /// settlement there"): a dirt cart path, so a village or larger. An outpost's island is still reached by water.
+        /// </summary>
+        public RoadClass SeaBridgeMinimumRoad = RoadClass.DirtCartPath;
+        /// <summary>GL651: what a metre of sea bridge costs a planned route, in metres of level road: it crosses at the narrowest place within reach.</summary>
+        public float SeaBridgeCost = 30f;
         /// <summary>GL643: the fewest survey cells a piece of land other than the largest needs to get a settlement of its own.</summary>
         public int IslandCells = 6;
         /// <summary>GL643: land parcels an island must have for each parcel of the settlement type it is given (a village of 4 needs 160: about 400 m square).</summary>
