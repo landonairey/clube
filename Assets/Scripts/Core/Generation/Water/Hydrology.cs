@@ -150,6 +150,19 @@ namespace Clube.Core
                 lakeLevel[i] = float.NegativeInfinity;
             }
             var seen = new bool[n * n];
+            if (sea != null)
+            {
+                // The sea always stays, and is no part of the hollows judged below: a lagoon or river mouth that joins
+                // it and reaches the dry area would otherwise take the whole sea away with it.
+                for (int i = 0; i < n * n; i++)
+                {
+                    if (sea[i])
+                    {
+                        seen[i] = true;
+                        lakeLevel[i] = filled[i];
+                    }
+                }
+            }
             var basin = new List<int>();
             var stack = new Stack<int>();
             Rect dryCoarse = Expand(keepDry, 6f);
@@ -473,6 +486,12 @@ namespace Clube.Core
                             queue.Enqueue(n);
                         }
                     }
+                }
+                if (map.HasSea && level <= map.SeaLevel + 0.01f)
+                {
+                    // The sea has nowhere to drain to: beside a side that isn't an ocean (the void under a cliff) it would
+                    // otherwise spill into the low dry ground there and empty, taking the whole coast with it.
+                    continue;
                 }
                 for (int pass = 0; pass < 4 && lake.Count > 0; pass++)
                 {

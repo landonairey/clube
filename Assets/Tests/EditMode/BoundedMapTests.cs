@@ -508,6 +508,20 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Sea_StaysBesideAVoidCliff()
+        {
+            // The sea used to drain into the low dry ground under a neighbouring void cliff (found with GL595: no coast at all).
+            TerrainSettings settings = Settings(5, 2048f, true);
+            settings.Map.SetSides(MapBoundaryType.OceanName, MapBoundaryType.OceanName, MapBoundaryType.VoidCliffName, MapBoundaryType.OceanName);
+            WaterMap water = ((BoundedMapGenerator)TerrainGenerators.Create(settings)).Water;
+
+            foreach (var point in new[] { new float2(1010f, 0f), new float2(-1010f, 0f), new float2(0f, 1010f), new float2(1010f, 300f) })
+            {
+                Assert.That(water.TryCell(point, out int cell) && water.IsSea(cell), $"sea at {point}");
+            }
+        }
+
+        [Test]
         public void Survey_NeedsABoundedMap()
         {
             var settings = new TerrainSettings { Generator = TerrainGeneratorType.Flat };
