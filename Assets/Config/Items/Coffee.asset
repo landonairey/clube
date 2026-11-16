@@ -15,11 +15,15 @@ MonoBehaviour:
   id: coffee
   displayName: Coffee
   icon: {fileID: 2800000, guid: efd70afbfafc2ca4db23ccec3828a5b6, type: 3}
+  iconShape: 14
+  iconTint: {r: 1, g: 1, b: 1, a: 1}
   maxStack: 1
   unitVolume: 1
   burnSeconds: 0
+  fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0
   effectHours: 3
   cooldownShare: 0.75
   effectName: Coffee

@@ -43,6 +43,12 @@ Shader "Clube/Far Terrain"
 
         TEXTURE2D(_CoverageMask);
 
+        // Per renderer (a property block): the colours of the land far past a bounded map's edges (GL641) over the
+        // square they cover (its corner, 1 over its side; w is 0 when the world has none).
+        TEXTURE2D(_HorizonTint);
+        SAMPLER(sampler_linear_clamp);
+        float4 _HorizonRect;
+
         // Grass seen from afar (GL257), globals set by GrassScatter; _GrassLawnTo 0 when there's no 3D grass.
         #include "Assets/Shaders/GrassLawn.hlsl"
         float _GrassLawnTo;
@@ -114,6 +120,12 @@ Shader "Clube/Far Terrain"
                 // Grass in the 3D grass's colour seen from afar when the world grows it (GL257), as the nearer terrain.
                 half3 grassColour = _GrassLawnTo > 0.0 ? GrassLawnAt(input.positionWS.xz) : _GrassColor.rgb;
                 half3 albedo = lerp(grassColour, _DryColor.rgb * (grassColour / max(_GrassColor.rgb, 0.01)), 0.35 * saturate(1.0 - slope * 6.0));
+                // Past a bounded map's edge the ground is that edge's own: a desert's sand, the larger range's rock (GL641).
+                if (_HorizonRect.w > 0.5)
+                {
+                    half4 horizon = SAMPLE_TEXTURE2D(_HorizonTint, sampler_linear_clamp, (input.positionWS.xz - _HorizonRect.xy) * _HorizonRect.z);
+                    albedo = lerp(albedo, horizon.rgb, horizon.a);
+                }
                 albedo = lerp(albedo, _RockColor.rgb, smoothstep(_RockSlope - 0.08, _RockSlope + 0.08, slope));
                 float snow = smoothstep(_SnowHeight - _SnowBlend, _SnowHeight + _SnowBlend, input.positionWS.y)
                            * (1.0 - smoothstep(0.45, 0.65, slope));

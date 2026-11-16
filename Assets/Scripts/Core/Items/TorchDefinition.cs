@@ -23,6 +23,9 @@ namespace Clube.Core
         [SerializeField]
         private TorchDefinition unlit;
 
+        // A dropped torch lies on the ground as its model (GL610), though a placeable.
+        protected override DropForm KindDropForm => DropForm.Model;
+
         public float LifeSeconds => lifeSeconds;
 
         /// <summary>True for a burning torch.</summary>

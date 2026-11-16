@@ -15,12 +15,17 @@ MonoBehaviour:
   id: lit-torch
   displayName: Lit torch
   icon: {fileID: 2800000, guid: 60346bb3b63fbe54db6f6a5e9cdbf831, type: 3}
+  iconShape: 0
+  iconTint: {r: 1, g: 1, b: 1, a: 1}
   maxStack: 1
   unitVolume: 1
   burnSeconds: 0
+  fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0
   prefab: {fileID: 7166874474169212171, guid: 032319acc9bb9eb44a1eb17a0eeea3cc, type: 3}
+  dropsMix: 0
   lifeSeconds: 1200
   lit: {fileID: 0}
   unlit: {fileID: 11400000, guid: 781da9aaba956e543b3c7da3e7b05bee, type: 2}

@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b52a02d234816184ab26033bd6eb47c4, type: 3}
+  m_Name: Iron ingot
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
+  id: iron-ingot
+  displayName: Iron ingot
+  icon: {fileID: 2800000, guid: ec41cef84a8cc3443941e1c563e83e33, type: 3}
+  iconShape: 8
+  iconTint: {r: 0.41, g: 0.42, b: 0.46, a: 1}
+  maxStack: 100
+  unitVolume: 0.4
+  burnSeconds: 0
+  fuelQuality: 1
+  purityAs: {fileID: 0}
+  hidesContents: 0
+  dropForm: 0

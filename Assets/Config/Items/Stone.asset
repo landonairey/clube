@@ -14,5 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
   id: stone
   displayName: Stone
-  icon: {fileID: 2800000, guid: 5bf0f682b3c875b4a857edba51a9c4c9, type: 3}
+  icon: {fileID: 2800000, guid: 8785545150961fd4d97f6921268d119b, type: 3}
+  iconShape: 0
+  iconTint: {r: 1, g: 1, b: 1, a: 1}
   maxStack: 1024
+  unitVolume: 1
+  burnSeconds: 0
+  fuelQuality: 1
+  purityAs: {fileID: 0}
+  hidesContents: 0
+  dropForm: 0

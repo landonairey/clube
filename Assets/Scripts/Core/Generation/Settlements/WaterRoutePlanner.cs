@@ -47,8 +47,10 @@ namespace Clube.Core
             foreach (PlannedSettlement settlement in coastal)
             {
                 int harbour = Cell(settlement.Harbour.Value);
-                // Camps have no jetty of their own; a neighbour's harbour serves a route only once.
-                if (settlement == hub || settlement.Type.MinimumRoad == RoadClass.None || !context.Reached(harbour) || harbour == home)
+                // Camps have no jetty of their own, but for one on another land than the home port (GL643: the sea is its
+                // only way); a neighbour's harbour serves a route only once.
+                if (settlement == hub || (settlement.Type.MinimumRoad == RoadClass.None && settlement.Land == hub.Land) || !context.Reached(harbour)
+                    || harbour == home)
                 {
                     continue;
                 }
@@ -171,7 +173,7 @@ namespace Clube.Core
         {
             plan.ReservedVessels.Add(new NamedVessel
             {
-                Name = vessel.Name, Kind = vessel.Kind, Cargo = vessel.Cargo, OreWords = vessel.OreWords, Note = note,
+                Name = vessel.Name, Kind = vessel.Kind, Cargo = vessel.Cargo, OreWords = vessel.OreWords, Class = vessel.Class, Note = note,
             });
         }
 

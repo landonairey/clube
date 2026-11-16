@@ -33,8 +33,8 @@ change starts pulling in a later chapter's direction.
 
 ## Current state
 Milestone 1 (Chapters 0–3) is built; work is Milestone 2's gameplay passes (GL items),
-tracked in the objectives doc. **Now: "Bounded world, models and animals" (GL589–GL636), batches
-A–M, one branch and PR per batch, each branch cut from the one before; the world is a
+tracked in the objectives doc. **Now: "Bounded world, models and animals" (GL589–GL643), batches
+A–N, one branch and PR per batch, each branch cut from the one before; the world is a
 bounded 5 km map (P15 decided), scene `MapGen`.** A planning chat picks the work up from
 [Docs/planning-handoff.md](Docs/planning-handoff.md) alone; a batch session starts from
 [Docs/batch-brief.md](Docs/batch-brief.md).
@@ -58,8 +58,11 @@ Map of the game (details in the history):
   (`Wallet`, `PriceList`, `MerchantPanel`, `ITrader`), skills (`SkillSet`, `PlayerSkills`),
   quests (`QuestLog`, `PlayerQuests`, `QuestHud`), journals (`FieldLogScreen`), saving
   (`Core/Saving`, `GameSessionHost`, `SaveSlots`; small new state implements `ISavedValues`
-  instead of raising the save version), town (`Game/Town`, `TownPlan`).
-- Demo exe: *Clube → Build → Game demo* (`DemoBuild`) → `Builds/Demo/`.
+  instead of raising the save version), town (`Game/Town`, `TownPlan`), people (`Core/Population`:
+  `Duty`, `Occupation` rows; `Game/People`: `SettlementPeople`, `Villager`, `IDutyWork`), carts
+  (`CartRuns`, `MapCarts`), boats and thieves (batch J, GL617/GL618; see `Docs/history.md`).
+- Demo exe: *Clube → Build → Game demo* (`DemoBuild`) → `Builds/Demo/`. *Clube → Build → MapGen
+  playtest* → `Builds/MapGen/`: MapGen alone, for trying the bounded map (the menu's Start still loads WorldLab).
 
 Settled (2026-10-08, GW1): chunks are 16 x 16 x 16 and build cells 1 m (both final);
 voxels are 0.25 m, 4 per cell, pending playtests (M25). The labs keep these adjustable for
@@ -143,7 +146,11 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   it rather than switching to batch mode.
 - MCP gotcha: Play mode doesn't tick while the editor window is unfocused.
   To test frame-driven behaviour, pause and advance with
-  `EditorApplication.Step()` from `RunCommand`. `Camera_Capture` skips
+  `EditorApplication.Step()` from `RunCommand`. Or set `Application.runInBackground = true`
+  from `RunCommand` once in Play mode: frames then come in bursts while commands run, and
+  `Time.timeScale = 12` makes game hours pass in a few commands. Don't write files under
+  `Assets` during Play mode: the Editor picks them up, recompiles, and non-serialized state
+  (the map session's plan) is gone. `Camera_Capture` skips
   IMGUI; use `ScreenCapture.CaptureScreenshot` to see `OnGUI` HUDs.
   A faster way for one object's components: in Play mode, loop
   `go.SendMessage("Update")` (and `"LateUpdate"`) with a short sleep between
@@ -256,6 +263,11 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   `Update.ScriptRunBehaviourUpdate`, `PreLateUpdate.ScriptRunBehaviourLateUpdate`), logging
   to the Editor log. Built game: `clube.exe -townbench -screen-width 2560 -screen-height 1440`
   writes `townbench.txt` (the exe segfaults on quit, after writing it).
+- MCP gotcha: a batch-mode Unity (the test run, in any clone, any session's) registers its own bridge, and the MCP tools
+  then talk to it instead of the Editor, whose bridge file disappears. Finish Play-mode work before starting the suite,
+  and check `ManageEditor GetProjectRoot` before an Editor command while a batch run may be going.
+- Roads (GL613, GL631): a road class is a `RoadClassDefinition` row; `WorldRoads.Finish` must follow `WorldPlanner.Build`
+  wherever a plan is drawn or built, or its roads are still 40 m cell lines without signposts.
 - Token budget: read files in parts (grep first), check compiles through `Editor.log`, take
   screenshots only for visual items, run the batch-mode test suite once per batch.
 

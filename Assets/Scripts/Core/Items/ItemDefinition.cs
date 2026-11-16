@@ -21,6 +21,22 @@ namespace Clube.Core
         [SerializeField]
         private Texture2D icon;
 
+        [Tooltip("What the icon is a picture of (GL612): icons are rendered from low-poly models (Clube > Items > Bake icons from models). Auto picks by kind: a tool or placeable is its model, a material's drop a chunk or mound of it. Painted keeps the picture above as it is.")]
+        [SerializeField]
+        private ItemIconShape iconShape = ItemIconShape.Auto;
+
+        [Tooltip("The colour of the icon's model (GL612), for an item that is no material's drop (an ingot, a hide); a material's drop wears the material's texture, and this tints it.")]
+        [SerializeField]
+        private Color iconTint = Color.white;
+
+        [Tooltip("How much the material's texture is enlarged on the icon's model (GL612): 1 shows the texture at the size of the ground; 3 makes an ore's flecks three times as big, so they show in a slot.")]
+        [SerializeField, Range(0.25f, 6f)]
+        private float iconTextureZoom = 1f;
+
+        [Tooltip("How much the icon's texture is pushed in colour and contrast (GL612), 0-1: 0 as the ground looks, 1 for flecks that stand out of the stone.")]
+        [SerializeField, Range(0f, 1f)]
+        private float iconVividness;
+
         [Tooltip("Most of it one inventory slot holds (GL6). 1 for tools.")]
         [SerializeField, Min(1)]
         private int maxStack = 64;
@@ -44,6 +60,26 @@ namespace Clube.Core
         [Tooltip("What it's made of is unknown to the player (\"? ore\", GL76): its tooltip doesn't list its contents, though it still carries them.")]
         [SerializeField]
         private bool hidesContents;
+
+        [Tooltip("What it turns into when dropped (GL610, GL611). By kind: a tool, torch or bucket drops as its model, a placeable (campfire, furnace) as a canvas bag, the rest into the ground as their material. Set Bag for anything too small to find again (a pearl, a gem).")]
+        [SerializeField]
+        private DropForm dropForm = DropForm.ByKind;
+
+        /// <summary>
+        /// What it turns into when dropped (GL610, GL611): the asset's choice, or its kind's. An item that piles but that no
+        /// material is placed from (an ingot, a hide) goes in a bag: the dropper's call, as it knows the materials.
+        /// </summary>
+        public DropForm DropsAs => dropForm != DropForm.ByKind ? dropForm : KindDropForm;
+
+        /// <summary>What this kind of item drops as when its asset doesn't say.</summary>
+        protected virtual DropForm KindDropForm => DropForm.Pile;
+
+        /// <summary>Sets <see cref="DropsAs"/>, for items made in code (tests).</summary>
+        public ItemDefinition WithDropForm(DropForm form)
+        {
+            dropForm = form;
+            return this;
+        }
 
         /// <summary>Makes an item in code (tests, tools); the game's items are assets.</summary>
         public static ItemDefinition Create(string id, string displayName, int maxStack = 64)
@@ -87,6 +123,26 @@ namespace Clube.Core
         public string DisplayName => displayName;
 
         public Texture2D Icon => icon;
+
+        /// <summary>What the icon is a picture of (GL612); <see cref="ItemIconShapes.Resolve"/> settles Auto.</summary>
+        public ItemIconShape IconShape => iconShape;
+
+        /// <summary>The colour of the icon's model (GL612), or the tint over its material's texture.</summary>
+        public Color IconTint => iconTint;
+
+        /// <summary>How much the material's texture is enlarged on the icon (GL612); 1 is the ground's own size.</summary>
+        public float IconTextureZoom => iconTextureZoom;
+
+        /// <summary>How much the icon's texture is pushed in colour and contrast, 0-1 (GL612).</summary>
+        public float IconVividness => iconVividness;
+
+        /// <summary>Sets the icon's shape and tint, for items made in code (tests).</summary>
+        public ItemDefinition WithIcon(ItemIconShape shape, Color? tint = null)
+        {
+            iconShape = shape;
+            iconTint = tint ?? iconTint;
+            return this;
+        }
 
         /// <summary>Most of it one inventory slot holds (GL6).</summary>
         public int MaxStack => maxStack;

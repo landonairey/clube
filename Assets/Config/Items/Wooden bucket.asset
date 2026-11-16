@@ -15,11 +15,15 @@ MonoBehaviour:
   id: wooden-bucket
   displayName: Wooden bucket
   icon: {fileID: 2800000, guid: 2484803099dcb0c408718c18d374a519, type: 3}
+  iconShape: 0
+  iconTint: {r: 1, g: 1, b: 1, a: 1}
   maxStack: 1
   unitVolume: 1
   burnSeconds: 0
+  fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0
   capacity: 100
   scoopRadius: 0.6
   pourAmount: 5

@@ -186,6 +186,42 @@ MonoBehaviour:
         grade: {x: 0.15, y: 0.3}
         gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
         extraContents: []
+      - ore: {fileID: 11400000, guid: 11e29b19add5cd0da55692fe04588706, type: 2}
+        nodesPerCell: 0.8
+        minDepth: 6
+        maxDepth: 20
+        peakProbability: 0.55
+        spread: {x: 1.4, y: 1, z: 1.4}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: -1
+        grade: {x: 0.3, y: 0.6}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents: []
+      - ore: {fileID: 11400000, guid: c89eb894a093b3e6439384ad24b93cbf, type: 2}
+        nodesPerCell: 0.6
+        minDepth: 10
+        maxDepth: 26
+        peakProbability: 0.55
+        spread: {x: 1.3, y: 0.9, z: 1.3}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: -1
+        grade: {x: 0.35, y: 0.65}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents: []
+      - ore: {fileID: 11400000, guid: 7c4cc19bae15d8920c81e465114698ad, type: 2}
+        nodesPerCell: 1
+        minDepth: 3
+        maxDepth: 14
+        peakProbability: 0.6
+        spread: {x: 2.2, y: 0.7, z: 2.2}
+        hosts:
+        - {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        priority: -1
+        grade: {x: 0.7, y: 0.95}
+        gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+        extraContents: []
     trees:
       cellSize: 10
       chance: 0.75

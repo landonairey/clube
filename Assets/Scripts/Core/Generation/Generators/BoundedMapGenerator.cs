@@ -52,6 +52,47 @@ namespace Clube.Core
         /// </summary>
         public static BoundedMapGenerator Create(TerrainSettings settings)
         {
+            BoundedMapGenerator dry = CreateDry(settings);
+            if (!settings.Water.Enabled)
+            {
+                return dry;
+            }
+
+            MapDefinition map = settings.Map;
+            MapLayout layout = dry.Layout;
+
+            MapShape shape = layout.Shape;
+            var extent = new WaterExtent
+            {
+                AreaSize = layout.Size + 2f * map.WaterMargin,
+                FlowCellSize = map.FlowCellSize,
+                CellSize = map.WaterCellSize,
+                SeaLevel = layout.SeaLevel,
+                IsSea = point => shape.IsSeaSide(point.x, point.y),
+                IsDry = point => IsDesert(shape, point),
+            };
+            string key = $"bounded|{settings.Seed}|{settings.SurfaceLevel}|{settings.Amplitude}|{settings.FeatureSize}|"
+                + $"{settings.MountainCoverage}|{settings.Lacunarity}|{settings.Persistence}|{settings.Erosion.Key}|{map.Key(settings.Seed)}";
+            Rect keepDry = settings.StartArea.Enabled ? settings.StartArea.Area : default;
+            WaterMap water = Hydrology.For(
+                key, dry, settings.Water, TerrainGenerators.BanksFor(settings), keepDry, settings.Erosion.MinPondArea, extent);
+            return dry.WithWater(water);
+        }
+
+
+        // True where an edge has dried the climate right out (the desert and its margin): no lake stands in its hollows.
+        private static bool IsDesert(MapShape shape, Vector2 point)
+        {
+            shape.EdgeClimate(point.x, point.y, out _, out float moisture);
+            return moisture < -0.4f;
+        }
+
+        /// <summary>
+        /// The map's land alone, with no rivers, lakes or sea water worked out (GL636): its heights are the finished
+        /// map's, but it builds in a moment, where the water takes seconds. The new-game preview draws from it.
+        /// </summary>
+        public static BoundedMapGenerator CreateDry(TerrainSettings settings)
+        {
             MapDefinition map = settings.Map;
             MapLayout layout = map.Resolve(settings.Seed, settings.SurfaceLevel);
             LandscapeHeight land = new LandscapeHeight(
@@ -66,27 +107,7 @@ namespace Clube.Core
                 ? map.Biomes
                 : BiomeDefinition.Defaults(settings.Water.Sand, settings.Layers?.Band, settings.Layers?.Base);
             BiomeField biomeField = Clube.Core.BiomeField.From(biomes, map.Climate, layout.Shape, layers);
-            var dry = new BoundedMapGenerator(field, layout, biomes, biomeField);
-            if (!settings.Water.Enabled)
-            {
-                return dry;
-            }
-
-            MapShape shape = layout.Shape;
-            var extent = new WaterExtent
-            {
-                AreaSize = layout.Size + 2f * map.WaterMargin,
-                FlowCellSize = map.FlowCellSize,
-                CellSize = map.WaterCellSize,
-                SeaLevel = layout.SeaLevel,
-                IsSea = point => shape.IsSeaSide(point.x, point.y),
-            };
-            string key = $"bounded|{settings.Seed}|{settings.SurfaceLevel}|{settings.Amplitude}|{settings.FeatureSize}|"
-                + $"{settings.MountainCoverage}|{settings.Lacunarity}|{settings.Persistence}|{settings.Erosion.Key}|{map.Key(settings.Seed)}";
-            Rect keepDry = settings.StartArea.Enabled ? settings.StartArea.Area : default;
-            WaterMap water = Hydrology.For(
-                key, dry, settings.Water, TerrainGenerators.BanksFor(settings), keepDry, settings.Erosion.MinPondArea, extent);
-            return dry.WithWater(water);
+            return new BoundedMapGenerator(field, layout, biomes, biomeField);
         }
 
         public override JobHandle ScheduleValleys(NativeArray<float2> points, NativeArray<float> valleys, JobHandle dependsOn = default)
@@ -129,6 +150,9 @@ namespace Clube.Core
         /// <summary>True where ground below <see cref="SeaLevel"/> and joined to the area's edge is sea (x, z); null for no sea.</summary>
         public System.Func<Vector2, bool> IsSea;
 
-        public string Key => $"{AreaSize}|{FlowCellSize}|{CellSize}|{SeaLevel}|{IsSea != null}";
+        /// <summary>True where the ground soaks water up, so a hollow there holds no lake (a desert's dunes); null for nowhere.</summary>
+        public System.Func<Vector2, bool> IsDry;
+
+        public string Key => $"{AreaSize}|{FlowCellSize}|{CellSize}|{SeaLevel}|{IsSea != null}|{IsDry != null}";
     }
 }

@@ -120,7 +120,20 @@ namespace Clube.Game
             float start = Time.realtimeSinceStartup;
             TerrainSettings terrain = Terrain;
             Survey = ResourceSurvey.Build(terrain, generator, worldView.Ores, worldView.Trees, surveyCellSize);
-            Plan = WorldPlanner.Build(Survey, terrain.Seed);
+            // GL634: the road classes' slope limits are shares of the slope the player can walk, the controller's own limit.
+            var rules = new WorldPlanRules();
+            CharacterController walker = player != null ? player.GetComponentInChildren<CharacterController>(true) : null;
+            if (walker == null)
+            {
+                walker = FindAnyObjectByType<CharacterController>(FindObjectsInactive.Include);
+            }
+            if (walker != null)
+            {
+                rules.SetWalkableSlope(walker.slopeLimit);
+            }
+            Plan = WorldPlanner.Build(Survey, terrain.Seed, rules);
+            // The plan is from the survey's 40 m cells: its roads are put on the real ground, and signposts on them (GL631, GL632).
+            WorldRoads.Finish(Plan, generator);
             Map = generator;
             built = generator;
             IsBuilding = false;
@@ -130,9 +143,10 @@ namespace Clube.Game
             Vector2 at = MapStart.Pick(Plan, Survey);
             StartPosition = worldView.transform.TransformPoint(new Vector3(at.x, generator.Height(at.x, at.y), at.y));
             PlacePlayer();
+            BindLimit();
             UnityEngine.Debug.Log(
                 $"Map session: seed {terrain.Seed}, {Plan.Settlements.Count} settlements, {Plan.Roads.Count} roads, {Plan.WaterRoutes.Count} water routes; "
-                + $"survey and plan {LastBuildSeconds:0.0} s ({Survey.Timings}); start {StartPosition}", this);
+                + $"survey and plan {LastBuildSeconds:0.0} s ({Survey.Timings}; {Plan.Timings}); start {StartPosition}", this);
             Rebuilt?.Invoke();
         }
 
@@ -155,6 +169,20 @@ namespace Clube.Game
                 // Whatever enables the player spawns it at its own x and z.
                 player.transform.position = StartPosition;
             }
+        }
+
+        // The player is held inside the map's edges (GL640); the limit rides on the player and reads this session.
+        private void BindLimit()
+        {
+            if (player == null || player.GetComponent<PlayerController>() == null)
+            {
+                return;
+            }
+            if (!player.TryGetComponent(out MapBoundaryLimit limit))
+            {
+                limit = player.gameObject.AddComponent<MapBoundaryLimit>();
+            }
+            limit.Bind(this);
         }
 
         private void OnGUI()

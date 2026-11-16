@@ -33,6 +33,7 @@ namespace Clube.Game
             tools.Collected += OnCollected;
             tools.BushPicked += OnBushPicked;
             tools.Missed += OnMissed;
+            tools.TargetStruck += OnMissed;
             tools.Blocked += OnBlocked;
         }
 
@@ -42,6 +43,7 @@ namespace Clube.Game
             tools.Collected -= OnCollected;
             tools.BushPicked -= OnBushPicked;
             tools.Missed -= OnMissed;
+            tools.TargetStruck -= OnMissed;
             tools.Blocked -= OnBlocked;
         }
 

@@ -10,7 +10,11 @@ namespace Clube.Game
     /// </summary>
     public static class RoadBridge
     {
-        public const float Width = 2.2f;
+        /// <summary>The deck's width where none is given (the trade road's).</summary>
+        public const float DefaultWidth = 2.2f;
+
+        // A deck longer than this stands on piers, this far apart.
+        private const float PierSpacing = 5f;
         private const float BoardWidth = 0.22f;
         private const float BoardThickness = 0.08f;
         private const float FootingLength = 1f;
@@ -23,7 +27,7 @@ namespace Clube.Game
         private static readonly Color Stringer = new Color(0.45f, 0.28f, 0.17f);
 
         /// <summary>Builds the bridge under <paramref name="parent"/> and returns it.</summary>
-        public static GameObject Build(RouteBridges.Span span, Material material, Transform parent, int seed)
+        public static GameObject Build(RouteBridges.Span span, Material material, Transform parent, int seed, float width = DefaultWidth)
         {
             Vector3 flat = new Vector3(span.To.x - span.From.x, 0f, span.To.y - span.From.y);
             float length = flat.magnitude;
@@ -41,14 +45,30 @@ namespace Clube.Game
             float F() => (float)random.NextDouble();
 
             // Stringers, and the boards along them.
-            foreach (float x in new[] { -0.7f, 0.7f })
+            float stringerAt = width * 0.32f;
+            foreach (float x in new[] { -stringerAt, stringerAt })
             {
                 mesh.Box(middle + Vector3.down * 0.14f + Vector3.right * x, new Vector3(0.14f, 0.16f, deckLength), slope, Stringer);
             }
-            int boards = Mathf.RoundToInt(Width / BoardWidth);
+
+            // A long deck (GL631: a world road over a wide river) stands on piers: a pair of posts under a cross beam,
+            // down through the water into its bed.
+            int piers = length > PierSpacing * 1.5f ? Mathf.FloorToInt(length / PierSpacing) : 0;
+            for (int i = 1; i <= piers; i++)
+            {
+                float z = length * i / (piers + 1);
+                float under = Top(z) - 0.22f;
+                float foot = Mathf.Min(span.WaterSurface, under) - 3f;
+                mesh.Box(new Vector3(0f, under - 0.07f, z), new Vector3(width + 0.2f, 0.14f, 0.16f), Quaternion.identity, Stringer * 0.9f);
+                foreach (float x in new[] { -stringerAt, stringerAt })
+                {
+                    mesh.Prism(new Vector3(x, foot, z), new Vector3(x, under, z), 0.1f, 0.085f, 6, ParcelBorders.PostWood * (0.8f + 0.15f * F()));
+                }
+            }
+            int boards = Mathf.RoundToInt(width / BoardWidth);
             for (int i = 0; i < boards; i++)
             {
-                float x = (i + 0.5f) / boards * Width - Width * 0.5f;
+                float x = (i + 0.5f) / boards * width - width * 0.5f;
                 float shade = 0.88f + 0.12f * F();
                 mesh.Box(middle + Vector3.down * (BoardThickness * 0.5f) + Vector3.right * x, new Vector3(BoardWidth - 0.02f, BoardThickness, deckLength), slope, Board * shade);
             }
@@ -56,12 +76,12 @@ namespace Clube.Game
             // Footings: a cobble block under each end, down into the bank, with loose cobbles at its foot.
             for (int end = 0; end < 2; end++)
             {
-                Footing(end, length, span, out Vector3 centre, out Vector3 size);
+                Footing(end, length, span, width, out Vector3 centre, out Vector3 size);
                 mesh.Box(centre, size, Quaternion.identity, Cobble * 0.92f);
                 float inward = end == 0 ? 1f : -1f;
                 for (int k = 0; k < 7; k++)
                 {
-                    float cx = (F() - 0.5f) * (Width + 0.2f);
+                    float cx = (F() - 0.5f) * (width + 0.2f);
                     float cz = centre.z + inward * (FootingLength * 0.5f + 0.05f + F() * 0.2f);
                     float stone = 0.22f + 0.16f * F();
                     mesh.Box(new Vector3(cx, centre.y + size.y * 0.5f - 0.1f - F() * 0.3f, cz), new Vector3(stone, stone * 0.8f, stone), Quaternion.Euler(F() * 30f, F() * 90f, F() * 30f), Cobble * (0.8f + 0.3f * F()));
@@ -70,7 +90,7 @@ namespace Clube.Game
 
             // Side rails: the parcel fence's posts and two rails on each edge.
             int posts = Mathf.Max(1, Mathf.RoundToInt(length / PostSpacing));
-            foreach (float x in new[] { -Width * 0.5f + 0.06f, Width * 0.5f - 0.06f })
+            foreach (float x in new[] { -width * 0.5f + 0.06f, width * 0.5f - 0.06f })
             {
                 Vector3 previous = default;
                 for (int i = 0; i <= posts; i++)
@@ -91,28 +111,28 @@ namespace Clube.Game
             root.AddComponent<MeshRenderer>().sharedMaterial = material;
 
             // Colliders: the deck, a tall thin wall along each rail, and the footings.
-            AddBox(root.transform, middle + Vector3.down * 0.1f, new Vector3(Width, 0.2f, deckLength), slope);
-            foreach (float x in new[] { -Width * 0.5f + 0.06f, Width * 0.5f - 0.06f })
+            AddBox(root.transform, middle + Vector3.down * 0.1f, new Vector3(width, 0.2f, deckLength), slope);
+            foreach (float x in new[] { -width * 0.5f + 0.06f, width * 0.5f - 0.06f })
             {
                 AddBox(root.transform, middle + new Vector3(x, 0.45f, 0f), new Vector3(0.14f, 1f, deckLength), slope);
             }
             for (int end = 0; end < 2; end++)
             {
-                Footing(end, length, span, out Vector3 centre, out Vector3 size);
+                Footing(end, length, span, width, out Vector3 centre, out Vector3 size);
                 AddBox(root.transform, centre, size, Quaternion.identity);
             }
             return root;
         }
 
         // A footing's centre and size, in the bridge's local frame: its top just under the boards, its foot in the bank.
-        private static void Footing(int end, float length, RouteBridges.Span span, out Vector3 centre, out Vector3 size)
+        private static void Footing(int end, float length, RouteBridges.Span span, float width, out Vector3 centre, out Vector3 size)
         {
             float z = end == 0 ? FootingLength * 0.5f : length - FootingLength * 0.5f;
             float deck = end == 0 ? span.FromHeight : span.ToHeight;
             float top = deck - 0.17f;
             float bottom = deck - FootingDepth;
             centre = new Vector3(0f, (top + bottom) * 0.5f, z);
-            size = new Vector3(Width + 0.3f, top - bottom, FootingLength);
+            size = new Vector3(width + 0.3f, top - bottom, FootingLength);
         }
 
         private static void AddRail(LowPolyMeshBuilder mesh, Vector3 from, Vector3 to, float over, Color tint)

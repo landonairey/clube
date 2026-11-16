@@ -3,9 +3,9 @@ using Unity.Mathematics;
 namespace Clube.Core
 {
     /// <summary>
-    /// A bounded map's ground (GL591): <see cref="LandscapeHeight"/>'s plains and smooth massifs, shaped by the map
-    /// (<see cref="MapShape.Apply"/>: the great peak, and each side's edge), then eroded like
-    /// <see cref="ErodedLandscapeHeight"/> so the peak and a ridge side get gullies too, then cut by the rivers.
+    /// A bounded map's ground (GL591, GL637): <see cref="LandscapeHeight"/>'s plains and smooth massifs, shaped by the map
+    /// (<see cref="MapShape.Apply"/>: its coast, its ranges and each side's edge), then eroded like
+    /// <see cref="ErodedLandscapeHeight"/> so the ranges and the coast's hills get their gullies, then cut by the rivers.
     /// </summary>
     /// <remarks>
     /// The erosion step is <see cref="ErodedLandscapeHeight.Sample"/>'s, over the shaped land instead of the bare one;
@@ -66,27 +66,36 @@ namespace Clube.Core
             return valley;
         }
 
-        private float Shaped(float x, float z)
+        private float Shaped(float x, float z, out float plains, out float bottom, out float top)
         {
-            return shape.Apply(x, z, land.RawHeight(x, z));
+            float h = land.RawHeight(x, z);
+            if (!shape.IsCreated)
+            {
+                plains = level;
+                bottom = float.NegativeInfinity;
+                top = float.PositiveInfinity;
+                return h;
+            }
+            return shape.Apply(x, z, h, out plains, out bottom, out top);
         }
 
         private float Sample(float x, float z, out float valley)
         {
-            float h = Shaped(x, z);
-            // The plains' own level here: the map tilts them towards the sea, and they stay as flat as untilted ones.
-            float plains = level + shape.InlandAt(x, z);
+            // The plains' own level here comes with the height: the map lifts them inland and drops them to the sea's
+            // floor, and the gullies fade towards it wherever it stands.
+            float h = Shaped(x, z, out float plains, out float bottom, out float top);
             float amount = math.smoothstep(plains + 0.5f, plains + (peak - level) * FadeIn, h);
             if (erosion.IsNone || amount <= 0f)
             {
                 valley = 0f;
                 return h;
             }
-            float hx = Shaped(x + SlopeStep, z);
-            float hz = Shaped(x, z + SlopeStep);
+            float hx = Shaped(x + SlopeStep, z, out _, out _, out _);
+            float hz = Shaped(x, z + SlopeStep, out _, out _, out _);
             var slope = new float2(hx - h, hz - h) / SlopeStep;
             float fade = math.saturate((h - plains) / (peak - level)) * 2f - 1f;
-            return h + erosion.Offset(new float2(x, z), slope, fade, amount, out _, out valley);
+            // The erosion lifts crests a little: reachable ground stays inside the voxel world after it too (GL640).
+            return MapShape.Keep(h + erosion.Offset(new float2(x, z), slope, fade, amount, out _, out valley), bottom, top);
         }
     }
 }

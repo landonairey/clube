@@ -57,7 +57,7 @@ namespace Clube.Game
 
             if (known)
             {
-                Shade(texture, outline, centre, ore.DebugColor, random);
+                Shade(texture, outline, centre, ore.DebugColor, ore.SketchStyle, random);
             }
 
             // The ink outline, a little uneven, as if drawn by hand.
@@ -72,8 +72,102 @@ namespace Clube.Game
             return texture;
         }
 
-        // Fills the outline in: a grey wash, speckles of the ore's colour and hatching on the shadow side.
-        private static void Shade(Texture2D texture, Vector2[] outline, Vector2 centre, Color oreColour, System.Random random)
+        // Fills the outline in, by the ore's style (GL627, GL628): a grey wash with speckles of the ore's colour, or with
+        // crystals of it, and hatching on the shadow side; or the ore's colour right through.
+        private static void Shade(Texture2D texture, Vector2[] outline, Vector2 centre, Color oreColour, OreSketchStyle style, System.Random random)
+        {
+            if (style == OreSketchStyle.Solid)
+            {
+                FillSolid(texture, outline, centre, oreColour, random);
+                return;
+            }
+            if (style == OreSketchStyle.Crystals)
+            {
+                Fill(texture, outline, Wash);
+                Crystals(texture, outline, centre, oreColour, random);
+                Hatch(texture, outline, centre);
+                return;
+            }
+            Speckle(texture, outline, centre, oreColour, random);
+            Hatch(texture, outline, centre);
+        }
+
+        private static void Fill(Texture2D texture, Vector2[] outline, Color colour)
+        {
+            for (int y = 0; y < Height; y++)
+            {
+                for (int x = 0; x < Width; x++)
+                {
+                    if (Inside(outline, new Vector2(x, y)))
+                    {
+                        texture.SetPixel(x, y, colour);
+                    }
+                }
+            }
+        }
+
+        // Coal (GL628): the ore's colour over the whole lump, a little uneven like ink laid on with a brush, and a few
+        // short pale strokes where its glassy faces catch the light. No wash or hatching: there's no paper left to show.
+        private static void FillSolid(Texture2D texture, Vector2[] outline, Vector2 centre, Color oreColour, System.Random random)
+        {
+            for (int y = 0; y < Height; y++)
+            {
+                for (int x = 0; x < Width; x++)
+                {
+                    if (Inside(outline, new Vector2(x, y)))
+                    {
+                        float shade = 0.8f + (float)random.NextDouble() * 0.5f;
+                        texture.SetPixel(x, y, new Color(oreColour.r * shade, oreColour.g * shade, oreColour.b * shade, 1f));
+                    }
+                }
+            }
+            var glint = new Color(0.5f, 0.5f, 0.56f, 0.55f);
+            for (int i = 0; i < 7; i++)
+            {
+                var from = new Vector2(centre.x + ((float)random.NextDouble() - 0.6f) * 84f, centre.y + ((float)random.NextDouble() - 0.35f) * 50f);
+                var to = from + new Vector2(5f + (float)random.NextDouble() * 6f, 3f + (float)random.NextDouble() * 4f);
+                if (Inside(outline, from) && Inside(outline, to))
+                {
+                    Line(texture, from, to, 0.5f, glint);
+                }
+            }
+        }
+
+        // Magnetite (GL627): octahedra seen end on, diamonds of the ore's colour with the upper left half a bright facet.
+        private static void Crystals(Texture2D texture, Vector2[] outline, Vector2 centre, Color oreColour, System.Random random)
+        {
+            Color facet = Color.Lerp(oreColour, Color.white, 0.62f);
+            facet.a = 1f;
+            for (int i = 0; i < 30; i++)
+            {
+                var spot = new Vector2(centre.x + ((float)random.NextDouble() - 0.5f) * 104f, centre.y + ((float)random.NextDouble() - 0.5f) * 66f);
+                int reach = 5 + random.Next(5);
+                if (!Inside(outline, spot + Vector2.right * reach) || !Inside(outline, spot - Vector2.right * reach)
+                    || !Inside(outline, spot + Vector2.up * reach) || !Inside(outline, spot - Vector2.up * reach))
+                {
+                    continue;
+                }
+                int cx = Mathf.RoundToInt(spot.x), cy = Mathf.RoundToInt(spot.y);
+                for (int dy = -reach; dy <= reach; dy++)
+                {
+                    for (int dx = -reach; dx <= reach; dx++)
+                    {
+                        int from = Mathf.Abs(dx) + Mathf.Abs(dy);
+                        if (from > reach)
+                        {
+                            continue;
+                        }
+                        // Inked along its edge and down the ridge between its two faces.
+                        int side = dy - dx;
+                        Color colour = from == reach || side == 0 || side == 1 ? Ink : side > 1 ? facet : new Color(oreColour.r, oreColour.g, oreColour.b, 1f);
+                        texture.SetPixel(cx + dx, cy + dy, colour);
+                    }
+                }
+            }
+        }
+
+        // A grey wash and speckles of the ore's colour.
+        private static void Speckle(Texture2D texture, Vector2[] outline, Vector2 centre, Color oreColour, System.Random random)
         {
             for (int y = 0; y < Height; y++)
             {
@@ -96,8 +190,11 @@ namespace Clube.Game
                 float shade = 0.8f + (float)random.NextDouble() * 0.35f;
                 Dot(texture, spot, size, new Color(oreColour.r * shade, oreColour.g * shade, oreColour.b * shade, 1f));
             }
+        }
 
-            // Hatching on the lower right, the side away from the light.
+        // Hatching on the lower right, the side away from the light.
+        private static void Hatch(Texture2D texture, Vector2[] outline, Vector2 centre)
+        {
             for (int i = 0; i < 9; i++)
             {
                 float t = i / 8f;

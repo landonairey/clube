@@ -14,6 +14,19 @@ namespace Clube.Core
         private readonly List<Vector3> normals = new List<Vector3>();
         private readonly List<Color> colors = new List<Color>();
         private readonly List<int> triangles = new List<int>();
+        private readonly List<Vector2> surfaces = new List<Vector2>();
+        private bool anySurface;
+
+        public const float PlainSurface = 0f;
+        public const float WoodSurface = 1f;
+        public const float MetalSurface = 2f;
+
+        /// <summary>
+        /// What the parts added next are made of, for shaders that draw a surface (GL609, Clube/Held Item): x is the kind
+        /// (<see cref="PlainSurface"/>, <see cref="WoodSurface"/>, <see cref="MetalSurface"/>), y how much it shines, 0-1.
+        /// Written to the mesh's first UV channel, and only when some part set one.
+        /// </summary>
+        public Vector2 Surface { get; set; }
 
         /// <summary>Where the parts added next go: every point is moved by it. Identity by default.</summary>
         public Matrix4x4 Placement { get; set; } = Matrix4x4.identity;
@@ -46,6 +59,61 @@ namespace Clube.Core
         public void Block(Vector3 foot, Vector3 size, Color color)
         {
             Box(foot + Vector3.up * (size.y * 0.5f), size, Quaternion.identity, color);
+        }
+
+        /// <summary>
+        /// A faceted ball stretched to <paramref name="radii"/> and turned about its centre, its poles along its own Z
+        /// (GL604: the animals' bodies and heads). Few <paramref name="sides"/> and <paramref name="rings"/> keep it low-poly.
+        /// </summary>
+        public void Blob(Vector3 centre, Vector3 radii, Quaternion turn, Color color, int sides = 6, int rings = 4)
+        {
+            for (int r = 0; r < rings; r++)
+            {
+                float p0 = Mathf.PI * r / rings, p1 = Mathf.PI * (r + 1) / rings;
+                for (int s = 0; s < sides; s++)
+                {
+                    float a0 = Mathf.PI * 2f * s / sides, a1 = Mathf.PI * 2f * (s + 1) / sides;
+                    Quad(BlobPoint(centre, radii, turn, p0, a0), BlobPoint(centre, radii, turn, p0, a1),
+                        BlobPoint(centre, radii, turn, p1, a1), BlobPoint(centre, radii, turn, p1, a0), centre, color);
+                }
+            }
+        }
+
+        private static Vector3 BlobPoint(Vector3 centre, Vector3 radii, Quaternion turn, float polar, float around)
+        {
+            float ring = Mathf.Sin(polar);
+            return centre + turn * new Vector3(Mathf.Cos(around) * ring * radii.x, Mathf.Sin(around) * ring * radii.y, Mathf.Cos(polar) * radii.z);
+        }
+
+        /// <summary>
+        /// A skin over rings stacked along Y (GL608: the figures' torsos and limbs): ring i is an ellipse about
+        /// <paramref name="centres"/>[i], <paramref name="radii"/>[i].x across x and .y across z, with a flat face to the
+        /// front and back when <paramref name="sides"/> is 6. Both ends are closed.
+        /// </summary>
+        public void Loft(IReadOnlyList<Vector3> centres, IReadOnlyList<Vector2> radii, int sides, Color color)
+        {
+            int last = centres.Count - 1;
+            for (int r = 0; r < last; r++)
+            {
+                Vector3 middle = (centres[r] + centres[r + 1]) * 0.5f;
+                for (int s = 0; s < sides; s++)
+                {
+                    Quad(LoftPoint(centres[r], radii[r], s, sides), LoftPoint(centres[r + 1], radii[r + 1], s, sides),
+                        LoftPoint(centres[r + 1], radii[r + 1], s + 1, sides), LoftPoint(centres[r], radii[r], s + 1, sides), middle, color);
+                }
+            }
+            Vector3 inside = (centres[0] + centres[last]) * 0.5f;
+            for (int s = 0; s < sides; s++)
+            {
+                Triangle(centres[0], LoftPoint(centres[0], radii[0], s, sides), LoftPoint(centres[0], radii[0], s + 1, sides), inside, color);
+                Triangle(centres[last], LoftPoint(centres[last], radii[last], s, sides), LoftPoint(centres[last], radii[last], s + 1, sides), inside, color);
+            }
+        }
+
+        private static Vector3 LoftPoint(Vector3 centre, Vector2 radii, int side, int sides)
+        {
+            float around = Mathf.PI * 2f * side / sides;
+            return centre + new Vector3(Mathf.Cos(around) * radii.x, 0f, Mathf.Sin(around) * radii.y);
         }
 
         /// <summary>A tapered prism along a line, with its ends closed.</summary>
@@ -171,7 +239,9 @@ namespace Clube.Core
             {
                 normals.Add(normal);
                 colors.Add(color);
+                surfaces.Add(Surface);
             }
+            anySurface |= Surface != Vector2.zero;
             triangles.Add(first);
             triangles.Add(first + 1);
             triangles.Add(first + 2);
@@ -188,6 +258,10 @@ namespace Clube.Core
             mesh.SetVertices(vertices);
             mesh.SetNormals(normals);
             mesh.SetColors(colors);
+            if (anySurface)
+            {
+                mesh.SetUVs(0, surfaces);
+            }
             mesh.SetTriangles(triangles, 0);
             mesh.RecalculateBounds();
             return mesh;

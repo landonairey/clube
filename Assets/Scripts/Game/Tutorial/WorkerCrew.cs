@@ -43,7 +43,7 @@ namespace Clube.Game
         private sealed class Worker
         {
             public int Index;
-            public KeeperFigure Figure;
+            public FigureRig Figure;
             public AudioSource Audio;
             public StrikeDamage Damage = new StrikeDamage();
             public Phase Phase;
@@ -121,8 +121,8 @@ namespace Clube.Game
             {
                 var go = new GameObject("Worker " + (i + 1));
                 go.transform.SetParent(crew.transform, false);
-                var figure = go.AddComponent<KeeperFigure>();
-                figure.BuildWorker(material, 600 + i * 7);
+                var figure = go.AddComponent<FigureRig>();
+                figure.Build(FigurePreset.Worker, material, 600 + i * 7);
                 var audio = go.AddComponent<AudioSource>();
                 audio.playOnAwake = false;
                 audio.spatialBlend = 1f;
@@ -145,7 +145,7 @@ namespace Clube.Game
                 w.Phase = Phase.Sleep;
                 go.transform.localPosition = CompanyWarehouse.WorkerBedSpot(i) - Vector3.up * 0.55f;
                 go.transform.localRotation = Quaternion.identity;
-                figure.Pose = KeeperPose.Lie;
+                figure.Pose = FigureAction.Lie;
                 figure.LieAlong(true, map.TransformPoint(CompanyWarehouse.WorkerBedSpot(i)), map.TransformDirection(Vector3.forward));
             }
             return result;
@@ -358,7 +358,7 @@ namespace Clube.Game
                     {
                         w.Phase = Phase.HandIn;
                         w.Wait = HandInSeconds;
-                        w.Figure.Pose = KeeperPose.Stand;
+                        w.Figure.Pose = FigureAction.Stand;
                         FaceTowards(t, CompanyWarehouse.LeadSpot);
                     }
                     break;
@@ -376,7 +376,7 @@ namespace Clube.Game
                     {
                         w.Phase = Phase.Sleep;
                         t.localRotation = Quaternion.identity;
-                        w.Figure.Pose = KeeperPose.Lie;
+                        w.Figure.Pose = FigureAction.Lie;
                         w.Figure.LieAlong(true, map.TransformPoint(CompanyWarehouse.WorkerBedSpot(w.Index)), map.TransformDirection(Vector3.forward));
                     }
                     break;
@@ -388,10 +388,10 @@ namespace Clube.Game
         {
             if (!digging)
             {
-                w.Figure.Pose = KeeperPose.Stand;
+                w.Figure.Pose = FigureAction.Stand;
                 return;
             }
-            w.Figure.Pose = KeeperPose.Mine;
+            w.Figure.Pose = FigureAction.Mine;
             if (w.Stall.Tick(dt, StallSeconds))
             {
                 Replan(w);
@@ -399,7 +399,7 @@ namespace Clube.Game
             }
             t.localRotation = Quaternion.RotateTowards(t.localRotation, Quaternion.identity, TurnSpeed * dt);
             float beat = w.Figure.MineBeat;
-            bool landed = (w.LastBeat < KeeperFigure.MineImpact && beat >= KeeperFigure.MineImpact);
+            bool landed = (w.LastBeat < FigureRig.MineImpact && beat >= FigureRig.MineImpact);
             w.LastBeat = beat;
             if (!landed)
             {
@@ -472,7 +472,7 @@ namespace Clube.Game
             }
             w.Along = along;
             w.Pass = pass;
-            w.Figure.Pose = KeeperPose.Walk;
+            w.Figure.Pose = FigureAction.Walk;
             w.Phase = Phase.ToSpot;
         }
 
@@ -499,7 +499,7 @@ namespace Clube.Game
             w.Along = along;
             w.Pass = pass;
             w.Fall = 0f;
-            w.Figure.Pose = KeeperPose.Walk;
+            w.Figure.Pose = FigureAction.Walk;
             StartApproach(w);
         }
 
@@ -529,7 +529,7 @@ namespace Clube.Game
             Vector3 flat = target - at;
             flat.y = 0f;
             float dist = flat.magnitude;
-            w.Figure.Pose = KeeperPose.Walk;
+            w.Figure.Pose = FigureAction.Walk;
             if (dist < 0.1f)
             {
                 t.localPosition = target;

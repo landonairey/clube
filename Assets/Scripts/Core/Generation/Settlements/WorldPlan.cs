@@ -22,6 +22,13 @@ namespace Clube.Core
         /// <summary>Its centre (x, z), the middle of its survey cell.</summary>
         public Vector2 Position;
         public Vector2Int Cell;
+        /// <summary>The piece of land it stands on (GL643): settlements with the same number can be walked between.</summary>
+        public int Land;
+        /// <summary>
+        /// The road network it is on (GL643): 0 the capital's, a higher number a network of its own land (an island's, with no
+        /// road to the rest: it is reached by water), -1 for none (camps).
+        /// </summary>
+        public int RoadNetwork = -1;
         /// <summary>Mean ground height at its cell.</summary>
         public float Ground;
         /// <summary>Its name, ending in its type (GL597).</summary>
@@ -72,10 +79,17 @@ namespace Clube.Core
         public int To = -1;
         /// <summary>The road it joins at its end, or -1.</summary>
         public int Joins = -1;
-        /// <summary>The route (x, z), from <see cref="From"/> on, through survey cell centres.</summary>
+        /// <summary>
+        /// The route (x, z), from <see cref="From"/> on: through survey cell centres as planned, then the smoothed line on
+        /// the real ground once <see cref="RoadRefiner"/> has been over it (<see cref="Refined"/>).
+        /// </summary>
         public List<Vector2> Points = new List<Vector2>();
+        /// <summary>True once the route follows the real ground (GL631).</summary>
+        public bool Refined;
         public float Length;
         public List<RoadBridge> Bridges = new List<RoadBridge>();
+        /// <summary>Its tunnels (GL642), in the road's own direction: each a straight part of <see cref="Points"/>, bored under a ridge.</summary>
+        public List<RoadTunnel> Tunnels = new List<RoadTunnel>();
         /// <summary>The steepest step along it, rise over run between cells.</summary>
         public float SteepestSlope;
         /// <summary>Metres of it steeper than its class should be: where no gentler way exists.</summary>
@@ -114,6 +128,9 @@ namespace Clube.Core
         public string Cargo;
         /// <summary>Words that pick the ore its route must serve (any, in the ore's lower-case name).</summary>
         public string[] OreWords = Array.Empty<string>();
+
+        /// <summary>The id of the <see cref="VesselClass"/> it is one of (GL618).</summary>
+        public string Class = VesselClass.SeaTrader;
         /// <summary>Why it has no route on a map, filled in when it is kept in reserve.</summary>
         public string Note;
 
@@ -125,7 +142,7 @@ namespace Clube.Core
                 new NamedVessel
                 {
                     Name = "Edmund Fitzgerald", Kind = WaterRouteKind.Sea, Cargo = "iron ore",
-                    OreWords = new[] { "iron", "hematite", "magnetite", "taconite" },
+                    OreWords = new[] { "iron", "hematite", "magnetite", "taconite" }, Class = VesselClass.OreFreighter,
                 },
             };
         }
@@ -139,6 +156,22 @@ namespace Clube.Core
         public List<RoadClassDefinition> Roads = RoadClassDefinition.Defaults();
         public List<NamedVessel> Vessels = NamedVessel.Defaults();
 
+        /// <summary>The slope angle the player can walk, in degrees, where no player says otherwise (the controller's limit in every scene).</summary>
+        public const float DefaultWalkableSlope = 50f;
+
+        /// <summary>The slope angle the player can walk, in degrees: the road classes' limits are shares of it (GL634).</summary>
+        public float WalkableSlope { get; private set; } = DefaultWalkableSlope;
+
+        /// <summary>Sets the walkable slope angle (the player controller's own limit) and every road class's limit from it.</summary>
+        public void SetWalkableSlope(float degrees)
+        {
+            WalkableSlope = degrees;
+            foreach (RoadClassDefinition road in Roads)
+            {
+                road.SetWalkable(degrees);
+            }
+        }
+
         /// <summary>The map size the distances below are written for; they scale with a smaller or larger map.</summary>
         public float ReferenceMapSize = 5000f;
         /// <summary>"Nearby", in metres: how far a small settlement reaches for its resources.</summary>
@@ -147,8 +180,26 @@ namespace Clube.Core
         public float AreaRadius = 900f;
         /// <summary>Side of a land parcel in metres, for the level ground a type needs.</summary>
         public float ParcelSide = 32f;
-        /// <summary>Least flatness (0 to 1) of a site and of its footprint's mean.</summary>
+        /// <summary>The flatness (0 to 1) of ground that counts as level: a settlement there needs no terraces.</summary>
         public float MinFlatness = 0.6f;
+        /// <summary>GL642: least flatness of a site and of its footprint's mean. Below <see cref="MinFlatness"/> the settlement is cut into the slope in terraces (0.2 is a mean slope of 32%).</summary>
+        public float TerraceFlatness = 0.2f;
+        /// <summary>GL642: least flatness of a site that must be reached by a dirt cart path (0.45 is a mean slope of 22%: about the path's own limit).</summary>
+        public float CartFlatness = 0.45f;
+
+        /// <summary>
+        /// The least flatness of a settlement type's site (GL642): terraces fit a settlement to a hillside, but its road has
+        /// to reach it. One reached on foot may stand on any ground that can be terraced, one that needs a dirt cart path on
+        /// a gentler hillside, one that needs a paved road on level ground.
+        /// </summary>
+        public float FlatnessFor(SettlementType type)
+        {
+            return type.MinimumRoad == RoadClass.PavedCartPath ? MinFlatness : type.MinimumRoad == RoadClass.DirtCartPath ? CartFlatness : TerraceFlatness;
+        }
+        /// <summary>GL643: the fewest survey cells a piece of land other than the largest needs to get a settlement of its own.</summary>
+        public int IslandCells = 6;
+        /// <summary>GL643: land parcels an island must have for each parcel of the settlement type it is given (a village of 4 needs 160: about 400 m square).</summary>
+        public float IslandLandPerParcel = 40f;
         /// <summary>Metres kept from the map's edge.</summary>
         public float EdgeMargin = 120f;
         /// <summary>How far from its centre a settlement's harbour may lie, in metres.</summary>
@@ -180,6 +231,8 @@ namespace Clube.Core
         public List<PlannedSettlement> Settlements = new List<PlannedSettlement>();
         public List<PlannedRoad> Roads = new List<PlannedRoad>();
         public List<WaterRoute> WaterRoutes = new List<WaterRoute>();
+        /// <summary>Signposts at junctions and settlement edges (GL632); empty until the roads are on the real ground (<see cref="WorldRoads.Finish"/>).</summary>
+        public List<PlannedSignpost> Signposts = new List<PlannedSignpost>();
         /// <summary>Named vessels with no route on this map, each with a <see cref="NamedVessel.Note"/> saying why.</summary>
         public List<NamedVessel> ReservedVessels = new List<NamedVessel>();
         /// <summary>Notes on anything the plan could not do as asked (a type short of sites, a resource the map lacks).</summary>
@@ -210,6 +263,29 @@ namespace Clube.Core
         public List<PlannedRoad> RoadsOf(int settlement)
         {
             return Roads.FindAll(road => road.From == settlement || road.To == settlement);
+        }
+
+        /// <summary>True when (x, z) lies on a road of the plan, or within a margin of its edge (a fence leaves a gap there).</summary>
+        public bool IsOnRoad(Vector2 point, float margin = 0f)
+        {
+            foreach (PlannedRoad road in Roads)
+            {
+                float reach = Rules.Road(road.Class).Width * 0.5f + margin;
+                for (int i = 1; i < road.Points.Count; i++)
+                {
+                    Vector2 a = road.Points[i - 1], b = road.Points[i];
+                    if (Mathf.Min(a.x, b.x) - reach > point.x || Mathf.Max(a.x, b.x) + reach < point.x
+                        || Mathf.Min(a.y, b.y) - reach > point.y || Mathf.Max(a.y, b.y) + reach < point.y)
+                    {
+                        continue;
+                    }
+                    if (SettlementSite.Distance(point, a, b) <= reach)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
         /// <summary>The settlement nearest a position (x, z) within a distance, or null.</summary>

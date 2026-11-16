@@ -17,6 +17,10 @@ namespace Clube.Core
         public static readonly Color Woods = new Color(0.07f, 0.25f, 0.1f);
         public static readonly Color Bridge = Color.white;
 
+        /// <summary>The wash laid over what lies past the playable edge (GL639), and how much of it.</summary>
+        public static readonly Color Outside = new Color(0.78f, 0.76f, 0.7f);
+        public const float OutsideWash = 0.42f;
+
         /// <summary>
         /// The map's pixels, <paramref name="resolution"/> a side, rows from the south (z up, as a texture has them),
         /// covering the map's bounds exactly.
@@ -48,11 +52,14 @@ namespace Clube.Core
                         int i = x + z * resolution;
                         float2 p = points[i];
                         float h = heights[i];
+                        // Past the playable edge (GL639) the land and sea are washed out: seen, and not the map's.
+                        float wash = map.Layout.Contains(p.x, p.y) ? 0f : OutsideWash;
                         if (water.IsCreated && water.TryCell(p, out int wet) && water.Kind[wet] != 0)
                         {
-                            pixels[i] = water.IsSea(wet)
+                            Color wetColour = water.IsSea(wet)
                                 ? Sea * Mathf.Lerp(0.6f, 1f, Mathf.InverseLerp(seaLevel - 30f, seaLevel, h))
                                 : FreshWater;
+                            pixels[i] = Opaque(Color.Lerp(wetColour, Outside, wash));
                             continue;
                         }
                         Color colour = survey.Biomes[biomes.IndexAt(p.x, p.y, h)].MapColor;
@@ -67,7 +74,7 @@ namespace Clube.Core
                         float south = heights[x + (z > 0 ? z - 1 : z) * resolution], north = heights[x + (z + 1 < resolution ? z + 1 : z) * resolution];
                         float relief = Mathf.Clamp(((east - west) - (north - south)) / (2f * step) * 0.45f, -0.3f, 0.3f);
                         float shade = Mathf.Lerp(0.8f, 1.2f, Mathf.InverseLerp(seaLevel, seaLevel + 350f, h)) + relief;
-                        colour *= shade;
+                        colour = Color.Lerp(colour * shade, Outside, wash);
                         colour.a = 1f;
                         pixels[i] = colour;
                     }
@@ -79,6 +86,12 @@ namespace Clube.Core
                 heights.Dispose();
             }
             return pixels;
+        }
+
+        private static Color32 Opaque(Color colour)
+        {
+            colour.a = 1f;
+            return colour;
         }
 
         public static readonly Color Dirt = new Color(0.42f, 0.26f, 0.11f);
@@ -100,6 +113,33 @@ namespace Clube.Core
         public static float RoadWidth(RoadClass roadClass)
         {
             return roadClass == RoadClass.PavedCartPath ? 3f : roadClass == RoadClass.DirtCartPath ? 2.6f : 1f;
+        }
+
+        /// <summary>The dark edge of a cased line (<see cref="MapLineStyle.Casing"/>) and of the map's symbols.</summary>
+        public static readonly Color Casing = new Color(0.1f, 0.08f, 0.06f);
+
+        /// <summary>
+        /// How a road class is drawn on the world map (GL635), three line types told apart without their colour: the
+        /// walking path a thin dotted line, the dirt cart path a solid brown one, the paved cart path a wide pale line
+        /// between dark edges.
+        /// </summary>
+        public static MapLineStyle RoadStyle(RoadClass roadClass)
+        {
+            switch (roadClass)
+            {
+                case RoadClass.PavedCartPath:
+                    return new MapLineStyle("Paved cart path", Cobble, RoadWidth(roadClass), casing: 1f);
+                case RoadClass.DirtCartPath:
+                    return new MapLineStyle("Dirt cart path", Dirt, RoadWidth(roadClass));
+                default:
+                    return new MapLineStyle("Walking path", Dirt, 1.7f, dash: 2.4f, gap: 2.6f);
+            }
+        }
+
+        /// <summary>How a water route is drawn on the world map: long dashes, white at sea and cyan on a river.</summary>
+        public static MapLineStyle RouteStyle(WaterRouteKind kind)
+        {
+            return new MapLineStyle(kind == WaterRouteKind.Sea ? "Sea route" : "River route", RouteColour(kind), 1.2f, dash: 6f, gap: 6f);
         }
 
         /// <summary>A water route's colour: white at sea, cyan on a river.</summary>

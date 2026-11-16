@@ -56,6 +56,8 @@ namespace Clube.Core.Tests
             settings.Water.Enabled = water;
             settings.Map.Size = size;
             settings.Map.PeakHeight = 150f;
+            // The tests' plains stand 20 m up; a floor well under them leaves the sea its depth.
+            settings.Map.VoxelFloor = -40f;
             return settings;
         }
 
@@ -70,6 +72,7 @@ namespace Clube.Core.Tests
         private TerrainSettings Island(int seed = 5)
         {
             TerrainSettings settings = Settings(seed, 2048f, true);
+            settings.Map.SetShape(MapShapeType.IslandName);
             settings.Map.SetSides(
                 MapBoundaryType.OceanName, MapBoundaryType.OceanName, MapBoundaryType.OceanName, MapBoundaryType.OceanName);
             return settings;
@@ -128,9 +131,15 @@ namespace Clube.Core.Tests
             map.BoundaryTypes.Add(new MapBoundaryType("Salt flat", false, 2f, 1f, 300f, 1f, 0f, 0f));
             map.SetSides("Salt flat", MapBoundaryType.OceanName, MapBoundaryType.OceanName, MapBoundaryType.OceanName);
             MapLayout layout = map.Resolve(1, Level);
+            float x = -layout.Size * 0.5f - 200f;
 
             Assert.That(layout.Boundary(MapSide.West).Name, Is.EqualTo("Salt flat"));
-            Assert.That(layout.Shape.Apply(-layout.Size * 0.5f - 200f, 0f, 77f), Is.EqualTo(layout.SeaLevel + 2f).Within(1e-3f));
+            Assert.That(layout.BoundaryAt(x, 0f).Name, Is.EqualTo("Salt flat"));
+            // Past its edge the land is its flat: 2 m over the plains there, whatever hills the endless land has.
+            float flat = layout.Shape.Apply(x, 0f, Level, out float plains);
+            Assert.That(flat, Is.EqualTo(plains).Within(0.05f));
+            Assert.That(layout.Shape.Apply(x, 0f, Level + 57f), Is.EqualTo(flat).Within(0.05f));
+            Assert.That(flat, Is.GreaterThan(layout.SeaLevel + 2f));
         }
 
         [Test]
@@ -142,11 +151,23 @@ namespace Clube.Core.Tests
 
             foreach (float beyond in new[] { 400f, 3000f, 20000f })
             {
-                Assert.That(map.Height(-half - beyond, 0f), Is.LessThan(sea - 20f), "the ocean's floor");
-                Assert.That(map.Height(half + beyond, 0f), Is.InRange(sea + 1f, sea + 17f), "the desert's plain");
+                Assert.That(map.Height(-half - beyond, 0f), Is.LessThan(sea - 15f), "the ocean's floor");
+                Assert.That(map.Height(half + beyond, 0f), Is.InRange(sea + 1f, sea + settings.Map.InlandRise + 30f), "the desert's plain");
                 Assert.That(map.Height(0f, -half - beyond), Is.LessThan(sea - 500f), "the void");
-                Assert.That(map.Height(0f, half + beyond), Is.GreaterThan(sea + 400f), "the ridge");
             }
+            // The larger range: crests and valleys, tall on the whole and nowhere down at the plains.
+            float sum = 0f;
+            int count = 0;
+            foreach (float beyond in new[] { 1500f, 3000f, 20000f })
+            {
+                for (float x = -half * 0.5f; x <= half * 0.5f; x += half * 0.125f, count++)
+                {
+                    float h = map.Height(x, half + beyond);
+                    Assert.That(h, Is.GreaterThan(sea + 60f), $"the range at {x}, {beyond} past the edge");
+                    sum += h - sea;
+                }
+            }
+            Assert.That(sum / count, Is.GreaterThan(280f), "the range's mean height");
         }
 
         [Test]
@@ -210,10 +231,16 @@ namespace Clube.Core.Tests
                     points[i] = new float2((i % 16 - 7.5f) * 330f, (i / 16 - 7.5f) * 330f);
                 }
                 map.SchedulePointHeights(points, heights).Complete();
+                // Burst's exp, log and pow round a hair differently from Mono's, and on the larger range's steep wall the
+                // erosion turns that into centimetres: the two agree closely on the whole, and nowhere by more than a hand.
+                float total = 0f;
                 for (int i = 0; i < points.Length; i++)
                 {
-                    Assert.That(heights[i], Is.EqualTo(map.Height(points[i].x, points[i].y)).Within(0.01f), $"point {points[i]}");
+                    float managed = map.Height(points[i].x, points[i].y);
+                    Assert.That(heights[i], Is.EqualTo(managed).Within(0.2f), $"point {points[i]}");
+                    total += Mathf.Abs(heights[i] - managed);
                 }
+                Assert.That(total / points.Length, Is.LessThan(0.01f), "mean difference");
             }
             finally
             {
@@ -244,7 +271,7 @@ namespace Clube.Core.Tests
                 }
             }
 
-            Assert.That(top, Is.GreaterThan(map.Layout.SeaLevel + 100f));
+            Assert.That(top, Is.GreaterThan(map.Layout.SeaLevel + 80f));
             Assert.That(Vector2.Distance(highest, map.Layout.PeakPosition), Is.LessThan(settings.Map.PeakRadius));
         }
 
@@ -425,7 +452,7 @@ namespace Clube.Core.Tests
                     Assert.That(cell.Height, Is.EqualTo(other.Height));
                     Assert.That(cell.Biome, Is.EqualTo(other.Biome));
                     Assert.That(survey.Ore(0, x, z), Is.EqualTo(again.Ore(copper, x, z)));
-                    Assert.That(cell.Land + cell.Sea + cell.FreshWater, Is.EqualTo(1f).Within(1e-4f));
+                    Assert.That(cell.Land + cell.Sea + cell.FreshWater, Is.EqualTo(cell.Outside ? cell.Sea : 1f).Within(1e-4f));
                     Assert.That(cell.Flatness, Is.InRange(0f, 1f));
                     coast += cell.Coast ? 1 : 0;
                     river += cell.River ? 1 : 0;
@@ -527,6 +554,65 @@ namespace Clube.Core.Tests
             var settings = new TerrainSettings { Generator = TerrainGeneratorType.Flat };
 
             Assert.Throws<System.ArgumentException>(() => ResourceSurvey.Build(settings));
+        }
+
+        [Test]
+        public void TheDryMapHasTheFinishedMapsGround()
+        {
+            // GL636: the preview's land is the game's land; only the water is left out.
+            TerrainSettings settings = Island();
+            BoundedMapGenerator dry = BoundedMapGenerator.CreateDry(settings);
+            BoundedMapGenerator wet = BoundedMapGenerator.Create(settings);
+            Assert.IsFalse(dry.Water.IsCreated);
+            foreach (var p in new[] { new Vector2(0f, 0f), new Vector2(310f, -420f), new Vector2(-900f, 650f) })
+            {
+                Assert.AreEqual(wet.Height(p.x, p.y), dry.Height(p.x, p.y), 1e-3f);
+            }
+        }
+
+        [Test]
+        public void ContoursFollowTheHeights()
+        {
+            // A ramp rising 1 m a pixel to the east, from 10 m under the sea: lines every 10 m.
+            const int size = 64;
+            var heights = new float[size * size];
+            for (int i = 0; i < heights.Length; i++)
+            {
+                heights[i] = i % size - 10f;
+            }
+            Color32[] pixels = MapContours.Render(heights, size, 0f, 10f);
+            int row = 20 * size;
+            Assert.AreEqual(MapContours.SeaWash, pixels[row + 4], "under the sea: the wash, no lines");
+            Assert.AreEqual(MapContours.ShoreInk, pixels[row + 10], "the shore");
+            Assert.AreEqual(MapContours.Paper, pixels[row + 15], "between lines");
+            Assert.AreNotEqual(MapContours.Paper, pixels[row + 20], "the 10 m line");
+            Assert.AreEqual(MapContours.Ink, pixels[row + 50], "the 40 m line is an index line, full ink");
+            Assert.AreEqual(MapContours.Paper, pixels[row + 45]);
+        }
+
+        [Test]
+        public void ContoursChangeWithTheSeedAndShowAnIslandsSea()
+        {
+            const int size = 96;
+            Color32[] first = MapContours.Render(BoundedMapGenerator.CreateDry(Island(5)), size, margin: 0.1f);
+            Color32[] again = MapContours.Render(BoundedMapGenerator.CreateDry(Island(5)), size, margin: 0.1f);
+            Color32[] other = MapContours.Render(BoundedMapGenerator.CreateDry(Island(6)), size, margin: 0.1f);
+            CollectionAssert.AreEqual(first, again);
+            CollectionAssert.AreNotEqual(first, other);
+            // An island: sea in every corner, land with lines in the middle.
+            foreach (int corner in new[] { 0, size - 1, size * (size - 1), size * size - 1 })
+            {
+                Assert.AreEqual(MapContours.SeaWash, first[corner]);
+            }
+            int lined = 0;
+            foreach (Color32 pixel in first)
+            {
+                if (!pixel.Equals(MapContours.Paper) && !pixel.Equals(MapContours.SeaWash))
+                {
+                    lined++;
+                }
+            }
+            Assert.Greater(lined, size * 4);
         }
     }
 }

@@ -15,11 +15,15 @@ MonoBehaviour:
   id: copper-pick
   displayName: Copper pick
   icon: {fileID: 2800000, guid: 9164e5c889102fa4bb3257b83eb3e860, type: 3}
+  iconShape: 0
+  iconTint: {r: 1, g: 1, b: 1, a: 1}
   maxStack: 1
   unitVolume: 1
   burnSeconds: 0
+  fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0
   impactSize: 2
   impactShape: 0
   wideOn: 2

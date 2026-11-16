@@ -87,6 +87,9 @@ namespace Clube.Debug
                 state.Result = DebugMaterialChunk.Make(Object.FindFirstObjectByType<WorldView>(), player.transform);
             }
 
+            // Skill levels (GL630).
+            state.Result = SkillCheatControls.Draw(frame, player.GetComponent<PlayerSkills>()) ?? state.Result;
+
             // The command line: Enter or Run.
             bool enter = Event.current.type == EventType.KeyDown
                          && (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.KeypadEnter)

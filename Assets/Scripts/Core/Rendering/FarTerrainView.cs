@@ -22,6 +22,11 @@ namespace Clube.Core
         private static readonly int CoverageId = Shader.PropertyToID("_Coverage");
         private static readonly int LevelTintId = Shader.PropertyToID("_LevelTint");
         private static readonly int NearRectId = Shader.PropertyToID("_NearRect");
+        private static readonly int HorizonTintId = Shader.PropertyToID("_HorizonTint");
+        private static readonly int HorizonRectId = Shader.PropertyToID("_HorizonRect");
+
+        // Texels a side of the horizon colours (GL641): a few hundred metres each over the far terrain's whole reach.
+        private const int HorizonResolution = 192;
 
         [Tooltip("The world whose terrain continues into the distance. Defaults to the WorldView on this object.")]
         [SerializeField]
@@ -70,6 +75,8 @@ namespace Clube.Core
         private MeshRenderer[] renderers;
         private Material runtimeMaterial;
         private MaterialPropertyBlock block;
+        private Texture2D horizon;
+        private float horizonExtent;
         private ChunkCoverageMask coverage;
 
         public bool Show
@@ -178,6 +185,7 @@ namespace Clube.Core
                 DropBuilder();
                 builder = new FarTerrainBuilder(heightfield, range, baseSpacing, quads, levelSink, firstLevel);
                 builtFor = worldView.Generator;
+                BuildHorizon();
                 builtSettings = settings;
                 CreateLevels(builder.LevelCount);
             }
@@ -232,6 +240,7 @@ namespace Clube.Core
             {
                 renderers[i].enabled = builder.TryGetShown(i, out _);
                 block.SetColor(LevelTintId, tintLevels ? Color.HSVToRGB(i / (float)renderers.Length, 0.6f, 1f) : Color.white);
+                SetHorizon(block);
                 renderers[i].SetPropertyBlock(block);
             }
         }
@@ -272,9 +281,51 @@ namespace Clube.Core
                 origin.x + coverage.Origin.x * chunkWidth, origin.z + coverage.Origin.y * chunkWidth, chunkWidth, coverage.Size));
         }
 
+        // A bounded map's horizons (GL641): the far ground past each edge in that edge's own colour (a desert's
+        // sand, the larger range's rock), from MapHorizon. Any other world has none.
+        private void BuildHorizon()
+        {
+            DropHorizon();
+            if (!(worldView.Generator is BoundedMapGenerator map))
+            {
+                return;
+            }
+            horizonExtent = Mathf.Max(range, map.Layout.Size);
+            horizon = new Texture2D(HorizonResolution, HorizonResolution, TextureFormat.RGBA32, false)
+            {
+                name = "Horizon colours", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear,
+                hideFlags = HideFlags.HideAndDontSave,
+            };
+            horizon.SetPixels32(MapHorizon.Colours(map.Layout, HorizonResolution, horizonExtent));
+            horizon.Apply(false, true);
+        }
+
+        // The horizon colours and the square they cover (its corner and 1 over its side; w is 1 when there are any).
+        private void SetHorizon(MaterialPropertyBlock properties)
+        {
+            if (horizon == null)
+            {
+                properties.SetVector(HorizonRectId, Vector4.zero);
+                return;
+            }
+            Vector3 origin = worldView.transform.position;
+            properties.SetTexture(HorizonTintId, horizon);
+            properties.SetVector(HorizonRectId, new Vector4(origin.x - horizonExtent, origin.z - horizonExtent, 0.5f / horizonExtent, 1f));
+        }
+
+        private void DropHorizon()
+        {
+            if (horizon != null)
+            {
+                Destroy(horizon);
+                horizon = null;
+            }
+        }
+
         private void DropBuilder()
         {
             builder?.Dispose();
+            DropHorizon();
             builder = null;
             builtFor = null;
             if (renderers != null)

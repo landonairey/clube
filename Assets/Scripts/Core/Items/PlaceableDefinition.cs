@@ -16,6 +16,9 @@ namespace Clube.Core
 
         public GameObject Prefab => prefab;
 
+        // Equipment too big to lie about as itself drops as a canvas bag (GL611).
+        protected override DropForm KindDropForm => DropForm.Bag;
+
         [Tooltip("Crafting it leaves out what its inputs were made of (GL563): a crate carries no \"0.1% leaves\". Off for furnaces, whose quality is their clay's mix.")]
         [SerializeField]
         private bool dropsMix;

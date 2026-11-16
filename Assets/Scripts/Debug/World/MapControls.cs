@@ -50,13 +50,43 @@ namespace Clube.Debug
                 changed = true;
             }
 
+            // The outline (GL638): the seed's pick, or one chosen here.
+            MapLayout layout = session != null ? session.Layout : null;
+            bool shapeFromSeed = frame.ToggleField("Outline picked from the seed", map.PickShapeFromSeed);
+            if (shapeFromSeed != map.PickShapeFromSeed)
+            {
+                map.PickShapeFromSeed = shapeFromSeed;
+                changed = true;
+            }
+            if (shapeFromSeed)
+            {
+                if (layout != null)
+                {
+                    frame.Line($"Outline: {layout.ShapeType.Name}");
+                }
+            }
+            else
+            {
+                var shapes = new string[map.ShapeTypes.Count];
+                for (int i = 0; i < shapes.Length; i++)
+                {
+                    shapes[i] = map.ShapeTypes[i].Name;
+                }
+                int current = System.Array.IndexOf(shapes, map.ShapeName);
+                int chosen = frame.Toolbar("Outline", current, shapes);
+                if (chosen != current && chosen >= 0)
+                {
+                    map.ShapeName = shapes[chosen];
+                    changed = true;
+                }
+            }
+
             bool fromSeed = frame.ToggleField("Sides picked from the seed", map.PickSidesFromSeed);
             if (fromSeed != map.PickSidesFromSeed)
             {
                 map.PickSidesFromSeed = fromSeed;
                 changed = true;
             }
-            MapLayout layout = session != null ? session.Layout : null;
             if (fromSeed)
             {
                 if (layout != null)

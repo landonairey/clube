@@ -15,8 +15,12 @@ MonoBehaviour:
   id: maple-wood
   displayName: Maple wood
   icon: {fileID: 2800000, guid: 3917de7d5d73f80418ffc7419e55e398, type: 3}
+  iconShape: 5
+  iconTint: {r: 0.36, g: 0.24, b: 0.14, a: 1}
   maxStack: 256
   unitVolume: 1
   burnSeconds: 25
   fuelQuality: 0.9
+  purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0

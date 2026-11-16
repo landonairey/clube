@@ -15,9 +15,14 @@ MonoBehaviour:
   id: refractory-furnace
   displayName: Firebrick furnace
   icon: {fileID: 2800000, guid: 0d71551ab4e4bf94abfe9f71a95eb63e, type: 3}
+  iconShape: 0
+  iconTint: {r: 1, g: 1, b: 1, a: 1}
   maxStack: 1
   unitVolume: 1
   burnSeconds: 0
+  fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  dropForm: 0
   prefab: {fileID: 5762353483625990904, guid: ba82b812adc4f2140bc87753428035c7, type: 3}
+  dropsMix: 0

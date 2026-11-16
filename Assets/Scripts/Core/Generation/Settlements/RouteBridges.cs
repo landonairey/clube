@@ -54,6 +54,15 @@ namespace Clube.Core
         /// <summary>The bridges a road needs over this water map (none when it crosses no river).</summary>
         public static List<Span> Find(CartRoute route, in WaterMap water)
         {
+            return route == null ? new List<Span>() : Find(route.Line, water, false);
+        }
+
+        /// <summary>
+        /// The bridges a road needs over this water map. <paramref name="lakesToo"/>: still water under the road is
+        /// bridged as well (a world road may cross a pond or a river's pool; the trade road only knows rivers).
+        /// </summary>
+        public static List<Span> Find(RoadLine route, in WaterMap water, bool lakesToo)
+        {
             var spans = new List<Span>();
             if (route == null || !water.IsCreated)
             {
@@ -65,7 +74,7 @@ namespace Clube.Core
             for (float d = 0f; d <= route.Length + 1e-3f; d += Step)
             {
                 Vector2 p = route.Flat(d);
-                bool river = water.TrySurfaceAt(new float2(p.x, p.y), out float s, out int cell) && water.Kind[cell] == (byte)WaterKind.River;
+                bool river = water.TrySurfaceAt(new float2(p.x, p.y), out float s, out int cell) && (lakesToo || water.Kind[cell] == (byte)WaterKind.River);
                 if (river)
                 {
                     if (!inWater)
@@ -109,7 +118,7 @@ namespace Clube.Core
         }
 
         // The ground at a deck's end: the highest the road's height reaches in the three metres beyond it (the bank).
-        private static float BankHeight(CartRoute route, float at, int direction)
+        private static float BankHeight(RoadLine route, float at, int direction)
         {
             float best = route.HeightAlong(at);
             for (float k = 0.5f; k <= 3f; k += 0.5f)

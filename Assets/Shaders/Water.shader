@@ -24,6 +24,7 @@ Shader "Clube/Water"
         [HideInInspector] _ClipCovered ("Clip drawn chunk columns (far sheets)", Float) = 0
         [HideInInspector] _CoverageMask ("Chunk coverage", 2D) = "black" {}
         [HideInInspector] _Coverage ("Coverage origin, column width, size", Vector) = (0, 0, 1, 0)
+        [HideInInspector] _Detail ("Detail square: centre x, z, half width, side (0 none, 1 inside, 2 outside, 3 everywhere and level)", Vector) = (0, 0, 0, 0)
     }
 
     SubShader
@@ -62,6 +63,7 @@ Shader "Clube/Water"
                 float _FoamSpeed;
                 float _ClipCovered;
                 float4 _Coverage;
+                float4 _Detail;
             CBUFFER_END
             TEXTURE2D(_CoverageMask);
 
@@ -150,7 +152,16 @@ Shader "Clube/Water"
             {
                 Varyings output;
                 float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
-                positionWS.y += Ripple(positionWS.xz, input.ripple);
+                // Far water (GL626): the detailed sheets ripple inside the detail square round the viewer, dying away
+                // towards its edge, where the coarse sheets (which never ripple, so their big triangles stay level and
+                // meet exactly) take over.
+                float ripple = Ripple(positionWS.xz, input.ripple);
+                if (_Detail.w > 0.5)
+                {
+                    float2 off = abs(positionWS.xz - _Detail.xy);
+                    ripple *= _Detail.w < 1.5 ? saturate((_Detail.z - max(off.x, off.y)) / 48.0) : 0.0;
+                }
+                positionWS.y += ripple;
                 output.positionWS = positionWS;
                 output.positionCS = TransformWorldToHClip(positionWS);
                 output.flow = input.flow;
@@ -163,6 +174,14 @@ Shader "Clube/Water"
             half4 Fragment(Varyings input) : SV_Target
             {
                 // Far sheets (GL323) leave out the chunk columns the world draws, whose own water is drawn there.
+                if (_Detail.w > 0.5 && _Detail.w < 2.5)
+                {
+                    // Detailed far sheets are drawn inside the detail square, coarse ones outside (a hair's overlap
+                    // rather than a gap).
+                    float2 off = abs(input.positionWS.xz - _Detail.xy);
+                    float outside = max(off.x, off.y) - _Detail.z;
+                    clip(_Detail.w < 1.5 ? -outside : outside + 0.05);
+                }
                 if (_ClipCovered > 0.5)
                 {
                     int2 texel = (int2)floor((input.positionWS.xz - _Coverage.xy) / _Coverage.z);

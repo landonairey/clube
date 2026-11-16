@@ -366,6 +366,10 @@ namespace Clube.Game
             {
                 gameObject.AddComponent<PlayerUpgrades>(); // bought upgrades (GL585); no scene needs editing
             }
+            if (!TryGetComponent(out PlayerShadowBody _))
+            {
+                gameObject.AddComponent<PlayerShadowBody>(); // the body that casts the player's shadow (GL608)
+            }
         }
 
         private void OnEnable()

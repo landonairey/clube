@@ -154,6 +154,10 @@ namespace Clube.Core
         [SerializeField, Range(0f, 1f)]
         private float shine;
 
+        [Tooltip("How the journal draws it (GL627, GL628): specks of its colour in grey rock, angular crystals with a bright facet (magnetite), or filled in solid with its colour (coal).")]
+        [SerializeField]
+        private OreSketchStyle sketchStyle;
+
         [Tooltip("Whether it falls when nothing holds it up (GL308): dirt and grass drop straight down, sand also slides off slopes steeper than 45°.")]
         [SerializeField]
         private GroundFall fall;
@@ -302,6 +306,16 @@ namespace Clube.Core
 
         /// <summary>How much it shines, 0-1 (GL251): gold does, the rest of the ground is matt.</summary>
         public float Shine => shine;
+
+        /// <summary>How the journal's sketch of it is filled in (GL627, GL628).</summary>
+        public OreSketchStyle SketchStyle => sketchStyle;
+
+        /// <summary>Sets <see cref="SketchStyle"/> (tests).</summary>
+        public VoxelMaterial WithSketchStyle(OreSketchStyle style)
+        {
+            sketchStyle = style;
+            return this;
+        }
 
         /// <summary>Whether it falls when nothing holds it up (GL308).</summary>
         public GroundFall Fall => fall;
