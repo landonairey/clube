@@ -75,6 +75,7 @@ namespace Clube.Game
             public SettlementSite Site;
             public SettlementWriter Writer;
             public bool[] Fitted;
+            public bool[] BridgeBuilt;
         }
 
         private readonly Dictionary<string, string> restored = new Dictionary<string, string>();
@@ -83,6 +84,7 @@ namespace Clube.Game
         private Built[] built;
         private KeptHeights heights;
         private Transform root;
+        private MapRoads roads;
         private DayNightCycle clock;
         private int version = -1;
         private Vector2 collectedAt;
@@ -103,6 +105,9 @@ namespace Clube.Game
         public int PiecesWritten { get; private set; }
 
         public int ShopsFitted { get; private set; }
+
+        /// <summary>Bridges stood where a settlement's lanes cross water (GL645).</summary>
+        public int BridgesBuilt { get; private set; }
 
         public IReadOnlyList<SettlementKeeper> Keepers => keepers;
 
@@ -183,6 +188,7 @@ namespace Clube.Game
             root.SetParent(session.WorldView.transform, false);
             built = new Built[session.Plan.Settlements.Count];
             heights = new KeptHeights(session.Map.Height);
+            roads = FindAnyObjectByType<MapRoads>();
             keepers.Clear();
             near.Clear();
             collectedTime = float.MinValue;
@@ -191,7 +197,7 @@ namespace Clube.Game
             {
                 clock = FindAnyObjectByType<DayNightCycle>();
             }
-            SettlementsWorkedOut = PiecesWritten = ShopsFitted = 0;
+            SettlementsWorkedOut = PiecesWritten = ShopsFitted = BridgesBuilt = 0;
         }
 
         // Lays a settlement out on its ground, and makes its writer.
@@ -211,6 +217,9 @@ namespace Clube.Game
             SettlementSite site = SettlementLayout.Plan(settlement, plan.Rules.ParcelSide, rules, map.Height, WorldRoads.HeightsOf(map),
                 (x, z) => !layout.WalksFreely(x, z) || water(x, z) != RoadWater.Dry,
                 SettlementLayout.RoadsNear(plan, settlement, side + rules.Margin + 40f), session.WorldView.World.Grid.VoxelSize);
+            // GL649: its lanes and banks meet the roads' beds, not the land's height before the roads were cut.
+            Rect round = site.Footprint;
+            site.RoadSurface = roads != null ? roads.SurfaceNear(Rect.MinMaxRect(round.xMin - 20f, round.yMin - 20f, round.xMax + 20f, round.yMax + 20f)) : null;
             var street = new RoadClassDefinition
             {
                 Class = RoadClass.Footpath, Name = "Street", Width = rules.StreetWidth, Surface = settlement.Type.Street,
@@ -221,7 +230,8 @@ namespace Clube.Game
                 Class = RoadClass.Footpath, Name = "Climb", Width = rules.StreetWidth * 0.8f, Surface = settlement.Type.Street,
                 GradeLength = 14f, MaxCut = 8f, Shoulder = 0.75f, EdgeWander = 0f,
             };
-            var made = new Built { Site = site, Writer = new SettlementWriter(site, street, climb), Fitted = new bool[site.Buildings.Count] };
+            var made = new Built { Site = site, Writer = new SettlementWriter(site, street, climb, map.Water), Fitted = new bool[site.Buildings.Count] };
+            made.BridgeBuilt = new bool[made.Writer.Bridges.Count];
             if (restored.TryGetValue(KeyPrefix + index, out string saved))
             {
                 Restore(made.Writer, saved);
@@ -335,6 +345,32 @@ namespace Clube.Game
             }
         }
 
+        // A lane's bridge over water (GL645) is built once the chunks under it have loaded, so its footings meet the ground.
+        private void StandBridges(int index, Built made)
+        {
+            World world = session.WorldView.World;
+            for (int i = 0; i < made.BridgeBuilt.Length; i++)
+            {
+                if (made.BridgeBuilt[i])
+                {
+                    continue;
+                }
+                RouteBridges.Span span = made.Writer.Bridges[i].Span;
+                bool loaded = true;
+                for (int k = 0; k <= 4 && loaded; k++)
+                {
+                    Vector2 p = Vector2.Lerp(span.From, span.To, k / 4f);
+                    loaded = world.IsLoaded(world.Grid.WorldToChunk(new Vector3(p.x, Mathf.Lerp(span.FromHeight, span.ToHeight, k / 4f), p.y)));
+                }
+                if (loaded)
+                {
+                    made.BridgeBuilt[i] = true;
+                    RoadBridge.Build(span, material, root, session.Plan.Seed + index * 613 + i, made.Writer.Bridges[i].Width);
+                    BridgesBuilt++;
+                }
+            }
+        }
+
         // A shop that stands in the terrain gets its sign, its wares and its keeper.
         private void Fit(int index, Built made)
         {
@@ -342,6 +378,7 @@ namespace Clube.Game
             {
                 return;
             }
+            StandBridges(index, made);
             PlannedSettlement settlement = made.Site.Settlement;
             for (int b = 0; b < made.Fitted.Length; b++)
             {

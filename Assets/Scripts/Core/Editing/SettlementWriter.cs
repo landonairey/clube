@@ -48,15 +48,47 @@ namespace Clube.Core
         private readonly List<Piece> pieces = new List<Piece>();
         private readonly List<RoadWriter> lanes = new List<RoadWriter>();
         private readonly int[] buildingPiece;
+        private readonly List<LaneBridge> bridges = new List<LaneBridge>();
+        private readonly Func<float, float, bool> wetAt;
+
+        /// <summary>A bridge where a lane crosses water (GL645): its span, the deck's width and the lane it carries.</summary>
+        public readonly struct LaneBridge
+        {
+            public LaneBridge(RouteBridges.Span span, float width, int lane)
+            {
+                Span = span;
+                Width = width;
+                Lane = lane;
+            }
+
+            public readonly RouteBridges.Span Span;
+            public readonly float Width;
+            public readonly int Lane;
+        }
+
+        /// <summary>The bridges its lanes cross water on; whoever owns the writer stands them once their ground has loaded.</summary>
+        public IReadOnlyList<LaneBridge> Bridges => bridges;
+
+        /// <summary>True where a water map holds water at (x, z); null for no map.</summary>
+        public static Func<float, float, bool> WetOf(WaterMap water)
+        {
+            if (!water.IsCreated)
+            {
+                return null;
+            }
+            return (x, z) => water.TrySurfaceAt(new Unity.Mathematics.float2(x, z), out _, out _);
+        }
 
         // A building is written in slices across its width, so no one piece is long.
         private const int BuildingSlices = 8;
 
         /// <param name="street">The numbers streets are cut with (width, surface, how they are evened out).</param>
         /// <param name="climb">The same for the climbs between rows.</param>
-        public SettlementWriter(SettlementSite site, RoadClassDefinition street, RoadClassDefinition climb)
+        /// <param name="water">The map's water (GL645): a lane across it is a bridge, and no ground is written where it stands.</param>
+        public SettlementWriter(SettlementSite site, RoadClassDefinition street, RoadClassDefinition climb, WaterMap water = default)
         {
             Site = site;
+            wetAt = WetOf(water);
             float ramp = site.Rules.Ramp;
             for (int t = 0; t < site.Terraces.Count; t++)
             {
@@ -82,13 +114,19 @@ namespace Clube.Core
                     lanes.Add(null);
                     continue;
                 }
-                var writer = new RoadWriter(new RoadBed(line, lane.Kind == SettlementLaneKind.Street ? street : climb, null, site.Settlement.Index * 31 + l));
+                RoadClassDefinition definition = lane.Kind == SettlementLaneKind.Street ? street : climb;
+                List<RouteBridges.Span> spans = RouteBridges.Find(line, water, true);
+                foreach (RouteBridges.Span span in spans)
+                {
+                    bridges.Add(new LaneBridge(span, Mathf.Max(definition.Width, 1.6f), l));
+                }
+                var writer = new RoadWriter(new RoadBed(line, definition, spans, site.Settlement.Index * 31 + l) { WetAt = wetAt });
                 lanes.Add(writer);
                 for (int p = 0; p < writer.Pieces; p++)
                 {
                     Vector2 middle = writer.Middle(p);
-                    // On a planned road's own ground the road is the street.
-                    if (site.RoadBeyond(middle.x, middle.y) <= 0f)
+                    // On a planned road's own surface the road is the street (GL649: the lane runs on across its shoulder).
+                    if (site.RoadSurfaceBeyond(middle.x, middle.y) <= 0f)
                     {
                         writer.Skip(p);
                         continue;
@@ -202,7 +240,7 @@ namespace Clube.Core
                         KeepTop = true,
                         Surface = (x, z, ground) => site.HeightAt(x, z, ground),
                         // A planned road's ground is the road's; a tile only works on its own terrace and bank.
-                        Inside = (x, z) => site.RoadBeyond(x, z) > 0f && SettlementSite.Beyond(terrace.Area, new Vector2(x, z)) < ramp,
+                        Inside = (x, z) => site.RoadBeyond(x, z) > 0f && (wetAt == null || !wetAt(x, z)) && SettlementSite.Beyond(terrace.Area, new Vector2(x, z)) < ramp,
                         // The steep part of a bank is faced with stone.
                         Paving = materials.Bank,
                         Paved = (x, z) => IsBank(site, x, z, natural(x, z)),

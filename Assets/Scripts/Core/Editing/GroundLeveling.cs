@@ -30,6 +30,9 @@ namespace Clube.Core
         };
 
         /// <summary>What to level and how.</summary>
+        /// <summary>See <see cref="Area.PavingOver"/>.</summary>
+        public delegate VoxelMaterial PavingChoice(float x, float z, VoxelMaterial was, out float raise);
+
         public struct Area
         {
             /// <summary>Centre of the flat rectangle (x, z), in the world's local metres.</summary>
@@ -58,6 +61,12 @@ namespace Clube.Core
 
             /// <summary>Which points (x, z) of the flat rectangle are paved; null: all of it.</summary>
             public Func<float, float, bool> Paved;
+
+            /// <summary>
+            /// GL647: what a paved column is topped with, given what its surface was made of (null: unknown), and how far
+            /// its surface is raised over the target there. Null, or a null answer: <see cref="Paving"/>, not raised.
+            /// </summary>
+            public PavingChoice PavingOver;
 
             /// <summary>The material of the flat rectangle's top layer where it isn't paved (trodden dirt), or null to keep what's there.</summary>
             public VoxelMaterial Ground;
@@ -139,6 +148,12 @@ namespace Clube.Core
                         target = Mathf.Lerp(area.Height, ground, t * t * (3f - 2f * t));
                     }
                     bool paved = beyond <= 0f && area.Paving != null && (area.Paved == null || area.Paved(column.x, column.z));
+                    VoxelMaterial paving = area.Paving;
+                    if (paved && area.PavingOver != null)
+                    {
+                        paving = area.PavingOver(column.x, column.z, TopOf(world, materials, grid, column, ground, iso), out float raise) ?? paving;
+                        target += raise;
+                    }
                     bool covered = beyond <= 0f && area.Ground != null && !paved;
                     // The density ramps over a metre each side of the surface (TerrainDensity), so that much either side of
                     // the old and new ground is all that can change; above it only stray solids are cleared.
@@ -184,7 +199,7 @@ namespace Clube.Core
                             continue;
                         }
                         bool surface = depth < voxel * 1.5f;
-                        VoxelMaterial made = paved && surface ? area.Paving
+                        VoxelMaterial made = paved && surface ? paving
                             : covered && surface ? area.Ground
                             : before < iso ? (depth < TopsoilDepth ? was ?? grass : dirt)
                             : area.KeepTop && depth < TopsoilDepth ? was

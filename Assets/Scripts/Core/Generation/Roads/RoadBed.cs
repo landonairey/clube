@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -47,6 +48,12 @@ namespace Clube.Core
         public RoadLine Line { get; }
 
         public RoadClassDefinition Definition { get; }
+
+        /// <summary>
+        /// True where water stands at (x, z), or null (GL645): the road is never written there, so a road beside a river
+        /// leaves the river its bed and banks, and one across it is a bridge (<see cref="RouteBridges"/>).
+        /// </summary>
+        public Func<float, float, bool> WetAt { get; set; }
 
         /// <summary>True when the road keeps the ground's shape and only its surface changes.</summary>
         public bool FollowsGround { get; }
@@ -145,6 +152,10 @@ namespace Clube.Core
         /// <summary>True where (x, z) is on the road itself.</summary>
         public bool IsRoad(Vector2 point, List<Vector2Int> stretches)
         {
+            if (WetAt != null && WetAt(point.x, point.y))
+            {
+                return false;
+            }
             float distance = Nearest(point, stretches, out float along);
             return distance <= HalfWidthAt(along);
         }
@@ -156,8 +167,54 @@ namespace Clube.Core
         /// </summary>
         public bool IsBed(Vector2 point, List<Vector2Int> stretches, float from = float.MinValue, float to = float.MaxValue)
         {
+            if (WetAt != null && WetAt(point.x, point.y))
+            {
+                return false;
+            }
             float distance = Nearest(point, stretches, out float along);
             return along >= from && along <= to && distance <= HalfWidthAt(along) + (FollowsGround ? 0f : Definition.Shoulder);
+        }
+
+        /// <summary>
+        /// GL647: what lies on the road at (x, z) where it runs over rock: <paramref name="mix"/> is true on a patch of the
+        /// class's second rock material, and <paramref name="raise"/> is how far a loose stone lifts the surface there
+        /// (a stone every <see cref="RoadClassDefinition.RockBumpSpacing"/> metres or so, anywhere across the path).
+        /// </summary>
+        public void OnRock(Vector2 point, List<Vector2Int> stretches, out bool mix, out float raise)
+        {
+            mix = Definition.RockMixShare > 0f
+                && Mathf.PerlinNoise(point.x / 1.9f + wanderOffset, point.y / 1.9f - wanderOffset) < 0.5f + (Definition.RockMixShare - 0.5f) * 0.7f;
+            raise = 0f;
+            float spacing = Definition.RockBumpSpacing;
+            if (spacing <= 0f)
+            {
+                return;
+            }
+            Nearest(point, stretches, out float along);
+            const float Radius = 0.5f;
+            int cell = Mathf.FloorToInt(along / spacing);
+            for (int k = cell - 1; k <= cell + 1; k++)
+            {
+                float at = (k + 0.2f + 0.6f * Hash(k, 1)) * spacing;
+                if (at < 0f || at > Line.Length)
+                {
+                    continue;
+                }
+                Vector2 way = Line.Direction(at);
+                Vector2 stone = Line.Flat(at) + new Vector2(-way.y, way.x) * ((Hash(k, 2) * 2f - 1f) * HalfWidthAt(at) * 0.7f);
+                float distance = Vector2.Distance(point, stone) / (Radius * (0.7f + 0.6f * Hash(k, 3)));
+                if (distance < 1f)
+                {
+                    raise = Mathf.Max(raise, Definition.RockBumpHeight * (0.6f + 0.4f * Hash(k, 4)) * (1f - distance * distance));
+                }
+            }
+            mix |= raise > 0.03f;
+        }
+
+        private float Hash(int a, int b)
+        {
+            float value = Mathf.Sin(a * 127.1f + b * 311.7f + wanderOffset) * 43758.5453f;
+            return value - Mathf.Floor(value);
         }
 
         /// <summary>
@@ -211,7 +268,80 @@ namespace Clube.Core
                 float height = Mathf.Lerp(ground[i], even[i], hold);
                 even[i] = Mathf.Clamp(height, ground[i] - definition.MaxCut, ground[i] + definition.MaxCut);
             }
+            // Held to the ground like that, the bed takes a kink wherever the ground jumps under it: eased over a few metres.
+            float[] eased = Average(even, Mathf.Max(1, Mathf.RoundToInt(1.5f / spacing)));
+            for (int i = 0; i < count; i++)
+            {
+                float distance = i * spacing;
+                float hold = Mathf.Clamp01(Mathf.Min(distance, line.Length - distance) / 3f);
+                foreach (RouteBridges.Span span in bridges)
+                {
+                    float outside = distance < span.Start ? span.Start - distance : distance > span.End ? distance - span.End : 0f;
+                    hold = Mathf.Min(hold, Mathf.Clamp01(outside / 3f));
+                }
+                even[i] = Mathf.Lerp(even[i], eased[i], hold);
+            }
+            LevelTurns(line, definition, bridges, even);
             return even;
+        }
+
+        /// <summary>
+        /// GL648: the turning places of a road that doubles back. A hairpin's two legs lie side by side for some way from
+        /// its apex, one higher than the other, and each column of ground takes the nearer leg's height: left alone that
+        /// is a step running down the middle of the road. So from the apex out to where the legs are a road's width
+        /// apart, the bed is one level (a turning platform), eased back onto its grade beyond.
+        /// </summary>
+        private static void LevelTurns(RoadLine line, RoadClassDefinition definition, IReadOnlyList<RouteBridges.Span> bridges, float[] bed)
+        {
+            const float Look = 8f, Step = 2f, MostReach = 40f;
+            float spacing = line.HeightSpacing;
+            float apart = definition.Width + definition.Shoulder * 2f;
+            float ease = Mathf.Max(definition.GradeLength, 6f);
+            float runFrom = -1f;
+            for (float d = Look; ; d += Step)
+            {
+                bool turning = d < line.Length - Look && Vector2.Dot(line.Direction(d - Look), line.Direction(d + Look)) < -0.5f;
+                if (turning && runFrom < 0f)
+                {
+                    runFrom = d;
+                }
+                if (!turning && runFrom >= 0f)
+                {
+                    float apex = (runFrom + d - Step) * 0.5f;
+                    runFrom = -1f;
+                    float reach = 4f;
+                    while (reach < MostReach && apex - reach > 0f && apex + reach < line.Length
+                        && Vector2.Distance(line.Flat(apex - reach), line.Flat(apex + reach)) < apart)
+                    {
+                        reach += 1f;
+                    }
+                    bool bridged = false;
+                    foreach (RouteBridges.Span span in bridges)
+                    {
+                        bridged |= span.End > apex - reach - ease && span.Start < apex + reach + ease;
+                    }
+                    if (bridged)
+                    {
+                        continue;
+                    }
+                    int from = Mathf.Max(0, Mathf.FloorToInt((apex - reach) / spacing)), to = Mathf.Min(bed.Length - 1, Mathf.CeilToInt((apex + reach) / spacing));
+                    float level = 0f;
+                    for (int i = from; i <= to; i++)
+                    {
+                        level += bed[i];
+                    }
+                    level /= to - from + 1;
+                    for (int i = Mathf.Max(0, Mathf.FloorToInt((apex - reach - ease) / spacing)); i < bed.Length && i * spacing <= apex + reach + ease; i++)
+                    {
+                        float t = Mathf.Clamp01((Mathf.Abs(i * spacing - apex) - reach) / ease);
+                        bed[i] = Mathf.Lerp(level, bed[i], t * t * (3f - 2f * t));
+                    }
+                }
+                if (d >= line.Length - Look)
+                {
+                    break;
+                }
+            }
         }
 
         private static float[] Average(float[] values, int half)

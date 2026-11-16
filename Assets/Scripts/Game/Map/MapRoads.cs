@@ -106,6 +106,57 @@ namespace Clube.Game
             return made != null && made.Line != null;
         }
 
+        /// <summary>
+        /// GL649: the height the roads set the ground to round an area, as (x, z, the land's height) to a height: a road's
+        /// bed on it and the slope of its shoulder beside it; the land's own height elsewhere. Null when no road comes
+        /// near. Works out the roads that do.
+        /// </summary>
+        public System.Func<float, float, float, float> SurfaceNear(Rect area)
+        {
+            if (session == null || !session.IsReady || session.Plan == null)
+            {
+                return null;
+            }
+            if (session.Version != version)
+            {
+                StartOver();
+            }
+            var beds = new List<(RoadBed Bed, List<Vector2Int> Stretches)>();
+            for (int i = 0; i < bounds.Length; i++)
+            {
+                if (!bounds[i].Overlaps(area))
+                {
+                    continue;
+                }
+                Built road = WorkOut(i);
+                if (road == null || road.Writer.Bed.FollowsGround)
+                {
+                    continue;
+                }
+                List<Vector2Int> stretches = road.Writer.Bed.StretchesNear(area, road.Writer.Bed.Reach);
+                if (stretches.Count > 0)
+                {
+                    beds.Add((road.Writer.Bed, stretches));
+                }
+            }
+            if (beds.Count == 0)
+            {
+                return null;
+            }
+            return (x, z, ground) =>
+            {
+                var point = new Vector2(x, z);
+                foreach ((RoadBed bed, List<Vector2Int> stretches) in beds)
+                {
+                    if (bed.IsBed(point, stretches))
+                    {
+                        return bed.Surface(point, ground, stretches);
+                    }
+                }
+                return ground;
+            };
+        }
+
         /// <summary>The longest a road took to work out (its line, heights, bridges and bed), in milliseconds: once per road, as the viewer nears it.</summary>
         public float LongestWorkOutMilliseconds { get; private set; }
 
@@ -214,7 +265,7 @@ namespace Clube.Game
                     endHeight = joined.Writer.Bed.HeightAlong(along);
                 }
             }
-            var bed = new RoadBed(line, definition, bridges, plan.Seed + index, endHeight);
+            var bed = new RoadBed(line, definition, bridges, plan.Seed + index, endHeight) { WetAt = SettlementWriter.WetOf(session.Map.Water) };
             var made = new Built { Line = line, Writer = new RoadWriter(bed), Bridges = bridges, BridgeBuilt = new bool[bridges.Count] };
             if (joinedRoad != null)
             {
@@ -389,6 +440,13 @@ namespace Clube.Game
                     portal.transform.localPosition = at;
                     portal.transform.localRotation = Quaternion.LookRotation(new Vector3(outward.x, 0f, outward.y), Vector3.up);
                     PortalsBuilt++;
+                    // GL650: with a bore's first portal, the wood frames along its length.
+                    if (!road.PortalBuilt[t * 2 + 1 - end])
+                    {
+                        Vector2 way = (bore.Tunnel.To - bore.Tunnel.From).normalized;
+                        TunnelPortal.BuildSupports(bore.At, bore.BoreStart + 2f, bore.BoreEnd - 2f, way, bore.Width, bore.Height, material, root,
+                            session.Plan.Seed + index * 59 + t);
+                    }
                 }
             }
         }

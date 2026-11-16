@@ -264,8 +264,8 @@ MonoBehaviour:
       areaSize: 640
       flowCellSize: 4
       riverArea: 12000
-      riverWidth: {x: 1.5, y: 6}
-      riverDepth: {x: 0.8, y: 2}
+      riverWidth: {x: 4, y: 10}
+      riverDepth: {x: 1.2, y: 2.4}
       riverFill: 0.75
       lakeMinDepth: 0.6
       valleyRivers: 1

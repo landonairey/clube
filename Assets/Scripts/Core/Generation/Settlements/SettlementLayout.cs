@@ -111,6 +111,7 @@ namespace Clube.Core
                 {
                     Points = road.Points,
                     Reach = definition.Width * 0.5f * (1f + definition.EdgeWander) + (graded ? definition.Shoulder : 0f),
+                    HalfWidth = definition.Width * 0.5f * (1f - definition.EdgeWander),
                 });
             }
             return roads;

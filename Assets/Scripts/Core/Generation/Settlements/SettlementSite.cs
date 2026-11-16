@@ -80,6 +80,8 @@ namespace Clube.Core
         public IReadOnlyList<Vector2> Points;
         /// <summary>Metres from its centre line that the road itself shapes (half its width and its shoulder).</summary>
         public float Reach;
+        /// <summary>Metres from its centre line to the edge of its surface (GL649); 0 when not known (then <see cref="Reach"/>).</summary>
+        public float HalfWidth;
     }
 
     /// <summary>The numbers a settlement is laid out with (GL613, GL642); change one to change every settlement.</summary>
@@ -122,7 +124,7 @@ namespace Clube.Core
     public sealed class SettlementSite
     {
         private readonly Func<float, float, float> natural;
-        private readonly List<(Vector2 A, Vector2 B, float Reach)> roadParts = new List<(Vector2, Vector2, float)>();
+        private readonly List<(Vector2 A, Vector2 B, float Reach, float Paved)> roadParts = new List<(Vector2, Vector2, float, float)>();
 
         internal SettlementSite(PlannedSettlement settlement, SettlementSiteRules rules, Rect footprint, Vector2 along, Vector2 up, float slope,
             Func<float, float, float> natural, IReadOnlyList<SettlementRoad> roads)
@@ -145,7 +147,7 @@ namespace Clube.Core
                         Vector2 a = road.Points[i - 1], b = road.Points[i];
                         if (Distance(footprint.center, a, b) <= reach)
                         {
-                            roadParts.Add((a, b, road.Reach));
+                            roadParts.Add((a, b, road.Reach, road.HalfWidth > 0f ? road.HalfWidth : road.Reach));
                         }
                     }
                 }
@@ -229,6 +231,10 @@ namespace Clube.Core
         /// </summary>
         public float HeightAt(float x, float z, float ground)
         {
+            if (RoadSurface != null && RoadBeyond(x, z) <= 0f)
+            {
+                return RoadSurface(x, z, ground);
+            }
             float best = 0f;
             float height = ground;
             var point = new Vector2(x, z);
@@ -263,12 +269,34 @@ namespace Clube.Core
         {
             float nearest = float.MaxValue;
             var point = new Vector2(x, z);
-            foreach ((Vector2 a, Vector2 b, float reach) in roadParts)
+            foreach ((Vector2 a, Vector2 b, float reach, float _) in roadParts)
             {
                 nearest = Mathf.Min(nearest, Distance(point, a, b) - reach);
             }
             return nearest;
         }
+
+        /// <summary>
+        /// Metres from (x, z) to the nearest planned road's own surface (GL649): 0 or less on the road itself. A lane is
+        /// laid up to there, across the road's shoulder, so the two surfaces meet.
+        /// </summary>
+        public float RoadSurfaceBeyond(float x, float z)
+        {
+            float nearest = float.MaxValue;
+            var point = new Vector2(x, z);
+            foreach ((Vector2 a, Vector2 b, float _, float paved) in roadParts)
+            {
+                nearest = Mathf.Min(nearest, Distance(point, a, b) - paved);
+            }
+            return nearest;
+        }
+
+        /// <summary>
+        /// GL649: the height the planned roads set the ground to at (x, z), given the land's height there (the land's own
+        /// off their beds); null where roads keep the land's height. A lane's line runs over this, so where a lane meets a
+        /// road cut into or built up over the land, it comes down or up to the road's bed and not to the land's old height.
+        /// </summary>
+        public Func<float, float, float, float> RoadSurface { get; set; }
 
         /// <summary>Metres from a point to a rectangle (x, z); 0 inside it.</summary>
         public static float Beyond(Rect area, Vector2 point)
