@@ -22,6 +22,7 @@ namespace Clube.Game
         // A tunnel is this much wider than its road, and this high at the middle of its arch (GL642).
         private const float TunnelExtraWidth = 1f;
         private const float TunnelHeight = 3.5f;
+        private const float LongDeck = 40f;
 
         // Metres a parcel's fence keeps clear of a road's edge.
         private const float FenceGap = 0.75f;
@@ -270,7 +271,7 @@ namespace Clube.Game
                 }
             }
             var bed = new RoadBed(line, definition, bridges, plan.Seed + index, endHeight) { WetAt = SettlementWriter.WetOf(session.Map.Water) };
-            var made = new Built { Line = line, Writer = new RoadWriter(bed), Bridges = bridges, BridgeBuilt = new bool[bridges.Count] };
+            var made = new Built { Line = line, Writer = new RoadWriter(bed) { Trees = TreeRoom.Of(session.WorldView.Config.Terrain.Trees) }, Bridges = bridges, BridgeBuilt = new bool[bridges.Count] };
             if (joinedRoad != null)
             {
                 // Its last metres lie on the joined road's own surface: that road keeps it. A piece is left out only
@@ -466,16 +467,21 @@ namespace Clube.Game
             for (int i = 0; i < road.Bridges.Count; i++)
             {
                 RouteBridges.Span span = road.Bridges[i];
-                if (road.BridgeBuilt[i] || ((span.From + span.To) * 0.5f - viewer).sqrMagnitude > buildRange * buildRange)
+                // GL651: a long deck (over the sea) is longer than the ground loaded round the viewer, so it stands once
+                // the end the viewer comes to has loaded; a short one once all the ground under it has.
+                bool longDeck = span.Length > LongDeck;
+                float nearest = Mathf.Min((span.From - viewer).sqrMagnitude, (span.To - viewer).sqrMagnitude, ((span.From + span.To) * 0.5f - viewer).sqrMagnitude);
+                if (road.BridgeBuilt[i] || nearest > buildRange * buildRange)
                 {
                     continue;
                 }
-                bool loaded = true;
-                for (int k = 0; k <= 4 && loaded; k++)
+                bool loaded = !longDeck;
+                for (int k = 0; k <= 4; k++)
                 {
                     Vector2 p = Vector2.Lerp(span.From, span.To, k / 4f);
                     float y = span.HeightAt(k / 4f);
-                    loaded = world.IsLoaded(world.Grid.WorldToChunk(new Vector3(p.x, y, p.y)));
+                    bool here = world.IsLoaded(world.Grid.WorldToChunk(new Vector3(p.x, y, p.y)));
+                    loaded = longDeck ? loaded || (here && (k == 0 || k == 4)) : loaded && here;
                 }
                 if (loaded)
                 {

@@ -230,7 +230,7 @@ namespace Clube.Game
                 Class = RoadClass.Footpath, Name = "Climb", Width = rules.StreetWidth * 0.8f, Surface = settlement.Type.Street,
                 GradeLength = 14f, MaxCut = 8f, Shoulder = 0.75f, EdgeWander = 0f,
             };
-            var made = new Built { Site = site, Writer = new SettlementWriter(site, street, climb, map.Water), Fitted = new bool[site.Buildings.Count] };
+            var made = new Built { Site = site, Writer = new SettlementWriter(site, street, climb, map.Water, TreeRoom.Of(session.WorldView.Config.Terrain.Trees)), Fitted = new bool[site.Buildings.Count] };
             made.BridgeBuilt = new bool[made.Writer.Bridges.Count];
             if (restored.TryGetValue(KeyPrefix + index, out string saved))
             {

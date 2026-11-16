@@ -42,6 +42,9 @@ namespace Clube.Core
 
         public RoadBed Bed { get; }
 
+        /// <summary>GL652: the room a tree on the road may take: a piece waits for the chunks within it, so a cut tree is cut whole.</summary>
+        public TreeRoom Trees { get; set; } = TreeRoom.None;
+
         /// <summary>Pieces of road (<see cref="PieceLength"/> metres each).</summary>
         public int Pieces => written.Length;
 
@@ -133,10 +136,10 @@ namespace Clube.Core
             // The ground ramps a metre or so round its height, the land across the road may lie higher or lower than
             // along its middle, and the headroom is cleared above it.
             low -= 3f + Bed.Reach;
-            high += Headroom + 2f + Bed.Reach;
+            high += Mathf.Max(Headroom + 2f + Bed.Reach, Trees.Height);
             WorldGrid grid = world.Grid;
-            Vector3Int min = grid.WorldToChunk(new Vector3(box.xMin, Mathf.Max(0f, low), box.yMin));
-            Vector3Int max = grid.WorldToChunk(new Vector3(box.xMax, high, box.yMax));
+            Vector3Int min = grid.WorldToChunk(new Vector3(box.xMin - Trees.Spread, Mathf.Max(0f, low), box.yMin - Trees.Spread));
+            Vector3Int max = grid.WorldToChunk(new Vector3(box.xMax + Trees.Spread, high, box.yMax + Trees.Spread));
             for (int y = Mathf.Max(0, min.y); y <= Mathf.Min(heightInChunks - 1, max.y); y++)
             {
                 for (int z = min.z; z <= max.z; z++)

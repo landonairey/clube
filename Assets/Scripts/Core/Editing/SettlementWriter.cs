@@ -50,6 +50,7 @@ namespace Clube.Core
         private readonly int[] buildingPiece;
         private readonly List<LaneBridge> bridges = new List<LaneBridge>();
         private readonly Func<float, float, bool> wetAt;
+        private readonly TreeRoom treeRoom;
 
         /// <summary>A bridge where a lane crosses water (GL645): its span, the deck's width and the lane it carries.</summary>
         public readonly struct LaneBridge
@@ -85,10 +86,11 @@ namespace Clube.Core
         /// <param name="street">The numbers streets are cut with (width, surface, how they are evened out).</param>
         /// <param name="climb">The same for the climbs between rows.</param>
         /// <param name="water">The map's water (GL645): a lane across it is a bridge, and no ground is written where it stands.</param>
-        public SettlementWriter(SettlementSite site, RoadClassDefinition street, RoadClassDefinition climb, WaterMap water = default)
+        public SettlementWriter(SettlementSite site, RoadClassDefinition street, RoadClassDefinition climb, WaterMap water = default, TreeRoom? trees = null)
         {
             Site = site;
             wetAt = WetOf(water);
+            treeRoom = trees ?? TreeRoom.None;
             float ramp = site.Rules.Ramp;
             for (int t = 0; t < site.Terraces.Count; t++)
             {
@@ -120,7 +122,7 @@ namespace Clube.Core
                 {
                     bridges.Add(new LaneBridge(span, Mathf.Max(definition.Width, 1.6f), l));
                 }
-                var writer = new RoadWriter(new RoadBed(line, definition, spans, site.Settlement.Index * 31 + l) { WetAt = wetAt });
+                var writer = new RoadWriter(new RoadBed(line, definition, spans, site.Settlement.Index * 31 + l) { WetAt = wetAt }) { Trees = treeRoom };
                 lanes.Add(writer);
                 for (int p = 0; p < writer.Pieces; p++)
                 {
@@ -197,8 +199,11 @@ namespace Clube.Core
                 return lanes[piece.Index].Loaded(world, heightInChunks, piece.Part);
             }
             WorldGrid grid = world.Grid;
-            Vector3Int min = grid.WorldToChunk(new Vector3(piece.Box.xMin - 1f, Mathf.Max(0f, piece.Low), piece.Box.yMin - 1f));
-            Vector3Int max = grid.WorldToChunk(new Vector3(piece.Box.xMax + 1f, piece.High, piece.Box.yMax + 1f));
+            // GL652: a tile of ground cuts the trees on it whole, so it waits for every chunk such a tree reaches.
+            float spread = piece.Kind == Kind.Ground ? Mathf.Max(1f, treeRoom.Spread) : 1f;
+            float top = piece.Kind == Kind.Ground ? Mathf.Max(piece.High, piece.High - Headroom + treeRoom.Height) : piece.High;
+            Vector3Int min = grid.WorldToChunk(new Vector3(piece.Box.xMin - spread, Mathf.Max(0f, piece.Low), piece.Box.yMin - spread));
+            Vector3Int max = grid.WorldToChunk(new Vector3(piece.Box.xMax + spread, top, piece.Box.yMax + spread));
             for (int y = Mathf.Max(0, min.y); y <= Mathf.Min(heightInChunks - 1, max.y); y++)
             {
                 for (int z = min.z; z <= max.z; z++)
