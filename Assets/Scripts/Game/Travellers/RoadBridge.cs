@@ -35,20 +35,32 @@ namespace Clube.Game
             root.transform.SetParent(parent, false);
             root.transform.SetPositionAndRotation(new Vector3(span.From.x, 0f, span.From.y), Quaternion.LookRotation(flat / length, Vector3.up));
             // Local frame: x across, z along, y world height.
-            float Top(float z) => Mathf.Lerp(span.FromHeight, span.ToHeight, z / length);
-            Vector3 along = new Vector3(0f, span.ToHeight - span.FromHeight, length);
-            float deckLength = along.magnitude;
-            Quaternion slope = Quaternion.LookRotation(along / deckLength, Vector3.up);
-            Vector3 middle = new Vector3(0f, Top(length * 0.5f), length * 0.5f);
+            float Top(float z) => span.HeightAt(z / length);
+            // GL651: a humped deck (over the sea, for what sails under) is laid in short straight lengths along its curve.
+            int lengths = span.Rise > 0.05f ? Mathf.Max(2, Mathf.CeilToInt(length / 4f)) : 1;
+            var middles = new Vector3[lengths];
+            var slopes = new Quaternion[lengths];
+            var deckLengths = new float[lengths];
+            for (int s = 0; s < lengths; s++)
+            {
+                float z0 = length * s / lengths, z1 = length * (s + 1) / lengths;
+                var along = new Vector3(0f, Top(z1) - Top(z0), z1 - z0);
+                deckLengths[s] = along.magnitude;
+                slopes[s] = Quaternion.LookRotation(along / deckLengths[s], Vector3.up);
+                middles[s] = new Vector3(0f, (Top(z0) + Top(z1)) * 0.5f, (z0 + z1) * 0.5f);
+            }
             var mesh = new LowPolyMeshBuilder();
             var random = new System.Random(seed);
             float F() => (float)random.NextDouble();
 
             // Stringers, and the boards along them.
             float stringerAt = width * 0.32f;
-            foreach (float x in new[] { -stringerAt, stringerAt })
+            for (int s = 0; s < lengths; s++)
             {
-                mesh.Box(middle + Vector3.down * 0.14f + Vector3.right * x, new Vector3(0.14f, 0.16f, deckLength), slope, Stringer);
+                foreach (float x in new[] { -stringerAt, stringerAt })
+                {
+                    mesh.Box(middles[s] + Vector3.down * 0.14f + Vector3.right * x, new Vector3(0.14f, 0.16f, deckLengths[s] + 0.04f), slopes[s], Stringer);
+                }
             }
 
             // A long deck (GL631: a world road over a wide river) stands on piers: a pair of posts under a cross beam,
@@ -64,13 +76,25 @@ namespace Clube.Game
                 {
                     mesh.Prism(new Vector3(x, foot, z), new Vector3(x, under, z), 0.1f, 0.085f, 6, ParcelBorders.PostWood * (0.8f + 0.15f * F()));
                 }
+                // A tall pier (a deck humped for vessels) is braced: crossed timbers between its posts, down to the water.
+                const float Bay = 2.6f;
+                float brace = Mathf.Sqrt(4f * stringerAt * stringerAt + Bay * Bay);
+                float lean = Mathf.Atan2(Bay, 2f * stringerAt) * Mathf.Rad2Deg;
+                for (float y = under - 0.3f; y - Bay > span.WaterSurface + 0.2f; y -= Bay)
+                {
+                    mesh.Box(new Vector3(0f, y - Bay * 0.5f, z), new Vector3(brace, 0.09f, 0.07f), Quaternion.Euler(0f, 0f, lean), Stringer * 0.95f);
+                    mesh.Box(new Vector3(0f, y - Bay * 0.5f, z + 0.08f), new Vector3(brace, 0.09f, 0.07f), Quaternion.Euler(0f, 0f, -lean), Stringer * 0.85f);
+                }
             }
             int boards = Mathf.RoundToInt(width / BoardWidth);
             for (int i = 0; i < boards; i++)
             {
                 float x = (i + 0.5f) / boards * width - width * 0.5f;
                 float shade = 0.88f + 0.12f * F();
-                mesh.Box(middle + Vector3.down * (BoardThickness * 0.5f) + Vector3.right * x, new Vector3(BoardWidth - 0.02f, BoardThickness, deckLength), slope, Board * shade);
+                for (int s = 0; s < lengths; s++)
+                {
+                    mesh.Box(middles[s] + Vector3.down * (BoardThickness * 0.5f) + Vector3.right * x, new Vector3(BoardWidth - 0.02f, BoardThickness, deckLengths[s] + 0.03f), slopes[s], Board * shade);
+                }
             }
 
             // Footings: a cobble block under each end, down into the bank, with loose cobbles at its foot.
@@ -111,10 +135,13 @@ namespace Clube.Game
             root.AddComponent<MeshRenderer>().sharedMaterial = material;
 
             // Colliders: the deck, a tall thin wall along each rail, and the footings.
-            AddBox(root.transform, middle + Vector3.down * 0.1f, new Vector3(width, 0.2f, deckLength), slope);
-            foreach (float x in new[] { -width * 0.5f + 0.06f, width * 0.5f - 0.06f })
+            for (int s = 0; s < lengths; s++)
             {
-                AddBox(root.transform, middle + new Vector3(x, 0.45f, 0f), new Vector3(0.14f, 1f, deckLength), slope);
+                AddBox(root.transform, middles[s] + Vector3.down * 0.1f, new Vector3(width, 0.2f, deckLengths[s] + 0.05f), slopes[s]);
+                foreach (float x in new[] { -width * 0.5f + 0.06f, width * 0.5f - 0.06f })
+                {
+                    AddBox(root.transform, middles[s] + new Vector3(x, 0.45f, 0f), new Vector3(0.14f, 1f, deckLengths[s] + 0.05f), slopes[s]);
+                }
             }
             for (int end = 0; end < 2; end++)
             {

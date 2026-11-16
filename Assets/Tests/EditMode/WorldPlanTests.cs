@@ -447,7 +447,8 @@ namespace Clube.Core.Tests
             TerrainSettings settings = Settings(6, 3072f, copper, gold);
             settings.Map.SetShape(MapShapeType.IslandChainName);
             ResourceSurvey chain = ResourceSurvey.Build(settings);
-            WorldPlan world = WorldPlanner.Build(chain, settings.Seed);
+            // GL651 bridges an island to the roads where the sea is narrow; here no sea is, so every island is cut off.
+            WorldPlan world = WorldPlanner.Build(chain, settings.Seed, new WorldPlanRules { SeaBridgeMaxSpan = 0f });
             UnityEngine.Debug.Log($"Island chain: lands with settlements {string.Join(", ", world.Settlements.GroupBy(s => s.Land).Select(g => $"{g.Key}: {g.Count()}"))}; "
                 + $"networks {world.Settlements.Select(s => s.RoadNetwork).Distinct().Count()}; notes: {string.Join(" | ", world.Notes)}");
 
@@ -510,6 +511,31 @@ namespace Clube.Core.Tests
             Assert.That(ports, Is.Not.Empty, "an island settlement stands by the sea");
             Assert.That(ports.Count(port => world.WaterRoutes.Any(route => route.Kind == WaterRouteKind.Sea && route.To == port.Index)),
                 Is.GreaterThanOrEqualTo(ports.Count - 2), "vessels reach the island settlements (a shared harbour serves one route)");
+        }
+
+        [Test]
+        public void AnIslandWithAVillageOrLarger_IsBridgedToTheRoads_WhereTheSeaIsNarrowEnough()
+        {
+            TerrainSettings settings = Settings(6, 3072f, copper, gold);
+            settings.Map.SetShape(MapShapeType.IslandChainName);
+            ResourceSurvey chain = ResourceSurvey.Build(settings);
+            WorldPlan never = WorldPlanner.Build(chain, settings.Seed, new WorldPlanRules { SeaBridgeMaxSpan = 0f });
+            var anyWidth = new WorldPlanRules { SeaBridgeMaxSpan = 100000f };
+            WorldPlan always = WorldPlanner.Build(chain, settings.Seed, anyWidth);
+            Assert.IsFalse(never.Roads.Any(road => road.CrossesSea));
+            // With no limit on the span, every island whose first settlement by road needs a cart path is joined.
+            bool large = never.Settlements.Any(s => s.RoadNetwork != 0 && s.Type.MinimumRoad >= anyWidth.SeaBridgeMinimumRoad);
+            UnityEngine.Debug.Log($"Sea bridges: {always.Roads.Count(road => road.CrossesSea)}; notes: {string.Join(" | ", always.Notes.Where(note => note.Contains("sea")))}");
+            Assert.AreEqual(large, always.Roads.Any(road => road.CrossesSea), "a bridge exactly when an island holds a village or larger");
+            foreach (PlannedRoad road in always.Roads.Where(road => road.CrossesSea))
+            {
+                Assert.That(always.Settlements[road.From].Type.MinimumRoad, Is.GreaterThanOrEqualTo(anyWidth.SeaBridgeMinimumRoad), "only a large enough settlement is bridged to");
+                Assert.AreEqual(0, always.Settlements[road.From].RoadNetwork, "and it is then on the capital's roads");
+                Assert.IsTrue(road.Points.Any(p => chain.TryCell(p, out Vector2Int at) && chain.Cell(at.x, at.y).Sea >= 0.5f), "its road crosses the sea");
+                Assert.IsNotEmpty(road.Bridges);
+            }
+            // An outpost alone never earns a bridge.
+            Assert.IsFalse(always.Roads.Any(road => road.CrossesSea && always.Settlements[road.From].Type.MinimumRoad < anyWidth.SeaBridgeMinimumRoad));
         }
 
         // ---- GL642: the roads on the natural terrain (GL637-GL641) ----

@@ -94,7 +94,7 @@ namespace Clube.Game
                     if (distance >= span.Start && distance <= span.End)
                     {
                         float t = Mathf.InverseLerp(span.Start, span.End, distance);
-                        return new Vector3(flat.x, Mathf.Lerp(span.FromHeight, span.ToHeight, t), flat.y);
+                        return new Vector3(flat.x, span.HeightAt(t), flat.y);
                     }
                 }
             }

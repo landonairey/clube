@@ -67,7 +67,7 @@ namespace Clube.Debug.Editor
             int bridges = 0, kept = 0, inSea = 0, closed = 0;
             foreach (string note in plan.Notes)
             {
-                if (!note.StartsWith("Road"))
+                if (!note.StartsWith("Road") && !note.Contains(" sea"))
                 {
                     continue;
                 }
@@ -103,7 +103,8 @@ namespace Clube.Debug.Editor
                 closed += shut;
             }
             return $"{plan.Roads.Count} roads, {length / 1000f:0.0} km, {steep:0} m over their slope limit, {bridges} bridges (longest {longestBridge:0} m), "
-                + $"{kept} kept on their planned line, {inSea} points in the sea, {closed} on closed ground";
+                + $"{kept} kept on their planned line, {inSea} points in the sea, {closed} on closed ground, "
+                + $"{plan.Roads.FindAll(road => road.CrossesSea).Count} roads bridge the sea to an island (GL651)";
         }
     }
 }

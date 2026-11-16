@@ -63,14 +63,25 @@ namespace Clube.Core
         /// <summary>
         /// Where a vessel of a class floats on a water map. A sea vessel: on the sea, deep enough for its keel and with its
         /// own width of water either side (<paramref name="strict"/>), or on any sea a hull can scrape over (not strict).
-        /// A river boat: on any water or within a cell of it, since a stream one cell wide that runs on the diagonal is no
-        /// unbroken line of cells (<see cref="For"/> then sets the lane's points back on the water).
+        /// A river boat (GL644): on water deep enough for its keel with most of its beam of water either side
+        /// (<paramref name="strict"/>), so it rides clear of the banks; or (not strict) on any water or within a cell of
+        /// it, since a stream one cell wide that runs on the diagonal is no unbroken line of cells (<see cref="For"/> then
+        /// sets the lane's points back on the water).
         /// </summary>
         public static Func<float, float, bool> Floats(WaterMap water, VesselClass vessel, bool strict = true)
         {
             if (!water.IsCreated)
             {
                 return (x, z) => false;
+            }
+            if (vessel.Kind == WaterRouteKind.River && strict)
+            {
+                float draught = vessel.Draught + 0.15f, side = Mathf.Max(vessel.Beam * 0.6f, water.CellSize * 0.75f);
+                bool Carries(float x, float z)
+                {
+                    return water.TryCell(new float2(x, z), out int cell) && water.Kind[cell] != 0 && water.Depth[cell] >= draught;
+                }
+                return (x, z) => Carries(x, z) && Carries(x - side, z) && Carries(x + side, z) && Carries(x, z - side) && Carries(x, z + side);
             }
             if (vessel.Kind == WaterRouteKind.River)
             {
@@ -109,11 +120,13 @@ namespace Clube.Core
             back.Reverse();
             List<Vector2> best = null;
             float bestLength = -1f;
+            bool strictBest = false;
             whole = false;
             for (int attempt = 0; attempt < 4 && !whole; attempt++)
             {
                 bool strict = attempt < 2, wide = attempt % 2 == 1;
-                if (river && !strict)
+                // GL644: a river boat keeps the lane that rides clear of the banks unless it is much the shorter one.
+                if (river && !strict && attempt == 2 && bestLength >= 0.6f * Length(route.Points))
                 {
                     break;
                 }
@@ -131,14 +144,15 @@ namespace Clube.Core
                         lane.Reverse();
                     }
                     float length = Length(lane);
-                    if (whole || length > bestLength)
+                    if (whole || length > bestLength * (river && strictBest && !strict ? 1.25f : 1f))
                     {
                         best = lane;
                         bestLength = length;
+                        strictBest = strict;
                     }
                 }
             }
-            if (river && best != null)
+            if (river && best != null && !strictBest)
             {
                 OntoWater(best, water);
             }

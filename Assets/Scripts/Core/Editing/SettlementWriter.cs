@@ -48,15 +48,49 @@ namespace Clube.Core
         private readonly List<Piece> pieces = new List<Piece>();
         private readonly List<RoadWriter> lanes = new List<RoadWriter>();
         private readonly int[] buildingPiece;
+        private readonly List<LaneBridge> bridges = new List<LaneBridge>();
+        private readonly Func<float, float, bool> wetAt;
+        private readonly TreeRoom treeRoom;
+
+        /// <summary>A bridge where a lane crosses water (GL645): its span, the deck's width and the lane it carries.</summary>
+        public readonly struct LaneBridge
+        {
+            public LaneBridge(RouteBridges.Span span, float width, int lane)
+            {
+                Span = span;
+                Width = width;
+                Lane = lane;
+            }
+
+            public readonly RouteBridges.Span Span;
+            public readonly float Width;
+            public readonly int Lane;
+        }
+
+        /// <summary>The bridges its lanes cross water on; whoever owns the writer stands them once their ground has loaded.</summary>
+        public IReadOnlyList<LaneBridge> Bridges => bridges;
+
+        /// <summary>True where a water map holds water at (x, z); null for no map.</summary>
+        public static Func<float, float, bool> WetOf(WaterMap water)
+        {
+            if (!water.IsCreated)
+            {
+                return null;
+            }
+            return (x, z) => water.TrySurfaceAt(new Unity.Mathematics.float2(x, z), out _, out _);
+        }
 
         // A building is written in slices across its width, so no one piece is long.
         private const int BuildingSlices = 8;
 
         /// <param name="street">The numbers streets are cut with (width, surface, how they are evened out).</param>
         /// <param name="climb">The same for the climbs between rows.</param>
-        public SettlementWriter(SettlementSite site, RoadClassDefinition street, RoadClassDefinition climb)
+        /// <param name="water">The map's water (GL645): a lane across it is a bridge, and no ground is written where it stands.</param>
+        public SettlementWriter(SettlementSite site, RoadClassDefinition street, RoadClassDefinition climb, WaterMap water = default, TreeRoom? trees = null)
         {
             Site = site;
+            wetAt = WetOf(water);
+            treeRoom = trees ?? TreeRoom.None;
             float ramp = site.Rules.Ramp;
             for (int t = 0; t < site.Terraces.Count; t++)
             {
@@ -82,13 +116,19 @@ namespace Clube.Core
                     lanes.Add(null);
                     continue;
                 }
-                var writer = new RoadWriter(new RoadBed(line, lane.Kind == SettlementLaneKind.Street ? street : climb, null, site.Settlement.Index * 31 + l));
+                RoadClassDefinition definition = lane.Kind == SettlementLaneKind.Street ? street : climb;
+                List<RouteBridges.Span> spans = RouteBridges.Find(line, water, true);
+                foreach (RouteBridges.Span span in spans)
+                {
+                    bridges.Add(new LaneBridge(span, Mathf.Max(definition.Width, 1.6f), l));
+                }
+                var writer = new RoadWriter(new RoadBed(line, definition, spans, site.Settlement.Index * 31 + l) { WetAt = wetAt }) { Trees = treeRoom };
                 lanes.Add(writer);
                 for (int p = 0; p < writer.Pieces; p++)
                 {
                     Vector2 middle = writer.Middle(p);
-                    // On a planned road's own ground the road is the street.
-                    if (site.RoadBeyond(middle.x, middle.y) <= 0f)
+                    // On a planned road's own surface the road is the street (GL649: the lane runs on across its shoulder).
+                    if (site.RoadSurfaceBeyond(middle.x, middle.y) <= 0f)
                     {
                         writer.Skip(p);
                         continue;
@@ -159,8 +199,11 @@ namespace Clube.Core
                 return lanes[piece.Index].Loaded(world, heightInChunks, piece.Part);
             }
             WorldGrid grid = world.Grid;
-            Vector3Int min = grid.WorldToChunk(new Vector3(piece.Box.xMin - 1f, Mathf.Max(0f, piece.Low), piece.Box.yMin - 1f));
-            Vector3Int max = grid.WorldToChunk(new Vector3(piece.Box.xMax + 1f, piece.High, piece.Box.yMax + 1f));
+            // GL652: a tile of ground cuts the trees on it whole, so it waits for every chunk such a tree reaches.
+            float spread = piece.Kind == Kind.Ground ? Mathf.Max(1f, treeRoom.Spread) : 1f;
+            float top = piece.Kind == Kind.Ground ? Mathf.Max(piece.High, piece.High - Headroom + treeRoom.Height) : piece.High;
+            Vector3Int min = grid.WorldToChunk(new Vector3(piece.Box.xMin - spread, Mathf.Max(0f, piece.Low), piece.Box.yMin - spread));
+            Vector3Int max = grid.WorldToChunk(new Vector3(piece.Box.xMax + spread, top, piece.Box.yMax + spread));
             for (int y = Mathf.Max(0, min.y); y <= Mathf.Min(heightInChunks - 1, max.y); y++)
             {
                 for (int z = min.z; z <= max.z; z++)
@@ -202,7 +245,7 @@ namespace Clube.Core
                         KeepTop = true,
                         Surface = (x, z, ground) => site.HeightAt(x, z, ground),
                         // A planned road's ground is the road's; a tile only works on its own terrace and bank.
-                        Inside = (x, z) => site.RoadBeyond(x, z) > 0f && SettlementSite.Beyond(terrace.Area, new Vector2(x, z)) < ramp,
+                        Inside = (x, z) => site.RoadBeyond(x, z) > 0f && (wetAt == null || !wetAt(x, z)) && SettlementSite.Beyond(terrace.Area, new Vector2(x, z)) < ramp,
                         // The steep part of a bank is faced with stone.
                         Paving = materials.Bank,
                         Paved = (x, z) => IsBank(site, x, z, natural(x, z)),

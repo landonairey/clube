@@ -160,7 +160,7 @@ namespace Clube.Game
                     var planned = new List<Vector2> { raider.Run.Cove, raider.Run.Spot };
                     bool river = raider.Run.Class.Kind == WaterRouteKind.River;
                     float corridor = Mathf.Max(river ? 80f : 120f, Vector2.Distance(raider.Run.Cove, raider.Run.Spot) * 0.6f);
-                    List<Vector2> lane = WaterLanes.Find(planned, WaterLanes.Floats(session.Map.Water, raider.Run.Class), river ? 2f : 8f, corridor, out _);
+                    List<Vector2> lane = WaterLanes.Find(planned, WaterLanes.Floats(session.Map.Water, raider.Run.Class, !river), river ? 2f : 8f, corridor, out _);
                     if (lane != null && lane.Count >= 2 && WaterLanes.Length(lane) > raider.Run.Class.Length * 2f)
                     {
                         float share = raider.Length > 0f ? raider.Run.Along / raider.Length : 0f;

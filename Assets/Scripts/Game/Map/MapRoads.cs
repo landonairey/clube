@@ -22,6 +22,7 @@ namespace Clube.Game
         // A tunnel is this much wider than its road, and this high at the middle of its arch (GL642).
         private const float TunnelExtraWidth = 1f;
         private const float TunnelHeight = 3.5f;
+        private const float LongDeck = 40f;
 
         // Metres a parcel's fence keeps clear of a road's edge.
         private const float FenceGap = 0.75f;
@@ -65,6 +66,7 @@ namespace Clube.Game
         private Built[] built;
         private bool[] postBuilt;
         private Transform root;
+        private readonly List<VesselClass> vessels = VesselClass.Defaults();
         private int version = -1;
         private Vector2 collectedAt;
         private float collectedTime = float.MinValue;
@@ -104,6 +106,57 @@ namespace Clube.Game
             line = made?.Line;
             bridges = made?.Bridges;
             return made != null && made.Line != null;
+        }
+
+        /// <summary>
+        /// GL649: the height the roads set the ground to round an area, as (x, z, the land's height) to a height: a road's
+        /// bed on it and the slope of its shoulder beside it; the land's own height elsewhere. Null when no road comes
+        /// near. Works out the roads that do.
+        /// </summary>
+        public System.Func<float, float, float, float> SurfaceNear(Rect area)
+        {
+            if (session == null || !session.IsReady || session.Plan == null)
+            {
+                return null;
+            }
+            if (session.Version != version)
+            {
+                StartOver();
+            }
+            var beds = new List<(RoadBed Bed, List<Vector2Int> Stretches)>();
+            for (int i = 0; i < bounds.Length; i++)
+            {
+                if (!bounds[i].Overlaps(area))
+                {
+                    continue;
+                }
+                Built road = WorkOut(i);
+                if (road == null || road.Writer.Bed.FollowsGround)
+                {
+                    continue;
+                }
+                List<Vector2Int> stretches = road.Writer.Bed.StretchesNear(area, road.Writer.Bed.Reach);
+                if (stretches.Count > 0)
+                {
+                    beds.Add((road.Writer.Bed, stretches));
+                }
+            }
+            if (beds.Count == 0)
+            {
+                return null;
+            }
+            return (x, z, ground) =>
+            {
+                var point = new Vector2(x, z);
+                foreach ((RoadBed bed, List<Vector2Int> stretches) in beds)
+                {
+                    if (bed.IsBed(point, stretches))
+                    {
+                        return bed.Surface(point, ground, stretches);
+                    }
+                }
+                return ground;
+            };
         }
 
         /// <summary>The longest a road took to work out (its line, heights, bridges and bed), in milliseconds: once per road, as the viewer nears it.</summary>
@@ -200,7 +253,10 @@ namespace Clube.Game
             // In a tunnel (GL642) the line runs on the tunnel's floor, so the bed leads into it.
             var line = new RoadLine(road.Points, RoadTunnels.HeightAt(road, session.Map.Height), 1f,
                 RoadTunnels.HeightsAt(road, WorldRoads.HeightsOf(session.Map)));
-            List<RouteBridges.Span> bridges = RouteBridges.Find(line, session.Map.Water, true);
+            // GL651: over the sea the deck stands high enough for what sails under; a ravine gets a dry span.
+            List<RouteBridges.Span> bridges = RouteBridges.Find(line, session.Map.Water, true, BridgeClearance.For(plan, vessels));
+            bridges.AddRange(RouteBridges.Ravines(line, bridges));
+            bridges.Sort((a, b) => a.Start.CompareTo(b.Start));
             // Where it ends on another road, its bed meets that road's bed.
             float endHeight = float.NaN;
             Built joinedRoad = null;
@@ -214,8 +270,8 @@ namespace Clube.Game
                     endHeight = joined.Writer.Bed.HeightAlong(along);
                 }
             }
-            var bed = new RoadBed(line, definition, bridges, plan.Seed + index, endHeight);
-            var made = new Built { Line = line, Writer = new RoadWriter(bed), Bridges = bridges, BridgeBuilt = new bool[bridges.Count] };
+            var bed = new RoadBed(line, definition, bridges, plan.Seed + index, endHeight) { WetAt = SettlementWriter.WetOf(session.Map.Water) };
+            var made = new Built { Line = line, Writer = new RoadWriter(bed) { Trees = TreeRoom.Of(session.WorldView.Config.Terrain.Trees) }, Bridges = bridges, BridgeBuilt = new bool[bridges.Count] };
             if (joinedRoad != null)
             {
                 // Its last metres lie on the joined road's own surface: that road keeps it. A piece is left out only
@@ -389,6 +445,13 @@ namespace Clube.Game
                     portal.transform.localPosition = at;
                     portal.transform.localRotation = Quaternion.LookRotation(new Vector3(outward.x, 0f, outward.y), Vector3.up);
                     PortalsBuilt++;
+                    // GL650: with a bore's first portal, the wood frames along its length.
+                    if (!road.PortalBuilt[t * 2 + 1 - end])
+                    {
+                        Vector2 way = (bore.Tunnel.To - bore.Tunnel.From).normalized;
+                        TunnelPortal.BuildSupports(bore.At, bore.BoreStart + 2f, bore.BoreEnd - 2f, way, bore.Width, bore.Height, material, root,
+                            session.Plan.Seed + index * 59 + t);
+                    }
                 }
             }
         }
@@ -404,16 +467,21 @@ namespace Clube.Game
             for (int i = 0; i < road.Bridges.Count; i++)
             {
                 RouteBridges.Span span = road.Bridges[i];
-                if (road.BridgeBuilt[i] || ((span.From + span.To) * 0.5f - viewer).sqrMagnitude > buildRange * buildRange)
+                // GL651: a long deck (over the sea) is longer than the ground loaded round the viewer, so it stands once
+                // the end the viewer comes to has loaded; a short one once all the ground under it has.
+                bool longDeck = span.Length > LongDeck;
+                float nearest = Mathf.Min((span.From - viewer).sqrMagnitude, (span.To - viewer).sqrMagnitude, ((span.From + span.To) * 0.5f - viewer).sqrMagnitude);
+                if (road.BridgeBuilt[i] || nearest > buildRange * buildRange)
                 {
                     continue;
                 }
-                bool loaded = true;
-                for (int k = 0; k <= 4 && loaded; k++)
+                bool loaded = !longDeck;
+                for (int k = 0; k <= 4; k++)
                 {
                     Vector2 p = Vector2.Lerp(span.From, span.To, k / 4f);
-                    float y = Mathf.Lerp(span.FromHeight, span.ToHeight, k / 4f);
-                    loaded = world.IsLoaded(world.Grid.WorldToChunk(new Vector3(p.x, y, p.y)));
+                    float y = span.HeightAt(k / 4f);
+                    bool here = world.IsLoaded(world.Grid.WorldToChunk(new Vector3(p.x, y, p.y)));
+                    loaded = longDeck ? loaded || (here && (k == 0 || k == 4)) : loaded && here;
                 }
                 if (loaded)
                 {

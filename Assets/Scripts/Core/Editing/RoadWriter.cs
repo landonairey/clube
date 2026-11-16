@@ -42,6 +42,9 @@ namespace Clube.Core
 
         public RoadBed Bed { get; }
 
+        /// <summary>GL652: the room a tree on the road may take: a piece waits for the chunks within it, so a cut tree is cut whole.</summary>
+        public TreeRoom Trees { get; set; } = TreeRoom.None;
+
         /// <summary>Pieces of road (<see cref="PieceLength"/> metres each).</summary>
         public int Pieces => written.Length;
 
@@ -133,10 +136,10 @@ namespace Clube.Core
             // The ground ramps a metre or so round its height, the land across the road may lie higher or lower than
             // along its middle, and the headroom is cleared above it.
             low -= 3f + Bed.Reach;
-            high += Headroom + 2f + Bed.Reach;
+            high += Mathf.Max(Headroom + 2f + Bed.Reach, Trees.Height);
             WorldGrid grid = world.Grid;
-            Vector3Int min = grid.WorldToChunk(new Vector3(box.xMin, Mathf.Max(0f, low), box.yMin));
-            Vector3Int max = grid.WorldToChunk(new Vector3(box.xMax, high, box.yMax));
+            Vector3Int min = grid.WorldToChunk(new Vector3(box.xMin - Trees.Spread, Mathf.Max(0f, low), box.yMin - Trees.Spread));
+            Vector3Int max = grid.WorldToChunk(new Vector3(box.xMax + Trees.Spread, high, box.yMax + Trees.Spread));
             for (int y = Mathf.Max(0, min.y); y <= Mathf.Min(heightInChunks - 1, max.y); y++)
             {
                 for (int z = min.z; z <= max.z; z++)
@@ -170,6 +173,23 @@ namespace Clube.Core
             float from = piece == 0 ? float.MinValue : piece * PieceLength - 0.3f;
             float to = piece == written.Length - 1 ? float.MaxValue : (piece + 1) * PieceLength + 0.3f;
             VoxelMaterial surface = materials != null && !string.IsNullOrEmpty(bed.Definition.Surface) ? materials.Find(bed.Definition.Surface) : null;
+            // GL647: over rock the class's rock surface, its second material in patches and as the loose stones lying on it.
+            VoxelMaterial rock = materials != null && !string.IsNullOrEmpty(bed.Definition.RockSurface) ? materials.Find(bed.Definition.RockSurface) : null;
+            VoxelMaterial rockMix = materials != null && !string.IsNullOrEmpty(bed.Definition.RockMix) ? materials.Find(bed.Definition.RockMix) : null;
+            GroundLeveling.PavingChoice over = null;
+            if (rock != null)
+            {
+                over = (float x, float z, VoxelMaterial was, out float raise) =>
+                {
+                    raise = 0f;
+                    if (was == null || was.Kind != MaterialKind.Rock)
+                    {
+                        return null;
+                    }
+                    bed.OnRock(new Vector2(x, z), stretches, out bool mix, out raise);
+                    return mix && rockMix != null ? rockMix : rock;
+                };
+            }
             GroundLeveling.Level(world, materials, new GroundLeveling.Area
             {
                 Centre = box.center,
@@ -179,6 +199,7 @@ namespace Clube.Core
                 Headroom = Headroom,
                 TreeReach = TreeReach,
                 Paving = surface,
+                PavingOver = over,
                 Inside = (x, z) => bed.IsBed(new Vector2(x, z), stretches, from, to),
                 Paved = (x, z) => bed.IsRoad(new Vector2(x, z), stretches),
                 Surface = bed.FollowsGround ? (Func<float, float, float, float>)null : (x, z, ground) => bed.Surface(new Vector2(x, z), ground, stretches),

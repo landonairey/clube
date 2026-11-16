@@ -104,6 +104,26 @@ namespace Clube.Core
             }
             RoadClassDefinition definition = context.Rules.Road(roadClass);
             int goal = context.Search(start, (from, to, metres) => StepCost(definition, from, to, metres), cell => network[cell] >= roadClass);
+            bool overSea = false;
+            if (goal < 0 && context.Rules.SeaBridgeMaxSpan > 0f && settlement.Type.MinimumRoad >= context.Rules.SeaBridgeMinimumRoad)
+            {
+                // GL651: no way by land. A settlement large enough is bridged to the roads where the sea between is narrow enough.
+                goal = context.Search(start, (from, to, metres) => SeaStepCost(definition, from, to, metres), cell => network[cell] >= roadClass);
+                if (goal >= 0)
+                {
+                    float span = LongestSeaRun(context.PathTo(goal));
+                    if (span > context.Rules.SeaBridgeMaxSpan)
+                    {
+                        plan.Notes.Add($"{settlement.Name}: the narrowest sea to the road network is about {span:0} m, too wide to bridge.");
+                        goal = -1;
+                    }
+                    else
+                    {
+                        overSea = true;
+                        plan.Notes.Add($"{settlement.Name}: joined to the road network by a bridge over about {span:0} m of sea.");
+                    }
+                }
+            }
             if (goal < 0)
             {
                 // GL643: it needs no road. Its land's later settlements join it, as a network of their own.
@@ -115,7 +135,7 @@ namespace Clube.Core
             List<int> cells = context.PathTo(goal);
             var road = new PlannedRoad
             {
-                Index = plan.Roads.Count, Class = roadClass, From = settlement.Index, To = settlementAt[goal], Joins = roadAt[goal],
+                Index = plan.Roads.Count, Class = roadClass, From = settlement.Index, To = settlementAt[goal], Joins = roadAt[goal], CrossesSea = overSea,
             };
             float waterStart = -1f;
             Vector2 waterFrom = default;
@@ -167,9 +187,45 @@ namespace Clube.Core
             return IsWater(to) ? stretch + definition.BridgeCost : stretch;
         }
 
+        // GL651: as StepCost, but the sea may be crossed, dearly by the metre.
+        private float SeaStepCost(RoadClassDefinition definition, int from, int to, float metres)
+        {
+            if (context.Cells[to].Outside)
+            {
+                return -1f;
+            }
+            if (context.IsSea(to) || context.IsSea(from))
+            {
+                return metres * (context.IsSea(to) ? context.Rules.SeaBridgeCost : 1f);
+            }
+            return StepCost(definition, from, to, metres);
+        }
+
+        // The longest unbroken stretch of sea on a path of cells, in metres: from the last land cell's middle to the next one's, less a cell (the shores lie between the middles).
+        private float LongestSeaRun(List<int> cells)
+        {
+            float longest = 0f, run = 0f;
+            bool inSea = false;
+            for (int i = 1; i < cells.Count; i++)
+            {
+                bool sea = context.IsSea(cells[i]);
+                if (sea || inSea)
+                {
+                    run += Vector2.Distance(context.Centre(cells[i]), context.Centre(cells[i - 1]));
+                }
+                if (!sea && inSea)
+                {
+                    longest = Mathf.Max(longest, run - context.CellSize);
+                    run = 0f;
+                }
+                inSea = sea;
+            }
+            return longest;
+        }
+
         private bool IsWater(int cell)
         {
-            return context.Cells[cell].River || context.Cells[cell].FreshWater > 0.25f;
+            return context.IsSea(cell) || context.Cells[cell].River || context.Cells[cell].FreshWater > 0.25f;
         }
 
         private int CellOf(PlannedSettlement settlement)

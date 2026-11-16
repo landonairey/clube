@@ -52,6 +52,16 @@ namespace Clube.Core
         public float TurnCost = 10f;
         /// <summary>The width of its bridges' decks in metres.</summary>
         public float BridgeWidth = 2.2f;
+        /// <summary>GL647: its top layer where it runs over rock (a mountain's stone), by name; null for <see cref="Surface"/> there too.</summary>
+        public string RockSurface;
+        /// <summary>GL647: a second material on rock: patches mixed into <see cref="RockSurface"/>, and what its loose stones are made of.</summary>
+        public string RockMix;
+        /// <summary>The share of a rock stretch's surface that is <see cref="RockMix"/>, in patches (0: none).</summary>
+        public float RockMixShare;
+        /// <summary>GL647: metres between the loose stones lying on it where it runs over rock (0: none).</summary>
+        public float RockBumpSpacing;
+        /// <summary>How high a loose stone stands over the path, in metres.</summary>
+        public float RockBumpHeight = 0.22f;
 
         /// <summary>
         /// The three classes: a footpath, a dirt cart path, a paved cart path. Surfaces are GL633's ("walking paths ... use
@@ -65,12 +75,16 @@ namespace Clube.Core
                 new RoadClassDefinition
                 {
                     Class = RoadClass.Footpath, Name = "Footpath", SlopeShare = 1f, EasySlope = 0.3f, Width = 1.5f, BridgeCost = 200f,
-                    Surface = "Dead Grass", GradeLength = 0f, MaxCut = 0f, EdgeWander = 0.3f, BridgeWidth = 1.6f, TurnCost = 6f,
+                    // GL646: level from side to side: cut into the slope on one side and built up on the other, over a short run
+                    // of the ground's own height, so it still goes up and down the way it is walked.
+                    Surface = "Dead Grass", GradeLength = 4f, MaxCut = 0.6f, Shoulder = 0.75f, EdgeWander = 0.3f, BridgeWidth = 1.6f, TurnCost = 6f,
+                    RockSurface = "Stone", RockMix = "Loose stone", RockBumpSpacing = 2.5f,
                 },
                 new RoadClassDefinition
                 {
                     Class = RoadClass.DirtCartPath, Name = "Dirt cart path", SlopeShare = 0.24f, EasySlope = 0.12f, Width = 3f, BridgeCost = 400f,
                     Surface = "Dirt", GradeLength = 10f, MaxCut = 0.8f, Shoulder = 1.25f, EdgeWander = 0.12f, BridgeWidth = 2.6f, TurnCost = 14f,
+                    RockSurface = "Crushed stone", RockMix = "Stone", RockMixShare = 0.4f,
                 },
                 new RoadClassDefinition
                 {
