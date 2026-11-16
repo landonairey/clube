@@ -29,6 +29,7 @@ namespace Clube.Game
 
         private InventoryScreen inventoryScreen;
         private FieldLogScreen fieldLog;
+        private WorldMapScreen worldMap;
         private StationPanel stationPanel;
         private MerchantPanel merchantPanel;
         private ChestPanel chestPanel;
@@ -65,6 +66,7 @@ namespace Clube.Game
             {
                 inventoryScreen = player.GetComponent<InventoryScreen>();
                 fieldLog = player.GetComponent<FieldLogScreen>();
+                worldMap = player.GetComponent<WorldMapScreen>();
                 stationPanel = player.GetComponent<StationPanel>();
                 merchantPanel = player.GetComponent<MerchantPanel>();
                 chestPanel = player.GetComponent<ChestPanel>();
@@ -118,6 +120,11 @@ namespace Clube.Game
             if (inventoryScreen != null && inventoryScreen.IsOpen)
             {
                 inventoryScreen.Close();
+                return true;
+            }
+            if (worldMap != null && worldMap.IsOpen)
+            {
+                worldMap.Close();
                 return true;
             }
             if (fieldLog != null && fieldLog.IsOpen)

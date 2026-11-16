@@ -50,7 +50,7 @@ namespace Clube.Debug.Editor
                     terrain, generator, OreField.Create(terrain, generator), TreeField.Create(terrain, generator), CellSize);
                 double surveyed = EditorApplication.timeSinceStartup;
 
-                Texture2D picture = Draw(survey, generator.Layout.SeaLevel);
+                Texture2D picture = Draw(generator, survey);
                 double planStart = EditorApplication.timeSinceStartup;
                 WorldPlan plan = WorldPlanner.Build(survey, terrain.Seed);
                 double planned = EditorApplication.timeSinceStartup;
@@ -73,47 +73,24 @@ namespace Clube.Debug.Editor
             }
         }
 
-        private static Texture2D Draw(ResourceSurvey survey, float seaLevel)
+        // The picture the world map shows (MapPicture, GL599), with a dot per survey cell holding ore.
+        private static Texture2D Draw(BoundedMapGenerator map, ResourceSurvey survey)
         {
-            int size = survey.Size;
-            var picture = new Texture2D(size * Scale, size * Scale, TextureFormat.RGB24, false);
-            var sea = new Color(0.13f, 0.3f, 0.55f);
-            var fresh = new Color(0.3f, 0.62f, 0.9f);
-            var rock = new Color(0.55f, 0.55f, 0.57f);
-            for (int z = 0; z < size; z++)
+            int side = survey.Size * Scale;
+            var picture = new Texture2D(side, side, TextureFormat.RGB24, false);
+            picture.SetPixels32(MapPicture.Render(map, survey, side));
+            for (int z = 0; z < survey.Size; z++)
             {
-                for (int x = 0; x < size; x++)
+                for (int x = 0; x < survey.Size; x++)
                 {
-                    SurveyCell cell = survey.Cell(x, z);
-                    Color colour = survey.Biomes[cell.Biome].MapColor;
-                    colour = Color.Lerp(colour, rock, cell.Stone);
-                    // Lighter with height, darker on slopes.
-                    float shade = Mathf.Lerp(0.75f, 1.25f, Mathf.InverseLerp(seaLevel, seaLevel + 350f, cell.Height)) * Mathf.Lerp(0.8f, 1f, cell.Flatness);
-                    colour *= shade;
-                    if (cell.Sea > 0.5f)
-                    {
-                        colour = sea * Mathf.Lerp(0.6f, 1f, Mathf.InverseLerp(seaLevel - 30f, seaLevel, cell.Height));
-                    }
-                    else if (cell.FreshWater > 0.04f)
-                    {
-                        colour = Color.Lerp(colour, fresh, Mathf.Clamp01(cell.FreshWater * 4f));
-                    }
-                    else if (cell.Wood > 0f)
-                    {
-                        colour = Color.Lerp(colour, new Color(0.07f, 0.25f, 0.1f), Mathf.Clamp01(cell.Wood / 6f) * 0.6f);
-                    }
                     float ore = 0f;
                     for (int i = 0; i < survey.Ores.Count; i++)
                     {
                         ore += survey.Ore(i, x, z);
                     }
-                    for (int py = 0; py < Scale; py++)
+                    if (ore >= 3f && survey.Cell(x, z).Sea <= 0.5f)
                     {
-                        for (int px = 0; px < Scale; px++)
-                        {
-                            bool dot = ore >= 3f && px == Scale / 2 && py == Scale / 2;
-                            picture.SetPixel(x * Scale + px, z * Scale + py, dot ? new Color(0.85f, 0.35f, 0.1f) : colour);
-                        }
+                        picture.SetPixel(x * Scale + Scale / 2, z * Scale + Scale / 2, new Color(0.85f, 0.35f, 0.1f));
                     }
                 }
             }
@@ -162,7 +139,7 @@ namespace Clube.Debug.Editor
 
             foreach (WaterRoute route in plan.WaterRoutes)
             {
-                Line(route.Points, 0, route.Kind == WaterRouteKind.Sea ? Color.white : Color.cyan, 4);
+                Line(route.Points, 0, MapPicture.RouteColour(route.Kind), 4);
             }
             for (RoadClass roadClass = RoadClass.Footpath; roadClass <= RoadClass.PavedCartPath; roadClass++)
             {
@@ -172,9 +149,8 @@ namespace Clube.Debug.Editor
                     {
                         continue;
                     }
-                    Color colour = roadClass == RoadClass.PavedCartPath ? new Color(0.12f, 0.1f, 0.1f)
-                        : roadClass == RoadClass.DirtCartPath ? new Color(0.45f, 0.27f, 0.1f) : new Color(0.85f, 0.75f, 0.5f);
-                    Line(road.Points, roadClass == RoadClass.Footpath ? 0 : 1, colour, roadClass == RoadClass.Footpath ? 3 : 0);
+                    Color colour = MapPicture.RoadColour(roadClass);
+                    Line(road.Points, roadClass == RoadClass.Footpath ? 0 : 1, colour, 0);
                     foreach (RoadBridge bridge in road.Bridges)
                     {
                         Square(Pixel(bridge.Position), 2, Color.white);
@@ -184,8 +160,7 @@ namespace Clube.Debug.Editor
             foreach (PlannedSettlement settlement in plan.Settlements)
             {
                 int half = 2 + Mathf.RoundToInt(Mathf.Sqrt(settlement.Type.Parcels));
-                Color colour = settlement.Type.Hostile ? Color.magenta
-                    : Color.Lerp(new Color(1f, 0.95f, 0.2f), new Color(0.9f, 0.05f, 0.1f), Mathf.Sqrt(settlement.Type.Parcels) / 5f);
+                Color colour = MapPicture.SettlementColour(settlement.Type);
                 Square(Pixel(settlement.Position), half + 1, Color.black);
                 Square(Pixel(settlement.Position), half, colour);
             }

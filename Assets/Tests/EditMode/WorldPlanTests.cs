@@ -377,5 +377,52 @@ namespace Clube.Core.Tests
             Assert.That(withIron.ReservedVessels, Is.Empty);
             Assert.That(new[] { route.From, route.To }.Where(i => i >= 0).Any(i => withIron.Settlements[i].Has("mining")), "an iron-mining port");
         }
+
+        // ---- GL599, GL601: the map's picture and the start ----
+
+        [Test]
+        public void TheStartIsOnDryLandBesideTheCapital()
+        {
+            Vector2 start = MapStart.Pick(plan, survey);
+            Assert.That(MapStart.IsDry(survey, start), "the start is on land");
+            Assert.That(Vector2.Distance(start, plan.Capital.Position), Is.LessThanOrEqualTo(MapStart.Offset + 0.01f));
+        }
+
+        [Test]
+        public void WithNoSettlementsTheStartIsFlatDryLand()
+        {
+            Vector2 start = MapStart.Pick(new WorldPlan(), survey);
+            Assert.That(survey.TryCell(start, out Vector2Int cell));
+            Assert.That(survey.Cell(cell.x, cell.y).Land, Is.GreaterThan(0.9f));
+        }
+
+        [Test]
+        public void TheMapPictureShowsTheSeaRoundTheIslandAndLandAtTheCapital()
+        {
+            var map = (BoundedMapGenerator)TerrainGenerators.Create(Settings(5, 3072f, copper, gold));
+            const int resolution = 96;
+            Color32[] pixels = MapPicture.Render(map, survey, resolution);
+            Assert.That(pixels.Length, Is.EqualTo(resolution * resolution));
+
+            // Every side is an ocean: the corner pixel is sea-blue, bluer than it is red.
+            Color32 corner = pixels[0];
+            Assert.That(corner.b, Is.GreaterThan(corner.r + 20), "sea at the map's corner");
+
+            Vector2 at = MapPicture.PixelOf(survey.Area, resolution, MapStart.Pick(plan, survey));
+            Color32 land = pixels[Mathf.Clamp((int)at.x, 0, resolution - 1) + Mathf.Clamp((int)at.y, 0, resolution - 1) * resolution];
+            Assert.That(land.b, Is.LessThan(land.g + 40), "land, not water, where the player starts");
+        }
+
+        [Test]
+        public void FootpathsAreNarrowDirtCartPathsWiderDirtAndPavedOnesWiderCobble()
+        {
+            // GL620: a narrow dirt path, a wider path of dirt, a wider cobblestone path.
+            Assert.That(MapPicture.RoadWidth(RoadClass.DirtCartPath), Is.GreaterThan(2f * MapPicture.RoadWidth(RoadClass.Footpath)));
+            Assert.That(MapPicture.RoadWidth(RoadClass.PavedCartPath), Is.GreaterThanOrEqualTo(MapPicture.RoadWidth(RoadClass.DirtCartPath)));
+            Assert.That(MapPicture.RoadColour(RoadClass.Footpath), Is.EqualTo(MapPicture.Dirt));
+            Assert.That(MapPicture.RoadColour(RoadClass.DirtCartPath), Is.EqualTo(MapPicture.Dirt));
+            Color paved = MapPicture.RoadColour(RoadClass.PavedCartPath);
+            Assert.That(Mathf.Abs(paved.r - paved.b), Is.LessThan(0.05f), "stone-grey");
+        }
     }
 }
