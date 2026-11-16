@@ -264,6 +264,13 @@ testing; the gameplay demo scenes use the fixed values. With 4 m chunks, P7 (LOD
   and check `ManageEditor GetProjectRoot` before an Editor command while a batch run may be going.
 - Roads (GL613, GL631): a road class is a `RoadClassDefinition` row; `WorldRoads.Finish` must follow `WorldPlanner.Build`
   wherever a plan is drawn or built, or its roads are still 40 m cell lines without signposts.
+- MCP gotcha: to keep real frames coming in Play mode while the Editor is unfocused, run once
+  `EditorApplication.update += () => { if (EditorApplication.isPlaying) EditorApplication.QueuePlayerLoopUpdate(); };`
+  (with `Application.runInBackground = true`); thousands of frames then pass between commands. It lasts until the next domain reload.
+- MCP gotcha: `RunCommand` reports "compilation successful" for its own script even when the project's scripts fail to
+  compile; after shell edits always read `Editor.log` for `error CS` after the last `Tundra build` line.
+- Trees span chunks (GL652): anything that cuts a tree must wait for the chunks within a `TreeRoom` of it, or the part in
+  a chunk loaded later hangs in the air. `FloatingWoodScan.Scan` (Debug) finds such parts in a loaded world.
 - Token budget: read files in parts (grep first), check compiles through `Editor.log`, take
   screenshots only for visual items, run the batch-mode test suite once per batch.
 

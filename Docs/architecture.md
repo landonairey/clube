@@ -315,6 +315,20 @@ flowchart LR
   viewer are worked out once (heights, bridges, bed), their unwritten pieces queued nearest first and written when their
   chunks are loaded, 3 ms a frame; bridges (`RoadBridge`) and `Signpost`s stand once their ground loads; written pieces
   are saved. Far terrain and the coarse levels know nothing of roads.
+- **Roads, water and bridges** (GL645, GL651): a road is never written on water (`RoadBed.WetAt`); where its line crosses
+  water `RouteBridges.Find` gives a span, for settlement lanes too (`SettlementWriter.Bridges`, stood by `MapSettlements`).
+  Over the sea a span is humped (`Span.Rise`, `Span.HeightAt`; every user of a deck's height asks `HeightAt`): its middle
+  stands `BridgeClearance` over the water (the tallest sea vessel where a planned sea route passes within 240 m, 3 m
+  elsewhere) and its ends reach back over the land as far as the climb needs. `RouteBridges.Ravines` adds dry spans over
+  narrow deep gaps. The planner joins an island by road only through `RoadPlanner`'s sea search (`WorldPlanRules.SeaBridgeMaxSpan`,
+  `SeaBridgeMinimumRoad`); such a road has `PlannedRoad.CrossesSea`. A deck longer than 40 m stands once its near end has loaded.
+- **Road beds** (GL646-GL649): every class has a graded bed, so a road is level from edge to edge; `RoadBed.LevelTurns`
+  makes a hairpin's turning place one level; over rock the class's `RockSurface`/`RockMix` are laid through
+  `GroundLeveling.Area.PavingOver` (`RoadBed.OnRock`). A settlement's lanes and banks meet the roads' beds:
+  `MapRoads.SurfaceNear` is the site's `SettlementSite.RoadSurface`.
+- **Cutting trees** (GL652): a tree is stamped into every chunk it reaches. `RoadWriter` and `SettlementWriter` therefore wait
+  for the chunks within a `TreeRoom` of a piece before writing it, and `GroundLeveling.ClearSevered` clears what a
+  reach-limited cut (`TreeReach`) leaves hanging. `FloatingWoodScan` (Debug) counts floating plant parts in a loaded world.
 - **Tunnels** (GL642): `RoadTunnels.Bore` runs inside `WorldRoads.Finish`, after the refiner. For each cart path still
   over its limit it scores every pair of its points a straight bore could join (grade within a share of the class's
   limit, ground never far under the floor and well over it for a third of the length, no water over it, no junction or
