@@ -45,7 +45,14 @@ namespace Clube.Core
         /// <summary>True when the cell's tree is a maple (GL150), the same roll <see cref="Build"/> makes.</summary>
         public static bool IsMaple(int seed, Vector2Int cell, TreeGeneration settings)
         {
-            return VoxelHash.Uniform(seed, cell.x, SpeciesSalt, cell.y) < settings.MapleShare;
+            float share = settings.MapleShare;
+            if (share > 0f && settings.Climate != null)
+            {
+                // The biome picks the kinds (GL591); never maples where the settings have none to grow.
+                float size = settings.CellSize;
+                share = settings.Climate.MapleShareAt((cell.x + 0.5f) * size, (cell.y + 0.5f) * size, share);
+            }
+            return VoxelHash.Uniform(seed, cell.x, SpeciesSalt, cell.y) < share;
         }
 
         /// <summary>The cell's tree's height in metres, the same rolls <see cref="Build"/> makes (its first, scaled by its age).</summary>

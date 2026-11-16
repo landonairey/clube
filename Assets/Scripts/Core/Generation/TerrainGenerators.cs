@@ -29,6 +29,17 @@ namespace Clube.Core
         /// </exception>
         public static ITerrainGenerator Create(TerrainSettings settings)
         {
+            ITerrainGenerator generator = Build(settings);
+            // The trees follow the map's biomes (GL591), or the tree settings alone on any other ground.
+            if (settings.Trees != null)
+            {
+                settings.Trees.Climate = BiomeMap.For(generator);
+            }
+            return generator;
+        }
+
+        private static ITerrainGenerator Build(TerrainSettings settings)
+        {
             switch (settings.Generator)
             {
                 case TerrainGeneratorType.Flat:
@@ -84,6 +95,8 @@ namespace Clube.Core
                     UnityEngine.Rect dry = settings.StartArea.Enabled ? settings.StartArea.Area : default;
                     return eroded.WithWater(Hydrology.For(shape, eroded, settings.Water, BanksFor(settings), dry, settings.Erosion.MinPondArea));
                 }
+                case TerrainGeneratorType.BoundedMap:
+                    return BoundedMapGenerator.Create(settings);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(settings.Generator), settings.Generator, null);
             }

@@ -42,6 +42,10 @@ namespace Clube.Core
         /// <summary>The materials and depths the fill puts by the water.</summary>
         public WaterBanks Banks;
 
+        /// <summary>True when the map has a sea (GL591): lake cells standing at <see cref="SeaLevel"/>, joined to the map's edge.</summary>
+        public bool HasSea;
+        public float SeaLevel;
+
         public const int MaxDistance = 15;
 
         /// <summary>How far, in metres, the sand's outer edge wanders either side of its limit (GL506).</summary>
@@ -94,10 +98,23 @@ namespace Clube.Core
             int2 cell = (int2)math.floor((position - Origin) / CellSize);
             if (math.any(cell < 0) || math.any(cell >= Size))
             {
-                return false;
+                // The sea has no far shore (GL590): past the map's edge, the nearest edge cell answers where it is sea.
+                if (!HasSea)
+                {
+                    return false;
+                }
+                cell = math.clamp(cell, 0, Size - 1);
+                index = cell.x + cell.y * Size.x;
+                return IsSea(index);
             }
             index = cell.x + cell.y * Size.x;
             return true;
+        }
+
+        /// <summary>True for a cell of the sea, as against an inland lake.</summary>
+        public bool IsSea(int cell)
+        {
+            return HasSea && Kind[cell] == (byte)WaterKind.Lake && Surface[cell] <= SeaLevel + 0.01f;
         }
 
         /// <summary>How far the ground is cut down at a position, smoothly between cells.</summary>

@@ -125,6 +125,13 @@ namespace Clube.Core
         [SerializeField, Min(0.01f)]
         private float heightmapUnitsPerPixel = 1f;
 
+        [Tooltip("The bounded map (GL589): its size, sides, sea, peak, climate and biomes. Read by the BoundedMap generator.")]
+        [SerializeField]
+        private MapDefinition map = new MapDefinition();
+
+        /// <summary>The bounded map's definition (GL589), read when <see cref="Generator"/> is <see cref="TerrainGeneratorType.BoundedMap"/>.</summary>
+        public MapDefinition Map => map ??= new MapDefinition();
+
         /// <summary>Settable so lab controls can switch it at runtime; call <see cref="WorldConfig.NotifyChanged"/> after.</summary>
         /// <summary>Material by depth below the surface (M10).</summary>
         public TerrainLayers Layers => layers;

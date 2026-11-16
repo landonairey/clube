@@ -184,6 +184,19 @@ namespace Clube.Core
             return maple ? mapleTrunkRadius : trunkRadius;
         }
 
+        /// <summary>
+        /// The biomes the trees follow (GL591): set by <see cref="TerrainGenerators.Create"/> for a bounded map, null otherwise.
+        /// Not saved; it follows from the terrain.
+        /// </summary>
+        public ITreeClimate Climate
+        {
+            get => climate;
+            set => climate = value;
+        }
+
+        [System.NonSerialized]
+        private ITreeClimate climate;
+
         /// <summary>The tallest any tree can grow, either kind.</summary>
         public float TallestHeight => MapleShare > 0f ? Mathf.Max(Height.y, MapleHeight.y) : Height.y;
 

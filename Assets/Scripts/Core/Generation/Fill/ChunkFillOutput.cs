@@ -35,6 +35,9 @@ namespace Clube.Core
         /// <summary>Rivers and lakes (GL307), for the sand and clay by them; not created for none.</summary>
         public WaterMap Water;
 
+        /// <summary>A bounded map's biomes (GL591), which set each column's surface materials; not created for none.</summary>
+        public BiomeField Biomes;
+
         public ChunkFillSettings(LayerTable layers, int seed, DensityFormat format, float lodScale = 1f)
         {
             Layers = layers;
@@ -42,6 +45,7 @@ namespace Clube.Core
             Format = format;
             LodScale = lodScale;
             Water = WaterMap.None;
+            Biomes = default;
         }
 
         /// <summary>What a depth is multiplied by before the density and layers: 1 / <see cref="LodScale"/>.</summary>

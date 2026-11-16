@@ -320,17 +320,12 @@ namespace Clube.Core
 
                 // Salts keep each ore's (and each node's) numbers independent.
                 int salt = spec.Ore.Id * 1000;
-                int whole = Mathf.FloorToInt(spec.NodesPerCell);
-                bool extra = VoxelHash.Uniform(seed, cell.x, cell.y, cell.z, salt) < spec.NodesPerCell - whole;
-                int count = whole + (extra ? 1 : 0);
+                int count = NodeCount(spec, cell, salt);
                 int tries = count * PlacementTries;
                 for (int attempt = 0, placed = 0; attempt < tries && placed < count; attempt++)
                 {
                     int nodeSalt = salt + 1 + attempt * 3;
-                    var centre = cellOrigin + new Vector3(
-                        VoxelHash.Uniform(seed, cell.x, cell.y, cell.z, nodeSalt),
-                        VoxelHash.Uniform(seed, cell.x, cell.y, cell.z, nodeSalt + 1),
-                        VoxelHash.Uniform(seed, cell.x, cell.y, cell.z, nodeSalt + 2)) * size;
+                    Vector3 centre = TryCentre(cell, cellOrigin, size, nodeSalt);
                     float depth = generator.Depth(centre);
                     if (depth < spec.MinDepth || depth > spec.MaxDepth)
                     {
@@ -347,5 +342,99 @@ namespace Clube.Core
             }
             return scratch.ToArray();
         }
+
+        // How many nodes of a spec the cell holds: the whole part of its count, and one more by a roll for the rest.
+        private int NodeCount(OreSpec spec, Vector3Int cell, int salt)
+        {
+            int whole = Mathf.FloorToInt(spec.NodesPerCell);
+            bool extra = VoxelHash.Uniform(seed, cell.x, cell.y, cell.z, salt) < spec.NodesPerCell - whole;
+            return whole + (extra ? 1 : 0);
+        }
+
+        // Where one try at placing a node lands in its cell.
+        private Vector3 TryCentre(Vector3Int cell, Vector3 cellOrigin, float size, int nodeSalt)
+        {
+            return cellOrigin + new Vector3(
+                VoxelHash.Uniform(seed, cell.x, cell.y, cell.z, nodeSalt),
+                VoxelHash.Uniform(seed, cell.x, cell.y, cell.z, nodeSalt + 1),
+                VoxelHash.Uniform(seed, cell.x, cell.y, cell.z, nodeSalt + 2)) * size;
+        }
+
+        /// <summary>The ores' materials, by spec index (null where a spec has none).</summary>
+        public VoxelMaterial OreOf(int spec)
+        {
+            return settings.Ores[spec]?.Ore;
+        }
+
+        /// <summary>How many specs there are (<see cref="OreNode.Spec"/> counts through them).</summary>
+        public int SpecCount => settings.Ores.Count;
+
+        /// <summary>
+        /// Every centroid placing a cell's nodes would try, in order, added to <paramref name="tries"/>: the first half
+        /// of placing nodes, for wide surveys (GL592) that then sample the ground under all of them in one job instead
+        /// of one managed call each, and finish with <see cref="MarkPlaced"/>.
+        /// </summary>
+        public void AppendTries(Vector3Int cell, List<OreTry> tries)
+        {
+            float size = CellSize;
+            Vector3 cellOrigin = (Vector3)cell * size;
+            for (int specIndex = 0; specIndex < settings.Ores.Count; specIndex++)
+            {
+                OreSpec spec = settings.Ores[specIndex];
+                if (spec?.Ore == null || spec.NodesPerCell <= 0f || spec.PeakProbability <= 0f)
+                {
+                    continue;
+                }
+                int salt = spec.Ore.Id * 1000;
+                int count = NodeCount(spec, cell, salt);
+                for (int attempt = 0; attempt < count * PlacementTries; attempt++)
+                {
+                    tries.Add(new OreTry { Spec = specIndex, Budget = count, Centre = TryCentre(cell, cellOrigin, size, salt + 1 + attempt * 3) });
+                }
+            }
+        }
+
+        /// <summary>
+        /// Which of one cell's tries (<paramref name="count"/> of them from <paramref name="first"/>, as
+        /// <see cref="AppendTries"/> listed them) become nodes, given the ground's height over each
+        /// (<paramref name="ground"/>, indexed like the tries less <paramref name="groundOffset"/>): the same rule as
+        /// placing them one by one. Their indices are added to <paramref name="placed"/>.
+        /// </summary>
+        public void MarkPlaced(List<OreTry> tries, int first, int count, NativeArray<float> ground, int groundOffset, List<int> placed)
+        {
+            int spec = -1, made = 0;
+            for (int i = first; i < first + count; i++)
+            {
+                OreTry attempt = tries[i];
+                if (attempt.Spec != spec)
+                {
+                    spec = attempt.Spec;
+                    made = 0;
+                }
+                if (made >= attempt.Budget)
+                {
+                    continue;
+                }
+                float depth = ground[i - groundOffset] - attempt.Centre.y;
+                if (depth < settings.Ores[spec].MinDepth || depth > settings.Ores[spec].MaxDepth)
+                {
+                    continue;
+                }
+                placed.Add(i);
+                made++;
+            }
+        }
+    }
+
+    /// <summary>One try at placing an ore node (<see cref="OreField.AppendTries"/>).</summary>
+    public struct OreTry
+    {
+        /// <summary>Index of the ore's spec.</summary>
+        public int Spec;
+
+        /// <summary>How many nodes of this spec the cell holds at most.</summary>
+        public int Budget;
+
+        public Vector3 Centre;
     }
 }

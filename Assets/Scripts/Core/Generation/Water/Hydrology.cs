@@ -34,7 +34,9 @@ namespace Clube.Core
         /// whenever the ground's shape does. Areas in <paramref name="keepDry"/> get no lake or river, and hollows
         /// covering less than <paramref name="minLakeArea"/> square metres hold none (the eroded land's small pits).
         /// </summary>
-        public static WaterMap For(string key, HeightfieldGenerator ground, WaterGeneration settings, WaterBanks banks, Rect keepDry, float minLakeArea = 0f)
+        public static WaterMap For(
+            string key, HeightfieldGenerator ground, WaterGeneration settings, WaterBanks banks, Rect keepDry, float minLakeArea = 0f,
+            WaterExtent extent = null)
         {
             if (!hooked)
             {
@@ -42,13 +44,13 @@ namespace Clube.Core
                 AppDomain.CurrentDomain.DomainUnload += (_, __) => DisposeAll();
                 Application.quitting += DisposeAll;
             }
-            key = key + "|" + settings.Key + "|" + keepDry + "|" + minLakeArea;
+            key = key + "|" + settings.Key + "|" + keepDry + "|" + minLakeArea + "|" + extent?.Key;
             if (Cache.TryGetValue(key, out WaterMap map))
             {
                 map.Banks = banks;
                 return map;
             }
-            map = Build(ground, settings, keepDry, minLakeArea);
+            map = Build(ground, settings, keepDry, minLakeArea, extent);
             map.Banks = banks;
             Cache[key] = map;
             CacheOrder.Add(key);
@@ -79,10 +81,13 @@ namespace Clube.Core
         };
 
         /// <summary>Works out the water over the area (uncached; the caller owns the result).</summary>
-        public static WaterMap Build(HeightfieldGenerator ground, WaterGeneration settings, Rect keepDry, float minLakeArea = 0f)
+        /// <param name="extent">A bounded map's area, grid and sea (GL591); null for the settings' own area, 1 m cells and no sea.</param>
+        public static WaterMap Build(
+            HeightfieldGenerator ground, WaterGeneration settings, Rect keepDry, float minLakeArea = 0f, WaterExtent extent = null)
         {
-            float area = settings.AreaSize;
-            float flowCell = settings.FlowCellSize;
+            float area = extent != null ? extent.AreaSize : settings.AreaSize;
+            float flowCell = extent != null ? extent.FlowCellSize : settings.FlowCellSize;
+            float fineCell = extent != null ? Mathf.Max(1f, extent.CellSize) : 1f;
             int n = Mathf.CeilToInt(area / flowCell);
             var origin = new float2(-n * flowCell * 0.5f);
 
@@ -95,11 +100,19 @@ namespace Clube.Core
             var order = new List<int>(n * n);
             var closed = new bool[n * n];
             var queue = new MinHeap(n * 4);
+            bool[] sea = extent != null && extent.IsSea != null ? SeaCells(h, n, origin, flowCell, extent) : null;
             for (int i = 0; i < n * n; i++)
             {
                 int x = i % n, z = i / n;
                 drainsTo[i] = -1;
-                if (x == 0 || z == 0 || x == n - 1 || z == n - 1)
+                if (sea != null && sea[i])
+                {
+                    // The sea is an outlet at its own level everywhere (GL591): it reads as one big lake from here on.
+                    filled[i] = extent.SeaLevel;
+                    closed[i] = true;
+                    queue.Push(filled[i], i);
+                }
+                else if (x == 0 || z == 0 || x == n - 1 || z == n - 1)
                 {
                     filled[i] = h[i];
                     closed[i] = true;
@@ -219,11 +232,13 @@ namespace Clube.Core
             }
 
             // 4. The fine grid: the ground, then each river reach cut into it.
-            int size = Mathf.CeilToInt(n * flowCell);
+            int size = Mathf.CeilToInt(n * flowCell / fineCell);
             var map = new WaterMap
             {
                 Origin = origin,
-                CellSize = 1f,
+                CellSize = fineCell,
+                HasSea = sea != null,
+                SeaLevel = sea != null ? extent.SeaLevel : 0f,
                 Size = new int2(size, size),
                 Carve = new NativeArray<float>(size * size, Allocator.Persistent),
                 Surface = new NativeArray<float>(size * size, Allocator.Persistent),
@@ -233,7 +248,7 @@ namespace Clube.Core
                 LakeDistance = new NativeArray<byte>(size * size, Allocator.Persistent),
                 RiverDistance = new NativeArray<byte>(size * size, Allocator.Persistent),
             };
-            float[] fine = Heights(ground, origin, 1f, size);
+            float[] fine = Heights(ground, origin, fineCell, size);
             var target = new float[size * size];
             var surface = new float[size * size];
             var flow = new float2[size * size];
@@ -262,7 +277,10 @@ namespace Clube.Core
                 }
                 float sizeA = Mathf.Clamp01(Mathf.Log(drained[c] / settings.RiverArea) / growth);
                 float sizeB = Mathf.Clamp01(Mathf.Log(Mathf.Max(drained[p], drained[c]) / settings.RiverArea) / growth);
-                float halfA = Mathf.Lerp(widths.x, widths.y, sizeA) * 0.5f, halfB = Mathf.Lerp(widths.x, widths.y, sizeB) * 0.5f;
+                // On cells wider than 1 m a stream is at least a cell and a half across, or it would come out dashed.
+                float narrowest = fineCell > 1f ? fineCell * 0.75f : 0f;
+                float halfA = Mathf.Max(narrowest, Mathf.Lerp(widths.x, widths.y, sizeA) * 0.5f);
+                float halfB = Mathf.Max(narrowest, Mathf.Lerp(widths.x, widths.y, sizeB) * 0.5f);
                 float deepA = Mathf.Lerp(depths.x, depths.y, sizeA), deepB = Mathf.Lerp(depths.x, depths.y, sizeB);
                 // The bed line: from the water's own level at each end, so it only ever runs downhill.
                 float topA = filled[c], topB = Mathf.Min(filled[p], filled[c]);
@@ -270,16 +288,16 @@ namespace Clube.Core
                 float length = math.length(along);
                 float2 direction = along / math.max(length, 1e-4f);
                 float speed = 0.4f + Mathf.Clamp01((topA - topB) / math.max(length, 1e-4f) * 4f);
-                float reach = math.max(halfA, halfB) + math.max(deepA, deepB) + 3f;
-                int x0 = Mathf.Max(0, Mathf.FloorToInt(math.min(a.x, b.x) - reach - origin.x));
-                int x1 = Mathf.Min(size - 1, Mathf.CeilToInt(math.max(a.x, b.x) + reach - origin.x));
-                int z0 = Mathf.Max(0, Mathf.FloorToInt(math.min(a.y, b.y) - reach - origin.y));
-                int z1 = Mathf.Min(size - 1, Mathf.CeilToInt(math.max(a.y, b.y) + reach - origin.y));
+                float reach = math.max(halfA, halfB) + math.max(deepA, deepB) + 3f * fineCell;
+                int x0 = Mathf.Max(0, Mathf.FloorToInt((math.min(a.x, b.x) - reach - origin.x) / fineCell));
+                int x1 = Mathf.Min(size - 1, Mathf.CeilToInt((math.max(a.x, b.x) + reach - origin.x) / fineCell));
+                int z0 = Mathf.Max(0, Mathf.FloorToInt((math.min(a.y, b.y) - reach - origin.y) / fineCell));
+                int z1 = Mathf.Min(size - 1, Mathf.CeilToInt((math.max(a.y, b.y) + reach - origin.y) / fineCell));
                 for (int z = z0; z <= z1; z++)
                 {
                     for (int x = x0; x <= x1; x++)
                     {
-                        var q = new float2(origin.x + x + 0.5f, origin.y + z + 0.5f);
+                        var q = new float2(origin.x + (x + 0.5f) * fineCell, origin.y + (z + 0.5f) * fineCell);
                         float t = math.saturate(math.dot(q - a, along) / math.max(length * length, 1e-6f));
                         float distance = math.distance(q, a + along * t);
                         float half = math.lerp(halfA, halfB, t);
@@ -293,8 +311,8 @@ namespace Clube.Core
                         if (valleys)
                         {
                             float2 centre = a + along * t;
-                            int cx = Mathf.Clamp(Mathf.FloorToInt(centre.x - origin.x), 0, size - 1);
-                            int cz = Mathf.Clamp(Mathf.FloorToInt(centre.y - origin.y), 0, size - 1);
+                            int cx = Mathf.Clamp(Mathf.FloorToInt((centre.x - origin.x) / fineCell), 0, size - 1);
+                            int cz = Mathf.Clamp(Mathf.FloorToInt((centre.y - origin.y) / fineCell), 0, size - 1);
                             top = math.min(top, fine[cx + cz * size]);
                         }
                         float bed = top - deep;
@@ -335,7 +353,7 @@ namespace Clube.Core
                         level = surface[i];
                         map.Flow[i] = flow[i];
                     }
-                    float lake = LakeLevelNear(lakeLevel, n, (x + 0.5f) / flowCell, (z + 0.5f) / flowCell);
+                    float lake = LakeLevelNear(lakeLevel, n, (x + 0.5f) * fineCell / flowCell, (z + 0.5f) * fineCell / flowCell);
                     if (lake > groundAfter && lake >= level)
                     {
                         kind = WaterKind.Lake;
@@ -356,7 +374,50 @@ namespace Clube.Core
             // 5. Distances to water, for the shores and banks.
             Distances(map.Kind, WaterKind.Lake, size, map.LakeDistance);
             Distances(map.Kind, WaterKind.River, size, map.RiverDistance);
+            if (fineCell > 1f)
+            {
+                // Everything reading the distances takes them as metres.
+                for (int i = 0; i < size * size; i++)
+                {
+                    map.LakeDistance[i] = (byte)Mathf.Min(255, Mathf.RoundToInt(map.LakeDistance[i] * fineCell));
+                    map.RiverDistance[i] = (byte)Mathf.Min(255, Mathf.RoundToInt(map.RiverDistance[i] * fineCell));
+                }
+            }
             return map;
+        }
+
+        // The coarse cells under the sea: below its level, where the map says sea, and joined to the area's edge by
+        // such cells (a hollow inland is a lake, found by the flood).
+        private static bool[] SeaCells(float[] h, int n, float2 origin, float cell, WaterExtent extent)
+        {
+            var sea = new bool[n * n];
+            var stack = new Stack<int>();
+            bool Wet(int i) => h[i] < extent.SeaLevel && extent.IsSea(CellCentre(origin, cell, n, i));
+            for (int i = 0; i < n * n; i++)
+            {
+                int x = i % n, z = i / n;
+                if ((x == 0 || z == 0 || x == n - 1 || z == n - 1) && Wet(i))
+                {
+                    sea[i] = true;
+                    stack.Push(i);
+                }
+            }
+            while (stack.Count > 0)
+            {
+                int c = stack.Pop();
+                int cx = c % n, cz = c / n;
+                foreach (int2 d in Neighbours)
+                {
+                    int x = cx + d.x, z = cz + d.y;
+                    if (x < 0 || z < 0 || x >= n || z >= n || sea[x + z * n] || !Wet(x + z * n))
+                    {
+                        continue;
+                    }
+                    sea[x + z * n] = true;
+                    stack.Push(x + z * n);
+                }
+            }
+            return sea;
         }
 
         private static readonly int[] Steps = { 1, -1, 0, 0 };
