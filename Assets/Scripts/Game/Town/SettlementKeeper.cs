@@ -27,12 +27,12 @@ namespace Clube.Game
         /// <summary>Sets the keeper up; called once, before the first frame.</summary>
         /// <param name="shopRoot">The shop's own frame: the middle of its floor, its front out of +z.</param>
         public void Setup(ShopSpecialty specialty, PriceList master, ShopHours hours, DayNightCycle clock, Transform shopRoot, Material material, int seed,
-            float dailyCoins)
+            float dailyCoins, Disposition disposition = null)
         {
             this.hours = hours;
             this.clock = clock;
             shop = shopRoot;
-            trade = new ShopTrade(specialty, master, dailyCoins, clock != null ? clock.Day : 0);
+            trade = new ShopTrade(specialty, master, dailyCoins, clock != null ? clock.Day : 0, disposition);
             figure = gameObject.AddComponent<FigureRig>();
             figure.Build(specialty.Kind, material, seed);
         }

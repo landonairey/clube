@@ -52,7 +52,13 @@ namespace Clube.Game
 
         public void Open(StorageChest chest)
         {
+            Close();
             Current = chest;
+            // GL729: a cart's or vessel's crate counts what the player takes from it.
+            if (chest != null && chest.TryGetComponent(out CargoCrate cargo))
+            {
+                cargo.Opened();
+            }
             drag.Reset();
             chestDrag.Reset();
             openedFrame = Time.frameCount;
@@ -64,9 +70,14 @@ namespace Clube.Game
 
         public void Close()
         {
-            if (Current == null)
+            // A chest destroyed while open (a cart gone from view) still closes the screen.
+            if (ReferenceEquals(Current, null))
             {
                 return;
+            }
+            if (Current != null && Current.TryGetComponent(out CargoCrate cargo))
+            {
+                cargo.Closed();
             }
             Current = null;
             if (player != null)
@@ -77,8 +88,13 @@ namespace Clube.Game
 
         private void Update()
         {
+            if (ReferenceEquals(Current, null))
+            {
+                return;
+            }
             if (Current == null)
             {
+                Close();
                 return;
             }
             // The press that opened the panel mustn't close it in the same frame.

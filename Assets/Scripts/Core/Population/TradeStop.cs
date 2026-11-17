@@ -148,6 +148,41 @@ namespace Clube.Core
             return best;
         }
 
+        /// <summary>
+        /// The shop of <paramref name="at"/> that takes what comes from <paramref name="from"/> (null for goods from
+        /// beyond the map): <see cref="ShopFor"/>, else the merchant, else the first shop; -1 for a settlement without shops.
+        /// GL729: the shop wronged when those goods are stolen on the way.
+        /// </summary>
+        public static int ShopTaking(PlannedSettlement from, PlannedSettlement at)
+        {
+            if (at == null || at.Shops.Count == 0)
+            {
+                return -1;
+            }
+            int shop = ShopFor(from, at);
+            if (shop < 0)
+            {
+                shop = at.Shops.FindIndex(s => s.Specialty.Chain == SupplyChains.Merchant);
+            }
+            return shop < 0 ? 0 : shop;
+        }
+
+        /// <summary>
+        /// GL729: the settlement the goods aboard a cart or vessel are for, at a place on its timetable between
+        /// <paramref name="from"/> and <paramref name="to"/> (-1 for a road's end or beyond the map) with a rest of
+        /// <paramref name="rest"/> at each end: the end it is heading for; standing at an end, that end for the first half
+        /// of its stop (what it came with) and the other end for the second (what it has loaded).
+        /// </summary>
+        public static int GoodsBoundFor(RunPlace state, float rest, int from, int to)
+        {
+            int ahead = state.Outbound ? to : from;
+            if (state.Moving)
+            {
+                return ahead;
+            }
+            return state.Rested < rest * 0.5f ? ahead : state.Outbound ? from : to;
+        }
+
         private static string Key(TradeGood good)
         {
             return good.InGame ? good.ItemId : good.Name;

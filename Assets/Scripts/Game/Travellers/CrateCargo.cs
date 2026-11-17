@@ -47,11 +47,15 @@ namespace Clube.Game
                     continue;
                 }
                 holds[i] = wanted;
+                // GL729: the vehicle's own unloading and loading is not the player taking.
+                crate.TryGetComponent(out CargoCrate watch);
+                watch?.Restocking(true);
                 StorageText.Fill(crate.Storage, "");
                 if (full)
                 {
                     CargoLoad.FillOne(crate, goods, new System.Random(unchecked(seed * 31 + trip * 131 + i * 7)));
                 }
+                watch?.Restocking(false);
             }
         }
     }

@@ -40,6 +40,9 @@ namespace Clube.Game
         /// <summary>The one-way trip its crates were last loaded for.</summary>
         public int LoadedTrip => loadedTrip;
 
+        /// <summary>GL729: the player closed one of its crates having taken goods from it.</summary>
+        public event System.Action<IReadOnlyList<(ItemDefinition Item, float Amount)>> Robbed;
+
         /// <summary>The height of the water it last floated on.</summary>
         public float Surface { get; set; }
 
@@ -90,6 +93,7 @@ namespace Clube.Game
                     {
                         chest.MadeOf(1f);
                         crates.Add(chest);
+                        crate.AddComponent<CargoCrate>().Taken += taken => Robbed?.Invoke(taken);
                     }
                 }
             }
