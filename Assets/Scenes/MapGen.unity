@@ -5511,6 +5511,9 @@ GameObject:
   - component: {fileID: 1350119499}
   - component: {fileID: 1350119498}
   - component: {fileID: 1350119497}
+  - component: {fileID: 1350119502}
+  - component: {fileID: 1350119501}
+  - component: {fileID: 1350119500}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -7973,3 +7976,55 @@ SceneRoots:
   - {fileID: 555367919}
   - {fileID: 870862399}
   - {fileID: 1566741226}
+--- !u!114 &1350119500
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc03f9eec55be0345bd532822678cb2d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.MapRoadTint
+  session: {fileID: 1350119487}
+  texelSize: 2
+  tint: {r: 1.1, g: 1.08, b: 1.05, a: 1}
+--- !u!114 &1350119501
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c56641066a8c2684bb2185a6084bb0a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.MapStandIns
+  session: {fileID: 1350119487}
+  settlements: {fileID: 1350119490}
+  view: {fileID: 1350119502}
+  budgetMilliseconds: 4
+--- !u!114 &1350119502
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3167c180eb3433f46ba660c70ae01ca1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.DistantBuildingView
+  worldView: {fileID: 0}
+  material: {fileID: 2100000, guid: 2eb68e12a9f01d7409481a21bf11c5bf, type: 2}
+  show: 1
+  range: 6000
+  mergeFrom: 900
+  fadeWidth: 60
+  walls: {r: 0.55, g: 0.42, b: 0.3, a: 1}
+  stoneWalls: {r: 0.58, g: 0.57, b: 0.54, a: 1}
+  roofs: {r: 0.42, g: 0.26, b: 0.2, a: 1}
