@@ -6,7 +6,7 @@ namespace Clube.Game
 {
     /// <summary>
     /// Marks the map's plan on the ground until the settlements are built (GL601): a tall post with a banner in the
-    /// type's colour and the name at every settlement site, and short posts in the road class's colour along the
+    /// type's colour at every settlement site, and short posts in the road class's colour along the
     /// roads near the viewer. Markers only: no colliders, nothing written into the terrain.
     /// </summary>
     public class MapMarkers : MonoBehaviour
@@ -36,7 +36,7 @@ namespace Clube.Game
 
         private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
 
-        private readonly List<Transform> labels = new List<Transform>();
+        private readonly List<Transform> sites = new List<Transform>();
         private readonly List<GameObject> roadPostObjects = new List<GameObject>();
         private Transform settlementRoot, roadRoot;
         private MaterialPropertyBlock block;
@@ -64,7 +64,7 @@ namespace Clube.Game
         private bool show = true;
 
         /// <summary>Settlement posts standing now.</summary>
-        public int SettlementCount => labels.Count;
+        public int SettlementCount => sites.Count;
 
         /// <summary>Road posts shown round the viewer now.</summary>
         public int RoadPostCount { get; private set; }
@@ -103,16 +103,6 @@ namespace Clube.Game
             else if (!havePosts || (eye - postsCentre).sqrMagnitude > 20f * 20f)
             {
                 PlaceRoadPosts(eye);
-            }
-            // Names face the viewer.
-            foreach (Transform label in labels)
-            {
-                Vector3 away = label.position - eye;
-                away.y = 0f;
-                if (away.sqrMagnitude < 2000f * 2000f && away.sqrMagnitude > 0.01f)
-                {
-                    label.rotation = Quaternion.LookRotation(away);
-                }
             }
         }
 
@@ -165,8 +155,7 @@ namespace Clube.Game
             {
                 Destroy(settlementRoot.GetChild(i).gameObject);
             }
-            labels.Clear();
-            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            sites.Clear();
             foreach (PlannedSettlement settlement in session.Plan.Settlements)
             {
                 // Taller posts for larger places, so a capital stands out from a camp.
@@ -179,20 +168,8 @@ namespace Clube.Game
                 Box(site, "Post", new Vector3(0f, height * 0.5f - 1f, 0f), new Vector3(0.35f, height + 2f, 0.35f), new Color(0.3f, 0.2f, 0.12f));
                 Box(site, "Banner", new Vector3(0.9f, height - 0.8f, 0f), new Vector3(1.6f, 1.2f, 0.08f), colour);
 
-                var label = new GameObject("Name");
-                label.transform.SetParent(site, false);
-                label.transform.localPosition = new Vector3(0f, height + 1.4f, 0f);
-                var text = label.AddComponent<TextMesh>();
-                text.font = font;
-                text.text = $"{settlement.Name}\n<size=40>{settlement.Type.Name}</size>";
-                text.richText = true;
-                text.fontSize = 64;
-                text.characterSize = 0.16f;
-                text.anchor = TextAnchor.LowerCenter;
-                text.alignment = TextAlignment.Center;
-                text.color = Color.white;
-                label.GetComponent<MeshRenderer>().sharedMaterial = font.material;
-                labels.Add(label.transform);
+                // GL663: no floating name over the post: names are on the signposts and the map.
+                sites.Add(site);
             }
         }
 
