@@ -87,6 +87,22 @@ namespace Clube.Core.Tests
             Assert.IsNull(ItemIconShapes.MaterialOf(ingot, materials));
         }
 
+        [Test]
+        public void Icon_WearsTheUnbrokenStage()
+        {
+            ItemDefinition ore = ItemDefinition.Create("ore", "Ore");
+            VoxelMaterial whole = VoxelMaterial.Create(1, "Ore", VoxelMaterialCategory.Aggregate);
+            VoxelMaterial cracked = VoxelMaterial.Create(2, "Cracked ore", VoxelMaterialCategory.Aggregate);
+            VoxelMaterial loose = VoxelMaterial.Create(3, "Loose ore", VoxelMaterialCategory.Aggregate);
+            SetField(whole, "breaksInto", cracked);
+            SetField(cracked, "breaksInto", loose);
+            SetField(whole, "drop", ore);
+            SetField(cracked, "drop", ore);
+            SetField(loose, "drop", ore);
+            MaterialRegistry materials = MaterialRegistry.Create(whole, cracked, loose);
+            Assert.AreSame(whole, ItemIconShapes.MaterialOf(ore, materials), "a lump of ore shows no cracks (GL696)");
+        }
+
         private static void SetField(UnityEngine.Object target, string field, object value)
         {
             var serialized = new SerializedObject(target);

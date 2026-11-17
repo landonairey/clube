@@ -32,7 +32,7 @@ namespace Clube.Core
 
         /// <summary>
         /// The material an item is a piece of, whose texture its icon wears: the one it goes back into the ground as,
-        /// or for a crushed ore the ore's (<see cref="ItemDefinition.PurityAs"/>). Null for an item of no material
+        /// or for a crushed ore the ore's (<see cref="ItemDefinition.PurityAs"/>), in its first (unbroken) stage. Null for an item of no material
         /// (an ingot, a hide), which is drawn in its <see cref="ItemDefinition.IconTint"/>.
         /// </summary>
         public static VoxelMaterial MaterialOf(ItemDefinition item, MaterialRegistry materials)
@@ -41,7 +41,9 @@ namespace Clube.Core
             {
                 return null;
             }
-            return materials.PlacedFrom(item) ?? (item.PurityAs != null ? materials.PlacedFrom(item.PurityAs) : null);
+            VoxelMaterial placed = materials.PlacedFrom(item) ?? (item.PurityAs != null ? materials.PlacedFrom(item.PurityAs) : null);
+            // The unbroken stage: a cracked texture reads as damage on an item (GL696).
+            return materials.WholeStageOf(placed);
         }
     }
 }
