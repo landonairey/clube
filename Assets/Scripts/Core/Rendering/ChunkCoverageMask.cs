@@ -14,6 +14,7 @@ namespace Clube.Core
     public sealed class ChunkCoverageMask : System.IDisposable
     {
         private readonly WorldView view;
+        private readonly System.Func<Vector2Int, bool> alsoReady;
         private readonly int size;
         private readonly HashSet<Vector3Int> meshed = new HashSet<Vector3Int>();
         private readonly Dictionary<Vector2Int, int> layersMeshed = new Dictionary<Vector2Int, int>();
@@ -24,9 +25,11 @@ namespace Clube.Core
         private int drawVersion;
 
         /// <param name="radius">Columns covered each way from the focus column (the largest render distance).</param>
-        public ChunkCoverageMask(WorldView view, int radius)
+        /// <param name="alsoReady">A further condition for a column to count as covered (GL654: its water is meshed); call <see cref="Recheck"/> when it changes. Null for none.</param>
+        public ChunkCoverageMask(WorldView view, int radius, System.Func<Vector2Int, bool> alsoReady = null)
         {
             this.view = view;
+            this.alsoReady = alsoReady;
             size = radius * 2 + 3;
             texels = new byte[size * size];
             Texture = new Texture2D(size, size, TextureFormat.R8, false, true)
@@ -126,9 +129,16 @@ namespace Clube.Core
             }
         }
 
+        /// <summary>Looks at a column again, after the further condition given to the constructor changed for it.</summary>
+        public void Recheck(Vector2Int column)
+        {
+            SetTexel(column);
+        }
+
         private bool IsCovered(Vector2Int column)
         {
-            return layersMeshed.TryGetValue(column, out int count) && count >= view.Config.WorldHeightInChunks && view.IsColumnDrawn(column);
+            return layersMeshed.TryGetValue(column, out int count) && count >= view.Config.WorldHeightInChunks && view.IsColumnDrawn(column)
+                   && (alsoReady == null || alsoReady(column));
         }
 
         private void SetTexel(Vector2Int column)

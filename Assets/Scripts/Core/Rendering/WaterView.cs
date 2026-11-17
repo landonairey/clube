@@ -51,6 +51,10 @@ namespace Clube.Core
         [SerializeField, Range(0.25f, 8f)]
         private float buildBudgetMs = 1.5f;
 
+        [Tooltip("Milliseconds a frame for water meshes while chunks near the viewer still wait for their first one (GL654): the far water stands in for them meanwhile, so this only sets how soon the near water (ripples, shores, depth) takes over.")]
+        [SerializeField, Range(0.25f, 16f)]
+        private float catchUpBudgetMs = 5f;
+
         [Tooltip("Draw the far water sheets (the map's rivers and lakes beyond the loaded chunks). Off for a small fixed area such as the title diorama, so no water floats outside it (GL536).")]
         [SerializeField]
         private bool drawFarWater = true;
@@ -80,6 +84,14 @@ namespace Clube.Core
         private readonly HashSet<int> wetTiles = new HashSet<int>();
         private readonly Dictionary<Vector3Int, GameObject> chunkMeshes = new Dictionary<Vector3Int, GameObject>();
         private readonly HashSet<Vector3Int> dirtyChunks = new HashSet<Vector3Int>();
+        // GL654: wet chunks with no mesh yet, and how many in each column; this frame's build order.
+        private readonly HashSet<Vector3Int> awaiting = new HashSet<Vector3Int>();
+        private readonly Dictionary<Vector2Int, int> awaitingColumns = new Dictionary<Vector2Int, int>();
+        private readonly List<(int Order, Vector3Int Coord)> buildOrder = new List<(int, Vector3Int)>();
+        // Wet chunks whose water has no surface to draw (wholly under it): not built again until their water or ground changes.
+        private readonly HashSet<Vector3Int> meshless = new HashSet<Vector3Int>();
+        // Added to a redraw's distance (in chunks, squared), so every first mesh is built before any redraw.
+        private const int RedrawAfter = 1 << 24;
         // Loaded chunks holding water.
         private readonly HashSet<Vector3Int> wetChunks = new HashSet<Vector3Int>();
         private readonly System.Diagnostics.Stopwatch budget = new System.Diagnostics.Stopwatch();
@@ -185,6 +197,7 @@ namespace Clube.Core
                 foreach (Vector3Int coord in changed)
                 {
                     dirtyChunks.Add(coord);
+                    meshless.Remove(coord);
                     if (world.TryGetChunk(coord, out Chunk chunk) && chunk.HasWater)
                     {
                         wetChunks.Add(coord);
@@ -224,7 +237,7 @@ namespace Clube.Core
             {
                 return;
             }
-            coverage ??= new ChunkCoverageMask(worldView, WorldView.MaxRenderDistance);
+            coverage ??= new ChunkCoverageMask(worldView, WorldView.MaxRenderDistance, IsWaterReady);
             Vector3Int focusChunk = worldView.FocusChunk;
             coverage.Update(new Vector2Int(focusChunk.x, focusChunk.z));
             float chunkWidth = world.Grid.ChunkWorldSize.x;
@@ -286,6 +299,9 @@ namespace Clube.Core
             dirtyTiles.Clear();
             dirtyChunks.Clear();
             wetChunks.Clear();
+            awaiting.Clear();
+            awaitingColumns.Clear();
+            meshless.Clear();
             TriangleCount = 0;
         }
 
@@ -442,6 +458,7 @@ namespace Clube.Core
             if (world != null && world.TryGetOwner(sample, out Chunk chunk, out _) && chunk.HasWater)
             {
                 dirtyChunks.Add(world.Grid.VoxelToChunk(sample));
+                meshless.Remove(world.Grid.VoxelToChunk(sample));
             }
         }
 
@@ -463,19 +480,64 @@ namespace Clube.Core
             {
                 wetChunks.Add(coord);
                 dirtyChunks.Add(coord);
+                Await(coord);
             }
             foreach (Vector3Int step in Faces)
             {
                 if (world.TryGetChunk(coord + step, out Chunk next) && next.HasWater)
                 {
                     dirtyChunks.Add(coord + step);
+                    meshless.Remove(coord + step);
                 }
             }
 
         }
 
+        // GL654: a wet chunk with no water mesh yet. Until it has one (or turns out to need none) the far water stays
+        // drawn over its column, so the near water never opens a gap as the viewer walks towards it.
+        private void Await(Vector3Int coord)
+        {
+            if (chunkMeshes.ContainsKey(coord) || !awaiting.Add(coord))
+            {
+                return;
+            }
+            var column = new Vector2Int(coord.x, coord.z);
+            awaitingColumns.TryGetValue(column, out int count);
+            awaitingColumns[column] = count + 1;
+            coverage?.Recheck(column);
+        }
+
+        private void Settle(Vector3Int coord)
+        {
+            if (!awaiting.Remove(coord))
+            {
+                return;
+            }
+            var column = new Vector2Int(coord.x, coord.z);
+            int count = awaitingColumns[column] - 1;
+            if (count > 0)
+            {
+                awaitingColumns[column] = count;
+            }
+            else
+            {
+                awaitingColumns.Remove(column);
+            }
+            coverage?.Recheck(column);
+        }
+
+        private bool IsWaterReady(Vector2Int column)
+        {
+            return !awaitingColumns.ContainsKey(column);
+        }
+
+        /// <summary>Wet chunks waiting for their first water mesh: the far water stands in over their columns (GL654).</summary>
+        public int AwaitingChunks => awaiting.Count;
+
         private void OnChunkUnloaded(Vector3Int coord)
         {
+            Settle(coord);
+            meshless.Remove(coord);
             dirtyChunks.Remove(coord);
             wetChunks.Remove(coord);
             if (chunkMeshes.TryGetValue(coord, out GameObject go))
@@ -497,28 +559,33 @@ namespace Clube.Core
             }
             Vector3 focus = worldView.Focus != null ? worldView.Focus.position : transform.position;
             Vector3Int focusChunk = world.Grid.WorldToChunk(transform.InverseTransformPoint(focus));
-            int built = 0;
-            while (dirtyChunks.Count > 0 && (built == 0 || budget.Elapsed.TotalMilliseconds < buildBudgetMs))
+            // Chunks with no water mesh yet go first (the far water is standing in for them), and while any wait the
+            // frame gives more time; the rest are redraws of water already shown.
+            buildOrder.Clear();
+            foreach (Vector3Int coord in dirtyChunks)
             {
-                Vector3Int nearest = default;
-                int best = int.MaxValue;
-                foreach (Vector3Int coord in dirtyChunks)
+                Vector3Int d = coord - focusChunk;
+                int distance = d.x * d.x + d.y * d.y + d.z * d.z;
+                buildOrder.Add((awaiting.Contains(coord) ? distance : distance + RedrawAfter, coord));
+            }
+            buildOrder.Sort((a, b) => a.Order.CompareTo(b.Order));
+            float limit = awaiting.Count > 0 ? Mathf.Max(buildBudgetMs, catchUpBudgetMs) : buildBudgetMs;
+            int built = 0;
+            foreach ((int _, Vector3Int next) in buildOrder)
+            {
+                if (built > 0 && budget.Elapsed.TotalMilliseconds >= limit)
                 {
-                    Vector3Int d = coord - focusChunk;
-                    int distance = d.x * d.x + d.y * d.y + d.z * d.z;
-                    if (distance < best)
-                    {
-                        best = distance;
-                        nearest = coord;
-                    }
+                    break;
                 }
-                dirtyChunks.Remove(nearest);
-                if (!IsDrawn(nearest))
+                dirtyChunks.Remove(next);
+                if (!IsDrawn(next))
                 {
-                    DropChunkMesh(nearest);
+                    DropChunkMesh(next);
+                    Settle(next);
                     continue;
                 }
-                BuildChunk(world, nearest);
+                BuildChunk(world, next);
+                Settle(next);
                 built++;
             }
         }
@@ -543,14 +610,16 @@ namespace Clube.Core
             foreach (Vector3Int coord in wetChunks)
             {
                 bool drawn = IsDrawn(coord);
-                if (drawn && !chunkMeshes.ContainsKey(coord))
+                if (drawn && !chunkMeshes.ContainsKey(coord) && !meshless.Contains(coord))
                 {
                     dirtyChunks.Add(coord);
+                    Await(coord);
                 }
                 else if (!drawn)
                 {
                     DropChunkMesh(coord);
                     dirtyChunks.Remove(coord);
+                    Settle(coord);
                 }
             }
         }
@@ -564,8 +633,10 @@ namespace Clube.Core
             }
             if (!world.IsLoaded(coord) || !mesher.Build(world, coord, worldView.Config.IsoLevel, water))
             {
+                meshless.Add(coord);
                 return;
             }
+            meshless.Remove(coord);
             var mesh = new Mesh { name = "Water", indexFormat = mesher.Vertices.Count > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16 };
             mesh.SetVertices(mesher.Vertices);
             mesh.SetUVs(0, mesher.Flows);
