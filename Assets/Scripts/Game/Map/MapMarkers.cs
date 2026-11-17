@@ -5,9 +5,9 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// Marks the map's plan on the ground until the settlements are built (GL601): a tall post with a banner in the
-    /// type's colour at every settlement site, and short posts in the road class's colour along the
-    /// roads near the viewer. Markers only: no colliders, nothing written into the terrain.
+    /// Marks the map's plan on the ground (GL601): short posts in the road class's colour along the roads near the
+    /// viewer, when <see cref="roadPosts"/> is on. Markers only: no colliders, nothing written into the terrain. The tall
+    /// post and banner that stood at every settlement site are gone (GL671).
     /// </summary>
     public class MapMarkers : MonoBehaviour
     {
@@ -30,13 +30,9 @@ namespace Clube.Game
         [SerializeField, Range(4f, 40f)]
         private float roadPostSpacing = 12f;
 
-        [Tooltip("Height of a settlement's post in metres.")]
-        [SerializeField, Range(3f, 30f)]
-        private float settlementPostHeight = 12f;
 
         private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
 
-        private readonly List<Transform> sites = new List<Transform>();
         private readonly List<GameObject> roadPostObjects = new List<GameObject>();
         private Transform settlementRoot, roadRoot;
         private MaterialPropertyBlock block;
@@ -63,8 +59,6 @@ namespace Clube.Game
         [SerializeField]
         private bool show = true;
 
-        /// <summary>Settlement posts standing now.</summary>
-        public int SettlementCount => sites.Count;
 
         /// <summary>Road posts shown round the viewer now.</summary>
         public int RoadPostCount { get; private set; }
@@ -79,7 +73,7 @@ namespace Clube.Game
             if (session.Version != version)
             {
                 version = session.Version;
-                BuildSettlements();
+                EnsureParts();
                 havePosts = false;
             }
             if (!show || view == null)
@@ -146,31 +140,6 @@ namespace Clube.Game
         {
             block.SetColor(BaseColor, colour);
             target.SetPropertyBlock(block);
-        }
-
-        private void BuildSettlements()
-        {
-            EnsureParts();
-            for (int i = settlementRoot.childCount - 1; i >= 0; i--)
-            {
-                Destroy(settlementRoot.GetChild(i).gameObject);
-            }
-            sites.Clear();
-            foreach (PlannedSettlement settlement in session.Plan.Settlements)
-            {
-                // Taller posts for larger places, so a capital stands out from a camp.
-                float height = settlementPostHeight * Mathf.Lerp(0.6f, 1.6f, Mathf.Sqrt(settlement.Type.Parcels) / 5f);
-                float ground = session.Map.Height(settlement.Position.x, settlement.Position.y);
-                var site = new GameObject(settlement.Name).transform;
-                site.SetParent(settlementRoot, false);
-                site.localPosition = new Vector3(settlement.Position.x, ground, settlement.Position.y);
-                Color colour = MapPicture.SettlementColour(settlement.Type);
-                Box(site, "Post", new Vector3(0f, height * 0.5f - 1f, 0f), new Vector3(0.35f, height + 2f, 0.35f), new Color(0.3f, 0.2f, 0.12f));
-                Box(site, "Banner", new Vector3(0.9f, height - 0.8f, 0f), new Vector3(1.6f, 1.2f, 0.08f), colour);
-
-                // GL663: no floating name over the post: names are on the signposts and the map.
-                sites.Add(site);
-            }
         }
 
         // Posts every few metres along each road within range of the viewer, reusing the posts from last time.

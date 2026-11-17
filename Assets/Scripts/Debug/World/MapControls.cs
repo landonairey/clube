@@ -154,7 +154,7 @@ namespace Clube.Debug
                 }
                 if (show && session.IsReady)
                 {
-                    frame.Line($"{markers.SettlementCount} site posts · {markers.RoadPostCount} road posts near the viewer");
+                    frame.Line($"{markers.RoadPostCount} road posts near the viewer");
                 }
             }
             if (mapScreen != null)
