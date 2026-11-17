@@ -368,6 +368,16 @@ flowchart LR
   over steps that stay square inside. Work-yard fixtures (`YardFixture`) are Game meshes (`YardFixtureMeshes`, stood by
   `MapSettlements.FitYard`); `BuildingDesign.StationFor` stations a shop's yard workers at them (GL713, GL714). Streets
   wander and climbs bend (GL712), straight only where lanes join.
+  Landmarks, walls, lights (GL715-GL717): a type's `Landmarks` (landmark `BuildingDesign` rows, never picked by
+  `Choose`: the capital's castle and guard tower, a city's guard tower) take the first places after its shops; landmark
+  rows widen the places only in types that build them. `Masonry`/`Battlements`/`Turrets` make a row stone with a flat
+  crenellated roof (no `RoofSkin`). A type with `Walls` gets a ring (`SettlementSite.Wall`, `SettlementLayout.PlanWall`)
+  that `SettlementWriter` writes as 4 m `Wall` pieces after everything under them (`SettlementWalls.Blocks`: stone
+  following the ground, merlons, corner towers, gateways where roads or lanes cross). `SettlementLights.Plan` puts a
+  type's light rules (`SettlementLightRule`, kinds `SettlementLightKind`) beside building fronts on free terrace ground;
+  `MapSettlements.FitLights` stands each with its building (`SettlementLamp`, `SettlementLightMeshes`, lit at night).
+  A settlement's edge signpost carries `Settlement`/`Outward`/`Roadside`; `MapRoads` stands a swinging chained name
+  board beside it (`Signboard`, `SignboardSway`).
 - **The map in a scene** (GL598-GL601, `Game/Map/`): `MapSession` (one per scene, `MapSession.Current`) watches
   `WorldView.Generator`; when it is a `BoundedMapGenerator` it builds the survey and the plan once (main thread: the
   survey completes height jobs; about 4 s at 5 km) and raises `Rebuilt`, again after every regenerate. Everything that
