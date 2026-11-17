@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
 
@@ -14,7 +14,9 @@ namespace Clube.Game
     public class Villager : MonoBehaviour, IClosableInteractable
     {
         private const float WalkSpeed = 1.4f, WorkSpeed = 2.1f;
-        private const float SeekSeconds = 1.5f, GroundSeconds = 0.15f, Arrive = 0.2f;
+        // GL668: metres two people keep between them, and how fast they step apart when closer.
+        private const float Personal = 0.75f, SpreadSpeed = 1.2f;
+        private const float SeekSeconds = 1.5f, GroundSeconds = 0.15f;
 
         private static readonly string[] Names =
         {
@@ -38,6 +40,8 @@ namespace Clube.Game
         private bool strolling;
         private Mesh toolMesh;
         private bool toolShown;
+        private Mesh shownMesh;
+        private IReadOnlyList<Villager> neighbours;
         private float heading;
         private Inventory sack;
         private float dazeTimer;
@@ -91,8 +95,10 @@ namespace Clube.Game
         private SettlementBuilding Home => Site.Buildings[Resident.Home];
 
         /// <summary>Sets the resident up where its duty of the moment is done; called once, before the first frame.</summary>
-        public void Setup(SettlementPeople people, SettlementSite site, SettlementWalks walks, Resident resident, Material material)
+        public void Setup(SettlementPeople people, SettlementSite site, SettlementWalks walks, Resident resident, Material material,
+            IReadOnlyList<Villager> neighbours = null)
         {
+            this.neighbours = neighbours;
             People = people;
             Site = site;
             Resident = resident;
@@ -172,7 +178,7 @@ namespace Clube.Game
                 // Flat on the ground where it was struck.
                 dazeTimer -= Time.deltaTime;
                 figure.Pose = FigureAction.Lie;
-                ShowTool(false);
+                ShowTool(null);
                 Ground(false);
                 Place();
                 figure.LieAlong(dazeTimer > 0f, People.ToWorld(at), transform.forward);
@@ -204,7 +210,7 @@ namespace Clube.Game
             {
                 // Workers on the same job stand round it, not in one another.
                 float turn = Resident.Index * 2.4f;
-                arrived = Walk(new Vector2(stand.x + Mathf.Cos(turn) * 0.45f, stand.z + Mathf.Sin(turn) * 0.45f), false, WorkSpeed * work.Pace);
+                arrived = Walk(new Vector2(stand.x + Mathf.Cos(turn) * 0.9f, stand.z + Mathf.Sin(turn) * 0.9f), false, WorkSpeed * work.Pace);
                 working = arrived;
                 look = new Vector2(face.x - at.x, face.z - at.z);
             }
@@ -229,7 +235,8 @@ namespace Clube.Game
             }
             bool atPlace = arrived && (Duty.Place != DutyPlace.Field || working);
             figure.Pose = lying ? FigureAction.Lie : !arrived ? FigureAction.Walk : atPlace ? Duty.Pose : FigureAction.Stand;
-            ShowTool(Duty.Place == DutyPlace.Field && toolMesh != null);
+            // GL669: a yard duty with a prop (the sweeper's broom) holds it once there, as field work holds its tool.
+            ShowTool(Duty.Place == DutyPlace.Field && toolMesh != null ? toolMesh : atPlace ? FigureProps.For(Duty.Prop) : null);
             Place();
             SettlementBuilding home = Home;
             Vector2 bed = home.ToWorld(BedLocal());
@@ -306,9 +313,10 @@ namespace Clube.Game
                 }
                 if (from != to)
                 {
-                    if (!indoors && SettlementSite.Beyond(Site.Bounds, from) > 12f && SettlementSite.Beyond(Site.Bounds, to) > 12f)
+                    if (!indoors && SettlementSite.Beyond(Site.Bounds, from) > 12f && SettlementSite.Beyond(Site.Bounds, to) > 12f
+                        && walks.StraightCost(from, to) <= Vector2.Distance(from, to) + 0.01f)
                     {
-                        // Out in the country both ends: straight there, the settlement's lanes are no help.
+                        // Out in the country both ends, with no building between (GL668): straight there, the settlement's lanes are no help.
                         leg.Clear();
                         leg.Add(to);
                     }
@@ -340,11 +348,48 @@ namespace Clube.Game
                 heading = Mathf.Atan2(way.x, way.y) * Mathf.Rad2Deg;
                 step = 0f;
             }
+            bool inside = IsIndoors(here);
+            if (!inside)
+            {
+                here = Spread(here);
+            }
             at.x = here.x;
             at.z = here.y;
             figure.Speed = speed;
-            Ground(IsIndoors(here));
-            return path.Count == 0 && (here - to).sqrMagnitude <= Arrive * Arrive;
+            Ground(inside);
+            // Outdoors, people pressed apart (GL668) count as there within their personal room.
+            float arrive = indoors ? 0.2f : Personal;
+            return path.Count == 0 && (here - to).sqrMagnitude <= arrive * arrive;
+        }
+
+        // GL668: steps away from anyone standing too close, and out of any building but the home (whose door it may be
+        // passing through), so people neither stand in one another nor press into walls.
+        private Vector2 Spread(Vector2 here)
+        {
+            if (neighbours != null)
+            {
+                Vector2 push = Vector2.zero;
+                foreach (Villager other in neighbours)
+                {
+                    if (other == null || other == this || other.IsDazed)
+                    {
+                        continue;
+                    }
+                    Vector2 away = here - new Vector2(other.at.x, other.at.z);
+                    float distance = away.magnitude;
+                    if (distance < Personal)
+                    {
+                        // Two on one spot part by their seeds, not both the same way.
+                        away = distance > 1e-3f ? away / distance : TownLayout.Turn(Vector2.right, (Resident.Seed & 0xff) * 1.41f);
+                        push += away * (Personal - distance);
+                    }
+                }
+                if (push.sqrMagnitude > 1e-6f)
+                {
+                    here += Vector2.ClampMagnitude(push, 1f) * (SpreadSpeed * Time.deltaTime);
+                }
+            }
+            return walks.PushOut(here, 0.25f, Resident.Home);
         }
 
         // Keeps the feet on the ground: the terrain under them (so a pit or a tunnel's floor carries them), else the site's own height.
@@ -369,12 +414,13 @@ namespace Clube.Game
             transform.localRotation = Quaternion.Euler(0f, heading, 0f);
         }
 
-        private void ShowTool(bool show)
+        private void ShowTool(Mesh held)
         {
-            if (show != toolShown)
+            if (held != shownMesh || !toolShown)
             {
-                toolShown = show;
-                figure.Hold(show ? toolMesh : null);
+                toolShown = true;
+                shownMesh = held;
+                figure.Hold(held);
             }
         }
 
@@ -415,7 +461,8 @@ namespace Clube.Game
 
         private Vector2 YardSpot()
         {
-            return walks.Front(Resident.Shop, -2.2f + 1.1f * (Resident.Index % 5), 1.2f + 0.9f * (Resident.Index / 5 % 2));
+            // GL669: never a spot inside a neighbouring building, where its worker would stand pressed against the wall.
+            return walks.PushOut(walks.Front(Resident.Shop, -2.2f + 1.1f * (Resident.Index % 5), 1.2f + 0.9f * (Resident.Index / 5 % 2)), 0.4f);
         }
     }
 }
