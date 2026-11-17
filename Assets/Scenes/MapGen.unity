@@ -6041,7 +6041,7 @@ MonoBehaviour:
   - {fileID: 8300000, guid: d9ec7c290bc9ce44fa8a62ded6497a9e, type: 3}
   windVolume: {x: 0.12, y: 0.35}
   leavesVolume: 0.18
-  feller: {fileID: 0}
+  feller: {fileID: 1697135615}
   rustlePerFelledTree: 0.2
   birdSeconds: {x: 8, y: 28}
   birdVolume: 0.35
@@ -7900,7 +7900,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.TreeFeller
   worldView: {fileID: 1350119460}
   toolUser: {fileID: 1697135569}
-  view: {fileID: 0}
+  view: {fileID: 371098496}
   dustMaterial: {fileID: 2100000, guid: 06c4f69261f2a614d90fc1db213cc9c4, type: 2}
   dustColour: {r: 0.62, g: 0.55, b: 0.45, a: 0.75}
   burstMaterial: {fileID: 2100000, guid: 4d599372257648141b207c3dbd8d5b8f, type: 2}

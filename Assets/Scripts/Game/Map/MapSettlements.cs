@@ -182,6 +182,11 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            // Inventory tooltips show what the merchants pay (GL366, GL660): on the bounded map the price list is this one.
+            if (prices != null)
+            {
+                ItemSlotGui.Prices = prices;
+            }
             hold.Rule = HoldsUnplanned;
             holding = session != null ? session.WorldView : null;
             if (holding != null)
