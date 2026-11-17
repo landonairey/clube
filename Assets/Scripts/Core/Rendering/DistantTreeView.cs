@@ -27,7 +27,8 @@ namespace Clube.Core
 
         // Instances per draw call: the most RenderMeshInstanced takes from an array.
         private const int BatchSize = 1023;
-        private const int Kinds = 2;
+        // Most kinds drawn (GL721: birch, maple and the species rows); a tree of a kind past it draws as birch.
+        private const int Kinds = 6;
         private const int Levels = DistantTreeMeshes.Levels;
 
         private static readonly int CoverageMaskId = Shader.PropertyToID("_CoverageMask");
@@ -79,6 +80,8 @@ namespace Clube.Core
         private ChunkCoverageMask coverage;
         // Per kind, variant and level: (kind * Variants + variant) * Levels + level.
         private Mesh[] meshes;
+        // Per kind and variant: the crown ratio of the tree its meshes were built from (GL720).
+        private readonly float[] variantCrownRatios = new float[Kinds * Variants];
         private (Color, Color, Color, Color) builtColors;
         private (ITerrainGenerator, TreeGeneration, int) builtShapes;
         private readonly MaterialPropertyBlock[] levelProperties = new MaterialPropertyBlock[Levels];
@@ -278,7 +281,7 @@ namespace Clube.Core
             var sizes = new int[Kinds * Variants];
             foreach (DistantTree tree in tile.Trees)
             {
-                sizes[(tree.Maple ? Variants : 0) + VariantOf(tree)]++;
+                sizes[KindOf(tree) * Variants + VariantOf(tree)]++;
             }
             var draw = new TileDraw { Trees = new Matrix4x4[Kinds * Variants][], Count = tile.Trees.Count };
             for (int i = 0; i < sizes.Length; i++)
@@ -289,11 +292,12 @@ namespace Clube.Core
             Vector3 min = Vector3.positiveInfinity, max = Vector3.negativeInfinity;
             foreach (DistantTree tree in tile.Trees)
             {
-                float width = Mathf.Lerp(0.9f, 1.1f, tree.Variation);
+                int list = KindOf(tree) * Variants + VariantOf(tree);
+                // A very tall tree's crown is narrower than its variant scaled up (GL720, TreeShape.CrownHeight).
+                float width = Mathf.Lerp(0.9f, 1.1f, tree.Variation) * CrownRatio(tree.Height) / Mathf.Max(0.01f, variantCrownRatios[list]);
                 float yaw = tree.Variation * 2520f;
                 Matrix4x4 matrix = toWorld * Matrix4x4.TRS(
                     tree.Root, Quaternion.Euler(0f, yaw, 0f), new Vector3(tree.Height * width, tree.Height, tree.Height * width));
-                int list = (tree.Maple ? Variants : 0) + VariantOf(tree);
                 draw.Trees[list][filled[list]++] = matrix;
                 // The crown spreads about half the height either side and tops out a little over it.
                 Vector3 root = matrix.GetColumn(3);
@@ -459,19 +463,26 @@ namespace Clube.Core
             bool linear = QualitySettings.activeColorSpace == ColorSpace.Linear;
             Color Convert(Color color) => linear ? color.linear : color;
             meshes = new Mesh[Kinds * Variants * Levels];
+            System.Array.Fill(variantCrownRatios, 1f);
             var parts = new List<TreePart>();
-            for (int kind = 0; kind < Kinds; kind++)
+            for (int kind = 0; kind < Mathf.Min(Kinds, trees.KindCount); kind++)
             {
-                bool maple = kind == 1;
-                List<Vector2Int> cells = SampleTrees(seed, trees, maple);
+                List<Vector2Int> cells = SampleTrees(seed, trees, kind);
+                if (cells.Count == 0)
+                {
+                    // A kind that grows nowhere near the sample row (no maples set, a species with no share) draws as birch.
+                    continue;
+                }
+                KindColours(trees, kind, out Color bark, out Color leaves);
+                string name = trees.Kind(kind).Name;
                 for (int variant = 0; variant < Variants; variant++)
                 {
                     Vector2Int cell = cells[variant % cells.Count];
                     parts.Clear();
                     TreeShape.Build(seed, cell, Unity.Mathematics.float3.zero, trees, parts);
                     float height = TreeShape.HeightOf(seed, cell, trees);
-                    Mesh[] levels = DistantTreeMeshes.BuildLevels(parts, Vector3.zero, height,
-                        Convert(maple ? mapleBark : birchBark), Convert(maple ? mapleLeaves : birchLeaves), $"{(maple ? "Maple" : "Birch")} {variant + 1}");
+                    variantCrownRatios[kind * Variants + variant] = CrownRatio(height);
+                    Mesh[] levels = DistantTreeMeshes.BuildLevels(parts, Vector3.zero, height, Convert(bark), Convert(leaves), $"{name} {variant + 1}");
                     for (int level = 0; level < Levels; level++)
                     {
                         meshes[(kind * Variants + variant) * Levels + level] = levels[level];
@@ -480,19 +491,45 @@ namespace Clube.Core
             }
         }
 
+        // A kind's far colours: the view's own for birch and maple, the row's for a species (GL721).
+        private void KindColours(TreeGeneration trees, int kind, out Color bark, out Color leaves)
+        {
+            if (kind >= 2 && kind - 2 < trees.MoreSpecies.Count && trees.MoreSpecies[kind - 2] != null)
+            {
+                bark = trees.MoreSpecies[kind - 2].DistantBark;
+                leaves = trees.MoreSpecies[kind - 2].DistantLeaves;
+                return;
+            }
+            bark = kind == 1 ? mapleBark : birchBark;
+            leaves = kind == 1 ? mapleLeaves : birchLeaves;
+        }
+
+        // The mesh list a tree draws from: its kind, or birch when its kind has no meshes.
+        private int KindOf(DistantTree tree)
+        {
+            int kind = tree.Kind;
+            return kind > 0 && kind < Kinds && meshes != null && meshes[kind * Variants * Levels] != null ? kind : 0;
+        }
+
+        // A tree's crown width against its height (GL720): 1 up to 20 m, less for taller trees.
+        private static float CrownRatio(float height)
+        {
+            return height > 0f ? TreeShape.CrownHeight(height) / height : 1f;
+        }
+
         // Cells of full-grown trees of a kind, the same for a seed every time: the variants' shapes.
-        private static List<Vector2Int> SampleTrees(int seed, TreeGeneration trees, bool maple)
+        private static List<Vector2Int> SampleTrees(int seed, TreeGeneration trees, int kind)
         {
             var cells = new List<Vector2Int>();
-            for (int i = 0; i < 4000 && cells.Count < Variants; i++)
+            for (int i = 0; i < 20000 && cells.Count < Variants; i++)
             {
                 var cell = new Vector2Int(i, 7919);
-                if (TreeShape.IsMaple(seed, cell, trees) == maple && TreeForests.SizeOf(seed, cell, trees) >= 0.85f)
+                if (TreeShape.KindOf(seed, cell, trees) == kind && TreeForests.SizeOf(seed, cell, trees) >= 0.85f)
                 {
                     cells.Add(cell);
                 }
             }
-            if (cells.Count == 0)
+            if (cells.Count == 0 && kind == 0)
             {
                 cells.Add(new Vector2Int(0, 7919));
             }

@@ -135,5 +135,8 @@ namespace Clube.Core
 
         /// <summary>Share of maples among the trees at (x, z); <paramref name="fallback"/> where the biome doesn't say.</summary>
         float MapleShareAt(float x, float z, float fallback);
+
+        /// <summary>The land's temperature in degrees at (x, z) (GL721: pines grow where it's cold); NaN where unknown.</summary>
+        float TemperatureAt(float x, float z);
     }
 }

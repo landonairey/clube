@@ -125,6 +125,96 @@ namespace Clube.Core.Tests
             Assert.That(tall, Is.GreaterThan(0), "Some trees grow past 30 m.");
         }
 
+        // A climate with one temperature everywhere (GL721).
+        private sealed class FixedClimate : ITreeClimate
+        {
+            private readonly float temperature;
+
+            public FixedClimate(float temperature)
+            {
+                this.temperature = temperature;
+            }
+
+            public float TreeDensityAt(float x, float z) => 1f;
+            public float MapleShareAt(float x, float z, float fallback) => fallback;
+            public float TemperatureAt(float x, float z) => temperature;
+        }
+
+        [Test]
+        public void Pines_AreASpeciesRow_ConesOfTheirOwnMaterials_CommonerWhereItsCold()
+        {
+            VoxelMaterial pineWood = VoxelMaterial.Create(36, "Pine wood", VoxelMaterialCategory.Plant);
+            VoxelMaterial needles = VoxelMaterial.Create(37, "Pine needles", VoxelMaterialCategory.Plant);
+            VoxelMaterial pineStump = VoxelMaterial.Create(39, "Pine stump", VoxelMaterialCategory.Plant);
+            try
+            {
+                TreeGeneration settings = Settings();
+                var pine = new TreeSpecies("Pine", TreeForm.Conifer, pineWood, needles, pineStump)
+                {
+                    Height = new Vector2(16f, 60f), Share = 0.1f, ColdShare = 0.8f, ColdFrom = new Vector2(12f, 4f),
+                };
+                settings.MoreSpecies.Add(pine);
+                Assert.That(settings.KindCount, Is.EqualTo(3));
+                Assert.That(settings.TallestHeight, Is.EqualTo(60f));
+
+                int Pines(ITreeClimate climate)
+                {
+                    settings.Climate = climate;
+                    int count = 0;
+                    for (int cell = 0; cell < 400; cell++)
+                    {
+                        count += TreeShape.KindOf(Seed, new Vector2Int(cell, 9), settings) == 2 ? 1 : 0;
+                    }
+                    return count;
+                }
+                int plain = Pines(null), warm = Pines(new FixedClimate(20f)), cold = Pines(new FixedClimate(0f));
+                Assert.That(plain, Is.InRange(20, 60), "About a tenth without a climate.");
+                Assert.That(warm, Is.InRange(20, 60), "About a tenth where it's warm.");
+                Assert.That(cold, Is.InRange(280, 360), "Most trees where it's cold.");
+
+                // A cone: its own wood, needles and stump, narrower than the spread, topped by needles.
+                settings.Climate = new FixedClimate(0f);
+                var root = new float3(0f, Ground, 0f);
+                var parts = new List<TreePart>();
+                int built = 0;
+                for (int cell = 0; cell < 20 && built < 5; cell++)
+                {
+                    var at = new Vector2Int(cell, 9);
+                    if (TreeShape.KindOf(Seed, at, settings) != 2)
+                    {
+                        continue;
+                    }
+                    built++;
+                    parts.Clear();
+                    TreeShape.Build(Seed, at, root, settings, parts);
+                    Assert.That(parts.TrueForAll(p => p.Material == pineWood.Id || p.Material == needles.Id || p.Material == pineStump.Id), "Only pine materials.");
+                    Assert.That(parts[0].Material, Is.EqualTo(pineStump.Id));
+                    float height = TreeShape.HeightOf(Seed, at, settings);
+                    float spread = 0f;
+                    foreach (TreePart part in parts)
+                    {
+                        Bounds bounds = part.Bounds(0f);
+                        spread = math.max(spread, math.max(math.max(math.abs(bounds.min.x), math.abs(bounds.max.x)), math.max(math.abs(bounds.min.z), math.abs(bounds.max.z))));
+                    }
+                    Assert.That(spread, Is.LessThan(TreeShape.CrownHeight(height) * 0.4f), $"cell {cell}: a narrow cone");
+                    Assert.That(spread, Is.LessThanOrEqualTo(settings.MaxSpread));
+                    Assert.That(parts.FindAll(p => p.Material == needles.Id).Count, Is.GreaterThan(15), $"cell {cell}: needles all the way up");
+                }
+                Assert.That(built, Is.GreaterThan(0));
+
+                // Felling knows pine wood and needles, and the stump it lands clear of.
+                TreeMaterials materials = TreeMaterials.From(settings);
+                Assert.That(materials.IsWood(pineWood.Id) && materials.IsLeaves(needles.Id) && materials.IsStump(pineStump.Id));
+                Assert.That(materials.IsWood(pineStump.Id), Is.False, "A stump is ground, not wood that falls.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(pineWood);
+                Object.DestroyImmediate(needles);
+                Object.DestroyImmediate(pineStump);
+            }
+        }
+
         [Test]
         public void Shape_StandsOnAStump_ThatRisesTheSetHeight_WhenAStumpMaterialIsSet()
         {

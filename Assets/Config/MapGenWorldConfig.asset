@@ -252,6 +252,19 @@ MonoBehaviour:
       mapleShare: 0.35
       stump: {fileID: 11400000, guid: 952ddae6481d48843915df3131af25ce, type: 2}
       mapleStump: {fileID: 11400000, guid: d570f35c2c56a2c48a23a8e185f47289, type: 2}
+      moreSpecies:
+      - name: Pine
+        form: 1
+        wood: {fileID: 11400000, guid: 710b05f2cd71a214c951b02f7088e39a, type: 2}
+        leaves: {fileID: 11400000, guid: fe501fbaea4ca33498c90c6007c57d52, type: 2}
+        stump: {fileID: 11400000, guid: f57bcc99a046564409b8b942989c53fc, type: 2}
+        height: {x: 16, y: 60}
+        trunkRadius: 0.3
+        share: 0.1
+        coldShare: 0.8
+        coldFrom: {x: 12, y: 4}
+        distantBark: {r: 0.33, g: 0.24, b: 0.17, a: 1}
+        distantLeaves: {r: 0.12, g: 0.27, b: 0.15, a: 1}
       stumpHeight: 0.75
     startArea:
       enabled: 0
@@ -423,13 +436,85 @@ MonoBehaviour:
         range: 1
         limitDistance: 60
         limitSoftness: 70
-        limitMessage: The air is too thin and the cold too bitter to climb on. Turn back.
+        limitMessage: The air is too thin and the cold too bitter to climb on. Turn
+          back.
         horizonColor: {r: 0.44, g: 0.43, b: 0.42, a: 1}
         horizonTint: 0.8
+      pickShapeFromSeed: 1
+      shape: Continent
+      shapeTypes:
+      - name: Continent
+        weight: 3
+        oceanSides: {x: 1, y: 2}
+        mainland: {x: 0.6, y: 0.82}
+        lands: {x: 2, y: 4}
+        landRadius: {x: 0.2, y: 0.38}
+        spread: 0.75
+        arms: {x: 0, y: 0}
+        islets: {x: 1, y: 4}
+        isletRadius: {x: 0.04, y: 0.09}
+        bays: {x: 2, y: 3}
+        coastWander: 1
+        ranges: {x: 1, y: 2}
+      - name: Peninsulas
+        weight: 2
+        oceanSides: {x: 2, y: 3}
+        mainland: {x: 0.12, y: 0.24}
+        lands: {x: 7, y: 10}
+        landRadius: {x: 0.11, y: 0.2}
+        spread: 0.7
+        arms: {x: 2, y: 3}
+        islets: {x: 2, y: 5}
+        isletRadius: {x: 0.04, y: 0.09}
+        bays: {x: 1, y: 2}
+        coastWander: 1
+        ranges: {x: 0, y: 1}
+      - name: Island and satellites
+        weight: 2
+        oceanSides: {x: 4, y: 4}
+        mainland: {x: 0.05, y: 0.1}
+        lands: {x: 2, y: 3}
+        landRadius: {x: 0.42, y: 0.56}
+        spread: 0.22
+        arms: {x: 0, y: 0}
+        islets: {x: 4, y: 7}
+        isletRadius: {x: 0.07, y: 0.15}
+        bays: {x: 2, y: 3}
+        coastWander: 1
+        ranges: {x: 0, y: 1}
+      - name: Island chain
+        weight: 1.5
+        oceanSides: {x: 4, y: 4}
+        mainland: {x: 0.05, y: 0.1}
+        lands: {x: 4, y: 6}
+        landRadius: {x: 0.14, y: 0.24}
+        spread: 0.85
+        arms: {x: 1, y: 1}
+        islets: {x: 2, y: 4}
+        isletRadius: {x: 0.04, y: 0.09}
+        bays: {x: 0, y: 1}
+        coastWander: 1
+        ranges: {x: 0, y: 0}
+      - name: Archipelago
+        weight: 1.5
+        oceanSides: {x: 4, y: 4}
+        mainland: {x: 0.05, y: 0.1}
+        lands: {x: 8, y: 12}
+        landRadius: {x: 0.11, y: 0.24}
+        spread: 0.82
+        arms: {x: 0, y: 0}
+        islets: {x: 5, y: 8}
+        isletRadius: {x: 0.04, y: 0.09}
+        bays: {x: 0, y: 2}
+        coastWander: 1.2
+        ranges: {x: 1, y: 2}
+      edgeWobble: 0.1
       coastHeight: 5
       inlandRise: 40
       peakHeight: 320
       peakRadius: 700
+      voxelFloor: 2
+      voxelCeiling: 400
       waterMargin: 256
       flowCellSize: 8
       waterCellSize: 2

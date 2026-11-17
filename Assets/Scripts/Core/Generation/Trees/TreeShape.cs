@@ -59,6 +59,7 @@ namespace Clube.Core
         private const float FootDepth = 0.6f;
 
         private const int SpeciesSalt = 0x4D41504C;
+        private const int MoreSpeciesSalt = 0x50494E45;
 
         // Branches spread around the trunk by the golden angle, so none line up.
         private const float GoldenAngle = 2.39996f;
@@ -73,21 +74,47 @@ namespace Clube.Core
         /// <summary>True when the cell's tree is a maple (GL150), the same roll <see cref="Build"/> makes.</summary>
         public static bool IsMaple(int seed, Vector2Int cell, TreeGeneration settings)
         {
+            return KindOf(seed, cell, settings) == 1;
+        }
+
+        /// <summary>
+        /// The cell's tree's kind (GL721): 0 birch, 1 maple, 2 on <see cref="TreeGeneration.MoreSpecies"/>. The rows roll first,
+        /// on their own hash, each its share at the cell's temperature; the rest are birch or maple by the old roll, so worlds
+        /// without rows keep their trees.
+        /// </summary>
+        public static int KindOf(int seed, Vector2Int cell, TreeGeneration settings)
+        {
+            float size = settings.CellSize;
+            float x = (cell.x + 0.5f) * size, z = (cell.y + 0.5f) * size;
+            List<TreeSpecies> rows = settings.MoreSpecies;
+            if (rows.Count > 0)
+            {
+                float temperature = settings.Climate != null ? settings.Climate.TemperatureAt(x, z) : float.NaN;
+                float roll = VoxelHash.Uniform(seed, cell.x, MoreSpeciesSalt, cell.y);
+                float total = 0f;
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    total += rows[i] != null ? rows[i].ShareAt(temperature) : 0f;
+                    if (roll < total)
+                    {
+                        return 2 + i;
+                    }
+                }
+            }
             float share = settings.MapleShare;
             if (share > 0f && settings.Climate != null)
             {
                 // The biome picks the kinds (GL591); never maples where the settings have none to grow.
-                float size = settings.CellSize;
-                share = settings.Climate.MapleShareAt((cell.x + 0.5f) * size, (cell.y + 0.5f) * size, share);
+                share = settings.Climate.MapleShareAt(x, z, share);
             }
-            return VoxelHash.Uniform(seed, cell.x, SpeciesSalt, cell.y) < share;
+            return VoxelHash.Uniform(seed, cell.x, SpeciesSalt, cell.y) < share ? 1 : 0;
         }
 
         /// <summary>The cell's tree's height in metres, the same rolls <see cref="Build"/> makes (its first, scaled by its age).</summary>
         public static float HeightOf(int seed, Vector2Int cell, TreeGeneration settings)
         {
             var dice = new Dice(seed, cell);
-            Vector2 range = settings.HeightFor(IsMaple(seed, cell, settings));
+            Vector2 range = settings.Kind(KindOf(seed, cell, settings)).Height;
             return FullHeight(ref dice, range) * TreeForests.SizeOf(seed, cell, settings);
         }
 
@@ -96,19 +123,23 @@ namespace Clube.Core
         public static void Build(int seed, Vector2Int cell, float3 root, TreeGeneration settings, List<TreePart> parts)
         {
             var dice = new Dice(seed, cell);
-            // Birch or maple (GL150), by its own roll so the shape's numbers stay as they were.
-            bool maple = IsMaple(seed, cell, settings);
-            byte wood = maple ? settings.MapleWood.Id : settings.Wood.Id;
-            byte leaves = maple ? settings.MapleLeaves.Id : settings.Leaves.Id;
-            byte stump = maple ? settings.MapleStump.Id : settings.Stump.Id;
+            // Its kind (GL150, GL721), by its own roll so the shape's numbers stay as they were.
+            TreeKind kind = settings.Kind(KindOf(seed, cell, settings));
+            byte wood = kind.Wood.Id;
+            byte leaves = kind.Leaves.Id;
+            byte stump = kind.Stump.Id;
             float minRadius = settings.MinBranchRadius;
             // Its age scales the whole tree (GL165), by its own roll so the shape's numbers stay as they were.
             float size = TreeForests.SizeOf(seed, cell, settings);
             // Each kind has its own full-grown height and trunk (GL166).
-            Vector2 range = settings.HeightFor(maple);
-            float full = FullHeight(ref dice, range);
+            float full = FullHeight(ref dice, kind.Height);
             float height = full * size;
-            float radius = math.max(minRadius, settings.TrunkRadiusFor(maple) * TrunkScale(full) * dice.Range(0.85f, 1.15f) * size);
+            float radius = math.max(minRadius, kind.TrunkRadius * TrunkScale(full) * dice.Range(0.85f, 1.15f) * size);
+            if (kind.Form == TreeForm.Conifer)
+            {
+                BuildConifer(ref dice, root, height, radius, settings, wood, leaves, stump, parts);
+                return;
+            }
             // The crown is sized for a shorter tree once it's very tall (GL720).
             float crown = CrownHeight(height);
             float leafScale = crown / LeafReferenceHeight;
@@ -184,14 +215,13 @@ namespace Clube.Core
             int seed, Vector2Int cell, float3 root, TreeGeneration settings, System.Func<float, float, float> groundAt, List<TreePart> parts)
         {
             var dice = new Dice(seed, cell);
-            bool maple = IsMaple(seed, cell, settings);
-            byte wood = maple ? settings.MapleWood.Id : settings.Wood.Id;
-            byte stump = maple ? settings.MapleStump.Id : settings.Stump.Id;
+            TreeKind kind = settings.Kind(KindOf(seed, cell, settings));
+            byte wood = kind.Wood.Id;
+            byte stump = kind.Stump.Id;
             float size = TreeForests.SizeOf(seed, cell, settings);
-            Vector2 range = settings.HeightFor(maple);
-            float full = FullHeight(ref dice, range);
+            float full = FullHeight(ref dice, kind.Height);
             float height = full * size;
-            float radius = math.max(settings.MinBranchRadius, settings.TrunkRadiusFor(maple) * TrunkScale(full) * dice.Range(0.85f, 1.15f) * size);
+            float radius = math.max(settings.MinBranchRadius, kind.TrunkRadius * TrunkScale(full) * dice.Range(0.85f, 1.15f) * size);
             var up = new float3(0f, 1f, 0f);
             parts.Add(TreePart.Segment(root - up * FootDepth, root + up * settings.StumpHeight, radius * 1.3f, radius * 1.08f, stump));
 
@@ -217,6 +247,65 @@ namespace Clube.Core
                 previous = point;
                 previousRadius = thickness;
             }
+        }
+
+        // A conifer (GL721): a straight trunk tapering to the top, bare for its lowest quarter, then whorls of short branches
+        // drooping a little, longest at the bottom of the crown and shortening to nothing at the tip, each with a few leaf balls
+        // along it, so the crown is a narrow cone. Kept well inside the broadleaf's spread.
+        private static void BuildConifer(
+            ref Dice dice, float3 root, float height, float radius, TreeGeneration settings, byte wood, byte leaves, byte stump, List<TreePart> parts)
+        {
+            float minRadius = settings.MinBranchRadius;
+            float crown = CrownHeight(height);
+            var up = new float3(0f, 1f, 0f);
+            float3 lean = Direction(dice.Range(0f, 2f * math.PI), 0f) * dice.Range(0f, 0.03f) * crown;
+            var trunk = new float3[TrunkSegments + 1];
+            var trunkRadii = new float[TrunkSegments + 1];
+            for (int i = 0; i <= TrunkSegments; i++)
+            {
+                float t = (float)i / TrunkSegments;
+                trunk[i] = root + up * (height * t) + lean * (t * t);
+                trunkRadii[i] = math.max(minRadius, radius * math.lerp(1f, 0.2f, t));
+            }
+            parts.Add(TreePart.Segment(root - up * FootDepth, root + up * settings.StumpHeight, radius * 1.3f, radius * 1.08f, stump));
+            for (int i = 0; i < TrunkSegments; i++)
+            {
+                parts.Add(TreePart.Segment(trunk[i], trunk[i + 1], trunkRadii[i], trunkRadii[i + 1], wood));
+            }
+
+            // The cone: widest a fifth of the crown height across at its foot.
+            float baseReach = crown * 0.2f;
+            float ball = math.clamp(crown * 0.045f, settings.LeafRadius.x, settings.LeafRadius.y * 2.5f);
+            int whorls = math.clamp((int)(height / 2.2f), 5, 18);
+            float firstAzimuth = dice.Range(0f, 2f * math.PI);
+            for (int w = 0; w < whorls; w++)
+            {
+                // From a quarter of the way up to just under the tip.
+                float along = math.lerp(0.25f, 0.96f, (w + dice.Range(0.2f, 0.8f)) / whorls);
+                float taper = 1f - (along - 0.25f) / 0.75f;
+                AlongTrunk(trunk, trunkRadii, along, out float3 start, out float startRadius);
+                float reach = baseReach * math.max(0.12f, taper) * dice.Range(0.85f, 1.1f);
+                int count = dice.Range(4, 5);
+                float whorlTurn = firstAzimuth + w * GoldenAngle;
+                for (int b = 0; b < count; b++)
+                {
+                    float azimuth = whorlTurn + b * (2f * math.PI / count) + dice.Range(-0.3f, 0.3f);
+                    float3 end = start + Direction(azimuth, math.radians(dice.Range(-18f, 2f))) * reach;
+                    if (reach > ball * 1.2f)
+                    {
+                        parts.Add(TreePart.Segment(start, end, math.max(minRadius, startRadius * 0.45f), minRadius, wood));
+                    }
+                    // Needles along the branch: at its end, and half way out on the longer ones.
+                    float size = ball * math.lerp(0.7f, 1.15f, taper);
+                    parts.Add(TreePart.Ball(end + up * (size * 0.2f), size, leaves));
+                    if (reach > ball * 2.5f)
+                    {
+                        parts.Add(TreePart.Ball(math.lerp(start, end, 0.5f) + up * (size * 0.3f), size * 1.1f, leaves));
+                    }
+                }
+            }
+            // The tip.
+            parts.Add(TreePart.Ball(trunk[TrunkSegments] + up * (ball * 0.4f), ball * 0.8f, leaves));
         }
 
         // A few leaf balls scattered around a branch end, mostly above and beside it.

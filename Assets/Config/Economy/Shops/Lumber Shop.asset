@@ -19,6 +19,7 @@ MonoBehaviour:
   buys:
   - {fileID: 11400000, guid: ce1c9585acf5fc14f848a8b43eddc45d, type: 2}
   - {fileID: 11400000, guid: 8864539802b2d884296933ec2cccedf1, type: 2}
+  - {fileID: 11400000, guid: 19b75261872b4e44281a898de0be8aa8, type: 2}
   - {fileID: 11400000, guid: 4f717f7cc0f3ec743b5f84c88baea32c, type: 2}
   - {fileID: 11400000, guid: 3d69f87512eb09842b9ec73744ff5790, type: 2}
   - {fileID: 11400000, guid: e5acd428b6947c7469aca6cbe59c5618, type: 2}

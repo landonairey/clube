@@ -123,6 +123,8 @@ namespace Clube.Core
         private readonly HeightfieldGenerator ground;
         private readonly List<BiomeDefinition> biomes;
         private byte[] coarse;
+        // Each coarse cell's temperature, in degrees (GL721), filled with the biomes.
+        private float[] coarseTemperature;
         private readonly int coarseSize;
         private readonly float coarseOrigin;
         private BiomeField field;
@@ -194,6 +196,23 @@ namespace Clube.Core
             return share >= 0f ? share : fallback;
         }
 
+        public float TemperatureAt(float x, float z)
+        {
+            int cx = Mathf.FloorToInt((x - coarseOrigin) / CoarseCell);
+            int cz = Mathf.FloorToInt((z - coarseOrigin) / CoarseCell);
+            if (cx < 0 || cz < 0 || cx >= coarseSize || cz >= coarseSize)
+            {
+                float mx = coarseOrigin + (cx + 0.5f) * CoarseCell, mz = coarseOrigin + (cz + 0.5f) * CoarseCell;
+                ClimateAt(mx, mz, out _, out float temperature, out _);
+                return temperature;
+            }
+            if (coarse == null)
+            {
+                FillCoarse();
+            }
+            return coarseTemperature[cx + cz * coarseSize];
+        }
+
         // The biome at the middle of the 16 m cell holding (x, z), remembered.
         private int CoarseIndexAt(float x, float z)
         {
@@ -224,11 +243,15 @@ namespace Clube.Core
                     points[i] = coarseOrigin + (new float2(i % coarseSize, i / coarseSize) + 0.5f) * CoarseCell;
                 }
                 ground.SchedulePointHeights(points, heights).Complete();
-                coarse = new byte[count];
+                var indices = new byte[count];
+                var temperatures = new float[count];
                 for (int i = 0; i < count; i++)
                 {
-                    coarse[i] = (byte)field.IndexAt(points[i].x, points[i].y, heights[i]);
+                    indices[i] = (byte)field.IndexAt(points[i].x, points[i].y, heights[i]);
+                    field.Climate(points[i].x, points[i].y, heights[i], out _, out temperatures[i], out _);
                 }
+                coarseTemperature = temperatures;
+                coarse = indices;
             }
             finally
             {

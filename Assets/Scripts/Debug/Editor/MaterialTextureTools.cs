@@ -122,6 +122,10 @@ namespace Clube.Debug.Editor
                 { "dead grass", (new Color(0.52f, 0.44f, 0.22f), new Color(0.66f, 0.58f, 0.31f), null, Wear.Whole) },
                 // Limestone (GL677): pale cream-grey rock. Added last, so no seed moves.
                 { "limestone", (new Color(0.74f, 0.72f, 0.64f), new Color(0.84f, 0.82f, 0.74f), null, Wear.Whole) },
+                // Pine (GL721): grey-brown furrowed bark, dark blue-green needles, and the needles' rusty fall. Added last, so no seed moves.
+                { "pine wood", (new Color(0.3f, 0.22f, 0.16f), new Color(0.42f, 0.33f, 0.25f), null, Wear.Bark) },
+                { "pine needles", (new Color(0.08f, 0.2f, 0.12f), new Color(0.16f, 0.3f, 0.18f), null, Wear.Leaves) },
+                { "fallen pine needles", (new Color(0.4f, 0.27f, 0.15f), new Color(0.52f, 0.37f, 0.22f), null, Wear.Leaves) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]

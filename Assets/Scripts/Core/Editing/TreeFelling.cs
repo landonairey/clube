@@ -9,6 +9,7 @@ namespace Clube.Core
         private readonly HashSet<byte> wood = new HashSet<byte>();
         private readonly HashSet<byte> leaves = new HashSet<byte>();
         private readonly HashSet<byte> fallen = new HashSet<byte>();
+        private readonly HashSet<byte> stumps = new HashSet<byte>();
         private readonly Dictionary<byte, byte> fallsAs = new Dictionary<byte, byte>();
 
         /// <summary>
@@ -59,10 +60,38 @@ namespace Clube.Core
             leaves.UnionWith(leafIds);
         }
 
-        /// <summary>The birch and maple wood and leaves of a terrain's trees (stumps count as ground: they stay).</summary>
+        /// <summary>
+        /// Every kind's wood and leaves of a terrain's trees (GL721: birch, maple and the species rows). Stumps count as ground:
+        /// they stay; they're known only so a fallen limb lands clear of them (GL724, <see cref="IsStump"/>).
+        /// </summary>
         public static TreeMaterials From(TreeGeneration trees)
         {
-            return new TreeMaterials(new[] { trees.Wood, trees.MapleWood }, new[] { trees.Leaves, trees.MapleLeaves });
+            var woods = new List<VoxelMaterial>();
+            var leafs = new List<VoxelMaterial>();
+            var stumpMaterials = new List<VoxelMaterial>();
+            trees.AllMaterials(woods, leafs, stumpMaterials);
+            var materials = new TreeMaterials(woods, leafs);
+            foreach (VoxelMaterial stump in stumpMaterials)
+            {
+                if (stump != null && !materials.wood.Contains(stump.Id))
+                {
+                    materials.stumps.Add(stump.Id);
+                }
+            }
+            return materials;
+        }
+
+        /// <summary>Marks a material as a tree's stump (GL724): ground that holds trees up, which a falling limb lands clear of.</summary>
+        public TreeMaterials WithStump(byte id)
+        {
+            stumps.Add(id);
+            return this;
+        }
+
+        /// <summary>True for a tree's stump (GL724).</summary>
+        public bool IsStump(byte id)
+        {
+            return stumps.Contains(id);
         }
 
         public bool IsWood(byte id)

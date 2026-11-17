@@ -148,7 +148,7 @@ namespace Clube.Core
         private static readonly string[] Shovels = { "shovel", "bronze-shovel", "iron-shovel", "steel-shovel" };
         private static readonly string[] Chisels = { "bronze-chisel", "iron-chisel", "steel-chisel" };
         private static readonly string[] Boards = { "oak-boards", "maple-boards" };
-        private static readonly string[] Woods = { "wood", "maple-wood" };
+        private static readonly string[] Woods = { "wood", "pine-wood", "maple-wood" };
 
         /// <summary>
         /// Every specialty of GL594's list. Goods the game has are item ids; the rest are names (<see cref="Later"/>) that
