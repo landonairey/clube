@@ -87,6 +87,37 @@ namespace Clube.Core
             }
         }
 
+        /// <summary>
+        /// GL711: raises samples to part-solid densities (a slanted roof's skin over its blocks): each only where that is
+        /// more than it has, in <paramref name="material"/>. Raising a sample fills in the carved voxels round it, so marching
+        /// cubes draws the slant there while the blocks under it keep their square faces inside.
+        /// </summary>
+        public static void Raise(World world, IReadOnlyDictionary<Vector3Int, float> samples, byte material)
+        {
+            foreach (KeyValuePair<Vector3Int, float> sample in samples)
+            {
+                float? density = world.GetDensity(sample.Key);
+                if (!density.HasValue)
+                {
+                    continue;
+                }
+                if (density.Value < sample.Value)
+                {
+                    world.SetDensity(sample.Key, sample.Value);
+                    world.SetMaterial(sample.Key, material);
+                }
+                // Blocks built since (a neighbouring slice) may have carved round it again.
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    Vector3Int voxel = sample.Key - Corner(corner);
+                    if (world.IsCarved(voxel))
+                    {
+                        world.SetCarved(voxel, false);
+                    }
+                }
+            }
+        }
+
         /// <summary>Builds one block of a material (a board placed by the player). False when the voxel is already solid.</summary>
         public static bool Place(World world, Vector3Int voxel, byte material, float iso)
         {

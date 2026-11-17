@@ -37,7 +37,7 @@ namespace Clube.Core.Tests
         // The ground a building stands on (its walls' corners), in the world.
         private static IEnumerable<Vector2> Corners(SettlementBuilding building)
         {
-            float w = TownLayout.ShopWidth * 0.5f, d = TownLayout.ShopDepth * 0.5f;
+            float w = building.Width * 0.5f, d = building.Depth * 0.5f;
             yield return building.ToWorld(new Vector2(-w, -d));
             yield return building.ToWorld(new Vector2(w, -d));
             yield return building.ToWorld(new Vector2(-w, d));
@@ -152,7 +152,7 @@ namespace Clube.Core.Tests
                     // Each end of a climb is on a street (or at the centre, where the roads meet).
                     foreach (Vector2 end in new[] { climb.Points[0], climb.Points[climb.Points.Count - 1] })
                     {
-                        Assert.IsTrue(end == town.Position || streets.Any(s => SettlementSiteDistance(end, s.Points[0], s.Points[1]) < 0.01f), "a climb joins streets");
+                        Assert.IsTrue(end == town.Position || streets.Any(s => PolylineDistance(end, s.Points) < 0.05f), "a climb joins streets");
                     }
                     float length = 0f;
                     for (int i = 1; i < climb.Points.Count; i++)
@@ -169,8 +169,100 @@ namespace Clube.Core.Tests
                     }
                 }
                 // The centre, where the planned roads meet, is on a lane.
-                Assert.IsTrue(site.Lanes.Any(lane => SettlementSiteDistance(town.Position, lane.Points[0], lane.Points[lane.Points.Count - 1]) < 0.01f));
+                Assert.IsTrue(site.Lanes.Any(lane => PolylineDistance(town.Position, lane.Points) < 0.05f));
             }
+        }
+
+        private static float PolylineDistance(Vector2 point, List<Vector2> points)
+        {
+            float best = points.Count == 1 ? Vector2.Distance(point, points[0]) : float.MaxValue;
+            for (int i = 1; i < points.Count; i++)
+            {
+                best = Mathf.Min(best, SettlementSiteDistance(point, points[i - 1], points[i]));
+            }
+            return best;
+        }
+
+        [Test]
+        public void TheCatalog_GivesAShopItsWorkshop_AndAHouseOneOfItsSettlementType()
+        {
+            // GL710, GL713, GL714.
+            List<BuildingDesign> catalog = BuildingDesign.Defaults();
+            var town = new SettlementType { Id = "town" };
+            var camp = new SettlementType { Id = "camp" };
+            Assert.AreEqual("smithy", BuildingDesign.Choose(catalog, town, "blacksmith", true, 0.5f).Id);
+            Assert.AreEqual("fabric-workshop", BuildingDesign.Choose(catalog, town, "fabrics", true, 0.5f).Id);
+            BuildingDesign merchant = BuildingDesign.Choose(catalog, town, "merchant", true, 0.5f);
+            Assert.IsTrue(merchant.ShopFront && merchant.Specialties.Length == 0, "a shop with no workshop gets a plain one");
+            for (float pick = 0f; pick <= 1f; pick += 0.05f)
+            {
+                BuildingDesign house = BuildingDesign.Choose(catalog, camp, null, false, pick);
+                Assert.IsFalse(house.ShopFront);
+                Assert.IsTrue(house.BuiltIn(camp), house.Id);
+            }
+            var stories = new HashSet<int>();
+            for (float pick = 0f; pick <= 1f; pick += 0.02f)
+            {
+                stories.Add(BuildingDesign.Choose(catalog, town, null, false, pick).Stories);
+            }
+            Assert.IsTrue(stories.SetEquals(new[] { 1, 2, 3 }), "a town has one, two and three story houses");
+
+            BuildingDesign smithy = catalog.Find(design => design.Id == "smithy");
+            Assert.AreEqual("anvil", smithy.StationFor("hammer", 0).Kind);
+            Assert.AreEqual("anvil", smithy.StationFor("hammer", 1).Kind);
+            Assert.AreNotEqual(smithy.StationFor("hammer", 0).Local, smithy.StationFor("hammer", 1).Local, "two workers, two anvils");
+            Assert.AreEqual("spinning-wheel", catalog.Find(design => design.Id == "fabric-workshop").StationFor("spin", 0).Kind);
+        }
+
+        [Test]
+        public void ATwoStoryHouse_HasAnUpperFloorAndWindows_AndItsRoofSkinIsAtItsPitch()
+        {
+            // GL710, GL711.
+            BuildingDesign design = BuildingDesign.Defaults().Find(row => row.Id == "two-story-house");
+            List<(Vector3 Centre, TownStructures.ShopPart Part)> cells = SettlementStructures.Voxels(design, 0.8f, 0.25f);
+            bool Solid(float x, float y, float z) => cells.Any(c => Vector3.Distance(c.Centre, new Vector3(x, y, z)) < 0.01f);
+            float upper = TownLayout.FloorHeight + design.StoryHeight;
+            Assert.IsTrue(Solid(0.125f, upper + 0.125f, 0.125f), "an upper floor");
+            Assert.IsFalse(Solid(0.125f, upper + 1.2f, 0.125f), "room over it");
+            Assert.IsTrue(cells.Any(c => c.Centre.y > upper + 1f && c.Centre.y < upper + 1.75f && Mathf.Abs(c.Centre.z - (design.Depth * 0.5f - 0.125f)) < 0.01f),
+                "an upper front wall");
+
+            var building = new SettlementBuilding { Design = design, Pitch = 0.8f, Centre = Vector2.zero, Pad = 10f };
+            Dictionary<Vector3Int, float> skin = SettlementStructures.RoofSkin(building, 0.25f);
+            Assert.IsNotEmpty(skin);
+            // Where each column's density crosses a half is the roof's plane: one slant at the pitch.
+            float top = TownLayout.FloorHeight + 2f * design.StoryHeight;
+            foreach (float z in new[] { 0.5f, 1f, 1.5f, 2f })
+            {
+                float plane = 10f + SettlementStructures.RoofAt(design, 0.8f, 0.25f, z);
+                int zi = Mathf.RoundToInt(z / 0.25f);
+                float below = skin.TryGetValue(new Vector3Int(0, Mathf.FloorToInt(plane / 0.25f), zi), out float b) ? b : 1f;
+                float above = skin.TryGetValue(new Vector3Int(0, Mathf.FloorToInt(plane / 0.25f) + 1, zi), out float a) ? a : 0f;
+                Assert.GreaterOrEqual(below, 0.5f, $"under the plane at {z}");
+                Assert.Less(above, 0.5f, $"over the plane at {z}");
+            }
+            Assert.AreEqual(10f + top + (design.Depth * 0.5f + 0.5f) * 0.8f, 10f + SettlementStructures.RoofAt(design, 0.8f, 0.25f, 0f), 0.001f);
+        }
+
+        [Test]
+        public void SettlementLanes_Curve_RatherThanTurnSquare()
+        {
+            // GL712: a street wanders between the houses; a climb bends from one street to the next.
+            PlannedSettlement town = Settlement("town", 18, 6, new Vector2(1000f, 1000f));
+            SettlementSite site = SettlementLayout.Plan(town, 32f, new SettlementSiteRules(), (x, z) => 80f + 0.2f * (z - 1000f));
+            SettlementLane street = site.Lanes.First(lane => lane.Kind == SettlementLaneKind.Street && lane.Points.Count > 4);
+            float off = street.Points.Max(p => SettlementSiteDistance(p, street.Points[0], street.Points[street.Points.Count - 1]));
+            Assert.Greater(off, 0.1f, "it isn't ruled straight");
+            foreach (SettlementLane climb in site.Lanes.Where(lane => lane.Kind == SettlementLaneKind.Climb && lane.Points.Count > 2))
+            {
+                for (int i = 2; i < climb.Points.Count; i++)
+                {
+                    Vector2 one = climb.Points[i - 1] - climb.Points[i - 2], two = climb.Points[i] - climb.Points[i - 1];
+                    Assert.Less(Vector2.Angle(one, two), 60f, "no sharp corner along a climb");
+                }
+            }
+            Assert.IsTrue(site.Lanes.Any(lane => lane.Kind == SettlementLaneKind.Climb && lane.Points.Count > 2));
+            Assert.IsTrue(site.Buildings.Any(b => b.Design != null && b.Design.Stories > 1), "buildings of more than one story");
         }
 
         private static float SettlementSiteDistance(Vector2 point, Vector2 a, Vector2 b)

@@ -144,10 +144,13 @@ namespace Clube.Core
                 }
             }
             buildingPiece = new int[site.Buildings.Count];
-            float half = Mathf.Max(TownLayout.ShopWidth, TownLayout.ShopDepth) * 0.5f + 0.5f;
+            // GL710: each building's own footprint, its yard and its roof's height.
             for (int b = 0; b < site.Buildings.Count; b++)
             {
                 SettlementBuilding building = site.Buildings[b];
+                BuildingDesign design = SettlementStructures.DesignOf(building);
+                float half = Mathf.Max(design.Width, design.Depth + 2f * design.YardDepth) * 0.5f + 0.75f;
+                float high = SettlementStructures.RoofAt(design, building.Pitch, 0.25f, 0f) + 1.5f;
                 for (int slice = 0; slice < BuildingSlices; slice++)
                 {
                     // It stands once its last slice is written.
@@ -157,7 +160,7 @@ namespace Clube.Core
                         Kind = Kind.Building,
                         Box = new Rect(building.Centre.x - half, building.Centre.y - half, half * 2f, half * 2f),
                         Low = building.Pad - 1f,
-                        High = building.Pad + TownLayout.ShopHeight + 3f,
+                        High = building.Pad + high,
                         Index = b,
                         Part = slice,
                     });
@@ -443,6 +446,9 @@ namespace Clube.Core
                     bool turnAbout = piece.Index % 2 == 1;
                     SquareVoxels.Build(world, SettlementStructures.Blocks(site.Buildings[piece.Index], world.Grid.VoxelSize, materials.Stone.Id,
                         (turnAbout ? materials.Trim : materials.Boards).Id, (turnAbout ? materials.Boards : materials.Trim).Id, piece.Part, BuildingSlices), iso);
+                    // GL711: the roof's top drawn as a slant over its square steps.
+                    SquareVoxels.Raise(world, SettlementStructures.RoofSkin(site.Buildings[piece.Index], world.Grid.VoxelSize, piece.Part, BuildingSlices),
+                        (turnAbout ? materials.Trim : materials.Boards).Id);
                     break;
                 }
             }

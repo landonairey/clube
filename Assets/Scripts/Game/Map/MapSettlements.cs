@@ -562,6 +562,7 @@ namespace Clube.Game
                     continue;
                 }
                 made.Fitted[b] = true;
+                FitYard(building, $"{settlement.Name}: yard {b}");
                 if (building.Kind != SettlementBuildingKind.Shop || building.Shop == null)
                 {
                     continue;
@@ -580,6 +581,42 @@ namespace Clube.Game
                 keepers.Add(keeper);
                 ShopsFitted++;
             }
+        }
+
+        // GL713/GL714: a building's work yard: its fixtures (anvils, tool racks, spinning wheels) and a tarp over it.
+        private void FitYard(SettlementBuilding building, string name)
+        {
+            BuildingDesign design = building.Design;
+            if (design == null || (design.Fixtures.Count == 0 && !design.Tarp))
+            {
+                return;
+            }
+            var yard = new GameObject(name).transform;
+            yard.SetParent(root, false);
+            yard.localPosition = new Vector3(building.Centre.x, building.Pad + TownLayout.FloorHeight, building.Centre.y);
+            yard.localRotation = Quaternion.Euler(0f, building.Yaw, 0f);
+            foreach (YardFixture fixture in design.Fixtures)
+            {
+                Mesh mesh = YardFixtureMeshes.For(fixture.Kind);
+                if (mesh != null)
+                {
+                    Place(yard, fixture.Kind, mesh, new Vector3(fixture.Local.x, 0f, fixture.Local.y), fixture.Yaw);
+                }
+            }
+            if (design.Tarp)
+            {
+                Place(yard, "tarp", YardFixtureMeshes.Tarp(design.Width, design.YardDepth, design.StoryHeight - 0.1f, design.Depth * 0.5f), Vector3.zero, 0f);
+            }
+        }
+
+        private void Place(Transform parent, string name, Mesh mesh, Vector3 local, float yaw)
+        {
+            var part = new GameObject(name);
+            part.transform.SetParent(parent, false);
+            part.transform.localPosition = local;
+            part.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+            part.AddComponent<MeshFilter>().sharedMesh = mesh;
+            part.AddComponent<MeshRenderer>().sharedMaterial = material;
         }
 
         // The shop a planned shop trades as (GL614): its specialty's goods that exist; a merchant's variety leans to what

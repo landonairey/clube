@@ -177,8 +177,8 @@ namespace Clube.Core
         // The places for buildings, nearest the centre first, each on ground that can be terraced with its neighbours.
         private static List<Slot> Take(SettlementSite site, SettlementSiteRules rules, int wanted, float half, Func<float, float, bool> closedAt, int extra)
         {
-            float back = rules.FrontSetback + TownLayout.ShopDepth + rules.BackYard;
-            float halfWidth = TownLayout.ShopWidth * 0.5f;
+            float back = rules.FrontSetback + Largest(rules).y + rules.BackYard;
+            float halfWidth = Largest(rules).x * 0.5f;
             var slots = new Dictionary<(int, int), Slot>();
             var order = new List<Slot>();
             int rows = Mathf.CeilToInt(half / rules.RowDepth) + 1 + extra;
@@ -198,7 +198,7 @@ namespace Clube.Core
                     {
                         continue;
                     }
-                    var slot = new Slot { Row = row, Column = column, Along = middle, Up = street + rules.FrontSetback + TownLayout.ShopDepth * 0.5f };
+                    var slot = new Slot { Row = row, Column = column, Along = middle, Up = street + rules.FrontSetback + Largest(rules).y * 0.5f };
                     if (!Measure(site, rules, slot, street, back, halfWidth, closedAt))
                     {
                         continue;
@@ -269,7 +269,7 @@ namespace Clube.Core
             {
                 for (int i = 0; i <= 2; i++)
                 {
-                    Vector2 world = site.ToWorld(slot.Along + (i - 1) * halfWidth, street + rules.FrontSetback + j * TownLayout.ShopDepth * 0.5f);
+                    Vector2 world = site.ToWorld(slot.Along + (i - 1) * halfWidth, street + rules.FrontSetback + j * Largest(rules).y * 0.5f);
                     if (site.RoadBeyond(world.x, world.y) < rules.RoadBlend)
                     {
                         return false;
@@ -283,8 +283,8 @@ namespace Clube.Core
 
         private static void Build(SettlementSite site, SettlementSiteRules rules, List<Slot> taken, float voxel)
         {
-            float back = rules.FrontSetback + TownLayout.ShopDepth + rules.BackYard;
-            float halfWidth = TownLayout.ShopWidth * 0.5f;
+            float back = rules.FrontSetback + Largest(rules).y + rules.BackYard;
+            float halfWidth = Largest(rules).x * 0.5f;
             Vector2 front = -site.Up;
             float yaw = Mathf.Round(Mathf.Atan2(front.x, front.y) * Mathf.Rad2Deg / 90f) * 90f;
             PlannedSettlement settlement = site.Settlement;
@@ -336,16 +336,28 @@ namespace Clube.Core
             for (int i = 0; i < taken.Count; i++)
             {
                 Slot slot = taken[i];
-                Vector2 world = site.ToWorld(slot.Along, slot.Up);
                 bool shop = i < settlement.Shops.Count;
+                PlannedShop planned = shop ? settlement.Shops[i] : null;
+                // GL710: its catalog row, by its shop's specialty or the settlement's type; GL711: its own roof pitch.
+                BuildingDesign design = rules.Buildings != null && rules.Buildings.Count > 0
+                    ? BuildingDesign.Choose(rules.Buildings, settlement.Type, planned?.Specialty?.Id, shop, Hash01(settlement.Index, slot.Row, slot.Column + 7919))
+                    : null;
+                float depth = design != null ? design.Depth : TownLayout.ShopDepth;
+                // GL712: fronts set back a little more or less, so a row doesn't stand ruled along its street.
+                float stagger = shop ? 0f : rules.FrontStagger * Hash01(settlement.Index, slot.Column, slot.Row + 104729);
+                Vector2 world = site.ToWorld(slot.Along, slot.Row * rules.RowDepth + rules.FrontSetback + stagger + depth * 0.5f);
                 site.Buildings.Add(new SettlementBuilding
                 {
                     Kind = shop ? SettlementBuildingKind.Shop : SettlementBuildingKind.House,
-                    Shop = shop ? settlement.Shops[i] : null,
+                    Shop = planned,
                     Centre = new Vector2(Mathf.Round(world.x / voxel) * voxel, Mathf.Round(world.y / voxel) * voxel),
                     Yaw = yaw,
                     Pad = site.Terraces[terraceOf[slot]].Height,
                     Terrace = terraceOf[slot],
+                    Design = design,
+                    Pitch = design != null
+                        ? Mathf.Lerp(design.PitchMin, design.PitchMax, Hash01(settlement.Index, slot.Row + 31, slot.Column))
+                        : 0.5f,
                 });
             }
             if (rows.Count == 0)
@@ -354,8 +366,11 @@ namespace Clube.Core
             }
 
             // The climbs between one row and the next, at alternate ends so the way up doubles back row by row (GL642).
+            // GL712: each leaves its street a little in from the row's end and bends out and round to the next, a curve
+            // rather than a right angle.
             var used = new List<int>(rows.Keys);
             var climbs = new List<SettlementLane>();
+            var joins = new Dictionary<int, List<float>>();
             for (int i = 0; i + 1 < used.Count; i++)
             {
                 int lower = used[i], upper = used[i + 1];
@@ -363,7 +378,10 @@ namespace Clube.Core
                 float outward = i % 2 == 0 ? 1f : -1f;
                 rows[lower] = new Vector2(Mathf.Min(rows[lower].x, end), Mathf.Max(rows[lower].y, end));
                 rows[upper] = new Vector2(Mathf.Min(rows[upper].x, end), Mathf.Max(rows[upper].y, end));
-                climbs.Add(Climb(site, rules, end, lower * rules.RowDepth, upper * rules.RowDepth, outward));
+                float lead = rules.ClimbLead;
+                climbs.Add(Climb(site, rules, end, lower * rules.RowDepth, upper * rules.RowDepth, outward, lead));
+                Join(joins, lower, end - outward * lead);
+                Join(joins, upper, end - outward * lead);
             }
             // The planned roads meet at the centre, on row 0's street line: the streets are joined to it.
             if (rows.TryGetValue(0, out Vector2 through))
@@ -378,36 +396,130 @@ namespace Clube.Core
                     nearest = Mathf.Abs(row) < Mathf.Abs(nearest) ? row : nearest;
                 }
                 rows[nearest] = new Vector2(Mathf.Min(rows[nearest].x, 0f), Mathf.Max(rows[nearest].y, 0f));
-                climbs.Add(Climb(site, rules, 0f, 0f, nearest * rules.RowDepth, 1f));
+                climbs.Add(Climb(site, rules, 0f, 0f, nearest * rules.RowDepth, 1f, 0f));
+                Join(joins, nearest, 0f);
             }
             foreach (KeyValuePair<int, Vector2> row in rows)
             {
-                var street = new SettlementLane { Kind = SettlementLaneKind.Street };
-                street.Points.Add(site.ToWorld(row.Value.x, row.Key * rules.RowDepth));
-                street.Points.Add(site.ToWorld(row.Value.y, row.Key * rules.RowDepth));
-                site.Lanes.Add(street);
+                Join(joins, row.Key, 0f);
+                site.Lanes.Add(Street(site, rules, row.Key, row.Value, joins[row.Key]));
             }
             site.Lanes.AddRange(climbs);
         }
 
-        // A climb from one street to another at a place along the rows: straight where that is gentle enough, else out
-        // to a corner and back (a switchback), as far as keeps it to the climbing slope.
-        private static SettlementLane Climb(SettlementSite site, SettlementSiteRules rules, float along, float fromUp, float toUp, float outward)
+        private static void Join(Dictionary<int, List<float>> joins, int row, float along)
+        {
+            if (!joins.TryGetValue(row, out List<float> list))
+            {
+                joins[row] = list = new List<float>();
+            }
+            list.Add(along);
+        }
+
+        // GL712: a street along its row that wanders a little from side to side between the houses, straight through the
+        // places where climbs and the planned roads join it, so they meet it on its line.
+        private static SettlementLane Street(SettlementSite site, SettlementSiteRules rules, int row, Vector2 extent, List<float> joins)
+        {
+            var street = new SettlementLane { Kind = SettlementLaneKind.Street };
+            float up = row * rules.RowDepth;
+            float length = extent.y - extent.x;
+            int steps = Mathf.Max(1, Mathf.CeilToInt(length / 2f));
+            float phase = Hash01(site.Settlement.Index, row, 3571) * Mathf.PI * 2f;
+            var places = new List<float>();
+            for (int i = 0; i <= steps; i++)
+            {
+                places.Add(Mathf.Lerp(extent.x, extent.y, i / (float)steps));
+            }
+            foreach (float join in joins)
+            {
+                if (join > extent.x + 0.05f && join < extent.y - 0.05f)
+                {
+                    places.Add(join);
+                }
+            }
+            places.Sort();
+            foreach (float along in places)
+            {
+                float calm = Mathf.Min(along - extent.x, extent.y - along);
+                foreach (float join in joins)
+                {
+                    calm = Mathf.Min(calm, Mathf.Abs(along - join));
+                }
+                float wander = rules.StreetWander * Mathf.SmoothStep(0f, 1f, calm / 4f)
+                    * Mathf.Sin(along * Mathf.PI * 2f / rules.StreetWave + phase);
+                street.Points.Add(site.ToWorld(along, up + wander));
+            }
+            return street;
+        }
+
+        // A climb from one street to another near a place along the rows (GL642, GL712): from a point
+        // <paramref name="lead"/> metres in from it on the lower street, out round a bend through it (further out where
+        // the slope is steep, a switchback, as far as keeps it to the climbing slope) and back in to the upper street.
+        private static SettlementLane Climb(SettlementSite site, SettlementSiteRules rules, float along, float fromUp, float toUp, float outward, float lead)
         {
             var lane = new SettlementLane { Kind = SettlementLaneKind.Climb };
-            Vector2 a = site.ToWorld(along, fromUp), b = site.ToWorld(along, toUp);
+            float start = along - outward * lead;
+            Vector2 a = site.ToWorld(start, fromUp), b = site.ToWorld(start, toUp);
             float run = Mathf.Abs(toUp - fromUp);
             float rise = Mathf.Abs(site.HeightAt(b.x, b.y) - site.HeightAt(a.x, a.y));
-            lane.Points.Add(a);
-            if (run > 0.01f && rise / run > rules.ClimbSlope)
+            lane.Switchback = run > 0.01f && rise / run > rules.ClimbSlope;
+            float swing = lead;
+            if (lane.Switchback)
             {
                 float length = rise / rules.ClimbSlope;
-                float swing = Mathf.Min(rules.MaxSwing, Mathf.Sqrt(Mathf.Max(0f, length * length - run * run)) * 0.5f);
-                lane.Points.Add(site.ToWorld(along + outward * swing, (fromUp + toUp) * 0.5f));
-                lane.Switchback = true;
+                swing = Mathf.Max(lead, Mathf.Sqrt(Mathf.Max(0f, length * length - run * run)) * 0.5f);
             }
-            lane.Points.Add(b);
+            swing = Mathf.Min(rules.MaxSwing, swing);
+            List<Vector2> points = Bend(site, start, fromUp, toUp, outward, swing);
+            // Rounding the corner shortens the way: swing out further until it keeps to the slope again.
+            for (int pass = 0; pass < 8 && lane.Switchback && swing < rules.MaxSwing && rise / Length(points) > rules.ClimbSlope; pass++)
+            {
+                swing = Mathf.Min(rules.MaxSwing, swing * 1.15f + 0.25f);
+                points = Bend(site, start, fromUp, toUp, outward, swing);
+            }
+            lane.Points.AddRange(points);
             return lane;
+        }
+
+        // A smooth bend from (start, fromUp) to (start, toUp) through the point swing metres out between them.
+        private static List<Vector2> Bend(SettlementSite site, float start, float fromUp, float toUp, float outward, float swing)
+        {
+            var points = new List<Vector2>();
+            if (swing < 0.01f)
+            {
+                points.Add(site.ToWorld(start, fromUp));
+                points.Add(site.ToWorld(start, toUp));
+                return points;
+            }
+            // A quadratic curve whose middle passes through the apex: its control point is twice as far out.
+            float controlAlong = start + outward * swing * 2f;
+            float controlUp = (fromUp + toUp) * 0.5f;
+            const int Segments = 10;
+            for (int i = 0; i <= Segments; i++)
+            {
+                float t = i / (float)Segments, s = 1f - t;
+                float u = s * s * start + 2f * s * t * controlAlong + t * t * start;
+                float v = s * s * fromUp + 2f * s * t * controlUp + t * t * toUp;
+                points.Add(site.ToWorld(u, v));
+            }
+            return points;
+        }
+
+        private static float Length(List<Vector2> points)
+        {
+            float length = 0f;
+            for (int i = 1; i < points.Count; i++)
+            {
+                length += Vector2.Distance(points[i - 1], points[i]);
+            }
+            return length;
+        }
+
+
+        // The widest and deepest building the catalog holds: the ground every place keeps.
+        private static Vector2 Largest(SettlementSiteRules rules)
+        {
+            return rules.Buildings != null ? BuildingDesign.LargestFootprint(rules.Buildings) : new Vector2(TownLayout.ShopWidth, TownLayout.ShopDepth);
         }
 
         private static float Hash01(int a, int b, int c)

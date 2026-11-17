@@ -428,7 +428,7 @@ namespace Clube.Game
         {
             SettlementBuilding home = Home;
             Vector2 local = TownLayout.Turn(point - home.Centre, -home.Yaw);
-            return Mathf.Abs(local.x) < TownLayout.ShopWidth * 0.5f && Mathf.Abs(local.y) < TownLayout.ShopDepth * 0.5f;
+            return Mathf.Abs(local.x) < home.Width * 0.5f && Mathf.Abs(local.y) < home.Depth * 0.5f;
         }
 
         // The home's door: a house's is in its front wall; a shop (where there are no houses) is entered as its keeper does.
@@ -436,12 +436,12 @@ namespace Clube.Game
 
         private Vector2 DoorInside()
         {
-            return Home.ToWorld(new Vector2(DoorX, TownLayout.ShopDepth * 0.5f - 0.9f));
+            return Home.ToWorld(new Vector2(DoorX, Home.Depth * 0.5f - 0.9f));
         }
 
         private Vector2 DoorFront()
         {
-            return Home.ToWorld(new Vector2(DoorX, TownLayout.ShopDepth * 0.5f + 1.2f));
+            return Home.ToWorld(new Vector2(DoorX, Home.Depth * 0.5f + 1.2f));
         }
 
         private Vector2 HomeSpot()
@@ -461,6 +461,13 @@ namespace Clube.Game
 
         private Vector2 YardSpot()
         {
+            // GL713/GL714: at a fixture of the shop's work yard (an anvil, a spinning wheel) where it has one for the duty.
+            SettlementBuilding shop = Site.Buildings[Resident.Shop];
+            YardFixture station = shop.Design?.StationFor(Duty?.Id, Resident.Index);
+            if (station != null)
+            {
+                return shop.ToWorld(station.Stand);
+            }
             // GL669: never a spot inside a neighbouring building, where its worker would stand pressed against the wall.
             return walks.PushOut(walks.Front(Resident.Shop, -2.2f + 1.1f * (Resident.Index % 5), 1.2f + 0.9f * (Resident.Index / 5 % 2)), 0.4f);
         }
