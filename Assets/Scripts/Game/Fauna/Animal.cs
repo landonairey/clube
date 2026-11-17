@@ -76,8 +76,11 @@ namespace Clube.Game
             }
             Vector3 local = transform.parent != null ? transform.parent.InverseTransformPoint(from) : from;
             hopTimer = HopSeconds;
-            if (Brain.Hit(tool.Power * AnimalSpeciesTable.DamagePerPower, new Vector2(local.x, local.z)))
+            bool killed = Brain.Hit(tool.Power * AnimalSpeciesTable.DamagePerPower, new Vector2(local.x, local.z));
+            AnimalVoices.PlayHit(transform.position + Vector3.up * (Species.ShoulderHeight * 0.5f), killed);
+            if (killed)
             {
+                AnimalVoices.PlayGroan(Species, transform.position + Vector3.up * (Species.ShoulderHeight * 0.5f));
                 Die();
             }
         }
@@ -121,7 +124,7 @@ namespace Clube.Game
             Brain.Tick(dt, new AnimalSenses
             {
                 Hour = owner.Hour, Position = at, Home = herd.Site.Centre, HerdCentre = herd.Centre,
-                HasThreat = owner.HasPlayer, Threat = owner.PlayerAt,
+                HasThreat = owner.HasPlayer, Threat = owner.PlayerAt, ThreatCrouching = owner.PlayerCrouching,
             });
 
             float speed = 0f;
