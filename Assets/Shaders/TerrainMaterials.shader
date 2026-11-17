@@ -119,6 +119,8 @@ Shader "Clube/Terrain Materials"
         // within the 3D grass and fully by the edge of it, so there's no line where the tufts end and the bare texture
         // begins.
         #include "Assets/Shaders/GrassLawn.hlsl"
+        // GL718: the coarse levels colour the map's roads in (the world's own chunks have the road voxels).
+        #include "Assets/Shaders/RoadTint.hlsl"
         float _GrassLawnLayer;
         float _GrassLawnFrom;
         float _GrassLawnTo;
@@ -380,7 +382,7 @@ Shader "Clube/Terrain Materials"
                 normalWS = Bumped(input.positionWS, normalWS, ReliefOf(input.materialIds, input.materialWeights));
                 if (_LodClip > 0.5)
                 {
-                    albedo *= _LodTint.rgb;
+                    albedo = RoadTint(albedo, input.positionWS.xz) * _LodTint.rgb;
                 }
 
                 Light mainLight = GetMainLight(TransformWorldToShadowCoord(input.positionWS));

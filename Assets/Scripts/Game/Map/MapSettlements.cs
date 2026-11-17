@@ -111,6 +111,7 @@ namespace Clube.Game
         private float[] reach;
         private bool fitDue;
         private Built[] built;
+        private SettlementSite[] laid;
         private KeptHeights heights;
         private Transform root;
         private MapRoads roads;
@@ -249,6 +250,7 @@ namespace Clube.Game
             root = new GameObject("Settlements").transform;
             root.SetParent(session.WorldView.transform, false);
             built = new Built[session.Plan.Settlements.Count];
+            laid = new SettlementSite[built.Length];
             reach = new float[built.Length];
             for (int i = 0; i < reach.Length; i++)
             {
@@ -269,14 +271,30 @@ namespace Clube.Game
             SettlementsWorkedOut = PiecesWritten = ShopsFitted = BridgesBuilt = LightsStood = 0;
         }
 
-        // Lays a settlement out on its ground, and makes its writer.
-        private Built WorkOut(int index)
+        /// <summary>
+        /// GL718: a settlement as it is laid out on its ground, without making its writer or holding its ground (the far
+        /// view's stand-ins are made from it); laid out on the first ask. Null before the map is ready.
+        /// </summary>
+        public SettlementSite LaidSite(int settlement)
         {
-            if (built[index] != null)
+            if (session == null || !session.IsReady || session.Plan == null)
             {
-                return built[index];
+                return null;
             }
-            float started = Time.realtimeSinceStartup;
+            if (session.Version != version)
+            {
+                StartOver();
+            }
+            return Lay(settlement);
+        }
+
+        // Lays a settlement out on its ground, once.
+        private SettlementSite Lay(int index)
+        {
+            if (laid[index] != null)
+            {
+                return laid[index];
+            }
             WorldPlan plan = session.Plan;
             PlannedSettlement settlement = plan.Settlements[index];
             BoundedMapGenerator map = session.Map;
@@ -289,6 +307,21 @@ namespace Clube.Game
             // GL649: its lanes and banks meet the roads' beds, not the land's height before the roads were cut.
             Rect round = site.Footprint;
             site.RoadSurface = roads != null ? roads.SurfaceNear(Rect.MinMaxRect(round.xMin - 20f, round.yMin - 20f, round.xMax + 20f, round.yMax + 20f)) : null;
+            laid[index] = site;
+            return site;
+        }
+
+        // Lays a settlement out on its ground, and makes its writer.
+        private Built WorkOut(int index)
+        {
+            if (built[index] != null)
+            {
+                return built[index];
+            }
+            float started = Time.realtimeSinceStartup;
+            BoundedMapGenerator map = session.Map;
+            PlannedSettlement settlement = session.Plan.Settlements[index];
+            SettlementSite site = Lay(index);
             var street = new RoadClassDefinition
             {
                 Class = RoadClass.Footpath, Name = "Street", Width = rules.StreetWidth, Surface = settlement.Type.Street,

@@ -53,6 +53,8 @@ Shader "Clube/Far Terrain"
         #include "Assets/Shaders/GrassLawn.hlsl"
         float _GrassLawnTo;
 
+        #include "Assets/Shaders/RoadTint.hlsl"
+
         // Per renderer (a property block): each level's debug tint.
         half4 _LevelTint;
 
@@ -127,6 +129,7 @@ Shader "Clube/Far Terrain"
                     albedo = lerp(albedo, horizon.rgb, horizon.a);
                 }
                 albedo = lerp(albedo, _RockColor.rgb, smoothstep(_RockSlope - 0.08, _RockSlope + 0.08, slope));
+                albedo = RoadTint(albedo, input.positionWS.xz);
                 float snow = smoothstep(_SnowHeight - _SnowBlend, _SnowHeight + _SnowBlend, input.positionWS.y)
                            * (1.0 - smoothstep(0.45, 0.65, slope));
                 albedo = lerp(albedo, _SnowColor.rgb, snow);

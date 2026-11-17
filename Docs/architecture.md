@@ -696,6 +696,27 @@ leaf cluster (to 520 m), a crown of up to five blobs (to 1100 m), one blob beyon
   (nothing is stored); the start area's extra trees (`StartArea.MinTrees`) are near the origin,
   inside the world, so they aren't placed here.
 
+### Distant settlements, roads and haze (GL718, GL719)
+
+Settlement buildings and roads are voxels only where the world's chunks are; past them:
+
+- **Stand-ins**: `MapStandIns` (Game) lays every settlement out (`MapSettlements.LaidSite`: the layout alone, no
+  writer, no held ground), a few milliseconds a frame, nearest first, and hands its parts to `DistantBuildingView`
+  (Rendering). `BuildingStandIns` (Core) makes the parts from the same building plan the voxels come from: a walls box
+  per building (from 2 m under its pad, for the coarse ground with no terrace) and a gable prism to the voxel roof's
+  ridge, or one stone box for a battlemented building. They are drawn instanced per building (`Clube/Distant
+  Buildings`), then past `MergeFrom` (900 m) one merged mesh per settlement, the two cross-fading by the screen's
+  dither like the tree levels; a part whose origin stands on a column the world draws (`ChunkCoverageMask`) is dropped,
+  since the voxel building is there (and its ground is held until written, GL653).
+- **Roads**: `RoadMask` (Core) paints the plan's road lines (their tunnels left out) into one picture of the map, the
+  road colour premultiplied by its coverage; `MapRoadTint` (Game) paints it once per map and `TerrainRoadTint` sets it
+  as globals. The coarse terrain levels (`Clube/Terrain Materials` with `_LodClip` on) and the far terrain colour their
+  ground with it (`RoadTint.hlsl`); the world's own chunks have the road voxels.
+- **Haze**: `AirHaze` owns the scene fog's mode and density (exponential squared, `HalfDistance` 7 km), which every
+  world shader takes; `DayNightCycle` owns its colour (MapGen's base: light blue-grey, to meet the horizon sky).
+- **Limits**: one stand-in per building (no walls, yards, turrets or bridges); a building standing on two columns
+  shows as a stand-in until its origin column draws; the merged meshes keep the colours they were made with.
+
 ---
 
 ## 6. Labs and the game (A13)
