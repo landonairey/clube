@@ -134,55 +134,55 @@ namespace Clube.Core
         {
             new AnimalSpecies
             {
-                Id = "rabbit", Name = "Rabbit", Feeds = Textile, Biomes = new[] { Grass, Forest, Steppe }, Herd = new Vector2Int(2, 5),
+                Id = "rabbit", Name = "Rabbit", Feeds = Textile, Biomes = new[] { Grass, Forest, Steppe, Highland }, Herd = new Vector2Int(2, 5),
                 Length = 0.45f, ShoulderHeight = 0.22f, WalkSpeed = 1.2f, RunSpeed = 7.5f, Health = 8f, Skittishness = 12f,
                 Routine = AnimalRoutine.Twilight, Drops = new[] { new AnimalDrop("rabbit-fur", 1, 2) },
             },
             new AnimalSpecies
             {
-                Id = "goat", Name = "Goat", Feeds = Textile, Biomes = new[] { Highland, Alpine }, Herd = new Vector2Int(3, 6),
+                Id = "goat", Name = "Goat", Feeds = Textile, Biomes = new[] { Highland, Alpine, Steppe }, Herd = new Vector2Int(3, 6),
                 Length = 1.1f, ShoulderHeight = 0.7f, WalkSpeed = 1.3f, RunSpeed = 6f, Health = 22f, Skittishness = 9f,
                 Drops = new[] { new AnimalDrop("goat-wool", 1, 3) },
             },
             new AnimalSpecies
             {
-                Id = "sheep", Name = "Sheep", Feeds = Textile, Biomes = new[] { Grass, Highland }, Herd = new Vector2Int(4, 8),
+                Id = "sheep", Name = "Sheep", Feeds = Textile, Biomes = new[] { Grass, Highland, Steppe, Forest }, Herd = new Vector2Int(4, 8),
                 Length = 1.2f, ShoulderHeight = 0.75f, WalkSpeed = 1f, RunSpeed = 5f, Health = 24f, Skittishness = 7f,
                 Drops = new[] { new AnimalDrop("sheep-wool", 2, 4) },
             },
             new AnimalSpecies
             {
-                Id = "yak", Name = "Yak", Feeds = Textile, Biomes = new[] { Alpine, Highland }, Herd = new Vector2Int(2, 5),
+                Id = "yak", Name = "Yak", Feeds = Textile, Biomes = new[] { Alpine, Highland, Steppe }, Herd = new Vector2Int(2, 5),
                 Length = 2.4f, ShoulderHeight = 1.4f, WalkSpeed = 1f, RunSpeed = 5f, Health = 60f, Skittishness = 6f,
                 Drops = new[] { new AnimalDrop("yak-wool", 2, 5) },
             },
             new AnimalSpecies
             {
-                Id = "alpaca", Name = "Alpaca", Feeds = Textile, Biomes = new[] { Highland, Steppe }, Herd = new Vector2Int(3, 6),
+                Id = "alpaca", Name = "Alpaca", Feeds = Textile, Biomes = new[] { Highland, Steppe, Alpine, Grass }, Herd = new Vector2Int(3, 6),
                 Length = 1.4f, ShoulderHeight = 0.95f, WalkSpeed = 1.2f, RunSpeed = 5.5f, Health = 28f, Skittishness = 8f,
                 Drops = new[] { new AnimalDrop("alpaca-wool", 2, 4) },
             },
             new AnimalSpecies
             {
-                Id = "cow", Name = "Cow", Feeds = Tannery, Biomes = new[] { Grass }, Herd = new Vector2Int(3, 7),
+                Id = "cow", Name = "Cow", Feeds = Tannery, Biomes = new[] { Grass, Forest, Steppe }, Herd = new Vector2Int(3, 7),
                 Length = 2.2f, ShoulderHeight = 1.35f, WalkSpeed = 0.9f, RunSpeed = 4.5f, Health = 50f, Skittishness = 5f,
                 Drops = new[] { new AnimalDrop("cow-hide", 1, 2) },
             },
             new AnimalSpecies
             {
-                Id = "deer", Name = "Deer", Feeds = Tannery, Biomes = new[] { Forest, Grass }, Herd = new Vector2Int(2, 5),
+                Id = "deer", Name = "Deer", Feeds = Tannery, Biomes = new[] { Forest, Grass, Highland }, Herd = new Vector2Int(2, 5),
                 Length = 1.6f, ShoulderHeight = 1f, WalkSpeed = 1.4f, RunSpeed = 8f, Health = 30f, Skittishness = 14f,
                 Routine = AnimalRoutine.Twilight, Drops = new[] { new AnimalDrop("deer-hide", 1, 1) },
             },
             new AnimalSpecies
             {
-                Id = "elk", Name = "Elk", Feeds = Tannery, Biomes = new[] { Forest, Highland }, Herd = new Vector2Int(2, 4),
+                Id = "elk", Name = "Elk", Feeds = Tannery, Biomes = new[] { Forest, Highland, Alpine, Grass }, Herd = new Vector2Int(2, 4),
                 Length = 2.3f, ShoulderHeight = 1.5f, WalkSpeed = 1.3f, RunSpeed = 7f, Health = 55f, Skittishness = 11f,
                 Drops = new[] { new AnimalDrop("elk-hide", 1, 2) },
             },
             new AnimalSpecies
             {
-                Id = "bison", Name = "Bison", Feeds = Tannery, Biomes = new[] { Steppe, Grass }, Herd = new Vector2Int(4, 9),
+                Id = "bison", Name = "Bison", Feeds = Tannery, Biomes = new[] { Steppe, Grass, Highland }, Herd = new Vector2Int(4, 9),
                 Length = 2.8f, ShoulderHeight = 1.7f, WalkSpeed = 1f, RunSpeed = 6f, Health = 80f, Skittishness = 7f,
                 Drops = new[] { new AnimalDrop("bison-hide", 1, 2) },
             },

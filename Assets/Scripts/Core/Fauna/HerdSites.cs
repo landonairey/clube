@@ -7,9 +7,10 @@ namespace Clube.Core
     /// <summary>A herd's place on the map (GL605): which species, how many, and where they live.</summary>
     public readonly struct HerdSite
     {
-        public HerdSite(Vector2Int cell, Vector2 centre, AnimalSpecies species, int count, int seed)
+        public HerdSite(Vector2Int cell, Vector2 centre, AnimalSpecies species, int count, int seed, int slot = 0)
         {
             Cell = cell;
+            Slot = slot;
             Centre = centre;
             Species = species;
             Count = count;
@@ -18,6 +19,9 @@ namespace Clube.Core
 
         /// <summary>The site's cell of <see cref="HerdSites.CellSize"/> metres: its identity, in saves too.</summary>
         public Vector2Int Cell { get; }
+
+        /// <summary>Which of the cell's herds this is (GL690): 0 is the first, which keeps the names saves already hold.</summary>
+        public int Slot { get; }
 
         /// <summary>The herd's home, on the map (x, z).</summary>
         public Vector2 Centre { get; }
@@ -32,7 +36,7 @@ namespace Clube.Core
         /// <summary>Names one of the herd's animals, for remembering the dead: "cellX,cellZ,index".</summary>
         public string AnimalKey(int index)
         {
-            return $"{Cell.x},{Cell.y},{index}";
+            return Slot == 0 ? $"{Cell.x},{Cell.y},{index}" : $"{Cell.x},{Cell.y}s{Slot},{index}";
         }
     }
 
@@ -44,8 +48,14 @@ namespace Clube.Core
     /// </summary>
     public static class HerdSites
     {
-        /// <summary>Side of a site's cell, in metres: at most one herd in each.</summary>
+        /// <summary>Side of a site's cell, in metres.</summary>
         public const float CellSize = 96f;
+
+        /// <summary>Herds a cell can hold (GL690): each slot rolls its own chance, species and place, so a cell may have several herds of different species.</summary>
+        public const int SlotsPerCell = 2;
+
+        /// <summary>Metres a later slot's herd stands at least from the first slot's.</summary>
+        private const float SlotSeparation = 40f;
 
         /// <summary>The share of cells with a herd in the poorest biome that has animals, and in the richest.</summary>
         public const float PoorChance = 0.3f, RichChance = 0.75f;
@@ -55,15 +65,22 @@ namespace Clube.Core
         /// where there is none (water, off the map).
         /// </summary>
         public static bool TryAt(
-            int worldSeed, Vector2Int cell, Func<float, float, BiomeDefinition> biomeAt, IReadOnlyList<AnimalSpecies> species, out HerdSite site)
+            int worldSeed, Vector2Int cell, Func<float, float, BiomeDefinition> biomeAt, IReadOnlyList<AnimalSpecies> species, out HerdSite site,
+            int slot = 0)
         {
             site = default;
-            int seed = Hash(worldSeed, cell.x, cell.y);
+            int seed = slot == 0 ? Hash(worldSeed, cell.x, cell.y) : Hash(worldSeed + slot * 104729, cell.x, cell.y);
             var random = new System.Random(seed);
             // Away from the cell's edges, so neighbouring herds don't stand together.
-            var centre = new Vector2(
-                (cell.x + 0.2f + 0.6f * (float)random.NextDouble()) * CellSize,
-                (cell.y + 0.2f + 0.6f * (float)random.NextDouble()) * CellSize);
+            Vector2 centre = CentreIn(cell, random);
+            if (slot > 0)
+            {
+                Vector2 first = CentreIn(cell, new System.Random(Hash(worldSeed, cell.x, cell.y)));
+                for (int attempt = 0; attempt < 8 && (centre - first).sqrMagnitude < SlotSeparation * SlotSeparation; attempt++)
+                {
+                    centre = CentreIn(cell, random);
+                }
+            }
             double chance = random.NextDouble(), pick = random.NextDouble(), size = random.NextDouble();
             BiomeDefinition biome = biomeAt(centre.x, centre.y);
             if (biome == null || chance >= ChanceIn(biome))
@@ -76,8 +93,15 @@ namespace Clube.Core
                 return false;
             }
             int count = chosen.Herd.x + (int)(size * (chosen.Herd.y - chosen.Herd.x + 1));
-            site = new HerdSite(cell, centre, chosen, Mathf.Clamp(count, chosen.Herd.x, chosen.Herd.y), seed);
+            site = new HerdSite(cell, centre, chosen, Mathf.Clamp(count, chosen.Herd.x, chosen.Herd.y), seed, slot);
             return true;
+        }
+
+        private static Vector2 CentreIn(Vector2Int cell, System.Random random)
+        {
+            return new Vector2(
+                (cell.x + 0.2f + 0.6f * (float)random.NextDouble()) * CellSize,
+                (cell.y + 0.2f + 0.6f * (float)random.NextDouble()) * CellSize);
         }
 
         /// <summary>The herds whose homes are within <paramref name="radius"/> of a map point.</summary>
@@ -91,10 +115,13 @@ namespace Clube.Core
             {
                 for (int x = x0; x <= x1; x++)
                 {
-                    if (TryAt(worldSeed, new Vector2Int(x, z), biomeAt, species, out HerdSite site)
-                        && (site.Centre - position).sqrMagnitude <= radius * radius)
+                    for (int slot = 0; slot < SlotsPerCell; slot++)
                     {
-                        into.Add(site);
+                        if (TryAt(worldSeed, new Vector2Int(x, z), biomeAt, species, out HerdSite site, slot)
+                            && (site.Centre - position).sqrMagnitude <= radius * radius)
+                        {
+                            into.Add(site);
+                        }
                     }
                 }
             }

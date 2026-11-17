@@ -50,7 +50,7 @@ namespace Clube.Game
 
         [Tooltip("The most living animals at once.")]
         [SerializeField, Min(0)]
-        private int maxAnimals = 40;
+        private int maxAnimals = 60;
 
         [Tooltip("Seconds a carcass stays after its last drop is taken.")]
         [SerializeField, Min(0f)]
@@ -60,11 +60,11 @@ namespace Clube.Game
         [SerializeField, Min(0f)]
         private float carcassSeconds = 600f;
 
-        private readonly Dictionary<Vector2Int, Herd> herds = new Dictionary<Vector2Int, Herd>();
+        private readonly Dictionary<Vector3Int, Herd> herds = new Dictionary<Vector3Int, Herd>();
         private readonly List<Animal> animals = new List<Animal>();
         private readonly HashSet<string> dead = new HashSet<string>();
         private readonly List<HerdSite> near = new List<HerdSite>();
-        private readonly List<Vector2Int> leaving = new List<Vector2Int>();
+        private readonly List<Vector3Int> leaving = new List<Vector3Int>();
         private Dictionary<string, BiomeDefinition> standIns;
         private WorldView worldView;
         private PlayerController player;
@@ -91,6 +91,9 @@ namespace Clube.Game
 
         /// <summary>Where the player is, on the map (x, z).</summary>
         public Vector2 PlayerAt { get; private set; }
+
+        /// <summary>True while the player crouches (GL691): the animals let a crouching player come close.</summary>
+        public bool PlayerCrouching { get; private set; }
 
         public float EmptiedCarcassSeconds => emptiedCarcassSeconds;
 
@@ -140,6 +143,7 @@ namespace Clube.Game
             Vector3 local = transform.InverseTransformPoint(viewer.position);
             PlayerAt = new Vector2(local.x, local.z);
             HasPlayer = player != null && player.enabled;
+            PlayerCrouching = HasPlayer && player.IsCrouching;
 
             foreach (Herd herd in herds.Values)
             {
@@ -164,7 +168,7 @@ namespace Clube.Game
         private void Scan(float playerHeight)
         {
             leaving.Clear();
-            foreach (KeyValuePair<Vector2Int, Herd> pair in herds)
+            foreach (KeyValuePair<Vector3Int, Herd> pair in herds)
             {
                 Herd herd = pair.Value;
                 if ((herd.Centre - PlayerAt).sqrMagnitude > despawnRadius * despawnRadius
@@ -173,7 +177,7 @@ namespace Clube.Game
                     leaving.Add(pair.Key);
                 }
             }
-            foreach (Vector2Int cell in leaving)
+            foreach (Vector3Int cell in leaving)
             {
                 foreach (Animal animal in herds[cell].Members)
                 {
@@ -189,11 +193,16 @@ namespace Clube.Game
             near.Sort((a, b) => (a.Centre - PlayerAt).sqrMagnitude.CompareTo((b.Centre - PlayerAt).sqrMagnitude));
             foreach (HerdSite site in near)
             {
-                if (!herds.ContainsKey(site.Cell) && animals.Count + site.Count <= maxAnimals)
+                if (!herds.ContainsKey(KeyOf(site)) && animals.Count + site.Count <= maxAnimals)
                 {
                     TrySpawn(site, playerHeight);
                 }
             }
+        }
+
+        private static Vector3Int KeyOf(HerdSite site)
+        {
+            return new Vector3Int(site.Cell.x, site.Cell.y, site.Slot);
         }
 
         private int WorldSeed => worldView.Config != null && worldView.Config.Terrain != null ? worldView.Config.Terrain.Seed : 0;
@@ -234,7 +243,7 @@ namespace Clube.Game
                 return;
             }
             var herd = new Herd { Site = site, Centre = site.Centre };
-            herds[site.Cell] = herd;
+            herds[KeyOf(site)] = herd;
             if (root == null)
             {
                 root = new GameObject("Animals").transform;
