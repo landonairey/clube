@@ -184,6 +184,9 @@ namespace Clube.Core
         /// <summary>GL715: a stone town wall round it, with gateways where the roads come in.</summary>
         public bool Walls;
 
+        /// <summary>GL728: a groom with a horse tied by its name board, riding the player to the others' for a fare (<see cref="HorseHire"/>).</summary>
+        public bool HorseHire;
+
         /// <summary>GL716: its light sources, by kind (<see cref="SettlementLightKind.Id"/>).</summary>
         public List<SettlementLightRule> Lights = new List<SettlementLightRule>();
 
@@ -226,13 +229,13 @@ namespace Clube.Core
                 {
                     Id = "city", Name = "City", Icon = "tower", MinimumRoad = RoadClass.PavedCartPath, ParcelSize = "~16", Parcels = 16f,
                     PopulationMin = 16, PopulationMax = 24, Count = 4, Shops = 5, CraftLevel = 2, Spacing = 800f, Site = SiteRule.AllResources,
-                    Landmarks = new[] { "guard-tower" }, Lights = { SettlementLightRule.Every("lantern", 1) },
+                    Landmarks = new[] { "guard-tower" }, HorseHire = true, Lights = { SettlementLightRule.Every("lantern", 1) },
                 },
                 new SettlementType
                 {
                     Id = "capital", Name = "Capital", Icon = "castle", MinimumRoad = RoadClass.PavedCartPath, NeedsOcean = true, ParcelSize = ">16",
                     Parcels = 25f, PopulationMin = 24, PopulationMax = 32, Count = 1, Shops = 8, CraftLevel = 2, Spacing = 900f,
-                    Site = SiteRule.AllResources, Landmarks = new[] { "castle", "guard-tower" }, Walls = true,
+                    Site = SiteRule.AllResources, Landmarks = new[] { "castle", "guard-tower" }, Walls = true, HorseHire = true,
                     Lights = { SettlementLightRule.Every("lantern", 1) },
                 },
             };

@@ -29,7 +29,13 @@ namespace Clube.Core
         /// </summary>
         public float DirtShare = 1f;
 
-        /// <summary>The two kinds the user named: a hand cart on every cart path, a horse cart on the paved ones and on some dirt ones.</summary>
+        /// <summary>
+        /// GL728: how many of this kind run on each paved cart path, spread evenly round their timetable ("horse drawn
+        /// carts can occupy the larger paved trade routes").
+        /// </summary>
+        public int PavedCount = 1;
+
+        /// <summary>The two kinds the user named: a hand cart on every cart path, horse carts on the paved ones (two each, GL728) and on some dirt ones.</summary>
         public static List<CartKind> Defaults()
         {
             return new List<CartKind>
@@ -42,7 +48,7 @@ namespace Clube.Core
                 new CartKind
                 {
                     Id = "horse-cart", Name = "Horse cart", HorseDrawn = true, Speed = 2.1f, RestSeconds = 180f,
-                    Roads = new[] { RoadClass.DirtCartPath, RoadClass.PavedCartPath }, DirtShare = 0.4f,
+                    Roads = new[] { RoadClass.DirtCartPath, RoadClass.PavedCartPath }, DirtShare = 0.4f, PavedCount = 2,
                 },
             };
         }
@@ -171,9 +177,24 @@ namespace Clube.Core
                 {
                     foreach (CartKind kind in kinds)
                     {
-                        if (Array.IndexOf(kind.Roads, road.Class) >= 0)
+                        if (Array.IndexOf(kind.Roads, road.Class) < 0)
                         {
-                            runs.Add(Run(runs.Count, road, kind, beyond, random));
+                            continue;
+                        }
+                        CartRun first = null;
+                        for (int k = 0; k < Math.Max(1, kind.PavedCount); k++)
+                        {
+                            CartRun run = Run(runs.Count, road, kind, beyond, random);
+                            if (first == null)
+                            {
+                                first = run;
+                            }
+                            else
+                            {
+                                // The rest of the kind spread evenly round the first's timetable.
+                                run.Offset = (first.Offset + k * first.Round / kind.PavedCount) % first.Round;
+                            }
+                            runs.Add(run);
                         }
                     }
                     continue;

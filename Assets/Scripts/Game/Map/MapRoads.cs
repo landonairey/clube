@@ -94,6 +94,12 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            // GL728: the horse-hire stands by the capital's and cities' name boards; no scene needs editing.
+            if (!TryGetComponent(out MapHorseHire hire))
+            {
+                hire = gameObject.AddComponent<MapHorseHire>();
+            }
+            hire.Setup(session, material);
             hold.Rule = HoldsUnworked;
             holding = session != null ? session.WorldView : null;
             if (holding != null)
