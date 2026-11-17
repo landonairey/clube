@@ -31,24 +31,24 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void MagnetitesColour_IsBlue_NotCassiteritesBrownNorCoalsBlack()
+        public void MagnetitesColour_IsNeutralDark_NotBlue_NorCassiteritesBrownNorCoalsBlack()
         {
             Color magnetite = Load("Magnetite").DebugColor;
             Color cassiterite = Load("Cassiterite").DebugColor;
             Color coal = Load("Coal").DebugColor;
-            Assert.Greater(magnetite.b, magnetite.r * 1.5f, "Steel blue: clearly more blue than red.");
+            Assert.Less(magnetite.b, magnetite.r * 1.2f, "Black crystals, not blue (GL678).");
             Assert.Greater(cassiterite.r, cassiterite.b * 1.5f, "Cassiterite is the brown one.");
             Assert.Less(Mathf.Max(coal.r, coal.g, coal.b), 0.1f, "Coal is black.");
             Assert.Greater(magnetite.b - coal.b, 0.2f, "Magnetite is not as dark as coal.");
         }
 
         [Test]
-        public void MagnetitesTexture_IsBluerThanCassiterites_AndLighterThanCoals()
+        public void MagnetitesTexture_IsNotBlue_AndLighterThanCoals()
         {
             (float blueOverRed, float brightness) magnetite = Tone(Load("Magnetite").Albedo);
             (float blueOverRed, float brightness) cassiterite = Tone(Load("Cassiterite").Albedo);
             (float blueOverRed, float brightness) coal = Tone(Load("Coal").Albedo);
-            Assert.Greater(magnetite.blueOverRed, cassiterite.blueOverRed + 0.05f, "Blue crystals against brown specks.");
+            Assert.Less(magnetite.blueOverRed, 1.1f, "Black crystals, not blue (GL678).");
             Assert.Greater(magnetite.brightness, coal.brightness + 0.15f, "Ore in grey stone against a black seam.");
         }
 

@@ -253,12 +253,14 @@ namespace Clube.Core
                 },
                 new EconomySpecialty
                 {
-                    Id = "sand-pit", Name = "Sand Pit", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 0,
+                    Id = "sand-pit", Trains = new[] { SkillType.Mining },
+                    Name = "Sand Pit", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 0,
                     Needs = new[] { "sand" }, Buys = Goods(new[] { "sand" }), Sells = Goods(new[] { "sand" }),
                 },
                 new EconomySpecialty
                 {
-                    Id = "clay-pit", Name = "Clay Pit", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 0,
+                    Id = "clay-pit", Trains = new[] { SkillType.Mining },
+                    Name = "Clay Pit", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 0,
                     Needs = new[] { "clay" }, Buys = Goods(new[] { "clay" }), Sells = Goods(new[] { "clay" }),
                 },
 
