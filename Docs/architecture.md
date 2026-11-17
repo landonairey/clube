@@ -68,13 +68,15 @@ Core/
     Water/       WaterGeneration (settings), Hydrology (drains the heightfield), WaterMap (rivers and lakes as job data, GL307),
                  WaterFill (the map's water into a loaded chunk's samples, GL315)
     Ores/        OreSpec, OreField (placement), OreRoll (the roll, shared)
-    Trees/       TreeGeneration (settings), TreeField (placement), TreeShape (one tree), TreeStamp (into a chunk, GL30)
+    Trees/       TreeGeneration (settings), TreeField (placement), TreeShape (one tree), TreeStamp (into a chunk, GL30),
+                 TreeSpecies (kinds past birch and maple as rows, TreeKind, GL721)
     Settlements/ TownSiteSearch + TownSiteFinder (where the town stands: a parcel near ores and water, from the seed, in steps, GL399),
                  TownPlan (one town worked out once: frame, shop pads, wall stones, mine shafts, GL408-GL414), TownStructures
                  (the shapes: wall stones, a shop's voxels, a shaft's stair line and passage),
                  TownLayout (the town's plan: wall, gate, shop plots, keeper spots, cobbled paths, GL400, GL405, GL407)
                  CartRoute (the trade cart's road to a distant town 10+ parcels out of the gate: bends moved to the least climb, GL477)
-    Flora/       GrassGrowth (grass height, wheat fields, GL234-GL235), BushGrowth (where bushes grow, sizes, drops, GL236),
+    Flora/       GrassGrowth (grass height, wheat fields, GL234-GL235), BushGrowth (where bushes grow, sizes, drops, GL236;
+                 in groups, GL722), ReedGrowth (reeds by fresh water, from the WaterMap, GL723),
                  TreeCover (how thick the grown trees stand round a place)
   Meshing/       MarchingCubes + tables, ChunkMeshSettings, variants (A6)
     Managed/     ChunkMesher and its strategies, the managed material pass: labs, step-through (A11)
@@ -110,7 +112,7 @@ Core/
                  TerrainLodRing + TerrainLodBuilder (coarse terrain levels, P7c), DistantTreeBuilder (GL162)
   Rendering/     WorldView, ChunkView, ChunkRenderer(+Pool), ChunkCollider, ChunkMeshBuilder, GrassScatter (GL67),
                  FarTerrainView + ChunkCoverageMask (P7a), TerrainLodView (P7c), DistantTreeView + DistantTreeMeshes (GL162)
-                 BushScatter + BushMeshes (GL236), GrassyGround (flora spots on the built meshes) and InstanceBatches
+                 BushScatter + BushMeshes (GL236; reed clumps on the same grid, ReedMeshes, GL723), GrassyGround (flora spots on the built meshes, one material or several) and InstanceBatches
                  (the grass draws its batches from one GPU buffer each, GL416),
                  shared by the grass and the bushes
 ```
@@ -228,9 +230,20 @@ flowchart LR
   shape (`SizeOf`, from `YoungestSize` to 1; deep forest leans old). Both are pure
   functions of the seed and the cell, read by `TreeField`, `TreeShape` and the
   distant trees alike.
-  Each kind has its own full-grown height and trunk (GL166: birch 11-16 m, maple 14-20 m in the
-  world labs); leaf balls grow with the height (`TreeShape.LeafReferenceHeight`), so a tall
-  tree is a bigger copy of a short one.
+  Each kind has its own full-grown height and trunk (GL720: birch 11-44 m, maple 14-56 m, pine
+  16-60 m in the world configs, skewed to the low end). Up to 20 m a tree's crown, lean and leaf
+  balls grow with its height (`TreeShape.LeafReferenceHeight`); past it they grow with the square
+  root (`TreeShape.CrownHeight`), trunks thicken (`TrunkScale`) and a branch is added every 8 m, so
+  a tall tree is tall rather than a blown-up copy, and `MaxSpread` (what chunks gather trees by)
+  stays near what it was.
+- **Kinds of tree** (GL721): kind 0 is birch and kind 1 maple (`TreeGeneration`'s own fields, which
+  the saved configs name); kinds 2 on are `TreeSpecies` rows (`MoreSpecies`: pine), each with its
+  form (`TreeForm.Broadleaf`, or `Conifer`: `TreeShape.BuildConifer`'s narrow cone), materials,
+  heights and a share that rises where it's cold (`ITreeClimate.TemperatureAt`, a coarse
+  temperature grid in `BiomeMap`). `TreeShape.KindOf` rolls the rows first on their own hash, then
+  birch or maple by the old roll; `TreeGeneration.Kind(i)` gives any kind as a `TreeKind`. Felling
+  (`TreeMaterials.From`) and the distant trees (`DistantTree.Kind`, up to 6 kinds, a row's own far
+  colours) read every kind.
 - **Stamp fields** (GL504): besides trees, a chunk gathers parts from an `IStampField` (`BoulderField`, `RiverDebris`;
   `StampFields.Combine`), all stamped by `TreeStamp`. `RiverDebris` lays a log bank to bank and rocks in the stream from the
   water map. Fallen trees (GL505, `TreeForests.IsFallen`) are built by `TreeShape.BuildFallen`; the distant trees skip them.
@@ -989,6 +1002,16 @@ GL560). Rough value order.
     Drawer, which needs the chunk shaders to support DOTS instancing). Also find the 1-1.4 s hitch about 650 m into
     the roam. *Measure:* `clube.exe -roambench`, draw calls and "cpu main". *Done when:* walking stays under 8 ms on
     the reference machine.
+18. **Billboard impostors for the farthest trees** (asked in W5, not built). `DistantTreeView` already draws four
+    instanced mesh levels per kind and variant (every branch to 220 m, a blob per cluster to 520 m, a few crown blobs
+    to 1,100 m, one blob past it), with a screen-dither cross-fade between levels (`DistantTrees.shader`). Far grass is
+    already 4-tuft clumps that give way to the lawn colour. So a sprite level would replace only the last one-blob
+    level, saving a few dozen triangles per far tree. It would need octahedral impostor atlases baked per kind and
+    variant (6 x 6 now, about 36 x 1-4 MB), a shader with Forward, DepthOnly and DepthNormals passes that writes the
+    impostor's depth so SSAO and fog still work, and the existing dither between the mesh levels and the sprites.
+    It doesn't touch the main-thread cost (item 16: matrix copies, not triangles). Worth doing only if a GPU capture
+    of `-roambench` shows the far-tree vertex work matters after item 16. *Measure:* GPU frame time and triangles with
+    the last level on and off. *Done when:* the GPU frame drops by at least 0.5 ms at 1440p with no visible pop.
 
 When one of these is done, move it into `benchmarks.md` with its numbers and
 delete it here.
