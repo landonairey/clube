@@ -20,6 +20,9 @@ namespace Clube.Core
         /// <summary>The pier's width, and the longest it runs out from the shore, in metres.</summary>
         public float Width = 1.2f, MaxLength = 20f;
 
+        /// <summary>The least it runs out past the shore, in metres, however deep the water comes: a grand dock reaches out.</summary>
+        public float MinLength = 6f;
+
         /// <summary>The head across the pier's end (a T), its length and width; 0 for none.</summary>
         public float HeadLength, HeadWidth;
 
@@ -41,22 +44,22 @@ namespace Clube.Core
             {
                 new DockDesign
                 {
-                    Id = "foot-dock", Name = "Foot dock", Types = new[] { "outpost", "village" }, Width = 1.2f, MaxLength = 22f, Berths = 1, PathWidth = 1.2f,
+                    Id = "foot-dock", Name = "Foot dock", Types = new[] { "outpost", "village" }, Width = 1.2f, MaxLength = 22f, MinLength = 6f, Berths = 1, PathWidth = 1.2f,
                     DeckRise = 0.6f,
                 },
                 new DockDesign
                 {
-                    Id = "pier", Name = "Pier", Types = new[] { "town" }, Width = 2.4f, MaxLength = 32f, HeadLength = 12f, HeadWidth = 3f, Berths = 2,
+                    Id = "pier", Name = "Pier", Types = new[] { "town" }, Width = 2.4f, MaxLength = 32f, MinLength = 14f, HeadLength = 12f, HeadWidth = 3f, Berths = 2,
                     PathWidth = 2f,
                 },
                 new DockDesign
                 {
-                    Id = "harbour", Name = "Harbour", Types = new[] { "city" }, Width = 3.5f, MaxLength = 42f, HeadLength = 20f, HeadWidth = 4f, Berths = 3,
+                    Id = "harbour", Name = "Harbour", Types = new[] { "city" }, Width = 3.5f, MaxLength = 42f, MinLength = 22f, HeadLength = 20f, HeadWidth = 4f, Berths = 3,
                     PathWidth = 3f, DeckRise = 1f,
                 },
                 new DockDesign
                 {
-                    Id = "grand-docks", Name = "Grand docks", Types = new[] { "capital" }, Width = 6f, MaxLength = 50f, HeadLength = 34f, HeadWidth = 7f,
+                    Id = "grand-docks", Name = "Grand docks", Types = new[] { "capital" }, Width = 6f, MaxLength = 50f, MinLength = 30f, HeadLength = 34f, HeadWidth = 7f,
                     Berths = 4, Stone = true, PathWidth = 5f, DeckRise = 1.2f,
                 },
             };
@@ -143,7 +146,7 @@ namespace Clube.Core
     public static class Docks
     {
         /// <summary>The farthest from a building, in metres, the shore may be for a dock.</summary>
-        public const float ShoreReach = 140f;
+        public const float ShoreReach = 260f;
 
         /// <summary>Metres of deck edge a berth takes: a sea trader's length and room to warp in.</summary>
         public const float BerthLength = 15f;
@@ -209,7 +212,7 @@ namespace Clube.Core
             while (length < design.MaxLength + OnLand)
             {
                 length += 1f;
-                if (depthAt(dock.Root + bestDirection * length) >= needDepth && length >= OnLand + 4f)
+                if (depthAt(dock.Root + bestDirection * length) >= needDepth && length >= OnLand + design.MinLength)
                 {
                     break;
                 }
