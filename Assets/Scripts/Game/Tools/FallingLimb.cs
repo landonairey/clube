@@ -33,6 +33,9 @@ namespace Clube.Game
         private Mesh mesh;
         private Vector3 pivotStart;
         private float pivotEnd;
+        // GL724: samples it lands further out, clear of the stump, and that distance in the world view's space.
+        private int outward;
+        private Vector3 slide;
         private float duration;
         private float elapsed;
         private bool landed;
@@ -68,8 +71,11 @@ namespace Clube.Game
             // Tipped over: what pointed up points along the fall direction.
             Vector3 along = direction;
             fullTurn = Quaternion.AngleAxis(90f, Vector3.Cross(Vector3.up, along));
+            // It lands a voxel or two clear of the stump's edge (GL724), sliding out as it tips.
+            outward = TreeFelling.ClearOfStump(view.World, limb, direction, trees, view.Config.IsoLevel, TreeFelling.GapFor(limb.Pivot));
+            slide = (Vector3)direction * (outward * grid.VoxelSize);
             // The cut comes down to the ground under where the limb will lie, half its thickness up.
-            pivotEnd = GroundUnder(pivotStart) + grid.VoxelSize;
+            pivotEnd = GroundUnder(pivotStart + slide) + grid.VoxelSize;
             float drop = Mathf.Max(0f, pivotStart.y - pivotEnd);
             // As long as falling the drop would take, and never too quick to see.
             duration = Mathf.Max(1.4f, Mathf.Sqrt(2f * drop / 9.81f) * 1.3f);
@@ -95,7 +101,7 @@ namespace Clube.Game
             float t = Mathf.Clamp01(elapsed / duration);
             float eased = t * t;
             transform.localRotation = Quaternion.Slerp(Quaternion.identity, fullTurn, eased);
-            transform.localPosition = new Vector3(pivotStart.x, Mathf.Lerp(pivotStart.y, pivotEnd, eased), pivotStart.z);
+            transform.localPosition = new Vector3(pivotStart.x + slide.x * eased, Mathf.Lerp(pivotStart.y, pivotEnd, eased), pivotStart.z + slide.z * eased);
             if (!dustStarted && elapsed >= duration - DustLead)
             {
                 Dust();
@@ -111,7 +117,7 @@ namespace Clube.Game
             landed = true;
             var wood = new List<Vector3Int>();
             var leaves = new List<Vector3Int>();
-            TreeFelling.Land(worldView.World, limb, direction, trees, worldView.Config.IsoLevel, landedWood: wood, landedLeaves: leaves);
+            TreeFelling.Land(worldView.World, limb, direction, trees, worldView.Config.IsoLevel, landedWood: wood, landedLeaves: leaves, outward: outward);
             onLandedCallback?.Invoke(wood, leaves);
             if (!dustStarted)
             {
@@ -185,7 +191,7 @@ namespace Clube.Game
         // Where the cut lies once the limb is down, in the world view's space.
         private Vector3 LandedCut()
         {
-            return new Vector3(pivotStart.x, pivotEnd, pivotStart.z);
+            return new Vector3(pivotStart.x + slide.x, pivotEnd, pivotStart.z + slide.z);
         }
 
         // Leaves flung up out of the dust, and splinters for the wood that shattered past the cap (GL468, GL469).
