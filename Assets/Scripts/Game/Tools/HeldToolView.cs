@@ -108,6 +108,7 @@ namespace Clube.Game
         private ItemDefinition shown;
         private Hotbar hotbar;
         private BoulderBashing bashing;
+        private WorldView worldView;
         private bool shownSet;
         private Key[] swing;
         private float swingTime = 1f;
@@ -246,7 +247,7 @@ namespace Clube.Game
             ToolDefinition tool = toolUser.Current;
             // A torch or a bucket selected is held in place of the hand (GL287, GL319).
             ItemDefinition selected = hotbar != null ? hotbar.SelectedStack.Item : null;
-            bool carried = selected is TorchDefinition || selected is BucketDefinition;
+            bool carried = selected is TorchDefinition || selected is BucketDefinition || HeldItemMeshes.IsHeldAsModel(selected);
             bool visible = (tool != null || carried) && player != null && player.enabled && !player.IsInMenu;
             held.SetActive(visible);
             if (!visible)
@@ -349,10 +350,21 @@ namespace Clube.Game
             {
                 mesh = item is TorchDefinition torch ? HeldToolMeshes.BuildTorch(torch.IsLit)
                     : item is BucketDefinition ? HeldToolMeshes.BuildBucket()
+                    : HeldItemMeshes.IsHeldAsModel(item) ? HeldItemMeshes.For(item, Materials())
                     : HeldToolMeshes.Build(item as ToolDefinition);
                 meshes.Add(item, mesh);
             }
             return mesh;
+        }
+
+        // The terrain materials a held lump of ore or stone takes its colour from (GL693).
+        private MaterialRegistry Materials()
+        {
+            if (worldView == null)
+            {
+                worldView = FindAnyObjectByType<WorldView>();
+            }
+            return worldView != null ? worldView.Config.Materials : null;
         }
 
         private void OnGUI()

@@ -26,6 +26,7 @@ namespace Clube.Game
         private static readonly Color Skin = FigureLooks.Of(FigurePreset.Player).Skin;
         private static readonly Color Sleeve = FigureLooks.Of(FigurePreset.Player).Shirt;
         private static readonly Color Wood = new Color(0.42f, 0.28f, 0.15f);
+        private static readonly Color WoodHead = new Color(0.5f, 0.35f, 0.2f);
         private static readonly Color Stone = new Color(0.5f, 0.5f, 0.52f);
         private static readonly Color Flint = new Color(0.36f, 0.35f, 0.38f);
         private static readonly Color Bronze = new Color(0.72f, 0.46f, 0.2f);
@@ -110,6 +111,7 @@ namespace Clube.Game
             IronHead,
             new HeadMaterial("hand axe", Flint, 0.12f, 3),
             new HeadMaterial("stone", Stone, 0f, 3),
+            new HeadMaterial("shovel", WoodHead, 0f, 1), // GL695: the plain shovel is all wood, as its recipe is
         };
 
         /// <summary>What a tool's head is made of, by its name.</summary>
@@ -202,10 +204,7 @@ namespace Clube.Game
                     // A knapped stone, pointed end forward, held in the fist.
                     model.Surface = headSurface;
                     model.Diamond(new Vector3(0f, 0.04f, 0.09f), new Vector3(0.05f, 0.085f, 0.11f), head);
-                    // Knapped: flake scars along the edge, and a crack across the point.
-                    Notch(model, new Vector3(0.026f, 0.085f, 0.09f), new Vector3(0.012f, 0.02f, 0.016f), head);
-                    Notch(model, new Vector3(-0.03f, 0.005f, 0.075f), new Vector3(0.012f, 0.016f, 0.02f), head);
-                    Crack(model, new Vector3(0.004f, 0.045f, 0.15f), new Vector3(0.05f, 0.06f, 0.003f), new Vector3(0f, 18f, 12f), head);
+                    // No flake scars or cracks: they read as dark nubs (GL694).
                     break;
                 case HeldShape.Pick when IsStone(tool):
                     // A primitive pick (as its icon): a rough stick, and a pointed stone lashed across its top,
@@ -261,7 +260,7 @@ namespace Clube.Game
                     model.Box(new Vector3(-0.055f, -0.17f, 0f), new Vector3(0.022f, 0.07f, 0.03f), Quaternion.identity, Wood);
                     model.Box(new Vector3(0.055f, -0.17f, 0f), new Vector3(0.022f, 0.07f, 0.03f), Quaternion.identity, Wood);
                     model.Box(new Vector3(0f, -0.135f, 0f), new Vector3(0.12f, 0.022f, 0.03f), Quaternion.identity, Wood);
-                    model.Surface = headSurface;
+                    model.Surface = material.Colour == WoodHead ? new Vector2(LowPolyMeshBuilder.WoodSurface, 0f) : headSurface;
                     model.Prism(new Vector3(0f, 0.5f, 0f), new Vector3(0f, 0.6f, 0.01f), 0.022f, 0.028f, 5, head * 0.85f);
                     model.Blade(new Vector3(0f, 0.6f, 0.01f), new Vector3(0f, 0.7f, 0.025f), 0.12f, 0.19f, 0.012f, 0.01f, head);
                     model.Blade(new Vector3(0f, 0.7f, 0.025f), new Vector3(0f, 0.78f, 0.035f), 0.19f, 0.14f, 0.01f, 0.008f, head);

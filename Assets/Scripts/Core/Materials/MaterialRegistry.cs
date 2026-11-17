@@ -103,6 +103,34 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// The first stage of a material's break chain (GL696): whole stone for cracked or loose stone, the ore in its
+        /// rock for its cracked and loose stages. The material itself when nothing breaks into it. Item icons wear this,
+        /// so a lump of ore shows its colours on the rock, without cracks.
+        /// </summary>
+        public VoxelMaterial WholeStageOf(VoxelMaterial material)
+        {
+            // The chain is short; the bound only guards against a loop in the data.
+            for (int guard = 0; material != null && guard < 8; guard++)
+            {
+                VoxelMaterial before = null;
+                foreach (VoxelMaterial other in materials)
+                {
+                    if (other != null && other != material && other.BreaksInto == material)
+                    {
+                        before = other;
+                        break;
+                    }
+                }
+                if (before == null)
+                {
+                    break;
+                }
+                material = before;
+            }
+            return material;
+        }
+
+        /// <summary>
         /// Whether a material is where an item comes from (GL100): mining it, or any stage of its break
         /// chain, gives the item (stone, cracked stone and loose stone all give stone).
         /// </summary>
