@@ -20,7 +20,7 @@ namespace Clube.Core
 
         [Tooltip("How much taller grass grows in open meadows than under dense trees: 1 doubles it.")]
         [SerializeField, Range(0f, 2f)]
-        private float meadowGrowth = 1f;
+        private float meadowGrowth = 1.3f;
 
         [Tooltip("Height above y = 0 (m) where grass starts growing shorter, and where it's back to its base height.")]
         [SerializeField]

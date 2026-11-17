@@ -9,6 +9,7 @@ namespace Clube.Core
         private readonly HashSet<byte> wood = new HashSet<byte>();
         private readonly HashSet<byte> leaves = new HashSet<byte>();
         private readonly HashSet<byte> fallen = new HashSet<byte>();
+        private readonly HashSet<byte> stumps = new HashSet<byte>();
         private readonly Dictionary<byte, byte> fallsAs = new Dictionary<byte, byte>();
 
         /// <summary>
@@ -59,10 +60,38 @@ namespace Clube.Core
             leaves.UnionWith(leafIds);
         }
 
-        /// <summary>The birch and maple wood and leaves of a terrain's trees (stumps count as ground: they stay).</summary>
+        /// <summary>
+        /// Every kind's wood and leaves of a terrain's trees (GL721: birch, maple and the species rows). Stumps count as ground:
+        /// they stay; they're known only so a fallen limb lands clear of them (GL724, <see cref="IsStump"/>).
+        /// </summary>
         public static TreeMaterials From(TreeGeneration trees)
         {
-            return new TreeMaterials(new[] { trees.Wood, trees.MapleWood }, new[] { trees.Leaves, trees.MapleLeaves });
+            var woods = new List<VoxelMaterial>();
+            var leafs = new List<VoxelMaterial>();
+            var stumpMaterials = new List<VoxelMaterial>();
+            trees.AllMaterials(woods, leafs, stumpMaterials);
+            var materials = new TreeMaterials(woods, leafs);
+            foreach (VoxelMaterial stump in stumpMaterials)
+            {
+                if (stump != null && !materials.wood.Contains(stump.Id))
+                {
+                    materials.stumps.Add(stump.Id);
+                }
+            }
+            return materials;
+        }
+
+        /// <summary>Marks a material as a tree's stump (GL724): ground that holds trees up, which a falling limb lands clear of.</summary>
+        public TreeMaterials WithStump(byte id)
+        {
+            stumps.Add(id);
+            return this;
+        }
+
+        /// <summary>True for a tree's stump (GL724).</summary>
+        public bool IsStump(byte id)
+        {
+            return stumps.Contains(id);
         }
 
         public bool IsWood(byte id)
@@ -426,6 +455,71 @@ namespace Clube.Core
                 offset.z - along * direction.z + offset.y * direction.z);
         }
 
+        /// <summary>Furthest out from the cut's column, in samples, the standing trunk or stump is measured (GL724).</summary>
+        public const int MaxStumpReach = 24;
+
+        /// <summary>The clear samples a limb lands past the stump's edge (GL724): 1 or 2, by a hash of its cut.</summary>
+        public static int GapFor(Vector3Int pivot)
+        {
+            return VoxelHash.Uniform(0x47415021, pivot.x, pivot.y, pivot.z) < 0.5f ? 1 : 2;
+        }
+
+        /// <summary>
+        /// How many samples further along <paramref name="direction"/> a limb (already taken out of the world) must land so its
+        /// nearest wood lies <paramref name="gap"/> clear samples past the edge of the tree still standing under its cut, the
+        /// trunk or stump (GL724). Turned about the cut, a section nibbled off the top of a trunk lands across the cut's own
+        /// column and drops straight down onto the stump, so pieces stacked into a tower; pushed out, they lie beside it. 0
+        /// when nothing stands under the cut (a branch over open ground) or the limb already lands clear.
+        /// </summary>
+        public static int ClearOfStump(World world, FelledLimb limb, Vector3Int direction, TreeMaterials trees, float iso, int gap, int searchDepth = 160)
+        {
+            if (direction == Vector3Int.zero)
+            {
+                return 0;
+            }
+            int nearest = int.MaxValue;
+            foreach (FelledSample sample in limb.Solid)
+            {
+                if (sample.IsWood)
+                {
+                    Vector3Int turned = Turn(sample.Sample - limb.Pivot, direction);
+                    nearest = Mathf.Min(nearest, turned.x * direction.x + turned.z * direction.z);
+                }
+            }
+            if (nearest == int.MaxValue)
+            {
+                return 0;
+            }
+
+            // Down the cut's column to the ground: wherever the trunk or stump stands in it, how far it reaches outwards.
+            int edge = -1;
+            for (int dy = 1; dy <= searchDepth; dy++)
+            {
+                Vector3Int below = limb.Pivot - new Vector3Int(0, dy, 0);
+                if (!IsSolid(world, below, iso, out byte material))
+                {
+                    continue;
+                }
+                if (!trees.IsWood(material) && !trees.IsStump(material))
+                {
+                    break;
+                }
+                int k = 0;
+                while (k < MaxStumpReach && IsSolid(world, below + direction * (k + 1), iso, out byte next) && (trees.IsWood(next) || trees.IsStump(next)))
+                {
+                    k++;
+                }
+                edge = Mathf.Max(edge, k);
+            }
+            return edge < 0 ? 0 : Mathf.Max(0, edge + 1 + gap - nearest);
+        }
+
+        private static bool IsSolid(World world, Vector3Int sample, float iso, out byte material)
+        {
+            material = world.GetMaterial(sample) ?? 0;
+            return (world.GetDensity(sample) ?? 0f) >= iso;
+        }
+
         /// <summary>
         /// Puts a fallen limb down (GL344): each solid sample turned about the cut towards <paramref name="direction"/>, then
         /// dropped down its column, which is searched for ground (solid and not tree) up to <paramref name="searchDepth"/>
@@ -435,16 +529,17 @@ namespace Clube.Core
         /// wood is no harder to chop than it was standing (GL349); leaves land as their fallen kind
         /// (<see cref="TreeMaterials.FallenFor"/>, GL350). A <paramref name="direction"/> of zero drops the limb straight down;
         /// <paramref name="leafPacking"/> 1 keeps every leaf. Where wood and leaves landed is added to
-        /// <paramref name="landedWood"/> and <paramref name="landedLeaves"/> when given. Returns the samples placed.
+        /// <paramref name="landedWood"/> and <paramref name="landedLeaves"/> when given. <paramref name="outward"/> moves the
+        /// whole limb that many samples further along the fall direction (GL724, <see cref="ClearOfStump"/>). Returns the samples placed.
         /// </summary>
         public static int Land(
             World world, FelledLimb limb, Vector3Int direction, TreeMaterials trees, float iso, int searchDepth = 160,
-            float leafPacking = LeafPacking, List<Vector3Int> landedWood = null, List<Vector3Int> landedLeaves = null)
+            float leafPacking = LeafPacking, List<Vector3Int> landedWood = null, List<Vector3Int> landedLeaves = null, int outward = 0)
         {
             var columns = new Dictionary<Vector2Int, List<(int Y, bool Wood, byte Material, float Density)>>();
             foreach (FelledSample sample in limb.Solid)
             {
-                Vector3Int turned = limb.Pivot + Turn(sample.Sample - limb.Pivot, direction);
+                Vector3Int turned = limb.Pivot + Turn(sample.Sample - limb.Pivot, direction) + direction * outward;
                 var column = new Vector2Int(turned.x, turned.z);
                 if (!columns.TryGetValue(column, out List<(int, bool, byte, float)> list))
                 {

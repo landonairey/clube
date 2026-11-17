@@ -25,6 +25,20 @@ namespace Clube.Core
         private readonly List<Vector3> ids = new List<Vector3>();
         private readonly List<Vector3> weights = new List<Vector3>();
         private readonly List<int> triangles = new List<int>();
+        private readonly List<byte> groundIds = new List<byte>();
+        private readonly VoxelMaterial[] single = new VoxelMaterial[1];
+
+        private bool IsGround(float id)
+        {
+            for (int i = 0; i < groundIds.Count; i++)
+            {
+                if (Mathf.Approximately(id, groundIds[i]))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         /// <summary>
         /// Adds the chunk's spots to <paramref name="spots"/>: on triangles facing up at least <paramref name="minUp"/>
@@ -33,8 +47,27 @@ namespace Clube.Core
         /// </summary>
         public void Find(ChunkRenderer chunkRenderer, VoxelMaterial grass, float minUp, float cell, int seed, int saltX, int saltZ, float margin, List<GroundSpot> spots)
         {
+            if (grass == null)
+            {
+                return;
+            }
+            single[0] = grass;
+            Find(chunkRenderer, single, minUp, cell, seed, saltX, saltZ, margin, spots);
+        }
+
+        /// <summary>The same on triangles that are mostly any of <paramref name="grounds"/> together (GL723: reeds on grass, sand and clay).</summary>
+        public void Find(ChunkRenderer chunkRenderer, IReadOnlyList<VoxelMaterial> grounds, float minUp, float cell, int seed, int saltX, int saltZ, float margin, List<GroundSpot> spots)
+        {
             Mesh mesh = chunkRenderer.Mesh;
-            if (mesh == null || mesh.vertexCount == 0 || cell <= 0f || grass == null)
+            groundIds.Clear();
+            foreach (VoxelMaterial ground in grounds)
+            {
+                if (ground != null)
+                {
+                    groundIds.Add(ground.Id);
+                }
+            }
+            if (mesh == null || mesh.vertexCount == 0 || cell <= 0f || groundIds.Count == 0)
             {
                 return;
             }
@@ -49,13 +82,12 @@ namespace Clube.Core
             }
 
             Transform chunkTransform = chunkRenderer.Transform;
-            float grassId = grass.Id;
             float span = 1f - 2f * margin;
             for (int t = 0; t < triangles.Count; t += 3)
             {
                 int a = triangles[t], b = triangles[t + 1], c = triangles[t + 2];
                 Vector3 normal = (normals[a] + normals[b] + normals[c]).normalized;
-                if (normal.y < minUp || GrassShare(a, grassId) + GrassShare(b, grassId) + GrassShare(c, grassId) < 1.8f)
+                if (normal.y < minUp || GrassShare(a) + GrassShare(b) + GrassShare(c) < 1.8f)
                 {
                     continue;
                 }
@@ -99,8 +131,8 @@ namespace Clube.Core
             }
         }
 
-        // How much of a vertex shows grass, 0-1.
-        private float GrassShare(int vertex, float grassId)
+        // How much of a vertex shows the ground materials, 0-1.
+        private float GrassShare(int vertex)
         {
             Vector3 id = ids[vertex];
             Vector3 weight = weights[vertex];
@@ -109,9 +141,7 @@ namespace Clube.Core
             {
                 return 0f;
             }
-            float share = (Mathf.Approximately(id.x, grassId) ? weight.x : 0f)
-                        + (Mathf.Approximately(id.y, grassId) ? weight.y : 0f)
-                        + (Mathf.Approximately(id.z, grassId) ? weight.z : 0f);
+            float share = (IsGround(id.x) ? weight.x : 0f) + (IsGround(id.y) ? weight.y : 0f) + (IsGround(id.z) ? weight.z : 0f);
             return share / total;
         }
     }

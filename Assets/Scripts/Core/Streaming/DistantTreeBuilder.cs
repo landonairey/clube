@@ -12,16 +12,17 @@ namespace Clube.Core
     {
         public readonly Vector3 Root;
         public readonly float Height;
-        public readonly bool Maple;
+        /// <summary>Its kind (GL721): 0 birch, 1 maple, 2 on the species rows (<see cref="TreeGeneration.Kind"/>).</summary>
+        public readonly int Kind;
 
         /// <summary>0-1, from the tree's cell: its turn and its width.</summary>
         public readonly float Variation;
 
-        public DistantTree(Vector3 root, float height, bool maple, float variation)
+        public DistantTree(Vector3 root, float height, int kind, float variation)
         {
             Root = root;
             Height = height;
-            Maple = maple;
+            Kind = kind;
             Variation = variation;
         }
     }
@@ -268,7 +269,7 @@ namespace Clube.Core
                 tile.Trees.Add(new DistantTree(
                     new Vector3(root.x, ground, root.y),
                     TreeShape.HeightOf(trees.Seed, cell, settings),
-                    TreeShape.IsMaple(trees.Seed, cell, settings),
+                    TreeShape.KindOf(trees.Seed, cell, settings),
                     VoxelHash.Uniform(trees.Seed, cell.x, 7, cell.y, 0x44495354)));
             }
             tile.Free();

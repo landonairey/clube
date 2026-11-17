@@ -102,6 +102,7 @@ MonoBehaviour:
       baseMaterial: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
       steepAngle: 35
       steepMinHeight: 24
+      baseAboveHeight: 0
       ridgeDepth: 0.6
       ridgeWidth: 3.5
       ridgeLength: 30
@@ -223,16 +224,16 @@ MonoBehaviour:
         gangue: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
         extraContents: []
     trees:
-      cellSize: 10
-      chance: 0.75
-      forestCover: 0.45
+      cellSize: 9
+      chance: 0.85
+      forestCover: 0.55
       forestScale: 300
-      fieldChance: 0.03
+      fieldChance: 0.05
       youngestSize: 0.45
       maxSlope: 12
-      height: {x: 11, y: 16}
+      height: {x: 11, y: 44}
       trunkRadius: 0.25
-      mapleHeight: {x: 14, y: 20}
+      mapleHeight: {x: 14, y: 56}
       mapleTrunkRadius: 0.4
       branches: {x: 3, y: 5}
       minBranchRadius: 0.22
@@ -244,6 +245,19 @@ MonoBehaviour:
       mapleShare: 0.35
       stump: {fileID: 11400000, guid: 952ddae6481d48843915df3131af25ce, type: 2}
       mapleStump: {fileID: 11400000, guid: d570f35c2c56a2c48a23a8e185f47289, type: 2}
+      moreSpecies:
+      - name: Pine
+        form: 1
+        wood: {fileID: 11400000, guid: 710b05f2cd71a214c951b02f7088e39a, type: 2}
+        leaves: {fileID: 11400000, guid: fe501fbaea4ca33498c90c6007c57d52, type: 2}
+        stump: {fileID: 11400000, guid: f57bcc99a046564409b8b942989c53fc, type: 2}
+        height: {x: 16, y: 60}
+        trunkRadius: 0.3
+        share: 0.1
+        coldShare: 0.8
+        coldFrom: {x: 12, y: 4}
+        distantBark: {r: 0.33, g: 0.24, b: 0.17, a: 1}
+        distantLeaves: {r: 0.12, g: 0.27, b: 0.15, a: 1}
       stumpHeight: 0.75
     startArea:
       enabled: 1
@@ -337,3 +351,170 @@ MonoBehaviour:
     heightmapRaw: {fileID: 0}
     rawIs16Bit: 1
     heightmapUnitsPerPixel: 1
+    map:
+      size: 5000
+      pickSidesFromSeed: 1
+      sides:
+      - Ocean
+      - Ocean
+      - Ocean
+      - Ocean
+      boundaryTypes:
+      - name: Ocean
+        ocean: 1
+        edgeHeight: -26
+        flatten: 1
+        blendWidth: 260
+        blendPast: 0
+        sharpness: 1
+        wobble: 0
+        roughness: 0
+        temperatureShift: 0
+        moistureShift: 0.12
+        weight: 1
+        range: 0
+        limitDistance: 170
+        limitSoftness: 140
+        limitMessage: The open sea is too cold and its current too strong. Turn back.
+        horizonColor: {r: 0, g: 0, b: 0, a: 0}
+        horizonTint: 0
+      - name: Desert
+        ocean: 0
+        edgeHeight: 6
+        flatten: 1
+        blendWidth: 800
+        blendPast: 0
+        sharpness: 1
+        wobble: 150
+        roughness: 9
+        temperatureShift: 16
+        moistureShift: -1.6
+        weight: 1
+        range: 0
+        limitDistance: 150
+        limitSoftness: 130
+        limitMessage: The deep desert's heat is more than anyone can bear. Turn back.
+        horizonColor: {r: 0.8, g: 0.66, b: 0.4, a: 1}
+        horizonTint: 1
+      - name: Void cliff
+        ocean: 0
+        edgeHeight: -600
+        flatten: 1
+        blendWidth: 30
+        blendPast: 0
+        sharpness: 1
+        wobble: 45
+        roughness: 0
+        temperatureShift: 0
+        moistureShift: 0
+        weight: 0.45
+        range: 0
+        limitDistance: -36
+        limitSoftness: 5
+        limitMessage: The world ends here.
+        horizonColor: {r: 0.06, g: 0.07, b: 0.1, a: 1}
+        horizonTint: 1
+      - name: Mountain ridge
+        ocean: 0
+        edgeHeight: 650
+        flatten: 0
+        blendWidth: 520
+        blendPast: 700
+        sharpness: 1.6
+        wobble: 90
+        roughness: 60
+        temperatureShift: 0
+        moistureShift: 0
+        weight: 1.2
+        range: 1
+        limitDistance: 60
+        limitSoftness: 70
+        limitMessage: The air is too thin and the cold too bitter to climb on. Turn
+          back.
+        horizonColor: {r: 0.44, g: 0.43, b: 0.42, a: 1}
+        horizonTint: 0.8
+      pickShapeFromSeed: 1
+      shape: Continent
+      shapeTypes:
+      - name: Continent
+        weight: 3
+        oceanSides: {x: 1, y: 2}
+        mainland: {x: 0.6, y: 0.82}
+        lands: {x: 2, y: 4}
+        landRadius: {x: 0.2, y: 0.38}
+        spread: 0.75
+        arms: {x: 0, y: 0}
+        islets: {x: 1, y: 4}
+        isletRadius: {x: 0.04, y: 0.09}
+        bays: {x: 2, y: 3}
+        coastWander: 1
+        ranges: {x: 1, y: 2}
+      - name: Peninsulas
+        weight: 2
+        oceanSides: {x: 2, y: 3}
+        mainland: {x: 0.12, y: 0.24}
+        lands: {x: 7, y: 10}
+        landRadius: {x: 0.11, y: 0.2}
+        spread: 0.7
+        arms: {x: 2, y: 3}
+        islets: {x: 2, y: 5}
+        isletRadius: {x: 0.04, y: 0.09}
+        bays: {x: 1, y: 2}
+        coastWander: 1
+        ranges: {x: 0, y: 1}
+      - name: Island and satellites
+        weight: 2
+        oceanSides: {x: 4, y: 4}
+        mainland: {x: 0.05, y: 0.1}
+        lands: {x: 2, y: 3}
+        landRadius: {x: 0.42, y: 0.56}
+        spread: 0.22
+        arms: {x: 0, y: 0}
+        islets: {x: 4, y: 7}
+        isletRadius: {x: 0.07, y: 0.15}
+        bays: {x: 2, y: 3}
+        coastWander: 1
+        ranges: {x: 0, y: 1}
+      - name: Island chain
+        weight: 1.5
+        oceanSides: {x: 4, y: 4}
+        mainland: {x: 0.05, y: 0.1}
+        lands: {x: 4, y: 6}
+        landRadius: {x: 0.14, y: 0.24}
+        spread: 0.85
+        arms: {x: 1, y: 1}
+        islets: {x: 2, y: 4}
+        isletRadius: {x: 0.04, y: 0.09}
+        bays: {x: 0, y: 1}
+        coastWander: 1
+        ranges: {x: 0, y: 0}
+      - name: Archipelago
+        weight: 1.5
+        oceanSides: {x: 4, y: 4}
+        mainland: {x: 0.05, y: 0.1}
+        lands: {x: 8, y: 12}
+        landRadius: {x: 0.11, y: 0.24}
+        spread: 0.82
+        arms: {x: 0, y: 0}
+        islets: {x: 5, y: 8}
+        isletRadius: {x: 0.04, y: 0.09}
+        bays: {x: 0, y: 2}
+        coastWander: 1.2
+        ranges: {x: 1, y: 2}
+      edgeWobble: 0.1
+      coastHeight: 5
+      inlandRise: 40
+      peakHeight: 320
+      peakRadius: 700
+      voxelFloor: 2
+      voxelCeiling: 400
+      waterMargin: 256
+      flowCellSize: 8
+      waterCellSize: 2
+      climate:
+        BaseTemperature: 13
+        LapseRate: 0.045
+        NorthCooling: 4
+        TemperatureNoise: 4
+        RegionSize: 1400
+      biomes: []

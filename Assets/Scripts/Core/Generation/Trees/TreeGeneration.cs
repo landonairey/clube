@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Clube.Core
@@ -93,6 +94,10 @@ namespace Clube.Core
         [Tooltip("A maple's base (GL160): a stump of maple wood. None: maples have the first kind's stump.")]
         [SerializeField]
         private VoxelMaterial mapleStump;
+
+        [Tooltip("More kinds of tree (GL721: pine), each a row: kinds 2 on, after birch and maple.")]
+        [SerializeField]
+        private List<TreeSpecies> moreSpecies = new List<TreeSpecies>();
 
         [Tooltip("How far the stump stands above the ground, in metres: 0.75 is 3 voxels at 4 per metre.")]
         [SerializeField, Range(0.25f, 2f)]
@@ -197,8 +202,60 @@ namespace Clube.Core
         [System.NonSerialized]
         private ITreeClimate climate;
 
-        /// <summary>The tallest any tree can grow, either kind.</summary>
-        public float TallestHeight => MapleShare > 0f ? Mathf.Max(Height.y, MapleHeight.y) : Height.y;
+        /// <summary>The tallest any tree can grow, any kind.</summary>
+        public float TallestHeight
+        {
+            get
+            {
+                float tallest = MapleShare > 0f ? Mathf.Max(Height.y, MapleHeight.y) : Height.y;
+                foreach (TreeSpecies species in moreSpecies)
+                {
+                    if (species != null && species.CanGrow)
+                    {
+                        tallest = Mathf.Max(tallest, species.Height.y);
+                    }
+                }
+                return tallest;
+            }
+        }
+
+        /// <summary>The kinds past birch and maple (GL721), as rows; kind 2 is the first.</summary>
+        public List<TreeSpecies> MoreSpecies => moreSpecies;
+
+        /// <summary>Birch, maple and the rows: how many kinds <see cref="Kind"/> knows.</summary>
+        public int KindCount => 2 + moreSpecies.Count;
+
+        /// <summary>Kind 0 is birch, 1 maple, 2 on the <see cref="MoreSpecies"/> rows (GL721).</summary>
+        public TreeKind Kind(int index)
+        {
+            if (index == 1)
+            {
+                return new TreeKind("Maple", TreeForm.Broadleaf, mapleWood != null ? mapleWood : wood, MapleLeaves, MapleStump, MapleHeight, mapleTrunkRadius);
+            }
+            if (index >= 2 && index - 2 < moreSpecies.Count && moreSpecies[index - 2] != null && moreSpecies[index - 2].CanGrow)
+            {
+                TreeSpecies species = moreSpecies[index - 2];
+                return new TreeKind(species.Name, species.Form, species.Wood, species.Leaves,
+                    species.Stump != null ? species.Stump : Stump, species.Height, species.TrunkRadius);
+            }
+            return new TreeKind("Birch", TreeForm.Broadleaf, wood, leaves, Stump, Height, trunkRadius);
+        }
+
+        /// <summary>Every kind's wood, leaves and stump that is set (felling, GL721).</summary>
+        public void AllMaterials(List<VoxelMaterial> woods, List<VoxelMaterial> leafs, List<VoxelMaterial> stumps)
+        {
+            for (int i = 0; i < KindCount; i++)
+            {
+                if (i == 1 && mapleWood == null)
+                {
+                    continue;
+                }
+                TreeKind kind = Kind(i);
+                woods?.Add(kind.Wood);
+                leafs?.Add(kind.Leaves);
+                stumps?.Add(kind.Stump);
+            }
+        }
 
         private static Vector2 Ordered(Vector2 range)
         {
@@ -285,7 +342,7 @@ namespace Clube.Core
         /// Furthest any part of a tree can reach sideways from its root, leaves included: a bound
         /// for gathering the trees near a chunk. Matches the limits <see cref="TreeShape"/> keeps to.
         /// </summary>
-        public float MaxSpread => TallestHeight * TreeShape.MaxSpreadPerHeight
-                                 + (LeafRadius.y * 2f + TreeShape.ClusterScatter) * Mathf.Max(1f, TallestHeight / TreeShape.LeafReferenceHeight);
+        public float MaxSpread => TreeShape.CrownHeight(TallestHeight) * TreeShape.MaxSpreadPerHeight
+                                 + (LeafRadius.y * 2f + TreeShape.ClusterScatter) * Mathf.Max(1f, TreeShape.CrownHeight(TallestHeight) / TreeShape.LeafReferenceHeight);
     }
 }

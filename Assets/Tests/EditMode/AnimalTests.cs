@@ -90,7 +90,8 @@ namespace Clube.Core.Tests
             List<EconomySpecialty> all = EconomySpecialty.Defaults();
             IEnumerable<string> fabrics = all.Single(s => s.Id == "fabrics").Buys.Where(g => g.InGame).Select(g => g.ItemId);
             IEnumerable<string> tannery = all.Single(s => s.Id == "tannery").Buys.Where(g => g.InGame).Select(g => g.ItemId);
-            Assert.That(fabrics, Is.EquivalentTo(new[] { "rabbit-fur", "goat-wool", "sheep-wool", "yak-wool", "alpaca-wool" }));
+            // GL723: reeds and their fibres too.
+            Assert.That(fabrics, Is.EquivalentTo(new[] { "rabbit-fur", "goat-wool", "sheep-wool", "yak-wool", "alpaca-wool", "reeds", "plant-fibre" }));
             Assert.That(tannery, Is.EquivalentTo(new[] { "cow-hide", "deer-hide", "elk-hide", "bison-hide" }));
             foreach (string id in fabrics.Concat(tannery))
             {

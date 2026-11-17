@@ -81,6 +81,71 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void ASectionOffTheTop_LandsClearOfTheStump_ByOneOrTwoVoxels([Values(1, 2)] int gap)
+        {
+            // GL724: a fresh world with a trunk three samples wide (x 15-17, z 3-5) on a stump two samples high, cut through at
+            // y = 12; the section above it (y 13-15) tips towards +x.
+            const byte Stump = 15;
+            var fresh = new World(new Vector3Int(24, 24, 24), 1f);
+            fresh.Load(Vector3Int.zero, null);
+            void Put(int x, int y, int z, byte material)
+            {
+                fresh.SetDensity(new Vector3Int(x, y, z), 1f);
+                fresh.SetMaterial(new Vector3Int(x, y, z), material);
+            }
+            for (int z = 0; z <= 24; z++)
+            {
+                for (int x = 0; x <= 24; x++)
+                {
+                    for (int y = 0; y <= 2; y++)
+                    {
+                        Put(x, y, z, Dirt);
+                    }
+                }
+            }
+            for (int x = 15; x <= 17; x++)
+            {
+                for (int z = 3; z <= 5; z++)
+                {
+                    for (int y = 3; y <= 15; y++)
+                    {
+                        Put(x, y, z, y <= 4 ? Stump : Wood);
+                    }
+                }
+            }
+            for (int x = 15; x <= 17; x++)
+            {
+                for (int z = 3; z <= 5; z++)
+                {
+                    fresh.SetDensity(new Vector3Int(x, 12, z), 0f);
+                }
+            }
+            TreeMaterials materials = new TreeMaterials(new[] { Wood }, new[] { Leaves }).WithStump(Stump);
+            FelledLimb limb = TreeFelling.FindSevered(fresh, new Vector3Int(15, 12, 3), new Vector3Int(17, 12, 5), materials, 0.5f);
+            Assert.That(limb, Is.Not.Null);
+            Assert.That(limb.WoodCount, Is.EqualTo(27));
+            TreeFelling.Remove(fresh, limb);
+            var right = new Vector3Int(1, 0, 0);
+            int outward = TreeFelling.ClearOfStump(fresh, limb, right, materials, 0.5f, gap);
+            var landed = new System.Collections.Generic.List<Vector3Int>();
+            TreeFelling.Land(fresh, limb, right, materials, 0.5f, landedWood: landed, outward: outward);
+
+            Assert.That(landed.Count, Is.EqualTo(27), "All of it lands.");
+            int nearest = int.MaxValue;
+            foreach (Vector3Int sample in landed)
+            {
+                nearest = Mathf.Min(nearest, sample.x);
+                Assert.That(sample.y, Is.LessThanOrEqualTo(5), "It lies on the ground, not stacked on the trunk.");
+            }
+            Assert.That(nearest, Is.EqualTo(17 + 1 + gap), "Its nearest wood lies the gap clear past the trunk's edge.");
+
+            // Under a branch over open ground nothing pushes it out.
+            Assert.That(TreeFelling.ClearOfStump(world, new FelledLimb { Pivot = new Vector3Int(20, 9, 20), Solid = { new FelledSample(new Vector3Int(20, 9, 20), Wood, 1f, true) } },
+                right, trees, 0.5f, gap), Is.EqualTo(0));
+            Assert.That(TreeFelling.GapFor(new Vector3Int(3, 4, 5)), Is.InRange(1, 2));
+        }
+
+        [Test]
         public void ChoppingWithoutCuttingThrough_FellsNothing()
         {
             // A leaf off the branch's end: every piece of wood still reaches the ground.

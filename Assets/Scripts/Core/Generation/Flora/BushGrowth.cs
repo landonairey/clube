@@ -50,11 +50,19 @@ namespace Clube.Core
 
         [Tooltip("Medium bushes' height (m), smallest and largest.")]
         [SerializeField]
-        private Vector2 mediumHeight = new Vector2(0.8f, 1.1f);
+        private Vector2 mediumHeight = new Vector2(0.9f, 1.4f);
 
         [Tooltip("Large bushes' height (m), smallest and largest.")]
         [SerializeField]
-        private Vector2 largeHeight = new Vector2(1.6f, 1.9f);
+        private Vector2 largeHeight = new Vector2(1.8f, 2.6f);
+
+        [Tooltip("Width of a group of bushes' patch of noise (m, GL722): bushes gather into groups about half as wide, with open ground between.")]
+        [SerializeField, Min(2f)]
+        private float groupScale = 14f;
+
+        [Tooltip("How strongly bushes gather into groups (GL722): 0 scattered evenly, 1 nearly all in groups.")]
+        [SerializeField, Range(0f, 1f)]
+        private float grouping = 0.8f;
 
         [Tooltip("Leaves a small, medium and large bush drops.")]
         [SerializeField]
@@ -78,6 +86,13 @@ namespace Clube.Core
             set => forestChance = Mathf.Clamp01(value);
         }
 
+        /// <summary>How strongly bushes gather into groups (GL722), 0-1.</summary>
+        public float Grouping
+        {
+            get => grouping;
+            set => grouping = Mathf.Clamp01(value);
+        }
+
         public Vector3 SizeShares
         {
             get => sizeShares;
@@ -89,7 +104,7 @@ namespace Clube.Core
         {
             size = BushSize.Small;
             height = 0f;
-            float chance = Mathf.Lerp(fieldChance, forestChance, Mathf.Clamp01(forest));
+            float chance = Mathf.Lerp(fieldChance, forestChance, Mathf.Clamp01(forest)) * GroupFactor(seed, cell);
             if (VoxelHash.Uniform(seed, cell.x, 0, cell.y, BushSalt) >= chance)
             {
                 return false;
@@ -105,6 +120,25 @@ namespace Clube.Core
             height = Mathf.Lerp(range.x, range.y, VoxelHash.Uniform(seed, cell.x, 2, cell.y, BushSalt));
             return true;
         }
+
+        /// <summary>
+        /// What a cell's chance of a bush is multiplied by (GL722): up to 4.5 inside a group's patch, down to 0.1 between
+        /// groups (by <see cref="grouping"/>), so bushes stand in clumps of several with open ground round them, about as many
+        /// on the whole as scattered.
+        /// </summary>
+        public float GroupFactor(int seed, Vector2Int cell)
+        {
+            if (grouping <= 0f)
+            {
+                return 1f;
+            }
+            float x = (cell.x + 0.5f) * cellSize / Mathf.Max(2f, groupScale);
+            float z = (cell.y + 0.5f) * cellSize / Mathf.Max(2f, groupScale);
+            float clump = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.5f, 0.68f, ValueNoise.At(seed, x, z, 0, GroupSalt)));
+            return Mathf.Lerp(1f, Mathf.Lerp(0.1f, 4.5f, clump), grouping);
+        }
+
+        private const int GroupSalt = BushSalt + 7;
 
         /// <summary>
         /// Where in its cell the bush stands (<see cref="GrassyGround"/> rolls it): these salts, kept this share

@@ -5,16 +5,23 @@ using UnityEngine.Rendering;
 
 namespace Clube.Core
 {
-    /// <summary>One bush (GL236): its grid cell (which names it), size, height and where its foot stands, in world space.</summary>
+    /// <summary>
+    /// One bush (GL236): its grid cell (which names it), size, height and where its foot stands, in world space; or a clump of
+    /// reeds by the water (GL723, <see cref="IsReeds"/>), on the same grid, picked and kept gone the same way.
+    /// </summary>
     public readonly struct Bush
     {
-        public Bush(Vector2Int cell, BushSize size, float height, Vector3 position)
+        public Bush(Vector2Int cell, BushSize size, float height, Vector3 position, bool isReeds = false)
         {
             Cell = cell;
             Size = size;
             Height = height;
             Position = position;
+            IsReeds = isReeds;
         }
+
+        /// <summary>A clump of reeds (GL723) rather than a bush: it gives reeds when picked.</summary>
+        public bool IsReeds { get; }
 
         public Vector2Int Cell { get; }
         public BushSize Size { get; }
@@ -25,7 +32,7 @@ namespace Clube.Core
         public Vector3 Centre => Position + Vector3.up * (Height * 0.5f);
 
         /// <summary>The clump's rough radius, for hit tests.</summary>
-        public float Radius => Height * 0.5f * BushMeshes.WidthOf(Size);
+        public float Radius => Height * 0.5f * (IsReeds ? ReedMeshes.Width * 1.6f : BushMeshes.WidthOf(Size));
     }
 
     /// <summary>
@@ -48,9 +55,13 @@ namespace Clube.Core
         // A bush whose ground moves up or down more than this (m) when its chunk is rebuilt is broken.
         private const float BreakingRise = 0.12f;
 
+        // Reeds stand on banks steeper than a bush's ground (GL723): the y of the ground's normal.
+        private const float ReedMinUp = 0.6f;
+
         private static readonly int FadeStart = Shader.PropertyToID("_FadeStart");
         private static readonly int FadeEnd = Shader.PropertyToID("_FadeEnd");
         private static readonly BushSize[] Sizes = { BushSize.Small, BushSize.Medium, BushSize.Large };
+        private const int ReedBatch = 3;
 
         [Tooltip("The material bushes grow on.")]
         [SerializeField]
@@ -72,6 +83,10 @@ namespace Clube.Core
         [SerializeField]
         private BushGrowth growth = new BushGrowth();
 
+        [Tooltip("Where reeds grow by lakes and rivers (GL723), on the bushes' grid.")]
+        [SerializeField]
+        private ReedGrowth reeds = new ReedGrowth();
+
         [Tooltip("Milliseconds a frame may spend finding bushes on chunks.")]
         [SerializeField, Min(0.1f)]
         private float scatterMilliseconds = 0.5f;
@@ -81,10 +96,14 @@ namespace Clube.Core
         private readonly HashSet<Vector2Int> removed = new HashSet<Vector2Int>();
         private readonly List<Vector3Int> dropped = new List<Vector3Int>();
         private readonly List<Bush> before = new List<Bush>();
-        private readonly InstanceBatches[] batches = { new InstanceBatches(), new InstanceBatches(), new InstanceBatches() };
-        private readonly Mesh[] meshes = new Mesh[3];
+        // One per bush size, then the reeds (GL723).
+        private readonly InstanceBatches[] batches = { new InstanceBatches(), new InstanceBatches(), new InstanceBatches(), new InstanceBatches() };
+        private readonly Mesh[] meshes = new Mesh[4];
         private readonly GrassyGround ground = new GrassyGround();
         private readonly List<GroundSpot> spots = new List<GroundSpot>();
+        private readonly List<GroundSpot> reedSpots = new List<GroundSpot>();
+        private readonly HashSet<Vector2Int> reedCells = new HashSet<Vector2Int>();
+        private readonly VoxelMaterial[] reedGround = new VoxelMaterial[3];
         private readonly System.Diagnostics.Stopwatch clock = new System.Diagnostics.Stopwatch();
 
         private WorldView worldView;
@@ -107,6 +126,12 @@ namespace Clube.Core
 
         /// <summary>Where bushes grow, how big, and what they drop.</summary>
         public BushGrowth Growth => growth;
+
+        /// <summary>Where reeds grow, and what they give (GL723).</summary>
+        public ReedGrowth Reeds => reeds;
+
+        /// <summary>Reed clumps drawn last frame, for the lab readouts (GL723).</summary>
+        public int ReedCount { get; private set; }
 
         /// <summary>Bushes drawn last frame, for the lab readouts.</summary>
         public int BushCount { get; private set; }
@@ -204,6 +229,7 @@ namespace Clube.Core
             {
                 meshes[i] = BushMeshes.Build(Sizes[i]);
             }
+            meshes[ReedBatch] = ReedMeshes.Build();
         }
 
         private void OnEnable()
@@ -363,11 +389,12 @@ namespace Clube.Core
             scattered.Bushes.Clear();
             spots.Clear();
             int seed = Seed;
-            ground.Find(chunkRenderer, grass, minUp, growth.CellSize, seed, BushGrowth.SpotSaltX, BushGrowth.SpotSaltZ, BushGrowth.SpotMargin, spots);
             TreeCover trees = CoverOf(worldView.Trees);
+            ScatterReeds(chunkRenderer, scattered, seed);
+            ground.Find(chunkRenderer, grass, minUp, growth.CellSize, seed, BushGrowth.SpotSaltX, BushGrowth.SpotSaltZ, BushGrowth.SpotMargin, spots);
             foreach (GroundSpot spot in spots)
             {
-                if (removed.Contains(spot.Cell))
+                if (removed.Contains(spot.Cell) || reedCells.Contains(spot.Cell))
                 {
                     continue;
                 }
@@ -384,6 +411,47 @@ namespace Clube.Core
                     scattered.Bushes.Add(new Bush(spot.Cell, size, tall, spot.Position - Vector3.up * (0.05f * tall)));
                 }
             }
+        }
+
+        // The chunk's reed clumps (GL723): on grass, sand or clay by fresh water, in the water's shallows too, one per bush cell;
+        // a cell that grows reeds grows no bush.
+        private void ScatterReeds(ChunkRenderer chunkRenderer, Scattered scattered, int seed)
+        {
+            reedCells.Clear();
+            reedSpots.Clear();
+            WaterMap water = worldView.Generator is HeightfieldGenerator heightfield ? heightfield.Water : WaterMap.None;
+            if (!water.IsCreated)
+            {
+                return;
+            }
+            TerrainSettings terrain = worldView.Config.Terrain;
+            reedGround[0] = grass;
+            reedGround[1] = terrain.Water.Sand;
+            reedGround[2] = terrain.Layers.Clay;
+            ground.Find(chunkRenderer, reedGround, ReedMinUp, growth.CellSize, seed, BushGrowth.SpotSaltX, BushGrowth.SpotSaltZ, BushGrowth.SpotMargin, reedSpots);
+            foreach (GroundSpot spot in reedSpots)
+            {
+                if (removed.Contains(spot.Cell))
+                {
+                    // Picked reeds stay gone; the bush loop mustn't grow a bush there either.
+                    if (reeds.ShoreAt(water, Local(spot).x, Local(spot).z) > 0f)
+                    {
+                        reedCells.Add(spot.Cell);
+                    }
+                    continue;
+                }
+                Vector3 local = Local(spot);
+                if (reeds.TryGrow(seed, spot.Cell, water, local.x, local.z, out float tall))
+                {
+                    scattered.Bushes.Add(new Bush(spot.Cell, BushSize.Large, tall, spot.Position - Vector3.up * 0.05f, true));
+                    reedCells.Add(spot.Cell);
+                }
+            }
+        }
+
+        private Vector3 Local(GroundSpot spot)
+        {
+            return worldView.transform.InverseTransformPoint(spot.Position);
         }
 
         // How thick the trees stand, from the world's tree field (made again if the world gets a new one).
@@ -426,7 +494,7 @@ namespace Clube.Core
                 batch.Clear();
             }
             int seed = Seed;
-            int total = 0;
+            int total = 0, reedTotal = 0;
             foreach (Scattered scattered in bushes.Values)
             {
                 if (!scattered.Drawn)
@@ -435,12 +503,20 @@ namespace Clube.Core
                 }
                 foreach (Bush bush in scattered.Bushes)
                 {
+                    if (bush.IsReeds)
+                    {
+                        Quaternion yaw = Quaternion.Euler(0f, reeds.YawOf(seed, bush.Cell), 0f);
+                        batches[ReedBatch].Add(Matrix4x4.TRS(bush.Position, yaw, Vector3.one * bush.Height));
+                        reedTotal++;
+                        continue;
+                    }
                     Quaternion turn = Quaternion.Euler(0f, growth.YawOf(seed, bush.Cell), 0f);
                     batches[(int)bush.Size].Add(Matrix4x4.TRS(bush.Position, turn, Vector3.one * bush.Height));
                     total++;
                 }
             }
             BushCount = total;
+            ReedCount = reedTotal;
         }
 
         private void Drop(Vector3Int coord)

@@ -89,6 +89,133 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void TallTrees_StayWithinTheirSpread_WithThickerTrunks_AndCrownsNarrowerThanAScaledCopy()
+        {
+            // GL720: trees up to four times as tall.
+            TreeGeneration settings = Settings();
+            settings.Height = new Vector2(11f, 44f);
+            settings.TrunkRadius = 0.25f;
+            var parts = new List<TreePart>();
+            var root = new float3(0f, Ground, 0f);
+            int tall = 0;
+            for (int cell = 0; cell < 40; cell++)
+            {
+                var at = new Vector2Int(cell, 5);
+                float height = TreeShape.HeightOf(Seed, at, settings);
+                Assert.That(height, Is.InRange(11f, 44f));
+                parts.Clear();
+                TreeShape.Build(Seed, at, root, settings, parts);
+                float spread = 0f, top = 0f;
+                foreach (TreePart part in parts)
+                {
+                    Bounds bounds = part.Bounds(0f);
+                    spread = math.max(spread, math.max(
+                        math.max(math.abs(bounds.min.x), math.abs(bounds.max.x)), math.max(math.abs(bounds.min.z), math.abs(bounds.max.z))));
+                    top = math.max(top, bounds.max.y - Ground);
+                }
+                Assert.That(spread, Is.LessThanOrEqualTo(settings.MaxSpread), $"cell {cell}: within the spread chunks gather trees by");
+                Assert.That(top, Is.GreaterThan(height), $"cell {cell}: the crown tops the trunk");
+                if (height > 30f)
+                {
+                    tall++;
+                    Assert.That(spread, Is.LessThan(height * TreeShape.MaxSpreadPerHeight * 0.75f), $"cell {cell}: a tall tree's crown is narrower than a scaled copy");
+                    Assert.That(parts[1].FromRadius, Is.GreaterThan(0.25f * 1.15f), $"cell {cell}: a tall tree's trunk is thicker");
+                }
+            }
+            Assert.That(tall, Is.GreaterThan(0), "Some trees grow past 30 m.");
+        }
+
+        // A climate with one temperature everywhere (GL721).
+        private sealed class FixedClimate : ITreeClimate
+        {
+            private readonly float temperature;
+
+            public FixedClimate(float temperature)
+            {
+                this.temperature = temperature;
+            }
+
+            public float TreeDensityAt(float x, float z) => 1f;
+            public float MapleShareAt(float x, float z, float fallback) => fallback;
+            public float TemperatureAt(float x, float z) => temperature;
+        }
+
+        [Test]
+        public void Pines_AreASpeciesRow_ConesOfTheirOwnMaterials_CommonerWhereItsCold()
+        {
+            VoxelMaterial pineWood = VoxelMaterial.Create(36, "Pine wood", VoxelMaterialCategory.Plant);
+            VoxelMaterial needles = VoxelMaterial.Create(37, "Pine needles", VoxelMaterialCategory.Plant);
+            VoxelMaterial pineStump = VoxelMaterial.Create(39, "Pine stump", VoxelMaterialCategory.Plant);
+            try
+            {
+                TreeGeneration settings = Settings();
+                var pine = new TreeSpecies("Pine", TreeForm.Conifer, pineWood, needles, pineStump)
+                {
+                    Height = new Vector2(16f, 60f), Share = 0.1f, ColdShare = 0.8f, ColdFrom = new Vector2(12f, 4f),
+                };
+                settings.MoreSpecies.Add(pine);
+                Assert.That(settings.KindCount, Is.EqualTo(3));
+                Assert.That(settings.TallestHeight, Is.EqualTo(60f));
+
+                int Pines(ITreeClimate climate)
+                {
+                    settings.Climate = climate;
+                    int count = 0;
+                    for (int cell = 0; cell < 400; cell++)
+                    {
+                        count += TreeShape.KindOf(Seed, new Vector2Int(cell, 9), settings) == 2 ? 1 : 0;
+                    }
+                    return count;
+                }
+                int plain = Pines(null), warm = Pines(new FixedClimate(20f)), cold = Pines(new FixedClimate(0f));
+                Assert.That(plain, Is.InRange(20, 60), "About a tenth without a climate.");
+                Assert.That(warm, Is.InRange(20, 60), "About a tenth where it's warm.");
+                Assert.That(cold, Is.InRange(280, 360), "Most trees where it's cold.");
+
+                // A cone: its own wood, needles and stump, narrower than the spread, topped by needles.
+                settings.Climate = new FixedClimate(0f);
+                var root = new float3(0f, Ground, 0f);
+                var parts = new List<TreePart>();
+                int built = 0;
+                for (int cell = 0; cell < 20 && built < 5; cell++)
+                {
+                    var at = new Vector2Int(cell, 9);
+                    if (TreeShape.KindOf(Seed, at, settings) != 2)
+                    {
+                        continue;
+                    }
+                    built++;
+                    parts.Clear();
+                    TreeShape.Build(Seed, at, root, settings, parts);
+                    Assert.That(parts.TrueForAll(p => p.Material == pineWood.Id || p.Material == needles.Id || p.Material == pineStump.Id), "Only pine materials.");
+                    Assert.That(parts[0].Material, Is.EqualTo(pineStump.Id));
+                    float height = TreeShape.HeightOf(Seed, at, settings);
+                    float spread = 0f;
+                    foreach (TreePart part in parts)
+                    {
+                        Bounds bounds = part.Bounds(0f);
+                        spread = math.max(spread, math.max(math.max(math.abs(bounds.min.x), math.abs(bounds.max.x)), math.max(math.abs(bounds.min.z), math.abs(bounds.max.z))));
+                    }
+                    Assert.That(spread, Is.LessThan(TreeShape.CrownHeight(height) * 0.4f), $"cell {cell}: a narrow cone");
+                    Assert.That(spread, Is.LessThanOrEqualTo(settings.MaxSpread));
+                    Assert.That(parts.FindAll(p => p.Material == needles.Id).Count, Is.GreaterThan(15), $"cell {cell}: needles all the way up");
+                }
+                Assert.That(built, Is.GreaterThan(0));
+
+                // Felling knows pine wood and needles, and the stump it lands clear of.
+                TreeMaterials materials = TreeMaterials.From(settings);
+                Assert.That(materials.IsWood(pineWood.Id) && materials.IsLeaves(needles.Id) && materials.IsStump(pineStump.Id));
+                Assert.That(materials.IsWood(pineStump.Id), Is.False, "A stump is ground, not wood that falls.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(pineWood);
+                Object.DestroyImmediate(needles);
+                Object.DestroyImmediate(pineStump);
+            }
+        }
+
+        [Test]
         public void Shape_StandsOnAStump_ThatRisesTheSetHeight_WhenAStumpMaterialIsSet()
         {
             VoxelMaterial stump = VoxelMaterial.Create(15, "Stump", VoxelMaterialCategory.Plant);
@@ -181,10 +308,10 @@ namespace Clube.Core.Tests
                     Vector2 range = maple ? settings.MapleHeight : settings.Height;
                     Assert.That(TreeShape.HeightOf(Seed, at, settings), Is.InRange(range.x, range.y), $"cell {cell}: full-grown height");
 
-                    // The first trunk segment starts at the root with the trunk's radius (±15%).
+                    // The first trunk segment starts at the root with the trunk's radius (±15%), thicker past 20 m (GL720).
                     parts.Clear();
                     TreeShape.Build(Seed, at, new float3(0f, Ground, 0f), settings, parts);
-                    float trunk = maple ? 0.6f : 0.25f;
+                    float trunk = (maple ? 0.6f : 0.25f) * TreeShape.TrunkScale(TreeShape.HeightOf(Seed, at, settings));
                     Assert.That(parts[1].FromRadius, Is.InRange(trunk * 0.85f, trunk * 1.15f), $"cell {cell}: trunk radius");
                 }
                 Assert.That(maples, Is.InRange(10, 50));
