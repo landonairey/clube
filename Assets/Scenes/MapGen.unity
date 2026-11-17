@@ -7068,7 +7068,7 @@ MonoBehaviour:
   - Label: Use tool
     Action: Attack
     Keys: LMB
-  - Label: Interact with boulder
+  - Label: "Bash a boulder \xB7 bare hands: prospect \xB7 ore in hand: lick"
     Action: Place
     Keys: RMB
   - Label: Use station

@@ -5899,6 +5899,7 @@ MonoBehaviour:
   player: {fileID: 1697135597}
   clock: {fileID: 1350119469}
   drying: {fileID: 1350119468}
+  editorMode: 2
 --- !u!114 &1350119476
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6126,6 +6127,7 @@ MonoBehaviour:
   flowBudgetMs: 2.5
   minFlowSlope: 0.25
   buildBudgetMs: 1.5
+  catchUpBudgetMs: 5
   drawFarWater: 1
   farDetailMetres: 256
 --- !u!114 &1350119487
@@ -6515,6 +6517,7 @@ MonoBehaviour:
   worldView: {fileID: 1350119460}
   fallLimit: 20
   stuckSeconds: 0.25
+  settleRadius: 32
 --- !u!114 &1697135563
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6865,7 +6868,7 @@ MonoBehaviour:
   - Label: Use tool
     Action: Attack
     Keys: LMB
-  - Label: Interact with boulder
+  - Label: "Bash a boulder \xB7 bare hands: prospect \xB7 ore in hand: lick"
     Action: Place
     Keys: RMB
   - Label: Use station

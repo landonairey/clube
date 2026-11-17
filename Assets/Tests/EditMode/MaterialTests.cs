@@ -10,6 +10,21 @@ namespace Clube.Core.Tests
     /// </summary>
     public class MaterialTests
     {
+        [Test]
+        public void OreOf_FindsTheOreOfARawOrCrushedOreItem_AndNothingForStone()
+        {
+            // GL658: a stack with no contents is licked as the ore its item comes from.
+            ItemDefinition oreItem = ItemDefinition.Create("gold-ore", "Gold ore");
+            ItemDefinition crushed = ItemDefinition.Create("crushed-gold-ore", "Crushed gold ore").WithPurityAs(oreItem);
+            ItemDefinition stoneItem = ItemDefinition.Create("stone", "Stone");
+            VoxelMaterial gold = VoxelMaterial.Create(5, "Gold", VoxelMaterialCategory.Ore).WithBreaking(1f, oreItem);
+            VoxelMaterial stone = VoxelMaterial.Create(0, "Stone").WithBreaking(1f, stoneItem);
+            MaterialRegistry registry = MaterialRegistry.Create(stone, gold);
+            Assert.That(registry.OreOf(oreItem), Is.SameAs(gold));
+            Assert.That(registry.OreOf(crushed), Is.SameAs(gold));
+            Assert.That(registry.OreOf(stoneItem), Is.Null);
+        }
+
         private const byte Stone = 0;
         private const byte Dirt = 1;
         private const byte Grass = 2;

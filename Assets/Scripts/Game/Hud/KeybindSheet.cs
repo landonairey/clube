@@ -90,7 +90,7 @@ namespace Clube.Game
                 new Row("Sprint", "Sprint"),
                 new Row("Crouch (slide when sprinting)", "Crouch"),
                 new Row("Use tool", "Attack", "LMB"),
-                new Row("Interact with boulder", "Place", "RMB"),
+                new Row("Bash a boulder · bare hands: prospect · ore in hand: lick", "Place", "RMB"),
                 new Row("Use station", "Interact"),
                 new Row("Hotbar slot", "Hotbar", "1-9"),
                 new Row("Next slot", "NextSlot"),

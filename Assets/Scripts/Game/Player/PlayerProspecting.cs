@@ -142,9 +142,15 @@ namespace Clube.Game
                 return true;
             }
             MaterialRegistry materials = worldView.Config.Materials;
-            if (stack.Contents == null || materials == null)
+            if (materials == null)
             {
                 return false;
+            }
+            if (stack.Contents == null)
+            {
+                // GL658: a stack with no contents (bought, given, from a crate) is still its ore: it was never lickable.
+                ore = materials.OreOf(stack.Item);
+                return ore != null;
             }
             foreach (Content part in stack.Contents.Parts)
             {

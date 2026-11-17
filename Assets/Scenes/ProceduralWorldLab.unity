@@ -5996,6 +5996,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.StarSky
   material: {fileID: 2100000, guid: fcee9d4b03c50d846a0ea1acc10230f6, type: 2}
   distanceShare: 0.95
+  shootingStarGap: {x: 60, y: 180}
 --- !u!114 &1350119480
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6078,6 +6079,9 @@ MonoBehaviour:
   flowBudgetMs: 2.5
   minFlowSlope: 0.25
   buildBudgetMs: 1.5
+  catchUpBudgetMs: 5
+  drawFarWater: 1
+  farDetailMetres: 256
 --- !u!114 &1350119484
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6427,6 +6431,7 @@ MonoBehaviour:
   worldView: {fileID: 1350119460}
   fallLimit: 20
   stuckSeconds: 0.25
+  settleRadius: 32
 --- !u!114 &1697135563
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6777,7 +6782,7 @@ MonoBehaviour:
   - Label: Use tool
     Action: Attack
     Keys: LMB
-  - Label: Interact with boulder
+  - Label: "Bash a boulder \xB7 bare hands: prospect \xB7 ore in hand: lick"
     Action: Place
     Keys: RMB
   - Label: Use station
@@ -7423,8 +7428,8 @@ MonoBehaviour:
   material: {fileID: 2100000, guid: 4d599372257648141b207c3dbd8d5b8f, type: 2}
   gravity: 12
   sparkMaterial: {fileID: 2100000, guid: d578650619eba4e498c80599e6a05b45, type: 2}
-  sparkChance: 0.2
-  crushSparkChance: 0.35
+  rockSparkChance: 0.7
+  boulderSparkChance: 0.85
 --- !u!114 &1697135604
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7562,6 +7567,7 @@ MonoBehaviour:
   unknownExperience: 2
   lickExperience: 1
   unknownLickExperience: 3
+  crushedLickMultiplier: 1.5
 --- !u!114 &1697135613
 MonoBehaviour:
   m_ObjectHideFlags: 0
