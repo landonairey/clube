@@ -32,8 +32,15 @@ namespace Clube.Game
         [SerializeField, Min(0f)]
         private float stuckSeconds = 0.25f;
 
+        [Tooltip("The ground within this many metres must be loaded, written (roads, settlements) and meshed before the player is set down (GL653); 0 waits only for the column under the player.")]
+        [SerializeField, Min(0f)]
+        private float settleRadius = 32f;
+
         private PlayerController player;
         private bool isPlaced;
+
+        /// <summary>While waiting for ground: the share of the columns round the spawn that are ready, 0 to 1.</summary>
+        public float Progress { get; private set; }
         private float buriedFor;
 
         // A saved position to set the player down at instead of the highest ground (GL205), once.
@@ -82,9 +89,19 @@ namespace Clube.Game
 
         private void OnDisable()
         {
+            SetHurry(false);
             if (worldView != null && worldView.Focus == transform)
             {
                 worldView.Focus = null;
+            }
+        }
+
+        // While the player waits nothing is being watched: the world may spend its frames on getting the ground ready.
+        private void SetHurry(bool hurry)
+        {
+            if (worldView != null)
+            {
+                worldView.Hurry = hurry;
             }
         }
 
@@ -118,6 +135,8 @@ namespace Clube.Game
         private void Wait()
         {
             isPlaced = false;
+            SetHurry(true);
+            Progress = 0f;
             buriedFor = 0f;
             player.enabled = false;
             if (worldView != null && worldView.IsReady)
@@ -129,10 +148,14 @@ namespace Clube.Game
         private void TryPlace()
         {
             // Every chunk in the column loaded, meshed, and its collider cooked: ground to stand on.
-            if (!worldView.HasGround(transform.position))
+            // And the ground round it: nothing is seen loading or being written from where the player stands.
+            bool around = worldView.IsSettledAround(transform.position, settleRadius, out int settled, out int columns);
+            Progress = columns > 0 ? (float)settled / columns : 0f;
+            if (!around || !worldView.HasGround(transform.position))
             {
                 return;
             }
+            Progress = 1f;
 
             if (placeAt.HasValue)
             {
@@ -140,6 +163,7 @@ namespace Clube.Game
                 placeAt = null;
                 player.enabled = true;
                 isPlaced = true;
+                SetHurry(false);
                 return;
             }
 
@@ -152,6 +176,7 @@ namespace Clube.Game
             player.Teleport(ground + worldView.transform.up * 0.05f);
             player.enabled = true;
             isPlaced = true;
+            SetHurry(false);
         }
 
         // Just above the world's top layer, over the player's x and z (world space).

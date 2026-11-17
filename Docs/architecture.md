@@ -352,11 +352,11 @@ flowchart LR
   ground (`GroundLeveling` with `Area.Surface` = the site's heights, `KeepTop` so cut ground keeps its grass, banks
   faced with stone), the lanes (each a `RoadWriter` over `SettlementSite.HeightAt`), the buildings in four slices
   (`SettlementStructures.Blocks`: the trading post's shop, or a house with a door and a window). `MapSettlements`
-  (Game) lays a settlement out when the viewer is within 160 m of its edge and writes the next piece whenever its
+  (Game) lays a settlement out when the viewer is within 160 m of its edge (or the loaded area reaches it) and writes its pieces, nearest first, whenever their
   chunks are loaded, 3 ms a frame; a shop that stands is fitted (`TownBuilder.FitShop`: sign, sleeping roll, wares)
   and gets a `SettlementKeeper`, an `ITrader` whose shop is `EconomySpecialty.ToShop` and whose prices, purse and
   disposition are a `ShopTrade` (shared with the trading post's `Shopkeeper`). The parcels under a settlement are locked;
-  progress is saved as "written/pieces". `KeptHeights` (Core) is the store of generated heights both `MapRoads` and
+  progress is saved as which pieces are written; its ground is held back until it is (GL653, "Held columns"). `KeptHeights` (Core) is the store of generated heights both `MapRoads` and
   `MapSettlements` write through. Not done: houses are empty (the people are GL615), thieves' camps build nothing
   (GL617), and far terrain shows no settlements.
 - **The map in a scene** (GL598-GL601, `Game/Map/`): `MapSession` (one per scene, `MapSession.Current`) watches
@@ -379,7 +379,10 @@ flowchart LR
   cells; a sheet with smaller squares along its rim is a fan through their corners. The `Clube/Water` shader's
   `_Detail` (centre, half width, side) draws the tiles inside the square and the regions outside, and stills the
   ripples outside, so the layers meet at one height and nothing is rebuilt as the viewer moves. Both are clipped by
-  the chunk coverage mask (GL323). Rivers are not merged: a river cell is a quad at any distance.
+  the chunk coverage mask (GL323), which for water also waits for the column's own water (GL654): a wet chunk with no
+  water mesh yet is *awaited* (`WaterView.Await`, `IsWaterReady`), the far sheets stay over its column until it is built
+  (or found to need none), and awaited chunks are built before redraws with `catchUpBudgetMs` (5 ms) a frame, so no
+  ring of missing water opens as the viewer walks to a shore. Rivers are not merged: a river cell is a quad at any distance.
 - **The sea past the map** (GL600): the water map covers the map plus `WaterMargin`; `WaterView.BuildOuterSea` adds one
   flat mesh at sea level from its edge to 40 km, in cells growing from 256 m, wherever `MapShape.IsSeaSide`.
 
@@ -510,6 +513,41 @@ stateDiagram-v2
     Shown --> [*]: leaves the area (kept in memory if edited)
     Collidable --> [*]: leaves the area
 ```
+
+### Held columns (GL653)
+
+Roads and settlements are written into chunks after they are generated (`RoadWriter`, `SettlementWriter`, through
+`World`'s edits). So that no chunk is shown and then written over, whatever still has to write registers an
+`IColumnHold` with `WorldView.AddHold`: while a hold says a column (x, z) is held, the streamer loads its chunks but
+`StartMeshing` skips those with a surface that were never meshed (`WorldStreamer.IsHeld`). Nothing else changes: the
+column isn't in the coverage mask until every layer is meshed, so the coarse terrain goes on standing in for it, an edit
+to an unmeshed chunk costs no rebuild in `RebuildEdited`, and when the hold lets go the chunks are still dirty and mesh
+in the next frames, written. `IsColumnSettled` is false for a held column. The focus's own column and the eight round
+it are never held, so there is always ground under the player.
+
+- `ColumnHoldSet` is the usual hold: a count of unwritten pieces per column (`Add` a piece's ground when it is worked
+  out, `Remove` it when written) plus a `Rule` for what isn't in pieces yet. `MapSession` holds every column until the
+  map is planned; `MapRoads` holds the box round a road not worked out, then its pieces; `MapSettlements` the circle
+  round a settlement not laid out, then its pieces. Both write everything in the loaded area (`Range()`), not only
+  within their build range, so nothing loaded stays held but the band along the area's edge whose pieces need chunks
+  past it (a piece waits for the room of a tree, 25-45 m): that band shows as coarse terrain until the viewer is nearer.
+- A hold must let go: one that never does leaves its columns unshown. A writer that is switched off disables its set.
+- `SettlementWriter` writes in any order that puts a piece after those it stands on (`IsReady`: a lane after the
+  terrace tiles under it, a building after tiles and lanes, a terrace's tiles after an earlier terrace's where they
+  overlap), found once through a grid of the pieces' boxes. A settlement wider than the loaded area is built round
+  the viewer; the save keeps which pieces (`PieceFlags`), and still reads the older "written/pieces".
+- **The spawn** (`PlayerSpawn`): the player is set down once every column within `settleRadius` (32 m) is loaded, not
+  held and meshed (`WorldView.IsSettledAround`) and its own has colliders. Meanwhile `LoadCurtain` covers the view and
+  `WorldView.Hurry` is set: the streamer takes twice its loading budget and the map's writers most of a frame
+  (50 and 100 ms), since nothing is watched. While any bulk load runs the streamer keeps 8 jobs in flight per worker
+  (2 otherwise), and a chunk 96 m over its column's highest ground is air without looking for trees.
+- *Measure:* *Clube → Debug → Measure load time* (`LoadTimeReport`) enters Play mode and logs when the map was
+  surveyed, the player stood, the area finished loading and the last piece was written, with the streamer's phases
+  and, every 3 s of the wait, what the columns round the spawn still lack. MapGen, seed 1, in the Editor, before →
+  after: player stood 15.2 → 30.1 s (behind the curtain; before, the next minute was watched), area loaded
+  62.4 → 44.4 s, last piece written and last chunk shown 76.8 → 50.9 s. The survey and plan (10.8 s of it: ores 3.2 s,
+  roads on the ground 6.2 s) are untouched, and are the next thing to cut; then the 333,000 chunks of a 104-layer
+  area (34 µs each on the main thread) and `World.SetDensity`'s listeners (10 µs a sample; a terrace tile is 13 ms).
 
 ### The far terrain (P7a)
 

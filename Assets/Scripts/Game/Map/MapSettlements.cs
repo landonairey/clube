@@ -18,6 +18,16 @@ namespace Clube.Game
     {
         private const string KeyPrefix = "mapsettlement.";
 
+        // Pieces looked at a frame for loaded chunks, and seconds until the pieces a write made ready are found.
+        private const int ChecksPerFrame = 32;
+        private const float RecollectSeconds = 0.2f;
+
+        // Metres round a piece's ground that are held with it: a tree cut on a tile reaches over its edge.
+        private const float HoldMargin = 2f;
+
+        // Milliseconds a frame while the player waits behind the loading curtain (WorldView.Hurry).
+        private const float HurryBudgetMilliseconds = 100f;
+
         [SerializeField]
         private MapSession session;
 
@@ -55,6 +65,10 @@ namespace Clube.Game
         [SerializeField, Range(0.5f, 10f)]
         private float writeBudgetMilliseconds = 3f;
 
+        [Tooltip("Milliseconds a frame they may take while the area round the viewer loads in bulk (at the start, after a long jump): the ground is held back until it is written (GL653).")]
+        [SerializeField, Range(0.5f, 40f)]
+        private float loadingWriteBudgetMilliseconds = 14f;
+
         [Tooltip("What the steep banks between terraces are faced with.")]
         [SerializeField]
         private string bankMaterial = "Loose stone";
@@ -81,6 +95,13 @@ namespace Clube.Game
         private readonly Dictionary<string, string> restored = new Dictionary<string, string>();
         private readonly List<(int Index, float Distance)> near = new List<(int, float)>();
         private readonly List<SettlementKeeper> keepers = new List<SettlementKeeper>();
+        private readonly List<(int Settlement, int Piece, float Distance)> pending = new List<(int, int, float)>();
+        private readonly List<int> found = new List<int>();
+        // GL653: the ground still to write is not shown until it is.
+        private readonly ColumnHoldSet hold = new ColumnHoldSet();
+        private WorldView holding;
+        private float[] reach;
+        private bool fitDue;
         private Built[] built;
         private KeptHeights heights;
         private Transform root;
@@ -103,6 +124,12 @@ namespace Clube.Game
         public int SettlementsWorkedOut { get; private set; }
 
         public int PiecesWritten { get; private set; }
+
+        /// <summary>Chunk columns with a laid-out settlement's piece still to write: not shown until it is (GL653).</summary>
+        public int HeldColumns { get; private set; }
+
+        /// <summary>Pieces found near the viewer that can be written once their chunks have loaded.</summary>
+        public int PendingPieces => pending.Count;
 
         public int ShopsFitted { get; private set; }
 
@@ -153,8 +180,27 @@ namespace Clube.Game
             return made == null ? Vector2Int.zero : new Vector2Int(made.Writer.Written, made.Writer.Pieces);
         }
 
+        private void OnEnable()
+        {
+            hold.Rule = HoldsUnplanned;
+            holding = session != null ? session.WorldView : null;
+            if (holding != null)
+            {
+                holding.AddHold(hold);
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (holding != null)
+            {
+                holding.RemoveHold(hold);
+            }
+        }
+
         private void Update()
         {
+            hold.Enabled = build;
             if (session == null || !session.IsReady || session.Plan == null)
             {
                 return;
@@ -175,6 +221,7 @@ namespace Clube.Game
                 Collect(viewer);
             }
             Write();
+            HeldColumns = hold.Count;
         }
 
         private void StartOver()
@@ -187,6 +234,13 @@ namespace Clube.Game
             root = new GameObject("Settlements").transform;
             root.SetParent(session.WorldView.transform, false);
             built = new Built[session.Plan.Settlements.Count];
+            reach = new float[built.Length];
+            for (int i = 0; i < reach.Length; i++)
+            {
+                reach[i] = ReachOf(session.Plan.Settlements[i]);
+            }
+            hold.Clear();
+            pending.Clear();
             heights = new KeptHeights(session.Map.Height);
             roads = FindAnyObjectByType<MapRoads>();
             keepers.Clear();
@@ -242,6 +296,14 @@ namespace Clube.Game
             }
             LockParcels(site);
             built[index] = made;
+            WorldGrid grid = session.WorldView.World.Grid;
+            for (int piece = 0; piece < made.Writer.Pieces; piece++)
+            {
+                if (!made.Writer.IsWritten(piece))
+                {
+                    hold.Add(grid, HoldOf(made.Writer, piece));
+                }
+            }
             SettlementsWorkedOut++;
             LongestWorkOutMilliseconds = Mathf.Max(LongestWorkOutMilliseconds, (Time.realtimeSinceStartup - started) * 1000f);
             return made;
@@ -271,20 +333,91 @@ namespace Clube.Game
             }
         }
 
-        // Finds the settlements near the viewer, nearest first; one new one is laid out a frame.
+        // How far from the viewer pieces are written: at least the whole loaded area, so nothing loaded is left held.
+        private float Range()
+        {
+            WorldView view = session.WorldView;
+            return Mathf.Max(buildRange, view.RenderDistance * view.World.Grid.ChunkWorldSize.x + HoldMargin * 2f);
+        }
+
+        // Whether anything is built at a planned settlement.
+        private static bool IsBuilt(PlannedSettlement settlement)
+        {
+            return settlement.Shops.Count + settlement.Population + settlement.Type.Band > 0;
+        }
+
+        // The circle round a settlement not laid out yet that nothing is shown in (GL653): its square's corners and margin.
+        private float ReachOf(PlannedSettlement settlement)
+        {
+            return SettlementLayout.SideOf(settlement.Type, session.Plan.Rules.ParcelSide) * 0.71f + rules.Margin + HoldMargin;
+        }
+
+        // GL653: the columns a settlement will be written into before it is laid out; laid out, its pieces are counted.
+        private bool HoldsUnplanned(Vector2Int column)
+        {
+            if (session == null || !session.IsReady || session.Plan == null)
+            {
+                return false;
+            }
+            if (session.Version != version || built == null)
+            {
+                return true;
+            }
+            float chunk = session.WorldView.World.Grid.ChunkWorldSize.x;
+            var middle = new Vector2((column.x + 0.5f) * chunk, (column.y + 0.5f) * chunk);
+            IReadOnlyList<PlannedSettlement> settlements = session.Plan.Settlements;
+            for (int i = 0; i < built.Length; i++)
+            {
+                if (built[i] == null && IsBuilt(settlements[i]) && (middle - settlements[i].Position).sqrMagnitude <= reach[i] * reach[i])
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static Rect HoldOf(SettlementWriter writer, int piece)
+        {
+            Rect box = writer.Footprint(piece);
+            return Rect.MinMaxRect(box.xMin - HoldMargin, box.yMin - HoldMargin, box.xMax + HoldMargin, box.yMax + HoldMargin);
+        }
+
+        // Counts every unwritten piece of the settlements laid out, afresh (after a restore marked some written).
+        private void HoldUnwritten()
+        {
+            hold.Clear();
+            if (built == null)
+            {
+                return;
+            }
+            WorldGrid grid = session.WorldView.World.Grid;
+            foreach (Built made in built)
+            {
+                for (int piece = 0; made != null && piece < made.Writer.Pieces; piece++)
+                {
+                    if (!made.Writer.IsWritten(piece))
+                    {
+                        hold.Add(grid, HoldOf(made.Writer, piece));
+                    }
+                }
+            }
+        }
+
+        // Finds the settlements near the viewer and their pieces that can be written, nearest first; one new one is laid out a frame.
         private void Collect(Vector2 viewer)
         {
             collectedAt = viewer;
             collectedTime = Time.unscaledTime;
             near.Clear();
+            pending.Clear();
             WorldPlan plan = session.Plan;
+            float range = Range();
             bool workedOutOne = false;
             for (int i = 0; i < plan.Settlements.Count; i++)
             {
                 PlannedSettlement settlement = plan.Settlements[i];
-                float half = SettlementLayout.SideOf(settlement.Type, plan.Rules.ParcelSide) * 0.5f;
-                float distance = Mathf.Max(0f, Vector2.Distance(viewer, settlement.Position) - half);
-                if (distance > buildRange || settlement.Shops.Count + settlement.Population + settlement.Type.Band == 0)
+                float distance = Mathf.Max(0f, Vector2.Distance(viewer, settlement.Position) - reach[i]);
+                if (distance > range || !IsBuilt(settlement))
                 {
                     continue;
                 }
@@ -299,8 +432,17 @@ namespace Clube.Game
                     WorkOut(i);
                 }
                 near.Add((i, distance));
+                SettlementWriter writer = built[i].Writer;
+                found.Clear();
+                writer.Ready(viewer, range, found);
+                foreach (int piece in found)
+                {
+                    pending.Add((i, piece, SettlementSite.Beyond(writer.Footprint(piece), viewer)));
+                }
             }
             near.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            pending.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            fitDue = true;
         }
 
         private void Write()
@@ -309,8 +451,9 @@ namespace Clube.Game
             {
                 return;
             }
-            WorldConfig config = session.WorldView.Config;
-            World world = session.WorldView.World;
+            WorldView view = session.WorldView;
+            WorldConfig config = view.Config;
+            World world = view.World;
             MaterialRegistry registry = config.Materials;
             var materials = new SettlementWriter.Materials
             {
@@ -319,29 +462,55 @@ namespace Clube.Game
                 Boards = registry != null ? registry.Find("Oak boards") : null,
                 Trim = registry != null ? registry.Find("Maple boards") : null,
             };
+            // While the area loads in bulk the ground is waiting to be shown: more of the frame goes to writing it.
+            float budget = view.IsLoading ? Mathf.Max(writeBudgetMilliseconds, view.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds) : writeBudgetMilliseconds;
             float started = Time.realtimeSinceStartup;
-            foreach ((int index, float _) in near)
+            bool wrote = false;
+            int checks = 0;
+            for (int i = 0; i < pending.Count && checks < ChecksPerFrame; i++)
             {
-                Built made = built[index];
-                while (!made.Writer.Done && made.Writer.NextLoaded(world, config.WorldHeightInChunks))
+                (int Settlement, int Piece, float Distance) next = pending[i];
+                SettlementWriter writer = built[next.Settlement].Writer;
+                if (!writer.IsReady(next.Piece))
                 {
-                    float before = Time.realtimeSinceStartup;
-                    int kind = made.Writer.NextKind;
-                    made.Writer.WriteNext(world, registry, materials, heights.At, config.IsoLevel);
-                    PiecesWritten++;
-                    float took = (Time.realtimeSinceStartup - before) * 1000f;
-                    LongestMilliseconds = Mathf.Max(LongestMilliseconds, took);
-                    TotalMilliseconds += took;
-                    kindCount[kind]++;
-                    kindMilliseconds[kind] += took;
-                    kindLongest[kind] = Mathf.Max(kindLongest[kind], took);
-                    if ((Time.realtimeSinceStartup - started) * 1000f >= writeBudgetMilliseconds)
-                    {
-                        Fit(index, made);
-                        return;
-                    }
+                    pending.RemoveAt(i--);
+                    continue;
                 }
-                Fit(index, made);
+                checks++;
+                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece))
+                {
+                    continue;
+                }
+                float before = Time.realtimeSinceStartup;
+                int kind = writer.KindOf(next.Piece);
+                writer.Write(world, registry, materials, heights.At, config.IsoLevel, next.Piece);
+                hold.Remove(world.Grid, HoldOf(writer, next.Piece));
+                pending.RemoveAt(i--);
+                wrote = true;
+                PiecesWritten++;
+                float took = (Time.realtimeSinceStartup - before) * 1000f;
+                LongestMilliseconds = Mathf.Max(LongestMilliseconds, took);
+                TotalMilliseconds += took;
+                kindCount[kind]++;
+                kindMilliseconds[kind] += took;
+                kindLongest[kind] = Mathf.Max(kindLongest[kind], took);
+                if ((Time.realtimeSinceStartup - started) * 1000f >= budget)
+                {
+                    break;
+                }
+            }
+            if (wrote)
+            {
+                // What was written lets the pieces standing on it be written: they are found soon, not a second on.
+                collectedTime = Mathf.Min(collectedTime, Time.unscaledTime - 1f + RecollectSeconds);
+            }
+            if (wrote || fitDue)
+            {
+                fitDue = false;
+                foreach ((int index, float _) in near)
+                {
+                    Fit(index, built[index]);
+                }
             }
         }
 
@@ -428,10 +597,16 @@ namespace Clube.Game
             return planned.Specialty.ToShop(catalog, variety);
         }
 
-        // "written/pieces": a settlement laid out differently since (another count of pieces) starts again.
+        // Which pieces are written (PieceFlags), or an older save's "written/pieces" (the first so many): a settlement laid
+        // out differently since (another count of pieces) starts again.
         private static void Restore(SettlementWriter writer, string saved)
         {
             string[] parts = saved.Split('/');
+            if (parts.Length != 2)
+            {
+                writer.Restore(saved);
+                return;
+            }
             if (parts.Length == 2 && int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int written)
                 && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int pieces) && pieces == writer.Pieces)
             {
@@ -454,7 +629,7 @@ namespace Clube.Game
             {
                 if (built[i] != null && built[i].Writer.Written > 0)
                 {
-                    values[KeyPrefix + i] = string.Format(CultureInfo.InvariantCulture, "{0}/{1}", built[i].Writer.Written, built[i].Writer.Pieces);
+                    values[KeyPrefix + i] = built[i].Writer.Save();
                 }
             }
         }
@@ -480,6 +655,7 @@ namespace Clube.Game
                     Restore(built[i].Writer, saved);
                 }
             }
+            HoldUnwritten();
         }
     }
 }

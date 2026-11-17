@@ -5,11 +5,12 @@ using UnityEngine;
 namespace Clube.Core
 {
     /// <summary>
-    /// Writes one settlement into the terrain (GL613, GL642), a piece at a time and always in the same order: its
+    /// Writes one settlement into the terrain (GL613, GL642), a piece at a time: its
     /// terraces and their banks in tiles (<see cref="GroundLeveling"/> with the site's own heights), then its lanes
     /// (each a <see cref="RoadWriter"/> over the terraced ground), then its buildings in whole voxels
     /// (<see cref="SquareVoxels"/>). Whoever owns it decides when (near the viewer, once a piece's chunks are loaded,
-    /// a few milliseconds a frame). How many pieces are written is all a save needs, so a loaded game doesn't write
+    /// a few milliseconds a frame), in any order that writes a piece after those it stands on (GL653: <see cref="IsReady"/>).
+    /// Which pieces are written is all a save needs, so a loaded game doesn't write
     /// them again over the player's digging. Ground a planned road shapes is never touched: the road writes that.
     /// </summary>
     public sealed class SettlementWriter
@@ -48,6 +49,12 @@ namespace Clube.Core
         private readonly List<Piece> pieces = new List<Piece>();
         private readonly List<RoadWriter> lanes = new List<RoadWriter>();
         private readonly int[] buildingPiece;
+        // Which pieces are written; for each, how many pieces it stands on are still to write, and which stand on it.
+        private readonly bool[] written;
+        private readonly int[] blockers;
+        private readonly List<int>[] dependents;
+        // The first unwritten piece.
+        private int next;
         private readonly List<LaneBridge> bridges = new List<LaneBridge>();
         private readonly Func<float, float, bool> wetAt;
         private readonly TreeRoom treeRoom;
@@ -133,7 +140,7 @@ namespace Clube.Core
                         writer.Skip(p);
                         continue;
                     }
-                    pieces.Add(new Piece { Kind = Kind.Lane, Index = l, Part = p });
+                    pieces.Add(new Piece { Kind = Kind.Lane, Index = l, Part = p, Box = writer.Footprint(p) });
                 }
             }
             buildingPiece = new int[site.Buildings.Count];
@@ -156,6 +163,10 @@ namespace Clube.Core
                     });
                 }
             }
+            written = new bool[pieces.Count];
+            blockers = new int[pieces.Count];
+            dependents = new List<int>[pieces.Count];
+            FindOrder();
         }
 
         public SettlementSite Site { get; }
@@ -163,37 +174,194 @@ namespace Clube.Core
         /// <summary>Pieces in all: tiles of ground, metres of lane, buildings.</summary>
         public int Pieces => pieces.Count;
 
-        /// <summary>Pieces written so far; they are written in order.</summary>
+        /// <summary>Pieces written so far.</summary>
         public int Written { get; private set; }
 
         public bool Done => Written >= pieces.Count;
 
-        /// <summary>What the next piece is, for timing: 0 a tile of ground, 1 a metre of lane, 2 a part of a building; -1 when done.</summary>
-        public int NextKind => Done ? -1 : (int)pieces[Written].Kind;
+        /// <summary>What the first unwritten piece is, for timing: 0 a tile of ground, 1 a metre of lane, 2 a part of a building; -1 when done.</summary>
+        public int NextKind => Done ? -1 : (int)pieces[next].Kind;
+
+        /// <summary>What a piece is: 0 a tile of ground, 1 a metre of lane, 2 a part of a building.</summary>
+        public int KindOf(int piece)
+        {
+            return (int)pieces[piece].Kind;
+        }
+
+        public bool IsWritten(int piece)
+        {
+            return written[piece];
+        }
+
+        /// <summary>
+        /// True when a piece can be written now (GL653): it isn't yet, and every piece it stands on is: the terraces
+        /// under a lane, the terraces and lanes under a building, an earlier terrace's tiles where two overlap. Pieces
+        /// are written in any order that keeps to this, so a settlement larger than the loaded area still gets built
+        /// round the viewer.
+        /// </summary>
+        public bool IsReady(int piece)
+        {
+            return !written[piece] && blockers[piece] == 0;
+        }
+
+        /// <summary>The ground a piece may change (x, z): what a hold keeps from being shown until it is written.</summary>
+        public Rect Footprint(int piece)
+        {
+            return pieces[piece].Box;
+        }
+
+        /// <summary>Adds the pieces that can be written now (<see cref="IsReady"/>) whose ground is within <paramref name="range"/> metres of a point.</summary>
+        public void Ready(Vector2 near, float range, List<int> into)
+        {
+            for (int piece = next; piece < pieces.Count; piece++)
+            {
+                if (IsReady(piece) && SettlementSite.Beyond(pieces[piece].Box, near) <= range)
+                {
+                    into.Add(piece);
+                }
+            }
+        }
 
         /// <summary>True once a building stands in the terrain.</summary>
         public bool IsStanding(int building)
         {
-            return Written > buildingPiece[building];
+            return written[buildingPiece[building]];
         }
 
-        /// <summary>Marks the first pieces as written (from a save); a count that doesn't fit this settlement is ignored.</summary>
-        public void Restore(int written)
+        /// <summary>Marks the first pieces as written (an older save's count); a count that doesn't fit this settlement is ignored.</summary>
+        public void Restore(int count)
         {
-            if (written >= 0 && written <= pieces.Count)
+            if (count >= 0 && count <= pieces.Count)
             {
-                Written = Mathf.Max(Written, written);
+                for (int piece = 0; piece < count; piece++)
+                {
+                    Mark(piece);
+                }
             }
         }
 
-        /// <summary>True when every chunk the next piece may change is loaded.</summary>
+        /// <summary>Marks the pieces a save says are written (<see cref="Save"/>); a settlement of another number of pieces is ignored.</summary>
+        public void Restore(string saved)
+        {
+            var flags = new bool[pieces.Count];
+            PieceFlags.Restore(saved, flags);
+            for (int piece = 0; piece < flags.Length; piece++)
+            {
+                if (flags[piece])
+                {
+                    Mark(piece);
+                }
+            }
+        }
+
+        /// <summary>Which pieces are written, for the save (<see cref="PieceFlags"/>).</summary>
+        public string Save()
+        {
+            return PieceFlags.Save(written);
+        }
+
+        private void Mark(int piece)
+        {
+            if (written[piece])
+            {
+                return;
+            }
+            written[piece] = true;
+            Written++;
+            if (dependents[piece] != null)
+            {
+                foreach (int dependent in dependents[piece])
+                {
+                    blockers[dependent]--;
+                }
+            }
+            while (next < pieces.Count && written[next])
+            {
+                next++;
+            }
+        }
+
+        // Which pieces each must wait for: those it is written over. Found through a grid of the pieces' boxes.
+        private void FindOrder()
+        {
+            const float Cell = 8f, Touch = 0.5f;
+            var grid = new Dictionary<Vector2Int, List<int>>();
+            var seen = new int[pieces.Count];
+            for (int j = 0; j < pieces.Count; j++)
+            {
+                Piece piece = pieces[j];
+                Rect box = Rect.MinMaxRect(piece.Box.xMin - Touch, piece.Box.yMin - Touch, piece.Box.xMax + Touch, piece.Box.yMax + Touch);
+                int x0 = Mathf.FloorToInt(box.xMin / Cell), x1 = Mathf.FloorToInt(box.xMax / Cell);
+                int z0 = Mathf.FloorToInt(box.yMin / Cell), z1 = Mathf.FloorToInt(box.yMax / Cell);
+                for (int z = z0; z <= z1; z++)
+                {
+                    for (int x = x0; x <= x1; x++)
+                    {
+                        var cell = new Vector2Int(x, z);
+                        if (!grid.TryGetValue(cell, out List<int> here))
+                        {
+                            if (piece.Kind == Kind.Building)
+                            {
+                                continue;
+                            }
+                            grid[cell] = here = new List<int>();
+                        }
+                        foreach (int i in here)
+                        {
+                            if (seen[i] == j + 1 || !WaitsFor(piece, pieces[i]) || !box.Overlaps(pieces[i].Box))
+                            {
+                                continue;
+                            }
+                            seen[i] = j + 1;
+                            Wait(j, i);
+                        }
+                        // Buildings stand on everything and nothing on them: they needn't be found.
+                        if (piece.Kind != Kind.Building)
+                        {
+                            here.Add(j);
+                        }
+                    }
+                }
+                // A building goes up a slice at a time.
+                if (piece.Kind == Kind.Building && piece.Part > 0)
+                {
+                    Wait(j, j - 1);
+                }
+            }
+        }
+
+        // Whether a piece is written over an earlier one where their ground overlaps: a terrace's tile over another
+        // terrace's (its own tiles lie side by side), a lane over tiles, a building over tiles and lanes. Lanes cross
+        // in any order, as the roads do.
+        private static bool WaitsFor(Piece later, Piece earlier)
+        {
+            switch (later.Kind)
+            {
+                case Kind.Ground:
+                    return earlier.Kind == Kind.Ground && earlier.Index != later.Index;
+                case Kind.Lane:
+                    return earlier.Kind == Kind.Ground;
+                default:
+                    return true;
+            }
+        }
+
+        private void Wait(int piece, int earlier)
+        {
+            blockers[piece]++;
+            (dependents[earlier] ??= new List<int>()).Add(piece);
+        }
+
+        /// <summary>True when every chunk the first unwritten piece may change is loaded.</summary>
         public bool NextLoaded(World world, int heightInChunks)
         {
-            if (Done)
-            {
-                return false;
-            }
-            Piece piece = pieces[Written];
+            return !Done && Loaded(world, heightInChunks, next);
+        }
+
+        /// <summary>True when every chunk a piece may change is loaded.</summary>
+        public bool Loaded(World world, int heightInChunks, int index)
+        {
+            Piece piece = pieces[index];
             if (piece.Kind == Kind.Lane)
             {
                 return lanes[piece.Index].Loaded(world, heightInChunks, piece.Part);
@@ -220,15 +388,26 @@ namespace Clube.Core
             return true;
         }
 
-        /// <summary>Writes the next piece into the world.</summary>
+        /// <summary>Writes the first unwritten piece into the world.</summary>
         /// <param name="natural">The ground as generated at (x, z).</param>
         public void WriteNext(World world, MaterialRegistry registry, Materials materials, Func<float, float, float> natural, float iso)
         {
-            if (Done)
+            if (!Done)
+            {
+                Write(world, registry, materials, natural, iso, next);
+            }
+        }
+
+        /// <summary>Writes a piece into the world and marks it written; one that is <see cref="IsReady"/>.</summary>
+        /// <param name="natural">The ground as generated at (x, z).</param>
+        public void Write(World world, MaterialRegistry registry, Materials materials, Func<float, float, float> natural, float iso, int index)
+        {
+            if (written[index])
             {
                 return;
             }
-            Piece piece = pieces[Written++];
+            Piece piece = pieces[index];
+            Mark(index);
             SettlementSite site = Site;
             switch (piece.Kind)
             {

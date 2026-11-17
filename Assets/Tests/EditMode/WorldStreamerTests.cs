@@ -266,6 +266,54 @@ namespace Clube.Core.Tests
             Assert.That(hidden, Is.GreaterThan(0));
         }
 
+        [Test]
+        public void AHeldColumn_LoadsButIsNotShown_UntilItIsLetGo()
+        {
+            // GL653: something is still to write into column (2, 0), and into the focus's own neighbour (1, 0).
+            var hold = new ColumnHoldSet();
+            hold.Add(world.Grid, new Rect(Size * 1.25f, Size * 0.25f, Size * 1.5f, Size * 0.5f));
+            Assert.That(hold.Count, Is.EqualTo(2));
+            streamer.Hold = hold.Holds;
+            Settle(Vector3.zero);
+            for (int frame = 0; frame < 20; frame++)
+            {
+                streamer.Update(Vector3.zero);
+                System.Threading.Thread.Sleep(1);
+            }
+
+            Assert.That(streamer.Stats.Pending, Is.Zero, "its chunks are loaded all the same");
+            Assert.That(streamer.IsLoading, Is.False, "and the bulk load ends without it");
+            Assert.That(streamer.IsColumnHeld(new Vector2Int(2, 0)), Is.True);
+            Assert.That(streamer.IsColumnSettled(new Vector2Int(2, 0)), Is.False);
+            Assert.That(streamer.IsColumnHeld(new Vector2Int(1, 0)), Is.False, "the columns touching the focus's are never held: there is ground to stand on");
+            Assert.That(streamer.IsColumnSettled(new Vector2Int(1, 0)), Is.True);
+            int shown = 0;
+            foreach (var entry in pool.Active)
+            {
+                Assert.That(entry.Key.x == 2 && entry.Key.z == 0, Is.False, $"{entry.Key} is shown while held");
+                shown++;
+            }
+            Assert.That(shown, Is.GreaterThan(0));
+
+            // An edit to a held chunk is not shown either; written, the column appears with it.
+            Assert.That(world.Raycast(new Ray(new Vector3(Size * 2.5f, 30f, 4f), Vector3.down), new ChunkMeshSettings(0.5f, 1f), 100f, out WorldHit hit), Is.True);
+            world.ApplyBrush(hit.Point, new BrushSettings(2.5f), BrushOperation.Remove);
+            streamer.RebuildEdited(Vector3.zero);
+            Assert.That(pool.TryGet(hit.Chunk, out _), Is.False);
+
+            hold.Remove(world.Grid, new Rect(Size * 1.25f, Size * 0.25f, Size * 1.5f, Size * 0.5f));
+            Assert.That(hold.Count, Is.Zero);
+            for (int frame = 0; frame < 2000 && !streamer.IsColumnSettled(new Vector2Int(2, 0), false); frame++)
+            {
+                streamer.Update(Vector3.zero);
+                System.Threading.Thread.Sleep(1);
+            }
+            // Past the collider radius: shown is all it can be.
+            Assert.That(streamer.IsColumnSettled(new Vector2Int(2, 0), false), Is.True);
+            Assert.That(pool.TryGet(hit.Chunk, out ChunkRenderer chunkRenderer), Is.True);
+            Assert.That(chunkRenderer.Mesh.vertexCount, Is.GreaterThan(0));
+        }
+
         private void Settle(Vector3 focus)
         {
             for (int frame = 0; frame < 5000; frame++)

@@ -129,6 +129,12 @@ namespace Clube.Core
             return Rect.MinMaxRect(min.x - Margin, min.y - Margin, max.x + Margin, max.y + Margin);
         }
 
+        /// <summary>The ground a piece may change (x, z): what a hold keeps from being shown until it is written (GL653).</summary>
+        public Rect Footprint(int piece)
+        {
+            return Bounds(piece, out _, out _);
+        }
+
         /// <summary>True when every chunk a piece may change is loaded.</summary>
         public bool Loaded(World world, int heightInChunks, int piece)
         {

@@ -6090,6 +6090,7 @@ MonoBehaviour:
   flowBudgetMs: 2.5
   minFlowSlope: 0.25
   buildBudgetMs: 1.5
+  catchUpBudgetMs: 5
   drawFarWater: 1
   farDetailMetres: 256
 --- !u!114 &1350119484
@@ -6203,6 +6204,7 @@ MonoBehaviour:
   textMaterial: {fileID: 2100000, guid: e9c1e17c90ccf8b4e922e9392fda6ee5, type: 2}
   buildRange: 150
   writeBudgetMilliseconds: 3
+  loadingWriteBudgetMilliseconds: 8
   build: 1
 --- !u!114 &1350119490
 MonoBehaviour:
@@ -6230,6 +6232,7 @@ MonoBehaviour:
   dailyCoins: 525
   buildRange: 160
   writeBudgetMilliseconds: 3
+  loadingWriteBudgetMilliseconds: 14
   bankMaterial: Loose stone
   merchantVariety: 8
   rules:
@@ -6620,6 +6623,7 @@ GameObject:
   - component: {fileID: 1697135613}
   - component: {fileID: 1697135614}
   - component: {fileID: 1697135615}
+  - component: {fileID: 1697135616}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -6664,6 +6668,7 @@ MonoBehaviour:
   worldView: {fileID: 1350119460}
   fallLimit: 20
   stuckSeconds: 0.25
+  settleRadius: 32
 --- !u!114 &1697135563
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7852,6 +7857,20 @@ MonoBehaviour:
   burstMaterial: {fileID: 2100000, guid: 4d599372257648141b207c3dbd8d5b8f, type: 2}
   fallenLeaves: {fileID: 1350119492}
   skills: {fileID: 0}
+--- !u!114 &1697135616
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8189d6a5bebd8474fb6d7436d00ca306, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.LoadCurtain
+  delay: 0.4
+  colour: {r: 0.05, g: 0.06, b: 0.07, a: 1}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
