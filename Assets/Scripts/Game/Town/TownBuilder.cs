@@ -205,11 +205,21 @@ namespace Clube.Game
             mesh.anchor = TextAnchor.MiddleCenter;
             mesh.alignment = TextAlignment.Center;
             mesh.color = new Color(0.22f, 0.14f, 0.08f);
-            if (material != null)
+            // The font's texture goes on a copy, never the asset (it was saved into WorldText.mat); one copy per asset.
+            go.GetComponent<MeshRenderer>().sharedMaterial = material != null ? TextCopyOf(material, font) : font.material;
+        }
+
+        private static readonly Dictionary<Material, Material> TextCopies = new Dictionary<Material, Material>();
+
+        private static Material TextCopyOf(Material asset, Font font)
+        {
+            if (!TextCopies.TryGetValue(asset, out Material copy) || copy == null)
             {
-                material.mainTexture = font.material.mainTexture;
+                copy = new Material(asset) { name = asset.name + " (text)" };
+                copy.mainTexture = font.material.mainTexture;
+                TextCopies[asset] = copy;
             }
-            go.GetComponent<MeshRenderer>().sharedMaterial = material != null ? material : font.material;
+            return copy;
         }
 
         // The items' own models on the counter (GL403, GL424), spread along it and turned a little each. The prospectors'
