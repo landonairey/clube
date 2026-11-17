@@ -752,7 +752,10 @@ Data and decisions are Core (`Core/Fauna/`), bodies are Game (`Game/Fauna/`):
   an `IInteractable` for E. Items are simulated only within 30 m of the player and are held still (kinematic)
   otherwise, and after a load until a collider is under them, so nothing falls through ground that isn't there yet.
   They are saved as text in the save's named values (`DroppedItemSaving` in Core, `ISavedValues`); restoring finds
-  items through `GameSessionHost.Catalog`.
+  items through `GameSessionHost.Catalog`. An ingot (icon shape `Ingot`) is a model too (GL684); a lit torch carries a
+  `DroppedTorch` (flame, light, burning, GL683); an item whose centre or top is inside solid terrain is frozen until
+  dug out (GL685). `GroundSettling` takes a pinned-sample set (`FallingGround.Pin`): `TerrainStructure` pins its stones
+  so the ground under a furnace rotting or sliding away never carries them off (GL688).
 
 ### Inventory icons (GL612)
 

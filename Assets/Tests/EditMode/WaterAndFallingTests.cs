@@ -82,6 +82,22 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void PinnedDirt_InTheAir_StaysUntilUnpinned()
+        {
+            World world = Floor();
+            var at = new Vector3Int(4, 5, 4);
+            var pinned = new System.Collections.Generic.HashSet<Vector3Int> { at };
+            using var settling = new GroundSettling(world, id => new GroundHold(FallOf(id)), 0.5f, pinned);
+            Put(world, at, Dirt);
+            Settle(settling);
+            Assert.That(world.GetDensity(at), Is.EqualTo(1f), "a pinned sample (a furnace's stone, GL688) never moves");
+            pinned.Remove(at);
+            settling.Wake(at);
+            Settle(settling);
+            Assert.That(world.GetDensity(at), Is.LessThan(0.5f), "unpinned, it falls like its material");
+        }
+
+        [Test]
         public void Stone_InTheAir_Stays()
         {
             World world = Floor();
