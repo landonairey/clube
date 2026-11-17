@@ -172,6 +172,13 @@ namespace Clube.Game
             var figure = miner.AddComponent<FigureRig>();
             figure.Build(ShopKind.Mining, material, 7);
             figure.Pose = FigureAction.Mine;
+            // GL662: the distance level of detail measures from the main camera, which isn't the diorama's: left to it, the
+            // miner became the far figure's one still mesh and stopped swinging. The diorama is always seen close up.
+            if (miner.TryGetComponent(out FigureLod lod))
+            {
+                Destroy(lod);
+            }
+            figure.Detail = FigureDetail.Full;
             foreach (Collider body in miner.GetComponentsInChildren<Collider>())
             {
                 Destroy(body);
