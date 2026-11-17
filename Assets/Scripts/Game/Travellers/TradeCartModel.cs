@@ -37,6 +37,9 @@ namespace Clube.Game
         /// <summary>The crates on the bed.</summary>
         public IReadOnlyList<StorageChest> Crates => crates;
 
+        /// <summary>GL726: the carter, who unloads and loads the crates at a stop.</summary>
+        public FigureRig Carter => carterFigure;
+
         /// <summary>Builds the cart, its crates (from <paramref name="cratePrefab"/>) and the carter.</summary>
         public void Build(Material material, GameObject cratePrefab, int seed)
         {

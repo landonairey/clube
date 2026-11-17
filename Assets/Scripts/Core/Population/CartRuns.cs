@@ -18,7 +18,7 @@ namespace Clube.Core
         /// <summary>Metres a real second on the road, at the clock's normal rate.</summary>
         public float Speed = 1.3f;
 
-        /// <summary>Real seconds it stands at each end of its road, loading.</summary>
+        /// <summary>Real seconds it stands at each end of its road: drawing up to a shop, unloading, loading and back (GL726).</summary>
         public float RestSeconds = 90f;
 
         /// <summary>How many of this kind run on each road of a class; a class not listed has none.</summary>
@@ -36,12 +36,12 @@ namespace Clube.Core
             {
                 new CartKind
                 {
-                    Id = "hand-cart", Name = "Hand cart", HorseDrawn = false, Speed = 1.3f, RestSeconds = 90f,
+                    Id = "hand-cart", Name = "Hand cart", HorseDrawn = false, Speed = 1.3f, RestSeconds = 150f,
                     Roads = new[] { RoadClass.DirtCartPath, RoadClass.PavedCartPath }, DirtShare = 0.6f,
                 },
                 new CartKind
                 {
-                    Id = "horse-cart", Name = "Horse cart", HorseDrawn = true, Speed = 2.1f, RestSeconds = 120f,
+                    Id = "horse-cart", Name = "Horse cart", HorseDrawn = true, Speed = 2.1f, RestSeconds = 180f,
                     Roads = new[] { RoadClass.DirtCartPath, RoadClass.PavedCartPath }, DirtShare = 0.4f,
                 },
             };

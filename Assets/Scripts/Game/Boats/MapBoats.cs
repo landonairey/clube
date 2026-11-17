@@ -41,6 +41,9 @@ namespace Clube.Game
         private readonly Dictionary<long, RoadLine> lanes = new Dictionary<long, RoadLine>();
         private readonly Dictionary<long, OffMapPath> offMapLanes = new Dictionary<long, OffMapPath>();
         private readonly Dictionary<long, float> offMapStarts = new Dictionary<long, float>();
+        private readonly List<ItemDefinition> nextGoods = new List<ItemDefinition>();
+        private RunWay[] runWays = System.Array.Empty<RunWay>();
+        private SettlementDocks docks;
         private List<BoatRun> runs = new List<BoatRun>();
         private Boat[] boats = System.Array.Empty<Boat>();
         private double[] delays = System.Array.Empty<double>();
@@ -156,6 +159,76 @@ namespace Clube.Game
             return lane != null;
         }
 
+        /// <summary>
+        /// GL726: the way a run's vessel sails: its route's lane, from and to the berths of the docks at its ends (a short
+        /// approach along the berth, so it comes alongside), and on past the map's edge for a route to the open sea.
+        /// Worked out once a run.
+        /// </summary>
+        private bool RunLane(int index, out RunWay way)
+        {
+            way = runWays[index];
+            if (way != null)
+            {
+                return way.Lane != null;
+            }
+            BoatRun run = runs[index];
+            way = new RunWay();
+            runWays[index] = way;
+            if (!TryLane(run.Route, run.Class, out RoadLine baseLane))
+            {
+                return false;
+            }
+            var points = new List<Vector2>(baseLane.Points);
+            long key = LaneKey(run.Route, run.Class);
+            bool sea = run.Class.Kind == WaterRouteKind.Sea;
+            way.FromDock = sea ? docks.DockOf(run.From) : null;
+            way.ToDock = sea && run.To >= 0 ? docks.DockOf(run.To) : null;
+            float before = 0f;
+            if (way.FromDock != null)
+            {
+                List<Vector2> come = Alongside(way.FromDock, run);
+                way.FromLength = WaterLanes.Length(come);
+                come.Reverse();
+                points.InsertRange(0, come);
+                before = WaterLanes.Length(points.GetRange(0, come.Count + 1));
+            }
+            if (way.ToDock != null)
+            {
+                List<Vector2> come = Alongside(way.ToDock, run);
+                way.ToLength = WaterLanes.Length(come);
+                points.AddRange(come);
+            }
+            if (offMapLanes.TryGetValue(key, out OffMapPath offMap))
+            {
+                way.OffMap = offMap;
+                way.OffMapStart = offMapStarts[key] + before;
+            }
+            way.Lane = points.Count >= 2 ? new RoadLine(points, (x, z) => 0f, 1000f) : null;
+            return way.Lane != null;
+        }
+
+        // The last of the way in to a berth: from off its side, along it, to where the vessel lies.
+        private static List<Vector2> Alongside(DockLayout dock, BoatRun run)
+        {
+            DockBerth berth = dock.Berth(run.Index);
+            Vector2 moored = berth.Mooring(run.Class.Beam);
+            return new List<Vector2>
+            {
+                moored + berth.Along * (run.Class.Length * 1.4f) + berth.Outward * (run.Class.Length * 0.8f),
+                moored + berth.Along * (run.Class.Length * 0.6f),
+                moored,
+            };
+        }
+
+        private sealed class RunWay
+        {
+            public RoadLine Lane;
+            public DockLayout FromDock, ToDock;
+            public float FromLength, ToLength;
+            public OffMapPath OffMap;
+            public float OffMapStart;
+        }
+
         private long LaneKey(int routeIndex, VesselClass vessel)
         {
             return ((long)routeIndex << 20) | (uint)classes.IndexOf(vessel);
@@ -205,7 +278,7 @@ namespace Clube.Game
                 RunPlace state = run.At(seconds - delays[i]);
                 if (held)
                 {
-                    state = new RunPlace(state.Fraction, state.Outbound, false, state.Trip);
+                    state = new RunPlace(state.Fraction, state.Outbound, false, state.Trip, state.Rested);
                 }
                 WaterRoute route = session.Plan.WaterRoutes[run.Route];
                 float distance = (WaterLanes.Along(route.Points, state.Fraction * route.Length) - viewer).magnitude;
@@ -218,30 +291,47 @@ namespace Clube.Game
                 {
                     Hide(i);
                 }
-                if (boats[i] != null && TryLane(run.Route, run.Class, out RoadLine lane))
+                if (boats[i] != null && RunLane(i, out RunWay way))
                 {
+                    RoadLine lane = way.Lane;
+                    int seed = session.Plan.Seed + run.Index * 977;
                     CargoLoad.GoodsOf(session.Plan, catalog, state.Outbound || run.To < 0 ? run.From : run.To, goods);
                     CargoLoad.Only(goods, catalog, run.CargoWords);
-                    boats[i].Load(state.Trip, goods, session.Plan.Seed + run.Index * 977);
-                    // It lies off each end by its own length, bow to the water it will sail. Sea routes share a harbour and the
-                    // water out of it: each vessel has a berth of its own along the lane and keeps to its own side of it.
+                    // GL726: lying at a settlement's dock, it is moored at its berth while its hands unload and load.
+                    DockLayout dock = state.Moving ? null : state.Outbound ? way.ToDock : way.FromDock;
+                    if (dock != null)
+                    {
+                        Vector2 moored = lane.Flat(state.Outbound ? lane.Length : 0f);
+                        Vector2 heading = lane.Direction(state.Outbound ? lane.Length : 0f) * (state.Outbound ? 1f : -1f);
+                        boats[i].Float(moored, SurfaceAt(moored, boats[i].Surface), heading, false);
+                        CargoLoad.GoodsOf(session.Plan, catalog, state.Outbound ? run.To : run.From, nextGoods);
+                        CargoLoad.Only(nextGoods, catalog, run.CargoWords);
+                        Vector2 drop = dock.SetDown(run.Index);
+                        Vector3 dropAt = session.WorldView.transform.TransformPoint(new Vector3(drop.x, docks.DeckHeight(dock), drop.y));
+                        boats[i].Stop(TradeStop.At(state.Rested, run.Class.RestSeconds, 0f), state.Trip, goods, state.Trip + 1, nextGoods, seed, dropAt);
+                        boats[i].Presence.Set(true, 1f);
+                        continue;
+                    }
+                    boats[i].Load(state.Trip, goods, seed);
+                    // It lies off each undocked end by its own length, bow to the water it will sail. Sea routes share a harbour
+                    // and the water out of it: each vessel has a berth of its own along the lane and keeps to its own side of it.
                     bool sea = run.Class.Kind == WaterRouteKind.Sea;
                     float berth = sea ? run.Index % 4 * (run.Class.Length + 4f) : 0f;
                     float keep = Mathf.Min(run.Class.Length * 0.6f + 1f + berth, lane.Length * 0.5f);
-                    float along = Mathf.Clamp(state.Fraction * lane.Length, keep, lane.Length - keep);
+                    float along = Mathf.Clamp(state.Fraction * lane.Length, way.FromDock != null ? 0f : keep, way.ToDock != null ? lane.Length : lane.Length - keep);
                     Vector2 at = lane.Flat(along);
                     Vector2 ahead = lane.Direction(along);
                     Vector2 aside = at + new Vector2(ahead.y, -ahead.x) * ((run.Index % 3 - 1) * (run.Class.Beam + 2f));
-                    if (sea && WaterLanes.TrySurfaceAt(session.Map.Water, aside, out _))
+                    bool nearDock = (way.FromDock != null && along < way.FromLength + 10f) || (way.ToDock != null && along > lane.Length - way.ToLength - 10f);
+                    if (sea && !nearDock && WaterLanes.TrySurfaceAt(session.Map.Water, aside, out _))
                     {
                         at = aside;
                     }
                     boats[i].Float(at, SurfaceAt(at, boats[i].Surface), ahead * (state.Outbound ? 1f : -1f), state.Moving);
-                    long key = LaneKey(run.Route, run.Class);
-                    if (offMapLanes.TryGetValue(key, out OffMapPath offMap))
+                    if (way.OffMap != null)
                     {
-                        float past = state.Fraction * lane.Length - offMapStarts[key];
-                        boats[i].Presence.Set(OffMap.Interactable(offMap, past), OffMap.Fade(offMap, past));
+                        float past = along - way.OffMapStart;
+                        boats[i].Presence.Set(OffMap.Interactable(way.OffMap, past), OffMap.Fade(way.OffMap, past));
                     }
                 }
             }
@@ -288,6 +378,14 @@ namespace Clube.Game
             lanes.Clear();
             offMapLanes.Clear();
             offMapStarts.Clear();
+            runWays = new RunWay[runs.Count];
+            docks = GetComponent<SettlementDocks>();
+            if (docks == null)
+            {
+                docks = gameObject.AddComponent<SettlementDocks>();
+            }
+            MapSettlements settlements = GetComponent<MapSettlements>();
+            docks.Bind(session, settlements != null ? settlements : FindAnyObjectByType<MapSettlements>(), material);
             UnusableLanes = 0;
             Showing = 0;
             clock = CargoLoad.ClockOf(session.WorldView);

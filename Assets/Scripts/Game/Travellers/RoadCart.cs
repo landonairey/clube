@@ -17,7 +17,10 @@ namespace Clube.Game
 
         private TradeCartModel model;
         private CartHorse horse;
+        private CrateCargo cargo;
+        private Material material;
         private int loadedTrip = int.MinValue;
+        private bool porting;
 
         public CartRun Run { get; private set; }
 
@@ -36,6 +39,8 @@ namespace Clube.Game
             int seed = run.Index * 7919 + 5;
             model = gameObject.AddComponent<TradeCartModel>();
             model.Build(material, cratePrefab, seed);
+            this.material = material;
+            cargo = new CrateCargo(model.Crates);
             if (run.Kind.HorseDrawn)
             {
                 var body = new GameObject("Horse");
@@ -85,13 +90,43 @@ namespace Clube.Game
         /// <summary>Fills the crates for a trip, once: a few kinds of the goods given, the trip picking which.</summary>
         public void Load(int trip, IReadOnlyList<ItemDefinition> goods, int seed)
         {
-            if (trip == loadedTrip)
-            {
-                return;
-            }
             loadedTrip = trip;
-            var random = new System.Random(unchecked(seed * 31 + Run.Index * 977 + trip * 131));
-            CargoLoad.Fill(model.Crates, goods, random);
+            cargo.Show(0, cargo.Count, trip, goods, CargoSeed(seed));
+            if (porting)
+            {
+                porting = false;
+                Porter.PutDown(model.Carter);
+            }
+        }
+
+        /// <summary>
+        /// GL726: the cart at a stop, after <see cref="Place"/>: crates emptied of what it came with
+        /// (<paramref name="arrivedTrip"/>, <paramref name="arrived"/>) and filled with its next load one by one, the
+        /// carter carrying each between the cart's tail and <paramref name="door"/> (world space) while it stands.
+        /// </summary>
+        public void Stop(StopPlace place, int arrivedTrip, IReadOnlyList<ItemDefinition> arrived, int nextTrip, IReadOnlyList<ItemDefinition> next,
+            int seed, Vector3 door)
+        {
+            TradeStop.CratesHeld(place, cargo.Count, out int first, out int last, out bool came);
+            loadedTrip = came ? arrivedTrip : nextTrip;
+            cargo.Show(first, last, loadedTrip, came ? arrived : next, CargoSeed(seed));
+            bool working = place.Phase == StopPhase.Unloading || place.Phase == StopPhase.Loading;
+            if (working && model.Carter != null)
+            {
+                porting = true;
+                Vector3 tail = transform.position - transform.forward * 1.5f;
+                Porter.Carry(model.Carter, tail, door, place.Progress, Mathf.Max(1, cargo.Count), place.Phase == StopPhase.Unloading, material);
+            }
+            else if (porting)
+            {
+                porting = false;
+                Porter.PutDown(model.Carter);
+            }
+        }
+
+        private int CargoSeed(int seed)
+        {
+            return unchecked(seed * 31 + Run.Index * 977);
         }
 
         // The road's surface at a distance along it, in the world's own metres: a bridge's deck, else the terrain, else the line;

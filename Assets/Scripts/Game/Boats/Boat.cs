@@ -21,6 +21,10 @@ namespace Clube.Game
         private bool placed;
         private int loadedTrip = int.MinValue;
         private string notice = string.Empty;
+        private CrateCargo cargo;
+        private Material material;
+        private Pose? porterHome;
+        private FigureAction porterPose;
 
         public VesselClass Class { get; private set; }
 
@@ -59,6 +63,7 @@ namespace Clube.Game
         {
             Class = vessel;
             Name = vesselName;
+            this.material = material;
             phase = (seed & 0xff) * 0.37f;
             gameObject.AddComponent<MeshFilter>().sharedMesh = BoatMeshes.Build(vessel);
             gameObject.AddComponent<MeshRenderer>().sharedMaterial = material;
@@ -111,12 +116,59 @@ namespace Clube.Game
         /// <summary>Fills the crates for a trip, once: a few kinds of the goods given, the trip picking which.</summary>
         public void Load(int trip, IReadOnlyList<ItemDefinition> goods, int seed)
         {
-            if (trip == loadedTrip)
+            loadedTrip = trip;
+            cargo ??= new CrateCargo(crates);
+            cargo.Show(0, cargo.Count, trip, goods, CargoSeed(seed));
+            SendPorterHome();
+        }
+
+        /// <summary>
+        /// GL726: the vessel lying at a dock: its crates emptied of what it came with (<paramref name="arrivedTrip"/>,
+        /// <paramref name="arrived"/>) and filled with its next load one by one, a hand carrying each between the deck and
+        /// <paramref name="drop"/> on the dock (world space).
+        /// </summary>
+        public void Stop(StopPlace place, int arrivedTrip, IReadOnlyList<ItemDefinition> arrived, int nextTrip, IReadOnlyList<ItemDefinition> next, int seed, Vector3 drop)
+        {
+            cargo ??= new CrateCargo(crates);
+            TradeStop.CratesHeld(place, cargo.Count, out int first, out int last, out bool came);
+            loadedTrip = came ? arrivedTrip : nextTrip;
+            cargo.Show(first, last, loadedTrip, came ? arrived : next, CargoSeed(seed));
+            bool working = place.Phase == StopPhase.Unloading || place.Phase == StopPhase.Loading;
+            if (!working || crew.Count == 0)
+            {
+                SendPorterHome();
+                return;
+            }
+            // The last hand aboard does the carrying, from the deck where it stands to the dock.
+            int porter = crew.Count - 1;
+            if (porterHome == null)
+            {
+                Transform hand = crew[porter].transform;
+                porterHome = new Pose(hand.localPosition, hand.localRotation);
+                porterPose = crew[porter].Pose;
+            }
+            Vector3 deck = transform.TransformPoint(porterHome.Value.position);
+            Porter.Carry(crew[porter], deck, drop, place.Progress, Mathf.Max(1, cargo.Count), place.Phase == StopPhase.Unloading, material);
+        }
+
+        // The carrying hand back at its place aboard.
+        private void SendPorterHome()
+        {
+            if (porterHome == null || crew.Count == 0)
             {
                 return;
             }
-            loadedTrip = trip;
-            CargoLoad.Fill(crates, goods, new System.Random(unchecked(seed * 31 + trip * 131 + (int)(phase * 100f))));
+            FigureRig hand = crew[crew.Count - 1];
+            hand.transform.localPosition = porterHome.Value.position;
+            hand.transform.localRotation = porterHome.Value.rotation;
+            hand.Pose = porterPose;
+            Porter.PutDown(hand);
+            porterHome = null;
+        }
+
+        private int CargoSeed(int seed)
+        {
+            return unchecked(seed + (int)(phase * 100f));
         }
 
         /// <summary>

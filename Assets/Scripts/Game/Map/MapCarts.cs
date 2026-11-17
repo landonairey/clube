@@ -38,6 +38,10 @@ namespace Clube.Game
         private readonly List<ItemDefinition> goods = new List<ItemDefinition>();
         private readonly Dictionary<int, OffMapPath> offMapPaths = new Dictionary<int, OffMapPath>();
         private readonly Dictionary<int, RoadLine> offMapLines = new Dictionary<int, RoadLine>();
+        private readonly Dictionary<long, TownWay> townWays = new Dictionary<long, TownWay>();
+        private readonly Dictionary<int, SettlementWalks> walks = new Dictionary<int, SettlementWalks>();
+        private readonly List<ItemDefinition> nextGoods = new List<ItemDefinition>();
+        private MapSettlements settlements;
         private List<CartRun> runs = new List<CartRun>();
         private RoadCart[] carts = System.Array.Empty<RoadCart>();
         private double[] delays = System.Array.Empty<double>(), heldUntil = System.Array.Empty<double>();
@@ -115,7 +119,7 @@ namespace Clube.Game
                 RunPlace state = run.At(seconds - delays[i]);
                 if (held)
                 {
-                    state = new RunPlace(state.Fraction, state.Outbound, false, state.Trip);
+                    state = new RunPlace(state.Fraction, state.Outbound, false, state.Trip, state.Rested);
                 }
                 // GL725: a road off the map goes on past its end; the trip runs the whole way.
                 RoadLine beyond = run.LeavesMap ? OffMapLine(run.Road) : null;
@@ -136,6 +140,21 @@ namespace Clube.Game
                 }
                 if (carts[i] != null)
                 {
+                    // GL726: standing at a settlement, it draws up to the shop that matches its goods, unloads, loads and goes.
+                    int at = state.Moving ? -1 : state.Outbound ? run.To : run.From;
+                    TownWay way = at >= 0 ? WayTo(run, at, line) : null;
+                    if (way != null)
+                    {
+                        StopPlace stop = TradeStop.At(state.Rested, run.Kind.RestSeconds, TradeStop.LegSeconds(way.Line.Length, run.Kind.Speed, run.Kind.RestSeconds));
+                        bool parked = stop.Phase == StopPhase.Unloading || stop.Phase == StopPhase.Loading;
+                        float inTown = stop.Phase == StopPhase.Arriving ? stop.Progress : stop.Phase == StopPhase.Leaving ? 1f - stop.Progress : 1f;
+                        var drive = new RunPlace(0f, stop.Phase != StopPhase.Leaving, !parked, state.Trip);
+                        carts[i].Place(session.WorldView, way.Line, null, null, inTown * way.Line.Length, drive);
+                        List<ItemDefinition> arrived = GoodsOf(state.Outbound || run.To < 0 ? run.From : run.To);
+                        CargoLoad.GoodsOf(session.Plan, catalog, at, nextGoods);
+                        carts[i].Stop(stop, state.Trip, arrived, state.Trip + 1, nextGoods, session.Plan.Seed, session.WorldView.transform.TransformPoint(new Vector3(way.Door.x, Ground(way.Door), way.Door.y)));
+                        continue;
+                    }
                     carts[i].Load(state.Trip, GoodsOf(state.Outbound || run.To < 0 ? run.From : run.To), session.Plan.Seed);
                     carts[i].Place(session.WorldView, line, bridges, beyond, along, state);
                     if (beyond != null)
@@ -168,6 +187,13 @@ namespace Clube.Game
             root.SetParent(session.WorldView.transform, false);
             offMapPaths.Clear();
             offMapLines.Clear();
+            townWays.Clear();
+            walks.Clear();
+            settlements = GetComponent<MapSettlements>();
+            if (settlements == null)
+            {
+                settlements = FindAnyObjectByType<MapSettlements>();
+            }
             MapLayout layout = session.Layout;
             foreach (PlannedRoad road in session.Plan.Roads)
             {
@@ -195,6 +221,73 @@ namespace Clube.Game
                 offMapLines[road] = line;
             }
             return line;
+        }
+
+        // GL726: the way in a settlement from the end of a cart's road to the front of the shop that matches what it brings,
+        // along the lanes; worked out once for each road end. Null where the settlement is not laid out or has no shop to go to.
+        private TownWay WayTo(CartRun run, int at, RoadLine line)
+        {
+            long key = ((long)run.Road << 1) | (at == run.From ? 0L : 1L);
+            if (townWays.TryGetValue(key, out TownWay way))
+            {
+                return way;
+            }
+            townWays[key] = null;
+            if (settlements == null)
+            {
+                return null;
+            }
+            SettlementSite site = settlements.LaidSite(at);
+            WorldPlan plan = session.Plan;
+            int from = at == run.From ? run.To : run.From;
+            PlannedSettlement here = plan.Settlements[at];
+            int shop = TradeStop.ShopFor(from >= 0 ? plan.Settlements[from] : null, here);
+            if (shop < 0)
+            {
+                // Goods from beyond the map, or nothing that matches: the merchant takes them, else the first shop.
+                shop = here.Shops.FindIndex(s => s.Specialty.Chain == SupplyChains.Merchant);
+                shop = shop < 0 && here.Shops.Count > 0 ? 0 : shop;
+            }
+            int building = site != null && shop >= 0 ? site.Buildings.FindIndex(b => b.Shop == here.Shops[shop]) : -1;
+            if (building < 0)
+            {
+                return null;
+            }
+            if (!walks.TryGetValue(at, out SettlementWalks web))
+            {
+                web = new SettlementWalks(site);
+                walks[at] = web;
+            }
+            // Its road's end: as far in as a cart draws up on the road itself.
+            Vector2 start = at == run.From ? line.Flat(Mathf.Min(4f, line.Length * 0.5f)) : line.Flat(Mathf.Max(line.Length - 4f, line.Length * 0.5f));
+            Vector2 front = web.Front(building, 0f, 3.2f);
+            var corners = new List<Vector2>();
+            web.Route(start, front, corners);
+            corners.Insert(0, start);
+            if (corners.Count < 2 || WaterLanes.Length(corners) > 300f || WaterLanes.Length(corners) < 1f)
+            {
+                return null;
+            }
+            Vector2 door = web.Front(building, 0f, 0.5f);
+            way = new TownWay
+            {
+                Line = new RoadLine(corners, session.Map.Height, 1f),
+                Door = door,
+            };
+            townWays[key] = way;
+            return way;
+        }
+
+        private float Ground(Vector2 at)
+        {
+            float height = session.Map.Height(at.x, at.y);
+            return GroundProbe.TryGround(session.WorldView, at.x, at.y, height + 3f, out float ground) ? ground : height;
+        }
+
+        private sealed class TownWay
+        {
+            public RoadLine Line;
+            public Vector2 Door;
         }
 
         // What a settlement's shops sell, of the items that exist.
