@@ -15,7 +15,7 @@ MonoBehaviour:
   station: 2
   inputs:
   - Item: {fileID: 11400000, guid: e0d7748b44e2c7141dfb1f31db123aa8, type: 2}
-    Count: 100
+    Count: 64
   output:
     Item: {fileID: 11400000, guid: a7da00b5e4b7de14693dc2f5a9e24e58, type: 2}
     Count: 1

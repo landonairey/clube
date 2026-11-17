@@ -65,10 +65,10 @@ namespace Clube.Debug.Editor
         // Chalcopyrite reads coppery orange next to gold's yellow (GL346; was brass yellow, 0.86, 0.72, 0.22).
         internal static readonly Color ChalcopyriteFleck = new Color(0.90f, 0.52f, 0.16f);
         private static readonly Color MalachiteFleck = new Color(0.48f, 0.66f, 0.30f);
-        // Magnetite is a blackish steel blue with a bright facet on each crystal (GL627: black specks read as cassiterite's
+        // Magnetite is black with a grey-lit edge on each square crystal (GL678; was steel blue, GL627: black specks read as cassiterite's
         // dark brown ones, and near coal); hematite reddish (GL621).
-        internal static readonly Color MagnetiteFleck = new Color(0.11f, 0.17f, 0.30f);
-        private static readonly Color MagnetiteFacet = new Color(0.56f, 0.68f, 0.86f);
+        internal static readonly Color MagnetiteFleck = new Color(0.05f, 0.05f, 0.06f);
+        private static readonly Color MagnetiteFacet = new Color(0.30f, 0.30f, 0.33f);
         internal static readonly Color HematiteFleck = new Color(0.58f, 0.16f, 0.12f);
         private const float MalachiteFleckScale = 1.7f;
 
@@ -120,6 +120,8 @@ namespace Clube.Debug.Editor
                 { "coal", (new Color(0.1f, 0.1f, 0.11f), new Color(0.2f, 0.2f, 0.22f), new Color(0.34f, 0.34f, 0.38f), Wear.Whole) },
                 // Dead grass (GL633): the trodden grass of a walking path, "more yellow/brown in color". Added last, so no seed moves.
                 { "dead grass", (new Color(0.52f, 0.44f, 0.22f), new Color(0.66f, 0.58f, 0.31f), null, Wear.Whole) },
+                // Limestone (GL677): pale cream-grey rock. Added last, so no seed moves.
+                { "limestone", (new Color(0.74f, 0.72f, 0.64f), new Color(0.84f, 0.82f, 0.74f), null, Wear.Whole) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]
@@ -318,32 +320,27 @@ namespace Clube.Debug.Editor
             BuildTextureArrays();
         }
 
-        // Octahedral crystals seen end on (GL627): diamonds of the ore's dark colour, big enough to read as shapes
-        // (cassiterite's and coal's marks are round specks), the upper left half of each a bright facet, as metal
-        // catching the light. Wraps so it tiles.
+        // Cubic crystals seen end on (GL678): small black squares with a lit upper left edge, apart from cassiterite's round specks by their shape
+        // Wraps so it tiles.
         private static void AddCrystals(Texture2D texture, Color dark, Color facet, int seed)
         {
             var random = new System.Random(seed);
             int size = texture.width;
             Color[] pixels = texture.GetPixels();
-            int crystals = size * size / 230;
+            int crystals = size * size / 160;
             for (int i = 0; i < crystals; i++)
             {
                 int cx = random.Next(size);
                 int cy = random.Next(size);
-                int reach = 3 + random.Next(5);
+                int reach = 2 + random.Next(3);
                 float shade = 0.85f + 0.3f * (float)random.NextDouble();
                 for (int dy = -reach; dy <= reach; dy++)
                 {
                     for (int dx = -reach; dx <= reach; dx++)
                     {
-                        if (Mathf.Abs(dx) + Mathf.Abs(dy) > reach)
-                        {
-                            continue;
-                        }
-                        // Lit from the upper left: that half is the bright facet, with a thin dark ridge between the two.
-                        int side = dy - dx;
-                        Color colour = side > 1 ? Color.Lerp(dark, facet, 0.75f) : side < 0 ? dark : dark * 0.7f;
+                        // Lit from the upper left.
+                        bool lit = dy == -reach || dx == -reach; // the upper and left edges catch the light
+                        Color colour = lit ? Color.Lerp(dark, facet, 0.9f) : dark;
                         colour *= shade;
                         colour.a = 1f;
                         pixels[((cy + dy + size) % size) * size + (cx + dx + size) % size] = colour;

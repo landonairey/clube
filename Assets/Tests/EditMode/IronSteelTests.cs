@@ -262,32 +262,100 @@ namespace Clube.Core.Tests
         // ---- GL625: the anvil ----
 
         [Test]
-        public void AHundredIronIngotsMakeTheAnvil_APlaceable()
+        public void SixtyFourIronIngotsMakeTheAnvil_APlaceable()
         {
             Recipe build = RecipeNamed("Build anvil");
             Assert.AreEqual(StationKind.Worktop, build.Station);
             ItemAmount ingots = build.Inputs.Single();
             Assert.AreSame(Item("iron-ingot"), ingots.Item);
-            Assert.AreEqual(100, ingots.Count);
+            Assert.AreEqual(64, ingots.Count);
             Assert.AreEqual(1, build.Output.Count);
             var anvil = build.Output.Item as PlaceableDefinition;
             Assert.IsNotNull(anvil, "the anvil is a placeable");
             Assert.AreEqual("anvil", anvil.Id);
             Assert.IsNotNull(anvil.Prefab, "with the station it sets down");
 
-            // The hundred fit the worktop, and it makes the anvil from them.
+            // The 64 fit the worktop (two full stacks of 32), and it makes the anvil from them.
             Assert.That(ingots.Count, Is.LessThanOrEqualTo(ingots.Item.MaxStack * CraftingStation.DefaultInputSlots));
             var worktop = new CraftingStation(StationKind.Worktop, new[] { build });
             var player = new Inventory(4);
-            player.Add(ingots.Item, 100);
+            player.Add(ingots.Item, 64);
             worktop.LoadFor(build, player);
-            Assert.AreEqual(100, worktop.Input.Count(ingots.Item));
+            Assert.AreEqual(64, worktop.Input.Count(ingots.Item));
             for (int i = 0; i < Mathf.CeilToInt(build.Amount) + 1 && worktop.Output.Count(anvil) == 0; i++)
             {
                 worktop.Strike();
             }
             Assert.AreEqual(1, worktop.Output.Count(anvil));
             Assert.AreEqual(0, worktop.Input.Count(ingots.Item));
+        }
+
+        // ---- Z2a: shops and materials (GL675-GL682) ----
+
+        private EconomySpecialty Specialty(string id)
+        {
+            return EconomySpecialty.Defaults().Single(s => s.Id == id);
+        }
+
+        [Test]
+        public void TheAnvilCostsAThousandCoins_AndIronIngotsStackAs32()
+        {
+            Assert.IsTrue(prices.TryGetLot(Item("anvil"), out int coins, out int lot));
+            Assert.AreEqual(1000, coins);
+            Assert.AreEqual(1, lot);
+            Assert.AreEqual(32, Item("iron-ingot").MaxStack);
+        }
+
+        [Test]
+        public void Limestone_IsAStoneLikeMaterialAtTheEndOfTheList()
+        {
+            ItemDefinition limestone = Item("limestone");
+            Assert.AreEqual(Item("stone").MaxStack, limestone.MaxStack);
+            Assert.IsTrue(prices.TryGetLot(limestone, out int _, out int _), "it sells");
+            VoxelMaterial material = registry.Get(35);
+            Assert.AreEqual("Limestone", material.DisplayName);
+            Assert.AreSame(limestone, material.Drop);
+            Assert.AreEqual(registry.Get(0).Fall, material.Fall);
+        }
+
+        [Test]
+        public void TheSmelterBuysBunsAndIngots_TheGoldsmithSellsPreciousMetals_TheLeatherySellsLeatherStock()
+        {
+            var smelter = Specialty("smelting").BuysIn(catalog);
+            Assert.That(smelter, Does.Contain(Item("iron-bun")));
+            Assert.That(smelter, Does.Contain(Item("steel-ingot")));
+            var goldsmith = Specialty("goldsmith").SellsIn(catalog);
+            Assert.That(goldsmith, Does.Contain(Item("gold-ingot")));
+            Assert.That(goldsmith, Does.Contain(Item("silver-ingot")));
+            Assert.That(Specialty("leathery").SellsIn(catalog), Is.Not.Empty);
+        }
+
+        [Test]
+        public void EveryShopSpecialtyTeachesASkill()
+        {
+            foreach (EconomySpecialty specialty in EconomySpecialty.Defaults())
+            {
+                if (specialty.SellsVariety)
+                {
+                    continue;
+                }
+                if (specialty.Chain == SupplyChains.Textile)
+                {
+                    continue;
+                }
+                Assert.That(specialty.ToShop(catalog).Trains, Is.Not.Empty, specialty.Id);
+            }
+        }
+
+        [Test]
+        public void AShopNeverOffersALitTorch()
+        {
+            var merchant = Specialty("merchant");
+            var variety = EconomySpecialty.VarietyFor(catalog, new List<EconomySpecialty>(), 1, 10000);
+            Assert.That(variety.OfType<TorchDefinition>().Any(t => t.IsLit), Is.False);
+            var shop = ShopSpecialty.Create(ShopKind.Wares, "x", new ItemDefinition[0], catalog.Items.Where(i => i != null));
+            Assert.That(shop.Offers(prices).Select(o => o.Item).OfType<TorchDefinition>().Any(t => t.IsLit), Is.False);
+            Assert.IsNotNull(merchant);
         }
     }
 }
