@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
 
@@ -22,9 +23,28 @@ namespace Clube.Game
         private WorldView worldView;
         private GroundSettling settling;
         private float nextStep;
+        private readonly HashSet<Vector3Int> pinned = new HashSet<Vector3Int>();
 
         /// <summary>Samples waiting to be looked at (for tests and the HUD).</summary>
         public int AwakeCount => settling?.AwakeCount ?? 0;
+
+        /// <summary>Holds these samples still, and what rests on them up, whatever they're made of (a structure's stones, GL688).</summary>
+        public void Pin(IEnumerable<Vector3Int> samples)
+        {
+            pinned.UnionWith(samples);
+        }
+
+        /// <summary>Lets these samples fall like their material again; they wake, so ground left hanging by them goes too.</summary>
+        public void Unpin(IEnumerable<Vector3Int> samples)
+        {
+            foreach (Vector3Int sample in samples)
+            {
+                if (pinned.Remove(sample))
+                {
+                    settling?.Wake(sample);
+                }
+            }
+        }
 
         private void Awake()
         {
@@ -43,7 +63,7 @@ namespace Clube.Game
                 settling?.Dispose();
                 MaterialRegistry materials = worldView.Config.Materials;
                 settling = new GroundSettling(world, id => materials != null && materials.Get(id) != null ? materials.Get(id).Hold : default,
-                    worldView.Config.IsoLevel);
+                    worldView.Config.IsoLevel, pinned);
             }
             if (Time.time < nextStep)
             {
