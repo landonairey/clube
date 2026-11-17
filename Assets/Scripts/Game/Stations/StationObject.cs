@@ -80,13 +80,13 @@ namespace Clube.Game
         }
 
         /// <summary>Sets up a station made in code, such as a stump worktop (GL36), replacing what Awake built.</summary>
-        public void Configure(string name, StationKind stationKind, IEnumerable<Recipe> offered)
+        public void Configure(string name, StationKind stationKind, IEnumerable<Recipe> offered, bool upgradable = false)
         {
             displayName = name;
             kind = stationKind;
             recipes = new List<Recipe>(offered);
             burnsFuel = false;
-            Station = new CraftingStation(kind, recipes, CraftingStation.DefaultInputSlots, burnsFuel);
+            Station = new CraftingStation(kind, recipes, CraftingStation.DefaultInputSlots, burnsFuel, upgradable);
             ConnectToPlayer();
         }
 

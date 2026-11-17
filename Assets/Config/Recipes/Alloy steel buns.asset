@@ -15,15 +15,16 @@ MonoBehaviour:
   station: 0
   inputs:
   - Item: {fileID: 11400000, guid: 981cc1854cc996a08ab08041a7d5f449, type: 2}
-    Count: 1
-  - Item: {fileID: 11400000, guid: b488be8cf1469b9bee2892df87b62fa8, type: 2}
     Count: 4
+  - Item: {fileID: 11400000, guid: b488be8cf1469b9bee2892df87b62fa8, type: 2}
+    Count: 1
   output:
     Item: {fileID: 11400000, guid: 1f0b238872cc1d21b819ec6f66699577, type: 2}
-    Count: 4
+    Count: 1
   work: 0
   amount: 12
   experienceSkill: 4
-  experience: 16
+  experience: 20
   unlockSkill: 4
   unlockLevel: 6
+  takesIngotForms: 1

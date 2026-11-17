@@ -116,6 +116,38 @@ namespace Clube.Game
             }
         }
 
+        /// <summary>
+        /// Adds a made or returned stack (GL704): what fits goes in, and what doesn't is announced ("Inventory full") and
+        /// dropped as a sack in front of the player, never lost. Returns how many whole items went to the ground.
+        /// </summary>
+        public int GiveOrDrop(ItemDefinition item, int count, Composition contents = null, int wear = 0, float quality = 1f, float part = 0f)
+        {
+            int left = Inventory.Add(item, count, contents, wear, quality, part);
+            if (left <= 0)
+            {
+                return 0;
+            }
+            Rejected?.Invoke(item);
+            return DropAhead(new ItemStack(item, left, contents, wear, quality, part)) ? left : 0;
+        }
+
+        /// <summary>Puts a stack on the ground in front of the player as a sack (GL704); false when there's nothing to drop it with.</summary>
+        public bool DropAhead(ItemStack stack)
+        {
+            dropped ??= GetComponent<DroppedItems>();
+            if (dropped == null || stack.IsEmpty)
+            {
+                return false;
+            }
+            var controller = GetComponent<PlayerController>();
+            Transform head = controller != null && controller.Head != null ? controller.Head : transform;
+            Vector3 at = head.position + head.forward * 0.7f - head.up * 0.3f;
+            Vector3 toss = head.forward * 2f + Vector3.up * 1f;
+            return dropped.Spawn(stack, true, at, Quaternion.Euler(0f, head.eulerAngles.y + 180f, 0f), toss) != null;
+        }
+
+        private DroppedItems dropped;
+
         // What the tools gather comes in as stacks, with their contents and quality.
         private void OnCollected(ItemStack collected)
         {

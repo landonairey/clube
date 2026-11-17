@@ -26,3 +26,4 @@ MonoBehaviour:
   purityAs: {fileID: 0}
   hidesContents: 0
   dropForm: 0
+  ingotForm: {fileID: 11400000, guid: f222312d73ba0ba46989e52f953c6890, type: 2}

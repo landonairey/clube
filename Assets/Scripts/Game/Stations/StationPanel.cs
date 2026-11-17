@@ -99,6 +99,9 @@ namespace Clube.Game
                 {
                     station.Output.MoveTo(0, inventory.Inventory, keepApart: true);
                 }
+                // What didn't fit isn't left behind in a station that empties on leaving: it goes on the ground (GL704).
+                DropLeftovers(station.Input);
+                DropLeftovers(station.Output);
             }
             CollectUnstackable(station);
             Current = null;
@@ -155,7 +158,7 @@ namespace Clube.Game
             float inner = width - Padding * 2f;
             // Two halves over your items (GL448): the recipes on the left, the one being made on the right.
             float listWidth = Mathf.Floor(inner * 0.42f);
-            float fuelRow = station.BurnsFuel ? slot + gap * 2f : 0f;
+            float fuelRow = station.BurnsFuel || station.Upgrades != null ? slot + gap * 2f : 0f;
             float rightHeight = 34f + 34f + slot + 8f + 60f + fuelRow;
             // The trash slot (GL224) sits in a row under your items.
             float height = Padding * 2f + 32f + rightHeight + 12f + 30f + InventoryGridGui.PlayerHeight(inventory) + InventoryGridGui.RowGap + slot;
@@ -170,7 +173,7 @@ namespace Clube.Game
 
             DrawRecipeList(new Rect(x, y, listWidth, rightHeight), station, items);
             var right = new Rect(x + listWidth + 16f, y, inner - listWidth - 16f, rightHeight);
-            DrawActive(right, station, items, out Rect inputSlots, out Rect fuelSlots);
+            DrawActive(right, station, items, out Rect inputSlots, out Rect fuelSlots, out Rect upgradeSlot);
             y += rightHeight + 12f;
 
             GUI.Label(new Rect(x, y, inner, 28f), "Your items: click to load (Shift half, Ctrl one), drag onto a slot, right-click to split");
@@ -186,7 +189,7 @@ namespace Clube.Game
             }
             else if (mouse.Kind == InventoryDragKind.DroppedOutside && !InventoryGridGui.Trash(items, mouse, trashSlot))
             {
-                DropOnStation(station, items, mouse, inputSlots, fuelSlots);
+                DropOnStation(station, items, mouse, inputSlots, fuelSlots, upgradeSlot);
             }
             InventoryGridGui.DrawPlayer(grid, inventory, drag.Pressed);
             InventoryGridGui.DrawTrash(trashSlot, drag.IsDragging);
@@ -274,7 +277,7 @@ namespace Clube.Game
 
         // The right half (GL448): the recipe being made, its inputs, the work and the output, then the fuel. Missing
         // ingredients get a red X in their slot and a line saying how many more are needed (GL449).
-        private void DrawActive(Rect area, CraftingStation station, Inventory items, out Rect inputSlots, out Rect fuelSlots)
+        private void DrawActive(Rect area, CraftingStation station, Inventory items, out Rect inputSlots, out Rect fuelSlots, out Rect upgradeSlot)
         {
             float slot = InventoryGridGui.SlotSize;
             float gap = InventoryGridGui.Gap;
@@ -298,6 +301,7 @@ namespace Clube.Game
             // them (GL195).
             inputSlots = new Rect(x, y, station.Input.SlotCount * (slot + gap), slot);
             fuelSlots = Rect.zero;
+            upgradeSlot = Rect.zero;
             int input = InventoryGridGui.DrawRow(new Vector2(x, y), station.Input);
             if (input >= 0)
             {
@@ -341,6 +345,20 @@ namespace Clube.Game
                 InventoryGridGui.PullHalf(station.Fuel, items, true);
                 float burnX = x + 44f + slot + 12f;
                 DrawBurn(new Rect(burnX, y, Mathf.Min(WorkWidth, area.xMax - burnX), slot), station);
+            }
+            else if (station.Upgrades != null)
+            {
+                // What's fitted to the station (GL703): a hammer on the flat rock cuts the strikes.
+                GUI.Label(new Rect(x, y + 18f, 60f, 28f), "Fitted");
+                upgradeSlot = new Rect(x + 64f, y, slot, slot);
+                int fitted = InventoryGridGui.DrawRow(new Vector2(x + 64f, y), station.Upgrades);
+                if (fitted >= 0)
+                {
+                    station.Upgrades.MoveTo(fitted, items, keepApart: true);
+                }
+                ItemStack upgrade = station.Upgrades[0];
+                string note = upgrade.IsEmpty ? "A hammer fitted here cuts the strikes" : $"{upgrade.Item.DisplayName}: {upgrade.Item.Upgrade.StrikePower:0.#}x strikes";
+                GUI.Label(new Rect(x + 64f + slot + 12f, y + 18f, Mathf.Max(60f, area.xMax - x - slot - 76f), 28f), note);
             }
         }
 
@@ -464,6 +482,20 @@ namespace Clube.Game
 
         private static Texture2D lockIcon;
 
+        // Fits one of the player's items to the station (GL703); one already fitted goes back to the slot it came from.
+        private static void FitUpgrade(CraftingStation station, Inventory items, int slot)
+        {
+            ItemStack old = station.Upgrades[0];
+            if (old.IsEmpty)
+            {
+                items.MoveTo(slot, station.Upgrades, 1);
+                return;
+            }
+            ItemStack incoming = items.TakeAll(slot);
+            items.Set(slot, old);
+            station.Upgrades.Set(0, incoming);
+        }
+
         // A click on one of the player's stacks (GL299): fuel (wood, sticks) goes to the fire first, and only what the
         // fuel slot can't take is loaded as an input; dragging it onto an input slot loads it there instead.
         private static void LoadClicked(CraftingStation station, Inventory items, int slot, int count)
@@ -488,6 +520,12 @@ namespace Clube.Game
                     }
                 }
             }
+            // An upgrade for this station (GL703: a hammer on the flat rock) is fitted, not loaded.
+            if (station.Upgrades != null && station.Upgrades.Accepts(0, stack.Item))
+            {
+                FitUpgrade(station, items, slot);
+                return;
+            }
             if (station.BurnsFuel && stack.Item.IsFuel)
             {
                 count -= items.MoveTo(slot, station.Fuel, count);
@@ -501,7 +539,7 @@ namespace Clube.Game
 
         // A stack dragged from the player's slots and let go over the station (GL191, GL195): onto the input slots,
         // or onto the fuel slot if it burns. How many go is what the drag carried.
-        private static void DropOnStation(CraftingStation station, Inventory items, InventoryDragResult drop, Rect inputRow, Rect fuelRow)
+        private static void DropOnStation(CraftingStation station, Inventory items, InventoryDragResult drop, Rect inputRow, Rect fuelRow, Rect upgradeSlot)
         {
             ItemStack stack = items[drop.Slot];
             if (stack.IsEmpty)
@@ -515,6 +553,10 @@ namespace Clube.Game
             else if (station.BurnsFuel && stack.Item.IsFuel && fuelRow.Contains(drop.Position))
             {
                 items.MoveTo(drop.Slot, station.Fuel, drop.Count);
+            }
+            else if (station.Upgrades != null && upgradeSlot.Contains(drop.Position) && station.Upgrades.Accepts(0, stack.Item))
+            {
+                FitUpgrade(station, items, drop.Slot);
             }
         }
 
@@ -558,6 +600,29 @@ namespace Clube.Game
             if (!made.IsEmpty && made.Item.MaxStack <= 1)
             {
                 station.Output.MoveTo(0, inventory.Inventory);
+                // A made tool with no room for it is announced and dropped (GL704).
+                if (!station.Output[0].IsEmpty && !station.WorksUnattended)
+                {
+                    DropLeftovers(station.Output);
+                }
+            }
+        }
+
+        // Whatever of a station's slots the player had no room for (GL704): "Inventory full" and a sack on the ground.
+        private void DropLeftovers(Inventory from)
+        {
+            for (int slot = 0; slot < from.SlotCount; slot++)
+            {
+                ItemStack stack = from[slot];
+                if (stack.IsEmpty)
+                {
+                    continue;
+                }
+                inventory.NotifyFull(stack.Item);
+                if (inventory.DropAhead(stack))
+                {
+                    from.Set(slot, ItemStack.Empty);
+                }
             }
         }
 

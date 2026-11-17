@@ -34,7 +34,8 @@ namespace Clube.Core
 
         /// <param name="recipes">What it can make; recipes for another kind of station are left out.</param>
         /// <param name="burnsFuel">True for a station that needs fuel to work time recipes (GL35); it gets a <see cref="Fuel"/> slot.</param>
-        public CraftingStation(StationKind kind, IEnumerable<Recipe> recipes, int inputSlots = DefaultInputSlots, bool burnsFuel = false)
+        /// <param name="upgradable">True for a station that takes upgrades fitted to it (GL703); it gets an <see cref="Upgrades"/> slot.</param>
+        public CraftingStation(StationKind kind, IEnumerable<Recipe> recipes, int inputSlots = DefaultInputSlots, bool burnsFuel = false, bool upgradable = false)
         {
             Kind = kind;
             foreach (Recipe recipe in recipes)
@@ -43,6 +44,16 @@ namespace Clube.Core
                 {
                     this.recipes.Add(recipe);
                 }
+            }
+            // An alloy also takes the ingot form of its inputs (GL700).
+            foreach (Recipe recipe in new List<Recipe>(this.recipes))
+            {
+                this.recipes.AddRange(recipe.IngotVariants());
+            }
+            if (upgradable)
+            {
+                Upgrades = new Inventory(1) { Accepts = (_, item) => item.Upgrade.IsUpgrade && item.Upgrade.Station == Kind };
+                Upgrades.Changed += OnFuelChanged;
             }
             Input = new Inventory(inputSlots);
             Output = new Inventory(1);
@@ -106,6 +117,31 @@ namespace Clube.Core
 
         public bool BurnsFuel => Fuel != null;
 
+        /// <summary>One slot for an upgrade fitted to the station (GL703: a hammer on the flat rock); null for a station that takes none.</summary>
+        public Inventory Upgrades { get; }
+
+        /// <summary>
+        /// How much work one strike does (GL699, GL703): a Blacksmithing recipe goes
+        /// <see cref="SkillStrikePerLevel"/> faster for each level of the smith, and an upgrade fitted to the station
+        /// multiplies that. 1 with no skills and no upgrade.
+        /// </summary>
+        public float StrikePower(Recipe recipe)
+        {
+            float power = 1f;
+            if (recipe != null && recipe.ExperienceSkill == SkillType.Blacksmithing && Learner != null)
+            {
+                power += SkillStrikePerLevel * Learner.Level(SkillType.Blacksmithing);
+            }
+            if (Upgrades != null && !Upgrades[0].IsEmpty)
+            {
+                power *= Math.Max(1f, Upgrades[0].Item.Upgrade.StrikePower);
+            }
+            return power;
+        }
+
+        /// <summary>Strike power each Blacksmithing level adds to a Blacksmithing recipe (GL699): at level 10 it takes half the strikes.</summary>
+        public const float SkillStrikePerLevel = 0.1f;
+
         /// <summary>
         /// How hot it works (GL98): time recipes go this many times faster, on the same fuel per second, so
         /// a hotter furnace (clay over stone) smelts quicker and on less fuel. 1 is the stone furnace.
@@ -164,7 +200,7 @@ namespace Clube.Core
 
         /// <summary>Strikes still needed by an active strike recipe; 0 otherwise.</summary>
         public int StrikesLeft => Active != null && Active.Work == RecipeWork.Strikes
-            ? Math.Max(0, (int)Math.Ceiling(Active.Amount - done - 1e-4f))
+            ? Math.Max(0, (int)Math.Ceiling((Active.Amount - done) / StrikePower(Active) - 1e-4f))
             : 0;
 
         private bool HasFuel => Fuel != null && !Fuel[0].IsEmpty;
@@ -421,7 +457,7 @@ namespace Clube.Core
             {
                 return false;
             }
-            Work(1f);
+            Work(StrikePower(Active));
             return true;
         }
 

@@ -99,6 +99,10 @@ namespace Clube.Game
         [SerializeField, Min(0f)]
         private float refineExperience = 0.1f;
 
+        [Tooltip("Prospecting experience every refining pass gives (GL697): dirt, clay, crushed ore, anything picked over.")]
+        [SerializeField, Min(0f)]
+        private float refineProspectingExperience = 0.1f;
+
         [Tooltip("Blacksmithing experience each refining pass gives too (GL362): a little, for working the stone.")]
         [SerializeField, Min(0f)]
         private float refineSmithingExperience = 0.02f;
@@ -212,9 +216,13 @@ namespace Clube.Game
             pickedOut.Clear();
             RefinePassed?.Invoke();
             ItemStack refined = Refining.Pass(held, materials, refineVolume, pickedOut, UnityEngine.Random.value, UnityEngine.Random.value, out bool failed);
-            // Crushed ore is prospecting work (GL388); anything else picked over is crafting.
+            // Any refining trains Prospecting (GL697); anything but crushed ore (GL388) trains Crafting too.
             bool prospecting = held.Item.PurityAs != null;
-            skills?.Skills.Award(prospecting ? SkillType.Prospecting : SkillType.Crafting, refineExperience);
+            skills?.Skills.Award(SkillType.Prospecting, refineProspectingExperience);
+            if (!prospecting)
+            {
+                skills?.Skills.Award(SkillType.Crafting, refineExperience);
+            }
             skills?.Skills.Award(SkillType.Blacksmithing, refineSmithingExperience);
             if (failed)
             {
@@ -236,7 +244,7 @@ namespace Clube.Game
                     drop = CrushedFormOf(drop);
                 }
                 int whole = (int)(picked.Fraction + 1e-4f);
-                items.Add(drop, whole, Composition.From(new Content(picked.Material, 1f)), 0, 1f, Mathf.Max(0f, picked.Fraction - whole));
+                inventory.GiveOrDrop(drop, whole, Composition.From(new Content(picked.Material, 1f)), 0, 1f, Mathf.Max(0f, picked.Fraction - whole));
                 inventory.Notify(drop, picked.Fraction);
             }
             Message?.Invoke(refined.IsEmpty
@@ -302,7 +310,7 @@ namespace Clube.Game
             if (held.Item == stone)
             {
                 items.RemoveAt(slot, 1);
-                items.Add(handAxe, 1);
+                inventory.GiveOrDrop(handAxe, 1);
                 skills?.Skills.Award(SkillType.Crafting, handAxeExperience);
                 Message?.Invoke($"Knocked the stone into a {handAxe.DisplayName.ToLowerInvariant()}");
                 HandAxeMade?.Invoke();
@@ -331,7 +339,7 @@ namespace Clube.Game
             {
                 items.TakeAll(slot);
             }
-            items.Add(crush.Crushed, whole, crushed, 0, quality, Mathf.Max(0f, left - whole));
+            inventory.GiveOrDrop(crush.Crushed, whole, crushed, 0, quality, Mathf.Max(0f, left - whole));
             inventory.Notify(crush.Crushed, left);
             if (crushedStone != null && knockedOff > 0f)
             {

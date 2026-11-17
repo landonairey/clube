@@ -16,7 +16,11 @@ namespace Clube.Core.Tests
             ItemDefinition item = ItemDefinition.Create("clay", "Clay", 1024);
             var items = new Inventory(4);
             items.Add(item, 10, Composition.From(new Content(clay, 1f)), 0, 1f);
+            // GL698: a pure stack is not topped up by lower grade digging; a hand drag still mixes.
             items.Add(item, 10, Composition.From(new Content(clay, 0.55f), new Content(dirt, 0.45f)), 0, 0.55f);
+            Assert.AreEqual(10, items[0].Count);
+            Assert.AreEqual(10, items[1].Count);
+            items.Move(1, 0);
             Assert.AreEqual(20, items[0].Count);
             Assert.AreEqual(0.775f, items[0].Quality, 1e-3f);
             Assert.IsTrue(items[1].IsEmpty);

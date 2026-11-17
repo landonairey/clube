@@ -105,11 +105,19 @@ namespace Clube.Game
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
             float y = panel.y + Padding;
-            GUI.Label(new Rect(x, y, width - 140f - Padding * 2f, 28f), $"{Current.DisplayName}   {chest.SlotCount} slots   (E to close)");
+            GUI.Label(new Rect(x, y, width - 260f - Padding * 2f, 28f), $"{Current.DisplayName}   {chest.SlotCount} slots   (E to close)");
             // Sort the chest the way the inventory sorts (GL357).
             if (GameUi.Button(new Rect(panel.xMax - Padding - 110f, y - 2f, 110f, 28f), "Sort chest"))
             {
                 chest.Sort(0, chest.SlotCount);
+            }
+            // Everything in the chest to your items (GL705): what doesn't fit stays.
+            if (GameUi.Button(new Rect(panel.xMax - Padding - 230f, y - 2f, 110f, 28f), "Take all"))
+            {
+                for (int slot = 0; slot < chest.SlotCount; slot++)
+                {
+                    chest.MoveTo(slot, items);
+                }
             }
             y += 32f;
 
@@ -129,10 +137,18 @@ namespace Clube.Game
                 chest.MoveTo(inChest.Slot, items, inChest.Count);
             }
             InventoryDragResult mouse = drag.Handle(inventory, grid);
-            if (mouse.Kind == InventoryDragKind.Clicked
-                || (mouse.Kind == InventoryDragKind.DroppedOutside && chestArea.Contains(mouse.Position)))
+            if (mouse.Kind == InventoryDragKind.Clicked)
             {
                 items.MoveTo(mouse.Slot, chest, mouse.Count);
+            }
+            else if (mouse.Kind == InventoryDragKind.DroppedOutside && chestArea.Contains(mouse.Position))
+            {
+                // Dropped on a chest slot it goes in that one (GL706); in a gap or past the last slot, wherever it fits.
+                int target = InventoryGridGui.GridSlotNear(chestTopLeft, chest, mouse.Position, InventoryGridGui.Gap);
+                if (target < 0 || items.MoveToSlot(mouse.Slot, chest, target, mouse.Count) == 0 && chest[target].IsEmpty)
+                {
+                    items.MoveTo(mouse.Slot, chest, mouse.Count);
+                }
             }
             InventoryGridGui.DrawGrid(chestTopLeft, chest, chestDrag.Pressed);
             InventoryGridGui.PullHalf(chest, items, false);

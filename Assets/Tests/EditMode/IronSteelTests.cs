@@ -203,19 +203,19 @@ namespace Clube.Core.Tests
         {
             Recipe alloy = RecipeNamed("Alloy steel buns");
             Assert.AreEqual(StationKind.Furnace, alloy.Station);
-            Assert.AreEqual(4, alloy.Inputs.Single(i => i.Item == Item("iron-bun")).Count);
-            Assert.AreEqual(1, alloy.Inputs.Single(i => i.Item == Item("coal")).Count);
+            Assert.AreEqual(1, alloy.Inputs.Single(i => i.Item == Item("iron-bun")).Count, "GL701: one iron to four coal");
+            Assert.AreEqual(4, alloy.Inputs.Single(i => i.Item == Item("coal")).Count);
             Assert.AreSame(Item("steel-bun"), alloy.Output.Item);
-            Assert.AreEqual(4, alloy.Output.Count);
+            Assert.AreEqual(1, alloy.Output.Count);
             Assert.IsNull(alloy.Extracts, "an alloy, not a smelt: its quality is its inputs'");
 
             // Made in a furnace: the buns and the coal in, steel out.
             var furnace = new CraftingStation(StationKind.Furnace, new[] { alloy }, burnsFuel: true);
-            furnace.Input.Add(Item("iron-bun"), 4);
-            furnace.Input.Add(Item("coal"), 1);
+            furnace.Input.Add(Item("iron-bun"), 1);
+            furnace.Input.Add(Item("coal"), 4);
             furnace.Fuel.Add(Item("charcoal"), 2);
             furnace.Tick(alloy.Amount + 1f);
-            Assert.AreEqual(4, furnace.Output.Count(Item("steel-bun")));
+            Assert.AreEqual(1, furnace.Output.Count(Item("steel-bun")));
             Assert.AreEqual(0, furnace.Input.Count(Item("iron-bun")));
         }
 

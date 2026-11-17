@@ -30,7 +30,7 @@ namespace Clube.Game
 
         private DroppedItems owner;
 
-        public string Prompt => Stack.Count > 1 ? $"Pick up {Stack.Item.DisplayName} x{Stack.Count}" : $"Pick up {Stack.Item.DisplayName}";
+        public string Prompt => Stack.Count > 1 ? $"Pick up {Stack.Item.DisplayName} x{Stack.Count}" : Stack.Count == 0 ? $"Pick up {Stack.Item.DisplayName} x{Stack.Part:0.##}" : $"Pick up {Stack.Item.DisplayName}";
 
         public void Set(DroppedItems owner, ItemStack stack, bool isBag, Rigidbody body)
         {
@@ -45,6 +45,14 @@ namespace Clube.Game
         public void Add(int count)
         {
             Stack = Stack.WithCount(Stack.Count + count);
+        }
+
+        /// <summary>More of the same stack into this bag by amount, a fraction included (GL708: pouring the last 0.4 of a stack).</summary>
+        public void AddAmount(float amount)
+        {
+            float total = Stack.Amount + amount;
+            int whole = Mathf.FloorToInt(total + ItemStack.PartEpsilon);
+            Stack = new ItemStack(Stack.Item, whole, Stack.Contents, Stack.Wear, Stack.Quality, Mathf.Max(0f, total - whole));
         }
 
         public void Interact(PlayerInteractor by)
@@ -63,7 +71,7 @@ namespace Clube.Game
             if (left > 0)
             {
                 inventory.NotifyFull(Stack.Item);
-                Stack = new ItemStack(Stack.Item, left, Stack.Contents, Stack.Wear, Stack.Quality);
+                Stack = new ItemStack(Stack.Item, left, Stack.Contents, Stack.Wear, Stack.Quality, Stack.Part);
                 return;
             }
             owner.Remove(this);

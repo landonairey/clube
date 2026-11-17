@@ -9,7 +9,7 @@ namespace Clube.Game
     /// Picked back up, it's a lit torch with the burning it has left.
     /// </summary>
     [RequireComponent(typeof(PlacedObject))]
-    public class PlacedTorch : MonoBehaviour
+    public class PlacedTorch : MonoBehaviour, IClosableInteractable
     {
         [Tooltip("Where the flame is, above the torch's foot.")]
         [SerializeField]
@@ -29,6 +29,25 @@ namespace Clube.Game
         public bool Everlasting { get; set; }
         private TorchFlame flame;
         private GameClockTicks ticks;
+
+        /// <summary>Interact (E) takes the torch back (GL709), with the burning it has left; not the town's everlasting ones.</summary>
+        public string Prompt => "Pick up torch";
+
+        /// <summary>False for the town's torches (<see cref="PlacedObject.Fixed"/>, <see cref="Everlasting"/>): there is nothing to pick up.</summary>
+        public bool IsAvailable => !Everlasting && (placed == null || !placed.Fixed);
+
+        public void Interact(PlayerInteractor by)
+        {
+            PlayerInventory inventory = by.GetComponent<PlayerInventory>();
+            if (inventory == null || Everlasting || placed.Fixed)
+            {
+                return;
+            }
+            if (!placed.PickUpInto(inventory.Inventory))
+            {
+                inventory.NotifyFull(placed.Item);
+            }
+        }
 
         private void Awake()
         {

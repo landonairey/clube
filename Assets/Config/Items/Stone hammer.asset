@@ -50,3 +50,6 @@ MonoBehaviour:
   repairItem: {fileID: 0}
   repairShare: 0.5
   wearLostPerRepair: 0.25
+  upgrade:
+    Station: 4
+    StrikePower: 2

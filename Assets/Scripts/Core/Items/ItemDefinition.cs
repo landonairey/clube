@@ -61,6 +61,14 @@ namespace Clube.Core
         [SerializeField]
         private bool hidesContents;
 
+        [Tooltip("A bun's ingot (GL700): what hammering it makes. A furnace alloying with the bun takes the ingot in its place, and makes the lesser of the two forms. Empty for everything that has no ingot form (coal).")]
+        [SerializeField]
+        private ItemDefinition ingotForm;
+
+        [Tooltip("Fitted to a station it makes it work better (GL703): a hammer on the flat rock cuts the strikes. Strike power 1: not an upgrade.")]
+        [SerializeField]
+        private StationUpgrade upgrade = new StationUpgrade(StationKind.FlatRock, 1f);
+
         [Tooltip("What it turns into when dropped (GL610, GL611). By kind: a tool, torch or bucket drops as its model, a placeable (campfire, furnace) as a canvas bag, the rest into the ground as their material. Set Bag for anything too small to find again (a pearl, a gem).")]
         [SerializeField]
         private DropForm dropForm = DropForm.ByKind;
@@ -168,6 +176,26 @@ namespace Clube.Core
         public ItemDefinition WithPurityAs(ItemDefinition item)
         {
             purityAs = item;
+            return this;
+        }
+
+        /// <summary>The ingot a bun hammers into (GL700), or null.</summary>
+        public ItemDefinition IngotForm => ingotForm;
+
+        /// <summary>Sets <see cref="IngotForm"/>, for items made in code (tests).</summary>
+        public ItemDefinition WithIngotForm(ItemDefinition ingot)
+        {
+            ingotForm = ingot;
+            return this;
+        }
+
+        /// <summary>What fitting it to a station does (GL703); not an upgrade when <see cref="StationUpgrade.IsUpgrade"/> is false.</summary>
+        public StationUpgrade Upgrade => upgrade;
+
+        /// <summary>Sets <see cref="Upgrade"/>, for items made in code (tests).</summary>
+        public ItemDefinition WithUpgrade(StationUpgrade value)
+        {
+            upgrade = value;
             return this;
         }
 
