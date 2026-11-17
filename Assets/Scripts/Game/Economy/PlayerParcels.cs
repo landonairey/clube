@@ -34,6 +34,7 @@ namespace Clube.Game
         private ParcelOffer offer;
         private NotOwnedNotice notOwned;
         private TownLandNotice townLand;
+        private OutsideNotice outside;
 
         // Parcels a save owned (GL205), granted as soon as the land is set up.
         private List<Vector2Int> restoring;
@@ -42,6 +43,13 @@ namespace Clube.Game
         public void Restore(IEnumerable<Vector2Int> owned)
         {
             restoring = new List<Vector2Int>(owned);
+        }
+
+        // Inside the bounded map's playable edge (GL639), or anywhere when the scene has no bounded map.
+        private static bool InPlayableArea(Vector2 centre)
+        {
+            MapSession session = MapSession.Current;
+            return session == null || !session.IsReady || session.Map == null || session.Map.Layout.Contains(centre.x, centre.y);
         }
 
         /// <summary>Width of a parcel, in chunk columns (the town fills one, GL408).</summary>
@@ -62,13 +70,18 @@ namespace Clube.Game
             offer = new ParcelOffer(this);
             notOwned = new NotOwnedNotice();
             townLand = new TownLandNotice();
+            outside = new OutsideNotice();
         }
 
         private void Update()
         {
             if (Parcels == null && worldView != null && worldView.IsReady)
             {
-                Parcels = new LandParcels(sizeInChunks * worldView.World.Grid.ChunkWorldSize.x, firstPrice, priceStep);
+                Parcels = new LandParcels(sizeInChunks * worldView.World.Grid.ChunkWorldSize.x, firstPrice, priceStep)
+                {
+                    // GL666: on a bounded map, land is sold up to the playable edge (by the parcel's centre), never beyond it.
+                    SaleArea = InPlayableArea,
+                };
             }
             if (Parcels != null && restoring != null)
             {
@@ -119,6 +132,10 @@ namespace Clube.Game
                 // The town's land (GL408): never for sale.
                 return townLand;
             }
+            if (!Parcels.IsInSaleArea(parcel))
+            {
+                return outside;
+            }
             if (!Parcels.IsBuyable(parcel))
             {
                 // Land further than a parcel from the player's own (GL179): it only says so.
@@ -137,6 +154,16 @@ namespace Clube.Game
         private sealed class TownLandNotice : INoticeOnly
         {
             public string Prompt => "Trading post land: not for sale";
+
+            public void Interact(PlayerInteractor by)
+            {
+            }
+        }
+
+        // Between the playable edge and the map's outer boundary (GL666): never for sale.
+        private sealed class OutsideNotice : INoticeOnly
+        {
+            public string Prompt => "Beyond the playable area: not for sale";
 
             public void Interact(PlayerInteractor by)
             {

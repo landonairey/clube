@@ -92,10 +92,31 @@ namespace Clube.Core
             return locked.Contains(parcel);
         }
 
-        /// <summary>True for a parcel not owned yet that shares a side with owned land (the first one: any); never a locked one.</summary>
+        /// <summary>
+        /// Where land is for sale (GL666), by a parcel's centre (x, z, metres from the world origin): on a bounded map the playable
+        /// area, so nothing between its edge and the map's outer boundary can be bought. Null: everywhere.
+        /// </summary>
+        public Func<Vector2, bool> SaleArea { get; set; }
+
+        /// <summary>The centre of a parcel (x, z, metres from the world origin).</summary>
+        public Vector2 CentreOf(Vector2Int parcel)
+        {
+            return new Vector2((parcel.x + 0.5f) * Size, (parcel.y + 0.5f) * Size);
+        }
+
+        /// <summary>True when a parcel's centre is inside <see cref="SaleArea"/> (always, with none).</summary>
+        public bool IsInSaleArea(Vector2Int parcel)
+        {
+            return SaleArea == null || SaleArea(CentreOf(parcel));
+        }
+
+        /// <summary>
+        /// True for a parcel not owned yet that shares a side with owned land (the first one: any); never a locked one, nor one
+        /// whose centre is outside <see cref="SaleArea"/>.
+        /// </summary>
         public bool IsBuyable(Vector2Int parcel)
         {
-            if (owned.Contains(parcel) || locked.Contains(parcel))
+            if (owned.Contains(parcel) || locked.Contains(parcel) || !IsInSaleArea(parcel))
             {
                 return false;
             }
