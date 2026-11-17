@@ -205,12 +205,21 @@ namespace Clube.Game
                     return 0;
                 }
                 int more = Mathf.Min(count, stack.Count);
+                if (more == 0 && stack.Part > ItemStack.PartEpsilon)
+                {
+                    // Only a fraction is left (GL708): it goes in the bag too.
+                    float fraction = stack.Part;
+                    pourBag.AddAmount(fraction);
+                    inventory.Inventory.RemoveAmount(slot, fraction);
+                    return 0;
+                }
                 pourBag.Add(more);
                 inventory.Inventory.RemoveAt(slot, more);
                 Dropped?.Invoke(stack.Item, more);
                 return more;
             }
-            if (stack.Count < 1)
+            bool fractionOnly = stack.Count < 1;
+            if (fractionOnly && !bagged)
             {
                 return 0;
             }
@@ -222,7 +231,9 @@ namespace Clube.Game
                 : 0.6f;
             Vector3 from = head.position + toward * distance;
             Vector3 velocity = player.Body.velocity + head.forward * 2.2f + Vector3.up * 0.8f;
-            var one = new ItemStack(stack.Item, 1, stack.Contents, stack.Wear, stack.Quality);
+            var one = fractionOnly
+                ? new ItemStack(stack.Item, 0, stack.Contents, stack.Wear, stack.Quality, stack.Part)
+                : new ItemStack(stack.Item, 1, stack.Contents, stack.Wear, stack.Quality);
             DroppedItem item;
             if (bagged)
             {
@@ -239,6 +250,11 @@ namespace Clube.Game
                 return 0;
             }
             pourBag = item.IsBag ? item : null;
+            if (fractionOnly)
+            {
+                inventory.Inventory.RemoveAmount(slot, stack.Part);
+                return 0;
+            }
             inventory.Inventory.RemoveAt(slot, 1);
             Dropped?.Invoke(stack.Item, 1);
             return 1;

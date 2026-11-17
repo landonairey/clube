@@ -51,7 +51,17 @@ namespace Clube.Core
         public static bool Stacks(ItemStack stack, ItemDefinition item, Composition contents, float quality)
         {
             return !stack.IsEmpty && stack.Item == item
-                && (stack.Contents != null || contents != null || Math.Abs(stack.Quality - quality) < SameQuality);
+                && (stack.Contents != null || contents != null || Math.Abs(stack.Quality - quality) < SameQuality)
+                && !(IsPure(stack) && quality < stack.Quality - SameQuality);
+        }
+
+        /// <summary>
+        /// True for a stack of gathered material that is all itself (GL698): it keeps its purity against anything stacking
+        /// onto it by itself; only dragging lower grade material onto it by hand (<see cref="Combines"/>) mixes it in.
+        /// </summary>
+        public static bool IsPure(ItemStack stack)
+        {
+            return !stack.IsEmpty && stack.Contents != null && stack.Quality >= 1f - SameQuality;
         }
 
         /// <summary>
@@ -557,34 +567,36 @@ namespace Clube.Core
             {
                 return 0;
             }
-            int left = stack.Count;
-            for (int slot = start; slot < end && left > 0; slot++)
+            // By amount, parts included (GL707): a stack holding 3.4 of 16 takes 12.6, filling to exactly full.
+            float left = stack.Amount;
+            for (int slot = start; slot < end && left > ItemStack.PartEpsilon; slot++)
             {
-                if (slot != from && Stacks(slots[slot], stack.Item, stack.Contents, stack.Quality) && slots[slot].Space > 0 && Fits(slot, stack.Item))
+                float room = RoomFor(slots[slot]);
+                if (slot != from && room > ItemStack.PartEpsilon && Stacks(slots[slot], stack.Item, stack.Contents, stack.Quality) && Fits(slot, stack.Item))
                 {
-                    int moved = Math.Min(left, slots[slot].Space);
-                    slots[slot] = TopUp(slots[slot], moved, stack.Contents, stack.Quality);
-                    left -= moved;
+                    ItemStack target = slots[slot];
+                    float taken = Math.Min(left, room);
+                    Composition blended = Composition.Blend(target.Contents, target.Amount, stack.Contents, taken);
+                    float quality = (target.Quality * target.Amount + stack.Quality * taken) / (target.Amount + taken);
+                    slots[slot] = OfAmount(target.Item, target.Amount + taken, blended, 0, quality);
+                    left -= taken;
                 }
             }
-            bool partMoved = false;
-            for (int slot = start; slot < end && (left > 0 || (!partMoved && stack.Part > 0f)); slot++)
+            for (int slot = start; slot < end && left > ItemStack.PartEpsilon; slot++)
             {
                 if (slot != from && slots[slot].IsEmpty && Fits(slot, stack.Item))
                 {
-                    // The rest, and the part item, into an empty slot.
-                    slots[slot] = new ItemStack(stack.Item, left, stack.Contents, stack.Wear, stack.Quality, stack.Part);
-                    left = 0;
-                    partMoved = true;
+                    slots[slot] = OfAmount(stack.Item, left, stack.Contents, stack.Wear, stack.Quality);
+                    left = 0f;
                 }
             }
-            int total = stack.Count - left;
-            if (total > 0 || partMoved)
+            float movedAmount = stack.Amount - Math.Max(0f, left);
+            if (movedAmount > ItemStack.PartEpsilon)
             {
-                slots[from] = left > 0 || (!partMoved && stack.Part > 0f) ? new ItemStack(stack.Item, left, stack.Contents, stack.Wear, stack.Quality, partMoved ? 0f : stack.Part) : ItemStack.Empty;
+                slots[from] = left > ItemStack.PartEpsilon ? OfAmount(stack.Item, left, stack.Contents, stack.Wear, stack.Quality) : ItemStack.Empty;
                 Changed?.Invoke();
             }
-            return total;
+            return (int)Math.Floor(movedAmount + ItemStack.PartEpsilon);
         }
 
         /// <summary>
