@@ -43,6 +43,23 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void AHorseTownWithoutAnEdgePost_GetsItsStandByTheNearestPost()
+        {
+            var plan = new WorldPlan();
+            plan.Settlements.Add(new PlannedSettlement { Name = "Kingsport", Type = TypeOf("capital"), Position = new Vector2(0f, 0f) });
+            plan.Signposts.Add(new PlannedSignpost { AtSettlement = false, Position = new Vector2(900f, 0f) });
+            plan.Signposts.Add(new PlannedSignpost { AtSettlement = false, Position = new Vector2(0f, 120f) });
+
+            List<HorseStand> stands = HorseHire.Plan(plan);
+
+            Assert.AreEqual(1, stands.Count);
+            Assert.AreEqual(1, stands[0].Signpost);
+            Assert.AreEqual(Vector2.up, stands[0].Outward, "facing away from the town");
+            plan.Signposts.RemoveAt(1);
+            Assert.AreEqual(0, HorseHire.Plan(plan).Count, "no post near enough");
+        }
+
+        [Test]
         public void ARide_CostsTheFare()
         {
             Assert.AreEqual(250, HorseHire.Fare);

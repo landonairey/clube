@@ -42,6 +42,9 @@ namespace Clube.Core
         /// <summary>Metres the hitching post stands back along the road from the signpost, into the settlement.</summary>
         public const float Back = 2.5f;
 
+        /// <summary>Metres from a horse town's centre within which a junction post stands in for a missing edge post.</summary>
+        public const float FallbackReach = 400f;
+
         /// <summary>The stands of a plan whose signposts are laid (<see cref="WorldRoads.Finish"/>), in settlement order.</summary>
         public static List<HorseStand> Plan(WorldPlan plan)
         {
@@ -69,6 +72,40 @@ namespace Clube.Core
                 stands.Add(new HorseStand
                 {
                     Settlement = post.Settlement, Signpost = i, Outward = outward, Roadside = roadside,
+                    Post = post.Position + roadside * FromPost - outward * Back,
+                });
+            }
+            // A horse town whose roads meet a junction at its edge has no edge post (the junction replaced it, GL632): its
+            // stand goes by the nearest post within FallbackReach, facing away from the town's centre.
+            for (int s = 0; s < plan.Settlements.Count; s++)
+            {
+                PlannedSettlement settlement = plan.Settlements[s];
+                if (done.Contains(s) || settlement.Type == null || !settlement.Type.HorseHire || settlement.Type.Hostile)
+                {
+                    continue;
+                }
+                int nearest = -1;
+                float best = FallbackReach * FallbackReach;
+                for (int i = 0; i < plan.Signposts.Count; i++)
+                {
+                    float distance = (plan.Signposts[i].Position - settlement.Position).sqrMagnitude;
+                    if (distance < best)
+                    {
+                        best = distance;
+                        nearest = i;
+                    }
+                }
+                if (nearest < 0)
+                {
+                    continue;
+                }
+                PlannedSignpost post = plan.Signposts[nearest];
+                Vector2 outward = post.Position - settlement.Position;
+                outward = outward.sqrMagnitude > 1e-6f ? outward.normalized : Vector2.up;
+                Vector2 roadside = post.Roadside.sqrMagnitude > 1e-6f ? post.Roadside.normalized : new Vector2(outward.y, -outward.x);
+                stands.Add(new HorseStand
+                {
+                    Settlement = s, Signpost = nearest, Outward = outward, Roadside = roadside,
                     Post = post.Position + roadside * FromPost - outward * Back,
                 });
             }
