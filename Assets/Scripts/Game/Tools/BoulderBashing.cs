@@ -244,7 +244,7 @@ namespace Clube.Game
                     drop = CrushedFormOf(drop);
                 }
                 int whole = (int)(picked.Fraction + 1e-4f);
-                items.Add(drop, whole, Composition.From(new Content(picked.Material, 1f)), 0, 1f, Mathf.Max(0f, picked.Fraction - whole));
+                inventory.GiveOrDrop(drop, whole, Composition.From(new Content(picked.Material, 1f)), 0, 1f, Mathf.Max(0f, picked.Fraction - whole));
                 inventory.Notify(drop, picked.Fraction);
             }
             Message?.Invoke(refined.IsEmpty
@@ -310,7 +310,7 @@ namespace Clube.Game
             if (held.Item == stone)
             {
                 items.RemoveAt(slot, 1);
-                items.Add(handAxe, 1);
+                inventory.GiveOrDrop(handAxe, 1);
                 skills?.Skills.Award(SkillType.Crafting, handAxeExperience);
                 Message?.Invoke($"Knocked the stone into a {handAxe.DisplayName.ToLowerInvariant()}");
                 HandAxeMade?.Invoke();
@@ -339,7 +339,7 @@ namespace Clube.Game
             {
                 items.TakeAll(slot);
             }
-            items.Add(crush.Crushed, whole, crushed, 0, quality, Mathf.Max(0f, left - whole));
+            inventory.GiveOrDrop(crush.Crushed, whole, crushed, 0, quality, Mathf.Max(0f, left - whole));
             inventory.Notify(crush.Crushed, left);
             if (crushedStone != null && knockedOff > 0f)
             {

@@ -27,3 +27,4 @@ MonoBehaviour:
   experience: 10
   unlockSkill: 4
   unlockLevel: 3
+  takesIngotForms: 1

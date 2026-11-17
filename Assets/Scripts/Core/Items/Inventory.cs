@@ -248,6 +248,53 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// Moves up to <paramref name="count"/> whole items of one slot's stack into one chosen slot of another inventory
+        /// (GL706: dragging onto a chest slot): an empty slot takes them, a stack of the same item is topped up as far as
+        /// it has room, and dropping the whole stack on a different item swaps the two. A part item goes with the whole
+        /// stack. Returns how many whole items moved, 0 when the slot wouldn't take them.
+        /// </summary>
+        public int MoveToSlot(int slot, Inventory target, int targetSlot, int count)
+        {
+            ItemStack stack = slots[slot];
+            if (stack.IsEmpty || target == null || target == this || count <= 0 || targetSlot < 0 || targetSlot >= target.SlotCount
+                || !target.Fits(targetSlot, stack.Item))
+            {
+                return 0;
+            }
+            bool whole = count >= stack.Count;
+            ItemStack there = target.slots[targetSlot];
+            int moved;
+            if (there.IsEmpty)
+            {
+                moved = Math.Min(count, stack.Count);
+                target.slots[targetSlot] = new ItemStack(stack.Item, moved, stack.Contents, stack.Wear, stack.Quality, whole ? stack.Part : 0f);
+                slots[slot] = whole ? ItemStack.Empty : stack.WithCount(stack.Count - moved);
+            }
+            else if (Combines(there, stack.Item) && RoomFor(there) > ItemStack.PartEpsilon)
+            {
+                float offered = whole ? stack.Amount : count;
+                float taken = Math.Min(offered, RoomFor(there));
+                Composition blended = Composition.Blend(there.Contents, there.Amount, stack.Contents, taken);
+                float quality = (there.Quality * there.Amount + stack.Quality * taken) / (there.Amount + taken);
+                target.slots[targetSlot] = OfAmount(there.Item, there.Amount + taken, blended, 0, quality);
+                slots[slot] = OfAmount(stack.Item, stack.Amount - taken, stack.Contents, stack.Wear, stack.Quality);
+                moved = (int)Math.Floor(taken + ItemStack.PartEpsilon);
+            }
+            else if (whole && Fits(slot, there.Item))
+            {
+                (slots[slot], target.slots[targetSlot]) = (there, stack);
+                moved = stack.Count;
+            }
+            else
+            {
+                return 0;
+            }
+            Changed?.Invoke();
+            target.Changed?.Invoke();
+            return moved;
+        }
+
+        /// <summary>
         /// What an item held here is made of, blended by volume across its stacks (GL32); null
         /// when it has no contents or isn't here.
         /// </summary>

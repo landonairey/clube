@@ -104,6 +104,68 @@ namespace Clube.Core
         [SerializeField, Range(0.01f, 1f)]
         private float typicalGrade = 0.2f;
 
+        [Tooltip("An alloy that takes a bun or its ingot for each input that has an ingot form (GL700): copper bun and tin ingot make a bronze bun, copper ingot and tin ingot a bronze ingot (the lesser of the two forms). The station derives these variants itself.")]
+        [SerializeField]
+        private bool takesIngotForms;
+
+        /// <summary>True for an alloy that also takes the ingot form of its inputs (GL700).</summary>
+        public bool TakesIngotForms => takesIngotForms;
+
+        /// <summary>Sets <see cref="TakesIngotForms"/>, for recipes made in code (tests).</summary>
+        public Recipe WithIngotForms()
+        {
+            takesIngotForms = true;
+            return this;
+        }
+
+        /// <summary>
+        /// The recipes an alloy that <see cref="TakesIngotForms"/> also makes (GL700): one for every way of swapping
+        /// some of its inputs for their ingot form (<see cref="ItemDefinition.IngotForm"/>), everything else the same.
+        /// It makes the ingot form of its output only when every input that has one is an ingot; any bun in it makes a bun.
+        /// Empty for any other recipe.
+        /// </summary>
+        public List<Recipe> IngotVariants()
+        {
+            var variants = new List<Recipe>();
+            if (!takesIngotForms || output.Item == null)
+            {
+                return variants;
+            }
+            var formed = new List<int>();
+            for (int i = 0; i < inputs.Count; i++)
+            {
+                if (inputs[i].Item != null && inputs[i].Item.IngotForm != null)
+                {
+                    formed.Add(i);
+                }
+            }
+            if (formed.Count == 0 || output.Item.IngotForm == null)
+            {
+                return variants;
+            }
+            int all = (1 << formed.Count) - 1;
+            for (int mask = 1; mask <= all; mask++)
+            {
+                Recipe variant = Instantiate(this);
+                variant.takesIngotForms = false;
+                for (int bit = 0; bit < formed.Count; bit++)
+                {
+                    if ((mask & (1 << bit)) != 0)
+                    {
+                        ItemAmount input = inputs[formed[bit]];
+                        variant.inputs[formed[bit]] = new ItemAmount(input.Item.IngotForm, input.Count);
+                    }
+                }
+                if (mask == all)
+                {
+                    variant.output = new ItemAmount(output.Item.IngotForm, output.Count);
+                }
+                variant.name = $"{name} ({(mask == all ? "ingots" : "bun and ingot")})";
+                variants.Add(variant);
+            }
+            return variants;
+        }
+
         /// <summary>Makes a recipe in code (tests); the game's recipes are assets.</summary>
         public static Recipe Create(StationKind station, ItemAmount output, RecipeWork work, float amount, params ItemAmount[] inputs)
         {

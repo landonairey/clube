@@ -103,7 +103,8 @@ namespace Clube.Game
                 station = made.AddComponent<StationObject>();
                 if (kind != null)
                 {
-                    station.Configure(kind.Name, kind.Station, kind.Recipes);
+                    // The flat rock takes a hammer fitted to it (GL703).
+                    station.Configure(kind.Name, kind.Station, kind.Recipes, upgradable: kind.Station == StationKind.FlatRock);
                 }
                 else
                 {

@@ -22,7 +22,7 @@ MonoBehaviour:
   work: 1
   amount: 12
   experienceSkill: 5
-  experience: 3
+  experience: 4
   unlockSkill: 0
   unlockLevel: 0
   extracts: {fileID: 0}
