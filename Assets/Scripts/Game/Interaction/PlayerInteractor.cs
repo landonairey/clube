@@ -80,7 +80,8 @@ namespace Clube.Game
                 }
                 nearest = hit.distance;
                 Target = hit.collider.GetComponentInParent<IInteractable>();
-                if (Target == null && !BushInFront(hit, head))
+                // An animal is no ground: land's prompts ("You don't own this land") aren't for it, so it can be struck anywhere (GL686).
+                if (Target == null && hit.collider.GetComponentInParent<IToolTarget>() == null && !BushInFront(hit, head))
                 {
                     // The ground samples of a campfire or furnace are the station too (GL391).
                     TerrainStructure structure = TerrainStructure.FindAt(hit.collider.GetComponentInParent<WorldView>(), hit.point);

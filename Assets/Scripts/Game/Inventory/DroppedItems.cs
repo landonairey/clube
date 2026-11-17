@@ -29,6 +29,7 @@ namespace Clube.Game
         private readonly RaycastHit[] hits = new RaycastHit[6];
         private Material material;
         private CharacterController body;
+        private WorldView worldView;
         private float nextGroundCheck;
 
         /// <summary>The items lying in the world now.</summary>
@@ -91,6 +92,11 @@ namespace Clube.Game
             var item = go.AddComponent<DroppedItem>();
             item.Set(this, stack, isBag, rigid);
             items.Add(item);
+            if (!isBag && stack.Item is TorchDefinition torch && torch.IsLit)
+            {
+                // A lit torch keeps burning where it lies (GL683).
+                go.AddComponent<DroppedTorch>().Set(this, item, material);
+            }
             return item;
         }
 
@@ -135,14 +141,20 @@ namespace Clube.Game
                 bool near = (at - centre).sqrMagnitude < ActiveRadius * ActiveRadius;
                 if (item.Frozen)
                 {
-                    // Let go once the player is near and there is ground to land on.
-                    if (near && checkGround && GroundUnder(item, 8f))
+                    // Let go once the player is near and there is ground to land on, and none of it is in the ground.
+                    if (near && checkGround && GroundUnder(item, 8f) && !InTerrain(item))
                     {
                         item.Frozen = false;
                     }
                 }
                 else if (!near)
                 {
+                    item.Frozen = true;
+                }
+                else if (InTerrain(item))
+                {
+                    // Covered by terrain (a pile dropped on it, sand caving in): held still, so it can't sink through
+                    // the map, until it is dug out (GL685).
                     item.Frozen = true;
                 }
                 else if (at.y < item.RestPosition.y - LostDepth)
@@ -161,6 +173,39 @@ namespace Clube.Game
                     }
                 }
             }
+        }
+
+        // True when any part of the item, at its centre or its top, is inside solid terrain (GL685).
+        private bool InTerrain(DroppedItem item)
+        {
+            if (worldView == null)
+            {
+                worldView = FindAnyObjectByType<WorldView>();
+            }
+            if (worldView == null || !worldView.IsReady)
+            {
+                return false;
+            }
+            Bounds bounds = item.GetComponent<Collider>().bounds;
+            return SolidAt(bounds.center) || SolidAt(new Vector3(bounds.center.x, bounds.max.y, bounds.center.z));
+        }
+
+        private bool SolidAt(Vector3 world)
+        {
+            World data = worldView.World;
+            // Interpolated between the eight samples round the point, as the surface is, so an item lying on the ground
+            // isn't taken for one inside it; samples not loaded count as empty.
+            Vector3 at = worldView.transform.InverseTransformPoint(world) / data.Grid.VoxelSize;
+            var low = new Vector3Int(Mathf.FloorToInt(at.x), Mathf.FloorToInt(at.y), Mathf.FloorToInt(at.z));
+            Vector3 t = at - low;
+            float density = 0f;
+            for (int i = 0; i < 8; i++)
+            {
+                int dx = i & 1, dy = (i >> 1) & 1, dz = (i >> 2) & 1;
+                float weight = (dx == 1 ? t.x : 1f - t.x) * (dy == 1 ? t.y : 1f - t.y) * (dz == 1 ? t.z : 1f - t.z);
+                density += weight * (data.GetDensity(low + new Vector3Int(dx, dy, dz)) ?? 0f);
+            }
+            return density >= worldView.Config.IsoLevel;
         }
 
         // Anything solid, other than a dropped item, within a distance under an item.

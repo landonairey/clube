@@ -77,6 +77,7 @@ namespace Clube.Game
         {
             worldView = FindFirstObjectByType<WorldView>();
             Stamp();
+            Pin();
             BuildGlow();
             if (placementPreview != null)
             {
@@ -119,8 +120,17 @@ namespace Clube.Game
                     world.SetDensity(sample, 0f);
                 }
             }
+            Unpin();
             stamped.Clear();
             IsStanding = false;
+        }
+
+        // Holds its samples still against the falling ground (GL688): ground built on can rot or be dug away, and the
+        // stones must not follow it down.
+        private void Pin()
+        {
+            FallingGround falling = worldView != null ? worldView.GetComponent<FallingGround>() : null;
+            falling?.Pin(stamped);
         }
 
         private static readonly List<TerrainStructure> Placed = new List<TerrainStructure>();
@@ -169,6 +179,7 @@ namespace Clube.Game
 
         private void OnDestroy()
         {
+            Unpin();
             Destroy(glowMesh);
         }
 
@@ -361,30 +372,55 @@ namespace Clube.Game
             return density.HasValue && density.Value >= iso;
         }
 
-        // Mined into: it's just ground now. The station's contents go to the player.
+        // Broken (mined into, or its ground gone): it's just ground now. What its station held pops out on the ground in
+        // sacks (GL688), so nothing is lost to a full inventory; with no way to drop them it goes to the player.
         private void Collapse()
         {
             IsStanding = false;
+            Unpin();
             var station = GetComponent<StationObject>();
             var player = FindFirstObjectByType<PlayerInventory>();
             if (station != null && player != null && player.Inventory != null)
             {
-                Return(station.Station.Input, player.Inventory);
-                Return(station.Station.Output, player.Inventory);
+                DroppedItems dropped = player.GetComponent<DroppedItems>();
+                Spill(station.Station.Input, player.Inventory, dropped);
+                Spill(station.Station.Output, player.Inventory, dropped);
                 if (station.Station.Fuel != null)
                 {
-                    Return(station.Station.Fuel, player.Inventory);
+                    Spill(station.Station.Fuel, player.Inventory, dropped);
                 }
             }
             Destroy(gameObject);
         }
 
-        private static void Return(Inventory from, Inventory to)
+        private void Spill(Inventory from, Inventory fallback, DroppedItems dropped)
         {
             for (int slot = 0; slot < from.SlotCount; slot++)
             {
-                from.MoveTo(slot, to, keepApart: true);
+                ItemStack stack = from[slot];
+                if (stack.IsEmpty)
+                {
+                    continue;
+                }
+                if (dropped == null)
+                {
+                    from.MoveTo(slot, fallback, keepApart: true);
+                    continue;
+                }
+                // Out of the station's top, each sack with its own small toss so they land apart.
+                Vector3 at = transform.position + Vector3.up * 1f;
+                Vector3 toss = new Vector3(UnityEngine.Random.Range(-1f, 1f), 2.5f, UnityEngine.Random.Range(-1f, 1f));
+                if (dropped.Spawn(stack, true, at, Quaternion.Euler(0f, UnityEngine.Random.Range(0f, 360f), 0f), toss) != null)
+                {
+                    from.Set(slot, ItemStack.Empty);
+                }
             }
+        }
+
+        private void Unpin()
+        {
+            FallingGround falling = worldView != null ? worldView.GetComponent<FallingGround>() : null;
+            falling?.Unpin(stamped);
         }
     }
 }

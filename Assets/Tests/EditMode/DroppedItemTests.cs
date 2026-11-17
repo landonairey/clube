@@ -18,6 +18,8 @@ namespace Clube.Core.Tests
             Assert.AreEqual(DropForm.Bag, PlaceableDefinition.Create("campfire", "Campfire").DropsAs);
             // A torch is a placeable, but lies on the ground as itself.
             Assert.AreEqual(DropForm.Model, TorchDefinition.CreatePair().DropsAs);
+            // An ingot is big enough to lie as itself, not in a bag (GL684).
+            Assert.AreEqual(DropForm.Model, ItemDefinition.Create("iron-ingot", "Iron ingot").WithIcon(ItemIconShape.Ingot).DropsAs);
             // Very small things are bagged by their asset.
             Assert.AreEqual(DropForm.Bag, ItemDefinition.Create("pearl", "Pearl").WithDropForm(DropForm.Bag).DropsAs);
             Assert.AreEqual(DropForm.Bag, ToolDefinition.Create("needle", "Needle", 1, 1f).WithDropForm(DropForm.Bag).DropsAs);

@@ -37,6 +37,7 @@ namespace Clube.Core
 
         private readonly GroundHold[] holds = new GroundHold[256];
         private readonly float iso;
+        private readonly ISet<Vector3Int> pinned;
         private HashSet<Vector3Int> awake = new HashSet<Vector3Int>();
         private HashSet<Vector3Int> next = new HashSet<Vector3Int>();
         private readonly List<Vector3Int> batch = new List<Vector3Int>();
@@ -66,10 +67,15 @@ namespace Clube.Core
         }
 
         /// <param name="holdOf">How each material id falls and holds over air.</param>
-        public GroundSettling(World world, Func<byte, GroundHold> holdOf, float iso)
+        /// <param name="pinned">
+        /// Samples that never move and hold what rests on them, whatever they're made of (GL688: a furnace's stones, which
+        /// stay put while the leaves they were built on rot away). Read live, so it may change between steps.
+        /// </param>
+        public GroundSettling(World world, Func<byte, GroundHold> holdOf, float iso, ISet<Vector3Int> pinned = null)
         {
             World = world;
             this.iso = iso;
+            this.pinned = pinned;
             for (int id = 0; id < holds.Length; id++)
             {
                 holds[id] = holdOf((byte)id);
@@ -140,7 +146,7 @@ namespace Clube.Core
             }
             byte? material = World.GetMaterial(sample);
             GroundHold hold = material.HasValue ? holds[material.Value] : default;
-            if (hold.Fall == GroundFall.Stays)
+            if (hold.Fall == GroundFall.Stays || IsPinned(sample))
             {
                 falling.Remove(sample);
                 return false;
@@ -195,9 +201,14 @@ namespace Clube.Core
             }
         }
 
+        private bool IsPinned(Vector3Int sample)
+        {
+            return pinned != null && pinned.Count > 0 && pinned.Contains(sample);
+        }
+
         private bool IsHangingCandidate(Vector3Int sample)
         {
-            return IsSolid(sample, out byte material) && holds[material].CanHang && IsAir(sample + Vector3Int.down);
+            return IsSolid(sample, out byte material) && !IsPinned(sample) && holds[material].CanHang && IsAir(sample + Vector3Int.down);
         }
 
         private void MeasureRegion(Vector3Int start)
@@ -253,7 +264,7 @@ namespace Clube.Core
                         }
                         // Resting on it costs nothing; reaching out or hanging under it costs the material's loss.
                         GroundHold hold = holds[material];
-                        int loss = step == Vector3Int.up || hold.Fall == GroundFall.Stays ? 0 : hold.StabilityLoss;
+                        int loss = step == Vector3Int.up || hold.Fall == GroundFall.Stays || IsPinned(to) ? 0 : hold.StabilityLoss;
                         int value = level - loss;
                         if (value > 0 && (!stability.TryGetValue(to, out int known) || value > known))
                         {
@@ -265,7 +276,7 @@ namespace Clube.Core
             }
             foreach (Vector3Int sample in region)
             {
-                if (stability.ContainsKey(sample) || !IsSolid(sample, out byte material) || holds[material].Fall == GroundFall.Stays)
+                if (stability.ContainsKey(sample) || !IsSolid(sample, out byte material) || holds[material].Fall == GroundFall.Stays || IsPinned(sample))
                 {
                     continue;
                 }
@@ -281,6 +292,11 @@ namespace Clube.Core
                 return known;
             }
             bool result = IsSolid(sample, out _);
+            if (result && IsPinned(sample))
+            {
+                standing[sample] = true;
+                return true;
+            }
             for (int i = 1; result && i <= GroundDepth; i++)
             {
                 Vector3Int down = sample + Vector3Int.down * i;
