@@ -50,7 +50,7 @@ Core/
   Materials/     VoxelMaterial, MaterialRegistry (M9), TerrainLayers, MaterialCensus, MineralNotes (GL73)
   Items/         ItemDefinition (O6), ToolDefinition (GL1), Inventory + ItemStack (GL6), Composition (GL32),
                  ToolRepair (mending with ingots, GL286), TorchDefinition (GL287)
-  Crafting/      Recipe, CraftingStation (GL8; fixed batches GL61, fuel GL35)
+  Crafting/      Recipe, CraftingStation (GL8; fixed batches GL61, fuel GL35; strike power and upgrade slot GL699/GL703; ingot-form alloy variants GL700), StationUpgrade
   Economy/       Wallet, PriceList (GL12, GL13), ShopSpecialty (what a town shop buys, sells and teaches; its prices come
                  from the one PriceList, GL401), ShopHours (a keeper's day: counter, chores, sleep, GL404-GL406)
   Skills/        SkillSet: experience and levels per skill (GL47), MiningJournal (GL73), SkillTraining (lessons for coins, GL402)

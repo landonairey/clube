@@ -96,10 +96,9 @@ namespace Clube.Core.Tests
         public void MoveInto_FillsAPartialStackExactly_PartsIncluded()
         {
             var items = new Inventory(4);
-            items.Add(coal, 60, null, 0, 1f, 0.4f);
-            items.Move(0, 3);
-            items.Add(coal, 3, null, 0, 1f, 0.5f);
-            Assert.AreEqual(3.5f, items[0].Amount, 0.01f);
+            items.Set(0, new ItemStack(coal, 60, null, 0, 1f, 0.4f));
+            items.Set(3, new ItemStack(coal, 3, null, 0, 1f, 0.5f));
+            Assert.AreEqual(60.4f, items[0].Amount, 0.01f);
 
             items.MoveInto(3, 0, 1);
 
