@@ -360,6 +360,14 @@ flowchart LR
   progress is saved as which pieces are written; its ground is held back until it is (GL653, "Held columns"). `KeptHeights` (Core) is the store of generated heights both `MapRoads` and
   `MapSettlements` write through. Not done: houses are empty (the people are GL615), thieves' camps build nothing
   (GL617), and far terrain shows no settlements.
+  Buildings (GL710, GL711): each `SettlementBuilding` carries a `BuildingDesign` row (`SettlementSiteRules.Buildings`,
+  `BuildingDesign.Defaults()`: footprint, 1-3 stories, a roof-pitch range, a work yard, the settlement types and shop
+  specialties it is for), picked by `BuildingDesign.Choose`; places keep the catalog's largest footprint.
+  `SettlementStructures.Voxels` builds any row as square blocks; `RoofSkin` gives the samples within a voxel of the
+  roof's plane their plane density, written after the blocks by `SquareVoxels.Shape`, so the roof's top is one slant
+  over steps that stay square inside. Work-yard fixtures (`YardFixture`) are Game meshes (`YardFixtureMeshes`, stood by
+  `MapSettlements.FitYard`); `BuildingDesign.StationFor` stations a shop's yard workers at them (GL713, GL714). Streets
+  wander and climbs bend (GL712), straight only where lanes join.
 - **The map in a scene** (GL598-GL601, `Game/Map/`): `MapSession` (one per scene, `MapSession.Current`) watches
   `WorldView.Generator`; when it is a `BoundedMapGenerator` it builds the survey and the plan once (main thread: the
   survey completes height jobs; about 4 s at 5 km) and raises `Rebuilt`, again after every regenerate. Everything that
