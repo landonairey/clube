@@ -87,6 +87,42 @@ namespace Clube.Core
             }
         }
 
+        /// <summary>
+        /// GL711: sets samples to part-solid densities (a slanted roof's skin over its blocks, their top corners included)
+        /// in <paramref name="material"/> where they were air. The carved voxels round them are filled in, so marching
+        /// cubes draws the slant there while the blocks under it keep their square faces inside.
+        /// </summary>
+        public static void Shape(World world, IReadOnlyDictionary<Vector3Int, float> samples, byte material)
+        {
+            foreach (KeyValuePair<Vector3Int, float> sample in samples)
+            {
+                float? density = world.GetDensity(sample.Key);
+                if (!density.HasValue)
+                {
+                    continue;
+                }
+                // Exactly the plane's density, the blocks' top corners too (still solid, just under one), or the slant
+                // comes out in uneven steps where a block's full corner pulls the surface up.
+                if (Mathf.Abs(density.Value - sample.Value) > 0.004f)
+                {
+                    world.SetDensity(sample.Key, sample.Value);
+                    if (density.Value < 0.5f)
+                    {
+                        world.SetMaterial(sample.Key, material);
+                    }
+                }
+                // Blocks built since (a neighbouring slice) may have carved round it again.
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    Vector3Int voxel = sample.Key - Corner(corner);
+                    if (world.IsCarved(voxel))
+                    {
+                        world.SetCarved(voxel, false);
+                    }
+                }
+            }
+        }
+
         /// <summary>Builds one block of a material (a board placed by the player). False when the voxel is already solid.</summary>
         public static bool Place(World world, Vector3Int voxel, byte material, float iso)
         {

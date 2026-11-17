@@ -27,6 +27,16 @@ namespace Clube.Core
         public float Pad;
         /// <summary>Its terrace, an index into <see cref="SettlementSite.Terraces"/>.</summary>
         public int Terrace;
+        /// <summary>GL710: the catalog row it is built to; null builds the plain shop or house frame.</summary>
+        public BuildingDesign Design;
+        /// <summary>GL711: its roof's pitch, rise over run.</summary>
+        public float Pitch = 0.5f;
+
+        /// <summary>Metres across its front.</summary>
+        public float Width => Design != null ? Design.Width : TownLayout.ShopWidth;
+
+        /// <summary>Metres from its front to its back.</summary>
+        public float Depth => Design != null ? Design.Depth : TownLayout.ShopDepth;
 
         /// <summary>A point of the building's own frame (x across its front, z out of its front), in the world (x, z).</summary>
         public Vector2 ToWorld(Vector2 local)
@@ -114,6 +124,16 @@ namespace Clube.Core
         public int PeoplePerHouse = 2;
         /// <summary>Metres past the footprint the land's heights are kept for (banks and climbs reach out of it).</summary>
         public float Margin = 24f;
+        /// <summary>GL712: the most metres a street wanders to either side of its row's line between the houses.</summary>
+        public float StreetWander = 0.6f;
+        /// <summary>GL712: metres along a street from one wander to the same side to the next.</summary>
+        public float StreetWave = 16f;
+        /// <summary>GL712: metres in from a row's end where a climb leaves its street, so it bends round rather than turning square.</summary>
+        public float ClimbLead = 3f;
+        /// <summary>GL712: the most metres a house's front stands further back than its row's line (each its own share).</summary>
+        public float FrontStagger = 0.75f;
+        /// <summary>GL710: the building catalog: what each house and shop is built to.</summary>
+        public List<BuildingDesign> Buildings = BuildingDesign.Defaults();
     }
 
     /// <summary>

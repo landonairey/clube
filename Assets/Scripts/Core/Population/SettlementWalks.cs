@@ -79,16 +79,16 @@ namespace Clube.Core
         /// <summary>The spot on the apron in front of a building, <paramref name="across"/> metres along its front from the middle.</summary>
         public Vector2 Front(int building, float across = 0f, float forward = 1.4f)
         {
-            return site.Buildings[building].ToWorld(new Vector2(across, TownLayout.ShopDepth * 0.5f + forward));
+            return site.Buildings[building].ToWorld(new Vector2(across, site.Buildings[building].Depth * 0.5f + forward));
         }
 
         /// <summary>True when a point is inside a building, or within <paramref name="clearance"/> metres of its walls.</summary>
         public bool IsBlocked(Vector2 point, float clearance = Clearance)
         {
-            float halfWidth = TownLayout.ShopWidth * 0.5f + clearance, halfDepth = TownLayout.ShopDepth * 0.5f + clearance;
             foreach (SettlementBuilding building in site.Buildings)
             {
                 Vector2 local = TownLayout.Turn(point - building.Centre, -building.Yaw);
+                float halfWidth = building.Width * 0.5f + clearance, halfDepth = building.Depth * 0.5f + clearance;
                 if (Mathf.Abs(local.x) < halfWidth && Mathf.Abs(local.y) < halfDepth)
                 {
                     return true;
@@ -104,7 +104,6 @@ namespace Clube.Core
         /// </summary>
         public Vector2 PushOut(Vector2 point, float clearance = Clearance, int except = -1)
         {
-            float halfWidth = TownLayout.ShopWidth * 0.5f + clearance, halfDepth = TownLayout.ShopDepth * 0.5f + clearance;
             for (int pass = 0; pass < 3; pass++)
             {
                 bool moved = false;
@@ -116,6 +115,7 @@ namespace Clube.Core
                     }
                     SettlementBuilding building = site.Buildings[b];
                     Vector2 local = TownLayout.Turn(point - building.Centre, -building.Yaw);
+                    float halfWidth = building.Width * 0.5f + clearance, halfDepth = building.Depth * 0.5f + clearance;
                     float outX = halfWidth - Mathf.Abs(local.x), outY = halfDepth - Mathf.Abs(local.y);
                     if (outX <= 0f || outY <= 0f)
                     {
