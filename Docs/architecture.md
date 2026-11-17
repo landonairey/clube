@@ -386,6 +386,8 @@ flowchart LR
   ring of missing water opens as the viewer walks to a shore. Rivers are not merged: a river cell is a quad at any distance.
 - **The sea past the map** (GL600): the water map covers the map plus `WaterMargin`; `WaterView.BuildOuterSea` adds one
   flat mesh at sea level from its edge to 40 km, in cells growing from 256 m, wherever `MapShape.IsSeaSide`.
+  `Water.shader` darkens and closes the water by its depth from the camera depth texture (GL673), so the ground under
+  and past it is hidden; it needs the depth texture on (PC_RPAsset has it).
 
 **Adding a generator:** write an `IHeightField` (or `IVolumeField`) struct in
 `Fields/`; a generator class in `Generators/` deriving from

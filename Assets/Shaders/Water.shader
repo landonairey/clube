@@ -5,7 +5,9 @@
 // streams downwards (GL318: still water no longer twinkles at random: its facets lighten as the ripples tip them, and
 // facets meeting the bank lap with foam, UV3). Ripples move the surface in the drawing only (the water's volume never changes): every vertex rises
 // and falls by waves from its place in the world and the river's flow there (UV2), the same for every triangle sharing
-// it, so the surface never cracks, and each facet's tilt follows.
+// it, so the surface never cracks, and each facet's tilt follows. GL673: how much water lies behind a facet (from the
+// camera's depth texture) darkens it towards the abyss colour and makes it opaque, so the sea floor fades from sight a
+// few metres down and the ground's end past the map edge is never seen; deep open water rolls with long swells.
 Shader "Clube/Water"
 {
     Properties
@@ -21,6 +23,10 @@ Shader "Clube/Water"
         _Glimmer ("Lake glimmer", Range(0, 3)) = 1.0
         _ShoreFoam ("Shore foam", Range(0, 1)) = 0.7
         _FoamSpeed ("Shore foam speed", Float) = 1.1
+        _Abyss ("Abyss (deep water)", Color) = (0.03, 0.09, 0.14, 1)
+        _Murk ("Murk depth (m to mostly hide the floor)", Float) = 3.5
+        _Swell ("Deep swell strength", Range(0, 1)) = 0.6
+        _SwellFrom ("Swell starts at depth (m)", Float) = 3
         [HideInInspector] _ClipCovered ("Clip drawn chunk columns (far sheets)", Float) = 0
         [HideInInspector] _CoverageMask ("Chunk coverage", 2D) = "black" {}
         [HideInInspector] _Coverage ("Coverage origin, column width, size", Vector) = (0, 0, 1, 0)
@@ -47,6 +53,7 @@ Shader "Clube/Water"
             #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
             #include "Assets/Shaders/AdditionalLights.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
@@ -64,6 +71,10 @@ Shader "Clube/Water"
                 float _ClipCovered;
                 float4 _Coverage;
                 float4 _Detail;
+                half4 _Abyss;
+                float _Murk;
+                half _Swell;
+                float _SwellFrom;
             CBUFFER_END
             TEXTURE2D(_CoverageMask);
 
@@ -148,6 +159,19 @@ Shader "Clube/Water"
                 return lerp(still, running, river) * _Ripple;
             }
 
+            // Deep ocean swell (GL673): the slope of long rolling waves at a point, drawn in the shading only, so it shows
+            // the same on every sheet however coarse its triangles are.
+            float2 SwellSlope(float2 p)
+            {
+                float t = _Time.y;
+                float2 d0 = float2(0.83, 0.56), d1 = float2(0.35, 0.94), d2 = float2(0.97, -0.24), d3 = float2(-0.5, 0.87);
+                float2 slope = d0 * cos(dot(p, d0) * 0.33 + t * 0.95) * 0.10;
+                slope += d1 * cos(dot(p, d1) * 0.52 + t * 1.25) * 0.083;
+                slope += d2 * cos(dot(p, d2) * 0.81 + t * 1.6) * 0.065;
+                slope += d3 * cos(dot(p, d3) * 1.7 + t * 2.3) * 0.05;
+                return slope;
+            }
+
             Varyings Vertex(Attributes input)
             {
                 Varyings output;
@@ -197,6 +221,19 @@ Shader "Clube/Water"
                 float3 normalWS = normalize(cross(ddy(input.positionWS), ddx(input.positionWS)));
                 normalWS *= kind > 2.5 ? 1.0 : sign(normalWS.y + 1e-5);
 
+                // How much water lies behind this facet along the view (GL673), from the depth the ground left.
+                float2 screenUV = input.positionCS.xy / _ScaledScreenParams.xy;
+                float sceneEye = LinearEyeDepth(SampleSceneDepth(screenUV), _ZBufferParams);
+                float waterEye = LinearEyeDepth(input.positionCS.z, _ZBufferParams);
+                float thickness = max(0.0, sceneEye - waterEye);
+                float deep = 1.0 - exp(-thickness / max(_Murk, 0.01));
+                float open = smoothstep(_SwellFrom, _SwellFrom * 4.0, thickness) * (kind < 2.5 ? 1.0 : 0.0);
+                if (open > 0.0)
+                {
+                    float2 slope = SwellSlope(input.positionWS.xz) * (_Swell * open);
+                    normalWS = normalize(normalWS + float3(-slope.x, 0.0, -slope.y));
+                }
+
                 half3 shimmer;
                 if (kind > 1.5 && kind < 2.5)
                 {
@@ -209,6 +246,10 @@ Shader "Clube/Water"
                 {
                     shimmer = Shimmer(input.flow, centre, kind, random);
                 }
+
+                // Deep water darkens towards the abyss colour; the swell's faces turned to the light catch a little of it.
+                half crest = saturate(dot(normalWS.xz, float2(0.6, 0.8)) * 4.0) * open;
+                shimmer = lerp(shimmer, lerp(_Abyss.rgb, _Light.rgb, crest * 0.45), deep * 0.85);
 
                 // Foam where the water meets the bank (GL318): facets touching the ground whiten as small waves lap in.
                 float bank = input.bank;
@@ -228,7 +269,9 @@ Shader "Clube/Water"
                 direct += AdditionalDiffuse(input.positionWS, normalWS, input.positionCS);
                 half3 color = shimmer * (direct + ambient) + mainLight.color * glint;
                 color = MixFog(color, input.fog);
-                return half4(color, saturate(_Alpha + glint * 0.3 + bank * 0.08));
+                // Deep water hides the floor (GL673): nearly opaque a few metres down.
+                half alpha = lerp(_Alpha, 0.985, deep);
+                return half4(color, saturate(alpha + glint * 0.3 + bank * 0.08));
             }
             ENDHLSL
         }

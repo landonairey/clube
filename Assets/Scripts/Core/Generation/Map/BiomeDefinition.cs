@@ -106,7 +106,7 @@ namespace Clube.Core
 
         /// <summary>
         /// The built-in table, from the materials a terrain already has: sea floor and beaches of sand, bare rock where
-        /// it's cold (the peaks), sand desert where it's hot and dry, steppe of bare earth where it's dry, thin birch
+        /// it's cold (the peaks), sand desert where it's hot and dry, grassy steppe where it's dry (GL674), thin birch
         /// highlands, thick mixed forest where it's wet, and grassland everywhere else.
         /// </summary>
         public static List<BiomeDefinition> Defaults(VoxelMaterial sand, VoxelMaterial dirt, VoxelMaterial stone)
@@ -118,7 +118,8 @@ namespace Clube.Core
                 new BiomeDefinition(BeachName, new Vector2(-0.5f, 1.5f), all, all, sand, sand, 0f, -1f, 0f, 0f, new Color(0.87f, 0.8f, 0.58f)),
                 new BiomeDefinition(AlpineName, all, new Vector2(-Any, 1f), all, stone, stone, 0f, -1f, 0f, 0.1f, new Color(0.62f, 0.62f, 0.64f)),
                 new BiomeDefinition(DesertName, all, new Vector2(15f, Any), new Vector2(-Any, 0.22f), sand, sand, 0f, -1f, 0f, 0f, new Color(0.9f, 0.74f, 0.42f)),
-                new BiomeDefinition(SteppeName, all, all, new Vector2(-Any, 0.36f), dirt, dirt, 0.1f, 0f, 0.5f, 0.3f, new Color(0.66f, 0.62f, 0.36f)),
+                // GL674: steppe is dry grass, not bare earth (the grass itself grows taller or shorter on it as anywhere).
+                new BiomeDefinition(SteppeName, all, all, new Vector2(-Any, 0.36f), null, null, 0.1f, 0f, 0.5f, 0.3f, new Color(0.66f, 0.62f, 0.36f)),
                 new BiomeDefinition(HighlandName, new Vector2(90f, Any), all, all, null, null, 0.5f, 0f, 0.4f, 0.6f, new Color(0.42f, 0.55f, 0.4f)),
                 new BiomeDefinition(ForestName, all, all, new Vector2(0.6f, Any), null, null, 1.6f, 0.6f, 0.2f, 1f, new Color(0.16f, 0.42f, 0.2f)),
                 new BiomeDefinition(GrasslandName, all, all, all, null, null, 0.35f, -1f, 1f, 0.5f, new Color(0.5f, 0.72f, 0.34f)),
