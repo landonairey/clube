@@ -102,7 +102,11 @@ namespace Clube.Game
                 figure.Pose = seated ? FigureAction.Sit : FigureAction.Stand;
                 crew.Add(figure);
             }
+            Presence = gameObject.AddComponent<OffMapPresence>();
         }
+
+        /// <summary>GL725: how much of it is still here on its way off the map.</summary>
+        public OffMapPresence Presence { get; private set; }
 
         /// <summary>Fills the crates for a trip, once: a few kinds of the goods given, the trip picking which.</summary>
         public void Load(int trip, IReadOnlyList<ItemDefinition> goods, int seed)

@@ -21,6 +21,9 @@ namespace Clube.Game
 
         public CartRun Run { get; private set; }
 
+        /// <summary>GL725: how much of it is still here on its way off the map.</summary>
+        public OffMapPresence Presence { get; private set; }
+
         /// <summary>The crates on the bed.</summary>
         public IReadOnlyList<StorageChest> Crates => model.Crates;
 
@@ -40,6 +43,11 @@ namespace Clube.Game
                 horse = body.AddComponent<CartHorse>();
                 horse.Build(material);
             }
+            Presence = gameObject.AddComponent<OffMapPresence>();
+            if (horse != null)
+            {
+                Presence.Include(horse.gameObject);
+            }
         }
 
         private void OnDestroy()
@@ -50,22 +58,26 @@ namespace Clube.Game
             }
         }
 
-        /// <summary>Puts the cart where its run has it on the road, heading the way it goes.</summary>
-        public void Place(WorldView view, RoadLine line, IReadOnlyList<RouteBridges.Span> bridges, RunPlace state)
+        /// <summary>
+        /// Puts the cart <paramref name="along"/> metres down its road (and on past its end, <paramref name="beyond"/>, for a
+        /// road that leaves the map, GL725), heading the way it goes.
+        /// </summary>
+        public void Place(WorldView view, RoadLine line, IReadOnlyList<RouteBridges.Span> bridges, RoadLine beyond, float along, RunPlace state)
         {
-            // It stops short of each end by its own length, so whoever pulls it is still on the road.
+            // It stops short of each end by its own length, so whoever pulls it is still on the road; off the map's far end it is gone.
             float lead = horse != null ? HorseAhead + CartHorse.HalfLength + 0.5f : TradeCartModel.CarterAhead;
-            float distance = Mathf.Clamp(state.Fraction * line.Length, Mathf.Min(lead + 0.5f, line.Length * 0.5f), Mathf.Max(line.Length - lead - 0.5f, line.Length * 0.5f));
+            float total = line.Length + (beyond != null ? beyond.Length : 0f);
+            float distance = Mathf.Clamp(along, Mathf.Min(lead + 0.5f, total * 0.5f), beyond != null ? total : Mathf.Max(total - lead - 0.5f, total * 0.5f));
             float ahead = state.Outbound ? 1f : -1f;
             Transform world = view.transform;
-            Vector3 axle = world.TransformPoint(Surface(view, line, bridges, distance));
-            Vector3 front = Surface(view, line, bridges, distance + ahead * TradeCartModel.TiltReach);
-            Vector3 back = Surface(view, line, bridges, distance - ahead * TradeCartModel.TiltReach);
-            Vector3 carter = world.TransformPoint(Surface(view, line, bridges, distance + ahead * lead));
+            Vector3 axle = world.TransformPoint(Surface(view, line, bridges, beyond, distance));
+            Vector3 front = Surface(view, line, bridges, beyond, distance + ahead * TradeCartModel.TiltReach);
+            Vector3 back = Surface(view, line, bridges, beyond, distance - ahead * TradeCartModel.TiltReach);
+            Vector3 carter = world.TransformPoint(Surface(view, line, bridges, beyond, distance + ahead * lead));
             model.PlaceAt(axle, carter, world.TransformDirection(front - back), 0f, state.Moving, distance);
             if (horse != null)
             {
-                Vector3 at = world.TransformPoint(Surface(view, line, bridges, distance + ahead * HorseAhead));
+                Vector3 at = world.TransformPoint(Surface(view, line, bridges, beyond, distance + ahead * HorseAhead));
                 horse.Place(at, carter - axle, state.Moving, distance);
             }
         }
@@ -82,9 +94,16 @@ namespace Clube.Game
             CargoLoad.Fill(model.Crates, goods, random);
         }
 
-        // The road's surface at a distance along it, in the world's own metres: a bridge's deck, else the terrain, else the line.
-        private static Vector3 Surface(WorldView view, RoadLine line, IReadOnlyList<RouteBridges.Span> bridges, float distance)
+        // The road's surface at a distance along it, in the world's own metres: a bridge's deck, else the terrain, else the line;
+        // past the end of a road that leaves the map, the land on the way on (GL725).
+        private static Vector3 Surface(WorldView view, RoadLine line, IReadOnlyList<RouteBridges.Span> bridges, RoadLine beyond, float distance)
         {
+            if (beyond != null && distance > line.Length)
+            {
+                distance -= line.Length;
+                line = beyond;
+                bridges = null;
+            }
             distance = Mathf.Clamp(distance, 0f, line.Length);
             Vector2 flat = line.Flat(distance);
             if (bridges != null)

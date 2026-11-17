@@ -26,7 +26,7 @@ namespace Clube.Core
         /// <summary>Words that pick its cargo among the items (any, in the item's lower-case name); empty for general goods.</summary>
         public string[] CargoWords = Array.Empty<string>();
 
-        /// <summary>The route's length in metres, as planned.</summary>
+        /// <summary>The route's length in metres, as planned, and for a route out to the open sea the way on past the map's edge (GL725).</summary>
         public float Length;
 
         /// <summary>Real seconds its timetable is shifted by.</summary>
@@ -60,7 +60,11 @@ namespace Clube.Core
             "Sandpiper", "Rosalind", "Mayfly", "Halcyon", "Teal", "Northern Light", "Curlew", "Patience",
         };
 
-        public static List<BoatRun> Plan(WorldPlan plan, IReadOnlyList<VesselClass> classes, int seed)
+        /// <param name="offMapLength">
+        /// GL725: metres a route out to the open sea runs on past its end (<see cref="OffMap"/>), added to its vessels' trips;
+        /// null for none.
+        /// </param>
+        public static List<BoatRun> Plan(WorldPlan plan, IReadOnlyList<VesselClass> classes, int seed, Func<WaterRoute, float> offMapLength = null)
         {
             var runs = new List<BoatRun>();
             for (int r = 0; r < plan.WaterRoutes.Count; r++)
@@ -71,13 +75,14 @@ namespace Clube.Core
                     continue;
                 }
                 var random = new Random(unchecked(seed * 486187739 + r * 7919 + 23));
+                float beyond = route.To < 0 && offMapLength != null ? Math.Max(0f, offMapLength(route)) : 0f;
                 if (!string.IsNullOrEmpty(route.Vessel))
                 {
                     NamedVessel named = plan.Rules != null ? plan.Rules.Vessels.Find(vessel => vessel.Name == route.Vessel) : null;
                     VesselClass its = named != null ? VesselClass.Find(classes, named.Class) : null;
                     if (its != null && its.Kind == route.Kind)
                     {
-                        BoatRun run = Run(runs.Count, r, route, its, route.Vessel, random);
+                        BoatRun run = Run(runs.Count, r, route, its, route.Vessel, beyond, random);
                         run.Cargo = route.Cargo;
                         run.CargoWords = named.OreWords;
                         runs.Add(run);
@@ -87,16 +92,16 @@ namespace Clube.Core
                 {
                     for (int n = 0; each.Kind == route.Kind && !each.Raider && n < each.PerRoute; n++)
                     {
-                        runs.Add(Run(runs.Count, r, route, each, Names[random.Next(Names.Length)], random));
+                        runs.Add(Run(runs.Count, r, route, each, Names[random.Next(Names.Length)], beyond, random));
                     }
                 }
             }
             return runs;
         }
 
-        private static BoatRun Run(int index, int routeIndex, WaterRoute route, VesselClass its, string name, Random random)
+        private static BoatRun Run(int index, int routeIndex, WaterRoute route, VesselClass its, string name, float beyond, Random random)
         {
-            var run = new BoatRun { Index = index, Route = routeIndex, From = route.From, To = route.To, Class = its, Name = name, Length = route.Length };
+            var run = new BoatRun { Index = index, Route = routeIndex, From = route.From, To = route.To, Class = its, Name = name, Length = route.Length + beyond };
             run.Offset = (float)random.NextDouble() * run.Round;
             return run;
         }

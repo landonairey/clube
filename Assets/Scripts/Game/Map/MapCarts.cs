@@ -36,6 +36,8 @@ namespace Clube.Game
 
         private readonly List<CartKind> kinds = CartKind.Defaults();
         private readonly List<ItemDefinition> goods = new List<ItemDefinition>();
+        private readonly Dictionary<int, OffMapPath> offMapPaths = new Dictionary<int, OffMapPath>();
+        private readonly Dictionary<int, RoadLine> offMapLines = new Dictionary<int, RoadLine>();
         private List<CartRun> runs = new List<CartRun>();
         private RoadCart[] carts = System.Array.Empty<RoadCart>();
         private double[] delays = System.Array.Empty<double>(), heldUntil = System.Array.Empty<double>();
@@ -115,7 +117,11 @@ namespace Clube.Game
                 {
                     state = new RunPlace(state.Fraction, state.Outbound, false, state.Trip);
                 }
-                float distance = (line.Flat(state.Fraction * line.Length) - viewer).magnitude;
+                // GL725: a road off the map goes on past its end; the trip runs the whole way.
+                RoadLine beyond = run.LeavesMap ? OffMapLine(run.Road) : null;
+                float along = state.Fraction * (line.Length + (beyond != null ? beyond.Length : 0f));
+                Vector2 flat = beyond != null && along > line.Length ? beyond.Flat(along - line.Length) : line.Flat(Mathf.Min(along, line.Length));
+                float distance = (flat - viewer).magnitude;
                 if (carts[i] == null && distance <= showRange && material != null)
                 {
                     var body = new GameObject($"{run.Kind.Name} on road {run.Road}");
@@ -131,7 +137,12 @@ namespace Clube.Game
                 if (carts[i] != null)
                 {
                     carts[i].Load(state.Trip, GoodsOf(state.Outbound || run.To < 0 ? run.From : run.To), session.Plan.Seed);
-                    carts[i].Place(session.WorldView, line, bridges, state);
+                    carts[i].Place(session.WorldView, line, bridges, beyond, along, state);
+                    if (beyond != null)
+                    {
+                        OffMapPath path = offMapPaths[run.Road];
+                        carts[i].Presence.Set(OffMap.Interactable(path, along - line.Length), OffMap.Fade(path, along - line.Length));
+                    }
                 }
             }
         }
@@ -155,12 +166,35 @@ namespace Clube.Game
             }
             root = new GameObject("Carts").transform;
             root.SetParent(session.WorldView.transform, false);
-            runs = CartRuns.Plan(session.Plan, kinds, session.Plan.Seed);
+            offMapPaths.Clear();
+            offMapLines.Clear();
+            MapLayout layout = session.Layout;
+            foreach (PlannedRoad road in session.Plan.Roads)
+            {
+                if (road.LeavesMap && layout != null && road.Points.Count >= 2)
+                {
+                    Vector2 end = road.Points[road.Points.Count - 1];
+                    offMapPaths[road.Index] = OffMap.Lay(end, end - road.Points[road.Points.Count - 2], p => layout.WalksFreely(p.x, p.y),
+                        p => layout.LimitAt(p.x, p.y), p => layout.OutwardAt(p.x, p.y));
+                }
+            }
+            runs = CartRuns.Plan(session.Plan, kinds, session.Plan.Seed, road => offMapPaths.TryGetValue(road.Index, out OffMapPath path) ? path.Length : 0f);
             carts = new RoadCart[runs.Count];
             delays = new double[runs.Count];
             heldUntil = new double[runs.Count];
             Showing = 0;
             clock = CargoLoad.ClockOf(session.WorldView);
+        }
+
+        // GL725: the way on past the end of a road that leaves the map, on the land's own heights; worked out once.
+        private RoadLine OffMapLine(int road)
+        {
+            if (!offMapLines.TryGetValue(road, out RoadLine line))
+            {
+                line = offMapPaths.TryGetValue(road, out OffMapPath path) && path.Points.Count >= 2 ? new RoadLine(path.Points, session.Map.Height, 4f) : null;
+                offMapLines[road] = line;
+            }
+            return line;
         }
 
         // What a settlement's shops sell, of the items that exist.

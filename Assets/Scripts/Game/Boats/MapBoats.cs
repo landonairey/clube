@@ -39,6 +39,8 @@ namespace Clube.Game
         private readonly List<VesselClass> classes = VesselClass.Defaults();
         private readonly List<ItemDefinition> goods = new List<ItemDefinition>();
         private readonly Dictionary<long, RoadLine> lanes = new Dictionary<long, RoadLine>();
+        private readonly Dictionary<long, OffMapPath> offMapLanes = new Dictionary<long, OffMapPath>();
+        private readonly Dictionary<long, float> offMapStarts = new Dictionary<long, float>();
         private List<BoatRun> runs = new List<BoatRun>();
         private Boat[] boats = System.Array.Empty<Boat>();
         private double[] delays = System.Array.Empty<double>();
@@ -116,11 +118,22 @@ namespace Clube.Game
         /// </summary>
         public bool TryLane(int routeIndex, VesselClass vessel, out RoadLine lane)
         {
-            long key = ((long)routeIndex << 20) | (uint)classes.IndexOf(vessel);
+            long key = LaneKey(routeIndex, vessel);
             if (!lanes.TryGetValue(key, out lane))
             {
                 float start = Time.realtimeSinceStartup;
-                List<Vector2> points = WaterLanes.For(session.Plan.WaterRoutes[routeIndex], vessel, session.Map.Water, out bool whole);
+                WaterRoute route = session.Plan.WaterRoutes[routeIndex];
+                List<Vector2> points = WaterLanes.For(route, vessel, session.Map.Water, out bool whole);
+                if (route.To < 0 && points != null && points.Count >= 2 && session.Layout != null)
+                {
+                    // GL725: a route out to the open sea sails on past the map's edge, to ports beyond it: where its lane stops
+                    // short (the water map ends), the way out goes on from there, so the lane is still whole.
+                    whole = true;
+                    OffMapPath path = OffSea(points[points.Count - 1], points[points.Count - 1] - points[points.Count - 2]);
+                    offMapStarts[key] = WaterLanes.Length(points);
+                    offMapLanes[key] = path;
+                    points.AddRange(path.Points.GetRange(1, path.Points.Count - 1));
+                }
                 lane = points != null && points.Count >= 2 && WaterLanes.Length(points) > vessel.Length * 2f ? new RoadLine(points, (x, z) => 0f, 1000f) : null;
                 lanes[key] = lane;
                 float took = (Time.realtimeSinceStartup - start) * 1000f;
@@ -141,6 +154,18 @@ namespace Clube.Game
                 }
             }
             return lane != null;
+        }
+
+        private long LaneKey(int routeIndex, VesselClass vessel)
+        {
+            return ((long)routeIndex << 20) | (uint)classes.IndexOf(vessel);
+        }
+
+        // GL725: the way on out of the map from where a lane to the open sea ends.
+        private OffMapPath OffSea(Vector2 end, Vector2 along)
+        {
+            MapLayout layout = session.Layout;
+            return OffMap.Lay(end, along, p => layout.WalksFreely(p.x, p.y), p => layout.LimitAt(p.x, p.y), p => layout.OutwardAt(p.x, p.y));
         }
 
         /// <summary>The water's surface at a place (x, z): the river's or the sea's there; <paramref name="otherwise"/> off the water.</summary>
@@ -212,6 +237,12 @@ namespace Clube.Game
                         at = aside;
                     }
                     boats[i].Float(at, SurfaceAt(at, boats[i].Surface), ahead * (state.Outbound ? 1f : -1f), state.Moving);
+                    long key = LaneKey(run.Route, run.Class);
+                    if (offMapLanes.TryGetValue(key, out OffMapPath offMap))
+                    {
+                        float past = state.Fraction * lane.Length - offMapStarts[key];
+                        boats[i].Presence.Set(OffMap.Interactable(offMap, past), OffMap.Fade(offMap, past));
+                    }
                 }
             }
         }
@@ -248,11 +279,15 @@ namespace Clube.Game
             }
             root = new GameObject("Boats").transform;
             root.SetParent(session.WorldView.transform, false);
-            runs = BoatRuns.Plan(session.Plan, classes, session.Plan.Seed);
+            // GL725: a route out to the open sea is timed for the way on past the map's edge too.
+            runs = BoatRuns.Plan(session.Plan, classes, session.Plan.Seed, route => route.To < 0 && route.Points.Count >= 2 && session.Layout != null
+                ? OffSea(route.Points[route.Points.Count - 1], route.Points[route.Points.Count - 1] - route.Points[route.Points.Count - 2]).Length : 0f);
             boats = new Boat[runs.Count];
             delays = new double[runs.Count];
             heldUntil = new double[runs.Count];
             lanes.Clear();
+            offMapLanes.Clear();
+            offMapStarts.Clear();
             UnusableLanes = 0;
             Showing = 0;
             clock = CargoLoad.ClockOf(session.WorldView);

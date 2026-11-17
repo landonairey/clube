@@ -96,6 +96,13 @@ namespace Clube.Core
         public float SteepestSlope;
         /// <summary>Metres of it steeper than its class should be: where no gentler way exists.</summary>
         public float SteepLength;
+        /// <summary>
+        /// GL725: true for a trade road out of the map, from <see cref="From"/> to the edge of the free ground on a land side
+        /// (<see cref="ExitSide"/>); its carts go on past the edge, to the larger world.
+        /// </summary>
+        public bool LeavesMap;
+        /// <summary>GL725: the side a road that <see cref="LeavesMap"/> runs off.</summary>
+        public MapSide ExitSide;
     }
 
     /// <summary>The two kinds of water transit (GL596).</summary>
@@ -220,6 +227,18 @@ namespace Clube.Core
         public float CoastReach = 200f;
         /// <summary>How far from its centre a settlement's river landing may lie, in metres.</summary>
         public float RiverReach = 120f;
+        /// <summary>
+        /// GL725: "trade routes go off the map bounds to simulate trading with a larger world": each land side that is
+        /// neither sea nor the void gets a trade road off the map, from the settlement on the roads nearest it; false for none.
+        /// </summary>
+        public bool ExitRoads = true;
+        /// <summary>GL725: the most of a trade road off the map that may be steeper than its class; a steeper way out gets no road.</summary>
+        public float ExitRoadSteepShare = 0.15f;
+        /// <summary>
+        /// GL725: every sea port's vessels also sail out past the map's edge, to ports beyond it: the hub gets a route out to
+        /// the open sea even when it has ports on the map to trade with; false for only where it has none.
+        /// </summary>
+        public bool OpenSeaRoutes = true;
         /// <summary>Towns nearest the capital that get a paved road to it, beside the cities.</summary>
         public int PavedTownsFromCapital = 2;
         /// <summary>Thieves keep between these distances of the nearest settlement, in metres.</summary>

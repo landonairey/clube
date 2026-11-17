@@ -51,13 +51,17 @@ namespace Clube.Core
     /// <summary>Where something that plies a route (a cart on its road, a boat on its water route) is at a moment.</summary>
     public readonly struct RunPlace
     {
-        public RunPlace(float fraction, bool outbound, bool moving, int trip)
+        public RunPlace(float fraction, bool outbound, bool moving, int trip, float rested = 0f)
         {
             Fraction = fraction;
             Outbound = outbound;
             Moving = moving;
             Trip = trip;
+            Rested = rested;
         }
+
+        /// <summary>GL726: real seconds it has stood at the end it is at; 0 while moving.</summary>
+        public float Rested { get; }
 
         /// <summary>How far along its route it is, 0 at the settlement the route was laid from to 1 at its end.</summary>
         public float Fraction { get; }
@@ -89,13 +93,13 @@ namespace Clube.Core
             }
             if (into < oneWay + rest)
             {
-                return new RunPlace(1f, true, false, trip);
+                return new RunPlace(1f, true, false, trip, into - oneWay);
             }
             if (into < 2f * oneWay + rest)
             {
                 return new RunPlace(1f - (into - oneWay - rest) / oneWay, false, true, trip + 1);
             }
-            return new RunPlace(0f, false, false, trip + 1);
+            return new RunPlace(0f, false, false, trip + 1, into - 2f * oneWay - rest);
         }
     }
 
@@ -114,8 +118,14 @@ namespace Clube.Core
 
         public CartKind Kind;
 
-        /// <summary>The road's length in metres.</summary>
+        /// <summary>The road's length in metres, and for a road that leaves the map the way on past its end (GL725).</summary>
         public float Length;
+
+        /// <summary>GL725: true when its road leaves the map: its far end is the larger world, past the map's border.</summary>
+        public bool LeavesMap;
+
+        /// <summary>GL725: the share of <see cref="Length"/> that lies past the road's end, off the map.</summary>
+        public float OffMapShare;
 
         /// <summary>Real seconds its timetable is shifted by, so carts are spread along their roads.</summary>
         public float Offset;
@@ -142,7 +152,11 @@ namespace Clube.Core
         /// <summary>The shortest road, in metres, that gets a cart.</summary>
         public const float ShortestRoad = 80f;
 
-        public static List<CartRun> Plan(WorldPlan plan, IReadOnlyList<CartKind> kinds, int seed)
+        /// <param name="offMapLength">
+        /// GL725: metres a road that leaves the map runs on past its end (<see cref="OffMap"/>), added to its carts' trips;
+        /// null for none.
+        /// </param>
+        public static List<CartRun> Plan(WorldPlan plan, IReadOnlyList<CartKind> kinds, int seed, Func<PlannedRoad, float> offMapLength = null)
         {
             var runs = new List<CartRun>();
             foreach (PlannedRoad road in plan.Roads)
@@ -152,13 +166,14 @@ namespace Clube.Core
                     continue;
                 }
                 var random = new System.Random(unchecked(seed * 486187739 + road.Index * 7919 + 11));
+                float beyond = road.LeavesMap && offMapLength != null ? Math.Max(0f, offMapLength(road)) : 0f;
                 if (road.Class == RoadClass.PavedCartPath)
                 {
                     foreach (CartKind kind in kinds)
                     {
                         if (Array.IndexOf(kind.Roads, road.Class) >= 0)
                         {
-                            runs.Add(Run(runs.Count, road, kind, random));
+                            runs.Add(Run(runs.Count, road, kind, beyond, random));
                         }
                     }
                     continue;
@@ -166,7 +181,7 @@ namespace Clube.Core
                 CartKind drawn = Draw(kinds, road.Class, random);
                 if (drawn != null)
                 {
-                    runs.Add(Run(runs.Count, road, drawn, random));
+                    runs.Add(Run(runs.Count, road, drawn, beyond, random));
                 }
             }
             return runs;
@@ -201,9 +216,13 @@ namespace Clube.Core
             return last;
         }
 
-        private static CartRun Run(int index, PlannedRoad road, CartKind kind, System.Random random)
+        private static CartRun Run(int index, PlannedRoad road, CartKind kind, float beyond, System.Random random)
         {
-            var run = new CartRun { Index = index, Road = road.Index, From = road.From, To = road.To, Kind = kind, Length = road.Length };
+            var run = new CartRun
+            {
+                Index = index, Road = road.Index, From = road.From, To = road.To, Kind = kind, Length = road.Length + beyond, LeavesMap = road.LeavesMap,
+                OffMapShare = road.Length + beyond > 0f ? beyond / (road.Length + beyond) : 0f,
+            };
             run.Offset = (float)random.NextDouble() * run.Round;
             return run;
         }
