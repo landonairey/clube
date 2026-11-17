@@ -97,6 +97,49 @@ namespace Clube.Core
             return false;
         }
 
+        /// <summary>
+        /// GL668/GL669: the nearest point to <paramref name="point"/> that is at least <paramref name="clearance"/> metres
+        /// outside every building but <paramref name="except"/> (-1 for none): a walker pressed against a wall, or a spot
+        /// laid inside a neighbour, is moved out past the nearest wall. The point itself when it is clear.
+        /// </summary>
+        public Vector2 PushOut(Vector2 point, float clearance = Clearance, int except = -1)
+        {
+            float halfWidth = TownLayout.ShopWidth * 0.5f + clearance, halfDepth = TownLayout.ShopDepth * 0.5f + clearance;
+            for (int pass = 0; pass < 3; pass++)
+            {
+                bool moved = false;
+                for (int b = 0; b < site.Buildings.Count; b++)
+                {
+                    if (b == except)
+                    {
+                        continue;
+                    }
+                    SettlementBuilding building = site.Buildings[b];
+                    Vector2 local = TownLayout.Turn(point - building.Centre, -building.Yaw);
+                    float outX = halfWidth - Mathf.Abs(local.x), outY = halfDepth - Mathf.Abs(local.y);
+                    if (outX <= 0f || outY <= 0f)
+                    {
+                        continue;
+                    }
+                    if (outX < outY)
+                    {
+                        local.x = Mathf.Sign(local.x == 0f ? 1f : local.x) * (halfWidth + 0.01f);
+                    }
+                    else
+                    {
+                        local.y = Mathf.Sign(local.y == 0f ? 1f : local.y) * (halfDepth + 0.01f);
+                    }
+                    point = building.Centre + TownLayout.Turn(local, building.Yaw);
+                    moved = true;
+                }
+                if (!moved)
+                {
+                    break;
+                }
+            }
+            return point;
+        }
+
         /// <summary>The length of the straight way between two points, a metre inside a building counting many times over.</summary>
         public float StraightCost(Vector2 from, Vector2 to)
         {

@@ -44,6 +44,9 @@ namespace Clube.Core
         /// <summary>The item id of the tool held and struck with; empty for bare hands.</summary>
         public string Tool;
 
+        /// <summary>GL669: what is held in the hand while the pose is held at the place, for a duty with no <see cref="Tool"/> (a broom to sweep with).</summary>
+        public FigureProp Prop = FigureProp.None;
+
         /// <summary>What the work goes for: species ids for work on animals; unused by other works.</summary>
         public string[] Targets = System.Array.Empty<string>();
 
@@ -79,7 +82,7 @@ namespace Clube.Core
                 new Duty { Id = Sleep, Name = "asleep", Place = DutyPlace.Bed, Pose = FigureAction.Lie },
                 new Duty { Id = AtHome, Name = "at home", Place = DutyPlace.Home, Pose = FigureAction.Stand },
                 new Duty { Id = Stroll, Name = "out for a walk", Place = DutyPlace.Street, Pose = FigureAction.Stand },
-                new Duty { Id = "sweep", Name = "sweeping the yard", Place = DutyPlace.Yard, Pose = FigureAction.Sweep },
+                new Duty { Id = "sweep", Name = "sweeping the yard", Place = DutyPlace.Yard, Pose = FigureAction.Sweep, Prop = FigureProp.Broom },
 
                 // Lumber: out to the nearest standing tree with an axe; boards are cut in the yard.
                 new Duty

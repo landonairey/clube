@@ -150,6 +150,30 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void APointInABuilding_IsPushedOutPastTheNearestWall()
+        {
+            SettlementSite site = Site("city", 20, "lumber-supplies", "mining", "blacksmith", "fabrics", "tannery");
+            var walks = new SettlementWalks(site);
+
+            for (int b = 0; b < site.Buildings.Count; b++)
+            {
+                Vector2 inside = site.Buildings[b].ToWorld(new Vector2(0.5f, 0.3f));
+                Vector2 outside = walks.PushOut(inside, 0.3f);
+                Assert.IsFalse(walks.IsBlocked(outside, 0.29f), $"building {b}");
+                Assert.Less(Vector2.Distance(inside, outside), TownLayout.ShopDepth, "out by the nearest wall");
+                Assert.AreEqual(inside, walks.PushOut(inside, 0.3f, b), "its own building is let be");
+            }
+            Vector2 clear = walks.Front(0, 0f, 2f);
+            Assert.AreEqual(clear, walks.PushOut(clear, 0.3f), "a clear point stays");
+        }
+
+        [Test]
+        public void TheSweepDuty_HoldsABroom()
+        {
+            Assert.AreEqual(FigureProp.Broom, Duty.Find(Duty.Defaults(), "sweep").Prop);
+        }
+
+        [Test]
         public void AWalk_ToASpotInTheOpen_IsStraight()
         {
             SettlementSite site = Site("outpost", 3, "lumber-supplies");

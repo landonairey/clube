@@ -148,10 +148,40 @@ namespace Clube.Game
             if (!toolMeshes.TryGetValue(tool, out Mesh mesh))
             {
                 mesh = HeldToolMeshes.Build(tool, withHand: false);
+                // GL667: a held tool is modelled with its haft up +y from the grip, but a figure's hand frame runs -y down
+                // the forearm and +z forward out of the fist (FigureProps): turned as it was, the head sat in the shoulder.
+                ToHandFrame(mesh);
                 toolMeshes[tool] = mesh;
             }
             return mesh;
         }
+
+        // Turns a tool model from the view's frame (haft along +y) to a figure's hand frame (haft along +z, out of the fist).
+        private static void ToHandFrame(Mesh mesh)
+        {
+            Quaternion turn = HandTurn;
+            var vertices = new List<Vector3>();
+            var normals = new List<Vector3>();
+            mesh.GetVertices(vertices);
+            mesh.GetNormals(normals);
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                vertices[i] = turn * vertices[i];
+            }
+            for (int i = 0; i < normals.Count; i++)
+            {
+                normals[i] = turn * normals[i];
+            }
+            mesh.SetVertices(vertices);
+            if (normals.Count == vertices.Count)
+            {
+                mesh.SetNormals(normals);
+            }
+            mesh.RecalculateBounds();
+        }
+
+        /// <summary>The turn from a held tool's model frame (haft +y) to a figure's hand frame (haft +z).</summary>
+        public static Quaternion HandTurn => Quaternion.Euler(90f, 0f, 0f);
 
         private void Update()
         {
@@ -177,7 +207,8 @@ namespace Clube.Game
             {
                 SettlementSite site = settlements.BuiltSite(each.Key);
                 bool home = site != null && SettlementSite.Beyond(site.Bounds, viewer) <= liveRange + leaveMargin;
-                if (!home && !NearPost(each.Key, viewer, liveRange + leaveMargin))
+                // GL670: workers out far from their town (lumberjacks) stay while the viewer is with them.
+                if (!home && !NearPost(each.Key, viewer, liveRange + leaveMargin) && !AnyNear(each.Value, viewer, liveRange + leaveMargin))
                 {
                     leaving.Add(each.Key);
                 }
@@ -211,6 +242,19 @@ namespace Clube.Game
                     Settle(i, settlements.SiteOf(i));
                 }
             }
+        }
+
+        // True when any of these people stands within a distance of the viewer.
+        private static bool AnyNear(List<Villager> people, Vector2 viewer, float within)
+        {
+            foreach (Villager villager in people)
+            {
+                if (villager != null && (new Vector2(villager.At.x, villager.At.z) - viewer).sqrMagnitude <= within * within)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // True when a settlement's people are out at one far place by their duty of the hour, and the viewer is near it.
@@ -264,7 +308,7 @@ namespace Clube.Game
                 var body = new GameObject($"{site.Settlement.Name}: {resident.Occupation.Name} {resident.Index + 1}");
                 body.transform.SetParent(root, false);
                 Villager villager = body.AddComponent<Villager>();
-                villager.Setup(this, site, walks, resident, material);
+                villager.Setup(this, site, walks, resident, material, people);
                 if (resident.Occupation.Outlaw)
                 {
                     body.AddComponent<Bandit>().Setup(villager, Thieves);
