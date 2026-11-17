@@ -47,6 +47,7 @@ namespace Clube.Game
         private Transform root;
         private int version = -1;
         private double lastSeconds;
+        private bool loggedLaneProblem;
 
         /// <summary>The classes of vessel; change a row to change every vessel of the class.</summary>
         public List<VesselClass> Classes => classes;
@@ -62,6 +63,9 @@ namespace Clube.Game
 
         /// <summary>The longest a lane took to find, in milliseconds.</summary>
         public float LongestLaneMilliseconds { get; private set; }
+
+        /// <summary>Route and vessel class pairs whose lane is missing or stops short of the route's end (GL687).</summary>
+        public int UnusableLanes { get; private set; }
 
         public MapSession Session => session;
 
@@ -123,8 +127,17 @@ namespace Clube.Game
                 LongestLaneMilliseconds = Mathf.Max(LongestLaneMilliseconds, took);
                 if (lane == null || !whole)
                 {
-                    UnityEngine.Debug.Log($"Boats: water route {routeIndex} "
-                        + (lane == null ? $"has no water a {vessel.Name.ToLowerInvariant()} floats on" : "is not open water end to end: its lane stops short") + ".", this);
+                    // Every route and class that fails is counted; only the first is logged, once a session (GL687).
+                    // A route is planned between two harbours across the map's water graph; where the real water along it is too
+                    // shallow or too narrow for this class of vessel, its lane is cut short and the vessel sails what's there.
+                    UnusableLanes++;
+                    if (!loggedLaneProblem)
+                    {
+                        loggedLaneProblem = true;
+                        UnityEngine.Debug.Log($"Boats: water route {routeIndex} "
+                            + (lane == null ? $"has no water a {vessel.Name.ToLowerInvariant()} floats on" : "is not open water end to end: its lane stops short")
+                            + ". Such routes are counted in MapBoats.UnusableLanes; this is logged once per session.", this);
+                    }
                 }
             }
             return lane != null;
@@ -240,6 +253,7 @@ namespace Clube.Game
             delays = new double[runs.Count];
             heldUntil = new double[runs.Count];
             lanes.Clear();
+            UnusableLanes = 0;
             Showing = 0;
             clock = CargoLoad.ClockOf(session.WorldView);
             lastSeconds = Seconds;
