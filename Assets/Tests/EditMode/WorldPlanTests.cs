@@ -395,11 +395,17 @@ namespace Clube.Core.Tests
         // ---- GL599, GL601: the map's picture and the start ----
 
         [Test]
-        public void TheStartIsOnDryLandBesideTheCapital()
+        public void TheStartIsOnDryLandBesideAnOutpostWithAMerchant()
         {
             Vector2 start = MapStart.Pick(plan, survey);
+            PlannedSettlement home = MapStart.Home(plan);
             Assert.That(MapStart.IsDry(survey, start), "the start is on land");
-            Assert.That(Vector2.Distance(start, plan.Capital.Position), Is.LessThanOrEqualTo(MapStart.Offset + 0.01f));
+            Assert.That(home.Type.Id, Is.EqualTo(MapStart.StartType));
+            Assert.That(home.Has("merchant"), "the start's outpost has a Merchant shop");
+            Assert.That(Vector2.Distance(start, home.Position), Is.LessThanOrEqualTo(MapStart.Offset + 0.01f));
+            int shops = home.Shops.Count;
+            Assert.That(MapStart.Home(plan), Is.SameAs(home), "asking again gives the same outpost");
+            Assert.That(home.Shops.Count, Is.EqualTo(shops), "and adds no second shop");
         }
 
         [Test]

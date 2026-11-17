@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Clube.Core
 {
     /// <summary>
-    /// Where a new arrival is set down on a bounded map (GL601): by the capital's edge, else by the largest friendly
+    /// Where a new arrival is set down on a bounded map (GL601, GL656): beside an outpost with a Merchant shop, else the capital, else the largest friendly
     /// settlement, else on the flat dry land nearest the middle of the map.
     /// </summary>
     public static class MapStart
@@ -11,11 +11,55 @@ namespace Clube.Core
         /// <summary>Metres from the settlement's middle the start stands, towards the map's middle.</summary>
         public const float Offset = 24f;
 
-        /// <summary>The start's place on the map (x, z); always on a survey cell that is mostly dry when the map has one.</summary>
-        public static Vector2 Pick(WorldPlan plan, ResourceSurvey survey)
+        /// <summary>The settlement type a new arrival starts beside (GL656).</summary>
+        public const string StartType = "outpost";
+
+        // The Merchant specialty's id (its row in EconomySpecialty.Defaults).
+        private const string MerchantId = "merchant";
+
+        /// <summary>
+        /// The settlement the start stands beside (GL656): an outpost with a Merchant shop, the one nearest the capital on the
+        /// capital's own road network if any is. With no such outpost, the outpost nearest the capital (on its network first) is
+        /// given a Merchant shop. With no outpost at all, the capital, else the largest friendly settlement.
+        /// </summary>
+        public static PlannedSettlement Home(WorldPlan plan)
         {
-            PlannedSettlement home = plan != null ? plan.Capital : null;
-            if (home == null && plan != null)
+            if (plan == null)
+            {
+                return null;
+            }
+            PlannedSettlement capital = plan.Capital;
+            PlannedSettlement best = null, bestWithShop = null;
+            foreach (PlannedSettlement settlement in plan.Settlements)
+            {
+                if (settlement.Type.Id != StartType || settlement.Type.Hostile)
+                {
+                    continue;
+                }
+                if (IsBetterStart(settlement, best, capital))
+                {
+                    best = settlement;
+                }
+                if (settlement.Has(MerchantId) && IsBetterStart(settlement, bestWithShop, capital))
+                {
+                    bestWithShop = settlement;
+                }
+            }
+            if (bestWithShop != null && (best == null || OnCapitalNetwork(bestWithShop, capital) || !OnCapitalNetwork(best, capital)))
+            {
+                return bestWithShop;
+            }
+            if (best != null)
+            {
+                EconomySpecialty merchant = EconomySpecialty.Defaults().Find(s => s.Id == MerchantId);
+                if (merchant != null)
+                {
+                    best.Shops.Add(new PlannedShop { Specialty = merchant, Guaranteed = true, Reason = "the start's shop (GL656)" });
+                }
+                return best;
+            }
+            PlannedSettlement home = capital;
+            if (home == null)
             {
                 foreach (PlannedSettlement settlement in plan.Settlements)
                 {
@@ -25,6 +69,37 @@ namespace Clube.Core
                     }
                 }
             }
+            return home;
+        }
+
+        private static bool OnCapitalNetwork(PlannedSettlement settlement, PlannedSettlement capital)
+        {
+            return capital == null || settlement.RoadNetwork == capital.RoadNetwork;
+        }
+
+        // On the capital's network beats off it; then nearer the capital (or the map's first, with no capital).
+        private static bool IsBetterStart(PlannedSettlement candidate, PlannedSettlement current, PlannedSettlement capital)
+        {
+            if (current == null)
+            {
+                return true;
+            }
+            bool candidateOn = OnCapitalNetwork(candidate, capital), currentOn = OnCapitalNetwork(current, capital);
+            if (candidateOn != currentOn)
+            {
+                return candidateOn;
+            }
+            return capital != null
+                && (candidate.Position - capital.Position).sqrMagnitude < (current.Position - capital.Position).sqrMagnitude;
+        }
+
+        /// <summary>
+        /// The start's place on the map (x, z), beside <see cref="Home"/> (which may give an outpost its Merchant shop, so call it
+        /// before the settlements are built); always on a survey cell that is mostly dry when the map has one.
+        /// </summary>
+        public static Vector2 Pick(WorldPlan plan, ResourceSurvey survey)
+        {
+            PlannedSettlement home = Home(plan);
             Vector2 centre = survey.Area.center;
             if (home != null)
             {
