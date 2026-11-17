@@ -474,5 +474,103 @@ namespace Clube.Core.Tests
             again.Restore("7:ff");
             Assert.IsTrue(again.Done, "a save of another settlement is ignored");
         }
+
+        [Test]
+        public void TheCapitalHasACastleAndAGuardTower_InsideATownWall_AndACityAGuardTower()
+        {
+            var rules = new SettlementSiteRules();
+            PlannedSettlement capital = Settlement("capital", 28, 8, new Vector2(1000f, 1000f));
+            SettlementSite site = SettlementLayout.Plan(capital, 32f, rules, (x, z) => 40f);
+
+            Assert.AreEqual("castle", site.Buildings[8].Design.Id, "the first place after the shops");
+            Assert.AreEqual("guard-tower", site.Buildings[9].Design.Id);
+            Assert.AreEqual(1, site.Buildings.Count(b => b.Design.Landmark && b.Design.Id == "castle"));
+            Assert.AreEqual(5, site.Wall.Count, "a closed ring of four corners");
+            Rect bounds = site.Bounds;
+            foreach (Vector2 corner in site.Wall)
+            {
+                Assert.IsFalse(bounds.Contains(corner), "the wall stands outside everything the settlement changes");
+            }
+
+            PlannedSettlement city = Settlement("city", 20, 5, new Vector2(1000f, 1000f));
+            SettlementSite citySite = SettlementLayout.Plan(city, 32f, rules, (x, z) => 40f);
+            Assert.AreEqual("guard-tower", citySite.Buildings[5].Design.Id);
+            Assert.IsEmpty(citySite.Wall, "only the capital is walled");
+
+            // The catalog never picks a landmark for an ordinary house.
+            for (int i = 0; i < 50; i++)
+            {
+                Assert.IsFalse(BuildingDesign.Choose(rules.Buildings, capital.Type, null, false, i / 50f).Landmark);
+            }
+        }
+
+        [Test]
+        public void ACastleIsStoneWithBattlementsAndTurrets_AndHasNoSlantedRoofSkin()
+        {
+            BuildingDesign castle = BuildingDesign.Find(BuildingDesign.Defaults(), "castle");
+            var cells = SettlementStructures.Voxels(castle, 0.5f, 0.25f);
+            float top = TownLayout.FloorHeight + castle.Stories * castle.StoryHeight;
+            Assert.IsTrue(cells.Where(c => Mathf.Abs(c.Centre.x) > castle.Width * 0.5f - 0.25f && c.Centre.y > 1f && c.Centre.y < top)
+                .All(c => c.Part == TownStructures.ShopPart.Stone), "the walls are stone through");
+            float highest = cells.Max(c => c.Centre.y);
+            Assert.Greater(highest, top + BuildingDesign.ParapetHeight + 1f, "turrets rise over the parapet");
+            // The parapet has gaps between its merlons.
+            int merlonTops = cells.Count(c => Mathf.Abs(c.Centre.y - (top + BuildingDesign.ParapetHeight - 0.125f)) < 0.01f && Mathf.Abs(c.Centre.x) < 1f);
+            Assert.Greater(merlonTops, 0);
+            Assert.IsEmpty(SettlementStructures.RoofSkin(new SettlementBuilding { Design = castle }, 0.25f));
+        }
+
+        [Test]
+        public void TheTownWall_FollowsTheGround_AndLeavesAGateWhereARoadComesIn()
+        {
+            var road = new SettlementRoad { Points = new List<Vector2> { new Vector2(1000f, 700f), new Vector2(1000f, 1300f) }, Reach = 3f, HalfWidth = 2.5f };
+            PlannedSettlement capital = Settlement("capital", 28, 8, new Vector2(1000f, 1000f));
+            SettlementSite site = SettlementLayout.Plan(capital, 32f, new SettlementSiteRules(), (x, z) => 40f + x * 0.01f, roads: new[] { road });
+            Assert.AreEqual(5, site.Wall.Count);
+            Assert.IsTrue(SettlementWalls.IsGate(site, new Vector2(1000f, site.Wall[0].y)), "a gateway where the road crosses");
+            Assert.IsFalse(SettlementWalls.IsGate(site, new Vector2(site.Wall[0].x + 2f, site.Wall[0].y)));
+
+            List<SettlementWalls.Stretch> stretches = SettlementWalls.Stretches(site);
+            Assert.AreEqual(4, stretches.Count(s => s.Corner));
+            Dictionary<Vector3Int, byte> blocks = SettlementWalls.Blocks(site, stretches[0], 0.25f, 7);
+            Assert.IsNotEmpty(blocks);
+            Assert.IsTrue(blocks.Values.All(m => m == 7));
+            // Its top stands the wall's height over the ground under it.
+            Vector3Int highest = blocks.Keys.OrderByDescending(k => k.y).First();
+            float ground = site.HeightAt(highest.x * 0.25f, highest.z * 0.25f);
+            Assert.AreEqual(ground + site.Rules.WallHeight + site.Rules.WallTowerRise, (highest.y + 1) * 0.25f, 0.3f, "the corner tower's top");
+        }
+
+        [Test]
+        public void SettlementLights_TorchesForTheSmall_BonfiresForTheMiddling_LanternsForTheLarge()
+        {
+            var rules = new SettlementSiteRules();
+            SettlementSite camp = SettlementLayout.Plan(Settlement("camp", 1, 1, new Vector2(1000f, 1000f)), 32f, rules, (x, z) => 40f);
+            Assert.AreEqual(2, camp.Lights.Count, "a couple of torches");
+            Assert.IsTrue(camp.Lights.All(l => l.Kind.Id == "torch"));
+
+            SettlementSite town = SettlementLayout.Plan(Settlement("town", 12, 3, new Vector2(1000f, 1000f)), 32f, rules, (x, z) => 40f);
+            Assert.IsTrue(town.Lights.Any(l => l.Kind.Id == "torch"));
+            Assert.IsTrue(town.Lights.Any(l => l.Kind.Id == "bonfire"), "a 2 x 2 m bonfire");
+            Assert.AreEqual(2f, town.Lights.First(l => l.Kind.Id == "bonfire").Kind.Size);
+
+            SettlementSite city = SettlementLayout.Plan(Settlement("city", 20, 5, new Vector2(1000f, 1000f)), 32f, rules, (x, z) => 40f);
+            Assert.Greater(city.Lights.Count, city.Buildings.Count / 2);
+            Assert.IsTrue(city.Lights.All(l => l.Kind.Id == "lantern"));
+
+            // Each stands clear of every building and of every other light.
+            foreach (SettlementSite site in new[] { camp, town, city })
+            {
+                foreach (SettlementLight light in site.Lights)
+                {
+                    foreach (SettlementBuilding building in site.Buildings)
+                    {
+                        Vector2 local = Quaternion.Euler(0f, 0f, building.Yaw) * (light.Position - building.Centre);
+                        Assert.IsFalse(Mathf.Abs(local.x) < building.Width * 0.5f && Mathf.Abs(local.y) < building.Depth * 0.5f, "not inside a building");
+                    }
+                    Assert.IsTrue(site.Lights.All(o => o == light || Vector2.Distance(o.Position, light.Position) > 2f));
+                }
+            }
+        }
     }
 }

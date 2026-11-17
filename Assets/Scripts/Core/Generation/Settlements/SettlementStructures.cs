@@ -40,6 +40,11 @@ namespace Clube.Core
         public static float RoofAt(BuildingDesign design, float pitch, float voxel, float outward)
         {
             float top = TownLayout.FloorHeight + design.Stories * design.StoryHeight;
+            if (design.Battlements)
+            {
+                // GL715: a flat roof; its parapet and turrets are the highest it reaches.
+                return top + BuildingDesign.ParapetHeight + (design.Turrets > 0f ? BuildingDesign.TurretRise : 0f);
+            }
             float reach = design.Depth * 0.5f + Eave(voxel);
             return top + Mathf.Max(0f, reach - Mathf.Abs(outward)) * pitch;
         }
@@ -92,6 +97,15 @@ namespace Clube.Core
                         else if (y < top)
                         {
                             part = Wall(design, x, y, z, w, d, floor, story, voxel, inside, sideWall, backWall, frontWall, post);
+                            // GL715: a castle's or a tower's walls are stone through.
+                            if (design.Masonry && part.HasValue && (sideWall || backWall || frontWall))
+                            {
+                                part = TownStructures.ShopPart.Stone;
+                            }
+                        }
+                        else if (design.Battlements)
+                        {
+                            part = Battlement(design, x, y, z, w, d, top, voxel, sideWall || backWall || frontWall, inside);
                         }
                         else if (roofed && Mathf.Abs(x) < w + voxel && y < blockTop && y > blockTop - 2f * voxel)
                         {
@@ -111,6 +125,46 @@ namespace Clube.Core
                 }
             }
             return cells;
+        }
+
+        // GL715: over a battlemented building's walls: a flat stone roof, a parapet round it with merlons every other
+        // half metre, and a hollow turret at each corner a storey higher, crenellated too.
+        private static TownStructures.ShopPart? Battlement(BuildingDesign design, float x, float y, float z, float w, float d, float top, float voxel,
+            bool wall, bool inside)
+        {
+            if (!inside)
+            {
+                return null;
+            }
+            float over = y - top;
+            float turret = design.Turrets;
+            bool inTurret = turret > 0f && Mathf.Abs(x) > w - turret && Mathf.Abs(z) > d - turret;
+            if (inTurret)
+            {
+                float tx = Mathf.Abs(x) - (w - turret), tz = Mathf.Abs(z) - (d - turret);
+                bool shell = tx < 0.5f || tz < 0.5f || wall;
+                float height = BuildingDesign.ParapetHeight + BuildingDesign.TurretRise;
+                if (!shell)
+                {
+                    return over < voxel || (over > BuildingDesign.ParapetHeight - voxel && over < BuildingDesign.ParapetHeight) ? TownStructures.ShopPart.Stone : (TownStructures.ShopPart?)null;
+                }
+                float edge = Mathf.Abs(x) > w - voxel || tx < 0.5f ? z : x;
+                bool merlon = Mathf.Repeat(edge * 2f, 2f) < 1f;
+                return over < height - 0.5f || (merlon && over < height) ? TownStructures.ShopPart.Stone : (TownStructures.ShopPart?)null;
+            }
+            if (over < voxel)
+            {
+                // The flat roof.
+                return TownStructures.ShopPart.Stone;
+            }
+            if (wall)
+            {
+                float along = Mathf.Abs(x) > w - voxel ? z : x;
+                bool merlon = Mathf.Repeat(along * 2f, 2f) < 1f;
+                float parapet = BuildingDesign.ParapetHeight;
+                return over < parapet - 0.5f || (merlon && over < parapet) ? TownStructures.ShopPart.Stone : (TownStructures.ShopPart?)null;
+            }
+            return null;
         }
 
         // What the wall of a story is made of at a point, or null for air (a room, a door, a window, a shop's open front).
@@ -190,6 +244,11 @@ namespace Clube.Core
         {
             BuildingDesign design = DesignOf(building);
             var skin = new Dictionary<Vector3Int, float>();
+            if (design.Battlements)
+            {
+                // GL715: a flat roof has no slant to draw.
+                return skin;
+            }
             float w = design.Width * 0.5f + voxel;
             float reach = design.Depth * 0.5f + Eave(voxel);
             float top = TownLayout.FloorHeight + Mathf.Clamp(design.Stories, 1, 3) * design.StoryHeight;

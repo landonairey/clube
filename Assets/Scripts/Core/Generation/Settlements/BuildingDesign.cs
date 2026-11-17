@@ -62,6 +62,22 @@ namespace Clube.Core
         /// <summary>The fixtures in its work yard; its workers stand at the worked ones.</summary>
         public List<YardFixture> Fixtures = new List<YardFixture>();
 
+        /// <summary>GL715: built all of stone (a castle, a guard tower) rather than boards over a stone plinth.</summary>
+        public bool Masonry;
+        /// <summary>GL715: a flat stone roof walled round by a crenellated parapet, in place of a gable roof.</summary>
+        public bool Battlements;
+        /// <summary>GL715: the side of a square turret at each corner, rising over the parapet, in metres (0: none).</summary>
+        public float Turrets;
+        /// <summary>
+        /// GL715: a settlement's landmark (the capital's castle, a city's guard tower): never picked by <see cref="Choose"/>,
+        /// only built where a settlement type names it (<see cref="SettlementType.Landmarks"/>).
+        /// </summary>
+        public bool Landmark;
+
+        /// <summary>Metres a battlemented roof's parapet stands over the roof, and a turret over the parapet.</summary>
+        public const float ParapetHeight = 1f;
+        public const float TurretRise = 2.5f;
+
         /// <summary>True when it has a work yard to build: fixtures, a tarp or walls.</summary>
         public bool HasYard => Fixtures.Count > 0 || Tarp || YardWalls;
 
@@ -195,6 +211,13 @@ namespace Clube.Core
                 new BuildingDesign { Id = "two-story-shop", Name = "Shop with rooms over", ShopFront = true, Stories = 2, PitchMin = 0.6f, PitchMax = 1f,
                     Types = new[] { "village", "town", "city", "capital" } },
                 new BuildingDesign { Id = "shop", Name = "Shop", ShopFront = true, Stories = 1, PitchMin = 0.5f, PitchMax = 0.9f },
+
+                // --- Landmarks (GL715): "The Capital needs to be more grand including a Castle ... Cities have at least one
+                // main stone guard tower." Built only where a settlement type names them. ---
+                new BuildingDesign { Id = "castle", Name = "Castle", Width = 8f, Depth = 8f, Stories = 3, StoryHeight = 3.5f, Masonry = true,
+                    Battlements = true, Turrets = 2f, Landmark = true, Types = new[] { "capital" }, Weight = 0f },
+                new BuildingDesign { Id = "guard-tower", Name = "Guard tower", Width = 4.5f, Depth = 4.5f, Stories = 3, StoryHeight = 4f, Masonry = true,
+                    Battlements = true, Landmark = true, Types = new[] { "city", "capital" }, Weight = 0f },
             };
         }
 
@@ -207,7 +230,7 @@ namespace Clube.Core
             var fits = new List<BuildingDesign>();
             foreach (BuildingDesign design in catalog)
             {
-                if (design.ShopFront == shop && design.BuiltIn(type) && (!shop || design.Houses(specialty)))
+                if (!design.Landmark && design.ShopFront == shop && design.BuiltIn(type) && (!shop || design.Houses(specialty)))
                 {
                     fits.Add(design);
                 }
@@ -217,7 +240,7 @@ namespace Clube.Core
                 // A shop with no workshop of its own: a plain shop (no specialty rows).
                 foreach (BuildingDesign design in catalog)
                 {
-                    if (design.ShopFront == shop && design.BuiltIn(type) && design.Specialties.Length == 0)
+                    if (!design.Landmark && design.ShopFront == shop && design.BuiltIn(type) && design.Specialties.Length == 0)
                     {
                         fits.Add(design);
                     }
@@ -227,7 +250,7 @@ namespace Clube.Core
             {
                 foreach (BuildingDesign design in catalog)
                 {
-                    if (design.ShopFront == shop)
+                    if (!design.Landmark && design.ShopFront == shop)
                     {
                         fits.Add(design);
                     }
@@ -254,12 +277,33 @@ namespace Clube.Core
             return fits[fits.Count - 1];
         }
 
+        /// <summary>The catalog row of this id, or null.</summary>
+        public static BuildingDesign Find(IReadOnlyList<BuildingDesign> catalog, string id)
+        {
+            if (catalog != null)
+            {
+                foreach (BuildingDesign design in catalog)
+                {
+                    if (design.Id == id)
+                    {
+                        return design;
+                    }
+                }
+            }
+            return null;
+        }
+
         /// <summary>The widest and deepest of a catalog's rows: the ground a layout keeps for any building.</summary>
-        public static Vector2 LargestFootprint(IReadOnlyList<BuildingDesign> catalog)
+        /// <param name="type">The settlement it is for: a landmark row counts only where this type builds it (GL715); null for all rows.</param>
+        public static Vector2 LargestFootprint(IReadOnlyList<BuildingDesign> catalog, SettlementType type = null)
         {
             var largest = new Vector2(TownLayout.ShopWidth, TownLayout.ShopDepth);
             foreach (BuildingDesign design in catalog)
             {
+                if (design.Landmark && type != null && (type.Landmarks == null || Array.IndexOf(type.Landmarks, design.Id) < 0))
+                {
+                    continue;
+                }
                 largest = Vector2.Max(largest, new Vector2(design.Width, design.Depth));
             }
             return largest;
