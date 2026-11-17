@@ -18,6 +18,9 @@ namespace Clube.Game
     {
         private const string KeyPrefix = "mapsettlement.";
 
+        // GL729: the keepers' dispositions (DispositionBook.Save).
+        private const string DispositionsKey = "shopdisposition.book";
+
         // Pieces looked at a frame for loaded chunks, and seconds until the pieces a write made ready are found.
         private const int ChecksPerFrame = 32;
         private const float RecollectSeconds = 0.2f;
@@ -148,6 +151,12 @@ namespace Clube.Game
         public int BridgesBuilt { get; private set; }
 
         public IReadOnlyList<SettlementKeeper> Keepers => keepers;
+
+        /// <summary>GL729: how every keeper of the map feels about the player, by settlement and shop; saved.</summary>
+        public DispositionBook Dispositions { get; } = new DispositionBook();
+
+        /// <summary>The merchant price list every shop's prices come from.</summary>
+        public PriceList Prices => prices;
 
         /// <summary>The longest a settlement took to lay out, the longest piece to write, and all pieces together, in milliseconds.</summary>
         public float LongestWorkOutMilliseconds { get; private set; }
@@ -621,7 +630,8 @@ namespace Clube.Game
                 var keeperObject = new GameObject($"{specialty.ShopName} keeper");
                 keeperObject.transform.SetParent(shop, false);
                 SettlementKeeper keeper = keeperObject.AddComponent<SettlementKeeper>();
-                keeper.Setup(specialty, prices, hours, clock, shop, material, seed, dailyCoins);
+                keeper.Setup(specialty, prices, hours, clock, shop, material, seed, dailyCoins,
+                    Dispositions.Of(index, settlement.Shops.IndexOf(building.Shop)));
                 keepers.Add(keeper);
                 ShopsFitted++;
             }
@@ -725,6 +735,7 @@ namespace Clube.Game
             {
                 values[pair.Key] = pair.Value;
             }
+            values[DispositionsKey] = Dispositions.Save();
             if (built == null)
             {
                 return;
@@ -741,6 +752,7 @@ namespace Clube.Game
         public void RestoreValues(IReadOnlyDictionary<string, string> values)
         {
             restored.Clear();
+            Dispositions.Restore(values.TryGetValue(DispositionsKey, out string book) ? book : null);
             foreach (KeyValuePair<string, string> pair in values)
             {
                 if (pair.Key.StartsWith(KeyPrefix, System.StringComparison.Ordinal))

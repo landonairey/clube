@@ -44,6 +44,7 @@ namespace Clube.Game
         private readonly List<ItemDefinition> nextGoods = new List<ItemDefinition>();
         private RunWay[] runWays = System.Array.Empty<RunWay>();
         private SettlementDocks docks;
+        private MapSettlements settlements;
         private List<BoatRun> runs = new List<BoatRun>();
         private Boat[] boats = System.Array.Empty<Boat>();
         private double[] delays = System.Array.Empty<double>();
@@ -285,6 +286,8 @@ namespace Clube.Game
                 if (boats[i] == null && distance <= showRange && Showing < mostBoats && material != null && TryLane(run.Route, run.Class, out _))
                 {
                     boats[i] = Launch(run);
+                    int robbed = i;
+                    boats[i].Robbed += taken => Robbed(robbed, taken);
                     Showing++;
                 }
                 else if (boats[i] != null && distance > showRange + 60f)
@@ -348,6 +351,20 @@ namespace Clube.Game
             string from = plan.Settlements[run.From].Name, to = run.To >= 0 ? plan.Settlements[run.To].Name : "the open sea";
             boat.Describe($"The {run.Name}, {run.Class.Name.ToLowerInvariant()}: " + (string.IsNullOrEmpty(run.Cargo) ? "goods" : run.Cargo) + $" between {from} and {to}");
             return boat;
+        }
+
+        // GL729: goods taken from a vessel wrong the shop they are bound for.
+        private void Robbed(int index, IReadOnlyList<(ItemDefinition Item, float Amount)> taken)
+        {
+            if (index >= runs.Count || session.Plan == null)
+            {
+                return;
+            }
+            settlements = settlements != null ? settlements : FindAnyObjectByType<MapSettlements>();
+            BoatRun run = runs[index];
+            int boundFor = TradeStop.GoodsBoundFor(PlaceOf(index), run.Class.RestSeconds, run.From, run.To);
+            int cameFrom = boundFor == run.To ? run.From : boundFor == run.From ? run.To : -1;
+            CargoTheft.Report(settlements, session.Plan, boundFor, cameFrom, taken);
         }
 
         private void Hide(int index)

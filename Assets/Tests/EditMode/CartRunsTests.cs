@@ -28,12 +28,14 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void APavedRoad_HasAHorseCartAndAHandCart_ADirtOneASingleCart_AFootpathNone()
+        public void APavedRoad_HasTwoHorseCartsAndAHandCart_ADirtOneASingleCart_AFootpathNone()
         {
             List<CartRun> runs = CartRuns.Plan(Plan(), CartKind.Defaults(), 3);
 
-            Assert.AreEqual(2, runs.Count(r => r.Road == 0));
-            Assert.IsTrue(runs.Any(r => r.Road == 0 && r.Kind.HorseDrawn));
+            Assert.AreEqual(3, runs.Count(r => r.Road == 0));
+            List<CartRun> horses = runs.Where(r => r.Road == 0 && r.Kind.HorseDrawn).ToList();
+            Assert.AreEqual(2, horses.Count, "GL728: horse carts take the paved trade routes");
+            Assert.AreEqual(horses[0].Round * 0.5f, Mathf.Repeat(horses[1].Offset - horses[0].Offset, horses[0].Round), 1e-2f, "half a round apart");
             Assert.IsTrue(runs.Any(r => r.Road == 0 && !r.Kind.HorseDrawn));
             Assert.AreEqual(1, runs.Count(r => r.Road == 1));
             Assert.AreEqual(1, runs.Count(r => r.Road == 2));

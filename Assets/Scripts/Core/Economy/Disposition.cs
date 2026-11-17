@@ -71,6 +71,23 @@ namespace Clube.Core
             return Value - before;
         }
 
+        /// <summary>
+        /// Takes points off (GL729: goods stolen on their way to this keeper), down to 0; coins carried towards the next
+        /// point are lost with them. Returns the points it fell.
+        /// </summary>
+        public int Lower(int points)
+        {
+            if (points <= 0 || Value <= 0)
+            {
+                return 0;
+            }
+            int before = Value;
+            Value = Mathf.Max(0, Value - points);
+            Carried = 0f;
+            Changed?.Invoke();
+            return before - Value;
+        }
+
         /// <summary>Puts back a saved value and the coins carried towards the next point.</summary>
         public void Restore(int value, float carried)
         {

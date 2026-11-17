@@ -339,6 +339,13 @@ namespace Clube.Game
             return Mathf.Abs(Mathf.DeltaAngle(yaw, look.eulerAngles.y)) < 0.5f;
         }
 
+        /// <summary>Turns the player and its view about the vertical by some degrees (GL727: carried round on a turning deck).</summary>
+        public void TurnBy(float degrees)
+        {
+            yaw += degrees;
+            transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+        }
+
         /// <summary>Turns the player to face a point (world space), looking level.</summary>
         public void LookTowards(Vector3 point)
         {
@@ -369,6 +376,10 @@ namespace Clube.Game
             if (!TryGetComponent(out PlayerShadowBody _))
             {
                 gameObject.AddComponent<PlayerShadowBody>(); // the body that casts the player's shadow (GL608)
+            }
+            if (!TryGetComponent(out PlatformRider _))
+            {
+                gameObject.AddComponent<PlatformRider>(); // rides carts and boats it stands on (GL727)
             }
         }
 

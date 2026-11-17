@@ -132,6 +132,8 @@ namespace Clube.Game
                     body.transform.SetParent(root, false);
                     carts[i] = body.AddComponent<RoadCart>();
                     carts[i].Build(run, material, cratePrefab);
+                    int robbed = i;
+                    carts[i].Robbed += taken => Robbed(robbed, taken);
                     Showing++;
                 }
                 else if (carts[i] != null && distance > showRange + 30f)
@@ -164,6 +166,19 @@ namespace Clube.Game
                     }
                 }
             }
+        }
+
+        // GL729: goods taken from a cart wrong the shop they are bound for.
+        private void Robbed(int index, IReadOnlyList<(ItemDefinition Item, float Amount)> taken)
+        {
+            if (index >= runs.Count || session.Plan == null)
+            {
+                return;
+            }
+            CartRun run = runs[index];
+            int boundFor = TradeStop.GoodsBoundFor(run.At(Seconds - delays[index]), run.Kind.RestSeconds, run.From, run.To);
+            int cameFrom = boundFor == run.To ? run.From : boundFor == run.From ? run.To : -1;
+            CargoTheft.Report(settlements, session.Plan, boundFor, cameFrom, taken);
         }
 
         private void Hide(int index)
@@ -241,13 +256,8 @@ namespace Clube.Game
             WorldPlan plan = session.Plan;
             int from = at == run.From ? run.To : run.From;
             PlannedSettlement here = plan.Settlements[at];
-            int shop = TradeStop.ShopFor(from >= 0 ? plan.Settlements[from] : null, here);
-            if (shop < 0)
-            {
-                // Goods from beyond the map, or nothing that matches: the merchant takes them, else the first shop.
-                shop = here.Shops.FindIndex(s => s.Specialty.Chain == SupplyChains.Merchant);
-                shop = shop < 0 && here.Shops.Count > 0 ? 0 : shop;
-            }
+            // Goods from beyond the map, or nothing that matches: the merchant takes them, else the first shop.
+            int shop = TradeStop.ShopTaking(from >= 0 ? plan.Settlements[from] : null, here);
             int building = site != null && shop >= 0 ? site.Buildings.FindIndex(b => b.Shop == here.Shops[shop]) : -1;
             if (building < 0)
             {

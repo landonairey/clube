@@ -900,6 +900,18 @@ settlements of `Generation/`); the bodies are Game (`Game/People/`, `Game/Travel
   settlement type, laid by `Docks.Lay` on the shore nearest the buildings, built near the viewer by `SettlementDocks`
   (added to the World by `MapBoats`; `DockMeshes`, a way up to the nearest building, paved for stone docks);
   `MapBoats.RunLane` runs each vessel to and from its berth (`DockLayout.Berth`, `DockBerth.Mooring`).
+- **Riding, horse hire and theft from travellers (GL727-GL729).** Carts and vessels carry a `Rideable` marker; the
+  player's `PlatformRider` (added by `PlayerController`, runs after everything has moved) finds the rideable collider
+  under the feet and moves and turns the player by however far it moved since the last frame. `CartKind.PavedCount`
+  puts two horse carts on each paved cart path, half a round apart. `HorseHire.Plan` (Core) puts one stand by the first
+  edge signpost of each settlement whose type has `HorseHire` (the capital and cities; the nearest post where it has
+  none); `MapHorseHire` (added at runtime by `MapRoads`) builds a `HorseHireStand` near the viewer, whose groom opens
+  `HorseHirePanel`; a ride takes `HorseHire.Fare` and sets the player down through `PlayerSpawn.SetDownOver`. Theft:
+  a cart's or vessel's crates carry a `CargoCrate`, which counts what leaves while `ChestPanel` has it open (the
+  vehicle's own restocking through `CrateCargo` excluded) and reports on close; `MapCarts`/`MapBoats` find where the
+  goods are bound (`TradeStop.GoodsBoundFor`) and `CargoTheft` lowers that shop's `Disposition` (`TradeStop.ShopTaking`,
+  `Theft.PointsFor`). Map keepers' dispositions live in `MapSettlements.Dispositions` (a `DispositionBook` by
+  settlement and shop, saved as one named value), so they outlast the keeper and count for a shop not yet built.
 - **Thieves (GL617).** A thieves' camp is a settlement whose type has a `Band` and names its `Residents` occupation:
   `SettlementLayout` houses the band, `SettlementRoster` makes them residents, and they are `Villager`s like anyone
   (plus a `Bandit`, the `IToolTarget` that makes a struck thief drop his sack and lie dazed; there is no health). Their

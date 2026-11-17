@@ -33,6 +33,9 @@ namespace Clube.Game
         /// <summary>The one-way trip its crates were last loaded for.</summary>
         public int LoadedTrip => loadedTrip;
 
+        /// <summary>GL729: the player closed one of its crates having taken goods from it.</summary>
+        public event System.Action<IReadOnlyList<(ItemDefinition Item, float Amount)>> Robbed;
+
         public void Build(CartRun run, Material material, GameObject cratePrefab)
         {
             Run = run;
@@ -41,6 +44,10 @@ namespace Clube.Game
             model.Build(material, cratePrefab, seed);
             this.material = material;
             cargo = new CrateCargo(model.Crates);
+            foreach (StorageChest crate in model.Crates)
+            {
+                crate.gameObject.AddComponent<CargoCrate>().Taken += taken => Robbed?.Invoke(taken);
+            }
             if (run.Kind.HorseDrawn)
             {
                 var body = new GameObject("Horse");
@@ -48,6 +55,7 @@ namespace Clube.Game
                 horse = body.AddComponent<CartHorse>();
                 horse.Build(material);
             }
+            gameObject.AddComponent<Rideable>(); // GL727: a player who jumps on the bed rides along
             Presence = gameObject.AddComponent<OffMapPresence>();
             if (horse != null)
             {
