@@ -171,14 +171,16 @@ namespace Clube.Core
                 site.Notes.Add($"{settlement.Name}: ground for {taken.Count} of its {wanted} buildings (the rest is water, road or too steep to terrace).");
             }
             Build(site, rules, taken, voxel);
+            PlanWall(site);
+            SettlementLights.Plan(site, rules.LightKinds);
             return site;
         }
 
         // The places for buildings, nearest the centre first, each on ground that can be terraced with its neighbours.
         private static List<Slot> Take(SettlementSite site, SettlementSiteRules rules, int wanted, float half, Func<float, float, bool> closedAt, int extra)
         {
-            float back = rules.FrontSetback + Largest(rules).y + rules.BackYard;
-            float halfWidth = Largest(rules).x * 0.5f;
+            float back = rules.FrontSetback + Largest(site).y + rules.BackYard;
+            float halfWidth = Largest(site).x * 0.5f;
             var slots = new Dictionary<(int, int), Slot>();
             var order = new List<Slot>();
             int rows = Mathf.CeilToInt(half / rules.RowDepth) + 1 + extra;
@@ -198,7 +200,7 @@ namespace Clube.Core
                     {
                         continue;
                     }
-                    var slot = new Slot { Row = row, Column = column, Along = middle, Up = street + rules.FrontSetback + Largest(rules).y * 0.5f };
+                    var slot = new Slot { Row = row, Column = column, Along = middle, Up = street + rules.FrontSetback + Largest(site).y * 0.5f };
                     if (!Measure(site, rules, slot, street, back, halfWidth, closedAt))
                     {
                         continue;
@@ -269,7 +271,7 @@ namespace Clube.Core
             {
                 for (int i = 0; i <= 2; i++)
                 {
-                    Vector2 world = site.ToWorld(slot.Along + (i - 1) * halfWidth, street + rules.FrontSetback + j * Largest(rules).y * 0.5f);
+                    Vector2 world = site.ToWorld(slot.Along + (i - 1) * halfWidth, street + rules.FrontSetback + j * Largest(site).y * 0.5f);
                     if (site.RoadBeyond(world.x, world.y) < rules.RoadBlend)
                     {
                         return false;
@@ -283,8 +285,8 @@ namespace Clube.Core
 
         private static void Build(SettlementSite site, SettlementSiteRules rules, List<Slot> taken, float voxel)
         {
-            float back = rules.FrontSetback + Largest(rules).y + rules.BackYard;
-            float halfWidth = Largest(rules).x * 0.5f;
+            float back = rules.FrontSetback + Largest(site).y + rules.BackYard;
+            float halfWidth = Largest(site).x * 0.5f;
             Vector2 front = -site.Up;
             float yaw = Mathf.Round(Mathf.Atan2(front.x, front.y) * Mathf.Rad2Deg / 90f) * 90f;
             PlannedSettlement settlement = site.Settlement;
@@ -332,14 +334,18 @@ namespace Clube.Core
                     : new Vector2(from, to);
             }
 
-            // The buildings: shops nearest the centre, in the plan's order, then houses.
+            // The buildings: shops nearest the centre, in the plan's order, then the settlement's landmarks (GL715: the
+            // capital's castle, a city's guard tower), then houses.
+            string[] landmarks = settlement.Type.Landmarks ?? Array.Empty<string>();
             for (int i = 0; i < taken.Count; i++)
             {
                 Slot slot = taken[i];
                 bool shop = i < settlement.Shops.Count;
                 PlannedShop planned = shop ? settlement.Shops[i] : null;
+                int landmark = i - settlement.Shops.Count;
                 // GL710: its catalog row, by its shop's specialty or the settlement's type; GL711: its own roof pitch.
-                BuildingDesign design = rules.Buildings != null && rules.Buildings.Count > 0
+                BuildingDesign design = !shop && landmark < landmarks.Length ? BuildingDesign.Find(rules.Buildings, landmarks[landmark]) : null;
+                design ??= rules.Buildings != null && rules.Buildings.Count > 0
                     ? BuildingDesign.Choose(rules.Buildings, settlement.Type, planned?.Specialty?.Id, shop, Hash01(settlement.Index, slot.Row, slot.Column + 7919))
                     : null;
                 float depth = design != null ? design.Depth : TownLayout.ShopDepth;
@@ -516,10 +522,35 @@ namespace Clube.Core
         }
 
 
-        // The widest and deepest building the catalog holds: the ground every place keeps.
-        private static Vector2 Largest(SettlementSiteRules rules)
+        // The widest and deepest building the catalog holds for this settlement: the ground every place keeps.
+        private static Vector2 Largest(SettlementSite site)
         {
-            return rules.Buildings != null ? BuildingDesign.LargestFootprint(rules.Buildings) : new Vector2(TownLayout.ShopWidth, TownLayout.ShopDepth);
+            SettlementSiteRules rules = site.Rules;
+            return rules.Buildings != null ? BuildingDesign.LargestFootprint(rules.Buildings, site.Settlement.Type) : new Vector2(TownLayout.ShopWidth, TownLayout.ShopDepth);
+        }
+
+        /// <summary>
+        /// GL715: the ring of a walled settlement's town wall (x, z), corner to corner and closed (the last point is the
+        /// first): a rectangle <see cref="SettlementSiteRules.WallSetback"/> outside everything it changes. Empty for a
+        /// settlement whose type has no walls or that has no buildings.
+        /// </summary>
+        public static void PlanWall(SettlementSite site)
+        {
+            site.Wall.Clear();
+            if (!site.Settlement.Type.Walls || site.Buildings.Count == 0)
+            {
+                return;
+            }
+            Rect bounds = site.Bounds;
+            float voxel = 0.25f;
+            float s = site.Rules.WallSetback;
+            float x0 = Mathf.Floor((bounds.xMin - s) / voxel) * voxel, x1 = Mathf.Ceil((bounds.xMax + s) / voxel) * voxel;
+            float z0 = Mathf.Floor((bounds.yMin - s) / voxel) * voxel, z1 = Mathf.Ceil((bounds.yMax + s) / voxel) * voxel;
+            site.Wall.Add(new Vector2(x0, z0));
+            site.Wall.Add(new Vector2(x1, z0));
+            site.Wall.Add(new Vector2(x1, z1));
+            site.Wall.Add(new Vector2(x0, z1));
+            site.Wall.Add(new Vector2(x0, z0));
         }
 
         private static float Hash01(int a, int b, int c)

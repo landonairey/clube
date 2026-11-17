@@ -26,6 +26,8 @@ namespace Clube.Core
             Ground,
             Lane,
             Building,
+            // GL715: a stretch of a town wall; written, like a building, over everything under it.
+            Wall,
         }
 
         private struct Piece
@@ -49,6 +51,7 @@ namespace Clube.Core
         private readonly List<Piece> pieces = new List<Piece>();
         private readonly List<RoadWriter> lanes = new List<RoadWriter>();
         private readonly int[] buildingPiece;
+        private readonly List<SettlementWalls.Stretch> stretches;
         // Which pieces are written; for each, how many pieces it stands on are still to write, and which stand on it.
         private readonly bool[] written;
         private readonly int[] blockers;
@@ -166,6 +169,19 @@ namespace Clube.Core
                     });
                 }
             }
+            // GL715: the town wall, a stretch at a time.
+            stretches = SettlementWalls.Stretches(site);
+            for (int s = 0; s < stretches.Count; s++)
+            {
+                Rect box = SettlementWalls.Box(site, stretches[s]);
+                float low = Mathf.Min(site.HeightAt(box.xMin, box.yMin), site.HeightAt(box.xMax, box.yMax));
+                float high = Mathf.Max(site.HeightAt(box.xMin, box.yMin), site.HeightAt(box.xMax, box.yMax));
+                pieces.Add(new Piece
+                {
+                    Kind = Kind.Wall, Box = box, Low = low - 2f,
+                    High = high + site.Rules.WallHeight + site.Rules.WallTowerRise + 1f, Index = s,
+                });
+            }
             written = new bool[pieces.Count];
             blockers = new int[pieces.Count];
             dependents = new List<int>[pieces.Count];
@@ -183,12 +199,12 @@ namespace Clube.Core
         public bool Done => Written >= pieces.Count;
 
         /// <summary>What the first unwritten piece is, for timing: 0 a tile of ground, 1 a metre of lane, 2 a part of a building; -1 when done.</summary>
-        public int NextKind => Done ? -1 : (int)pieces[next].Kind;
+        public int NextKind => Done ? -1 : KindOf(next);
 
-        /// <summary>What a piece is: 0 a tile of ground, 1 a metre of lane, 2 a part of a building.</summary>
+        /// <summary>What a piece is: 0 a tile of ground, 1 a metre of lane, 2 a part of a building or a stretch of town wall.</summary>
         public int KindOf(int piece)
         {
-            return (int)pieces[piece].Kind;
+            return Mathf.Min((int)pieces[piece].Kind, (int)Kind.Building);
         }
 
         public bool IsWritten(int piece)
@@ -303,7 +319,7 @@ namespace Clube.Core
                         var cell = new Vector2Int(x, z);
                         if (!grid.TryGetValue(cell, out List<int> here))
                         {
-                            if (piece.Kind == Kind.Building)
+                            if (piece.Kind >= Kind.Building)
                             {
                                 continue;
                             }
@@ -319,7 +335,7 @@ namespace Clube.Core
                             Wait(j, i);
                         }
                         // Buildings stand on everything and nothing on them: they needn't be found.
-                        if (piece.Kind != Kind.Building)
+                        if (piece.Kind < Kind.Building)
                         {
                             here.Add(j);
                         }
@@ -436,6 +452,12 @@ namespace Clube.Core
                 }
                 case Kind.Lane:
                     lanes[piece.Index].Write(world, registry, site.HeightAt, iso, piece.Part);
+                    break;
+                case Kind.Wall:
+                    if (materials.Stone != null)
+                    {
+                        SquareVoxels.Build(world, SettlementWalls.Blocks(site, stretches[piece.Index], world.Grid.VoxelSize, materials.Stone.Id, wetAt), iso);
+                    }
                     break;
                 default:
                 {

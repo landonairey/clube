@@ -22,6 +22,12 @@ namespace Clube.Core
         /// <summary>True for a post at a settlement's edge, false for one at a junction of roads.</summary>
         public bool AtSettlement;
         public List<SignArm> Arms = new List<SignArm>();
+        /// <summary>GL717: for a post at a settlement's edge, the settlement (an index into the plan's settlements); -1 at a junction.</summary>
+        public int Settlement = -1;
+        /// <summary>GL717: the way the road leaves the settlement there (x, z, a unit vector).</summary>
+        public Vector2 Outward;
+        /// <summary>GL717: the way from the road to the post (x, z, a unit vector): the side the name board stands on.</summary>
+        public Vector2 Roadside;
     }
 
     /// <summary>
@@ -190,7 +196,12 @@ namespace Clube.Core
                         }
                         post.Arms.Add(new SignArm { Direction = -way, Settlement = node, Name = here.Name, Metres = out_ });
                         float width = plan.Rules.Road(tracks[edges[e].Road].Road.Class).Width;
-                        post.Position = at + Stand(new List<Vector2> { way, -way }, width * 0.5f + Clear);
+                        Vector2 stand = Stand(new List<Vector2> { way, -way }, width * 0.5f + Clear);
+                        post.Position = at + stand;
+                        // GL717: the settlement's own name board stands beside the post, further from the road.
+                        post.Settlement = node;
+                        post.Outward = way;
+                        post.Roadside = stand.sqrMagnitude > 1e-6f ? stand.normalized : new Vector2(-way.y, way.x);
                         posts.Add(post);
                     }
                 }

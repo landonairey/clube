@@ -134,6 +134,17 @@ namespace Clube.Core
         public float FrontStagger = 0.75f;
         /// <summary>GL710: the building catalog: what each house and shop is built to.</summary>
         public List<BuildingDesign> Buildings = BuildingDesign.Defaults();
+        /// <summary>GL715: metres a town wall stands outside everything the settlement changes.</summary>
+        public float WallSetback = 4f;
+        /// <summary>GL715: a town wall's height over the ground, its thickness, and the width of a gateway where a road comes in.</summary>
+        public float WallHeight = 4.5f;
+        public float WallThickness = 1f;
+        public float GateWidth = 5f;
+        /// <summary>GL715: the side of the square tower at each corner of a town wall, and how far it rises over the wall.</summary>
+        public float WallTower = 3.5f;
+        public float WallTowerRise = 2.5f;
+        /// <summary>GL716: the kinds of light settlements stand (torch, bonfire, lantern).</summary>
+        public List<SettlementLightKind> LightKinds = SettlementLightKind.Defaults();
     }
 
     /// <summary>
@@ -187,6 +198,10 @@ namespace Clube.Core
         public List<SettlementBuilding> Buildings { get; } = new List<SettlementBuilding>();
         public List<SettlementTerrace> Terraces { get; } = new List<SettlementTerrace>();
         public List<SettlementLane> Lanes { get; } = new List<SettlementLane>();
+        /// <summary>GL715: its town wall's ring (x, z), closed; empty when it has none (<see cref="SettlementLayout.PlanWall"/>).</summary>
+        public List<Vector2> Wall { get; } = new List<Vector2>();
+        /// <summary>GL716: its light sources (<see cref="SettlementLights.Plan"/>).</summary>
+        public List<SettlementLight> Lights { get; } = new List<SettlementLight>();
         /// <summary>What could not be done as planned (buildings with no ground to stand on).</summary>
         public List<string> Notes { get; } = new List<string>();
 
