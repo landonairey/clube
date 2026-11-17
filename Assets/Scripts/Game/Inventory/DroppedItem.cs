@@ -11,7 +11,7 @@ namespace Clube.Game
     public class DroppedItem : MonoBehaviour, IInteractable
     {
         /// <summary>What it holds: one tool with its wear and quality, or a bag's stack.</summary>
-        public ItemStack Stack { get; private set; }
+        public ItemStack Stack { get; set; }
 
         /// <summary>True for a canvas bag (GL611), which more of the same stack can be poured into.</summary>
         public bool IsBag { get; private set; }

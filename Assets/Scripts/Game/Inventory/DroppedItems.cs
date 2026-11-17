@@ -91,6 +91,11 @@ namespace Clube.Game
             var item = go.AddComponent<DroppedItem>();
             item.Set(this, stack, isBag, rigid);
             items.Add(item);
+            if (!isBag && stack.Item is TorchDefinition torch && torch.IsLit)
+            {
+                // A lit torch keeps burning where it lies (GL683).
+                go.AddComponent<DroppedTorch>().Set(this, item, material);
+            }
             return item;
         }
 

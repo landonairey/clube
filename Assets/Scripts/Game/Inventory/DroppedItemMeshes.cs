@@ -16,7 +16,23 @@ namespace Clube.Game
         /// <summary>True when the item has a model of its own to lie on the ground as; a bag otherwise.</summary>
         public static bool HasModel(ItemDefinition item)
         {
-            return item is ToolDefinition || item is TorchDefinition || item is BucketDefinition;
+            return item is ToolDefinition || item is TorchDefinition || item is BucketDefinition || item.IconShape == ItemIconShape.Ingot;
+        }
+
+        // The ingot model is about a unit across: a bar this long lies as a hand-sized one (GL684).
+        private const float IngotScale = 0.3f;
+
+        private static Mesh Ingot(Color metal)
+        {
+            UnityEngine.Mesh mesh = ItemChunkMeshes.Build(ItemIconShape.Ingot, metal);
+            Vector3[] vertices = mesh.vertices;
+            for (int i = 0; i < vertices.Length; i++)
+            {
+                vertices[i] *= IngotScale;
+            }
+            mesh.vertices = vertices;
+            mesh.RecalculateBounds();
+            return mesh;
         }
 
         /// <summary>The model an item lies on the ground as: its own when it has one and isn't bagged, else the bag.</summary>
@@ -26,7 +42,11 @@ namespace Clube.Game
             {
                 return Bag();
             }
-            return item is TorchDefinition ? HeldToolMeshes.BuildTorch(false, withHand: false)
+            if (item.IconShape == ItemIconShape.Ingot && !(item is ToolDefinition))
+            {
+                return Ingot(item.IconTint);
+            }
+            return item is TorchDefinition ?HeldToolMeshes.BuildTorch(false, withHand: false)
                 : item is BucketDefinition ? HeldToolMeshes.BuildBucket(withHand: false)
                 : HeldToolMeshes.Build(item as ToolDefinition, withHand: false);
         }

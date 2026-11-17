@@ -72,7 +72,7 @@ namespace Clube.Core
         public DropForm DropsAs => dropForm != DropForm.ByKind ? dropForm : KindDropForm;
 
         /// <summary>What this kind of item drops as when its asset doesn't say.</summary>
-        protected virtual DropForm KindDropForm => DropForm.Pile;
+        protected virtual DropForm KindDropForm => iconShape == ItemIconShape.Ingot ? DropForm.Model : DropForm.Pile; // an ingot is big enough to lie as itself (GL684)
 
         /// <summary>Sets <see cref="DropsAs"/>, for items made in code (tests).</summary>
         public ItemDefinition WithDropForm(DropForm form)
