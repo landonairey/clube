@@ -9,7 +9,7 @@ namespace Clube.Game
     /// <summary>
     /// The world map (GL599), a player screen on M: the scene's bounded map (<see cref="MapSession"/>) as a picture of
     /// its terrain, biomes and water (<see cref="MapPicture"/>, drawn once per map), with each side's boundary kind,
-    /// the roads in three line types and the water routes (<see cref="MapPicture.RoadStyle"/>), bridges, every settlement's
+    /// the roads in three line types and the water routes (<see cref="MapPicture.RoadStyle"/>), every settlement's
     /// icon (<see cref="MapIcons"/>) with its name below, the player, and a legend of them all (<see cref="MapLegend"/>, GL635).
     /// The wheel zooms on the pointer and a drag pans. The lab layer adds a resource of the survey and, under the
     /// pointer, why a site and its shops were picked (ST7). In a scene with no map session the key does nothing.
@@ -97,6 +97,13 @@ namespace Clube.Game
 
         private void Update()
         {
+            // GL664: the picture is drawn as soon as the map is planned, while the player still waits behind the load
+            // curtain, not on the first M (a pause of seconds). It needs jobs, so it is drawn here on the main thread.
+            MapSession planned = MapSession.Current;
+            if (!IsOpen && planned != null && planned.IsReady && pictureVersion != planned.Version)
+            {
+                EnsurePicture(planned);
+            }
             if (PauseMenu.IsPaused || (player != null && !player.enabled))
             {
                 return;
@@ -330,18 +337,7 @@ namespace Clube.Game
                     }
                 }
             }
-            // Bridges over every road, so a crossing is never hidden under a line.
-            foreach (PlannedRoad road in session.Plan.Roads)
-            {
-                foreach (Clube.Core.RoadBridge bridge in road.Bridges)
-                {
-                    Vector2 at = ToScreen(area, bridge.Position);
-                    if (view.Contains(at))
-                    {
-                        BridgeMark(at, MapPicture.RoadStyle(road.Class).Width * grow, scale);
-                    }
-                }
-            }
+            // GL665: bridges aren't marked on the map; the road line runs straight over the water.
             foreach (PlannedSettlement settlement in session.Plan.Settlements)
             {
                 Vector2 at = ToScreen(area, settlement.Position);
@@ -507,13 +503,6 @@ namespace Clube.Game
             drawn += length;
         }
 
-        // A bridge: a white block wider than its road, edged dark.
-        private static void BridgeMark(Vector2 at, float roadWidth, float scale)
-        {
-            Quad(at, roadWidth + 5f * scale, MapPicture.Casing);
-            Quad(at, roadWidth + 2.5f * scale, MapPicture.Bridge);
-        }
-
         // ---- The legend: each row's symbol drawn the way the map draws it ----
 
         private Rect LegendRow(int index, float ui)
@@ -533,16 +522,11 @@ namespace Clube.Game
                 switch (row.Symbol)
                 {
                     case MapLegendSymbol.Line:
-                    case MapLegendSymbol.Bridge:
                         if (row.Line.Casing > 0f)
                         {
                             Stroke(mid - reach, mid + reach, row.Line, scale, true, ref drawn);
                         }
                         Stroke(mid - reach, mid + reach, row.Line, scale, false, ref drawn);
-                        if (row.Symbol == MapLegendSymbol.Bridge)
-                        {
-                            BridgeMark(mid, row.Line.Width * scale, scale);
-                        }
                         break;
                     case MapLegendSymbol.Swatch:
                         Quad(mid, 14f * ui + 2f, MapPicture.Casing);

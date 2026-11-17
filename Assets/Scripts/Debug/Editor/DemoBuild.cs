@@ -8,7 +8,7 @@ namespace Clube.Debug.Editor
 {
     /// <summary>
     /// Builds the playable demo (GL200; before it K33, K34, V22): a Windows build of the main menu and the
-    /// World mode's scene, WorldLab, in <c>Builds/Demo/</c> (gitignored). It ships <c>Clube.Debug</c>, which
+    /// Demo mode's scene, MapGen, with the Debug modes' labs, in <c>Builds/Demo/</c> (gitignored). It ships <c>Clube.Debug</c>, which
     /// is fine for a lab demo; the A10 check (no debug components) is for the Game scene. Not a development
     /// build: that opens a profiler port (a firewall prompt on first run) and stamps a watermark. It sets
     /// <c>CLUBE_LAB_BUILD</c>, which keeps step-through recording (A5) in. A game build never sets it.
@@ -26,13 +26,17 @@ namespace Clube.Debug.Editor
         {
             "Assets/Scenes/MainMenu.unity",
             "Assets/Scenes/Tutorial.unity",
+            "Assets/Scenes/MapGen.unity",
+            // The menu's Debug modes (GL655).
+            "Assets/Scenes/VoxelLab.unity",
+            "Assets/Scenes/ChunkLab.unity",
             "Assets/Scenes/WorldLab.unity",
+            "Assets/Scenes/ProceduralWorldLab.unity",
         };
 
         private const string Output = "Builds/Demo/clube.exe";
 
-        // The bounded 5 km map for playtests: MapGen alone, so the exe starts in it. The menu's Start still
-        // loads WorldLab (the user's decision at GL636); this is a separate exe for trying the map's features.
+        // The bounded 5 km map alone, so the exe starts straight in it, for quick playtests of the map.
         private static readonly string[] MapGenScenes = { "Assets/Scenes/MapGen.unity" };
 
         private const string MapGenOutput = "Builds/MapGen/clube.exe";

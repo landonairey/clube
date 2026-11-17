@@ -20,6 +20,12 @@ namespace Clube.Debug
             public int Item;
             public string Command = "";
             public string Result = CheatCommands.Help;
+
+            /// <summary>True while the command line has the keyboard (GL661): the panel then switches the game's input off.</summary>
+            public bool Typing;
+
+            /// <summary>The game's input actions, switched off while typing.</summary>
+            public readonly PausedInput GameInput = new PausedInput();
         }
 
         public static void Draw(LabPanelFrame frame, PlayerController player, ItemCatalog catalog, State state)
@@ -97,6 +103,10 @@ namespace Clube.Debug
             GUILayout.BeginHorizontal();
             GUI.SetNextControlName(CommandControl);
             state.Command = GUILayout.TextField(state.Command ?? "", GUILayout.ExpandWidth(true));
+            if (Event.current.type == EventType.Repaint)
+            {
+                state.Typing = GUI.GetNameOfFocusedControl() == CommandControl;
+            }
             bool run = GUILayout.Button("Run", frame.Button, GUILayout.Width(52f));
             GUILayout.EndHorizontal();
             if ((enter || run) && !string.IsNullOrWhiteSpace(state.Command))

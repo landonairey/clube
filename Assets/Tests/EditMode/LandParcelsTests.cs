@@ -16,6 +16,19 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void ParcelsWhoseCentreIsOutsideTheSaleArea_CannotBeBought()
+        {
+            // GL666: a playable area of x < 50 m; parcels of 32 m have centres at 16, 48, 80...
+            var parcels = new LandParcels(32f, 100, 100) { SaleArea = centre => centre.x < 50f };
+            parcels.Grant(Vector2Int.zero);
+            Assert.AreEqual(new Vector2(48f, 16f), parcels.CentreOf(new Vector2Int(1, 0)));
+            Assert.IsTrue(parcels.IsBuyable(new Vector2Int(1, 0)), "Its centre (48 m) is inside, though its far side isn't.");
+            parcels.Grant(new Vector2Int(1, 0));
+            Assert.IsFalse(parcels.IsInSaleArea(new Vector2Int(2, 0)));
+            Assert.IsFalse(parcels.IsBuyable(new Vector2Int(2, 0)), "Its centre (80 m) is beyond the edge.");
+        }
+
+        [Test]
         public void OnlyParcelsBesideOwnedLand_CanBeBought()
         {
             var parcels = new LandParcels(32f, 100, 100);

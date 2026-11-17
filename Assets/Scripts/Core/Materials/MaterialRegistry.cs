@@ -116,6 +116,22 @@ namespace Clube.Core
             return material.FinalDrop == item || (item.PurityAs != null && item.PurityAs != item && material.FinalDrop == item.PurityAs);
         }
 
+        /// <summary>
+        /// The ore an item is (GL658): the first ore material that is its source, raw or crushed; null for an item no ore gives.
+        /// For a stack with no record of what it is made of (bought, given, from a crate), where its contents can't say.
+        /// </summary>
+        public VoxelMaterial OreOf(ItemDefinition item)
+        {
+            foreach (VoxelMaterial material in materials)
+            {
+                if (material != null && material.Category == VoxelMaterialCategory.Ore && IsSourceOf(material, item))
+                {
+                    return material;
+                }
+            }
+            return null;
+        }
+
         /// <summary>True when mining some material gives this item (stone, clay, an ore): it has a purity (GL115).</summary>
         public bool IsMaterialItem(ItemDefinition item)
         {

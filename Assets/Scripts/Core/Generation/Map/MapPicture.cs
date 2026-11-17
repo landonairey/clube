@@ -15,7 +15,6 @@ namespace Clube.Core
         public static readonly Color FreshWater = new Color(0.3f, 0.62f, 0.9f);
         public static readonly Color Rock = new Color(0.55f, 0.55f, 0.57f);
         public static readonly Color Woods = new Color(0.07f, 0.25f, 0.1f);
-        public static readonly Color Bridge = Color.white;
 
         /// <summary>The wash laid over what lies past the playable edge (GL639), and how much of it.</summary>
         public static readonly Color Outside = new Color(0.78f, 0.76f, 0.7f);

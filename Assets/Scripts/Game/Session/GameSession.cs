@@ -2,13 +2,16 @@ using Clube.Core;
 
 namespace Clube.Game
 {
-    /// <summary>The ways to play the demo (GL203); only <see cref="World"/> is playable so far.</summary>
+    /// <summary>The ways to play (GL203, GL655): the Demo game on the bounded map, and the four labs of the menu's Debug side.</summary>
     public enum GameMode
     {
         Voxel,
         Chunk,
         World,
         Procedural,
+
+        /// <summary>The game demo on the bounded 5 km map (GL655, scene MapGen).</summary>
+        Demo,
     }
 
     /// <summary>

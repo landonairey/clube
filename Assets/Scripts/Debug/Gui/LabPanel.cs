@@ -193,6 +193,7 @@ namespace Clube.Debug
         private void OnDisable()
         {
             frame.Hide();
+            cheats.GameInput.Resume();
         }
 
         private void Update()
@@ -205,6 +206,16 @@ namespace Clube.Debug
                 {
                     frame.Hide();
                 }
+            }
+
+            // GL661: while the cheat command line has the keyboard, no game key (WASD, M, hotkeys) does anything.
+            if (open && cheatsOpen && cheats.Typing && player != null)
+            {
+                cheats.GameInput.Suspend(player.InputAsset);
+            }
+            else
+            {
+                cheats.GameInput.Resume();
             }
         }
 

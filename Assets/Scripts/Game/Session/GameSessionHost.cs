@@ -42,7 +42,11 @@ namespace Clube.Game
         public MaterialRegistry Materials => worldView != null && worldView.Config != null ? worldView.Config.Materials : null;
 
         /// <summary>The game mode saved with the game: the session's, or World when played from the Editor.</summary>
-        public GameMode Mode => GameSession.IsActive ? GameSession.Mode : GameMode.World;
+        public GameMode Mode => GameSession.IsActive ? GameSession.Mode : editorMode;
+
+        [Tooltip("The game mode a game played straight from the Editor is saved as: this scene's mode.")]
+        [SerializeField]
+        private GameMode editorMode = GameMode.World;
 
         public void Apply(WorldConfig playCopy)
         {

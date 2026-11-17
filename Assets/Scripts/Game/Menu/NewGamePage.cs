@@ -22,18 +22,24 @@ namespace Clube.Game
             public GameMode Mode;
             public string Name;
             public string About;
-            public bool Playable;
         }
 
-        private static readonly ModeEntry[] Modes =
+        // Demo: the one game, on the bounded map (GL655). Debug: the four labs, each in its own scene.
+        private static readonly ModeEntry[] DemoModes =
         {
-            new ModeEntry { Mode = GameMode.Voxel, Name = "Voxel", About = "One voxel and its 256 cases.", Playable = false },
-            new ModeEntry { Mode = GameMode.Chunk, Name = "Chunk", About = "A single chunk to dig and build.", Playable = false },
-            new ModeEntry { Mode = GameMode.World, Name = "World", About = "A valley to mine, smelt and trade in.", Playable = true },
-            new ModeEntry { Mode = GameMode.Procedural, Name = "Procedural", About = "An endless streamed world.", Playable = false },
+            new ModeEntry { Mode = GameMode.Demo, Name = "Game Demo", About = "A 5 km map to mine, smelt and trade in." },
         };
 
-        private GameMode selected = GameMode.World;
+        private static readonly ModeEntry[] DebugModes =
+        {
+            new ModeEntry { Mode = GameMode.Voxel, Name = "Voxel", About = "One voxel and its 256 cases." },
+            new ModeEntry { Mode = GameMode.Chunk, Name = "Chunk", About = "A single chunk to dig and build." },
+            new ModeEntry { Mode = GameMode.World, Name = "World", About = "The 300 m valley lab." },
+            new ModeEntry { Mode = GameMode.Procedural, Name = "Infinite", About = "An endless streamed world." },
+        };
+
+        private bool debug;
+        private GameMode debugSelected = GameMode.World;
         private string worldName = SaveNames.DefaultWorldName;
         private string seedText;
         private bool withTutorial = true;
@@ -43,13 +49,16 @@ namespace Clube.Game
             seedText = defaultSeed.ToString();
         }
 
-        public GameMode Mode => selected;
+        public GameMode Mode => debug ? debugSelected : GameMode.Demo;
+
+        /// <summary>True on the Demo side, which has the map preview and the opening choice.</summary>
+        public bool IsDemo => !debug;
 
         /// <summary>The world's name as typed (GL206); <see cref="GameSession"/> takes the default for an empty one.</summary>
         public string WorldName => worldName;
 
         /// <summary>True when the game opens with the Mining Corp tutorial (GL479); the default.</summary>
-        public bool WithTutorial => withTutorial;
+        public bool WithTutorial => !debug && withTutorial;
 
         private static string OpeningText(bool chosen, string name, string about)
         {
@@ -89,19 +98,24 @@ namespace Clube.Game
 
             GUILayout.Label("Game mode", styles.Label);
             GUILayout.Space(4f);
-            foreach (ModeEntry entry in Modes)
+            GUILayout.BeginHorizontal();
+            if (GameUi.LayoutButton(OpeningText(!debug, "Demo", ""), styles.ModeButton, GUILayout.Height(36f)))
             {
-                bool wasEnabled = GUI.enabled;
-                GUI.enabled = entry.Playable;
-                string mark = selected == entry.Mode ? "●" : "○";
-                string text = entry.Playable
-                    ? $"{mark}  <b>{entry.Name}</b>    <size=13>{entry.About}</size>"
-                    : $"{mark}  <b>{entry.Name}</b>    <size=13>{entry.About}  (WIP)</size>";
-                if (GameUi.LayoutButton(text, styles.ModeButton, GUILayout.Height(40f)) && entry.Playable)
+                debug = false;
+            }
+            GUILayout.Space(4f);
+            if (GameUi.LayoutButton(OpeningText(debug, "Debug", ""), styles.ModeButton, GUILayout.Height(36f)))
+            {
+                debug = true;
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.Space(6f);
+            foreach (ModeEntry entry in debug ? DebugModes : DemoModes)
+            {
+                if (GameUi.LayoutButton(OpeningText(Mode == entry.Mode, entry.Name, entry.About), styles.ModeButton, GUILayout.Height(40f)) && debug)
                 {
-                    selected = entry.Mode;
+                    debugSelected = entry.Mode;
                 }
-                GUI.enabled = wasEnabled;
                 GUILayout.Space(4f);
             }
 
@@ -127,17 +141,21 @@ namespace Clube.Game
                 GUILayout.Label($"Makes seed {Seed}", styles.Caption);
             }
 
-            GUILayout.Space(14f);
-            GUILayout.Label("Opening", styles.Label);
-            GUILayout.Space(4f);
-            if (GameUi.LayoutButton(OpeningText(withTutorial, "Tutorial", "A day's work at the Mining Corp quarry."), styles.ModeButton, GUILayout.Height(40f)))
+            // The labs have no opening: only the demo game starts with the tutorial or the cart arrival.
+            if (!debug)
             {
-                withTutorial = true;
-            }
-            GUILayout.Space(4f);
-            if (GameUi.LayoutButton(OpeningText(!withTutorial, "Skip it", "Start on your family's parcel."), styles.ModeButton, GUILayout.Height(40f)))
-            {
-                withTutorial = false;
+                GUILayout.Space(14f);
+                GUILayout.Label("Opening", styles.Label);
+                GUILayout.Space(4f);
+                if (GameUi.LayoutButton(OpeningText(withTutorial, "Tutorial", "A day's work at the Mining Corp quarry."), styles.ModeButton, GUILayout.Height(40f)))
+                {
+                    withTutorial = true;
+                }
+                GUILayout.Space(4f);
+                if (GameUi.LayoutButton(OpeningText(!withTutorial, "Skip it", "Start on your family's parcel."), styles.ModeButton, GUILayout.Height(40f)))
+                {
+                    withTutorial = false;
+                }
             }
 
             GUILayout.Space(22f);
