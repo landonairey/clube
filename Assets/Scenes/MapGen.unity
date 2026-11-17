@@ -6400,6 +6400,7 @@ MonoBehaviour:
   player: {fileID: 1697135619}
   clock: {fileID: 1350119469}
   drying: {fileID: 1350119468}
+  editorMode: 4
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
