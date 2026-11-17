@@ -88,11 +88,11 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// GL711: raises samples to part-solid densities (a slanted roof's skin over its blocks): each only where that is
-        /// more than it has, in <paramref name="material"/>. Raising a sample fills in the carved voxels round it, so marching
+        /// GL711: sets samples to part-solid densities (a slanted roof's skin over its blocks, their top corners included)
+        /// in <paramref name="material"/> where they were air. The carved voxels round them are filled in, so marching
         /// cubes draws the slant there while the blocks under it keep their square faces inside.
         /// </summary>
-        public static void Raise(World world, IReadOnlyDictionary<Vector3Int, float> samples, byte material)
+        public static void Shape(World world, IReadOnlyDictionary<Vector3Int, float> samples, byte material)
         {
             foreach (KeyValuePair<Vector3Int, float> sample in samples)
             {
@@ -101,10 +101,15 @@ namespace Clube.Core
                 {
                     continue;
                 }
-                if (density.Value < sample.Value)
+                // Exactly the plane's density, the blocks' top corners too (still solid, just under one), or the slant
+                // comes out in uneven steps where a block's full corner pulls the surface up.
+                if (Mathf.Abs(density.Value - sample.Value) > 0.004f)
                 {
                     world.SetDensity(sample.Key, sample.Value);
-                    world.SetMaterial(sample.Key, material);
+                    if (density.Value < 0.5f)
+                    {
+                        world.SetMaterial(sample.Key, material);
+                    }
                 }
                 // Blocks built since (a neighbouring slice) may have carved round it again.
                 for (int corner = 0; corner < 8; corner++)

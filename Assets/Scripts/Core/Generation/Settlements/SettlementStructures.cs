@@ -184,7 +184,7 @@ namespace Clube.Core
         /// <summary>
         /// GL711: the samples over a building's stepped roof that make its top one slant: each sample within a voxel of the
         /// roof's plane, by its global index, with the density that puts the surface on the plane (0.5 on it, rising a half
-        /// a voxel under). Written after the blocks and only where it raises the density, so the steps stay square inside.
+        /// a voxel under). Written after the blocks (their top corners too); the steps stay square inside.
         /// </summary>
         public static Dictionary<Vector3Int, float> RoofSkin(SettlementBuilding building, float voxel, int slice = 0, int slices = 1)
         {

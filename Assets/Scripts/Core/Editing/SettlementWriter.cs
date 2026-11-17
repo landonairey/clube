@@ -447,7 +447,7 @@ namespace Clube.Core
                     SquareVoxels.Build(world, SettlementStructures.Blocks(site.Buildings[piece.Index], world.Grid.VoxelSize, materials.Stone.Id,
                         (turnAbout ? materials.Trim : materials.Boards).Id, (turnAbout ? materials.Boards : materials.Trim).Id, piece.Part, BuildingSlices), iso);
                     // GL711: the roof's top drawn as a slant over its square steps.
-                    SquareVoxels.Raise(world, SettlementStructures.RoofSkin(site.Buildings[piece.Index], world.Grid.VoxelSize, piece.Part, BuildingSlices),
+                    SquareVoxels.Shape(world, SettlementStructures.RoofSkin(site.Buildings[piece.Index], world.Grid.VoxelSize, piece.Part, BuildingSlices),
                         (turnAbout ? materials.Trim : materials.Boards).Id);
                     break;
                 }
