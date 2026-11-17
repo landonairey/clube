@@ -884,6 +884,22 @@ settlements of `Generation/`); the bodies are Game (`Game/People/`, `Game/Travel
   join end to end the vessel plies the longest stretch. `MapBoats` keeps a `Boat` (hull from `BoatMeshes`, hands,
   crates as real storage loaded by `CargoLoad`, which carts share) for each vessel near the viewer, at most
   `mostBoats`; far ones are only `MapBoats.PositionOf(run)`, which the world map draws as dots.
+- **Trade off the map (GL725).** `RoadPlanner` lays a trade road (`PlannedRoad.LeavesMap`, `ExitSide`) from the
+  settlement on the roads farthest towards each land side that is neither sea nor void to the edge of the free ground,
+  unless the way is too steep (`WorldPlanRules.ExitRoads`, `ExitRoadSteepShare`; a mountain-ridge edge usually gets
+  none); `WaterRoutePlanner` always gives the hub an open-sea route (`OpenSeaRoutes`). `OffMap.Lay` continues a route's
+  end out of the map (`OffMapPath`: where it leaves the free ground, where it passes the border, then a fade's length);
+  `CartRuns.Plan`/`BoatRuns.Plan` take its length into the timetable, `MapCarts` (a second `RoadLine` past the road's
+  end) and `MapBoats` (lane extended) run it, and `OffMapPresence` turns a traveller's colliders off past the free
+  ground and dithers it out past the border (`_Fade` on the Low Poly shader, which every low-poly model can use).
+- **Stops and docks (GL726).** `RunPlace.Rested` says how long a traveller has stood at an end; `TradeStop.At` splits
+  that rest into drive in, unloading, loading and drive out (`StopPhase`), `TradeStop.CratesHeld` says which crates hold
+  which load, `TradeStop.ShopFor` picks the shop that buys what a cart brings. `MapCarts` drives a standing cart along
+  the lanes (`SettlementWalks.Route`) to that shop's front and back; `RoadCart.Stop`/`Boat.Stop` fill crates through
+  `CrateCargo` while `Porter` walks the carter or a deckhand back and forth with a sack. Docks are `DockDesign` rows by
+  settlement type, laid by `Docks.Lay` on the shore nearest the buildings, built near the viewer by `SettlementDocks`
+  (added to the World by `MapBoats`; `DockMeshes`, a way up to the nearest building, paved for stone docks);
+  `MapBoats.RunLane` runs each vessel to and from its berth (`DockLayout.Berth`, `DockBerth.Mooring`).
 - **Thieves (GL617).** A thieves' camp is a settlement whose type has a `Band` and names its `Residents` occupation:
   `SettlementLayout` houses the band, `SettlementRoster` makes them residents, and they are `Villager`s like anyone
   (plus a `Bandit`, the `IToolTarget` that makes a struck thief drop his sack and lie dazed; there is no health). Their

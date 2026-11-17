@@ -56,23 +56,28 @@ namespace Clube.Core
                 }
                 plan.WaterRoutes.Add(Route(WaterRouteKind.Sea, hub, settlement, context.PathTo(harbour)));
             }
-            if (!plan.WaterRoutes.Exists(route => route.Kind == WaterRouteKind.Sea))
+            bool none = !plan.WaterRoutes.Exists(route => route.Kind == WaterRouteKind.Sea);
+            if (none || context.Rules.OpenSeaRoutes)
             {
-                // Nowhere on the map to sail to: the hub's route runs out to the open sea, for ports beyond the map.
-                int farthest = home;
-                float farthestDistance = -1f;
+                // The hub's route out to the open sea, for ports beyond the map (GL725: its vessels sail on past the edge).
+                // With nowhere on the map to sail to it runs to the farthest edge; beside routes on the map, to the nearest.
+                int edge = home;
+                float best = none ? -1f : float.MaxValue;
                 for (int i = 0; i < context.Cells.Length; i++)
                 {
                     int x = i % context.Size, z = i / context.Size;
                     bool onEdge = x == 0 || z == 0 || x == context.Size - 1 || z == context.Size - 1;
                     float distance = (context.Centre(i) - context.Centre(home)).sqrMagnitude;
-                    if (context.Reached(i) && onEdge && distance > farthestDistance)
+                    if (context.Reached(i) && onEdge && (none ? distance > best : distance < best))
                     {
-                        farthestDistance = distance;
-                        farthest = i;
+                        best = distance;
+                        edge = i;
                     }
                 }
-                plan.WaterRoutes.Add(Route(WaterRouteKind.Sea, hub, null, context.PathTo(farthest)));
+                if (edge != home)
+                {
+                    plan.WaterRoutes.Add(Route(WaterRouteKind.Sea, hub, null, context.PathTo(edge)));
+                }
             }
         }
 

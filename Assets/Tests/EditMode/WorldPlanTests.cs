@@ -568,6 +568,14 @@ namespace Clube.Core.Tests
                 + $"notes: {string.Join(" | ", world.Notes.Where(note => note.StartsWith("Road")))}");
 
             Assert.That(world.Roads.Count, Is.GreaterThan(8), "a network to judge");
+            // GL725: a trade road runs off the map into the desert; none into the sea.
+            PlannedRoad exit = world.Roads.FirstOrDefault(road => road.LeavesMap && road.ExitSide == MapSide.North);
+            Assert.IsNotNull(exit, string.Join(" | ", world.Notes.Where(note => note.Contains("trade road"))));
+            Assert.IsFalse(world.Roads.Any(road => road.LeavesMap && road.ExitSide != MapSide.North && road.ExitSide != MapSide.East), "no trade road runs into the sea");
+            Assert.AreEqual(-1, exit.To);
+            Vector2 end = exit.Points[exit.Points.Count - 1];
+            Vector2 past = end + layout.OutwardAt(end.x, end.y) * 80f;
+            Assert.IsFalse(layout.WalksFreely(past.x, past.y), "it ends at the edge of the free ground");
             foreach (PlannedSettlement settlement in world.Settlements)
             {
                 Assert.IsTrue(layout.WalksFreely(settlement.Position.x, settlement.Position.y), $"{settlement.Name} stands where the player can walk");

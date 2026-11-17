@@ -6,6 +6,8 @@ Shader "Clube/Low Poly"
     Properties
     {
         _Tint ("Tint", Color) = (1, 1, 1, 1)
+        // GL725: 1 drawn whole, down to 0 gone: a screen-door dither, so a cart or vessel can fade out past the map border.
+        _Fade ("Fade", Range(0, 1)) = 1
     }
 
     SubShader
@@ -17,7 +19,16 @@ Shader "Clube/Low Poly"
 
         CBUFFER_START(UnityPerMaterial)
             half4 _Tint;
+            half _Fade;
         CBUFFER_END
+
+        // Drops the pixel when the object is faded below this screen pixel's place in a 4 x 4 ordered dither.
+        void FadeClip(float4 positionCS)
+        {
+            uint2 p = uint2(positionCS.xy) % 4;
+            static const float bayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
+            clip(_Fade - (bayer[p.y * 4 + p.x] + 0.5) / 16.0);
+        }
         ENDHLSL
 
         Pass
@@ -65,6 +76,7 @@ Shader "Clube/Low Poly"
 
             half4 Fragment(Varyings input) : SV_Target
             {
+                FadeClip(input.positionCS);
                 float3 normalWS = normalize(input.normalWS);
                 float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
                 Light mainLight = GetMainLight(shadowCoord);
@@ -120,8 +132,9 @@ Shader "Clube/Low Poly"
                 return positionCS;
             }
 
-            half4 Fragment() : SV_Target
+            half4 Fragment(float4 positionCS : SV_POSITION) : SV_Target
             {
+                FadeClip(positionCS);
                 return 0;
             }
             ENDHLSL
@@ -142,8 +155,9 @@ Shader "Clube/Low Poly"
                 return TransformObjectToHClip(positionOS.xyz);
             }
 
-            half Fragment() : SV_Target
+            half Fragment(float4 positionCS : SV_POSITION) : SV_Target
             {
+                FadeClip(positionCS);
                 return 0;
             }
             ENDHLSL
@@ -182,6 +196,7 @@ Shader "Clube/Low Poly"
 
             half4 Fragment(Varyings input) : SV_Target
             {
+                FadeClip(input.positionCS);
                 float3 normalWS = normalize(input.normalWS);
             #if defined(_GBUFFER_NORMALS_OCT)
                 float2 octahedral = PackNormalOctQuadEncode(normalWS);

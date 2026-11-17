@@ -77,10 +77,20 @@ namespace Clube.Game
                     continue;
                 }
                 StorageText.Fill(crate.Storage, "");
-                for (int k = 0; k < 3 && goods.Count > 0; k++)
-                {
-                    crate.Storage.Add(goods[random.Next(goods.Count)], 2 + random.Next(7));
-                }
+                FillOne(crate, goods, random);
+            }
+        }
+
+        /// <summary>Adds a few kinds of the goods to one crate (GL726: crates are filled one by one at a stop).</summary>
+        public static void FillOne(StorageChest crate, IReadOnlyList<ItemDefinition> goods, System.Random random)
+        {
+            if (crate == null || crate.Storage == null || goods == null)
+            {
+                return;
+            }
+            for (int k = 0; k < 3 && goods.Count > 0; k++)
+            {
+                crate.Storage.Add(goods[random.Next(goods.Count)], 2 + random.Next(7));
             }
         }
 

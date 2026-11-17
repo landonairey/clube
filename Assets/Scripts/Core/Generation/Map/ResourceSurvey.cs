@@ -123,6 +123,9 @@ namespace Clube.Core
         /// <summary>The ores surveyed, in the order <see cref="Ore"/> indexes them (the terrain's ore specs).</summary>
         public IReadOnlyList<VoxelMaterial> Ores => ores;
 
+        /// <summary>The map's layout the survey marked its outside cells from (GL725: the edges trade roads run off); null for a survey made without one.</summary>
+        public MapLayout Layout { get; private set; }
+
         /// <summary>How long each part of the survey took, for the log.</summary>
         public string Timings { get; private set; }
 
@@ -210,6 +213,7 @@ namespace Clube.Core
         // and hold no land, fresh water, wood, game, grazing or ore, so nothing is sited on them or counts them.
         private void MarkOutside(MapLayout layout)
         {
+            Layout = layout;
             for (int cz = 0; cz < Size; cz++)
             {
                 for (int cx = 0; cx < Size; cx++)

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -87,6 +88,7 @@ namespace Clube.Core
                     Connect(plan, settlement, roadClass);
                 }
             }
+            ExitRoads(plan, onRoads);
             foreach (PlannedSettlement settlement in onRoads)
             {
                 settlement.BestRoad = network[CellOf(settlement)];
@@ -132,11 +134,114 @@ namespace Clube.Core
                 plan.Notes.Add($"{settlement.Name}: no way by land to the road network; it is reached by water.");
                 return;
             }
-            List<int> cells = context.PathTo(goal);
             var road = new PlannedRoad
             {
                 Index = plan.Roads.Count, Class = roadClass, From = settlement.Index, To = settlementAt[goal], Joins = roadAt[goal], CrossesSea = overSea,
             };
+            Lay(plan, road, context.PathTo(goal), definition, networkAt[goal]);
+        }
+
+        // GL725: a trade road off the map on each land side that is neither sea nor the void, from the settlement on the
+        // roads farthest towards that side to the nearest edge of the free ground there. Its carts go on past the edge.
+        private void ExitRoads(WorldPlan plan, List<PlannedSettlement> onRoads)
+        {
+            MapLayout layout = context.Survey.Layout;
+            if (!context.Rules.ExitRoads || layout == null)
+            {
+                return;
+            }
+            for (var side = MapSide.West; side <= MapSide.North; side++)
+            {
+                MapBoundaryType boundary = layout.Boundary(side);
+                if (boundary == null || boundary.IsOcean || boundary.ToProfile().Empty)
+                {
+                    continue;
+                }
+                Vector2 outward = Outward(side);
+                PlannedSettlement start = null;
+                foreach (PlannedSettlement settlement in onRoads)
+                {
+                    if (network[CellOf(settlement)] >= RoadClass.DirtCartPath
+                        && (start == null || Vector2.Dot(settlement.Position, outward) > Vector2.Dot(start.Position, outward)))
+                    {
+                        start = settlement;
+                    }
+                }
+                if (start == null)
+                {
+                    continue;
+                }
+                RoadClass roadClass = network[CellOf(start)] >= RoadClass.PavedCartPath ? RoadClass.PavedCartPath : RoadClass.DirtCartPath;
+                RoadClassDefinition definition = context.Rules.Road(roadClass);
+                MapSide wanted = side;
+                int goal = context.Search(CellOf(start), (from, to, metres) => StepCost(definition, from, to, metres), cell => IsEdge(cell, wanted));
+                if (goal < 0 || goal == CellOf(start))
+                {
+                    plan.Notes.Add($"No trade road leaves the map to the {side.ToString().ToLowerInvariant()}: no way by land from {start.Name} to that edge.");
+                    continue;
+                }
+                var road = new PlannedRoad { Index = plan.Roads.Count, Class = roadClass, From = start.Index, LeavesMap = true, ExitSide = side };
+                // Only where a cart can go: an edge up a mountain range has no gentle way out, and gets no trade road.
+                bool laid = Lay(plan, road, context.PathTo(goal), definition, networkAt[CellOf(start)],
+                    made => made.SteepLength <= made.Length * context.Rules.ExitRoadSteepShare && made.SteepestSlope < definition.MaxSlope * 4f);
+                plan.Notes.Add(laid
+                    ? $"A trade road leaves the map to the {side.ToString().ToLowerInvariant()} from {start.Name} ({road.Length:0} m to the edge)."
+                    : $"No trade road leaves the map to the {side.ToString().ToLowerInvariant()}: the way from {start.Name} is too steep for carts.");
+            }
+        }
+
+        // The way out of the map from a side's middle.
+        private static Vector2 Outward(MapSide side)
+        {
+            return side switch
+            {
+                MapSide.West => Vector2.left,
+                MapSide.East => Vector2.right,
+                MapSide.South => Vector2.down,
+                _ => Vector2.up,
+            };
+        }
+
+        // The side a point of the map lies towards, as the sides share the land.
+        private MapSide SideOf(Vector2 point)
+        {
+            Vector2 local = point - context.Survey.Area.center;
+            if (Mathf.Abs(local.x) >= Mathf.Abs(local.y))
+            {
+                return local.x < 0f ? MapSide.West : MapSide.East;
+            }
+            return local.y < 0f ? MapSide.South : MapSide.North;
+        }
+
+        // A dry cell of the free ground on the side wanted, beside a cell past the edge that is land too.
+        private bool IsEdge(int cell, MapSide side)
+        {
+            if (context.Cells[cell].Outside || IsWater(cell) || SideOf(context.Centre(cell)) != side)
+            {
+                return false;
+            }
+            int x = cell % context.Size, z = cell / context.Size;
+            for (int k = 0; k < 4; k++)
+            {
+                int nx = x + (k == 0 ? -1 : k == 1 ? 1 : 0), nz = z + (k == 2 ? -1 : k == 3 ? 1 : 0);
+                if (nx < 0 || nz < 0 || nx >= context.Size || nz >= context.Size)
+                {
+                    return true;
+                }
+                int next = nx + nz * context.Size;
+                if (context.Cells[next].Outside && !context.IsSea(next) && SideOf(context.Centre(next)) == side)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Lays a planned road along a path of cells: its points, length, steep stretches and bridges, and the cells it takes onto the network.
+        // False, and nothing laid, when <paramref name="accept"/> turns the finished road down.
+        private bool Lay(WorldPlan plan, PlannedRoad road, List<int> cells, RoadClassDefinition definition, int networkId, Func<PlannedRoad, bool> accept = null)
+        {
+            RoadClass roadClass = road.Class;
             float waterStart = -1f;
             Vector2 waterFrom = default;
             for (int i = 0; i < cells.Count; i++)
@@ -166,14 +271,22 @@ namespace Clube.Core
                     road.Bridges.Add(new RoadBridge((waterFrom + road.Points[i - 1]) * 0.5f, road.Length - waterStart));
                     waterStart = -1f;
                 }
+            }
+            if (accept != null && !accept(road))
+            {
+                return false;
+            }
+            foreach (int cell in cells)
+            {
                 if (network[cell] < roadClass)
                 {
                     network[cell] = roadClass;
                     roadAt[cell] = road.Index;
-                    networkAt[cell] = networkAt[goal];
+                    networkAt[cell] = networkId;
                 }
             }
             plan.Roads.Add(road);
+            return true;
         }
 
         private float StepCost(RoadClassDefinition definition, int from, int to, float metres)
