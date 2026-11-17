@@ -89,7 +89,11 @@ namespace Clube.Game
         }
 
         /// <summary>Fells whatever a chop on <paramref name="box"/> cut off, if anything; true when a limb started to fall. It falls towards <paramref name="fall"/> (a unit step along x or z), or to the right of where the player looks.</summary>
-        public bool TryFell(VoxelBox box, Vector3Int? fall = null)
+        /// <remarks>
+        /// GL672: <paramref name="woodCap"/> overrides the player's Woodcutting cap (a settlement's lumberjack fells at the
+        /// highest level: no wood lost); <paramref name="landed"/> is told where the piece's wood came to rest.
+        /// </remarks>
+        public bool TryFell(VoxelBox box, Vector3Int? fall = null, float? woodCap = null, System.Action<List<Vector3Int>> landed = null)
         {
             if (worldView == null || !worldView.IsReady)
             {
@@ -117,15 +121,21 @@ namespace Clube.Game
                 var leaves = new List<Vector3Int>();
                 TreeFelling.Land(world, limb, Vector3Int.zero, trees, iso, leafPacking: 1f, landedWood: wood, landedLeaves: leaves);
                 OnLanded(wood, leaves);
+                landed?.Invoke(wood);
                 return true;
             }
             // Meshed whole, so the whole piece falls; wood past the player's cap is gone once it lands (GL468).
             Mesh mesh = BuildMesh(limb, out Vector3 origin);
-            FellingYield.CapWood(limb, WoodCap);
+            FellingYield.CapWood(limb, woodCap ?? WoodCap);
             var falling = new GameObject("Falling limb").AddComponent<FallingLimb>();
             falling.transform.SetParent(worldView.transform, false);
             falling.Begin(
-                worldView, limb, trees, mesh, origin, Materials(), fall ?? FallDirection(), dustMaterial, dustColour, burstMaterial, OnLanded);
+                worldView, limb, trees, mesh, origin, Materials(), fall ?? FallDirection(), dustMaterial, dustColour, burstMaterial,
+                (wood, leaves) =>
+                {
+                    OnLanded(wood, leaves);
+                    landed?.Invoke(wood);
+                });
             Felled?.Invoke(limb);
             return true;
         }
