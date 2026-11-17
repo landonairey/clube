@@ -89,6 +89,43 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void TallTrees_StayWithinTheirSpread_WithThickerTrunks_AndCrownsNarrowerThanAScaledCopy()
+        {
+            // GL720: trees up to four times as tall.
+            TreeGeneration settings = Settings();
+            settings.Height = new Vector2(11f, 44f);
+            settings.TrunkRadius = 0.25f;
+            var parts = new List<TreePart>();
+            var root = new float3(0f, Ground, 0f);
+            int tall = 0;
+            for (int cell = 0; cell < 40; cell++)
+            {
+                var at = new Vector2Int(cell, 5);
+                float height = TreeShape.HeightOf(Seed, at, settings);
+                Assert.That(height, Is.InRange(11f, 44f));
+                parts.Clear();
+                TreeShape.Build(Seed, at, root, settings, parts);
+                float spread = 0f, top = 0f;
+                foreach (TreePart part in parts)
+                {
+                    Bounds bounds = part.Bounds(0f);
+                    spread = math.max(spread, math.max(
+                        math.max(math.abs(bounds.min.x), math.abs(bounds.max.x)), math.max(math.abs(bounds.min.z), math.abs(bounds.max.z))));
+                    top = math.max(top, bounds.max.y - Ground);
+                }
+                Assert.That(spread, Is.LessThanOrEqualTo(settings.MaxSpread), $"cell {cell}: within the spread chunks gather trees by");
+                Assert.That(top, Is.GreaterThan(height), $"cell {cell}: the crown tops the trunk");
+                if (height > 30f)
+                {
+                    tall++;
+                    Assert.That(spread, Is.LessThan(height * TreeShape.MaxSpreadPerHeight * 0.75f), $"cell {cell}: a tall tree's crown is narrower than a scaled copy");
+                    Assert.That(parts[1].FromRadius, Is.GreaterThan(0.25f * 1.15f), $"cell {cell}: a tall tree's trunk is thicker");
+                }
+            }
+            Assert.That(tall, Is.GreaterThan(0), "Some trees grow past 30 m.");
+        }
+
+        [Test]
         public void Shape_StandsOnAStump_ThatRisesTheSetHeight_WhenAStumpMaterialIsSet()
         {
             VoxelMaterial stump = VoxelMaterial.Create(15, "Stump", VoxelMaterialCategory.Plant);
@@ -181,10 +218,10 @@ namespace Clube.Core.Tests
                     Vector2 range = maple ? settings.MapleHeight : settings.Height;
                     Assert.That(TreeShape.HeightOf(Seed, at, settings), Is.InRange(range.x, range.y), $"cell {cell}: full-grown height");
 
-                    // The first trunk segment starts at the root with the trunk's radius (±15%).
+                    // The first trunk segment starts at the root with the trunk's radius (±15%), thicker past 20 m (GL720).
                     parts.Clear();
                     TreeShape.Build(Seed, at, new float3(0f, Ground, 0f), settings, parts);
-                    float trunk = maple ? 0.6f : 0.25f;
+                    float trunk = (maple ? 0.6f : 0.25f) * TreeShape.TrunkScale(TreeShape.HeightOf(Seed, at, settings));
                     Assert.That(parts[1].FromRadius, Is.InRange(trunk * 0.85f, trunk * 1.15f), $"cell {cell}: trunk radius");
                 }
                 Assert.That(maples, Is.InRange(10, 50));

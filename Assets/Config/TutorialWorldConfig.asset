@@ -195,9 +195,9 @@ MonoBehaviour:
       fieldChance: 0
       youngestSize: 0.45
       maxSlope: 12
-      height: {x: 11, y: 16}
+      height: {x: 11, y: 44}
       trunkRadius: 0.25
-      mapleHeight: {x: 14, y: 20}
+      mapleHeight: {x: 14, y: 56}
       mapleTrunkRadius: 0.4
       branches: {x: 3, y: 5}
       minBranchRadius: 0.22

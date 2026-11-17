@@ -285,7 +285,7 @@ namespace Clube.Core
         /// Furthest any part of a tree can reach sideways from its root, leaves included: a bound
         /// for gathering the trees near a chunk. Matches the limits <see cref="TreeShape"/> keeps to.
         /// </summary>
-        public float MaxSpread => TallestHeight * TreeShape.MaxSpreadPerHeight
-                                 + (LeafRadius.y * 2f + TreeShape.ClusterScatter) * Mathf.Max(1f, TallestHeight / TreeShape.LeafReferenceHeight);
+        public float MaxSpread => TreeShape.CrownHeight(TallestHeight) * TreeShape.MaxSpreadPerHeight
+                                 + (LeafRadius.y * 2f + TreeShape.ClusterScatter) * Mathf.Max(1f, TreeShape.CrownHeight(TallestHeight) / TreeShape.LeafReferenceHeight);
     }
 }

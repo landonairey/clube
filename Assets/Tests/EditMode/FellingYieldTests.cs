@@ -23,42 +23,43 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void TheCap_IsTenAtLevelZero_AndGrowsTenPercentALevel_Compounding()
+        public void TheCap_IsFortyAtLevelZero_AndGrowsTenPercentALevel_Compounding()
         {
-            Assert.That(FellingYield.WoodCap(0), Is.EqualTo(10f).Within(1e-4f));
-            Assert.That(FellingYield.WoodCap(1), Is.EqualTo(11f).Within(1e-4f));
-            Assert.That(FellingYield.WoodCap(2), Is.EqualTo(12.1f).Within(1e-4f));
-            Assert.That(FellingYield.WoodCap(10), Is.EqualTo(10f * Mathf.Pow(1.1f, 10)).Within(1e-3f));
-            Assert.That(FellingYield.WoodCap(-3), Is.EqualTo(10f), "No level under 0.");
+            // GL720: four times the first cap of 10.
+            Assert.That(FellingYield.WoodCap(0), Is.EqualTo(40f).Within(1e-4f));
+            Assert.That(FellingYield.WoodCap(1), Is.EqualTo(44f).Within(1e-4f));
+            Assert.That(FellingYield.WoodCap(2), Is.EqualTo(48.4f).Within(1e-3f));
+            Assert.That(FellingYield.WoodCap(10), Is.EqualTo(40f * Mathf.Pow(1.1f, 10)).Within(1e-3f));
+            Assert.That(FellingYield.WoodCap(-3), Is.EqualTo(40f), "No level under 0.");
         }
 
         [Test]
         public void APieceUnderTheCap_KeepsAllItsWood()
         {
-            FelledLimb limb = Trunk(8);
+            FelledLimb limb = Trunk(32);
             Assert.That(FellingYield.CapWood(limb, FellingYield.WoodCap(0)), Is.EqualTo(0));
-            Assert.That(limb.Solid.Count, Is.EqualTo(9));
+            Assert.That(limb.Solid.Count, Is.EqualTo(33));
             Assert.That(limb.WoodLost, Is.EqualTo(0));
         }
 
         [Test]
         public void APieceOverTheCap_KeepsTheWoodNearestTheCut_AndAllItsLeaves()
         {
-            FelledLimb limb = Trunk(30);
+            FelledLimb limb = Trunk(100);
             int lost = FellingYield.CapWood(limb, FellingYield.WoodCap(0));
-            Assert.That(lost, Is.EqualTo(20));
-            Assert.That(limb.WoodLost, Is.EqualTo(20));
-            Assert.That(limb.WoodCount, Is.EqualTo(10));
-            Assert.That(limb.Solid.FindAll(s => s.IsWood).TrueForAll(s => s.Sample.y < 10), "The bottom 10 m of the trunk stays.");
+            Assert.That(lost, Is.EqualTo(60));
+            Assert.That(limb.WoodLost, Is.EqualTo(60));
+            Assert.That(limb.WoodCount, Is.EqualTo(40));
+            Assert.That(limb.Solid.FindAll(s => s.IsWood).TrueForAll(s => s.Sample.y < 40), "The bottom 40 samples of the trunk stay.");
             Assert.That(limb.Solid.Exists(s => !s.IsWood), "Leaves aren't capped.");
         }
 
         [Test]
         public void AHigherLevel_KeepsMore()
         {
-            FelledLimb limb = Trunk(30);
+            FelledLimb limb = Trunk(100);
             FellingYield.CapWood(limb, FellingYield.WoodCap(5));
-            Assert.That(limb.WoodCount, Is.EqualTo(16), "10 x 1.1^5 = 16.1.");
+            Assert.That(limb.WoodCount, Is.EqualTo(64), "40 x 1.1^5 = 64.4.");
         }
 
         [Test]
@@ -86,7 +87,7 @@ namespace Clube.Core.Tests
             FelledLimb limb = TreeFelling.FindSevered(world, cut, cut, trees, 0.5f);
             Assert.That(limb.WoodCount, Is.EqualTo(16), "y 5 to 20.");
             TreeFelling.Remove(world, limb);
-            FellingYield.CapWood(limb, FellingYield.WoodCap(0));
+            FellingYield.CapWood(limb, 10f);
             TreeFelling.Land(world, limb, new Vector3Int(1, 0, 0), trees, 0.5f);
 
             int wood = 0;
