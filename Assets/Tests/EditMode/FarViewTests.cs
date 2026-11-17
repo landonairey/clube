@@ -137,6 +137,17 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void TheHaze_KeepsNearLandClear_AndBuildsWithDistance()
+        {
+            Assert.AreEqual(0.5f, AirHaze.HazeAt(7000f, 7000f), 1e-4f, "half lost at the half distance");
+            Assert.Less(AirHaze.HazeAt(1000f, 7000f), 0.02f, "the local mountain keeps its colours");
+            float nextPeak = AirHaze.HazeAt(3000f, 7000f);
+            Assert.Greater(nextPeak, 0.08f, "the next peak is muted");
+            Assert.Less(nextPeak, 0.2f, "slightly");
+            Assert.Greater(AirHaze.HazeAt(15000f, 7000f), 0.9f, "the far land is mostly haze");
+        }
+
+        [Test]
         public void ARoadNarrowerThanATexel_StillShows_Fainter()
         {
             var mask = new RoadMask(new Rect(0f, 0f, 400f, 400f), 100);

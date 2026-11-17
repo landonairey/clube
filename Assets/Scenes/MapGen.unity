@@ -15,7 +15,7 @@ RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
   m_Fog: 1
-  m_FogColor: {r: 0.78, g: 0.66, b: 0.6, a: 1}
+  m_FogColor: {r: 0.7, g: 0.77, b: 0.86, a: 1}
   m_FogMode: 3
   m_FogDensity: 0.00003
   m_LinearFogStart: 0
@@ -5514,6 +5514,7 @@ GameObject:
   - component: {fileID: 1350119502}
   - component: {fileID: 1350119501}
   - component: {fileID: 1350119500}
+  - component: {fileID: 1350119503}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -8028,3 +8029,16 @@ MonoBehaviour:
   walls: {r: 0.55, g: 0.42, b: 0.3, a: 1}
   stoneWalls: {r: 0.58, g: 0.57, b: 0.54, a: 1}
   roofs: {r: 0.42, g: 0.26, b: 0.2, a: 1}
+--- !u!114 &1350119503
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45fa52e414211194c944b07b1a3627ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.AirHaze
+  halfDistance: 7000
