@@ -761,7 +761,7 @@ namespace Clube.Game
             float coins = wallet != null && wallet.Wallet != null ? wallet.Wallet.Coins : 0f;
             if (!GameSession.IsActive)
             {
-                GameSession.StartNew(GameMode.World, 1);
+                GameSession.StartNew(GameMode.Demo, 1);
             }
             GameSession.FinishTutorial();
             GameSession.CharacterName = name;

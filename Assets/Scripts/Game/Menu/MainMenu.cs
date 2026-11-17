@@ -155,7 +155,7 @@ namespace Clube.Game
         // The seed's map as contour lines (GL636), beside the page.
         private void DrawMapPreview(Rect panel)
         {
-            if (newGame == null || mapConfig == null)
+            if (newGame == null || !newGame.IsDemo || mapConfig == null)
             {
                 return;
             }

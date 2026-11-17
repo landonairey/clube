@@ -28,6 +28,8 @@ namespace Clube.Game
                     return "ChunkLab";
                 case GameMode.Procedural:
                     return "ProceduralWorldLab";
+                case GameMode.Demo:
+                    return "MapGen";
                 default:
                     return "WorldLab";
             }

@@ -5508,6 +5508,9 @@ GameObject:
   - component: {fileID: 1350119494}
   - component: {fileID: 1350119495}
   - component: {fileID: 1350119496}
+  - component: {fileID: 1350119499}
+  - component: {fileID: 1350119498}
+  - component: {fileID: 1350119497}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -6355,6 +6358,48 @@ MonoBehaviour:
   boats: {fileID: 1350119494}
   thieves: {fileID: 1350119495}
   people: {fileID: 1350119491}
+--- !u!114 &1350119497
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 900a9d03b31830d4eadb524325bf7da8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.GraphicsSettingsApplier
+--- !u!114 &1350119498
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed5d726e48d17ea4aacd4e449d902b9d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PauseMenu
+  host: {fileID: 1350119499}
+  player: {fileID: 1697135563}
+--- !u!114 &1350119499
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fccd651c15506d8459884751742aa0b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.GameSessionHost
+  catalog: {fileID: 11400000, guid: 529535e765d597b47b63cf6a57402d86, type: 2}
+  player: {fileID: 1697135619}
+  clock: {fileID: 1350119469}
+  drying: {fileID: 1350119468}
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -6624,6 +6669,9 @@ GameObject:
   - component: {fileID: 1697135614}
   - component: {fileID: 1697135615}
   - component: {fileID: 1697135616}
+  - component: {fileID: 1697135619}
+  - component: {fileID: 1697135618}
+  - component: {fileID: 1697135617}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -7871,6 +7919,46 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.LoadCurtain
   delay: 0.4
   colour: {r: 0.05, g: 0.06, b: 0.07, a: 1}
+--- !u!114 &1697135617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f600faea3dbf53b4997948e09b5cf99e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerName
+--- !u!114 &1697135618
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 593292365af90f244834a835974118dd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.InteractHighlight
+  interactor: {fileID: 1697135574}
+  worldView: {fileID: 1350119460}
+  bashing: {fileID: 1697135592}
+  outline: {fileID: 2100000, guid: 84d2e2cdbce2c774cb23034c780c2013, type: 2}
+--- !u!114 &1697135619
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78d1be2aafcf26041820add94d061f1a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSaveState
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
