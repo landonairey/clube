@@ -806,8 +806,9 @@ settlements of `Generation/`); the bodies are Game (`Game/People/`, `Game/Travel
   the world, so a pit holds no progress of its own and goes on from whatever is there.
 - **In the scene.** `SettlementPeople` (on the World object, beside `MapSettlements`) looks twice a second: a
   settlement that `MapSettlements.BuiltSite` says stands, within `liveRange` of the viewer, gets its `Villager`s (up
-  to `mostPeople`); past `liveRange + leaveMargin` they are destroyed. A `Villager` reads its duty from the clock each
-  frame, walks (no physics: `GroundProbe.TryGround`, a short `World.Raycast` down from near its own height, keeps its
+  to `mostPeople`); once the viewer is past `liveRange + leaveMargin` of the town and of every one of them (GL670) they
+  are destroyed. A `Villager` reads its duty from the clock each frame, walks (no physics; `Villager.Spread` keeps it
+  apart from its neighbours and out of buildings, `SettlementWalks.PushOut`, GL668; `GroundProbe.TryGround`, a short `World.Raycast` down from near its own height, keeps its
   feet on the terrain, a pit's floor included) and poses its `FigureRig`. Nothing of a villager is saved: where it is
   follows from the clock, and what it did to the terrain is in the world.
 - **Figure detail.** `FigureLod` (added by `FigureRig.Build`) sets `FigureRig.Detail` from the camera's distance every
