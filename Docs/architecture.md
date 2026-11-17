@@ -293,6 +293,7 @@ flowchart LR
   `ResourceReach` summed-area tables, a Dijkstra over the 40 m cells): `SettlementPlacer` (largest first, by `SiteRule`, on any piece of land: `PlanContext.Land`; after the capital every
   other land with resources gets a settlement of its own, GL643; how steep a site may be goes by the road its type
   needs, `WorldPlanRules.FlatnessFor`, GL642),
+  A specialty row also names the skills its keeper teaches (`Trains`, GL681), which `ToShop` passes to the shop;
   `SpecialtyAssigner` (fit = the scarcest needed resource nearby; then every specialty is made to exist),
   `RoadPlanner` (paved, then dirt, then footpaths, each from its settlement to the nearest point of the network so far;
   a settlement with no way by land starts a network of its own land, `PlannedSettlement.RoadNetwork`),

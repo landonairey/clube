@@ -475,12 +475,11 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void DeadGrass_IsTheRegistrysLastMaterial_AndBurnsWorseThanGrass()
+        public void DeadGrass_IsMaterial34_AndBurnsWorseThanGrass()
         {
             var registry = UnityEditor.AssetDatabase.LoadAssetAtPath<MaterialRegistry>("Assets/Config/Materials/MaterialRegistry.asset");
-            IReadOnlyList<VoxelMaterial> all = registry.Materials;
-            VoxelMaterial dead = all[all.Count - 1], grass = registry.Find("Grass");
-            Assert.AreEqual("Dead Grass", dead.DisplayName, "appended last, so no earlier material's id or texture layer moved");
+            VoxelMaterial dead = registry.Get(34), grass = registry.Find("Grass");
+            Assert.AreEqual("Dead Grass", dead.DisplayName, "appended after the earlier ones, so none of their ids or texture layers moved");
             Assert.AreEqual(34, dead.Id);
             Assert.AreEqual(MaterialKind.Soil, dead.Kind);
             Assert.AreNotSame(grass.Albedo, dead.Albedo, "its own, yellower texture");

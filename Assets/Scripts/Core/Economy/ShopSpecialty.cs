@@ -137,7 +137,7 @@ namespace Clube.Core
             }
             foreach (ItemDefinition item in sells)
             {
-                if (item == null || !master.TryGetLot(item, out int coins, out int lot))
+                if (item == null || (item is TorchDefinition torch && torch.IsLit) || !master.TryGetLot(item, out int coins, out int lot))
                 {
                     continue;
                 }

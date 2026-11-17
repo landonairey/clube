@@ -60,6 +60,8 @@ namespace Clube.Core
         public bool SellsVariety;
         /// <summary>Sub-sub-categories by name (the blacksmith's armory, weaponsmith, toolsmith).</summary>
         public string[] SubSpecialties = Array.Empty<string>();
+        /// <summary>The skills its keeper teaches for coins (GL681): the lessons the trade screen lists.</summary>
+        public SkillType[] Trains = Array.Empty<SkillType>();
 
         /// <summary>The goods it buys that the game has, as items.</summary>
         public List<ItemDefinition> BuysIn(ItemCatalog catalog)
@@ -80,7 +82,7 @@ namespace Clube.Core
         public ShopSpecialty ToShop(ItemCatalog catalog, IEnumerable<ItemDefinition> variety = null)
         {
             IEnumerable<ItemDefinition> sells = SellsVariety && variety != null ? variety : SellsIn(catalog);
-            return ShopSpecialty.Create(Kind, Name, BuysIn(catalog), sells, buysEverything: BuysEverything);
+            return ShopSpecialty.Create(Kind, Name, BuysIn(catalog), sells, buysEverything: BuysEverything, trains: Trains);
         }
 
         /// <summary>
@@ -101,7 +103,7 @@ namespace Clube.Core
                 }
             }
             var items = new List<ItemDefinition>(catalog.Items);
-            items.RemoveAll(item => item == null);
+            items.RemoveAll(item => item == null || (item is TorchDefinition torch && torch.IsLit)); // a lit torch is never for sale (GL682)
             var random = new System.Random(seed);
             var keys = new Dictionary<ItemDefinition, double>();
             foreach (ItemDefinition item in items)
@@ -135,6 +137,7 @@ namespace Clube.Core
             "crushed-magnetite", "crushed-hematite",
         };
         private static readonly string[] Buns = { "copper-bun", "tin-bun", "bronze-bun", "gold-bun", "silver-bun", "iron-bun", "steel-bun" };
+        private static readonly string[] PreciousMetals = { "gold-bun", "silver-bun", "gold-ingot", "silver-ingot" };
         private static readonly string[] Ingots = { "copper-ingot", "tin-ingot", "bronze-ingot", "gold-ingot", "silver-ingot", "iron-ingot", "steel-ingot" };
         // What the animals leave (GL603), by AnimalSpeciesTable's drops.
         private static readonly string[] FursAndWools = { "rabbit-fur", "goat-wool", "sheep-wool", "yak-wool", "alpaca-wool" };
@@ -158,18 +161,21 @@ namespace Clube.Core
                 // Lumber.
                 new EconomySpecialty
                 {
-                    Id = "lumber-supplies", Name = "Lumber Mill", Chain = SupplyChains.Lumber, Kind = ShopKind.Lumber, CraftLevel = 0,
+                    Id = "lumber-supplies", Trains = new[] { SkillType.Woodcutting },
+                    Name = "Lumber Mill", Chain = SupplyChains.Lumber, Kind = ShopKind.Lumber, CraftLevel = 0,
                     Needs = new[] { "wood" }, Buys = Goods(Woods, Boards), Sells = Goods(Woods, Boards, Hatchets),
                 },
                 new EconomySpecialty
                 {
-                    Id = "carpentry", Name = "Carpenter", Chain = SupplyChains.Lumber, Kind = ShopKind.Lumber, CraftLevel = 1,
+                    Id = "carpentry", Trains = new[] { SkillType.Crafting },
+                    Name = "Carpenter", Chain = SupplyChains.Lumber, Kind = ShopKind.Lumber, CraftLevel = 1,
                     Needs = new[] { "wood" }, Buys = Goods(Woods, Boards),
                     Sells = Goods(Boards, Later("Wooden crate", "Hand-carved flute")),
                 },
                 new EconomySpecialty
                 {
-                    Id = "tool-componentry", Name = "Tool Componentry", Chain = SupplyChains.Lumber, Kind = ShopKind.Lumber, CraftLevel = 1,
+                    Id = "tool-componentry", Trains = new[] { SkillType.Crafting, SkillType.Woodcutting },
+                    Name = "Tool Componentry", Chain = SupplyChains.Lumber, Kind = ShopKind.Lumber, CraftLevel = 1,
                     Needs = new[] { "wood" }, Buys = Goods(Woods, new[] { "stick" }),
                     Sells = Goods(new[] { "stick", "hand-axe" }, Chisels, Hatchets, Shovels),
                 },
@@ -177,22 +183,26 @@ namespace Clube.Core
                 // Ore.
                 new EconomySpecialty
                 {
-                    Id = "mining", Name = "Mining Post", Chain = SupplyChains.Ore, Kind = ShopKind.Mining, CraftLevel = 0,
+                    Id = "mining", Trains = new[] { SkillType.Mining, SkillType.Prospecting },
+                    Name = "Mining Post", Chain = SupplyChains.Ore, Kind = ShopKind.Mining, CraftLevel = 0,
                     Needs = new[] { "ore" }, Buys = Goods(RawOres, Picks), Sells = Goods(RawOres, Picks),
                 },
                 new EconomySpecialty
                 {
-                    Id = "crushing", Name = "Crushing Mill", Chain = SupplyChains.Ore, Kind = ShopKind.Mining, CraftLevel = 1,
+                    Id = "crushing", Trains = new[] { SkillType.Mining },
+                    Name = "Crushing Mill", Chain = SupplyChains.Ore, Kind = ShopKind.Mining, CraftLevel = 1,
                     Needs = new[] { "ore" }, Buys = Goods(RawOres, CrushedOres), Sells = Goods(CrushedOres),
                 },
                 new EconomySpecialty
                 {
-                    Id = "smelting", Name = "Smelter", Chain = SupplyChains.Ore, Kind = ShopKind.Blacksmith, CraftLevel = 1,
-                    Needs = new[] { "ore" }, Buys = Goods(RawOres, CrushedOres, Furnaces), Sells = Goods(Buns, Ingots, Furnaces),
+                    Id = "smelting", Trains = new[] { SkillType.Smelting },
+                    Name = "Smelter", Chain = SupplyChains.Ore, Kind = ShopKind.Blacksmith, CraftLevel = 1,
+                    Needs = new[] { "ore" }, Buys = Goods(RawOres, CrushedOres, Buns, Ingots, Furnaces), Sells = Goods(Buns, Ingots, Furnaces),
                 },
                 new EconomySpecialty
                 {
-                    Id = "blacksmith", Name = "Blacksmith", Chain = SupplyChains.Ore, Kind = ShopKind.Blacksmith, CraftLevel = 1,
+                    Id = "blacksmith", Trains = new[] { SkillType.Blacksmithing },
+                    Name = "Blacksmith", Chain = SupplyChains.Ore, Kind = ShopKind.Blacksmith, CraftLevel = 1,
                     Needs = new[] { "ore" }, Buys = Goods(Ingots, new[] { "anvil" }),
                     Sells = Goods(
                         new[] { "anvil", "copper-pick", "bronze-pick", "copper-hatchet", "bronze-hatchet", "bronze-shovel", "bronze-chisel", "spear" },
@@ -202,47 +212,55 @@ namespace Clube.Core
                 },
                 new EconomySpecialty
                 {
-                    Id = "goldsmith", Name = "Goldsmith", Chain = SupplyChains.Ore, Kind = ShopKind.Blacksmith, CraftLevel = 2,
-                    Needs = new[] { "precious-ore" }, Buys = Goods(new[] { "gold-ingot", "silver-ingot" }, Later("Gems", "Pearls")),
-                    Sells = Goods(Later("Gold jewelry", "Silver jewelry", "Jewelry of other precious metals")),
+                    Id = "goldsmith", Trains = new[] { SkillType.Goldsmithing },
+                    Name = "Goldsmith", Chain = SupplyChains.Ore, Kind = ShopKind.Blacksmith, CraftLevel = 2,
+                    Needs = new[] { "precious-ore" }, Buys = Goods(PreciousMetals, Later("Gems", "Pearls")),
+                    Sells = Goods(PreciousMetals, Later("Gold jewelry", "Silver jewelry", "Jewelry of other precious metals")),
                 },
                 new EconomySpecialty
                 {
-                    Id = "jeweler", Name = "Jeweler", Chain = SupplyChains.Ore, Kind = ShopKind.Prospector, CraftLevel = 2,
+                    Id = "jeweler", Trains = new[] { SkillType.Goldsmithing, SkillType.Prospecting },
+                    Name = "Jeweler", Chain = SupplyChains.Ore, Kind = ShopKind.Prospector, CraftLevel = 2,
                     Needs = new[] { "precious-ore" }, Buys = Goods(Later("Gems", "Pearls")), Sells = Goods(Later("Cut gems", "Pearls")),
                 },
 
                 // Aggregate.
                 new EconomySpecialty
                 {
-                    Id = "aggregate-supplies", Name = "Building Supplies", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 0,
-                    Needs = new[] { "stone" }, Buys = Goods(new[] { "dirt", "stone", "crushed-stone" }, Later("Limestone")),
-                    Sells = Goods(new[] { "dirt", "stone", "crushed-stone" }, Later("Limestone")),
+                    Id = "aggregate-supplies", Trains = new[] { SkillType.Mining },
+                    Name = "Building Supplies", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 0,
+                    Needs = new[] { "stone" }, Buys = Goods(new[] { "dirt", "stone", "crushed-stone" }, new[] { "limestone" }),
+                    Sells = Goods(new[] { "dirt", "stone", "crushed-stone" }, new[] { "limestone" }),
                 },
                 new EconomySpecialty
                 {
-                    Id = "masonry", Name = "Mason", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 1,
+                    Id = "masonry", Trains = new[] { SkillType.Crafting },
+                    Name = "Mason", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 1,
                     Needs = new[] { "stone", "clay" }, Buys = Goods(new[] { "brick", "refractory-brick" }, Later("Cobblestone")),
                     Sells = Goods(new[] { "brick", "refractory-brick" }, Later("Cobblestone")),
                 },
                 new EconomySpecialty
                 {
-                    Id = "stone-quarry", Name = "Stone Quarry", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 0,
+                    Id = "stone-quarry", Trains = new[] { SkillType.Mining },
+                    Name = "Stone Quarry", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 0,
                     Needs = new[] { "stone" }, Buys = Goods(new[] { "stone", "crushed-stone" }), Sells = Goods(new[] { "stone", "crushed-stone" }),
                 },
                 new EconomySpecialty
                 {
-                    Id = "limestone-quarry", Name = "Limestone Quarry", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 0,
-                    Needs = new[] { "limestone" }, Buys = Goods(Later("Limestone")), Sells = Goods(Later("Limestone")),
+                    Id = "limestone-quarry", Trains = new[] { SkillType.Mining },
+                    Name = "Limestone Quarry", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 0,
+                    Needs = new[] { "limestone" }, Buys = Goods(new[] { "limestone" }), Sells = Goods(new[] { "limestone" }),
                 },
                 new EconomySpecialty
                 {
-                    Id = "sand-pit", Name = "Sand Pit", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 0,
+                    Id = "sand-pit", Trains = new[] { SkillType.Mining },
+                    Name = "Sand Pit", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 0,
                     Needs = new[] { "sand" }, Buys = Goods(new[] { "sand" }), Sells = Goods(new[] { "sand" }),
                 },
                 new EconomySpecialty
                 {
-                    Id = "clay-pit", Name = "Clay Pit", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 0,
+                    Id = "clay-pit", Trains = new[] { SkillType.Mining },
+                    Name = "Clay Pit", Chain = SupplyChains.Aggregate, Kind = ShopKind.Mining, CraftLevel = 0,
                     Needs = new[] { "clay" }, Buys = Goods(new[] { "clay" }), Sells = Goods(new[] { "clay" }),
                 },
 
@@ -265,7 +283,7 @@ namespace Clube.Core
                 new EconomySpecialty
                 {
                     Id = "leathery", Name = "Leathery", Chain = SupplyChains.Textile, CraftLevel = 1, Needs = new[] { "game" },
-                    Buys = Goods(Later("Tanned hides")), Sells = Goods(Later("Leather-worked goods")),
+                    Buys = Goods(Hides, Later("Tanned hides")), Sells = Goods(Hides, Later("Tanned hides", "Leather-worked goods")),
                 },
 
                 // Merchant, the exception.
