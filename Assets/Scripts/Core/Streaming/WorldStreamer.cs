@@ -229,6 +229,39 @@ namespace Clube.Core
             set => settings.SealEdges = value;
         }
 
+        /// <summary>
+        /// GL653: true for a chunk column something still has to write into (<see cref="IColumnHold"/>). Its chunks load,
+        /// but those with a surface aren't meshed for the first time until it lets go, so they first appear as written;
+        /// null for none. The focus's own column and those touching it are never held: there is always ground to stand on.
+        /// </summary>
+        public Func<Vector2Int, bool> Hold { get; set; }
+
+        /// <summary>True when <see cref="Hold"/> keeps the column from being shown now.</summary>
+        /// <summary>
+        /// Set while the load is waited for behind a curtain (<see cref="WorldView.Hurry"/>): nothing is watched, so a bulk
+        /// load takes twice its loading budget of each frame.
+        /// </summary>
+        public bool Hurry { get; set; }
+
+        private const float HurryBudgetScale = 2f;
+
+        public bool IsColumnHeld(Vector2Int column)
+        {
+            if (Hold == null || !wantedCentre.HasValue)
+            {
+                return false;
+            }
+            Vector3Int centre = wantedCentre.Value;
+            return (Mathf.Abs(column.x - centre.x) > 1 || Mathf.Abs(column.y - centre.z) > 1) && Hold(column);
+        }
+
+        // A chunk never shown yet, with a surface, in a held column.
+        private bool IsHeld(Vector3Int coord)
+        {
+            return Hold != null && !meshedOnce.Contains(coord) && IsColumnHeld(new Vector2Int(coord.x, coord.z))
+                   && world.TryGetChunk(coord, out Chunk chunk) && !chunk.IsUniform;
+        }
+
         /// <summary>Wanted chunks not loaded yet.</summary>
         public int PendingCount => WantedCount - wantedLoaded;
 
@@ -242,7 +275,15 @@ namespace Clube.Core
             settings.FarLoadingBudgetMilliseconds > 0f && settings.DetailDistance > 0 && hasDrawCentre
             && (loadCursor >= wantedColumns.Count || !IsWithin(wantedColumns[loadCursor], drawCentre, DrawRadius + 1));
 
-        private int MaxJobsInFlight => settings.MaxJobsInFlight > 0 ? settings.MaxJobsInFlight : Mathf.Max(4, JobsUtility.JobWorkerCount * 2);
+        // Jobs in flight per worker thread: two while playing, so a frame's results are few; more while the area loads in
+        // bulk (GL653), when frames are long and a worker gets through several fills in one. Measured at the MapGen start:
+        // with two, the workers idled most of each frame and the load ran at some 700 chunks a frame.
+        private const int JobsPerWorker = 2;
+        private const int BulkJobsPerWorker = 8;
+
+        private int MaxJobsInFlight => settings.MaxJobsInFlight > 0
+            ? settings.MaxJobsInFlight
+            : Mathf.Max(4, JobsUtility.JobWorkerCount * (bulkLoading ? BulkJobsPerWorker : JobsPerWorker));
 
         /// <summary>One frame of streaming around <paramref name="focus"/> (relative to the world origin). Call from Update.</summary>
         public void Update(Vector3 focus)
@@ -250,7 +291,8 @@ namespace Clube.Core
             frameClock.Restart();
             lapStart = 0;
             StreamingPhases phases = default;
-            budget = bulkLoading && settings.LoadingBudgetMilliseconds > settings.FrameBudgetMilliseconds
+            budget = bulkLoading && Hurry ? Mathf.Max(settings.LoadingBudgetMilliseconds * HurryBudgetScale, settings.FrameBudgetMilliseconds)
+                : bulkLoading && settings.LoadingBudgetMilliseconds > settings.FrameBudgetMilliseconds
                 ? (IsLoadingHiddenOnly ? Mathf.Max(settings.FarLoadingBudgetMilliseconds, settings.FrameBudgetMilliseconds) : settings.LoadingBudgetMilliseconds)
                 : settings.FrameBudgetMilliseconds;
 
@@ -377,8 +419,12 @@ namespace Clube.Core
         /// True once every chunk in the column is loaded, meshed and, near the focus, has its
         /// collider: somewhere a player can stand (M6).
         /// </summary>
-        public bool IsColumnSettled(Vector2Int column)
+        public bool IsColumnSettled(Vector2Int column, bool colliders = true)
         {
+            if (IsColumnHeld(column))
+            {
+                return false;
+            }
             for (int layer = 0; layer < settings.HeightInChunks; layer++)
             {
                 var coord = new Vector3Int(column.x, layer, column.y);
@@ -386,13 +432,26 @@ namespace Clube.Core
                 {
                     return false;
                 }
-                if (settings.Colliders && renderers.TryGet(coord, out ChunkRenderer chunkRenderer) && chunkRenderer.Collider != null
+                if (colliders && settings.Colliders && renderers.TryGet(coord, out ChunkRenderer chunkRenderer) && chunkRenderer.Collider != null
                     && chunkRenderer.Mesh.vertexCount > 0 && chunkRenderer.Collider.Version != chunkRenderer.MeshVersion)
                 {
                     return false;
                 }
             }
             return true;
+        }
+
+        /// <summary>How far a column has got, for load reports: its layers loaded, those meshed (or known to have no surface), and whether it is held.</summary>
+        public void ColumnState(Vector2Int column, out int loaded, out int meshed, out bool held)
+        {
+            loaded = meshed = 0;
+            for (int layer = 0; layer < settings.HeightInChunks; layer++)
+            {
+                var coord = new Vector3Int(column.x, layer, column.y);
+                loaded += world.IsLoaded(coord) ? 1 : 0;
+                meshed += meshedOnce.Contains(coord) && !pipeline.IsMeshing(coord) ? 1 : 0;
+            }
+            held = IsColumnHeld(column);
         }
 
         /// <summary>Unloads every chunk (before regenerating): renderers go back to the pool, and <see cref="ChunkUnloaded"/> is raised for each.</summary>
@@ -609,7 +668,7 @@ namespace Clube.Core
 
             // The world's dirty chunks in the wanted area, nearest first.
             world.CollectDirty(dirtyScratch);
-            dirtyScratch.RemoveAll(coord => !IsWanted(coord) || pipeline.IsMeshing(coord));
+            dirtyScratch.RemoveAll(coord => !IsWanted(coord) || pipeline.IsMeshing(coord) || IsHeld(coord));
             if (wantedCentre.HasValue)
             {
                 Vector3Int centre = wantedCentre.Value;

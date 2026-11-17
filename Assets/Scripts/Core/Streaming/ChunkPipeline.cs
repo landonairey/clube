@@ -160,6 +160,10 @@ namespace Clube.Core
         /// are ready at once, without a job. Returns false, starting nothing but its column's
         /// heights, while a heightfield chunk waits for those heights: call again later.
         /// </summary>
+        // Metres over a column's highest ground past which a chunk is taken for air unasked: far more than a tree on the
+        // highest ground beside the column (a cliff's top) could reach.
+        private const float SkyClearance = 96f;
+
         public bool StartGeneration(Vector3Int coord)
         {
             if (IsGenerating(coord))
@@ -187,6 +191,15 @@ namespace Clube.Core
             }
 
             var task = new GenerationTask { Coord = coord, Grid = chunkGrid };
+            // GL653: far over the column's ground no tree or boulder reaches, so there is nothing to look for: most of a
+            // tall world's chunks are this sky, and looking was a large part of what a load cost the main thread.
+            if (column != null && chunkGrid.Bottom >= column.Highest + fillSettings.RampReach + SkyClearance)
+            {
+                task.Air = true;
+                generated.Enqueue(task);
+                generatedCoords.Add(coord);
+                return true;
+            }
             task.Trees = ChunkGenerator.CollectTrees(trees, boulders, task.Grid, Allocator.Persistent);
             if (generator == null || (task.Trees.Length == 0 && IsAboveSurface(coord, task.Grid)))
             {

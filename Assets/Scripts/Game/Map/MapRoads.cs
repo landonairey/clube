@@ -17,7 +17,7 @@ namespace Clube.Game
         private const string KeyPrefix = "maproad.";
 
         // Pieces looked at each frame for whether their chunks have loaded.
-        private const int ChecksPerFrame = 24;
+        private const int ChecksPerFrame = 32;
 
         // A tunnel is this much wider than its road, and this high at the middle of its arch (GL642).
         private const float TunnelExtraWidth = 1f;
@@ -46,6 +46,10 @@ namespace Clube.Game
         [SerializeField, Range(0.5f, 10f)]
         private float writeBudgetMilliseconds = 3f;
 
+        [Tooltip("Milliseconds a frame they may take while the area round the viewer loads in bulk (at the start, after a long jump): the ground is held back until it is written (GL653).")]
+        [SerializeField, Range(0.5f, 40f)]
+        private float loadingWriteBudgetMilliseconds = 8f;
+
         // One road, worked out once the viewer comes near.
         private sealed class Built
         {
@@ -71,6 +75,90 @@ namespace Clube.Game
         private Vector2 collectedAt;
         private float collectedTime = float.MinValue;
         private bool moreToWorkOut;
+
+        // GL653: the ground a road is still to be written into is not shown until it is. A road not worked out holds
+        // the box round its line, widened by what its bed may reach either side.
+        private const float HoldMargin = 2f;
+        private const float UnworkedReach = 14f;
+
+        // Milliseconds a frame while the player waits behind the loading curtain (WorldView.Hurry).
+        private const float HurryBudgetMilliseconds = 50f;
+        private readonly ColumnHoldSet hold = new ColumnHoldSet();
+        private WorldView holding;
+
+        /// <summary>Chunk columns with a worked-out road's piece still to write: not shown until it is (GL653).</summary>
+        public int HeldColumns => hold.Count;
+
+        /// <summary>Pieces found near the viewer and not written yet (their chunks may still be loading).</summary>
+        public int PendingPieces => pending.Count;
+
+        private void OnEnable()
+        {
+            hold.Rule = HoldsUnworked;
+            holding = session != null ? session.WorldView : null;
+            if (holding != null)
+            {
+                holding.AddHold(hold);
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (holding != null)
+            {
+                holding.RemoveHold(hold);
+            }
+        }
+
+        // How far from the viewer pieces are written: at least the whole loaded area, so nothing loaded is left held.
+        private float Range()
+        {
+            WorldView view = session.WorldView;
+            return Mathf.Max(buildRange, view.RenderDistance * view.World.Grid.ChunkWorldSize.x + UnworkedReach + 4f);
+        }
+
+        private bool HoldsUnworked(Vector2Int column)
+        {
+            if (session == null || !session.IsReady || session.Plan == null)
+            {
+                return false;
+            }
+            if (session.Version != version || built == null)
+            {
+                return true;
+            }
+            float chunk = session.WorldView.World.Grid.ChunkWorldSize.x;
+            float x = (column.x + 0.5f) * chunk, z = (column.y + 0.5f) * chunk, reach = UnworkedReach + chunk * 0.5f;
+            for (int i = 0; i < built.Length; i++)
+            {
+                Rect box = bounds[i];
+                if (built[i] == null && x >= box.xMin - reach && x <= box.xMax + reach && z >= box.yMin - reach && z <= box.yMax + reach
+                    && session.Plan.Roads[i].Points.Count >= 2)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static Rect HoldOf(RoadWriter writer, int piece)
+        {
+            Rect box = writer.Footprint(piece);
+            return Rect.MinMaxRect(box.xMin - HoldMargin, box.yMin - HoldMargin, box.xMax + HoldMargin, box.yMax + HoldMargin);
+        }
+
+        // Counts a road's unwritten pieces; all the roads' afresh after a restore marked some written.
+        private void HoldUnwritten(Built road)
+        {
+            WorldGrid grid = session.WorldView.World.Grid;
+            for (int piece = 0; piece < road.Writer.Pieces; piece++)
+            {
+                if (!road.Writer.IsWritten(piece))
+                {
+                    hold.Add(grid, HoldOf(road.Writer, piece));
+                }
+            }
+        }
 
         /// <summary>Whether roads are being built (off: the plan stays lines on the map).</summary>
         public bool Build
@@ -169,6 +257,7 @@ namespace Clube.Game
 
         private void Update()
         {
+            hold.Enabled = build;
             if (session == null || !session.IsReady || session.Plan == null)
             {
                 return;
@@ -216,6 +305,7 @@ namespace Clube.Game
                 bounds[i] = Rect.MinMaxRect(min.x, min.y, max.x, max.y);
             }
             pending.Clear();
+            hold.Clear();
             heights = new KeptHeights(session.Map.Height);
             // A parcel's fence leaves a gap where a road crosses its border.
             ParcelBorders borders = FindAnyObjectByType<ParcelBorders>();
@@ -311,6 +401,7 @@ namespace Clube.Game
                 made.Writer.Restore(saved);
             }
             built[index] = made;
+            HoldUnwritten(made);
             RoadsWorkedOut++;
             LongestWorkOutMilliseconds = Mathf.Max(LongestWorkOutMilliseconds, (Time.realtimeSinceStartup - started) * 1000f);
             return made;
@@ -326,6 +417,7 @@ namespace Clube.Game
             boring.Clear();
             World world = session.WorldView.World;
             bool workedOutOne = false;
+            float buildRange = Range();
             for (int i = 0; i < bounds.Length; i++)
             {
                 Rect box = bounds[i];
@@ -370,12 +462,20 @@ namespace Clube.Game
             }
             WorldConfig config = session.WorldView.Config;
             World world = session.WorldView.World;
+            // While the area loads in bulk the ground is waiting to be shown: more of the frame goes to writing it.
+            float writeBudgetMilliseconds = session.WorldView.IsLoading
+                ? Mathf.Max(this.writeBudgetMilliseconds, session.WorldView.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds) : this.writeBudgetMilliseconds;
             float started = Time.realtimeSinceStartup;
             int checks = 0;
             for (int i = 0; i < pending.Count && checks < ChecksPerFrame; i++)
             {
                 (int Road, int Piece, float Distance) next = pending[i];
                 RoadWriter writer = built[next.Road].Writer;
+                if (writer.IsWritten(next.Piece))
+                {
+                    pending.RemoveAt(i--);
+                    continue;
+                }
                 checks++;
                 if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece))
                 {
@@ -383,6 +483,7 @@ namespace Clube.Game
                 }
                 float before = Time.realtimeSinceStartup;
                 writer.Write(world, config.Materials, Natural, config.IsoLevel, next.Piece);
+                hold.Remove(world.Grid, HoldOf(writer, next.Piece));
                 pending.RemoveAt(i--);
                 PiecesWritten++;
                 float took = (Time.realtimeSinceStartup - before) * 1000f;
@@ -571,6 +672,14 @@ namespace Clube.Game
                     {
                         built[i].Tunnels[t].Restore(bored);
                     }
+                }
+            }
+            hold.Clear();
+            foreach (Built road in built)
+            {
+                if (road != null)
+                {
+                    HoldUnwritten(road);
                 }
             }
         }

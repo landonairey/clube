@@ -93,6 +93,7 @@ namespace Clube.Core
         private IStampField boulders;
         private ChunkRendererPool renderers;
         private WorldStreamer streamer;
+        private readonly List<IColumnHold> holds = new List<IColumnHold>();
         private string terrainFingerprint;
         private bool regenerateRequested;
         private bool remeshRequested;
@@ -197,6 +198,12 @@ namespace Clube.Core
         /// <summary>True while the area loads in bulk, with the larger loading budget.</summary>
         public bool IsLoading => streamer?.IsLoading ?? false;
 
+        /// <summary>
+        /// Set while something waits behind a curtain for the ground round the focus (GL653: a spawn): nothing is being
+        /// watched, so work that is rationed by the frame (writing roads and settlements into the ground) may take most of it.
+        /// </summary>
+        public bool Hurry { get; set; }
+
         /// <summary>Live streaming counts: jobs in flight, renderers, vertices, main-thread time.</summary>
         public StreamingStats Stats => streamer?.Stats ?? default;
 
@@ -273,6 +280,75 @@ namespace Clube.Core
             return streamer.IsColumnSettled(new Vector2Int(coord.x, coord.z));
         }
 
+        /// <summary>
+        /// True once every chunk column within <paramref name="radius"/> metres of a world position is loaded, written
+        /// (no <see cref="IColumnHold"/> holds it) and meshed (GL653: a spawn waits
+        /// for the ground round it, not only under it). <paramref name="settled"/> and <paramref name="columns"/> count them.
+        /// </summary>
+        public bool IsSettledAround(Vector3 worldPosition, float radius, out int settled, out int columns)
+        {
+            settled = columns = 0;
+            if (streamer == null)
+            {
+                return false;
+            }
+            Vector3Int centre = World.Grid.WorldToChunk(transform.InverseTransformPoint(worldPosition));
+            int reach = Mathf.Max(0, Mathf.CeilToInt(radius / World.Grid.ChunkWorldSize.x));
+            RectInt? area = Config.FixedColumns;
+            for (int z = -reach; z <= reach; z++)
+            {
+                for (int x = -reach; x <= reach; x++)
+                {
+                    var column = new Vector2Int(centre.x + x, centre.z + z);
+                    if (x * x + z * z > reach * reach || (area.HasValue && !area.Value.Contains(column)))
+                    {
+                        continue;
+                    }
+                    columns++;
+                    if (streamer.IsColumnSettled(column, false))
+                    {
+                        settled++;
+                    }
+                }
+            }
+            return settled == columns;
+        }
+
+        /// <summary>How far a chunk column has got (see <see cref="WorldStreamer.ColumnState"/>).</summary>
+        public void ColumnState(Vector2Int column, out int loaded, out int meshed, out bool held)
+        {
+            loaded = meshed = 0;
+            held = false;
+            streamer?.ColumnState(column, out loaded, out meshed, out held);
+        }
+
+        /// <summary>Keeps chunk columns from being shown until something has written into them (GL653); see <see cref="IColumnHold"/>.</summary>
+        public void AddHold(IColumnHold hold)
+        {
+            if (hold != null && !holds.Contains(hold))
+            {
+                holds.Add(hold);
+            }
+        }
+
+        public void RemoveHold(IColumnHold hold)
+        {
+            holds.Remove(hold);
+        }
+
+        /// <summary>True while any hold keeps the chunk column (x, z) from being shown.</summary>
+        public bool IsHeld(Vector2Int column)
+        {
+            foreach (IColumnHold hold in holds)
+            {
+                if (hold.Holds(column))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private void Awake()
         {
             if (config == null)
@@ -344,6 +420,7 @@ namespace Clube.Core
             }
 
             streamer.DetailDistance = EffectiveDetailDistance;
+            streamer.Hurry = Hurry;
             streamer.Update(FocusLocal);
         }
 
@@ -394,6 +471,7 @@ namespace Clube.Core
                 FixedColumns = Config.FixedColumns,
                 SealEdges = Config.SealEdges,
             });
+            streamer.Hold = IsHeld;
             streamer.ChunkLoaded += coord => ChunkLoaded?.Invoke(coord);
             streamer.ChunkUnloaded += coord => ChunkUnloaded?.Invoke(coord);
             streamer.ChunkMeshed += (coord, chunkRenderer) => ChunkMeshed?.Invoke(coord, chunkRenderer);

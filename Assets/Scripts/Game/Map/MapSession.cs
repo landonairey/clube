@@ -11,7 +11,7 @@ namespace Clube.Game
     /// (<see cref="MapStart"/>). The world map, the ground markers and later the settlements read the map from here.
     /// The survey runs its height jobs from the main thread, so it stalls a few seconds behind a message.
     /// </summary>
-    public class MapSession : MonoBehaviour
+    public class MapSession : MonoBehaviour, IColumnHold
     {
         [SerializeField]
         private WorldView worldView;
@@ -67,6 +67,10 @@ namespace Clube.Game
         private void OnEnable()
         {
             Current = this;
+            if (worldView != null)
+            {
+                worldView.AddHold(this);
+            }
         }
 
         private void OnDisable()
@@ -75,6 +79,19 @@ namespace Clube.Game
             {
                 Current = null;
             }
+            if (worldView != null)
+            {
+                worldView.RemoveHold(this);
+            }
+        }
+
+        /// <summary>
+        /// GL653: until a bounded map is surveyed and planned nobody knows where its roads and settlements go, so none of
+        /// its ground is shown; planned, <see cref="MapRoads"/> and <see cref="MapSettlements"/> hold what they will write.
+        /// </summary>
+        public bool Holds(Vector2Int column)
+        {
+            return worldView != null && worldView.Generator is BoundedMapGenerator && !IsReady;
         }
 
         /// <summary>Surveys and plans again on the next frame, even though the map is the same.</summary>

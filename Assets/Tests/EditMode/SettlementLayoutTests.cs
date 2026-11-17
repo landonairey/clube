@@ -292,5 +292,95 @@ namespace Clube.Core.Tests
             again.Restore(writer.Pieces + 5);
             Assert.AreEqual(writer.Pieces, again.Written, "a count that doesn't fit is ignored");
         }
+
+        [Test]
+        public void TheWriter_WritesItsPiecesInAnyOrderTheyAreReady_ToTheSameGround()
+        {
+            // GL653: a settlement larger than the loaded area is built round the viewer, so its pieces are written in
+            // whatever order their ground loads; a piece only waits for the pieces it stands on.
+            VoxelMaterial grass = VoxelMaterial.Create(1, "Grass"), stone = VoxelMaterial.Create(2, "Stone"), oak = VoxelMaterial.Create(3, "Oak boards"),
+                maple = VoxelMaterial.Create(4, "Maple boards"), dead = VoxelMaterial.Create(5, "Dead Grass");
+            made.AddRange(new Object[] { grass, stone, oak, maple, dead });
+            MaterialRegistry registry = MaterialRegistry.Create(grass, stone, oak, maple, dead);
+            made.Add(registry);
+            var generator = new FlatGenerator(4.2f);
+            World NewWorld()
+            {
+                var world = new World(new Vector3Int(16, 16, 16), 0.5f, samples => new ByteVoxelStorage(samples));
+                for (int z = 0; z <= 4; z++)
+                {
+                    for (int x = 0; x <= 4; x++)
+                    {
+                        world.Load(new Vector3Int(x, 0, z), generator);
+                        world.Load(new Vector3Int(x, 1, z), generator);
+                    }
+                }
+                return world;
+            }
+            PlannedSettlement camp = Settlement("camp", 1, 1, new Vector2(20f, 20f));
+            SettlementSite site = SettlementLayout.Plan(camp, 32f, null, (x, z) => 4.2f, null, null, null, 0.5f);
+            var street = new RoadClassDefinition { Class = RoadClass.Footpath, Width = 2.5f, Surface = "Dead Grass", GradeLength = 8f, MaxCut = 8f, Shoulder = 0.75f };
+            var materials = new SettlementWriter.Materials { Bank = stone, Stone = stone, Boards = oak, Trim = maple };
+
+            World inOrder = NewWorld(), lastFirst = NewWorld();
+            var first = new SettlementWriter(site, street, street);
+            while (!first.Done)
+            {
+                first.WriteNext(inOrder, registry, materials, (x, z) => 4.2f, 0.5f);
+            }
+
+            var writer = new SettlementWriter(site, street, street);
+            var ready = new List<int>();
+            bool sawWaiting = false;
+            string half = null;
+            int guard = 0;
+            while (!writer.Done && guard++ < 10000)
+            {
+                ready.Clear();
+                writer.Ready(new Vector2(20f, 20f), 1000f, ready);
+                Assert.Greater(ready.Count, 0, "something can always be written");
+                int piece = ready[ready.Count - 1];
+                Assert.IsTrue(writer.IsReady(piece));
+                Assert.IsTrue(writer.Loaded(lastFirst, 2, piece));
+                Assert.Greater(writer.Footprint(piece).width, 0f);
+                // The last piece of all is a slice of the building: it waits for the ground under it.
+                sawWaiting |= !writer.IsReady(writer.Pieces - 1) && !writer.IsWritten(writer.Pieces - 1);
+                writer.Write(lastFirst, registry, materials, (x, z) => 4.2f, 0.5f, piece);
+                Assert.IsTrue(writer.IsWritten(piece));
+                if (writer.Written == writer.Pieces / 2)
+                {
+                    half = writer.Save();
+                }
+            }
+            Assert.IsTrue(writer.Done);
+            Assert.IsTrue(sawWaiting, "the building waited for its terrace");
+            Assert.IsTrue(writer.IsStanding(0));
+
+            int differing = 0;
+            for (int z = 0; z < 5 * 16; z++)
+            {
+                for (int y = 0; y < 2 * 16; y++)
+                {
+                    for (int x = 0; x < 5 * 16; x++)
+                    {
+                        var sample = new Vector3Int(x, y, z);
+                        if (inOrder.GetDensity(sample) != lastFirst.GetDensity(sample) || inOrder.GetMaterial(sample) != lastFirst.GetMaterial(sample))
+                        {
+                            differing++;
+                        }
+                    }
+                }
+            }
+            Assert.AreEqual(0, differing, "the same ground whatever the order");
+
+            // A save keeps which pieces, not how many.
+            var again = new SettlementWriter(site, street, street);
+            again.Restore(half);
+            Assert.AreEqual(writer.Pieces / 2, again.Written);
+            again.Restore(writer.Save());
+            Assert.IsTrue(again.Done);
+            again.Restore("7:ff");
+            Assert.IsTrue(again.Done, "a save of another settlement is ignored");
+        }
     }
 }
