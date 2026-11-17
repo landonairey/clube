@@ -268,12 +268,13 @@ namespace Clube.Core
                 new EconomySpecialty
                 {
                     Id = "fabrics", Name = "Fabric Maker", Chain = SupplyChains.Textile, CraftLevel = 0, Needs = new[] { "grazing" },
-                    Buys = Goods(FursAndWools), Sells = Goods(Later("Cloth", "String", "Twine", "Silk")),
+                    // GL723: reeds, their fibres and twine are the first plant textiles.
+                    Buys = Goods(FursAndWools, new[] { "reeds", "plant-fibre" }), Sells = Goods(new[] { "twine" }, Later("Cloth", "String", "Silk")),
                 },
                 new EconomySpecialty
                 {
                     Id = "clothing", Name = "Clothier", Chain = SupplyChains.Textile, CraftLevel = 1, Needs = new[] { "grazing" },
-                    Buys = Goods(Later("Cloth", "String", "Twine", "Silk")), Sells = Goods(Later("Clothing")),
+                    Buys = Goods(new[] { "twine" }, Later("Cloth", "String", "Silk")), Sells = Goods(Later("Clothing")),
                 },
                 new EconomySpecialty
                 {

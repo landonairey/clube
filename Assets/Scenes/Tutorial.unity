@@ -6808,6 +6808,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3f9e228f10fb98e44a8816bc33a794c1, type: 2}
   - {fileID: 11400000, guid: ce272991d7e38a645a6a4134ffda0a02, type: 2}
   - {fileID: 11400000, guid: da26a46a7696a7043a748dc7ee6a36c0, type: 2}
+  - {fileID: 11400000, guid: e45a586bfc9bf8948954718730748a0a, type: 2}
+  - {fileID: 11400000, guid: fba474c782c476f4f993a45cd39a1374, type: 2}
   - {fileID: 11400000, guid: 5ec8e0ac578bb0e4db7dae5132312b4d, type: 2}
   - {fileID: 0}
   - {fileID: 11400000, guid: 6fadc24742a123946b249fca8b1a81a3, type: 2}
@@ -6976,6 +6978,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3f9e228f10fb98e44a8816bc33a794c1, type: 2}
   - {fileID: 11400000, guid: ce272991d7e38a645a6a4134ffda0a02, type: 2}
   - {fileID: 11400000, guid: da26a46a7696a7043a748dc7ee6a36c0, type: 2}
+  - {fileID: 11400000, guid: e45a586bfc9bf8948954718730748a0a, type: 2}
+  - {fileID: 11400000, guid: fba474c782c476f4f993a45cd39a1374, type: 2}
   - {fileID: 11400000, guid: 50ce999b3654ec14a8e74e6522c03fba, type: 2}
   - {fileID: 11400000, guid: fa11b62045b16558b5494506372daa3e, type: 2}
   - {fileID: 11400000, guid: deea8db22b379a5c14cac1d8904898f2, type: 2}
@@ -7307,6 +7311,7 @@ MonoBehaviour:
   leaves: {fileID: 11400000, guid: e5acd428b6947c7469aca6cbe59c5618, type: 2}
   leafMaterial: {fileID: 11400000, guid: c3a9464decc6a0d4386f7028c5aa4060, type: 2}
   stick: {fileID: 11400000, guid: 4f717f7cc0f3ec743b5f84c88baea32c, type: 2}
+  reeds: {fileID: 11400000, guid: fd7d06cff7f9c964aab4697e0431aab3, type: 2}
   brokenReach: 8
 --- !u!114 &1697135602
 MonoBehaviour:

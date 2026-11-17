@@ -7,7 +7,7 @@ namespace Clube.Game
     /// What the player gets from bushes (GL237, GL238): a bush picked with Attack (<see cref="PlayerToolUser.BushPicked"/>)
     /// or broken by digging the ground under it near the player (<see cref="BushScatter.Broken"/>) gives its leaves
     /// and a stick or two (<see cref="BushGrowth.DropsOf"/>), handed over like anything a tool collects. While the view
-    /// is on a bush in reach, a line under the dot says it can be picked.
+    /// is on a bush in reach, a line under the dot says it can be picked. A clump of reeds by the water (GL723) gives reeds.
     /// </summary>
     [RequireComponent(typeof(PlayerToolUser))]
     public class PlayerBushes : MonoBehaviour
@@ -23,6 +23,10 @@ namespace Clube.Game
         [Tooltip("The item a bush's twigs come as.")]
         [SerializeField]
         private ItemDefinition stick;
+
+        [Tooltip("The item a clump of reeds by the water gives (GL723).")]
+        [SerializeField]
+        private ItemDefinition reeds;
 
         [Tooltip("A bush broken by digging gives its drops when it was this close to the player (m).")]
         [SerializeField, Min(0f)]
@@ -81,6 +85,15 @@ namespace Clube.Game
             {
                 return;
             }
+            if (bush.IsReeds)
+            {
+                // A clump of reeds gives reeds (GL723), which a worktop strips into fibres.
+                if (reeds != null)
+                {
+                    tools.Deliver(new ItemStack(reeds, bushes.Reeds.ReedsOf(bushes.Seed, bush.Cell)));
+                }
+                return;
+            }
             bushes.Growth.DropsOf(bushes.Seed, bush.Cell, bush.Size, out int leafCount, out int stickCount);
             if (leaves != null && leafCount > 0)
             {
@@ -102,7 +115,7 @@ namespace Clube.Game
             }
             style ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, normal = { textColor = new Color(0.85f, 1f, 0.7f) } };
             shadow ??= new GUIStyle(style) { normal = { textColor = Color.black } };
-            string text = $"{Describe(tools.AimedBush.Size)}: left click to pick";
+            string text = $"{(tools.AimedBush.IsReeds ? "Reeds" : Describe(tools.AimedBush.Size))}: left click to pick";
             var area = new Rect(0f, Screen.height * 0.5f + 24f, Screen.width, 24f);
             GUI.Label(new Rect(area.x + 1f, area.y + 1f, area.width, area.height), text, shadow);
             GUI.Label(area, text, style);

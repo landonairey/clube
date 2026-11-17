@@ -365,3 +365,15 @@ MonoBehaviour:
     Coins: 1
     Units: 10
     ByVolume: 1
+  - Item: {fileID: 11400000, guid: fd7d06cff7f9c964aab4697e0431aab3, type: 2}
+    Coins: 1
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 127445957827d4e4eb3df4a5852eff05, type: 2}
+    Coins: 2
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: bf5e4d3f655b82b49bed9b96ccff41a5, type: 2}
+    Coins: 6
+    Units: 1
+    ByVolume: 0
