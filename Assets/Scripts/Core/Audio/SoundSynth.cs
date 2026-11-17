@@ -344,6 +344,41 @@ namespace Clube.Core
             return Normalize(samples, 0.85f);
         }
 
+        /// <summary>The pitch, in hertz, of a dying groan from an animal of this length in metres (GL692): lower the bigger it is.</summary>
+        public static float GroanPitch(float lengthMetres)
+        {
+            return Math.Max(55f, Math.Min(400f, 150f * (float)Math.Pow(Math.Max(0.1f, lengthMetres), -0.7)));
+        }
+
+        /// <summary>
+        /// A dying groan (GL692): a breathy, buzzing voice that sags in pitch and fades, lower and longer the bigger the animal
+        /// (<see cref="GroanPitch"/>), with a little wobble that the seed varies.
+        /// </summary>
+        public static float[] Groan(float lengthMetres, int seed)
+        {
+            var random = new Random(seed);
+            float pitch = GroanPitch(lengthMetres) * Range(random, 0.95f, 1.05f);
+            float seconds = Math.Min(1.8f, 0.5f + 0.35f * lengthMetres);
+            float[] samples = new float[Samples(seconds)];
+            float wobble = Range(random, 5f, 8f), phase = 0f;
+            for (int i = 0; i < samples.Length; i++)
+            {
+                float t = (float)i / samples.Length;
+                // Starts a little above its pitch and sags well below it as the breath runs out.
+                float frequency = pitch * (1.12f - 0.4f * t * t) * (1f + 0.025f * (float)Math.Sin(TwoPi * wobble * t * seconds));
+                phase += TwoPi * frequency / SampleRate;
+                float voice = 0f;
+                for (int h = 1; h <= 6; h++)
+                {
+                    voice += (float)Math.Sin(phase * h) / h;
+                }
+                float breath = (float)(random.NextDouble() * 2d - 1d) * 0.25f;
+                float envelope = Math.Min(1f, t / 0.06f) * (1f - t) * (1f - t);
+                samples[i] = (voice + breath) * envelope;
+            }
+            return Normalize(samples, 0.8f);
+        }
+
         /// <summary>Leaves and twigs: a dry rustle.</summary>
         public static float[] Rustle(int seed, float seconds = 0.45f)
         {

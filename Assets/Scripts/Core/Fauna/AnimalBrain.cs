@@ -42,6 +42,9 @@ namespace Clube.Core
         public bool HasThreat;
 
         public Vector2 Threat;
+
+        /// <summary>True while the player crouches (GL691): a calm animal lets a crouching player walk up to it.</summary>
+        public bool ThreatCrouching;
     }
 
     /// <summary>
@@ -138,7 +141,7 @@ namespace Clube.Core
                 return;
             }
             float alert = Species.Skittishness * (State == AnimalState.Rest ? RestingAlertness : 1f);
-            bool near = senses.HasThreat && (senses.Threat - senses.Position).sqrMagnitude < alert * alert;
+            bool near = senses.HasThreat && !senses.ThreatCrouching && (senses.Threat - senses.Position).sqrMagnitude < alert * alert;
             if (near)
             {
                 StartFleeing(senses.Threat);

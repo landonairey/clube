@@ -119,6 +119,46 @@ namespace Clube.Core.Tests
             }
         }
 
+        // ---- GL690: several herds and species to a biome ----
+
+        [Test]
+        public void EveryLandBiomeWithAnimals_HoldsAtLeastThreeSpecies_AndSpeciesShareBiomes()
+        {
+            foreach (string biome in new[]
+                     {
+                         BiomeDefinition.GrasslandName, BiomeDefinition.ForestName, BiomeDefinition.SteppeName,
+                         BiomeDefinition.HighlandName, BiomeDefinition.AlpineName,
+                     })
+            {
+                Assert.That(AnimalSpeciesTable.All.Count(s => s.LivesIn(biome)), Is.GreaterThanOrEqualTo(3), biome);
+            }
+            Assert.That(AnimalSpeciesTable.All.All(s => s.Biomes.Length >= 3), "each species lives in at least three biomes");
+        }
+
+        [Test]
+        public void ACell_CanHoldSeveralHerds_OfDifferentSpecies_WithDistinctKeys()
+        {
+            BiomeDefinition grass = Biome(BiomeDefinition.GrasslandName);
+            int doubled = 0, differing = 0;
+            for (int x = 0; x < 40; x++)
+            {
+                for (int z = 0; z < 40; z++)
+                {
+                    var cell = new Vector2Int(x, z);
+                    bool a = HerdSites.TryAt(5, cell, (px, pz) => grass, AnimalSpeciesTable.All, out HerdSite first, 0);
+                    bool b = HerdSites.TryAt(5, cell, (px, pz) => grass, AnimalSpeciesTable.All, out HerdSite second, 1);
+                    if (a && b)
+                    {
+                        doubled++;
+                        differing += first.Species != second.Species ? 1 : 0;
+                        Assert.AreNotEqual(first.AnimalKey(0), second.AnimalKey(0));
+                    }
+                }
+            }
+            Assert.That(doubled, Is.GreaterThan(100));
+            Assert.That(differing, Is.GreaterThan(0));
+        }
+
         // ---- GL605: where the herds are ----
 
         [Test]
@@ -139,7 +179,7 @@ namespace Clube.Core.Tests
             Assert.IsNull(HerdSites.Pick(BiomeDefinition.BeachName, AnimalSpeciesTable.All, 0.5));
             Assert.IsNull(HerdSites.Pick(BiomeDefinition.DesertName, AnimalSpeciesTable.All, 0.5));
             var grass = Enumerable.Range(0, 50).Select(i => HerdSites.Pick(BiomeDefinition.GrasslandName, AnimalSpeciesTable.All, i / 50.0).Id).Distinct();
-            Assert.That(grass, Is.EquivalentTo(new[] { "rabbit", "sheep", "cow", "deer", "bison" }));
+            Assert.That(grass, Is.EquivalentTo(new[] { "rabbit", "sheep", "alpaca", "cow", "deer", "elk", "bison" }));
             // Every species lives somewhere it can be picked.
             foreach (AnimalSpecies species in AnimalSpeciesTable.All)
             {
@@ -177,7 +217,7 @@ namespace Clube.Core.Tests
             // Forest is rich in game: most of its cells have a herd, but not all.
             int cells = first.Count;
             float land = Mathf.PI * 1500f * 1500f * 0.5f / (HerdSites.CellSize * HerdSites.CellSize);
-            Assert.That(cells / land, Is.InRange(0.55f, 0.95f));
+            Assert.That(cells / (land * HerdSites.SlotsPerCell), Is.InRange(0.55f, 0.95f));
             Assert.That(first.Select(s => s.AnimalKey(0)).Distinct().Count(), Is.EqualTo(first.Count));
         }
 
@@ -353,6 +393,41 @@ namespace Clube.Core.Tests
             AnimalSpecies rabbit = AnimalSpeciesTable.Find("rabbit");
             Assert.IsFalse(new AnimalBrain(rabbit, 1).Hit(0.5f * AnimalSpeciesTable.DamagePerPower, Vector2.zero));
             Assert.IsTrue(new AnimalBrain(rabbit, 1).Hit(1.2f * AnimalSpeciesTable.DamagePerPower, Vector2.zero));
+        }
+
+        // ---- GL691, GL692 ----
+
+        [Test]
+        public void Brain_LetsACrouchingPlayerWalkUp_ButBoltsWhenTheyStandOrStrike()
+        {
+            AnimalSpecies deer = AnimalSpeciesTable.Find("deer");
+            var brain = new AnimalBrain(deer, 1);
+            AnimalSenses crouched = Senses(6f, Vector2.zero, new Vector2(1f, 0f));
+            crouched.ThreatCrouching = true;
+            for (int i = 0; i < 20; i++)
+            {
+                brain.Tick(0.1f, crouched);
+            }
+            Assert.AreNotEqual(AnimalState.Flee, brain.State, "crouched, right beside it");
+
+            crouched.ThreatCrouching = false;
+            brain.Tick(0.1f, crouched);
+            Assert.AreEqual(AnimalState.Flee, brain.State, "standing up scares it");
+
+            var struck = new AnimalBrain(deer, 1);
+            Assert.IsFalse(struck.Hit(1f, Vector2.zero));
+            Assert.AreEqual(AnimalState.Flee, struck.State, "a blow makes it run");
+        }
+
+        [Test]
+        public void Groan_IsLowerAndLongerForBiggerAnimals_AndUnclipped()
+        {
+            AnimalSpecies rabbit = AnimalSpeciesTable.Find("rabbit"), bison = AnimalSpeciesTable.Find("bison");
+            Assert.That(SoundSynth.GroanPitch(bison.Length), Is.LessThan(SoundSynth.GroanPitch(rabbit.Length)));
+            float[] small = SoundSynth.Groan(rabbit.Length, 1), big = SoundSynth.Groan(bison.Length, 1);
+            Assert.That(big.Length, Is.GreaterThan(small.Length));
+            Assert.That(big.Max(Mathf.Abs), Is.InRange(0.5f, 1f));
+            Assert.That(small.Max(Mathf.Abs), Is.InRange(0.5f, 1f));
         }
     }
 }
