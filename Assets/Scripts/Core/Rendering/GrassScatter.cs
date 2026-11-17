@@ -143,7 +143,7 @@ namespace Clube.Core
 
         [Tooltip("Tuft height in metres under dense trees, smallest and largest; meadows grow it taller.")]
         [SerializeField]
-        private Vector2 height = new Vector2(0.18f, 0.38f);
+        private Vector2 height = new Vector2(0.25f, 0.55f);
 
         [Tooltip("How tall the grass grows where, and where it's wheat (GL234, GL235).")]
         [SerializeField]
@@ -301,7 +301,7 @@ namespace Clube.Core
         private void Awake()
         {
             worldView = GetComponent<WorldView>();
-            tuft = BuildTuft();
+            tuft = BuildTuft(satellites: SatelliteTufts);
             farTuft = BuildClump();
             wheat = BuildWheat();
             dahliaProperties = new MaterialPropertyBlock();
@@ -771,7 +771,11 @@ namespace Clube.Core
 
         // One tuft, 1 m tall before scaling: seven thin blades leaning out from the middle (three wider ones far off, GL379),
         // dark at the root and light at the tip (alpha: how far up, for the wind).
-        private static Mesh BuildTuft(int blades = 7, float width = 0.07f, string name = "Grass tuft")
+        // GL722: denser grass for the same number of instances, so the CPU scatter, the matrix buffer and the draw calls cost
+        // what they did: each near tuft carries this many smaller tufts round it, a little lower, as one mesh.
+        private const int SatelliteTufts = 3;
+
+        private static Mesh BuildTuft(int blades = 7, float width = 0.07f, string name = "Grass tuft", int satellites = 0)
         {
             var positions = new List<Vector3>();
             var colors = new List<Color>();
@@ -788,6 +792,23 @@ namespace Clube.Core
                 float lean = 0.15f + (float)random.NextDouble() * 0.3f;
                 float tall = 0.7f + (float)random.NextDouble() * 0.3f;
                 Blade(outward * 0.06f, side * width, outward * lean + Vector3.up * tall, outward, root, tip, positions, colors, normalsOut, indices);
+            }
+            // Smaller tufts of five blades about half a tuft's width out, spread round it (GL722), filling the gaps between tufts.
+            float firstTurn = (float)random.NextDouble() * Mathf.PI * 2f;
+            for (int s = 0; s < satellites; s++)
+            {
+                float turn = firstTurn + (s + (float)random.NextDouble() * 0.4f) / satellites * Mathf.PI * 2f;
+                Vector3 centre = new Vector3(Mathf.Cos(turn), 0f, Mathf.Sin(turn)) * (0.45f + (float)random.NextDouble() * 0.2f);
+                float size = 0.7f + (float)random.NextDouble() * 0.25f;
+                for (int i = 0; i < 5; i++)
+                {
+                    float angle = (i + (float)random.NextDouble() * 0.6f) / 5f * Mathf.PI * 2f;
+                    var outward = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+                    var side = new Vector3(-outward.z, 0f, outward.x);
+                    float lean = (0.12f + (float)random.NextDouble() * 0.25f) * size;
+                    float tall = (0.7f + (float)random.NextDouble() * 0.3f) * size;
+                    Blade(centre + outward * 0.04f, side * width, centre + outward * lean + Vector3.up * tall, outward, root, tip, positions, colors, normalsOut, indices);
+                }
             }
             return Make(name, positions, colors, normalsOut, indices);
         }

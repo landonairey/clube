@@ -5749,9 +5749,9 @@ MonoBehaviour:
   lawnNear: 0.55
   density: 6
   minUp: 0.7
-  height: {x: 0.18, y: 0.38}
+  height: {x: 0.25, y: 0.55}
   growth:
-    meadowGrowth: 1
+    meadowGrowth: 1.3
     shorterWithAltitude: {x: 30, y: 90}
     wheatShare: 0.18
     wheatScale: 48
@@ -5921,8 +5921,8 @@ MonoBehaviour:
     forestChance: 0.22
     sizeShares: {x: 0.5, y: 0.35, z: 0.15}
     smallHeight: {x: 0.45, y: 0.65}
-    mediumHeight: {x: 0.8, y: 1.1}
-    largeHeight: {x: 1.6, y: 1.9}
+    mediumHeight: {x: 0.9, y: 1.4}
+    largeHeight: {x: 1.8, y: 2.6}
     leaves: {x: 3, y: 6, z: 12}
   scatterMilliseconds: 0.5
 --- !u!114 &1350119479

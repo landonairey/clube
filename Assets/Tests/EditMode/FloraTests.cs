@@ -78,6 +78,46 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Bushes_GatherIntoGroups_AndTheTallOnesTopThePlayer()
+        {
+            // GL722: groups of bushes, with open ground between, about as many on the whole; large ones up to 2.6 m.
+            var grouped = new BushGrowth { FieldChance = 0.1f, ForestChance = 0.1f };
+            var even = new BushGrowth { FieldChance = 0.1f, ForestChance = 0.1f, Grouping = 0f };
+            const int size = 200;
+            var grid = new bool[size, size];
+            int groupedCount = 0, evenCount = 0;
+            for (int x = 0; x < size; x++)
+            {
+                for (int z = 0; z < size; z++)
+                {
+                    grid[x, z] = grouped.TryGrow(3, new Vector2Int(x, z), 0f, out _, out _);
+                    groupedCount += grid[x, z] ? 1 : 0;
+                    evenCount += even.TryGrow(3, new Vector2Int(x, z), 0f, out _, out _) ? 1 : 0;
+                    Assert.That(grouped.GroupFactor(3, new Vector2Int(x, z)), Is.InRange(0.1f, 4.5f));
+                }
+            }
+            Assert.That(groupedCount, Is.InRange(evenCount * 0.6f, evenCount * 1.6f), "About as many bushes on the whole.");
+
+            // A bush's neighbours are bushes far more often than any cell is.
+            int pairs = 0, neighbours = 0;
+            for (int x = 1; x < size - 1; x++)
+            {
+                for (int z = 1; z < size - 1; z++)
+                {
+                    if (!grid[x, z])
+                    {
+                        continue;
+                    }
+                    pairs += 4;
+                    neighbours += (grid[x + 1, z] ? 1 : 0) + (grid[x - 1, z] ? 1 : 0) + (grid[x, z + 1] ? 1 : 0) + (grid[x, z - 1] ? 1 : 0);
+                }
+            }
+            float everywhere = groupedCount / (float)(size * size);
+            Assert.That(neighbours / (float)pairs, Is.GreaterThan(everywhere * 1.6f), "Bushes stand in groups.");
+            Assert.That(new BushGrowth().HeightRange(BushSize.Large).y, Is.GreaterThanOrEqualTo(2.5f), "The large ones stand taller than the player.");
+        }
+
+        [Test]
         public void Bushes_DropLeavesAndAStickOrTwo_MoreWhenBigger()
         {
             var growth = new BushGrowth();
