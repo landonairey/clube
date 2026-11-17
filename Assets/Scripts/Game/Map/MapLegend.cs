@@ -8,7 +8,6 @@ namespace Clube.Game
     public enum MapLegendSymbol
     {
         Line,
-        Bridge,
         Swatch,
         Icon,
         Player,
@@ -53,7 +52,6 @@ namespace Clube.Game
                 MapLineStyle style = MapPicture.RoadStyle(roadClass);
                 rows.Add(new MapLegendRow(MapLegendSymbol.Line, style.Name, style));
             }
-            rows.Add(new MapLegendRow(MapLegendSymbol.Bridge, "Bridge", MapPicture.RoadStyle(RoadClass.DirtCartPath)));
             foreach (WaterRouteKind kind in new[] { WaterRouteKind.Sea, WaterRouteKind.River })
             {
                 MapLineStyle style = MapPicture.RouteStyle(kind);
