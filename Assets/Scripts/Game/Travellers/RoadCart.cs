@@ -48,6 +48,7 @@ namespace Clube.Game
                 horse = body.AddComponent<CartHorse>();
                 horse.Build(material);
             }
+            gameObject.AddComponent<Rideable>(); // GL727: a player who jumps on the bed rides along
             Presence = gameObject.AddComponent<OffMapPresence>();
             if (horse != null)
             {

@@ -107,6 +107,7 @@ namespace Clube.Game
                 figure.Pose = seated ? FigureAction.Sit : FigureAction.Stand;
                 crew.Add(figure);
             }
+            gameObject.AddComponent<Rideable>(); // GL727: a player who jumps aboard sails with it
             Presence = gameObject.AddComponent<OffMapPresence>();
         }
 
