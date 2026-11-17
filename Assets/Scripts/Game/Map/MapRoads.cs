@@ -178,6 +178,8 @@ namespace Clube.Game
         public int BridgesBuilt { get; private set; }
 
         public int SignpostsBuilt { get; private set; }
+        /// <summary>GL717: settlements' hanging name boards standing.</summary>
+        public int SignboardsBuilt { get; private set; }
 
         /// <summary>Metres of tunnel bored and portals standing (GL642).</summary>
         public int TunnelPiecesBored { get; private set; }
@@ -315,7 +317,7 @@ namespace Clube.Game
             }
             collectedTime = float.MinValue;
             boring.Clear();
-            RoadsWorkedOut = PiecesWritten = BridgesBuilt = SignpostsBuilt = TunnelPiecesBored = PortalsBuilt = 0;
+            RoadsWorkedOut = PiecesWritten = BridgesBuilt = SignpostsBuilt = SignboardsBuilt = TunnelPiecesBored = PortalsBuilt = 0;
         }
 
         // The ground as generated, kept as it is asked for: road pieces ask for the same square metres over and over.
@@ -616,7 +618,34 @@ namespace Clube.Game
                 GameObject made = Signpost.Build(post, material, textMaterial, root, session.Plan.Seed + i * 17);
                 made.transform.localPosition = new Vector3(post.Position.x, ground, post.Position.y);
                 SignpostsBuilt++;
+                if (post.Settlement >= 0 && post.Settlement < session.Plan.Settlements.Count && !session.Plan.Settlements[post.Settlement].Type.Hostile)
+                {
+                    BuildSignboard(post, session.Plan.Seed + i * 23);
+                }
             }
+        }
+
+        // GL717: a settlement's hanging name board beside its edge post, further from the road, its faces along the road;
+        // an arm off the side always reaches away from the road.
+        private void BuildSignboard(PlannedSignpost post, int seed)
+        {
+            PlannedSettlement settlement = session.Plan.Settlements[post.Settlement];
+            Vector2 at = post.Position + post.Roadside * 1.6f;
+            var facing = new Vector3(post.Outward.x, 0f, post.Outward.y);
+            if (facing.sqrMagnitude < 1e-6f)
+            {
+                facing = Vector3.forward;
+            }
+            Vector3 right = Vector3.Cross(Vector3.up, facing);
+            if (right.x * post.Roadside.x + right.z * post.Roadside.y < 0f)
+            {
+                facing = -facing;
+            }
+            bool sideArm = (seed & 1) == 0;
+            GameObject board = Signboard.Build(settlement.Name, sideArm, material, textMaterial, root, seed);
+            board.transform.localPosition = new Vector3(at.x, Natural(at.x, at.y), at.y);
+            board.transform.localRotation = Quaternion.LookRotation(facing, Vector3.up);
+            SignboardsBuilt++;
         }
 
         public void SaveValues(IDictionary<string, string> values)

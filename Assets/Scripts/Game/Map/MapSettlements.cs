@@ -39,6 +39,14 @@ namespace Clube.Game
         [SerializeField]
         private Material textMaterial;
 
+        [Tooltip("GL716: the flame of a settlement's torches and bonfires (Torch flame).")]
+        [SerializeField]
+        private Material flameMaterial;
+
+        [Tooltip("GL716: the smoke over a settlement's torches and bonfires (Drying steam).")]
+        [SerializeField]
+        private Material smokeMaterial;
+
         [Tooltip("The one merchant price list every shop's prices come from.")]
         [SerializeField]
         private PriceList prices;
@@ -132,6 +140,8 @@ namespace Clube.Game
         public int PendingPieces => pending.Count;
 
         public int ShopsFitted { get; private set; }
+        /// <summary>GL716: settlement lights stood so far.</summary>
+        public int LightsStood { get; private set; }
 
         /// <summary>Bridges stood where a settlement's lanes cross water (GL645).</summary>
         public int BridgesBuilt { get; private set; }
@@ -256,7 +266,7 @@ namespace Clube.Game
             {
                 clock = FindAnyObjectByType<DayNightCycle>();
             }
-            SettlementsWorkedOut = PiecesWritten = ShopsFitted = BridgesBuilt = 0;
+            SettlementsWorkedOut = PiecesWritten = ShopsFitted = BridgesBuilt = LightsStood = 0;
         }
 
         // Lays a settlement out on its ground, and makes its writer.
@@ -563,6 +573,7 @@ namespace Clube.Game
                 }
                 made.Fitted[b] = true;
                 FitYard(building, $"{settlement.Name}: yard {b}");
+                FitLights(made.Site, b, settlement.Name);
                 if (building.Kind != SettlementBuildingKind.Shop || building.Shop == null)
                 {
                     continue;
@@ -606,6 +617,24 @@ namespace Clube.Game
             if (design.Tarp)
             {
                 Place(yard, "tarp", YardFixtureMeshes.Tarp(design.Width, design.YardDepth, design.StoryHeight - 0.1f, design.Depth * 0.5f), Vector3.zero, 0f);
+            }
+        }
+
+        // GL716: the settlement's lights beside a building that now stands: torches, bonfires, lanterns.
+        private void FitLights(SettlementSite site, int building, string settlementName)
+        {
+            foreach (SettlementLight light in site.Lights)
+            {
+                if (light.Building != building)
+                {
+                    continue;
+                }
+                var lamp = new GameObject($"{settlementName}: {light.Kind.Name}");
+                lamp.transform.SetParent(root, false);
+                lamp.transform.localPosition = new Vector3(light.Position.x, light.Ground, light.Position.y);
+                lamp.transform.localRotation = Quaternion.Euler(0f, light.Yaw, 0f);
+                lamp.AddComponent<SettlementLamp>().Setup(light.Kind, material, flameMaterial, smokeMaterial, clock);
+                LightsStood++;
             }
         }
 

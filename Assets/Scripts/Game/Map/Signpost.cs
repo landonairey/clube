@@ -42,6 +42,11 @@ namespace Clube.Game
             mesh.Prism(Vector3.down * 0.5f, top, 0.085f, 0.065f, 6, postWood);
             mesh.Box(top + Vector3.up * 0.02f, new Vector3(0.17f, 0.05f, 0.17f), lean * Quaternion.Euler(8f, 20f, 0f), postWood * 0.85f);
 
+            // GL717: some posts hold their boards with iron brackets, a band round the post and a strap along each board,
+            // and a strap down the stack joining boards that point the same way; the rest are just nailed on.
+            bool bracketed = F() < 0.4f;
+            Color iron = new Color(0.2f, 0.2f, 0.22f) * (0.9f + 0.2f * F());
+            iron.a = 1f;
             // Arms: the nearest place on top. Two arms the same way sit one under the other.
             var arms = new List<SignArm>(post.Arms);
             arms.Sort((a, b) => a.Metres.CompareTo(b.Metres));
@@ -62,6 +67,36 @@ namespace Clube.Game
                 mesh.Placement = Matrix4x4.TRS(at, turn, Vector3.one);
                 mesh.Box(new Vector3(0f, 0f, (length - point - back) * 0.5f), new Vector3(BoardThickness, BoardHeight, length - point + back), Quaternion.identity, wood);
                 mesh.Wedge(new Vector3(0f, 0f, length - point), new Vector3(0f, 0f, length), BoardThickness, BoardHeight, 0.02f, wood * 0.94f);
+                float faceX = BoardThickness * 0.5f + 0.004f;
+                if (bracketed)
+                {
+                    // A band round the post at the board, a strap along both faces, a bolt through each.
+                    mesh.Box(new Vector3(0f, 0f, 0f), new Vector3(0.2f, BoardHeight * 0.45f, 0.2f), Quaternion.identity, iron);
+                    for (int f = -1; f <= 1; f += 2)
+                    {
+                        mesh.Box(new Vector3(f * faceX, 0f, 0.2f), new Vector3(0.008f, BoardHeight * 0.45f, 0.26f), Quaternion.identity, iron);
+                        mesh.Box(new Vector3(f * (faceX + 0.006f), 0f, 0.27f), new Vector3(0.012f, 0.03f, 0.03f), Quaternion.identity, new Color(iron.r * 0.8f, iron.g * 0.8f, iron.b * 0.8f, 1f));
+                    }
+                    if (i > 0 && Vector2.Dot(arms[i - 1].Direction, arm.Direction) > 0.9f)
+                    {
+                        // Joined to the board above by a strap down both faces.
+                        for (int f = -1; f <= 1; f += 2)
+                        {
+                            mesh.Box(new Vector3(f * faceX, BoardStep * 0.5f, 0.42f), new Vector3(0.008f, BoardStep + BoardHeight * 0.6f, 0.05f), Quaternion.identity, iron);
+                        }
+                    }
+                }
+                else
+                {
+                    // Two nail heads on each face where the board meets the post.
+                    for (int f = -1; f <= 1; f += 2)
+                    {
+                        for (int n = -1; n <= 1; n += 2)
+                        {
+                            mesh.Box(new Vector3(f * faceX, n * BoardHeight * 0.25f, 0.015f * n), new Vector3(0.008f, 0.022f, 0.022f), Quaternion.identity, iron);
+                        }
+                    }
+                }
                 mesh.Placement = Matrix4x4.identity;
 
                 var holder = new GameObject("Arm").transform;
@@ -93,7 +128,7 @@ namespace Clube.Game
         }
 
         // Words on a board's face: a TextMesh facing -z at yaw 0, in the shared sign-text material (hidden behind things).
-        private static void Text(Transform parent, string words, Vector3 at, float yaw, Material textMaterial)
+        internal static void Text(Transform parent, string words, Vector3 at, float yaw, Material textMaterial, float letterSize = LetterSize)
         {
             var go = new GameObject("Words");
             go.transform.SetParent(parent, false);
@@ -104,7 +139,7 @@ namespace Clube.Game
             text.font = font;
             text.text = words;
             text.fontSize = 64;
-            text.characterSize = LetterSize;
+            text.characterSize = letterSize;
             text.anchor = TextAnchor.MiddleCenter;
             text.alignment = TextAlignment.Center;
             text.color = Ink;
