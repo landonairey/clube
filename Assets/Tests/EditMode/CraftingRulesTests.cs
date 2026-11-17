@@ -97,14 +97,14 @@ namespace Clube.Core.Tests
         {
             var items = new Inventory(4);
             items.Set(0, new ItemStack(coal, 60, null, 0, 1f, 0.4f));
-            items.Set(3, new ItemStack(coal, 3, null, 0, 1f, 0.5f));
+            items.Set(3, new ItemStack(coal, 3, null, 0, 1f, 0.8f));
             Assert.AreEqual(60.4f, items[0].Amount, 0.01f);
 
             items.MoveInto(3, 0, 1);
 
             Assert.AreEqual(64f, items[0].Amount, 0.01f, "The hotbar stack is full to exactly its maximum.");
             Assert.AreEqual(0f, items[0].Part, 0.01f);
-            Assert.AreEqual(60.4f + 3.5f - 64f, items[3].Amount, 0.01f, "Only the rest stays behind.");
+            Assert.AreEqual(60.4f + 3.8f - 64f, items[3].Amount, 0.01f, "Only the rest stays behind.");
         }
 
         // GL706
