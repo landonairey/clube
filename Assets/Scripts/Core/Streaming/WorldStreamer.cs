@@ -280,13 +280,25 @@ namespace Clube.Core
         /// True while the bulk load is still on the chunks that will be drawn. False once only the hidden ones past the
         /// detail distance are left (GL759): at a long render distance those take minutes, with the game being played.
         /// </summary>
-        public bool IsLoadingDrawnArea => bulkLoading && !IsLoadingHiddenOnly;
+        public bool IsLoadingDrawnArea => bulkLoading && !IsPlaying && !IsLoadingHiddenOnly;
 
-        // The bulk load is on to hidden chunks and someone is playing: starting jobs keeps to the frame's budget (GL759).
-        private bool RationsStarts => bulkLoading && !Hurry && IsLoadingHiddenOnly;
+        // GL770: a load curtain has lifted and is not back: someone is walking about, and every frame counts. At a long
+        // render distance the bulk load is never over, so it can't be what says the game is being played.
+        private bool IsPlaying => curtainLifted && !Hurry;
 
-        // Starts a frame may make past its budget: as many as while playing when rationed, else the whole job limit.
-        private int StartsPastBudget => RationsStarts ? Mathf.Max(4, JobsUtility.JobWorkerCount * JobsPerWorker) : MaxJobsInFlight;
+        // Starting jobs keeps to the frame's budget: the game is being played, or the bulk load is on to hidden chunks (GL759).
+        private bool RationsStarts => IsPlaying || (bulkLoading && !Hurry && IsLoadingHiddenOnly);
+
+        // Starts a frame may make past its budget: the fewest while playing, a worker's share when rationed, else the whole job limit.
+        private int StartsPastBudget => IsPlaying ? PlayingStartsPastBudget
+            : RationsStarts ? Mathf.Max(4, JobsUtility.JobWorkerCount * JobsPerWorker) : MaxJobsInFlight;
+
+        // While playing: milliseconds a frame for streaming, and the job starts a frame makes however late it is (GL770).
+        private const float PlayingBudgetMilliseconds = 5f;
+        private const int PlayingStartsPastBudget = 2;
+
+        private bool curtainLifted;
+        private bool wasHurrying;
 
         // True once the bulk load has started every drawn column and is on to the hidden ones past the detail distance.
         private bool IsLoadingHiddenOnly =>
@@ -301,7 +313,7 @@ namespace Clube.Core
 
         private int MaxJobsInFlight => settings.MaxJobsInFlight > 0
             ? settings.MaxJobsInFlight
-            : Mathf.Max(4, JobsUtility.JobWorkerCount * (bulkLoading ? BulkJobsPerWorker : JobsPerWorker));
+            : Mathf.Max(4, JobsUtility.JobWorkerCount * (bulkLoading && !IsPlaying ? BulkJobsPerWorker : JobsPerWorker));
 
         /// <summary>One frame of streaming around <paramref name="focus"/> (relative to the world origin). Call from Update.</summary>
         public void Update(Vector3 focus)
@@ -309,7 +321,10 @@ namespace Clube.Core
             frameClock.Restart();
             lapStart = 0;
             StreamingPhases phases = default;
-            budget = bulkLoading && Hurry ? Mathf.Max(settings.LoadingBudgetMilliseconds * HurryBudgetScale, settings.FrameBudgetMilliseconds)
+            curtainLifted |= wasHurrying && !Hurry;
+            wasHurrying = Hurry;
+            budget = IsPlaying ? Mathf.Max(PlayingBudgetMilliseconds, settings.FrameBudgetMilliseconds)
+                : bulkLoading && Hurry ? Mathf.Max(settings.LoadingBudgetMilliseconds * HurryBudgetScale, settings.FrameBudgetMilliseconds)
                 : bulkLoading && settings.LoadingBudgetMilliseconds > settings.FrameBudgetMilliseconds
                 ? (IsLoadingHiddenOnly ? Mathf.Max(settings.FarLoadingBudgetMilliseconds, settings.FrameBudgetMilliseconds) : settings.LoadingBudgetMilliseconds)
                 : settings.FrameBudgetMilliseconds;
