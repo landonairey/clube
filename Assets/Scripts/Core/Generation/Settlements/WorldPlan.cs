@@ -116,6 +116,13 @@ namespace Clube.Core
         public bool LeavesMap;
         /// <summary>GL725: the side a road that <see cref="LeavesMap"/> runs off.</summary>
         public MapSide ExitSide;
+        /// <summary>
+        /// GL753: true for the way from <see cref="From"/> down to its dock: a road like any other, ending on the shore
+        /// (<see cref="DockLandings"/>), where the dock's pier starts. No carts run on it and no signpost counts it.
+        /// </summary>
+        public bool ToDock;
+        /// <summary>GL753: the planned harbour a road that goes <see cref="ToDock"/> makes for.</summary>
+        public Vector2 DockHarbour;
     }
 
     /// <summary>The two kinds of water transit (GL596).</summary>
@@ -247,6 +254,8 @@ namespace Clube.Core
         /// neither sea nor the void gets a trade road off the map, from the settlement on the roads nearest it; false for none.
         /// </summary>
         public bool ExitRoads = true;
+        /// <summary>GL726, GL753: the docks by settlement type, and the class of road that leads down to each.</summary>
+        public List<DockDesign> Docks = DockDesign.Defaults();
         /// <summary>GL725: the most of a trade road off the map that may be steeper than its class; a steeper way out gets no road.</summary>
         public float ExitRoadSteepShare = 0.15f;
         /// <summary>
@@ -308,6 +317,27 @@ namespace Clube.Core
         {
             return settlement >= 0 && settlement < Settlements.Count && Settlements[settlement].IsQuarry && Rules != null
                 ? Rules.QuarryDisposition : Disposition.Start;
+        }
+
+        /// <summary>GL753: where a settlement's sea routes leave from (x, z): the first point of a route from it, the last of one to it; null when no vessel calls.</summary>
+        public Vector2? HarbourOf(int settlement)
+        {
+            foreach (WaterRoute route in WaterRoutes)
+            {
+                if (route.Kind != WaterRouteKind.Sea || route.Points.Count == 0)
+                {
+                    continue;
+                }
+                if (route.From == settlement)
+                {
+                    return route.Points[0];
+                }
+                if (route.To == settlement)
+                {
+                    return route.Points[route.Points.Count - 1];
+                }
+            }
+            return null;
         }
 
         public int CountOf(string typeId)

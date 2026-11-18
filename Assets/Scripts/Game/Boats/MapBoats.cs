@@ -401,8 +401,7 @@ namespace Clube.Game
             {
                 docks = gameObject.AddComponent<SettlementDocks>();
             }
-            MapSettlements settlements = GetComponent<MapSettlements>();
-            docks.Bind(session, settlements != null ? settlements : FindAnyObjectByType<MapSettlements>(), material);
+            docks.Bind(session, material);
             UnusableLanes = 0;
             Showing = 0;
             clock = CargoLoad.ClockOf(session.WorldView);

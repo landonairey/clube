@@ -28,6 +28,8 @@ namespace Clube.Core
             Func<Vector2[], float[]> heightsAt = null)
         {
             float started = Time.realtimeSinceStartup;
+            // GL753: the roads down to the docks end on the real shore, so they are refined and graded to it.
+            DockLandings.Land(plan, heightAt, water.IsCreated ? WaterOf(water) : null, closedAt);
             var refiner = new RoadRefiner(plan.Area, heightAt, water.IsCreated ? WaterOf(water) : null, closedAt) { HeightsAt = heightsAt };
             refiner.Refine(plan);
             Func<float, float, RoadWater> waterAt = water.IsCreated ? WaterOf(water) : null;
@@ -39,6 +41,10 @@ namespace Clube.Core
             {
                 // The tunnelled roads graded again on their new line (a bore's floor is its own grade).
                 RoadGrading.Grade(plan, heightAt, heightsAt, waterAt);
+            }
+            if (water.IsCreated)
+            {
+                DockLandings.Prune(plan, heightAt, water.SeaLevel);
             }
             plan.Signposts = SignpostPlanner.Plan(plan);
             float seconds = Time.realtimeSinceStartup - started;

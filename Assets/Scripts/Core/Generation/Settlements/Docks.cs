@@ -29,11 +29,11 @@ namespace Clube.Core
         /// <summary>How many vessels can lie alongside at once.</summary>
         public int Berths = 1;
 
-        /// <summary>True for a stone quay with a paved way up to the town; false for planks and a trodden path.</summary>
+        /// <summary>True for a stone quay; false for planks.</summary>
         public bool Stone;
 
-        /// <summary>The way from the nearest building down to the pier: its width in metres.</summary>
-        public float PathWidth = 1.2f;
+        /// <summary>GL753: the class of road that leads down to the pier, built and graded by the road rules.</summary>
+        public RoadClass Road = RoadClass.Footpath;
 
         /// <summary>The deck's height over the water, in metres.</summary>
         public float DeckRise = 0.8f;
@@ -44,23 +44,23 @@ namespace Clube.Core
             {
                 new DockDesign
                 {
-                    Id = "foot-dock", Name = "Foot dock", Types = new[] { "outpost", "village" }, Width = 1.2f, MaxLength = 22f, MinLength = 6f, Berths = 1, PathWidth = 1.2f,
+                    Id = "foot-dock", Name = "Foot dock", Types = new[] { "outpost", "village" }, Width = 1.2f, MaxLength = 22f, MinLength = 6f, Berths = 1, Road = RoadClass.Footpath,
                     DeckRise = 0.6f,
                 },
                 new DockDesign
                 {
                     Id = "pier", Name = "Pier", Types = new[] { "town" }, Width = 2.4f, MaxLength = 32f, MinLength = 14f, HeadLength = 12f, HeadWidth = 3f, Berths = 2,
-                    PathWidth = 2f,
+                    Road = RoadClass.DirtCartPath,
                 },
                 new DockDesign
                 {
                     Id = "harbour", Name = "Harbour", Types = new[] { "city" }, Width = 3.5f, MaxLength = 42f, MinLength = 22f, HeadLength = 20f, HeadWidth = 4f, Berths = 3,
-                    PathWidth = 3f, DeckRise = 1f,
+                    Road = RoadClass.PavedCartPath, DeckRise = 1f,
                 },
                 new DockDesign
                 {
                     Id = "grand-docks", Name = "Grand docks", Types = new[] { "capital" }, Width = 6f, MaxLength = 50f, MinLength = 30f, HeadLength = 34f, HeadWidth = 7f,
-                    Berths = 4, Stone = true, PathWidth = 5f, DeckRise = 1.2f,
+                    Berths = 4, Stone = true, Road = RoadClass.PavedCartPath, DeckRise = 1.2f,
                 },
             };
         }
@@ -121,7 +121,7 @@ namespace Clube.Core
         /// <summary>The way the pier runs out (length 1), and across it (to its right).</summary>
         public Vector2 Out, Across;
 
-        /// <summary>The building front the way up starts at.</summary>
+        /// <summary>The place the pier was laid from: where the road down to it ends (GL753).</summary>
         public Vector2 PathFrom;
 
         public List<DockBerth> Berths = new List<DockBerth>();
@@ -147,6 +147,9 @@ namespace Clube.Core
     {
         /// <summary>The farthest from a building, in metres, the shore may be for a dock.</summary>
         public const float ShoreReach = 260f;
+
+        /// <summary>GL753: the most, in metres, a pier's ramp climbs from its deck to the ground at its root.</summary>
+        public const float MostRampRise = 2f;
 
         /// <summary>Metres of deck edge a berth takes: a sea trader's length and room to warp in.</summary>
         public const float BerthLength = 15f;
@@ -177,9 +180,11 @@ namespace Clube.Core
                     continue;
                 }
                 float baseAngle = Mathf.Atan2(toHarbour.y, toHarbour.x);
-                for (int k = -6; k <= 6; k++)
+                // All the way round, nearest the harbour's way first: the pier starts where the road comes down to the water.
+                for (int k = 0; k < 30; k++)
                 {
-                    float angle = baseAngle + k * 12f * Mathf.Deg2Rad;
+                    float turn = (k + 1) / 2 * (k % 2 == 0 ? -12f : 12f);
+                    float angle = baseAngle + turn * Mathf.Deg2Rad;
                     var direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
                     for (float d = 1f; d < Mathf.Min(bestShore, ShoreReach); d += 1f)
                     {

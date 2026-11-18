@@ -308,7 +308,9 @@ namespace Clube.Core.Tests
             {
                 Assert.That(road.Points.Count, Is.GreaterThanOrEqualTo(2));
                 Assert.That(road.Points[0], Is.EqualTo(plan.Settlements[road.From].Position));
-                Assert.That(road.To >= 0 || road.Joins >= 0, "ends at a settlement or a junction");
+                // GL753: or at the harbour of its own port, for the way down to a dock.
+                bool toItsDock = road.ToDock && plan.HarbourOf(road.From) == road.DockHarbour;
+                Assert.That(road.To >= 0 || road.Joins >= 0 || toItsDock, "ends at a settlement, a junction or its dock");
                 foreach (Vector2 point in road.Points)
                 {
                     Assert.That(survey.TryCell(point, out Vector2Int cell) && survey.Cell(cell.x, cell.y).Sea < 0.5f, "never through the sea");

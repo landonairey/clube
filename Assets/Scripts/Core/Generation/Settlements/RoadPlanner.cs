@@ -21,6 +21,9 @@ namespace Clube.Core
     internal sealed class RoadPlanner
     {
         private readonly PlanContext context;
+        // GL753: metres over the sea a survey cell's ground may stand for a dock's road to come down to it.
+        private const float LowShore = 6f;
+
         private readonly RoadClass[] network;
         private readonly int[] roadAt;
         private readonly int[] settlementAt;
@@ -139,6 +142,44 @@ namespace Clube.Core
                 Index = plan.Roads.Count, Class = roadClass, From = settlement.Index, To = settlementAt[goal], Joins = roadAt[goal], CrossesSea = overSea,
             };
             Lay(plan, road, context.PathTo(goal), definition, networkAt[goal]);
+        }
+
+        /// <summary>
+        /// GL753: the road down to the dock of each port its vessels call at: the class its <see cref="DockDesign"/> row names,
+        /// from the settlement to the low shore by its harbour (any shore there when none is low), at the price of any road.
+        /// <see cref="DockLandings"/> brings its end to the real water.
+        /// </summary>
+        public void DockRoads(WorldPlan plan)
+        {
+            foreach (PlannedSettlement port in plan.Settlements)
+            {
+                DockDesign design = DockDesign.For(plan.Rules.Docks, port.Type);
+                Vector2? harbour = plan.HarbourOf(port.Index);
+                if (design == null || harbour == null)
+                {
+                    continue;
+                }
+                RoadClassDefinition definition = context.Rules.Road(design.Road);
+                float reach = context.Rules.CoastReach + context.CellSize;
+                float sea = context.Survey.Layout != null ? context.Survey.Layout.SeaLevel : float.MinValue;
+                bool Shore(int cell) => context.Cells[cell].Coast && !context.IsSea(cell) && Vector2.Distance(context.Centre(cell), harbour.Value) <= reach;
+                float Step(int from, int to, float metres) => StepCost(definition, from, to, metres);
+                int goal = context.Search(CellOf(port), Step, cell => Shore(cell) && context.Cells[cell].Height - sea <= LowShore);
+                goal = goal >= 0 ? goal : context.Search(CellOf(port), Step, Shore);
+                if (goal < 0)
+                {
+                    plan.Notes.Add($"{port.Name}: no way by land to its harbour, so no dock.");
+                    continue;
+                }
+                var road = new PlannedRoad { Index = plan.Roads.Count, Class = design.Road, From = port.Index, ToDock = true, DockHarbour = harbour.Value };
+                Lay(plan, road, context.PathTo(goal), definition, networkAt[CellOf(port)]);
+                if (road.Points.Count == 1)
+                {
+                    // The settlement stands on the shore: a first step towards the harbour, for the landing to finish.
+                    road.Points.Add(road.Points[0] + (harbour.Value - road.Points[0]).normalized * context.CellSize * 0.25f);
+                    road.Length = context.CellSize * 0.25f;
+                }
+            }
         }
 
         // GL725: a trade road off the map on each land side that is neither sea nor the void, from the settlement on the

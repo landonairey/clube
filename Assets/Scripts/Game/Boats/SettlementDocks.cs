@@ -7,9 +7,9 @@ namespace Clube.Game
     /// <summary>
     /// The docks of the map's sea ports (GL726): each settlement on a sea route gets the dock its type's
     /// <see cref="DockDesign"/> row gives (a foot dock for a village or outpost, a pier with a head for a town, a larger
-    /// harbour for a city, grand stone docks for the capital), laid on the shore nearest its buildings
-    /// (<see cref="Docks.Lay"/>), with a way up to the nearest building (paved for the capital). A dock is in the world
-    /// while the viewer is near; <see cref="MapBoats"/> moors its vessels at the berths.
+    /// harbour for a city, grand stone docks for the capital), laid where the settlement's road down to the water ends
+    /// (GL753: <see cref="PlannedRoad.ToDock"/>, built into the ground like any road; <see cref="Docks.Lay"/>). A dock is in
+    /// the world while the viewer is near; <see cref="MapBoats"/> moors its vessels at the berths.
     /// </summary>
     /// <remarks>Added to the World by <see cref="MapBoats"/> when it starts, so no scene needs it set up.</remarks>
     public class SettlementDocks : MonoBehaviour
@@ -19,33 +19,24 @@ namespace Clube.Game
         // Metres of water a dock's end needs: a sea trader's draught and some under its keel.
         private const float NeedDepth = 1.6f;
 
-        // Metres within which the way up is laid again, on the voxel ground by then loaded.
+        // Metres within which the ramp is laid again, on the voxel ground by then loaded.
         private const float NearRange = 90f;
 
-        private static readonly Color PathDirt = new Color(0.47f, 0.4f, 0.3f);
-        private static readonly Color PathStone = new Color(0.55f, 0.54f, 0.5f);
-        private static readonly Color PathStoneDark = new Color(0.45f, 0.44f, 0.41f);
-
-        private readonly List<DockDesign> designs = DockDesign.Defaults();
+        private readonly Dictionary<int, Vector2> roadEnds = new Dictionary<int, Vector2>();
         private readonly Dictionary<int, DockLayout> laid = new Dictionary<int, DockLayout>();
         private readonly Dictionary<int, Built> built = new Dictionary<int, Built>();
         private readonly List<int> ports = new List<int>();
         private MapSession session;
-        private MapSettlements settlements;
         private Material material;
         private Transform root;
         private int version = -1;
 
-        /// <summary>The kinds of dock; change a row to change every dock of that size.</summary>
-        public List<DockDesign> Designs => designs;
-
         /// <summary>Docks in the world now.</summary>
         public int Showing => built.Count;
 
-        public void Bind(MapSession mapSession, MapSettlements mapSettlements, Material lowPoly)
+        public void Bind(MapSession mapSession, Material lowPoly)
         {
             session = mapSession;
-            settlements = mapSettlements;
             material = lowPoly;
         }
 
@@ -55,7 +46,7 @@ namespace Clube.Game
             return session.Map.Water.SeaLevel + dock.Design.DeckRise;
         }
 
-        /// <summary>A settlement's dock, laid out on the first ask; null when it has none (no sea route, no shore near, a camp).</summary>
+        /// <summary>A settlement's dock, laid out on the first ask; null when it has none (no road down to the water).</summary>
         public DockLayout DockOf(int settlement)
         {
             if (session == null || !session.IsReady || session.Plan == null || settlement < 0)
@@ -73,20 +64,14 @@ namespace Clube.Game
             laid[settlement] = null;
             WorldPlan plan = session.Plan;
             PlannedSettlement port = plan.Settlements[settlement];
-            DockDesign design = DockDesign.For(designs, port.Type);
-            Vector2? harbour = HarbourOf(settlement);
-            SettlementSite site = settlements != null ? settlements.LaidSite(settlement) : null;
-            if (design == null || harbour == null || site == null || site.Buildings.Count == 0)
+            DockDesign design = DockDesign.For(plan.Rules.Docks, port.Type);
+            Vector2? harbour = plan.HarbourOf(settlement);
+            if (design == null || harbour == null || !roadEnds.TryGetValue(settlement, out Vector2 roadEnd))
             {
                 return null;
             }
-            var fronts = new List<Vector2>();
-            foreach (SettlementBuilding building in site.Buildings)
-            {
-                fronts.Add(building.ToWorld(new Vector2(0f, building.Depth * 0.5f + 1.4f)));
-            }
             float sea = session.Map.Water.SeaLevel;
-            dock = Docks.Lay(design, fronts, harbour.Value, at => DepthAt(at, sea), NeedDepth);
+            dock = Docks.Lay(design, new[] { roadEnd }, harbour.Value, at => DepthAt(at, sea), NeedDepth);
             laid[settlement] = dock;
             return dock;
         }
@@ -99,27 +84,6 @@ namespace Clube.Game
                 return 0f;
             }
             return surface - session.Map.Height(at.x, at.y);
-        }
-
-        // Where a settlement's sea routes leave from: the first point of a route from it, the last of one to it.
-        private Vector2? HarbourOf(int settlement)
-        {
-            foreach (WaterRoute route in session.Plan.WaterRoutes)
-            {
-                if (route.Kind != WaterRouteKind.Sea || route.Points.Count == 0)
-                {
-                    continue;
-                }
-                if (route.From == settlement)
-                {
-                    return route.Points[0];
-                }
-                if (route.To == settlement)
-                {
-                    return route.Points[route.Points.Count - 1];
-                }
-            }
-            return null;
         }
 
         private void Update()
@@ -179,39 +143,7 @@ namespace Clube.Game
             body.AddComponent<MeshFilter>().sharedMesh = mesh;
             body.AddComponent<MeshRenderer>().sharedMaterial = material;
             body.AddComponent<MeshCollider>().sharedMesh = mesh;
-            BuildPath(body.transform, dock, rootGround);
             return new Built { Body = body, Dock = dock, Mesh = mesh };
-        }
-
-        // The way up from the nearest building to the pier's root: flags for the stone docks, a trodden path otherwise.
-        private void BuildPath(Transform parent, DockLayout dock, float rootGround)
-        {
-            Vector2 from = dock.PathFrom, to = dock.Root;
-            float length = Vector2.Distance(from, to);
-            if (length < 0.5f)
-            {
-                return;
-            }
-            Vector2 along = (to - from) / length;
-            var model = new LowPolyMeshBuilder();
-            bool stone = dock.Design.Stone;
-            float step = stone ? 1f : 1.5f;
-            Vector3 origin = parent.localPosition;
-            Quaternion toDock = Quaternion.Inverse(parent.localRotation);
-            int k = 0;
-            for (float d = 0f; d < length; d += step, k++)
-            {
-                Vector2 at = from + along * Mathf.Min(d + step * 0.5f, length);
-                float y = d + step >= length ? rootGround : Ground(at);
-                Vector3 centre = toDock * (new Vector3(at.x, y + 0.04f, at.y) - origin);
-                Quaternion turn = toDock * Quaternion.LookRotation(new Vector3(along.x, 0f, along.y));
-                Color colour = stone ? (k % 2 == 0 ? PathStone : PathStoneDark) : PathDirt;
-                model.Box(centre, new Vector3(dock.Design.PathWidth, 0.12f, step * (stone ? 0.94f : 1.05f)), turn, colour);
-            }
-            var path = new GameObject(stone ? "Paved way" : "Path");
-            path.transform.SetParent(parent, false);
-            path.AddComponent<MeshFilter>().sharedMesh = model.Make(path.name);
-            path.AddComponent<MeshRenderer>().sharedMaterial = material;
         }
 
         // Takes a dock out of the world, with the meshes made for it.
@@ -240,18 +172,19 @@ namespace Clube.Game
             built.Clear();
             laid.Clear();
             ports.Clear();
+            roadEnds.Clear();
             if (root != null)
             {
                 Destroy(root.gameObject);
             }
             root = new GameObject("Docks").transform;
             root.SetParent(session.WorldView.transform, false);
-            WorldPlan plan = session.Plan;
-            foreach (PlannedSettlement settlement in plan.Settlements)
+            foreach (PlannedRoad road in session.Plan.Roads)
             {
-                if (HarbourOf(settlement.Index) != null && DockDesign.For(designs, settlement.Type) != null)
+                if (road.ToDock && road.Points.Count >= 2)
                 {
-                    ports.Add(settlement.Index);
+                    ports.Add(road.From);
+                    roadEnds[road.From] = road.Points[road.Points.Count - 1];
                 }
             }
         }
