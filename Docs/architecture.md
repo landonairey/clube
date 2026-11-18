@@ -935,7 +935,7 @@ settlements of `Generation/`); the bodies are Game (`Game/People/`, `Game/Travel
   the lanes (`SettlementWalks.Route`) to that shop's front and back; `RoadCart.Stop`/`Boat.Stop` fill crates through
   `CrateCargo` while `Porter` walks the carter or a deckhand back and forth with a sack. Docks are `DockDesign` rows by
   settlement type, laid by `Docks.Lay` on the shore nearest the buildings, built near the viewer by `SettlementDocks`
-  (added to the World by `MapBoats`; `DockMeshes`, a way up to the nearest building, paved for stone docks);
+  (added to the World by `MapBoats`; `DockMeshes`). The way down to a dock is a road of the plan (GL753): `RoadPlanner.DockRoads` plans it (`PlannedRoad.ToDock`, class from `DockDesign.Road`), `DockLandings.Land` brings its end to the real shore before `WorldRoads.Finish` refines it, `DockLandings.Prune` drops one that ends on a cliff or runs too steep (no road, no dock), and the pier starts at its end;
   `MapBoats.RunLane` runs each vessel to and from its berth (`DockLayout.Berth`, `DockBerth.Mooring`).
 - **Riding, horse hire and theft from travellers (GL727-GL729).** Carts and vessels carry a `Rideable` marker; the
   player's `PlatformRider` (added by `PlayerController`, runs after everything has moved) finds the rideable collider
