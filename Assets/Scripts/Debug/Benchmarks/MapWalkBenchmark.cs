@@ -59,6 +59,8 @@ namespace Clube.Debug
         private readonly FrameTiming[] timing = new FrameTiming[1];
         private readonly FrameMarkers markers = new FrameMarkers();
         private readonly PlayerLoopTimes loopTimes = new PlayerLoopTimes();
+        private static readonly string[] PhaseNames = { "poll", "area", "apply meshes", "add chunks", "start generating", "start meshing", "colliders" };
+        private readonly double[] phaseTotals = new double[PhaseNames.Length];
         private readonly ProcessLoad load = new ProcessLoad();
         private readonly Dictionary<Vector2Int, int> groundLayers = new Dictionary<Vector2Int, int>();
         private readonly Dictionary<string, (double total, double worst, int slow)> systems = new Dictionary<string, (double, double, int)>();
@@ -332,6 +334,14 @@ namespace Clube.Debug
             drawCalls.Add(drawCallsRecorder.Valid ? drawCallsRecorder.LastValue : 0f);
             allocated.Add(allocatedRecorder.Valid ? allocatedRecorder.LastValue / 1024f : 0f);
             SampleSystems();
+            StreamingPhases phases = world.Stats.Phases;
+            phaseTotals[0] += phases.Poll;
+            phaseTotals[1] += phases.Area;
+            phaseTotals[2] += phases.ApplyMeshes;
+            phaseTotals[3] += phases.AddChunks;
+            phaseTotals[4] += phases.StartGeneration;
+            phaseTotals[5] += phases.StartMeshing;
+            phaseTotals[6] += phases.Colliders;
             batches.Add(batchesRecorder.Valid ? batchesRecorder.LastValue : 0f);
             setPasses.Add(setPassRecorder.Valid ? setPassRecorder.LastValue : 0f);
             triangles.Add(trianglesRecorder.Valid ? trianglesRecorder.LastValue / 1000f : 0f);
@@ -376,6 +386,8 @@ namespace Clube.Debug
             text.AppendLine($"  pending {world.PendingCount}, loading {world.IsLoading}, in sight {world.IsLoadingInSight}, renderers {world.Stats.Renderers}; phases (last frame): {world.Stats.Phases}");
             text.AppendLine($"  player loop (ms a frame): {loopTimes.Top(LoopStagesShown, frames.Count)}");
             text.AppendLine($"  systems (ms a frame; worst frame; frames over {SlowSystemMilliseconds:0} ms): {SystemsReport()}");
+            int phaseFrames = Mathf.Max(1, frames.Count);
+            text.AppendLine("  streaming phases (ms a frame): " + string.Join(", ", PhaseNames.Select((phase, i) => $"{phase} {phaseTotals[i] / phaseFrames:0.00}")));
             string top = markers.Top(MarkersShown, frames.Count);
             if (top.Length > 0)
             {
@@ -407,6 +419,7 @@ namespace Clube.Debug
                 values.Clear();
             }
             systems.Clear();
+            System.Array.Clear(phaseTotals, 0, phaseTotals.Length);
             load.Clear();
             collectionsAtStart = System.GC.CollectionCount(0);
             heapAtStart = System.GC.GetTotalMemory(false);

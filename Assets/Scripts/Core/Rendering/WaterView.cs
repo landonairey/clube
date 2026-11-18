@@ -193,7 +193,10 @@ namespace Clube.Core
                 WaterGeneration settings = worldView.Config.Terrain.Water;
                 Live.SoilWater = settings.SoilWater;
                 Live.HoldSoilWaterFull = settings.HoldSoilWaterFull;
-                Live.Step(budgetMs: flowBudgetMs);
+                using (FrameCost.Of("Water: flow"))
+                {
+                    Live.Step(budgetMs: flowBudgetMs);
+                }
             }
             if (world != null)
             {
@@ -215,10 +218,19 @@ namespace Clube.Core
                 RecheckDrawnChunks(world);
             }
             budget.Restart();
-            RebuildChunks();
-            UpdateDetailTiles();
-            RebuildRegions();
-            UpdateFarClip(world);
+            using (FrameCost.Of("Water: chunk meshes"))
+            {
+                RebuildChunks();
+            }
+            using (FrameCost.Of("Water: detail tiles"))
+            {
+                UpdateDetailTiles();
+                RebuildRegions();
+            }
+            using (FrameCost.Of("Water: coverage"))
+            {
+                UpdateFarClip(world);
+            }
             if (holder != null && holder.activeSelf != show)
             {
                 holder.SetActive(show);

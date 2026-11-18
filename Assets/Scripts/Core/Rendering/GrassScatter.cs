@@ -437,11 +437,14 @@ namespace Clube.Core
             // metres (GL770: every metre was six looks a second at a run), or the last look running out of time.
             Vector3 focus = worldView.Focus.position;
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
-            if (scanPending || (focus - scannedFrom).sqrMagnitude > ScanMoveMetres * ScanMoveMetres)
+            using (FrameCost.Of("Grass: scan and grow"))
             {
-                Scan(focus);
+                if (scanPending || (focus - scannedFrom).sqrMagnitude > ScanMoveMetres * ScanMoveMetres)
+                {
+                    Scan(focus);
+                }
+                Grow();
             }
-            Grow();
             long scanned = System.Diagnostics.Stopwatch.GetTimestamp();
             UpdateLawn(focus);
             long lawned = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -723,6 +726,7 @@ namespace Clube.Core
         // frame in the Editor.
         private void RebuildBatches(Vector3 focus)
         {
+            using FrameCost.Scope cost = FrameCost.Of("Grass: rebuild batches");
             batchesDirty = false;
             grownDirty = false;
             batchedAt = Time.unscaledTime;
