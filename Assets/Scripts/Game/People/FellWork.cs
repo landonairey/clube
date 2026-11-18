@@ -9,7 +9,7 @@ namespace Clube.Game
     /// trunk with the duty's tool; the cut tree falls the way the player's does (<see cref="TreeFeller"/>), away from
     /// the worker, and lies where it lands. GL672: it fells as at the highest Woodcutting level, so the whole tree comes
     /// down with no wood lost, then chops up the wood that landed, taking it out of the ground, before the next tree,
-    /// further out as the nearer ones go.
+    /// further out as the nearer ones go. GL730: the trees are the settlement's claimed ones (<see cref="SettlementWorks.Trees"/>).
     /// </summary>
     public sealed class FellWork : IDutyWork
     {
@@ -34,10 +34,14 @@ namespace Clube.Game
             }
             if (!listed)
             {
+                // GL730: the settlement's claimed trees, in the order the work done while nobody watched takes them.
+                SettlementWorks works = people.WorksOf(worker.Site.Settlement.Index);
+                if (works == null)
+                {
+                    return false;
+                }
                 listed = true;
-                Rect town = worker.Site.Bounds;
-                float edge = Mathf.Max(town.width, town.height) * 0.5f;
-                TreeFinder.SpotsNear(people.View.Trees, town.center, 0f, edge + worker.Duty.Range, spots);
+                spots.AddRange(works.Trees);
             }
             if (NearestLying(worker, world, people.Trees, iso, out cut))
             {
