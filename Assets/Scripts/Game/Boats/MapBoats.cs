@@ -351,6 +351,7 @@ namespace Clube.Game
         // GL770: what a settlement loads onto a vessel of this cargo, worked out once: looked through the catalog for every boat in sight, every frame, it was most of what the boats cost.
         private List<ItemDefinition> GoodsFor(int settlement, BoatRun run)
         {
+            using FrameCost.Scope cost = FrameCost.Of("Boats: goods");
             var key = (settlement, run.CargoWords);
             if (!goodsFor.TryGetValue(key, out List<ItemDefinition> found))
             {
@@ -364,6 +365,7 @@ namespace Clube.Game
 
         private Boat Launch(BoatRun run)
         {
+            using FrameCost.Scope cost = FrameCost.Of("Boats: launch");
             var body = new GameObject($"{run.Name} ({run.Class.Name})");
             body.transform.SetParent(root, false);
             Boat boat = body.AddComponent<Boat>();

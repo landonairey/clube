@@ -369,6 +369,7 @@ namespace Clube.Game
         // Works out a road in detail: its line with heights, its bridges, its bed and its writer.
         private Built WorkOut(int index)
         {
+            using FrameCost.Scope cost = FrameCost.Of("Roads: work out");
             if (built[index] != null)
             {
                 return built[index];
@@ -537,7 +538,10 @@ namespace Clube.Game
                     continue;
                 }
                 float before = Time.realtimeSinceStartup;
-                writer.Write(world, config.Materials, Natural, config.IsoLevel, next.Piece);
+                using (FrameCost.Of("Roads: write piece"))
+                {
+                    writer.Write(world, config.Materials, Natural, config.IsoLevel, next.Piece);
+                }
                 hold.Remove(world.Grid, HoldOf(writer, next.Piece));
                 pending.RemoveAt(i--);
                 PiecesWritten++;
@@ -567,7 +571,10 @@ namespace Clube.Game
                     continue;
                 }
                 float before = Time.realtimeSinceStartup;
-                bore.Write(world, config.Materials, lining, config.IsoLevel, next.Piece);
+                using (FrameCost.Of("Roads: bore tunnel"))
+                {
+                    bore.Write(world, config.Materials, lining, config.IsoLevel, next.Piece);
+                }
                 boring.RemoveAt(i--);
                 TunnelPiecesBored++;
                 nextLookTime = 0f;

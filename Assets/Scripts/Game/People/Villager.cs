@@ -245,6 +245,7 @@ namespace Clube.Game
 
         private bool Seek()
         {
+            using FrameCost.Scope cost = FrameCost.Of("People: seek work");
             seekTimer -= Time.deltaTime;
             if (seekTimer <= 0f)
             {

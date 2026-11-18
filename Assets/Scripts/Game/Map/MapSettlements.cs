@@ -341,6 +341,7 @@ namespace Clube.Game
         // Lays a settlement out on its ground, once.
         private SettlementSite Lay(int index)
         {
+            using FrameCost.Scope cost = FrameCost.Of("Settlements: lay out");
             if (laid[index] != null)
             {
                 return laid[index];
@@ -372,6 +373,7 @@ namespace Clube.Game
         // Lays a settlement out on its ground, and makes its writer.
         private Built WorkOut(int index)
         {
+            using FrameCost.Scope cost = FrameCost.Of("Settlements: work out");
             if (built[index] != null)
             {
                 return built[index];
@@ -603,7 +605,10 @@ namespace Clube.Game
                 }
                 float before = Time.realtimeSinceStartup;
                 int kind = writer.KindOf(next.Piece);
-                writer.Write(world, registry, materials, heights.At, config.IsoLevel, next.Piece);
+                using (FrameCost.Of("Settlements: write piece"))
+                {
+                    writer.Write(world, registry, materials, heights.At, config.IsoLevel, next.Piece);
+                }
                 hold.Remove(world.Grid, HoldOf(writer, next.Piece));
                 pending.RemoveAt(i--);
                 wrote = true;
@@ -631,7 +636,10 @@ namespace Clube.Game
                 {
                     foreach ((int index, float _) in near)
                     {
-                        Fit(index, built[index]);
+                        using (FrameCost.Of("Settlements: fit buildings"))
+                        {
+                            Fit(index, built[index]);
+                        }
                     }
                 }
             }

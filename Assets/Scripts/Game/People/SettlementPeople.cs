@@ -357,6 +357,7 @@ namespace Clube.Game
         // Puts a settlement's residents in the world, as many as the cap leaves room for.
         private void Settle(int index, SettlementSite site)
         {
+            using FrameCost.Scope cost = FrameCost.Of("People: settle");
             List<Resident> residents = SettlementRoster.Build(site, occupations, session.Plan.Seed);
             var people = new List<Villager>();
             living[index] = people;
