@@ -177,6 +177,8 @@ namespace Clube.Core.Tests
             // Ocean, desert and ridge corners (the void is a cliff by design), on level land so only the shape shows.
             var map = new MapDefinition();
             map.SetSides(MapBoundaryType.OceanName, MapBoundaryType.DesertName, MapBoundaryType.OceanName, MapBoundaryType.MountainRidgeName);
+            // A sea cliff (GL737) is a step by design; this is about the sides' blend.
+            map.Cliffs.SeaCliffCoverage = 0f;
             MapShape shape = map.Resolve(9, Level).Shape;
             float half = shape.Half;
 

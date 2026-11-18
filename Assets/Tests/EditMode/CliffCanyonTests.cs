@@ -224,6 +224,7 @@ namespace Clube.Core.Tests
                 canyons.CellSize = reach.CellSize;
                 canyons.Size = reach.Size;
                 canyons.Reach = reach.Reach;
+                canyons.RampShare = 0f;
 
                 Assert.That(canyons.Lift(1f, 0f, 0f), Is.Zero, "the river keeps its own ground");
                 Assert.That(canyons.Lift(60f, 0f, 1f), Is.Zero, "wet land is left alone");
@@ -237,6 +238,22 @@ namespace Clube.Core.Tests
                 }
                 Assert.That(canyons.Lift(80f, 3f, 0f), Is.GreaterThan(canyons.Depth * 0.7f), "the tableland stands over the canyon");
                 Assert.That(canyons.Lift(399f, 3f, 0f), Is.LessThan(1f), "and comes down at the grid's edge, which makes no cliff");
+                float steepest = 0f;
+                for (float x = 0f; x < 100f; x += 0.5f)
+                {
+                    steepest = math.max(steepest, (canyons.Lift(x + 0.5f, 3f, 0f) - canyons.Lift(x, 3f, 0f)) / 0.5f);
+                }
+                Assert.That(steepest, Is.GreaterThan(1.5f), "its walls are cliffs");
+
+                // A break: the wall gives way to a slope a cart road can take (a dirt cart path's limit is about 0.21).
+                canyons.RampShare = 1f;
+                steepest = 0f;
+                for (float x = 0f; x < 250f; x += 1f)
+                {
+                    steepest = math.max(steepest, math.abs(canyons.Lift(x + 1f, 3f, 0f) - canyons.Lift(x, 3f, 0f)));
+                }
+                Assert.That(steepest, Is.LessThan(0.21f), "a break is a scree slope, no cliff");
+                Assert.That(canyons.Lift(250f, 3f, 0f), Is.GreaterThan(canyons.Depth * 0.6f), "up to the tableland");
             }
             finally
             {

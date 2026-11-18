@@ -295,6 +295,18 @@ flowchart LR
   after the layers and before clay, banks and ore. `BiomeMap` (`BoundedMapGenerator.Biomes`, `BiomeMap.For(generator)`) is
   the main-thread query; trees read it through `TreeGeneration.Climate` (`TreeForests.ChanceIn`, `TreeShape.IsMaple`), from a
   16 m grid filled by one job on first use, so the voxel trees and the distant trees agree.
+- **Cliffs, canyons and strata** (GL737, `MapDefinition.Cliffs`, a `CliffSettings`): three changes to the map's ground,
+  each at its own stage. Sea cliffs are in `MapShape.Apply`'s coast (`SeaCliffAt`): the beach, hills and ranges rise
+  across the cliff's face, and a lift of at most `InlandRise` is taken back by the inland rise, so the ground behind a
+  cliff never falls towards it. Inland cliffs (`Escarpments`) are added by `BoundedMapHeight` after the erosion and
+  before the water, so rivers fall over them or pool against them. Canyons (`Canyons`) come after the water: `CanyonReach`
+  builds (Burst, cached by the water's key) each water cell's metres to the nearest water, and `BoundedMapHeight.RawHeight`
+  raises dry land (`BiomeField.MoistureAt`) into a tableland in ledges from it, broken here and there by scree slopes
+  (`RampAt`) gentle enough for a cart road; they only ever raise dry ground away from water, so the water map stays true.
+  The road refiner knows nothing of the breaks: it finds one only when its corridor reaches it. `CreateDry` (the preview) has no canyons. Strata (`RockStrata`, in `BiomeField`) are
+  materials only: in a `LayeredRock` biome the kernel's `StampBiomes` turns base rock within `Depth` of the surface into the
+  band at its height; deeper rock stays the base, where ores grow. `TerrainLayers.CliffAngle` makes any face that steep
+  bare rock, whatever its height.
 - **The resource survey** (GL592): `ResourceSurvey.Build` grids the map without voxels. It calls what the chunks call
   (`OreField.AppendTries` + `MarkPlaced`, `TreeField.TryGetSpot` + `IsFlatEnough`, `ChunkFillKernel.ClayDepthAt`,
   `WaterMap.MaterialAt`, `LayerTable.IsSteep`, `BiomeField.IndexAt`) and gets every ground height from

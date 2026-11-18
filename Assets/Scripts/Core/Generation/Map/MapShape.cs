@@ -514,7 +514,9 @@ namespace Clube.Core
             float run = 0.5f + 0.5f * math.clamp(
                 GradientNoise.Fractal(Salted(SeaCliffSalt), bent.x / SeaCliffRun, bent.y / SeaCliffRun, 2) * 1.6f, -1f, 1f);
             float threshold = 1f - SeaCliffCoverage;
-            return math.smoothstep(threshold - 0.06f, threshold + 0.06f, run);
+            // A wide taper: along the coast a cliff eases down to the beach over a few hundred metres, so a coast road
+            // can climb from one to the other.
+            return math.smoothstep(threshold - 0.16f, threshold + 0.16f, run);
         }
 
         private uint Salted(uint salt)

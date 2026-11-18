@@ -541,7 +541,9 @@ MonoBehaviour:
         canyonFloor: 8
         canyonWall: 40
         canyonLedges: 4
-        dryness: {x: 0.27, y: 0.32}
+        canyonBreaks: 0.35
+        canyonBreakSpacing: 240
+        dryness: {x: 0.18, y: 0.34}
         strata:
         - material: {fileID: 11400000, guid: aa9c2158c6b3c5a4cad1576fe3f9b8da, type: 2}
           thickness: 4

@@ -66,7 +66,8 @@ namespace Clube.Core
         {
             float run = Noise01(Seed + 1u, x / RunLength, z / RunLength);
             float threshold = 1f - Coverage;
-            return math.smoothstep(threshold - 0.08f, threshold + 0.08f, run);
+            // The ends taper over a hundred metres or more, so a road can go round a cliff's end on a slope it can take.
+            return math.smoothstep(threshold - 0.18f, threshold + 0.18f, run);
         }
 
         /// <summary>

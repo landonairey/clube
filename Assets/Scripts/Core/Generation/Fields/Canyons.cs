@@ -39,6 +39,12 @@ namespace Clube.Core
         public float DryFrom;
         public float DryTo;
 
+        /// <summary>Share of the walls that are breaks: long scree slopes a cart road can take down to the water.</summary>
+        public float RampShare;
+
+        /// <summary>Metres over which breaks come and go along a wall.</summary>
+        public float RampSpacing;
+
         /// <summary>The climate's region size, which the moisture is read at (<see cref="BiomeField.MoistureAt"/>).</summary>
         public float RegionSize;
 
@@ -46,6 +52,10 @@ namespace Clube.Core
 
         // Share of each step that is face; the rest is ledge.
         private const float FaceShare = 0.4f;
+
+        // A break's rise over run at its steepest is about 1.5 times this (a smoothstep's steepest): about 18% for 0.12, under a
+        // dirt cart path's limit.
+        private const float RampGrade = 0.12f;
 
         // Metres inside the grid's edge over which the tableland comes down to the land, so the grid's end makes no cliff.
         private const float EdgeFade = 96f;
@@ -95,15 +105,29 @@ namespace Clube.Core
             // The floor and the walls wander in width, so a canyon narrows and widens along its run.
             float wander = 0.5f + 0.5f * math.clamp(GradientNoise.Fractal(Seed, x / 180f, z / 180f, 2) * 1.6f, -1f, 1f);
             float floor = Floor * (0.5f + wander);
-            float wall = Wall * (0.7f + 0.6f * wander);
-            float climb = math.saturate((ReachAt(x, z) - floor) / wall);
-            float t = math.min(climb, dry) * math.smoothstep(0f, EdgeFade, inside);
-            if (t <= 0f)
+            float depth = Depth * (0.8f + 0.4f * (0.5f + 0.5f * GradientNoise.At(Seed + 1u, x / 900f, z / 900f)));
+            // Here and there a wall gives way to a long scree slope with no ledges (a break), gentle enough for a cart
+            // road down to the water: without one, a road to a river in the dry land would have only cliffs to take.
+            float ramp = RampAt(x, z);
+            float wall = math.lerp(Wall * (0.7f + 0.6f * wander), math.max(Wall, depth / RampGrade), ramp);
+            float climb = math.saturate((ReachAt(x, z) - floor) / wall) * math.smoothstep(0f, EdgeFade, inside);
+            if (climb <= 0f)
             {
                 return 0f;
             }
-            float depth = Depth * (0.8f + 0.4f * (0.5f + 0.5f * GradientNoise.At(Seed + 1u, x / 900f, z / 900f)));
-            return depth * Steps(t, Ledges);
+            return depth * dry * math.lerp(Steps(climb, Ledges), math.smoothstep(0f, 1f, climb), ramp);
+        }
+
+        /// <summary>How far a canyon's wall at (x, z) is a break (a gentle scree slope): 0 for ledged cliffs, 1 for a full break.</summary>
+        public float RampAt(float x, float z)
+        {
+            if (RampShare <= 0f)
+            {
+                return 0f;
+            }
+            float noise = 0.5f + 0.5f * math.clamp(GradientNoise.Fractal(Seed + 2u, x / RampSpacing, z / RampSpacing, 2) * 1.6f, -1f, 1f);
+            float threshold = 1f - RampShare;
+            return math.smoothstep(threshold - 0.06f, threshold + 0.06f, noise);
         }
 
         /// <summary>0 to 1 in <paramref name="ledges"/> steps: each a steep face, then a level ledge.</summary>

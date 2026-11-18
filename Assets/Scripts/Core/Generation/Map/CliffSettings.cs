@@ -97,9 +97,17 @@ namespace Clube.Core
         [SerializeField, Range(1, 8)]
         private int canyonLedges = 4;
 
-        [Tooltip("Moisture (0 dry to 1 wet) under which the land is wholly tableland, and over which none is: the steppe and the desert.")]
+        [Tooltip("Share of the canyons' walls that are breaks: long scree slopes with no ledges, gentle enough for a cart road down to the water.")]
+        [SerializeField, Range(0f, 1f)]
+        private float canyonBreaks = 0.35f;
+
+        [Tooltip("Metres over which breaks come and go along a wall.")]
+        [SerializeField, Min(40f)]
+        private float canyonBreakSpacing = 240f;
+
+        [Tooltip("Moisture (0 dry to 1 wet) under which the land is wholly tableland, and over which none is: the steppe and the desert. The tableland rises smoothly across it.")]
         [SerializeField]
-        private Vector2 dryness = new Vector2(0.27f, 0.32f);
+        private Vector2 dryness = new Vector2(0.18f, 0.34f);
 
         [Header("Strata")]
         [Tooltip("The bands of rock the layered biomes' rock lies in, bottom first; they repeat up and down. Empty: no strata.")]
@@ -118,7 +126,7 @@ namespace Clube.Core
 
         public float Spacing { get => spacing; set => spacing = Mathf.Max(0f, value); }
         public float RunLength => Mathf.Max(20f, runLength);
-        public float Coverage => Mathf.Clamp01(coverage);
+        public float Coverage { get => Mathf.Clamp01(coverage); set => coverage = Mathf.Clamp01(value); }
         public Vector2 Drop => new Vector2(Mathf.Max(0f, drop.x), Mathf.Max(drop.x, drop.y));
         public float Face => Mathf.Max(0.5f, face);
         public Vector2 Swell => new Vector2(Mathf.Max(0f, swell.x), Mathf.Max(1f, swell.y));
@@ -132,6 +140,8 @@ namespace Clube.Core
         public float CanyonFloor => Mathf.Max(0f, canyonFloor);
         public float CanyonWall => Mathf.Max(4f, canyonWall);
         public int CanyonLedges => Mathf.Clamp(canyonLedges, 1, 8);
+        public float CanyonBreaks { get => Mathf.Clamp01(canyonBreaks); set => canyonBreaks = Mathf.Clamp01(value); }
+        public float CanyonBreakSpacing => Mathf.Max(40f, canyonBreakSpacing);
         public Vector2 Dryness => new Vector2(dryness.x, Mathf.Max(dryness.x + 0.005f, dryness.y));
 
         /// <summary>The bands of rock, bottom first; add to it for more (at most <see cref="RockStrata.MaxBands"/> are used).</summary>
@@ -174,6 +184,8 @@ namespace Clube.Core
                 Ledges = CanyonLedges,
                 DryFrom = Dryness.x,
                 DryTo = Dryness.y,
+                RampShare = CanyonBreaks,
+                RampSpacing = CanyonBreakSpacing,
                 RegionSize = regionSize,
             };
         }
@@ -209,7 +221,7 @@ namespace Clube.Core
         /// <summary>Everything that changes the canyons, for cache keys.</summary>
         public string CanyonKey()
         {
-            return $"{CanyonDepth}|{CanyonFloor}|{CanyonWall}|{CanyonLedges}|{Dryness}";
+            return $"{CanyonDepth}|{CanyonFloor}|{CanyonWall}|{CanyonLedges}|{CanyonBreaks}|{CanyonBreakSpacing}|{Dryness}";
         }
     }
 }
