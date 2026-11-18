@@ -433,7 +433,9 @@ flowchart LR
   every cell in it is *flat* (wet, not river, level with every wet cell touching it), else it splits down to single
   cells; a sheet with smaller squares along its rim is a fan through their corners. The `Clube/Water` shader's
   `_Detail` (centre, half width, side) draws the tiles inside the square and the regions outside, and stills the
-  ripples outside, so the layers meet at one height and nothing is rebuilt as the viewer moves. Both are clipped by
+  ripples outside, so the layers meet at one height and nothing is rebuilt as the viewer moves. The half width stops
+  short of any tile not built yet (`WaterDetailSquare`, GL761), so the regions draw that water until its tile is ready;
+  tiles build nearest first, and a tile and a region are built every frame however many chunks wait. Both are clipped by
   the chunk coverage mask (GL323), which for water also waits for the column's own water (GL654): a wet chunk with no
   water mesh yet is *awaited* (`WaterView.Await`, `IsWaterReady`), the far sheets stay over its column until it is built
   (or found to need none), and awaited chunks are built before redraws with `catchUpBudgetMs` (5 ms) a frame, so no
