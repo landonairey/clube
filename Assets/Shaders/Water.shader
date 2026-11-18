@@ -27,6 +27,8 @@ Shader "Clube/Water"
         _Murk ("Murk depth (m to mostly hide the floor)", Float) = 3.5
         _Swell ("Deep swell strength", Range(0, 1)) = 0.6
         _SwellFrom ("Swell starts at depth (m)", Float) = 3
+        _WaveWarp ("Wave bend (m)", Float) = 7
+        _WavePatch ("Wave patchiness", Range(0, 1)) = 0.7
         [HideInInspector] _ClipCovered ("Clip drawn chunk columns (far sheets)", Float) = 0
         [HideInInspector] _CoverageMask ("Chunk coverage", 2D) = "black" {}
         [HideInInspector] _Coverage ("Coverage origin, column width, size", Vector) = (0, 0, 1, 0)
@@ -75,6 +77,8 @@ Shader "Clube/Water"
                 float _Murk;
                 half _Swell;
                 float _SwellFrom;
+                float _WaveWarp;
+                half _WavePatch;
             CBUFFER_END
             TEXTURE2D(_CoverageMask);
 
@@ -135,14 +139,46 @@ Shader "Clube/Water"
                 return lerp(color, _Foam.rgb, foam * 0.6);
             }
 
+            // GL758: how far a point's waves are pushed sideways, in metres. Sines at unrelated scales, each bending the
+            // next, so wave fronts curve and never line up into a repeating pattern. Depends on the place alone, so every
+            // sheet and chunk agrees where they meet.
+            float2 WaveWarp(float2 p)
+            {
+                float2 q = p * 0.021;
+                return float2(sin(q.y + 1.7 * sin(q.x * 0.63 + 0.4)) + 0.5 * sin(q.y * 2.17 - q.x * 1.31 + 2.1),
+                              sin(q.x * 1.13 + 1.5 * sin(q.y * 0.71 + 3.1)) + 0.5 * sin(q.x * 2.39 + q.y * 1.19 + 5.3)) * _WaveWarp;
+            }
+
+            // GL758: calm and rough patches drifting slowly over the water, 0 to 1.
+            float WavePatch(float2 p, float2 warp)
+            {
+                float t = _Time.y * 0.03;
+                float2 q = p + warp * 3.0;
+                float s = sin(q.x * 0.043 + q.y * 0.017 + t)
+                        + sin(q.y * 0.061 - q.x * 0.029 - t * 1.3 + 1.9) * 0.7
+                        + sin(q.x * 0.113 + q.y * 0.097 + t * 0.7 + 4.2) * 0.4;
+                return smoothstep(0.2, 0.8, s / 4.2 + 0.5);
+            }
+
+            // What the waves' height is multiplied by at a point.
+            float WaveStrength(float2 p, float2 warp)
+            {
+                return lerp(1.0, lerp(0.3, 1.5, WavePatch(p, warp)), _WavePatch);
+            }
+
             // How far the surface rises or falls at a point: crossing wavelets on still water, waves running downstream
             // where it flows, blended by how much of it is river.
             float Ripple(float2 p, float4 ripple)
             {
                 float t = _Time.y;
-                float still = sin(dot(p, float2(0.8, 0.6)) * 2.1 + t * 0.9) * 0.45
-                            + sin(dot(p, float2(-0.55, 0.83)) * 2.9 + t * 1.2) * 0.35
-                            + sin(dot(p, float2(0.15, -0.99)) * 3.7 + t * 1.5) * 0.2;
+                // GL758: long enough for the 2 m cells of the far sheets to follow (shorter waves alias into a grid of
+                // dots), bent and patchy so no two stretches of water match.
+                float2 warp = WaveWarp(p);
+                float2 q = p + warp;
+                float still = (sin(dot(q, float2(0.8, 0.6)) * 0.47 + t * 0.9 + warp.y * 0.4) * 0.45
+                             + sin(dot(q, float2(-0.55, 0.83)) * 0.71 + t * 1.2 - warp.x * 0.3) * 0.35
+                             + sin(dot(q, float2(0.15, -0.99)) * 1.03 + t * 1.5 + warp.x * 0.5) * 0.2)
+                            * WaveStrength(p, warp);
                 float speed = length(ripple.xy);
                 float running = still;
                 if (speed > 0.001)
@@ -161,15 +197,21 @@ Shader "Clube/Water"
 
             // Deep ocean swell (GL673): the slope of long rolling waves at a point, drawn in the shading only, so it shows
             // the same on every sheet however coarse its triangles are.
-            float2 SwellSlope(float2 p)
+            float2 SwellSlope(float2 p, float away)
             {
                 float t = _Time.y;
                 float2 d0 = float2(0.83, 0.56), d1 = float2(0.35, 0.94), d2 = float2(0.97, -0.24), d3 = float2(-0.5, 0.87);
-                float2 slope = d0 * cos(dot(p, d0) * 0.33 + t * 0.95) * 0.10;
-                slope += d1 * cos(dot(p, d1) * 0.52 + t * 1.25) * 0.083;
-                slope += d2 * cos(dot(p, d2) * 0.81 + t * 1.6) * 0.065;
-                slope += d3 * cos(dot(p, d3) * 1.7 + t * 2.3) * 0.05;
-                return slope;
+                // GL758: the swells bend and come in patches like the ripples, each with its own drift.
+                float2 warp = WaveWarp(p) * 2.5;
+                float2 q = p + warp;
+                float2 slope = d0 * cos(dot(q, d0) * 0.33 + t * 0.95 + warp.y * 0.2) * 0.10;
+                slope += d1 * cos(dot(q, d1) * 0.52 + t * 1.25 - warp.x * 0.15) * 0.083;
+                // The short swells fade out with distance, where a pixel is wider than they are and they would shimmer
+                // into bands; the long ones thin out further off, towards the horizon.
+                float fine = 1.0 - smoothstep(120.0, 420.0, away);
+                slope += d2 * cos(dot(q, d2) * 0.81 + t * 1.6 + warp.x * 0.25) * 0.065 * fine;
+                slope += d3 * cos(dot(q, d3) * 1.7 + t * 2.3 - warp.y * 0.3) * 0.05 * fine;
+                return slope * WaveStrength(p, warp) * (1.0 - 0.8 * smoothstep(500.0, 2200.0, away));
             }
 
             Varyings Vertex(Attributes input)
@@ -230,7 +272,7 @@ Shader "Clube/Water"
                 float open = smoothstep(_SwellFrom, _SwellFrom * 4.0, thickness) * (kind < 2.5 ? 1.0 : 0.0);
                 if (open > 0.0)
                 {
-                    float2 slope = SwellSlope(input.positionWS.xz) * (_Swell * open);
+                    float2 slope = SwellSlope(input.positionWS.xz, length(GetWorldSpaceViewDir(input.positionWS))) * (_Swell * open);
                     normalWS = normalize(normalWS + float3(-slope.x, 0.0, -slope.y));
                 }
 
@@ -239,8 +281,11 @@ Shader "Clube/Water"
                 {
                     // Still water (GL318): no random flecks; a facet is lighter the more the rolling ripples tip it one
                     // way, so the light moves with the waves, smoothly.
-                    float tip = dot(normalWS.xz, float2(0.6, 0.8)) / max(_Ripple * 3.0, 0.001);
-                    shimmer = lerp(_Deep.rgb, _Light.rgb, smoothstep(-0.1, 1.0, tip) * (0.8 + 0.2 * random));
+                    float tip = dot(normalWS.xz, float2(0.6, 0.8)) / max(_Ripple * 0.75, 0.001);
+                    shimmer = lerp(_Deep.rgb, _Light.rgb, smoothstep(-0.1, 1.0, tip) * (0.65 + 0.35 * random));
+                    // GL758: broad lighter and darker stretches, so far water that no longer ripples isn't one even colour.
+                    float2 place = centre.xz;
+                    shimmer *= lerp(1.0, lerp(0.88, 1.12, WavePatch(place, WaveWarp(place))), _WavePatch);
                 }
                 else
                 {
