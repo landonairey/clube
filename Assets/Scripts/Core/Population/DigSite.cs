@@ -94,30 +94,36 @@ namespace Clube.Core
         {
             while (digs.Count <= index && !done)
             {
-                Dig next = null;
-                while (next == null)
-                {
-                    if (attempts >= MostDigs * 3)
-                    {
-                        done = true;
-                        break;
-                    }
-                    next = Lay(attempts++);
-                    if (next == null && !tunnel)
-                    {
-                        // No flat dry spot round the settlement: none will be found for a later pit either.
-                        done = true;
-                        break;
-                    }
-                }
-                if (next != null)
-                {
-                    digs.Add(next);
-                    done |= digs.Count >= MostDigs;
-                }
+                LayNext();
             }
             dig = index < digs.Count ? digs[index] : null;
             return dig != null;
+        }
+
+        /// <summary>One more try at laying the run (GL762: a piece of work small enough for a frame); false once it is all laid.</summary>
+        public bool LayNext()
+        {
+            if (done)
+            {
+                return false;
+            }
+            if (attempts >= MostDigs * 3)
+            {
+                done = true;
+                return false;
+            }
+            Dig next = Lay(attempts++);
+            if (next != null)
+            {
+                digs.Add(next);
+                done |= digs.Count >= MostDigs;
+            }
+            else if (!tunnel)
+            {
+                // No flat dry spot round the settlement: none will be found for a later pit either.
+                done = true;
+            }
+            return !done;
         }
 
         /// <summary>Every dig of the run, worked out.</summary>

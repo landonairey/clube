@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -24,7 +25,12 @@ namespace Clube.Core
         private readonly Func<Vector2, bool> isDry;
         private readonly Dictionary<(int, bool), DigSite> sites = new Dictionary<(int, bool), DigSite>();
         private readonly List<DigSite> siteList = new List<DigSite>();
-        private List<Vector2> claimed;
+        // Sites being laid by PrepareSteps, not yet known to have digs.
+        private readonly Dictionary<(int, bool), DigSite> laying = new Dictionary<(int, bool), DigSite>();
+        private readonly List<Vector2> claimed = new List<Vector2>();
+        // The tree spots in reach, and how many of them have been looked at for the claim.
+        private List<Vector2> spotsInReach;
+        private int spotsLookedAt;
 
         /// <param name="site">The settlement as laid out.</param>
         /// <param name="residents">Its people (<see cref="SettlementRoster.Build"/>).</param>
@@ -67,27 +73,103 @@ namespace Clube.Core
         {
             get
             {
-                if (claimed == null)
+                ClaimTrees(int.MaxValue);
+                return claimed;
+            }
+        }
+
+        /// <summary>True once <see cref="PrepareSteps"/> has worked everything out.</summary>
+        public bool IsPrepared { get; private set; }
+
+        /// <summary>
+        /// Works out the claimed trees and every dig a step at a time (GL762, <see cref="SlicedWork"/>): seconds of ground
+        /// heights for a large settlement, which would otherwise all fall in the frame that first asks for them.
+        /// </summary>
+        public IEnumerator PrepareSteps()
+        {
+            while (!ClaimTrees(SpotsPerStep))
+            {
+                yield return null;
+            }
+            foreach (Resident resident in residents)
+            {
+                foreach (DutyShift shift in resident.Occupation.Week)
                 {
-                    claimed = new List<Vector2>();
-                    Duty fell = WorkDuty(WorkRate.Fell);
-                    if (trees != null && fell != null)
+                    Duty duty = Duty.Find(duties, shift.Duty);
+                    if (duty == null || (duty.Work != WorkRate.DigPit && duty.Work != WorkRate.DigTunnel))
                     {
-                        Rect town = site.Bounds;
-                        float edge = Mathf.Max(town.width, town.height) * 0.5f;
-                        var spots = new List<Vector2>();
-                        TreeFinder.SpotsNear(trees, town.center, 0f, edge + fell.Range, spots);
-                        foreach (Vector2 spot in spots)
+                        continue;
+                    }
+                    bool tunnel = duty.Work == WorkRate.DigTunnel;
+                    DigSite first = Laying(resident.Shop, tunnel);
+                    while (first != null && first.LayNext())
+                    {
+                        yield return null;
+                    }
+                    if (tunnel && first != null && first.Count == 0)
+                    {
+                        // No slope for a tunnel: the shop works pits instead (SiteOf).
+                        DigSite pits = Laying(resident.Shop, false);
+                        while (pits != null && pits.LayNext())
                         {
-                            if (land.MayWork(town, spot, 3f) && Grows(spot))
-                            {
-                                claimed.Add(spot);
-                            }
+                            yield return null;
                         }
                     }
                 }
-                return claimed;
             }
+            // Every site laid is now known to the settlement.
+            _ = Sites;
+            IsPrepared = true;
+        }
+
+        // Looks at some more of the tree spots in reach; true once they have all been looked at.
+        private bool ClaimTrees(int most)
+        {
+            if (spotsInReach == null)
+            {
+                spotsInReach = new List<Vector2>();
+                Duty fell = WorkDuty(WorkRate.Fell);
+                if (trees != null && fell != null)
+                {
+                    Rect bounds = site.Bounds;
+                    TreeFinder.SpotsNear(trees, bounds.center, 0f, Mathf.Max(bounds.width, bounds.height) * 0.5f + fell.Range, spotsInReach);
+                }
+            }
+            Rect town = site.Bounds;
+            int end = spotsInReach.Count - spotsLookedAt > most ? spotsLookedAt + most : spotsInReach.Count;
+            for (; spotsLookedAt < end; spotsLookedAt++)
+            {
+                Vector2 spot = spotsInReach[spotsLookedAt];
+                if (land.MayWork(town, spot, 3f) && Grows(spot))
+                {
+                    claimed.Add(spot);
+                }
+            }
+            return spotsLookedAt >= spotsInReach.Count;
+        }
+
+        // Tree spots looked at in one step of PrepareSteps.
+        private const int SpotsPerStep = 16;
+
+        // The site of a shop's work being laid, kept until SiteOf takes it; null for a work with no duty row.
+        private DigSite Laying(int shop, bool tunnel)
+        {
+            if (sites.TryGetValue((shop, tunnel), out DigSite known))
+            {
+                return known;
+            }
+            if (laying.TryGetValue((shop, tunnel), out DigSite started))
+            {
+                return started;
+            }
+            Duty duty = WorkDuty(tunnel ? WorkRate.DigTunnel : WorkRate.DigPit);
+            if (duty == null)
+            {
+                return null;
+            }
+            var made = new DigSite(DigSite.SeedOf(site.Settlement.Index, shop), tunnel, site.Bounds, duty.Range, grid, ground, isDry, MayWork);
+            laying[(shop, tunnel)] = made;
+            return made;
         }
 
         /// <summary>
@@ -100,12 +182,12 @@ namespace Clube.Core
             {
                 return found;
             }
-            Duty duty = WorkDuty(tunnel ? WorkRate.DigTunnel : WorkRate.DigPit);
-            if (duty == null)
+            DigSite made = Laying(shop, tunnel);
+            if (made == null)
             {
                 return null;
             }
-            var made = new DigSite(DigSite.SeedOf(site.Settlement.Index, shop), tunnel, site.Bounds, duty.Range, grid, ground, isDry, MayWork);
+            laying.Remove((shop, tunnel));
             if (tunnel && made.Count == 0)
             {
                 DigSite pits = SiteOf(shop, false);
