@@ -415,8 +415,8 @@ flowchart LR
   A settlement's edge signpost carries `Settlement`/`Outward`/`Roadside`; `MapRoads` stands a swinging chained name
   board beside it (`Signboard`, `SignboardSway`).
 - **The map in a scene** (GL598-GL601, `Game/Map/`): `MapSession` (one per scene, `MapSession.Current`) watches
-  `WorldView.Generator`; when it is a `BoundedMapGenerator` it builds the survey and the plan once (main thread: the
-  survey completes height jobs; about 4 s at 5 km) and raises `Rebuilt`, again after every regenerate. Everything that
+  `WorldView.Generator`; when it is a `BoundedMapGenerator` it builds the survey and the plan once (GL762: 100 ms of each
+  frame through `SlicedWork`, so the load screen keeps drawing) and raises `Rebuilt`, again after every regenerate. Everything that
   needs the map reads `Map`, `Survey`, `Plan` from it: `MapMarkers` (posts at sites; road posts off now), `MapRoads` (the roads themselves),
   `MapSettlements` (the settlements), `WorldMapScreen` (M; during the tutorial M shows `CompanySiteMapScreen` instead, only the company's site from `CompanySiteMap`, GL760; both are `IMapScreen`s). `MapStart.Pick` (Core) chooses where the player is set down: beside `MapStart.Home`, an outpost with a Merchant shop (one is given a Merchant when none has it, so call it before the settlements are built; GL656). `LandParcels.SaleArea` keeps parcels whose centre is past the playable edge off sale (GL666). The menu's Demo game (`GameMode.Demo`) plays this scene (GL655).
   `MapPicture` (Core) is the one place the map's colours live (terrain pixels, road colours, widths and line types as
@@ -608,6 +608,12 @@ it are never held, so there is always ground under the player.
   streamer's job starts keep to the frame's budget (`RationsStarts`) and generation pauses while meshing is behind, so
   dirty chunks can't pile up; chunks held for roads don't count, so a hold can't stall the load. `StartMeshing` takes the
   nearest dirty chunks from `NearestChunkHeap` rather than sorting them all.
+- **Keeping the load screen drawing** (GL762): `SlicedWork` runs an iterator a few milliseconds a frame. It stays on the
+  main thread because the work schedules jobs and shares the ore, tree and biome fields' caches with the streaming chunks.
+  `GameLoadScreen` works out the map's water first (`BoundedMapGenerator.PrepareSteps`, kept in `Hydrology`'s cache, with
+  the scene's config from `Resources/MapLoadSettings`), so `WorldView.Awake` finds it ready. `MapSession` slices the survey
+  and roads, `WorldMapScreen` the picture and `SettlementWorkings` each settlement's trees and digs, nearest first. The
+  longest step left is one leg of a road's route search (`RoadRefiner.Route`, about 1.7 s).
 - *Measure the tutorial start:* `clube.exe -tutorialbench` or *Clube → Debug → Measure tutorial start*
   (`TutorialBenchmark`) writes frame, thread and system times per five seconds, and in the Editor each script's cost.
 - *Measure:* *Clube → Debug → Measure load time* (`LoadTimeReport`) enters Play mode and logs when the map was
