@@ -136,7 +136,8 @@ namespace Clube.Core
         }
 
         /// <summary>True when every chunk a piece may change is loaded.</summary>
-        public bool Loaded(World world, int heightInChunks, int piece)
+        /// <param name="missing">Given the chunks still to load, when wanted (GL770: the streamer fetches them first).</param>
+        public bool Loaded(World world, int heightInChunks, int piece, List<Vector3Int> missing = null)
         {
             Rect box = Bounds(piece, out float low, out float high);
             // The ground ramps a metre or so round its height, the land across the road may lie higher or lower than
@@ -146,20 +147,7 @@ namespace Clube.Core
             WorldGrid grid = world.Grid;
             Vector3Int min = grid.WorldToChunk(new Vector3(box.xMin - Trees.Spread, Mathf.Max(0f, low), box.yMin - Trees.Spread));
             Vector3Int max = grid.WorldToChunk(new Vector3(box.xMax + Trees.Spread, high, box.yMax + Trees.Spread));
-            for (int y = Mathf.Max(0, min.y); y <= Mathf.Min(heightInChunks - 1, max.y); y++)
-            {
-                for (int z = min.z; z <= max.z; z++)
-                {
-                    for (int x = min.x; x <= max.x; x++)
-                    {
-                        if (!world.IsLoaded(new Vector3Int(x, y, z)))
-                        {
-                            return false;
-                        }
-                    }
-                }
-            }
-            return true;
+            return world.AreLoaded(min, max, heightInChunks, missing);
         }
 
         /// <summary>Writes a piece into the world and marks it written.</summary>

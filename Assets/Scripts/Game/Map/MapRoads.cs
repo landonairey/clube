@@ -26,6 +26,9 @@ namespace Clube.Game
         private readonly FrameAllowance allowance = new FrameAllowance();
         // Metres from the viewer within which a piece is written whatever the allowance says (GL770).
         private const float CloseMetres = 64f;
+        // Metres from the viewer within which a piece's missing chunks are fetched ahead of the rest (GL770).
+        private const float RequestMetres = 128f;
+        private readonly List<Vector3Int> missing = new List<Vector3Int>();
 
         // Pieces looked at each frame for whether their chunks have loaded.
         private const int ChecksPerFrame = 32;
@@ -523,8 +526,13 @@ namespace Clube.Game
                     continue;
                 }
                 checks++;
-                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece))
+                missing.Clear();
+                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece, missing))
                 {
+                    if (next.Distance < RequestMetres * RequestMetres)
+                    {
+                        session.WorldView.RequestChunks(missing);
+                    }
                     continue;
                 }
                 float before = Time.realtimeSinceStartup;
@@ -548,8 +556,13 @@ namespace Clube.Game
                 (int Road, int Tunnel, int Piece, float Distance) next = boring[i];
                 TunnelWriter bore = built[next.Road].Tunnels[next.Tunnel];
                 checks++;
-                if (!bore.Loaded(world, config.WorldHeightInChunks, next.Piece))
+                missing.Clear();
+                if (!bore.Loaded(world, config.WorldHeightInChunks, next.Piece, missing))
                 {
+                    if (next.Distance < RequestMetres * RequestMetres)
+                    {
+                        session.WorldView.RequestChunks(missing);
+                    }
                     continue;
                 }
                 float before = Time.realtimeSinceStartup;

@@ -378,12 +378,13 @@ namespace Clube.Core
         }
 
         /// <summary>True when every chunk a piece may change is loaded.</summary>
-        public bool Loaded(World world, int heightInChunks, int index)
+        /// <param name="missing">Given the chunks still to load, when wanted (GL770: the streamer fetches them first).</param>
+        public bool Loaded(World world, int heightInChunks, int index, List<Vector3Int> missing = null)
         {
             Piece piece = pieces[index];
             if (piece.Kind == Kind.Lane)
             {
-                return lanes[piece.Index].Loaded(world, heightInChunks, piece.Part);
+                return lanes[piece.Index].Loaded(world, heightInChunks, piece.Part, missing);
             }
             WorldGrid grid = world.Grid;
             // GL652: a tile of ground cuts the trees on it whole, so it waits for every chunk such a tree reaches.
@@ -391,20 +392,7 @@ namespace Clube.Core
             float top = piece.Kind == Kind.Ground ? Mathf.Max(piece.High, piece.High - Headroom + treeRoom.Height) : piece.High;
             Vector3Int min = grid.WorldToChunk(new Vector3(piece.Box.xMin - spread, Mathf.Max(0f, piece.Low), piece.Box.yMin - spread));
             Vector3Int max = grid.WorldToChunk(new Vector3(piece.Box.xMax + spread, top, piece.Box.yMax + spread));
-            for (int y = Mathf.Max(0, min.y); y <= Mathf.Min(heightInChunks - 1, max.y); y++)
-            {
-                for (int z = min.z; z <= max.z; z++)
-                {
-                    for (int x = min.x; x <= max.x; x++)
-                    {
-                        if (!world.IsLoaded(new Vector3Int(x, y, z)))
-                        {
-                            return false;
-                        }
-                    }
-                }
-            }
-            return true;
+            return world.AreLoaded(min, max, heightInChunks, missing);
         }
 
         /// <summary>Writes the first unwritten piece into the world.</summary>

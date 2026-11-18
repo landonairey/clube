@@ -27,6 +27,9 @@ namespace Clube.Game
         private readonly FrameAllowance allowance = new FrameAllowance();
         // Metres from the viewer within which a piece is written whatever the allowance says (GL770).
         private const float CloseMetres = 64f;
+        // Metres from the viewer within which a piece's missing chunks are fetched ahead of the rest (GL770).
+        private const float RequestMetres = 128f;
+        private readonly List<Vector3Int> missing = new List<Vector3Int>();
 
         // GL729: the keepers' dispositions (DispositionBook.Save).
         private const string DispositionsKey = "shopdisposition.book";
@@ -574,8 +577,13 @@ namespace Clube.Game
                     continue;
                 }
                 checks++;
-                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece))
+                missing.Clear();
+                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece, missing))
                 {
+                    if (next.Distance < RequestMetres)
+                    {
+                        view.RequestChunks(missing);
+                    }
                     continue;
                 }
                 float before = Time.realtimeSinceStartup;

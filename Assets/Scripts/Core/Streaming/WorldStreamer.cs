@@ -298,10 +298,25 @@ namespace Clube.Core
         private const double PlayingAddShare = 0.7;
         private const int PlayingStartsPastBudget = 2;
 
-        // The layers under and over a column's ground that load first while playing: all a road or settlement piece waits for
-        // before it is written and its ground shown (cuttings below; trees and buildings above). Then the columns round the
-        // player that always do, and the columns' ground layers remembered.
-        private const int GroundLayersBelow = 4, GroundLayersAbove = 12, MinimumGroundReach = 8, MostGroundLayersKept = 20000;
+        // The layers under and over a column's ground that load first while playing, the columns round the player that always
+        // do, and the columns' ground layers remembered.
+        private const int GroundLayersBelow = 3, GroundLayersAbove = 6, MinimumGroundReach = 8, MostGroundLayersKept = 20000;
+
+        // Chunks a road or settlement piece is waiting for: they load before anything else, for its ground is held until then.
+        private readonly Queue<Vector3Int> requested = new Queue<Vector3Int>();
+        private readonly HashSet<Vector3Int> requestedSet = new HashSet<Vector3Int>();
+
+        /// <summary>Loads these chunks ahead of the rest (GL770): something near the player can't be shown without them.</summary>
+        public void Request(List<Vector3Int> chunks)
+        {
+            foreach (Vector3Int coord in chunks)
+            {
+                if (requestedSet.Add(coord))
+                {
+                    requested.Enqueue(coord);
+                }
+            }
+        }
         private readonly Dictionary<Vector2Int, int> groundLayers = new Dictionary<Vector2Int, int>();
         private int groundCursor;
 
@@ -654,6 +669,15 @@ namespace Clube.Core
                 return;
             }
             int started = 0;
+            while (requested.Count > 0 && pipeline.GenerationJobsRunning < limit && (started < pastBudget || Before(budget)))
+            {
+                Vector3Int coord = requested.Dequeue();
+                requestedSet.Remove(coord);
+                if (IsWanted(coord))
+                {
+                    started += StartChunk(coord) ? 1 : 0;
+                }
+            }
             if (IsPlaying && !StartGroundFirst(limit, pastBudget, ref started))
             {
                 return;
