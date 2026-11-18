@@ -5,7 +5,7 @@ namespace Clube.Core
 {
     /// <summary>
     /// How a shopkeeper feels about the player (GL471), 0 to 100, starting at <see cref="Start"/>. Every
-    /// <see cref="CoinsPerPoint"/> coins of trade with them (either way) raises it by one. At 100 their prices are fair;
+    /// <see cref="CoinsForPoint"/> coins of trade with them (either way) raises it by one, a cost that climbs with the value (GL769). At 100 their prices are fair;
     /// each point under 100 is a point (1%) of markup on what they sell and a point off what they pay. Plain data, saved by
     /// the game.
     /// </summary>
@@ -17,8 +17,48 @@ namespace Clube.Core
         /// <summary>The most it reaches: fair prices.</summary>
         public const int Max = 100;
 
-        /// <summary>Coins of trade for each point.</summary>
-        public const float CoinsPerPoint = 100f;
+        /// <summary>Coins of trade for a point at disposition 10, where a keeper starts (GL769: "around 1pt for ~10c").</summary>
+        public const float CoinsAtStart = 10f;
+
+        /// <summary>Coins of trade for a point at disposition 50 ("around ~100c trade for 1pt").</summary>
+        public const float CoinsAtMiddle = 100f;
+
+        /// <summary>Coins of trade for a point at disposition 90 ("~1000c trade for 1pt").</summary>
+        public const float CoinsAtHigh = 1000f;
+
+        /// <summary>
+        /// Coins of trade that raise the disposition from <paramref name="value"/> to the next point (GL769). The cost grows by
+        /// a steady factor per point between the three anchors (10, 50 and 90: ten times for each 40 points), stays at the
+        /// first anchor's below 10, and keeps growing at the last rate past 90.
+        /// </summary>
+        public static float CoinsForPoint(int value)
+        {
+            float exponent;
+            if (value <= 10)
+            {
+                exponent = 1f;
+            }
+            else if (value <= 50)
+            {
+                exponent = 1f + (value - 10) / 40f;
+            }
+            else
+            {
+                exponent = 2f + (value - 50) / 40f;
+            }
+            return Mathf.Pow(10f, exponent);
+        }
+
+        /// <summary>Coins of trade it takes to go from disposition <paramref name="from"/> up to <paramref name="to"/>.</summary>
+        public static float CoinsBetween(int from, int to)
+        {
+            float total = 0f;
+            for (int value = Mathf.Max(0, from); value < Mathf.Min(Max, to); value++)
+            {
+                total += CoinsForPoint(value);
+            }
+            return total;
+        }
 
         public Disposition(int value = Start, float carried = 0f)
         {
@@ -31,7 +71,7 @@ namespace Clube.Core
         /// <summary>0 to 100.</summary>
         public int Value { get; private set; }
 
-        /// <summary>Coins traded towards the next point.</summary>
+        /// <summary>Coins traded towards the next point (which costs <see cref="CoinsForPoint"/> of the current value).</summary>
         public float Carried { get; private set; }
 
         /// <summary>The share of a fair price added to what they sell, and taken off what they pay: 0.9 at 10, 0 at 100.</summary>
@@ -55,10 +95,10 @@ namespace Clube.Core
             }
             int before = Value;
             Carried += coins;
-            while (Carried + 1e-4f >= CoinsPerPoint && Value < Max)
+            while (Carried + 1e-4f >= CoinsForPoint(Value) && Value < Max)
             {
+                Carried = Mathf.Max(0f, Carried - CoinsForPoint(Value));
                 Value++;
-                Carried = Mathf.Max(0f, Carried - CoinsPerPoint);
             }
             if (Value >= Max)
             {
@@ -93,7 +133,7 @@ namespace Clube.Core
         {
             int before = Value;
             Value = Mathf.Clamp(value, 0, Max);
-            Carried = Value >= Max ? 0f : Mathf.Clamp(carried, 0f, CoinsPerPoint);
+            Carried = Value >= Max ? 0f : Mathf.Clamp(carried, 0f, CoinsForPoint(Value));
             if (Value != before)
             {
                 Changed?.Invoke();

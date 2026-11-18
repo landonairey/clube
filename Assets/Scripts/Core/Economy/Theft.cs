@@ -6,8 +6,8 @@ namespace Clube.Core
     /// What stealing costs the player with the keepers it wrongs (GL729: "when you take from a cart or boat, the shops
     /// that the cart or boat are going to will reduce their disposition with you"). A taking costs at least
     /// <see cref="LeastPoints"/> points of <see cref="Disposition"/>, and a point for every <see cref="CoinsPerPoint"/>
-    /// coins the goods are worth at their listed price: ten times what honest trade earns back
-    /// (<see cref="Disposition.CoinsPerPoint"/>).
+    /// coins the goods are worth at their listed price: as much as honest trade earns back at the start
+    /// (<see cref="Disposition.CoinsAtStart"/> a point; GL769).
     /// </summary>
     public static class Theft
     {

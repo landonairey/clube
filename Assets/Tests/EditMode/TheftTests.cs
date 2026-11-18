@@ -51,6 +51,8 @@ namespace Clube.Core.Tests
             Assert.AreNotSame(book.Of(3, 1), book.Of(1, 3));
             book.Of(3, 1).Lower(7);
             book.Of(0, 2).Record(250f);
+            int earnedValue = book.Of(0, 2).Value;
+            float earnedCarried = book.Of(0, 2).Carried;
             book.Of(5, 0); // asked about, never dealt with
             string saved = book.Save();
             Assert.AreEqual(2, saved.Split(';').Length);
@@ -59,8 +61,9 @@ namespace Clube.Core.Tests
             loaded.Of(9, 9).Lower(3);
             loaded.Restore(saved);
             Assert.AreEqual(Disposition.Start - 7, loaded.Of(3, 1).Value);
-            Assert.AreEqual(Disposition.Start + 2, loaded.Of(0, 2).Value);
-            Assert.AreEqual(50f, loaded.Of(0, 2).Carried, 1e-3f);
+            Assert.Greater(earnedValue, Disposition.Start + 2, "250c at the start buys many points");
+            Assert.AreEqual(earnedValue, loaded.Of(0, 2).Value);
+            Assert.AreEqual(earnedCarried, loaded.Of(0, 2).Carried, 1e-3f);
             Assert.AreEqual(Disposition.Start, loaded.Of(9, 9).Value, "a keeper the save does not name is back at the start");
             loaded.Restore("garbage;1,2;x,y,z,w");
             Assert.AreEqual(Disposition.Start, loaded.Of(3, 1).Value);
@@ -75,7 +78,7 @@ namespace Clube.Core.Tests
             Assert.AreEqual(0, book.Of(4, 0).Value);
             Assert.AreEqual(Disposition.Start, book.Of(2, 0).Value);
             Assert.AreEqual("", book.Save(), "nobody has moved");
-            book.Of(4, 0).Record(Disposition.Start * Disposition.CoinsPerPoint);
+            book.Of(4, 0).Record(Disposition.CoinsBetween(0, Disposition.Start));
             Assert.AreEqual(Disposition.Start, book.Of(4, 0).Value);
             string saved = book.Save();
             Assert.That(saved, Does.StartWith("4,0,10,"), "at 10 the quarry's keeper has moved");
