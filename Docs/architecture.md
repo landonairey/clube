@@ -418,7 +418,7 @@ flowchart LR
   `WorldView.Generator`; when it is a `BoundedMapGenerator` it builds the survey and the plan once (main thread: the
   survey completes height jobs; about 4 s at 5 km) and raises `Rebuilt`, again after every regenerate. Everything that
   needs the map reads `Map`, `Survey`, `Plan` from it: `MapMarkers` (posts at sites; road posts off now), `MapRoads` (the roads themselves),
-  `MapSettlements` (the settlements), `WorldMapScreen` (M). `MapStart.Pick` (Core) chooses where the player is set down: beside `MapStart.Home`, an outpost with a Merchant shop (one is given a Merchant when none has it, so call it before the settlements are built; GL656). `LandParcels.SaleArea` keeps parcels whose centre is past the playable edge off sale (GL666). The menu's Demo game (`GameMode.Demo`) plays this scene (GL655).
+  `MapSettlements` (the settlements), `WorldMapScreen` (M; during the tutorial M shows `CompanySiteMapScreen` instead, only the company's site from `CompanySiteMap`, GL760; both are `IMapScreen`s). `MapStart.Pick` (Core) chooses where the player is set down: beside `MapStart.Home`, an outpost with a Merchant shop (one is given a Merchant when none has it, so call it before the settlements are built; GL656). `LandParcels.SaleArea` keeps parcels whose centre is past the playable edge off sale (GL666). The menu's Demo game (`GameMode.Demo`) plays this scene (GL655).
   `MapPicture` (Core) is the one place the map's colours live (terrain pixels, road colours, widths and line types as
   `MapLineStyle`, route and
   settlement colours); the world map and `BoundedMapPreviewMenu` both draw with it, and `MapLegend` (Game) lists the

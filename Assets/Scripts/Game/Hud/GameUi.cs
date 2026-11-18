@@ -12,6 +12,9 @@ namespace Clube.Game
         /// <summary>Text is drawn this much bigger than the sizes the screens name.</summary>
         public const float FontScale = 1.4f;
 
+        /// <summary>GUI depth of a map screen on M: in front of the quest list and the tutorial's cards (GL760).</summary>
+        public const int MapScreenDepth = -150;
+
         /// <summary>The side of one inventory slot, in pixels, in every inventory, station, chest and merchant grid.</summary>
         public const float SlotSize = 112f;
 

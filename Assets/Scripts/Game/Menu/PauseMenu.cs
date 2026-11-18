@@ -29,7 +29,6 @@ namespace Clube.Game
 
         private InventoryScreen inventoryScreen;
         private FieldLogScreen fieldLog;
-        private WorldMapScreen worldMap;
         private StationPanel stationPanel;
         private MerchantPanel merchantPanel;
         private ChestPanel chestPanel;
@@ -66,7 +65,6 @@ namespace Clube.Game
             {
                 inventoryScreen = player.GetComponent<InventoryScreen>();
                 fieldLog = player.GetComponent<FieldLogScreen>();
-                worldMap = player.GetComponent<WorldMapScreen>();
                 stationPanel = player.GetComponent<StationPanel>();
                 merchantPanel = player.GetComponent<MerchantPanel>();
                 chestPanel = player.GetComponent<ChestPanel>();
@@ -122,10 +120,14 @@ namespace Clube.Game
                 inventoryScreen.Close();
                 return true;
             }
-            if (worldMap != null && worldMap.IsOpen)
+            // GL760: looked up here, as the tutorial adds its site map during play.
+            foreach (IMapScreen map in player.GetComponents<IMapScreen>())
             {
-                worldMap.Close();
-                return true;
+                if (map.IsOpen)
+                {
+                    map.Close();
+                    return true;
+                }
             }
             if (fieldLog != null && fieldLog.IsOpen)
             {
