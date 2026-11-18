@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Granite
   category: 0
   albedo: {fileID: 2800000, guid: bb273982f7a86f242ae8248546375970, type: 3}
-  debugColor: {r: 0.66, g: 0.6, b: 0.58, a: 1}
+  debugColor: {r: 0.48, g: 0.44, b: 0.42, a: 1}
   hardness: 3
   drop: {fileID: 11400000, guid: 26c628ea8eb82fa45817b7ee2fec07de, type: 2}
   pileShape: 1

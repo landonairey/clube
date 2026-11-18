@@ -58,6 +58,8 @@ namespace Clube.Debug.Editor
             Bricks,
             Cobbles,
             Planks,
+            /// <summary>Coarse interlocking mineral grains (GL755): the base, mix and fleck colours are its three minerals.</summary>
+            Grains,
         }
 
         private static readonly Color StoneBase = new Color(0.45f, 0.45f, 0.47f);
@@ -120,16 +122,19 @@ namespace Clube.Debug.Editor
                 { "coal", (new Color(0.1f, 0.1f, 0.11f), new Color(0.2f, 0.2f, 0.22f), new Color(0.34f, 0.34f, 0.38f), Wear.Whole) },
                 // Dead grass (GL633): the trodden grass of a walking path, "more yellow/brown in color". Added last, so no seed moves.
                 { "dead grass", (new Color(0.52f, 0.44f, 0.22f), new Color(0.66f, 0.58f, 0.31f), null, Wear.Whole) },
-                // Limestone (GL677): pale cream-grey rock. Added last, so no seed moves.
-                { "limestone", (new Color(0.74f, 0.72f, 0.64f), new Color(0.84f, 0.82f, 0.74f), null, Wear.Whole) },
+                // Limestone (GL677): cream-grey rock, muted to sit just lighter and warmer than stone (GL756; was 0.74, 0.72, 0.64 to 0.84, 0.82, 0.74).
+                // Added last, so no seed moves.
+                { "limestone", (new Color(0.55f, 0.54f, 0.49f), new Color(0.65f, 0.63f, 0.57f), null, Wear.Whole) },
                 // Pine (GL721): grey-brown furrowed bark, dark blue-green needles, and the needles' rusty fall. Added last, so no seed moves.
                 { "pine wood", (new Color(0.3f, 0.22f, 0.16f), new Color(0.42f, 0.33f, 0.25f), null, Wear.Bark) },
                 { "pine needles", (new Color(0.08f, 0.2f, 0.12f), new Color(0.16f, 0.3f, 0.18f), null, Wear.Leaves) },
                 { "fallen pine needles", (new Color(0.4f, 0.27f, 0.15f), new Color(0.52f, 0.37f, 0.22f), null, Wear.Leaves) },
-                // Sandstone and granite (GL737), the canyons' strata: sandstone a warm orange-tan, granite pinkish grey speckled
-                // dark. Added last, so no seed moves.
-                { "sandstone", (new Color(0.72f, 0.47f, 0.3f), new Color(0.84f, 0.6f, 0.4f), null, Wear.Whole) },
-                { "granite", (new Color(0.6f, 0.54f, 0.53f), new Color(0.74f, 0.68f, 0.66f), new Color(0.13f, 0.13f, 0.14f), Wear.Whole) },
+                // Sandstone and granite (GL737), the canyons' strata. Added last, so no seed moves.
+                // Sandstone: a dusty tan between the dirt and the stone (GL756; was an orange 0.72, 0.47, 0.3 to 0.84, 0.6, 0.4).
+                { "sandstone", (new Color(0.5f, 0.41f, 0.32f), new Color(0.6f, 0.5f, 0.4f), null, Wear.Whole) },
+                // Granite: interlocking grains of dull pink feldspar, pale quartz and black mica (GL755), where cassiterite is plain
+                // stone with round dark specks; no brighter than stone (GL756).
+                { "granite", (new Color(0.48f, 0.42f, 0.4f), new Color(0.56f, 0.55f, 0.53f), new Color(0.27f, 0.25f, 0.25f), Wear.Grains) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]
@@ -271,6 +276,19 @@ namespace Clube.Debug.Editor
             Regenerate("cracked chalcopyrite");
             Regenerate("loose chalcopyrite");
             ItemIconTools.WriteCrushedChalcopyrite();
+            BuildTextureArrays();
+        }
+
+        /// <summary>
+        /// Writes the canyon stones' textures again in their current colours (GL755, GL756) and rebuilds the texture array;
+        /// nothing else changes. Bake the item icons after, so they show the new look.
+        /// </summary>
+        [MenuItem("Clube/Materials/Regenerate canyon stone textures")]
+        public static void RegenerateCanyonStones()
+        {
+            Regenerate("limestone");
+            Regenerate("sandstone");
+            Regenerate("granite");
             BuildTextureArrays();
         }
 
@@ -424,7 +442,7 @@ namespace Clube.Debug.Editor
                 }
             }
 
-            if (fleck.HasValue)
+            if (fleck.HasValue && wear != Wear.Grains)
             {
                 // Small clusters of ore in the stone.
                 int clusters = size * size / 300;
@@ -476,8 +494,77 @@ namespace Clube.Debug.Editor
             {
                 PaintCobbles(texture, random);
             }
+            else if (wear == Wear.Grains)
+            {
+                PaintGrains(texture, random, baseColor, mix, fleck ?? baseColor);
+            }
             texture.Apply();
             return texture;
+        }
+
+        // Shares of a coarse-grained rock's grains: the rest are its first mineral.
+        private const float SecondMineralShare = 0.3f;
+        private const float ThirdMineralShare = 0.13f;
+
+        // Coarse crystalline rock (GL755): wrapped Voronoi cells about 7 cm across, so their straight sides interlock, each one
+        // mineral in its own shade, a little darker where grains meet. The dark mineral's grains are smaller. The
+        // noise already painted stays as a faint mottling. Wraps so it tiles.
+        private static void PaintGrains(Texture2D texture, System.Random random, Color first, Color second, Color third)
+        {
+            int size = texture.width;
+            int across = Mathf.Max(4, size / 18);
+            float cell = size / (float)across;
+            var centres = new Vector2[across * across];
+            var colours = new Color[centres.Length];
+            var reach = new float[centres.Length];
+            for (int i = 0; i < centres.Length; i++)
+            {
+                centres[i] = new Vector2(
+                    (i % across + 0.1f + 0.8f * (float)random.NextDouble()) * cell,
+                    (i / across + 0.1f + 0.8f * (float)random.NextDouble()) * cell);
+                double pick = random.NextDouble();
+                bool dark = pick < ThirdMineralShare;
+                Color mineral = dark ? third : pick < ThirdMineralShare + SecondMineralShare ? second : first;
+                colours[i] = mineral * (0.94f + 0.12f * (float)random.NextDouble());
+                reach[i] = dark ? 1.4f : 1f;
+            }
+
+            float mean = Mathf.Max(0.01f, (first.grayscale + second.grayscale) * 0.5f);
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    var p = new Vector2(x, y);
+                    float nearest = float.MaxValue;
+                    float next = float.MaxValue;
+                    int grain = 0;
+                    int cx = (int)(x / cell);
+                    int cy = (int)(y / cell);
+                    for (int oy = -2; oy <= 2; oy++)
+                    {
+                        for (int ox = -2; ox <= 2; ox++)
+                        {
+                            int i = ((cy + oy + across) % across) * across + (cx + ox + across) % across;
+                            float distance = WrappedDistance(p, centres[i], size) * reach[i];
+                            if (distance < nearest)
+                            {
+                                next = nearest;
+                                nearest = distance;
+                                grain = i;
+                            }
+                            else if (distance < next)
+                            {
+                                next = distance;
+                            }
+                        }
+                    }
+                    float mottling = Mathf.Clamp(texture.GetPixel(x, y).grayscale / mean, 0.9f, 1.1f);
+                    float seam = Mathf.Lerp(0.88f, 1f, Mathf.Clamp01((next - nearest) / 2.5f));
+                    Color color = colours[grain] * mottling * seam;
+                    color.a = 1f;
+                    texture.SetPixel(x, y, color);
+                }
+            }
         }
 
         // Angular fractures to suit the low-poly terrain: from impact points about 40 cm
