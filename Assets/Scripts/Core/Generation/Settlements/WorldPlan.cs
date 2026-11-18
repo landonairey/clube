@@ -44,6 +44,13 @@ namespace Clube.Core
         /// <summary>The river cell its boats use, when it stands by a river.</summary>
         public Vector2Int? Landing;
 
+        /// <summary>
+        /// GL734: the stone quarry the opening tutorial is played at: it trades stone and nothing else, a stone wall rings it
+        /// and its quarry yard (<see cref="SettlementSite.Quarry"/>), and its keepers start at
+        /// <see cref="WorldPlanRules.QuarryDisposition"/>. One per plan (<see cref="WorldPlan.Quarry"/>).
+        /// </summary>
+        public bool IsQuarry;
+
         public bool IsCoastal => Harbour.HasValue;
         public bool IsOnRiver => Landing.HasValue;
 
@@ -243,6 +250,15 @@ namespace Clube.Core
         public int PavedTownsFromCapital = 2;
         /// <summary>Thieves keep between these distances of the nearest settlement, in metres.</summary>
         public float ThievesNear = 350f, ThievesFar = 1100f;
+        /// <summary>
+        /// GL734: the specialty of the tutorial's quarry settlement ("specializes in Stone production and that's all it
+        /// does"); empty for no quarry settlement.
+        /// </summary>
+        public string QuarrySpecialty = "stone-quarry";
+        /// <summary>GL734: the settlement types that may be the quarry, in order of preference.</summary>
+        public string[] QuarryTypes = { "village", "town", "outpost" };
+        /// <summary>GL734: where the quarry's keepers start with the player ("their disposition with you will be zero").</summary>
+        public int QuarryDisposition = 0;
 
         public RoadClassDefinition Road(RoadClass roadClass)
         {
@@ -275,6 +291,16 @@ namespace Clube.Core
 
         /// <summary>The capital, or null on a plan whose rules have none.</summary>
         public PlannedSettlement Capital => Settlements.Find(settlement => settlement.Type.NeedsOcean);
+
+        /// <summary>GL734: the tutorial's stone quarry settlement, or null when the plan has none.</summary>
+        public PlannedSettlement Quarry => Settlements.Find(settlement => settlement.IsQuarry);
+
+        /// <summary>GL734: where a settlement's keepers start with the player: the quarry's at <see cref="WorldPlanRules.QuarryDisposition"/>, the rest at <see cref="Disposition.Start"/>.</summary>
+        public int StartingDisposition(int settlement)
+        {
+            return settlement >= 0 && settlement < Settlements.Count && Settlements[settlement].IsQuarry && Rules != null
+                ? Rules.QuarryDisposition : Disposition.Start;
+        }
 
         public int CountOf(string typeId)
         {

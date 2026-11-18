@@ -476,6 +476,45 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void TheQuarrySettlement_HasAStoneQuarryPit_SunkBesideIt_InsideItsWall()
+        {
+            var rules = new SettlementSiteRules();
+            PlannedSettlement village = Settlement("village", 6, 1, new Vector2(1000f, 1000f));
+            village.IsQuarry = true;
+            // A gentle hillside rising to the north.
+            SettlementSite site = SettlementLayout.Plan(village, 32f, rules, (x, z) => 40f + (z - 1000f) * 0.05f);
+
+            QuarryYard yard = site.Quarry;
+            Assert.IsNotNull(yard, "GL734: the quarry pit");
+            Assert.AreEqual(CompanyWork.Yard.size, yard.Area.size, "the tutorial's yard fits its floor");
+            SettlementTerrace floor = site.Terraces[yard.Terrace];
+            Assert.AreEqual(yard.Area, floor.Area);
+            Assert.AreEqual(yard.Floor, floor.Height);
+            Assert.That(yard.Floor, Is.LessThanOrEqualTo(floor.NaturalLow - rules.QuarryDepth + 0.13f), "sunk under the land round it");
+            Assert.AreEqual(yard.Floor, site.HeightAt(yard.Area.center.x, yard.Area.center.y), 1e-3f);
+            // Beside the buildings, not under them.
+            foreach (SettlementBuilding building in site.Buildings)
+            {
+                foreach (Vector2 corner in Corners(building))
+                {
+                    Assert.Greater(SettlementSite.Beyond(yard.Area, corner), rules.Ramp, "clear of the buildings");
+                }
+            }
+            // The wall rings the settlement and the pit.
+            Assert.AreEqual(5, site.Wall.Count, "a closed ring");
+            Rect ring = Rect.MinMaxRect(site.Wall.Min(p => p.x), site.Wall.Min(p => p.y), site.Wall.Max(p => p.x), site.Wall.Max(p => p.y));
+            Assert.That(ring.Contains(yard.Area.min) && ring.Contains(yard.Area.max), "the pit is inside the wall");
+            // The tutorial's map space lands on the floor.
+            Vector3 spawn = yard.ToWorld(new Vector3(CompanyWork.Yard.xMin, CompanyWork.Ground, CompanyWork.Yard.yMin));
+            Assert.AreEqual(new Vector3(yard.Area.xMin, yard.Floor, yard.Area.yMin), spawn);
+
+            PlannedSettlement plain = Settlement("village", 6, 2, new Vector2(1000f, 1000f));
+            SettlementSite plainSite = SettlementLayout.Plan(plain, 32f, rules, (x, z) => 40f);
+            Assert.IsNull(plainSite.Quarry);
+            Assert.IsEmpty(plainSite.Wall, "only the quarry village is walled");
+        }
+
+        [Test]
         public void TheCapitalHasACastleAndAGuardTower_InsideATownWall_AndACityAGuardTower()
         {
             var rules = new SettlementSiteRules();

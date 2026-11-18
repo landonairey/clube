@@ -146,7 +146,8 @@ namespace Clube.Core
             float half = side * 0.5f;
             Vector2 centre = settlement.Position;
             var footprint = new Rect(centre.x - half, centre.y - half, side, side);
-            float reach = half + rules.Margin;
+            // GL734: the quarry settlement's heights reach over its quarry pit and the wall round it too.
+            float reach = half + rules.Margin + (settlement.IsQuarry ? QuarryYard.Reach(rules) : 0f);
             var grid = new HeightGrid(new Rect(centre.x - reach, centre.y - reach, reach * 2f, reach * 2f), heightAt, heightsAt);
 
             // Rows run along the hillside: across whichever axis the land climbs most along.
@@ -171,6 +172,10 @@ namespace Clube.Core
                 site.Notes.Add($"{settlement.Name}: ground for {taken.Count} of its {wanted} buildings (the rest is water, road or too steep to terrace).");
             }
             Build(site, rules, taken, voxel);
+            if (settlement.IsQuarry)
+            {
+                QuarryYard.Plan(site, heightAt, closedAt, voxel);
+            }
             PlanWall(site);
             SettlementLights.Plan(site, rules.LightKinds);
             return site;
@@ -537,7 +542,8 @@ namespace Clube.Core
         public static void PlanWall(SettlementSite site)
         {
             site.Wall.Clear();
-            if (!site.Settlement.Type.Walls || site.Buildings.Count == 0)
+            // GL734: the quarry settlement is walled round with its quarry pit.
+            if ((!site.Settlement.Type.Walls && site.Quarry == null) || site.Buildings.Count == 0)
             {
                 return;
             }

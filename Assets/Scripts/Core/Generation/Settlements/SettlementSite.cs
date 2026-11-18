@@ -143,6 +143,10 @@ namespace Clube.Core
         /// <summary>GL715: the side of the square tower at each corner of a town wall, and how far it rises over the wall.</summary>
         public float WallTower = 3.5f;
         public float WallTowerRise = 2.5f;
+        /// <summary>GL734: metres between the quarry settlement's ground and its quarry pit's banks (<see cref="QuarryYard"/>).</summary>
+        public float QuarryGap = 6f;
+        /// <summary>GL734: metres the quarry pit's floor is sunk under the lowest land round it.</summary>
+        public float QuarryDepth = 4f;
         /// <summary>GL716: the kinds of light settlements stand (torch, bonfire, lantern).</summary>
         public List<SettlementLightKind> LightKinds = SettlementLightKind.Defaults();
     }
@@ -168,7 +172,7 @@ namespace Clube.Core
             Slope = slope;
             this.natural = natural;
             // Only the parts of roads near the settlement are asked about, for every column of its ground.
-            float reach = Mathf.Max(footprint.width, footprint.height) * 0.5f + rules.Margin + 16f;
+            float reach = Mathf.Max(footprint.width, footprint.height) * 0.5f + rules.Margin + 16f + (settlement.IsQuarry ? QuarryYard.Reach(rules) : 0f);
             if (roads != null)
             {
                 foreach (SettlementRoad road in roads)
@@ -202,6 +206,8 @@ namespace Clube.Core
         public List<Vector2> Wall { get; } = new List<Vector2>();
         /// <summary>GL716: its light sources (<see cref="SettlementLights.Plan"/>).</summary>
         public List<SettlementLight> Lights { get; } = new List<SettlementLight>();
+        /// <summary>GL734: the quarry pit of the tutorial's quarry settlement (<see cref="QuarryYard.Plan"/>); null for every other.</summary>
+        public QuarryYard Quarry { get; internal set; }
         /// <summary>What could not be done as planned (buildings with no ground to stand on).</summary>
         public List<string> Notes { get; } = new List<string>();
 

@@ -67,6 +67,27 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void TheBook_StartsTheQuarrysKeepersAtTheirOwnStart()
+        {
+            // GL734: settlement 4 is the tutorial's quarry, whose keepers start at 0.
+            System.Func<int, int> startOf = settlement => settlement == 4 ? 0 : Disposition.Start;
+            var book = new DispositionBook { StartOf = startOf };
+            Assert.AreEqual(0, book.Of(4, 0).Value);
+            Assert.AreEqual(Disposition.Start, book.Of(2, 0).Value);
+            Assert.AreEqual("", book.Save(), "nobody has moved");
+            book.Of(4, 0).Record(Disposition.Start * Disposition.CoinsPerPoint);
+            Assert.AreEqual(Disposition.Start, book.Of(4, 0).Value);
+            string saved = book.Save();
+            Assert.That(saved, Does.StartWith("4,0,10,"), "at 10 the quarry's keeper has moved");
+
+            var loaded = new DispositionBook { StartOf = startOf };
+            loaded.Of(4, 1).Record(500f);
+            loaded.Restore(saved);
+            Assert.AreEqual(Disposition.Start, loaded.Of(4, 0).Value);
+            Assert.AreEqual(0, loaded.Of(4, 1).Value, "one the save does not name is back at its own start");
+        }
+
+        [Test]
         public void TheGoodsAboard_AreBoundForTheEndAhead_ThenTheOtherEndOnceLoaded()
         {
             Assert.AreEqual(7, TradeStop.GoodsBoundFor(new RunPlace(0.4f, true, true, 0), 100f, 2, 7));

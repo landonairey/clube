@@ -7,12 +7,20 @@ namespace Clube.Core
     /// <summary>
     /// How every shopkeeper of the map feels about the player (GL729), by settlement and shop (indexes into the world
     /// plan), so a keeper's <see cref="Disposition"/> outlives its shop being built and lets goods stolen on their way to
-    /// a shop not yet in the world count against it. A keeper nobody has dealt with is at <see cref="Disposition.Start"/>
+    /// a shop not yet in the world count against it. A keeper nobody has dealt with is at its settlement's start (<see cref="StartOf"/>)
     /// and is not written. Saves as one line of text.
     /// </summary>
     public sealed class DispositionBook
     {
         private readonly Dictionary<long, Disposition> keepers = new Dictionary<long, Disposition>();
+
+        /// <summary>
+        /// GL734: where the keepers of a settlement start with the player (the tutorial's quarry at 0), by settlement index;
+        /// null for <see cref="Disposition.Start"/> everywhere. Set before any keeper is asked for.
+        /// </summary>
+        public System.Func<int, int> StartOf { get; set; }
+
+        private int StartFor(int settlement) => StartOf != null ? StartOf(settlement) : Disposition.Start;
 
         /// <summary>Keepers written so far.</summary>
         public int Count => keepers.Count;
@@ -23,7 +31,7 @@ namespace Clube.Core
             long key = Key(settlement, shop);
             if (!keepers.TryGetValue(key, out Disposition disposition))
             {
-                disposition = new Disposition();
+                disposition = new Disposition(StartFor(settlement));
                 keepers[key] = disposition;
             }
             return disposition;
@@ -35,7 +43,7 @@ namespace Clube.Core
             var text = new StringBuilder();
             foreach (KeyValuePair<long, Disposition> pair in keepers)
             {
-                if (pair.Value.Value == Disposition.Start && pair.Value.Carried <= 0f)
+                if (pair.Value.Value == StartFor((int)(pair.Key >> 32)) && pair.Value.Carried <= 0f)
                 {
                     continue;
                 }
@@ -51,9 +59,9 @@ namespace Clube.Core
         /// <summary>Puts back what <see cref="Save"/> wrote; keepers it does not name go back to the start. Bad entries are skipped.</summary>
         public void Restore(string saved)
         {
-            foreach (Disposition disposition in keepers.Values)
+            foreach (KeyValuePair<long, Disposition> pair in keepers)
             {
-                disposition.Restore(Disposition.Start, 0f);
+                pair.Value.Restore(StartFor((int)(pair.Key >> 32)), 0f);
             }
             if (string.IsNullOrEmpty(saved))
             {

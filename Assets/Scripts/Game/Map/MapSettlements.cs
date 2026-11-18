@@ -268,6 +268,8 @@ namespace Clube.Game
             hold.Clear();
             pending.Clear();
             heights = new KeptHeights(session.Map.Height);
+            // GL734: the tutorial's quarry keepers start at its own disposition.
+            Dispositions.StartOf = session.Plan.StartingDisposition;
             roads = FindAnyObjectByType<MapRoads>();
             keepers.Clear();
             near.Clear();
@@ -312,7 +314,8 @@ namespace Clube.Game
             float side = SettlementLayout.SideOf(settlement.Type, plan.Rules.ParcelSide);
             SettlementSite site = SettlementLayout.Plan(settlement, plan.Rules.ParcelSide, rules, map.Height, WorldRoads.HeightsOf(map),
                 (x, z) => !layout.WalksFreely(x, z) || water(x, z) != RoadWater.Dry,
-                SettlementLayout.RoadsNear(plan, settlement, side + rules.Margin + 40f), session.WorldView.World.Grid.VoxelSize);
+                SettlementLayout.RoadsNear(plan, settlement, side + rules.Margin + 40f + (settlement.IsQuarry ? QuarryYard.Reach(rules) : 0f)),
+                session.WorldView.World.Grid.VoxelSize);
             // GL649: its lanes and banks meet the roads' beds, not the land's height before the roads were cut.
             Rect round = site.Footprint;
             site.RoadSurface = roads != null ? roads.SurfaceNear(Rect.MinMaxRect(round.xMin - 20f, round.yMin - 20f, round.xMax + 20f, round.yMax + 20f)) : null;
@@ -406,7 +409,8 @@ namespace Clube.Game
         // The circle round a settlement not laid out yet that nothing is shown in (GL653): its square's corners and margin.
         private float ReachOf(PlannedSettlement settlement)
         {
-            return SettlementLayout.SideOf(settlement.Type, session.Plan.Rules.ParcelSide) * 0.71f + rules.Margin + HoldMargin;
+            return SettlementLayout.SideOf(settlement.Type, session.Plan.Rules.ParcelSide) * 0.71f + rules.Margin + HoldMargin
+                + (settlement.IsQuarry ? QuarryYard.Reach(rules) : 0f);
         }
 
         // GL653: the columns a settlement will be written into before it is laid out; laid out, its pieces are counted.

@@ -448,6 +448,11 @@ namespace Clube.Core
                         Paving = materials.Bank,
                         Paved = (x, z) => IsBank(site, x, z, natural(x, z)),
                     }, iso);
+                    // GL734: the quarry pit is stone, floor and faces.
+                    if (site.Quarry != null && site.Quarry.Terrace == piece.Index && materials.Stone != null)
+                    {
+                        StoneOver(world, piece, site.Quarry.Floor - QuarryYard.StoneDepth, materials.Stone.Id);
+                    }
                     break;
                 }
                 case Kind.Lane:
@@ -472,6 +477,28 @@ namespace Clube.Core
                     SquareVoxels.Shape(world, SettlementStructures.RoofSkin(site.Buildings[piece.Index], world.Grid.VoxelSize, piece.Part, BuildingSlices),
                         (turnAbout ? materials.Trim : materials.Boards).Id);
                     break;
+                }
+            }
+        }
+
+        // Every sample of a tile with any density, from a height up to the tile's top, becomes stone (GL734, as GL557's tutorial map).
+        private static void StoneOver(World world, Piece piece, float bottom, byte stone)
+        {
+            WorldGrid grid = world.Grid;
+            Vector3Int min = grid.WorldToNearestSample(new Vector3(piece.Box.xMin, bottom, piece.Box.yMin));
+            Vector3Int max = grid.WorldToNearestSample(new Vector3(piece.Box.xMax, piece.High, piece.Box.yMax));
+            for (int x = min.x; x <= max.x; x++)
+            {
+                for (int z = min.z; z <= max.z; z++)
+                {
+                    for (int y = min.y; y <= max.y; y++)
+                    {
+                        var sample = new Vector3Int(x, y, z);
+                        if (world.TryGetOwner(sample, out Chunk chunk, out Vector3Int local) && chunk.GetDensity(local) > 0)
+                        {
+                            world.SetMaterial(sample, stone);
+                        }
+                    }
                 }
             }
         }
