@@ -8,6 +8,8 @@ Shader "Clube/Held Item"
     Properties
     {
         _Tint ("Tint", Color) = (1, 1, 1, 1)
+        _MainTex ("Terrain texture for a lump (GL754)", 2D) = "white" {}
+        _Tiling ("Texture repeats across one metre", Float) = 5
     }
 
     SubShader
@@ -17,8 +19,12 @@ Shader "Clube/Held Item"
         HLSLINCLUDE
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
+        TEXTURE2D(_MainTex);
+        SAMPLER(sampler_MainTex);
+
         CBUFFER_START(UnityPerMaterial)
             half4 _Tint;
+            float _Tiling;
         CBUFFER_END
         ENDHLSL
 
@@ -54,6 +60,7 @@ Shader "Clube/Held Item"
                 float3 positionWS : TEXCOORD2;
                 float4 positionOSAndFog : TEXCOORD3;
                 nointerpolation float2 surface : TEXCOORD4;
+                float3 normalOS : TEXCOORD5;
             };
 
             Varyings Vertex(Attributes input)
@@ -65,6 +72,7 @@ Shader "Clube/Held Item"
                 output.color = half4(input.color.rgb * _Tint.rgb, input.color.a);
                 output.positionOSAndFog = float4(input.positionOS.xyz, ComputeFogFactor(output.positionCS.z));
                 output.surface = input.surface;
+                output.normalOS = input.normalOS;
                 return output;
             }
 
@@ -94,7 +102,19 @@ Shader "Clube/Held Item"
                 half3 albedo = input.color.rgb;
                 float3 positionOS = input.positionOSAndFog.xyz;
                 half3 gleam = 0;
-                if (input.surface.x > 1.5)
+                if (input.surface.x > 2.5)
+                {
+                    // A lump of a terrain material (GL754): its texture laid on along the three axes, as the inventory icon
+                    // does (the model has no UVs), times the vertex colour (the item's tint).
+                    float3 p = positionOS * _Tiling;
+                    float3 weight = pow(abs(normalize(input.normalOS)), 4.0);
+                    weight /= weight.x + weight.y + weight.z;
+                    half3 texel = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, p.zy).rgb * weight.x
+                        + SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, p.xz).rgb * weight.y
+                        + SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, p.xy).rgb * weight.z;
+                    albedo *= texel;
+                }
+                else if (input.surface.x > 1.5)
                 {
                     // Metal (GL609): each flat facet glints as it lines up with the light, and a soft gleam passes along
                     // the tool now and then, as the facets of the water shimmer.
