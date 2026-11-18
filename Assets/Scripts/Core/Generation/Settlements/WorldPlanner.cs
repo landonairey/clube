@@ -35,9 +35,12 @@ namespace Clube.Core
             long placed = watch.ElapsedMilliseconds;
             new SpecialtyAssigner(context).Assign(plan);
             long assigned = watch.ElapsedMilliseconds;
-            new RoadPlanner(context).Plan(plan);
+            var roadPlanner = new RoadPlanner(context);
+            roadPlanner.Plan(plan);
             long roads = watch.ElapsedMilliseconds;
             new WaterRoutePlanner(context).Plan(plan);
+            // GL753: last, for only a port its vessels call at gets a dock to walk down to.
+            roadPlanner.DockRoads(plan);
             ConnectCapital(plan, context);
             plan.Timings = $"reach {prepared} ms, sites {placed - prepared} ms, shops {assigned - placed} ms, roads {roads - assigned} ms, "
                 + $"water {watch.ElapsedMilliseconds - roads} ms";

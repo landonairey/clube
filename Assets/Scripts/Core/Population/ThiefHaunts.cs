@@ -26,7 +26,7 @@ namespace Clube.Core
             int seenRoad = -1;
             foreach (PlannedRoad each in plan.Roads)
             {
-                if (each.Class != RoadClass.DirtCartPath && each.Class != RoadClass.PavedCartPath)
+                if (each.ToDock || (each.Class != RoadClass.DirtCartPath && each.Class != RoadClass.PavedCartPath))
                 {
                     continue;
                 }

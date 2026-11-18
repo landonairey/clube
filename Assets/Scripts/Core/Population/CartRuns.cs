@@ -167,7 +167,7 @@ namespace Clube.Core
             var runs = new List<CartRun>();
             foreach (PlannedRoad road in plan.Roads)
             {
-                if (road.Length < ShortestRoad || road.Points.Count < 2)
+                if (road.ToDock || road.Length < ShortestRoad || road.Points.Count < 2)
                 {
                     continue;
                 }

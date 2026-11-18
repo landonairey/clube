@@ -33,7 +33,7 @@ namespace Clube.Core
             Color deck = design.Stone ? Stone : Plank, dark = design.Stone ? DarkStone : DarkPlank;
             float length = dock.Length, width = design.Width;
             float ramp = Mathf.Min(RampLength, length * 0.4f);
-            rootRise = Mathf.Clamp(rootRise, -2f, 2f);
+            rootRise = Mathf.Clamp(rootRise, -Docks.MostRampRise, Docks.MostRampRise);
 
             // The ramp from the ground down to the deck, then the deck in boards (or flags) across it.
             Vector3 rampLow = new Vector3(0f, 0f, ramp), rampHigh = new Vector3(0f, rootRise, 0f);

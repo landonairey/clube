@@ -89,7 +89,7 @@ namespace Clube.Core
             foreach (Track track in tracks)
             {
                 PlannedRoad road = track.Road;
-                if (road.Points.Count < 2)
+                if (road.ToDock || road.Points.Count < 2)
                 {
                     continue;
                 }
