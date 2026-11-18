@@ -745,7 +745,7 @@ Settlement buildings and roads are voxels only where the world's chunks are; pas
   dither like the tree levels; a part whose origin stands on a column the world draws (`ChunkCoverageMask`) is dropped,
   since the voxel building is there (and its ground is held until written, GL653).
 - **Roads**: `RoadMask` (Core) paints the plan's road lines (their tunnels left out) into one picture of the map, the
-  road colour premultiplied by its coverage; `MapRoadTint` (Game) paints it once per map and `TerrainRoadTint` sets it
+  road colour (its surface's `VoxelMaterial.MeanColor`, the texture's mean in linear space, GL757) premultiplied by its coverage; `MapRoadTint` (Game) paints it once per map and `TerrainRoadTint` sets it
   as globals. The coarse terrain levels (`Clube/Terrain Materials` with `_LodClip` on) and the far terrain colour their
   ground with it (`RoadTint.hlsl`); the world's own chunks have the road voxels.
 - **Haze**: `AirHaze` owns the scene fog's mode and density (exponential squared, `HalfDistance` 7 km), which every
