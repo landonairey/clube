@@ -608,6 +608,14 @@ it are never held, so there is always ground under the player.
   streamer's job starts keep to the frame's budget (`RationsStarts`) and generation pauses while meshing is behind, so
   dirty chunks can't pile up; chunks held for roads don't count, so a hold can't stall the load. `StartMeshing` takes the
   nearest dirty chunks from `NearestChunkHeap` rather than sorting them all.
+- **Walking** (GL770): once a load curtain has lifted (`WorldStreamer.IsPlaying`) streaming takes 5 ms a frame however much
+  is left to load. The layers round the ground of the drawn columns load first (`StartGroundFirst`), then the sky and deep
+  rock. A road or settlement piece holds its ground until every chunk it reaches has loaded, so a piece within 128 m asks for
+  exactly those chunks (`WorldView.RequestChunks`), and they go ahead of everything else. Lumpy background work (road and
+  settlement pieces, digs laid out, distant tree tiles) keeps to an average with `FrameAllowance`: the frames after a long
+  piece do none, except that a road or settlement piece within 64 m is never made to wait.
+- *Measure walking:* `clube.exe -walkbench` or *Clube → Debug → Measure walking on the map* (`MapWalkBenchmark`) walks a road
+  and reports frame rates, what the main thread spent them on, and how much of the ground near the player is ready.
 - **Keeping the load screen drawing** (GL762): `SlicedWork` runs an iterator a few milliseconds a frame. It stays on the
   main thread because the work schedules jobs and shares the ore, tree and biome fields' caches with the streaming chunks.
   `GameLoadScreen` works out the map's water first (`BoundedMapGenerator.PrepareSteps`, kept in `Hydrology`'s cache, with
