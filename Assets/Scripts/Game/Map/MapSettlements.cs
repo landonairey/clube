@@ -23,6 +23,9 @@ namespace Clube.Game
         private static readonly ProfilerMarker WorkOutMarker = new ProfilerMarker("MapSettlements.WorkOut");
         private static readonly ProfilerMarker WriteMarker = new ProfilerMarker("MapSettlements.Write");
         private static readonly ProfilerMarker FitMarker = new ProfilerMarker("MapSettlements.Fit");
+        private static readonly ProfilerMarker LayMarker = new ProfilerMarker("MapSettlements.Lay");
+        private static readonly ProfilerMarker RoadSurfaceMarker = new ProfilerMarker("MapSettlements.RoadSurface");
+        private static readonly ProfilerMarker WriterMarker = new ProfilerMarker("MapSettlements.MakeWriter");
 
         private readonly FrameAllowance allowance = new FrameAllowance();
         // Metres from the viewer within which a piece is written whatever the allowance says (GL770).
@@ -347,13 +350,20 @@ namespace Clube.Game
             MapLayout layout = map.Layout;
             System.Func<float, float, RoadWater> water = WorldRoads.WaterOf(map.Water);
             float side = SettlementLayout.SideOf(settlement.Type, plan.Rules.ParcelSide);
-            SettlementSite site = SettlementLayout.Plan(settlement, plan.Rules.ParcelSide, rules, map.Height, WorldRoads.HeightsOf(map),
-                (x, z) => !layout.WalksFreely(x, z) || water(x, z) != RoadWater.Dry,
-                SettlementLayout.RoadsNear(plan, settlement, side + rules.Margin + 40f + (settlement.IsQuarry ? QuarryYard.Reach(rules) : 0f)),
-                session.WorldView.World.Grid.VoxelSize);
+            SettlementSite site;
+            using (LayMarker.Auto())
+            {
+                site = SettlementLayout.Plan(settlement, plan.Rules.ParcelSide, rules, map.Height, WorldRoads.HeightsOf(map),
+                    (x, z) => !layout.WalksFreely(x, z) || water(x, z) != RoadWater.Dry,
+                    SettlementLayout.RoadsNear(plan, settlement, side + rules.Margin + 40f + (settlement.IsQuarry ? QuarryYard.Reach(rules) : 0f)),
+                    session.WorldView.World.Grid.VoxelSize);
+            }
             // GL649: its lanes and banks meet the roads' beds, not the land's height before the roads were cut.
             Rect round = site.Footprint;
-            site.RoadSurface = roads != null ? roads.SurfaceNear(Rect.MinMaxRect(round.xMin - 20f, round.yMin - 20f, round.xMax + 20f, round.yMax + 20f)) : null;
+            using (RoadSurfaceMarker.Auto())
+            {
+                site.RoadSurface = roads != null ? roads.SurfaceNear(Rect.MinMaxRect(round.xMin - 20f, round.yMin - 20f, round.xMax + 20f, round.yMax + 20f)) : null;
+            }
             laid[index] = site;
             return site;
         }
@@ -379,7 +389,11 @@ namespace Clube.Game
                 Class = RoadClass.Footpath, Name = "Climb", Width = rules.StreetWidth * 0.8f, Surface = settlement.Type.Street,
                 GradeLength = 14f, MaxCut = 8f, Shoulder = 0.75f, EdgeWander = 0f,
             };
-            var made = new Built { Site = site, Writer = new SettlementWriter(site, street, climb, map.Water, TreeRoom.Of(session.WorldView.Config.Terrain.Trees)), Fitted = new bool[site.Buildings.Count] };
+            Built made;
+            using (WriterMarker.Auto())
+            {
+                made = new Built { Site = site, Writer = new SettlementWriter(site, street, climb, map.Water, TreeRoom.Of(session.WorldView.Config.Terrain.Trees)), Fitted = new bool[site.Buildings.Count] };
+            }
             made.BridgeBuilt = new bool[made.Writer.Bridges.Count];
             if (restored.TryGetValue(KeyPrefix + index, out string saved))
             {

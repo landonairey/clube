@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using UnityEditor;
@@ -36,6 +37,8 @@ namespace Clube.Debug.Editor
 
         private const string Output = "Builds/Demo/clube.exe";
 
+        private const string TimingOutput = "Builds/DemoTiming/clube.exe";
+
         // The bounded 5 km map alone, so the exe starts straight in it, for quick playtests of the map.
         private static readonly string[] MapGenScenes = { "Assets/Scenes/MapGen.unity" };
 
@@ -72,7 +75,28 @@ namespace Clube.Debug.Editor
         /// <summary>Builds the MapGen playtest exe; batch mode: <c>-executeMethod Clube.Debug.Editor.DemoBuild.BuildMapGen</c>.</summary>
         public static BuildReport BuildMapGen() => Build(MapGenScenes, MapGenOutput);
 
-        private static BuildReport Build(string[] scenes, string output)
+        /// <summary>
+        /// A development build for timing each system in the built game (GL770; batch mode:
+        /// <c>-executeMethod Clube.Debug.Editor.DemoBuild.BuildForTiming</c>). It connects out to this machine instead of
+        /// listening on the network, so Windows Firewall has nothing to ask. Delete it when the measuring is done.
+        /// </summary>
+        public static BuildReport BuildForTiming()
+        {
+            BuildReport report = Build(Scenes, TimingOutput, BuildOptions.Development);
+            string bootConfig = Path.Combine(Path.GetDirectoryName(TimingOutput), "clube_Data", "boot.config");
+            if (File.Exists(bootConfig))
+            {
+                var lines = new List<string>(File.ReadAllLines(bootConfig));
+                lines.RemoveAll(line => line.StartsWith("player-connection-"));
+                lines.Add("player-connection-mode=Connect");
+                lines.Add("player-connection-ip=127.0.0.1");
+                lines.Add("player-connection-wait-timeout=0");
+                File.WriteAllLines(bootConfig, lines);
+            }
+            return report;
+        }
+
+        private static BuildReport Build(string[] scenes, string output, BuildOptions buildOptions = BuildOptions.None)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(output));
             // The texture array is gitignored (generated): rebuild it, so a fresh clone never ships a stale one
@@ -89,7 +113,7 @@ namespace Clube.Debug.Editor
                     scenes = scenes,
                     locationPathName = output,
                     target = BuildTarget.StandaloneWindows64,
-                    options = BuildOptions.None,
+                    options = buildOptions,
                     extraScriptingDefines = new[] { LabBuildSymbol },
                 };
                 report = BuildPipeline.BuildPlayer(options);
