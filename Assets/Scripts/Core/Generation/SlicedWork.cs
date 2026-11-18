@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Unity.Jobs;
+using Unity.Jobs.LowLevel.Unsafe;
 
 namespace Clube.Core
 {
@@ -74,6 +76,18 @@ namespace Clube.Core
             }
         }
 
+        /// <summary>A step that waits for a job without holding up the frames, then finishes it.</summary>
+        public static IEnumerator WaitFor(JobHandle job)
+        {
+            JobHandle.ScheduleBatchedJobs();
+            // With no worker threads the job only runs when it is completed.
+            while (JobsUtility.JobWorkerCount > 0 && !job.IsCompleted)
+            {
+                yield return null;
+            }
+            job.Complete();
+        }
+
         /// <summary>Drops what is left of the work, freeing what its iterators hold.</summary>
         public void Dispose()
         {
@@ -97,6 +111,10 @@ namespace Clube.Core
             if (top.Work.Current is Part part)
             {
                 steps.Push(new Part(part.Work, top.From + part.From * span, top.From + part.To * span));
+            }
+            else if (top.Work.Current is IEnumerator inner)
+            {
+                steps.Push(new Part(inner, top.From, top.To));
             }
             else if (top.Work.Current is float progress)
             {
