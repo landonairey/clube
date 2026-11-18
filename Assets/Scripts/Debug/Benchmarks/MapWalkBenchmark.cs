@@ -30,7 +30,7 @@ namespace Clube.Debug
         private const float CarriedHeight = 2.5f;
         private const int MarkersShown = 45, LongFrameMarkers = 10;
         // Chunks round the player whose ground is checked, and how often.
-        private const int NearColumns = 12, GroundLookFrames = 30;
+        private const int UnderfootColumns = 4, NearColumns = 12, GroundLookFrames = 30;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void StartIfAsked()
@@ -79,7 +79,7 @@ namespace Clube.Debug
         private WorldView world;
         private Transform body;
         private float walked;
-        private float nearGround = 1f, drawnGround = 1f;
+        private float underfootGround = 1f, nearGround = 1f, drawnGround = 1f;
         private FarTerrainView farView;
         private float longestFrame;
         private string longestFrameWent = "";
@@ -207,6 +207,7 @@ namespace Clube.Debug
                 Sample();
                 if (Time.frameCount % GroundLookFrames == 0)
                 {
+                    underfootGround = Mathf.Min(underfootGround, GroundReady(UnderfootColumns));
                     nearGround = Mathf.Min(nearGround, GroundReady(NearColumns));
                     drawnGround = Mathf.Min(drawnGround, GroundReady(world.DetailDistance));
                 }
@@ -304,8 +305,8 @@ namespace Clube.Debug
             text.AppendLine(Line("  streamer", streamer) + " | " + Line("far terrain", far) + " | " + Line("coarse terrain", lod) + " | " + Line("distant trees", trees)
                             + " | " + Line("water", water) + " | " + Line("grass", grass));
             text.AppendLine(Line("  draw calls", drawCalls, "") + " | " + Line("allocated", allocated, " KB"));
-            text.AppendLine($"  ground ready at its worst: {nearGround * 100f:0}% within {NearColumns * 4} m, {drawnGround * 100f:0}% within {world.DetailDistance * 4} m");
-            nearGround = drawnGround = 1f;
+            text.AppendLine($"  ground ready at its worst: {underfootGround * 100f:0}% within {UnderfootColumns * 4} m, {nearGround * 100f:0}% within {NearColumns * 4} m, {drawnGround * 100f:0}% within {world.DetailDistance * 4} m");
+            underfootGround = nearGround = drawnGround = 1f;
             text.AppendLine($"  pending {world.PendingCount}, loading {world.IsLoading}, in sight {world.IsLoadingInSight}, renderers {world.Stats.Renderers}; phases (last frame): {world.Stats.Phases}");
             string top = markers.Top(MarkersShown, frames.Count);
             if (top.Length > 0)
