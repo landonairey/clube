@@ -132,6 +132,9 @@ namespace Clube.Game
 
         public SettlementSiteRules Rules => rules;
 
+        /// <summary>The low-poly vertex-colour material the map's signs and figures are made of.</summary>
+        public Material LowPolyMaterial => material;
+
         /// <summary>Settlements laid out so far, pieces written, buildings standing and keepers at their shops.</summary>
         public int SettlementsWorkedOut { get; private set; }
 

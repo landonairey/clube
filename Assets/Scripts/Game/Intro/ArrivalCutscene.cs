@@ -41,7 +41,7 @@ namespace Clube.Game
         private const float CalmFrameSeconds = 0.05f;
         private const int CalmFrames = 20;
         private const float MostSettlingSeconds = 8f;
-        private const float LongestStep = 0.05f;
+        private const float LongestStep = 0.12f;
 
         // GL744: metres outside the family's parcel the cart drops the player, and the most the ground there may differ.
         private const float DropOutside = 6f;
@@ -184,14 +184,18 @@ namespace Clube.Game
         // True once the family's parcel is granted (where the player landed) and frames come evenly, or the wait is up.
         private bool Settled()
         {
+            settling += Time.unscaledDeltaTime;
+            if (settling >= MostSettlingSeconds)
+            {
+                return true;
+            }
             PlayerParcels parcels = player.GetComponent<PlayerParcels>();
             if (parcels != null && parcels.enabled && (parcels.Parcels == null || parcels.Parcels.Owned.Count == 0))
             {
                 return false;
             }
-            settling += Time.unscaledDeltaTime;
             calmFrames = Time.unscaledDeltaTime <= CalmFrameSeconds ? calmFrames + 1 : 0;
-            return calmFrames >= CalmFrames || settling >= MostSettlingSeconds;
+            return calmFrames >= CalmFrames;
         }
 
         // GL744: the cart stops just outside the parcel, facing it, so the first thing to do is walk onto the land.
@@ -200,7 +204,8 @@ namespace Clube.Game
             stop = player.transform.position;
             yaw = player.transform.eulerAngles.y;
             PlayerParcels parcels = player.GetComponent<PlayerParcels>();
-            if (parcels == null || !parcels.enabled || parcels.Parcels == null || worldView == null)
+            MapSession session = MapSession.Current;
+            if (parcels == null || !parcels.enabled || parcels.Parcels == null || worldView == null || session == null || session.Map == null)
             {
                 return;
             }
@@ -208,16 +213,17 @@ namespace Clube.Game
             Vector3 local = worldView.transform.InverseTransformPoint(stop);
             Vector2Int parcel = land.ParcelAt(local);
             Vector2 centre = land.CentreOf(parcel);
+            // The land's own height: the player may have been set down on top of one of the parcel's trees.
+            float here = session.Map.Height(local.x, local.z);
             foreach (Vector2 point in land.PointsOutside(parcel, new Vector2(local.x, local.z), DropOutside))
             {
-                Vector3 above = worldView.transform.TransformPoint(new Vector3(point.x, local.y + 40f, point.y));
-                if (!worldView.Raycast(new Ray(above, -worldView.transform.up), out Vector3 ground) || Mathf.Abs(ground.y - stop.y) > DropMaxRise
-                    || IsWet(point))
+                float height = session.Map.Height(point.x, point.y);
+                if (Mathf.Abs(height - here) > DropMaxRise || IsWet(point))
                 {
                     continue;
                 }
-                stop = ground;
-                Vector3 toLand = worldView.transform.TransformPoint(new Vector3(centre.x, local.y, centre.y)) - stop;
+                stop = worldView.transform.TransformPoint(new Vector3(point.x, height, point.y));
+                Vector3 toLand = worldView.transform.TransformPoint(new Vector3(centre.x, height, centre.y)) - stop;
                 yaw = Mathf.Atan2(toLand.x, toLand.z) * Mathf.Rad2Deg;
                 player.Teleport(stop + Vector3.up * 0.05f);
                 return;
@@ -244,7 +250,9 @@ namespace Clube.Game
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
 
-            Material material = FindFirstObjectByType<TradeCart>() is TradeCart trade ? trade.LowPolyMaterial : null;
+            // GL743: the bounded map has no TradeCart, and without a material the cart was left out altogether.
+            Material material = FindFirstObjectByType<TradeCart>() is TradeCart trade ? trade.LowPolyMaterial
+                : FindFirstObjectByType<MapSettlements>() is MapSettlements settlements ? settlements.LowPolyMaterial : null;
             if (material != null && worldView != null)
             {
                 cart = new ArrivalCart(material, worldView, stop, heading);

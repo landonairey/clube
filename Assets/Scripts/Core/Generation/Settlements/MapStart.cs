@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Clube.Core
@@ -16,6 +18,11 @@ namespace Clube.Core
 
         // The Merchant specialty's id (its row in EconomySpecialty.Defaults).
         private const string MerchantId = "merchant";
+
+        // The family's parcel (GL744): parcels searched each way, metres kept from a road, and the most its ground may rise.
+        private const int ParcelSearchRings = 12;
+        private const float RoadClearance = 6f;
+        private const float ParcelMostRelief = 8f;
 
         /// <summary>
         /// The settlement the start stands beside (GL656): an outpost with a Merchant shop, the one nearest the capital on the
@@ -126,6 +133,81 @@ namespace Clube.Core
                 }
             }
             return best;
+        }
+
+        /// <summary>
+        /// GL744: the centre of the family's parcel, the nearest to <paramref name="near"/> that can be theirs: clear of every
+        /// settlement's land (a settlement's parcels are locked, so one there is never granted) and of the roads, on open,
+        /// fairly level ground. <paramref name="near"/> itself when no parcel in reach is suitable.
+        /// </summary>
+        /// <param name="open">True where the player can walk and nothing is under water; may be null.</param>
+        /// <param name="heightAt">The land's height at (x, z).</param>
+        public static Vector2 FamilyParcel(WorldPlan plan, Vector2 near, float parcelSize, Func<float, float, bool> open, Func<float, float, float> heightAt)
+        {
+            var home = new Vector2Int(Mathf.FloorToInt(near.x / parcelSize), Mathf.FloorToInt(near.y / parcelSize));
+            var rules = new SettlementSiteRules();
+            float reach = (ParcelSearchRings + 1) * parcelSize;
+            var search = new Rect(near.x - reach, near.y - reach, reach * 2f, reach * 2f);
+            var roadPoints = new List<Vector2>();
+            foreach (PlannedRoad road in plan.Roads)
+            {
+                roadPoints.AddRange(road.Points.FindAll(search.Contains));
+            }
+            var parcels = new List<Vector2Int>();
+            for (int z = -ParcelSearchRings; z <= ParcelSearchRings; z++)
+            {
+                for (int x = -ParcelSearchRings; x <= ParcelSearchRings; x++)
+                {
+                    parcels.Add(home + new Vector2Int(x, z));
+                }
+            }
+            Vector2 Centre(Vector2Int parcel) => new Vector2((parcel.x + 0.5f) * parcelSize, (parcel.y + 0.5f) * parcelSize);
+            parcels.Sort((a, b) => (Centre(a) - near).sqrMagnitude.CompareTo((Centre(b) - near).sqrMagnitude));
+            foreach (Vector2Int parcel in parcels)
+            {
+                var area = new Rect(parcel.x * parcelSize, parcel.y * parcelSize, parcelSize, parcelSize);
+                if (IsFree(plan, rules, area, roadPoints) && IsOpenLevel(area, open, heightAt))
+                {
+                    return area.center;
+                }
+            }
+            return near;
+        }
+
+        // Off every settlement's land, with room for what it changes round its parcels, and off the roads.
+        private static bool IsFree(WorldPlan plan, SettlementSiteRules rules, Rect area, List<Vector2> roadPoints)
+        {
+            foreach (PlannedSettlement settlement in plan.Settlements)
+            {
+                float half = SettlementLayout.SideOf(settlement.Type, plan.Rules.ParcelSide) * 0.5f + rules.Margin
+                    + (settlement.IsQuarry ? QuarryYard.Reach(rules) : 0f);
+                if (new Rect(settlement.Position.x - half, settlement.Position.y - half, half * 2f, half * 2f).Overlaps(area))
+                {
+                    return false;
+                }
+            }
+            var clear = new Rect(area.x - RoadClearance, area.y - RoadClearance, area.width + RoadClearance * 2f, area.height + RoadClearance * 2f);
+            return !roadPoints.Exists(clear.Contains);
+        }
+
+        private static bool IsOpenLevel(Rect area, Func<float, float, bool> open, Func<float, float, float> heightAt)
+        {
+            float low = float.MaxValue, high = float.MinValue;
+            for (int j = 0; j <= 2; j++)
+            {
+                for (int i = 0; i <= 2; i++)
+                {
+                    float x = area.x + area.width * i * 0.5f, z = area.y + area.height * j * 0.5f;
+                    if (open != null && !open(x, z))
+                    {
+                        return false;
+                    }
+                    float height = heightAt(x, z);
+                    low = Mathf.Min(low, height);
+                    high = Mathf.Max(high, height);
+                }
+            }
+            return high - low <= ParcelMostRelief;
         }
 
         /// <summary>True when the survey cell at a position is mostly land.</summary>

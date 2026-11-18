@@ -204,6 +204,25 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void TheFamilysParcel_IsOffEverySettlementsLandAndTheRoads()
+        {
+            // GL744: beside a settlement the start's parcel was locked, so the family never got any land.
+            const float size = 32f;
+            PlannedSettlement beside = plan.Settlements.First(s => !s.Type.Hostile);
+            Vector2 centre = MapStart.FamilyParcel(plan, beside.Position, size, null, (x, z) => 40f);
+
+            var area = new Rect(Mathf.Floor(centre.x / size) * size, Mathf.Floor(centre.y / size) * size, size, size);
+            Assert.That(area.center, Is.EqualTo(centre));
+            foreach (PlannedSettlement settlement in plan.Settlements)
+            {
+                float half = SettlementLayout.SideOf(settlement.Type, plan.Rules.ParcelSide) * 0.5f;
+                Assert.That(new Rect(settlement.Position - Vector2.one * half, Vector2.one * half * 2f).Overlaps(area), Is.False, settlement.Name);
+            }
+            Assert.That(plan.Roads.Any(road => road.Points.Any(area.Contains)), Is.False, "no road crosses it");
+            Assert.That(MapStart.FamilyParcel(plan, beside.Position, size, (x, z) => false, (x, z) => 40f), Is.EqualTo(beside.Position), "nowhere open: where it was asked");
+        }
+
+        [Test]
         public void Plan_HasOneStoneQuarry_TradingStoneAlone_WhoseKeepersStartAtZero()
         {
             List<PlannedSettlement> quarries = plan.Settlements.FindAll(s => s.IsQuarry);

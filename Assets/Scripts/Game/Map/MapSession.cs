@@ -161,6 +161,15 @@ namespace Clube.Game
             Version++;
 
             Vector2 at = MapStart.Pick(Plan, Survey);
+            // GL744: the player starts on a parcel that can be theirs, beside the home settlement rather than on its locked land.
+            PlayerParcels parcels = player != null ? player.GetComponent<PlayerParcels>() : null;
+            if (parcels != null)
+            {
+                MapLayout layout = generator.Layout;
+                System.Func<float, float, bool> wet = SettlementWriter.WetOf(generator.Water);
+                at = MapStart.FamilyParcel(Plan, at, parcels.SizeInChunks * worldView.World.Grid.ChunkWorldSize.x,
+                    (x, z) => layout.WalksFreely(x, z) && (wet == null || !wet(x, z)), generator.Height);
+            }
             StartPosition = worldView.transform.TransformPoint(new Vector3(at.x, generator.Height(at.x, at.y), at.y));
             PlantStartParcel(at);
             PlacePlayer();
