@@ -1,4 +1,7 @@
+using System;
+using System.Collections;
 using Unity.Collections;
+using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -26,65 +29,83 @@ namespace Clube.Core
         /// </summary>
         public static Color32[] Render(BoundedMapGenerator map, ResourceSurvey survey, int resolution)
         {
+            Color32[] pixels = null;
+            SlicedWork.RunToEnd(RenderSteps(map, survey, resolution, done => pixels = done));
+            return pixels;
+        }
+
+        /// <summary>The picture a row at a time (GL762, <see cref="SlicedWork"/>); <paramref name="done"/> is given its pixels.</summary>
+        public static IEnumerator RenderSteps(BoundedMapGenerator map, ResourceSurvey survey, int resolution, Action<Color32[]> done)
+        {
             resolution = Mathf.Max(8, resolution);
             Rect area = map.Layout.Bounds;
             float step = area.width / resolution;
             int count = resolution * resolution;
-            var points = new NativeArray<float2>(count, Allocator.TempJob);
-            var heights = new NativeArray<float>(count, Allocator.TempJob);
+            // Persistent: the job runs over several frames.
+            var points = new NativeArray<float2>(count, Allocator.Persistent);
+            var heights = new NativeArray<float>(count, Allocator.Persistent);
             var pixels = new Color32[count];
+            JobHandle job = default;
             try
             {
                 for (int i = 0; i < count; i++)
                 {
                     points[i] = new float2(area.xMin + (i % resolution + 0.5f) * step, area.yMin + (i / resolution + 0.5f) * step);
                 }
-                map.SchedulePointHeights(points, heights).Complete();
-
-                BiomeField biomes = map.BiomeField;
-                WaterMap water = map.Water;
-                float seaLevel = map.Layout.SeaLevel;
+                job = map.SchedulePointHeights(points, heights);
+                yield return SlicedWork.WaitFor(job);
                 for (int z = 0; z < resolution; z++)
                 {
-                    for (int x = 0; x < resolution; x++)
-                    {
-                        int i = x + z * resolution;
-                        float2 p = points[i];
-                        float h = heights[i];
-                        // Past the playable edge (GL639) the land and sea are washed out: seen, and not the map's.
-                        float wash = map.Layout.Contains(p.x, p.y) ? 0f : OutsideWash;
-                        if (water.IsCreated && water.TryCell(p, out int wet) && water.Kind[wet] != 0)
-                        {
-                            Color wetColour = water.IsSea(wet)
-                                ? Sea * Mathf.Lerp(0.6f, 1f, Mathf.InverseLerp(seaLevel - 30f, seaLevel, h))
-                                : FreshWater;
-                            pixels[i] = Opaque(Color.Lerp(wetColour, Outside, wash));
-                            continue;
-                        }
-                        Color colour = survey.Biomes[biomes.IndexAt(p.x, p.y, h)].MapColor;
-                        if (survey.TryCell(new Vector2(p.x, p.y), out Vector2Int cell))
-                        {
-                            SurveyCell surveyed = survey.Cell(cell.x, cell.y);
-                            colour = Color.Lerp(colour, Rock, surveyed.Stone);
-                            colour = Color.Lerp(colour, Woods, Mathf.Clamp01(surveyed.Wood / 6f) * 0.6f);
-                        }
-                        // Lighter with height, and lit from the north-west so slopes read as relief.
-                        float west = heights[(x > 0 ? x - 1 : x) + z * resolution], east = heights[(x + 1 < resolution ? x + 1 : x) + z * resolution];
-                        float south = heights[x + (z > 0 ? z - 1 : z) * resolution], north = heights[x + (z + 1 < resolution ? z + 1 : z) * resolution];
-                        float relief = Mathf.Clamp(((east - west) - (north - south)) / (2f * step) * 0.45f, -0.3f, 0.3f);
-                        float shade = Mathf.Lerp(0.8f, 1.2f, Mathf.InverseLerp(seaLevel, seaLevel + 350f, h)) + relief;
-                        colour = Color.Lerp(colour * shade, Outside, wash);
-                        colour.a = 1f;
-                        pixels[i] = colour;
-                    }
+                    RenderRow(z, map, survey, resolution, step, points, heights, pixels);
+                    yield return null;
                 }
             }
             finally
             {
+                job.Complete();
                 points.Dispose();
                 heights.Dispose();
             }
-            return pixels;
+            done(pixels);
+        }
+
+        private static void RenderRow(int z, BoundedMapGenerator map, ResourceSurvey survey, int resolution, float step,
+            NativeArray<float2> points, NativeArray<float> heights, Color32[] pixels)
+        {
+            BiomeField biomes = map.BiomeField;
+            WaterMap water = map.Water;
+            float seaLevel = map.Layout.SeaLevel;
+            for (int x = 0; x < resolution; x++)
+            {
+                int i = x + z * resolution;
+                float2 p = points[i];
+                float h = heights[i];
+                // Past the playable edge (GL639) the land and sea are washed out: seen, and not the map's.
+                float wash = map.Layout.Contains(p.x, p.y) ? 0f : OutsideWash;
+                if (water.IsCreated && water.TryCell(p, out int wet) && water.Kind[wet] != 0)
+                {
+                    Color wetColour = water.IsSea(wet)
+                        ? Sea * Mathf.Lerp(0.6f, 1f, Mathf.InverseLerp(seaLevel - 30f, seaLevel, h))
+                        : FreshWater;
+                    pixels[i] = Opaque(Color.Lerp(wetColour, Outside, wash));
+                    continue;
+                }
+                Color colour = survey.Biomes[biomes.IndexAt(p.x, p.y, h)].MapColor;
+                if (survey.TryCell(new Vector2(p.x, p.y), out Vector2Int cell))
+                {
+                    SurveyCell surveyed = survey.Cell(cell.x, cell.y);
+                    colour = Color.Lerp(colour, Rock, surveyed.Stone);
+                    colour = Color.Lerp(colour, Woods, Mathf.Clamp01(surveyed.Wood / 6f) * 0.6f);
+                }
+                // Lighter with height, and lit from the north-west so slopes read as relief.
+                float west = heights[(x > 0 ? x - 1 : x) + z * resolution], east = heights[(x + 1 < resolution ? x + 1 : x) + z * resolution];
+                float south = heights[x + (z > 0 ? z - 1 : z) * resolution], north = heights[x + (z + 1 < resolution ? z + 1 : z) * resolution];
+                float relief = Mathf.Clamp(((east - west) - (north - south)) / (2f * step) * 0.45f, -0.3f, 0.3f);
+                float shade = Mathf.Lerp(0.8f, 1.2f, Mathf.InverseLerp(seaLevel, seaLevel + 350f, h)) + relief;
+                colour = Color.Lerp(colour * shade, Outside, wash);
+                colour.a = 1f;
+                pixels[i] = colour;
+            }
         }
 
         private static Color32 Opaque(Color colour)
