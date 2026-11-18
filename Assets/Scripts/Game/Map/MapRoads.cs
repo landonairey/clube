@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Clube.Core;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Clube.Game
@@ -15,6 +16,13 @@ namespace Clube.Game
     public class MapRoads : MonoBehaviour, ISavedValues
     {
         private const string KeyPrefix = "maproad.";
+
+        private static readonly ProfilerMarker CollectMarker = new ProfilerMarker("MapRoads.Collect");
+        private static readonly ProfilerMarker WriteMarker = new ProfilerMarker("MapRoads.Write");
+
+        // Seconds between looks for pieces whose chunks have loaded, while none are ready (GL759).
+        private const float IdleLookSeconds = 0.2f;
+        private float nextLookTime;
 
         // Pieces looked at each frame for whether their chunks have loaded.
         private const int ChecksPerFrame = 32;
@@ -283,9 +291,15 @@ namespace Clube.Game
             var viewer = new Vector2(local.x, local.z);
             if (moreToWorkOut || (viewer - collectedAt).sqrMagnitude > 6f * 6f || Time.unscaledTime - collectedTime > 1f)
             {
-                Collect(viewer);
+                using (CollectMarker.Auto())
+                {
+                    Collect(viewer);
+                }
             }
-            Write();
+            using (WriteMarker.Auto())
+            {
+                Write();
+            }
         }
 
         private void StartOver()
@@ -421,6 +435,7 @@ namespace Clube.Game
         {
             collectedAt = viewer;
             collectedTime = Time.unscaledTime;
+            nextLookTime = 0f;
             moreToWorkOut = false;
             pending.Clear();
             boring.Clear();
@@ -469,6 +484,12 @@ namespace Clube.Game
             {
                 return;
             }
+            // GL759: nothing was ready at the last look, and chunks take a while to load: no need to ask again every frame.
+            if (!session.WorldView.IsLoading && Time.unscaledTime < nextLookTime)
+            {
+                return;
+            }
+            nextLookTime = Time.unscaledTime + IdleLookSeconds;
             WorldConfig config = session.WorldView.Config;
             World world = session.WorldView.World;
             // While the area loads in bulk the ground is waiting to be shown: more of the frame goes to writing it.
@@ -495,6 +516,7 @@ namespace Clube.Game
                 hold.Remove(world.Grid, HoldOf(writer, next.Piece));
                 pending.RemoveAt(i--);
                 PiecesWritten++;
+                nextLookTime = 0f;
                 float took = (Time.realtimeSinceStartup - before) * 1000f;
                 LongestMilliseconds = Mathf.Max(LongestMilliseconds, took);
                 TotalMilliseconds += took;
@@ -518,6 +540,7 @@ namespace Clube.Game
                 bore.Write(world, config.Materials, lining, config.IsoLevel, next.Piece);
                 boring.RemoveAt(i--);
                 TunnelPiecesBored++;
+                nextLookTime = 0f;
                 float took = (Time.realtimeSinceStartup - before) * 1000f;
                 LongestMilliseconds = Mathf.Max(LongestMilliseconds, took);
                 TotalMilliseconds += took;
