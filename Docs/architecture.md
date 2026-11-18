@@ -104,7 +104,8 @@ Core/
                  (the animals as data, where herds live, one animal's decisions, GL602-GL606)
   Population/    the people of settlements as data (GL615, GL616): Duty and Occupation rows, DutyShift (a week of duties),
                  SettlementRoster (who lives where), SettlementWalks (the ways through the lanes), DigPlan (a pit or a
-                 tunnel, voxel by voxel), CartKind and CartRuns (which carts run which roads, and where by the clock),
+                 tunnel, voxel by voxel), SettlementWorks, DigSite, DutyHours, WorkRate, WorkLand (work off screen and
+                 where it may happen, GL730, GL731), CartKind and CartRuns (which carts run which roads, and where by the clock),
                  VesselClass and BoatRuns (the same for vessels on the water routes, GL618), ThiefHaunts, Robbery and
                  RaiderRuns (where a thieves' camp steals, what a robbery moves, its boat, GL617)
   Audio/         SoundSynth (sound effects made in code, GL271)
@@ -858,6 +859,20 @@ settlements of `Generation/`); the bodies are Game (`Game/People/`, `Game/Travel
   web of points 2 m apart and routes over it (Dijkstra, a metre through a building costing a thousand), so a walk
   goes by the streets. `DigPlan.Pit` and `.Tunnel` list voxels in digging order; `Next` finds the first still solid in
   the world, so a pit holds no progress of its own and goes on from whatever is there.
+- **Work off screen (GL730, GL731).** Every settlement works whether loaded or not. `SettlementWorks` (one a
+  settlement, from `SettlementPeople.WorksOf`) holds what its people work, all from the ground and trees as generated:
+  its claimed trees (`TreeField` spots within the felling range, where the tree grows and `WorkLand.MayWork`, nearest the
+  middle first) and a `DigSite` a mining shop (a run of up to eight pits, or tunnels into the nearest slopes; a shop with
+  no slope digs pits on the tunnel shifts too). Progress is a pure function of the clock: `DutyHours` reads the hours an
+  occupation spends on a work from its week, times the `WorkRate` row (trees or voxels a worker-hour), so the first N
+  claimed trees are down and the first M ground voxels of each site dug. `SettlementWorkings` (added beside
+  `SettlementPeople` at run time) writes that into the chunks as they load: `TreeFelling.ClearStanding` once every chunk
+  in the tree's `TreeRoom` is loaded, pit voxels set to air in plan order; never on land the player owns, and not within
+  60 m of the viewer while the settlement's people are about (theirs to do on screen). What it has applied is saved per
+  settlement (`works.<index>`: runs of done trees, ground voxels a site); the clock is the game's own. `FellWork` and
+  `DigWork` take the same trees and sites in the same order. `WorkLand` (also `Villager.MayWorkAt`) keeps the player's
+  starting parcel and the eight round it (from `MapSession.StartPosition` and the parcel size) free of felling and
+  digging. Not yet: the far tree view (`DistantTreeBuilder`) still draws claimed trees until their chunks load.
 - **In the scene.** `SettlementPeople` (on the World object, beside `MapSettlements`) looks twice a second: a
   settlement that `MapSettlements.BuiltSite` says stands, within `liveRange` of the viewer, gets its `Villager`s (up
   to `mostPeople`); once the viewer is past `liveRange + leaveMargin` of the town and of every one of them (GL670) they
