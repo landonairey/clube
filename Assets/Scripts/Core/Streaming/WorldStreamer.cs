@@ -147,6 +147,12 @@ namespace Clube.Core
 
         // The world's dirty chunks, collected each frame (World.CollectDirty).
         private readonly List<Vector3Int> dirtyScratch = new List<Vector3Int>();
+        // Whether the last look found a dirty chunk that may be meshed (StartMeshing).
+        private bool hasChunksToMesh;
+        // Whether the last look left dirty chunks unlooked at, the frame's starts being used up.
+        private bool meshingBehind;
+        // Dirty chunks allowed to wait, per start a rationed frame makes, before generation pauses (GL759).
+        private const int MeshBacklogPerStart = 16;
 
         // Wanted chunks that came up before their column's heights were ready (ChunkPipeline.StartGeneration).
         private readonly List<Vector3Int> waitingForColumns = new List<Vector3Int>();
@@ -270,6 +276,18 @@ namespace Clube.Core
         /// <summary>True while the area loads in bulk, with the larger loading budget (see <see cref="StreamingSettings.LoadingBudgetMilliseconds"/>).</summary>
         public bool IsLoading => bulkLoading;
 
+        /// <summary>
+        /// True while the bulk load is still on the chunks that will be drawn. False once only the hidden ones past the
+        /// detail distance are left (GL759): at a long render distance those take minutes, with the game being played.
+        /// </summary>
+        public bool IsLoadingDrawnArea => bulkLoading && !IsLoadingHiddenOnly;
+
+        // The bulk load is on to hidden chunks and someone is playing: starting jobs keeps to the frame's budget (GL759).
+        private bool RationsStarts => bulkLoading && !Hurry && IsLoadingHiddenOnly;
+
+        // Starts a frame may make past its budget: as many as while playing when rationed, else the whole job limit.
+        private int StartsPastBudget => RationsStarts ? Mathf.Max(4, JobsUtility.JobWorkerCount * JobsPerWorker) : MaxJobsInFlight;
+
         // True once the bulk load has started every drawn column and is on to the hidden ones past the detail distance.
         private bool IsLoadingHiddenOnly =>
             settings.FarLoadingBudgetMilliseconds > 0f && settings.DetailDistance > 0 && hasDrawCentre
@@ -327,7 +345,7 @@ namespace Clube.Core
 
             // The bulk load is over once everything wanted has been started, loaded and meshed.
             if (bulkLoading && loadCursor >= wantedColumns.Count && waitingForColumns.Count == 0 && PendingCount == 0
-                && pipeline.GeneratingCount == 0 && pipeline.MeshingCount == 0 && dirtyScratch.Count == 0)
+                && pipeline.GeneratingCount == 0 && pipeline.MeshingCount == 0 && !hasChunksToMesh)
             {
                 bulkLoading = false;
             }
@@ -590,8 +608,9 @@ namespace Clube.Core
         private void StartGenerating()
         {
             int limit = MaxJobsInFlight;
+            int pastBudget = StartsPastBudget;
             for (int i = 0; i < waitingForColumns.Count && pipeline.GenerationJobsRunning < limit
-                            && (i < limit || Before(budget));)
+                            && (i < pastBudget || Before(budget));)
             {
                 Vector3Int waiting = waitingForColumns[i];
                 if (!IsWanted(waiting) || world.IsLoaded(waiting) || pipeline.StartGeneration(waiting))
@@ -603,13 +622,19 @@ namespace Clube.Core
                     i++;
                 }
             }
+            // GL759: while rationed, no new chunks while meshing is behind: every waiting chunk is looked at each frame, so a
+            // pile of them would slow the frame more and more. Chunks held for roads don't count: they need their neighbours.
+            if (RationsStarts && meshingBehind && dirtyScratch.Count > pastBudget * MeshBacklogPerStart)
+            {
+                return;
+            }
             // At least a job limit's worth of starts a frame, as before; more while the budget lasts.
             // A column with every layer loaded is passed over in one step, so moving the area (which puts
             // the cursor back to the nearest column) costs a look per column, not per chunk.
             int started = 0;
             int layers = settings.HeightInChunks;
             while (loadCursor < wantedColumns.Count && pipeline.GenerationJobsRunning < limit
-                   && (started < limit || Before(budget)))
+                   && (started < pastBudget || Before(budget)))
             {
                 Vector2Int column = wantedColumns[loadCursor];
                 if (loadLayer == 0 && world.LoadedLayersIn(column) >= layers)
@@ -666,20 +691,27 @@ namespace Clube.Core
             }
             ChunkMeshSettings current = meshSettings();
 
-            // The world's dirty chunks in the wanted area, nearest first.
-            world.CollectDirty(dirtyScratch);
-            dirtyScratch.RemoveAll(coord => !IsWanted(coord) || pipeline.IsMeshing(coord) || IsHeld(coord));
-            if (wantedCentre.HasValue)
+            // The world's dirty chunks in the wanted area, nearest first. GL759: at a long render distance tens of thousands
+            // wait, and a frame starts only a few: a heap orders just those, where sorting them all took 20 ms a frame.
+            hasChunksToMesh = false;
+            if (!wantedCentre.HasValue)
             {
-                Vector3Int centre = wantedCentre.Value;
-                dirtyScratch.Sort((a, b) => DistanceSquared(a, centre).CompareTo(DistanceSquared(b, centre)));
+                return;
             }
-            foreach (Vector3Int coord in dirtyScratch)
+            world.CollectDirty(dirtyScratch);
+            var nearest = new NearestChunkHeap(dirtyScratch, wantedCentre.Value);
+            bool rationed = RationsStarts;
+            int pastBudget = StartsPastBudget;
+            int started = 0;
+            while (pipeline.MeshingCount < limit && (!rationed || started < pastBudget || Before(budget))
+                   && nearest.TryTake(out Vector3Int coord))
             {
-                if (pipeline.MeshingCount >= limit)
+                if (!IsWanted(coord) || pipeline.IsMeshing(coord) || IsHeld(coord))
                 {
-                    break;
+                    continue;
                 }
+                hasChunksToMesh = true;
+                started++;
                 Chunk chunk = world.Chunks[coord];
                 ChunkMeshSettings chunkSettings = ForChunk(current, coord);
                 if (HasNoSurface(chunk, chunkSettings))
@@ -689,6 +721,7 @@ namespace Clube.Core
                 }
                 pipeline.StartMesh(coord, chunk, chunkSettings);
             }
+            meshingBehind = nearest.Remaining > 0;
         }
 
         // A uniform chunk has no surface, unless it's solid with a sealed face: that face is a wall.
@@ -999,12 +1032,6 @@ namespace Clube.Core
             float dx = Mathf.Max(min.x - focus.x, 0f, focus.x - max.x);
             float dz = Mathf.Max(min.z - focus.z, 0f, focus.z - max.z);
             return Mathf.Sqrt(dx * dx + dz * dz);
-        }
-
-        private static int DistanceSquared(Vector3Int a, Vector3Int b)
-        {
-            Vector3Int d = a - b;
-            return d.x * d.x + d.y * d.y + d.z * d.z;
         }
 
         // Whether this frame's streaming has run for less than the given time so far.

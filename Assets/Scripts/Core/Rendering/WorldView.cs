@@ -199,6 +199,13 @@ namespace Clube.Core
         public bool IsLoading => streamer?.IsLoading ?? false;
 
         /// <summary>
+        /// True while the bulk load holds someone up: a curtain is waiting for it, or ground that will be drawn is still
+        /// arriving. Work rationed by the frame may then take more of it. False while only hidden chunks past the detail
+        /// distance load (GL759): that can go on for minutes with the game being played.
+        /// </summary>
+        public bool IsLoadingInSight => IsLoading && (Hurry || (streamer?.IsLoadingDrawnArea ?? false));
+
+        /// <summary>
         /// Set while something waits behind a curtain for the ground round the focus (GL653: a spawn): nothing is being
         /// watched, so work that is rationed by the frame (writing roads and settlements into the ground) may take most of it.
         /// </summary>

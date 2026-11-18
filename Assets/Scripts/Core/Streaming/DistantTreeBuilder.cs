@@ -89,8 +89,14 @@ namespace Clube.Core
             this.range = Mathf.Max(TileSize, range);
         }
 
-        /// <summary>Tiles started per frame.</summary>
+        /// <summary>Tiles started per frame, at most.</summary>
         public int MaxStartsPerFrame { get; set; } = 16;
+
+        /// <summary>
+        /// Milliseconds a frame for starting tiles (GL759): a tile's cells are rolled on the main thread. One tile always
+        /// starts each frame, so the trees keep arriving however small the budget.
+        /// </summary>
+        public float StartBudgetMilliseconds { get; set; } = float.PositiveInfinity;
 
         /// <summary>Goes up whenever the ready tiles change, so a view knows to gather them again.</summary>
         public int Version { get; private set; }
@@ -129,6 +135,8 @@ namespace Clube.Core
             }
 
             int starts = MaxStartsPerFrame;
+            long began = System.Diagnostics.Stopwatch.GetTimestamp();
+            double budgetTicks = StartBudgetMilliseconds * 0.001 * System.Diagnostics.Stopwatch.Frequency;
             while (starts > 0 && nextWanted < wanted.Count)
             {
                 Vector2Int coord = wanted[nextWanted++];
@@ -136,6 +144,10 @@ namespace Clube.Core
                 {
                     Start(coord);
                     starts--;
+                    if (System.Diagnostics.Stopwatch.GetTimestamp() - began >= budgetTicks)
+                    {
+                        break;
+                    }
                 }
             }
 

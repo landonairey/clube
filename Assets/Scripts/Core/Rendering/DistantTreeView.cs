@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -30,6 +31,15 @@ namespace Clube.Core
         // Most kinds drawn (GL721: birch, maple and the species rows); a tree of a kind past it draws as birch.
         private const int Kinds = 6;
         private const int Levels = DistantTreeMeshes.Levels;
+
+        // Milliseconds a frame for starting tiles once the game is being played (GL759).
+        private const float PlayStartBudgetMilliseconds = 1.5f;
+
+        private static readonly ProfilerMarker BuilderMarker = new ProfilerMarker("DistantTrees.Builder");
+        private static readonly ProfilerMarker SyncMarker = new ProfilerMarker("DistantTrees.SyncTiles");
+        private static readonly ProfilerMarker CoverageMarker = new ProfilerMarker("DistantTrees.Coverage");
+        private static readonly ProfilerMarker CollectMarker = new ProfilerMarker("DistantTrees.Collect");
+        private static readonly ProfilerMarker SubmitMarker = new ProfilerMarker("DistantTrees.Submit");
 
         private static readonly int CoverageMaskId = Shader.PropertyToID("_CoverageMask");
         private static readonly int CoverageId = Shader.PropertyToID("_Coverage");
@@ -222,12 +232,23 @@ namespace Clube.Core
             EnsureMeshes();
             runtimeMaterial ??= new Material(material) { name = material.name + " (runtime)", enableInstancing = true };
 
-            builder.Update(worldView.transform.InverseTransformPoint(worldView.Focus.position));
+            using (BuilderMarker.Auto())
+            {
+                // GL759: behind the loading curtain as many tiles as the builder likes; in play only a sliver of the frame.
+                builder.StartBudgetMilliseconds = worldView.Hurry ? float.PositiveInfinity : PlayStartBudgetMilliseconds;
+                builder.Update(worldView.transform.InverseTransformPoint(worldView.Focus.position));
+            }
             if (builder.Version != syncedVersion)
             {
-                SyncTiles();
+                using (SyncMarker.Auto())
+                {
+                    SyncTiles();
+                }
             }
-            UpdateCoverage();
+            using (CoverageMarker.Auto())
+            {
+                UpdateCoverage();
+            }
             Draw();
             LastUpdateMilliseconds = (System.Diagnostics.Stopwatch.GetTimestamp() - started) * 1000f / System.Diagnostics.Stopwatch.Frequency;
         }
@@ -416,8 +437,12 @@ namespace Clube.Core
                 collectedVersion = syncedVersion;
                 collectedAt = at;
                 collectedTurn = turn;
-                Collect();
+                using (CollectMarker.Auto())
+                {
+                    Collect();
+                }
             }
+            using ProfilerMarker.AutoScope submitting = SubmitMarker.Auto();
             float half = fadeWidth * 0.5f;
             for (int level = 0; level < Levels; level++)
             {

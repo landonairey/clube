@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -27,6 +28,25 @@ namespace Clube.Core.Tests
         {
             Object.DestroyImmediate(wood);
             Object.DestroyImmediate(leaves);
+        }
+
+        [Test]
+        public void Builder_SpentBudget_StillStartsOneTileAFrame()
+        {
+            var generator = new FractalPerlin2DGenerator(11, 30f, 12f, 0.015f, octaves: 3);
+            var settings = new TreeGeneration { Chance = 0.6f, CellSize = 10f, Wood = wood, Leaves = leaves };
+            var field = new TreeField(settings, Seed, generator);
+            using (var builder = new DistantTreeBuilder(generator, field, 1000f) { StartBudgetMilliseconds = 0f })
+            {
+                builder.Update(Vector3.zero);
+                Assert.That(builder.Tiles.Count(), Is.EqualTo(1), "one tile on a spent budget");
+                builder.Update(Vector3.zero);
+                Assert.That(builder.Tiles.Count(), Is.EqualTo(2), "and one more the next frame");
+
+                builder.StartBudgetMilliseconds = float.PositiveInfinity;
+                builder.Update(Vector3.zero);
+                Assert.That(builder.Tiles.Count(), Is.EqualTo(2 + builder.MaxStartsPerFrame), "no budget: the most a frame may start");
+            }
         }
 
         [Test]

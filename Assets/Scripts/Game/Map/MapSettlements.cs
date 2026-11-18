@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using Clube.Core;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Clube.Game
@@ -17,6 +18,11 @@ namespace Clube.Game
     public class MapSettlements : MonoBehaviour, ISavedValues
     {
         private const string KeyPrefix = "mapsettlement.";
+
+        private static readonly ProfilerMarker CollectMarker = new ProfilerMarker("MapSettlements.Collect");
+        private static readonly ProfilerMarker WorkOutMarker = new ProfilerMarker("MapSettlements.WorkOut");
+        private static readonly ProfilerMarker WriteMarker = new ProfilerMarker("MapSettlements.Write");
+        private static readonly ProfilerMarker FitMarker = new ProfilerMarker("MapSettlements.Fit");
 
         // GL729: the keepers' dispositions (DispositionBook.Save).
         private const string DispositionsKey = "shopdisposition.book";
@@ -246,9 +252,15 @@ namespace Clube.Game
             var viewer = new Vector2(local.x, local.z);
             if ((viewer - collectedAt).sqrMagnitude > 6f * 6f || Time.unscaledTime - collectedTime > 1f)
             {
-                Collect(viewer);
+                using (CollectMarker.Auto())
+                {
+                    Collect(viewer);
+                }
             }
-            Write();
+            using (WriteMarker.Auto())
+            {
+                Write();
+            }
             HeldColumns = hold.Count;
         }
 
@@ -494,7 +506,10 @@ namespace Clube.Game
                         continue;
                     }
                     workedOutOne = true;
-                    WorkOut(i);
+                    using (WorkOutMarker.Auto())
+                    {
+                        WorkOut(i);
+                    }
                 }
                 near.Add((i, distance));
                 SettlementWriter writer = built[i].Writer;
@@ -528,7 +543,7 @@ namespace Clube.Game
                 Trim = registry != null ? registry.Find("Maple boards") : null,
             };
             // While the area loads in bulk the ground is waiting to be shown: more of the frame goes to writing it.
-            float budget = view.IsLoading ? Mathf.Max(writeBudgetMilliseconds, view.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds) : writeBudgetMilliseconds;
+            float budget = view.IsLoadingInSight ? Mathf.Max(writeBudgetMilliseconds, view.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds) : writeBudgetMilliseconds;
             float started = Time.realtimeSinceStartup;
             bool wrote = false;
             int checks = 0;
@@ -572,9 +587,12 @@ namespace Clube.Game
             if (wrote || fitDue)
             {
                 fitDue = false;
-                foreach ((int index, float _) in near)
+                using (FitMarker.Auto())
                 {
-                    Fit(index, built[index]);
+                    foreach ((int index, float _) in near)
+                    {
+                        Fit(index, built[index]);
+                    }
                 }
             }
         }

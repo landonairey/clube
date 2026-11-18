@@ -599,6 +599,15 @@ it are never held, so there is always ground under the player.
   `WorldView.Hurry` is set: the streamer takes twice its loading budget and the map's writers most of a frame
   (50 and 100 ms), since nothing is watched. While any bulk load runs the streamer keeps 8 jobs in flight per worker
   (2 otherwise), and a chunk 96 m over its column's highest ground is air without looking for trees.
+- **Playing during a long load** (GL759): at a long render distance the bulk load runs for minutes after the curtain
+  lifts, so "loading" no longer means "nobody is watching". `WorldView.IsLoadingInSight` is true only behind the curtain
+  or while drawn chunks are arriving; the roads and settlements take their loading budgets only then, and distant tree
+  tiles start without a budget only behind the curtain (1.5 ms a frame otherwise). While only hidden chunks load, the
+  streamer's job starts keep to the frame's budget (`RationsStarts`) and generation pauses while meshing is behind, so
+  dirty chunks can't pile up; chunks held for roads don't count, so a hold can't stall the load. `StartMeshing` takes the
+  nearest dirty chunks from `NearestChunkHeap` rather than sorting them all.
+- *Measure the tutorial start:* `clube.exe -tutorialbench` or *Clube → Debug → Measure tutorial start*
+  (`TutorialBenchmark`) writes frame, thread and system times per five seconds, and in the Editor each script's cost.
 - *Measure:* *Clube → Debug → Measure load time* (`LoadTimeReport`) enters Play mode and logs when the map was
   surveyed, the player stood, the area finished loading and the last piece was written, with the streamer's phases
   and, every 3 s of the wait, what the columns round the spawn still lack. MapGen, seed 1, in the Editor, before →
