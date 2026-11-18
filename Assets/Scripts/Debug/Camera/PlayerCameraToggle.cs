@@ -68,13 +68,15 @@ namespace Clube.Debug
         private void Update()
         {
             Keyboard keyboard = Keyboard.current;
-            if (IsSetUp && keyboard != null && keyboard.pKey.wasPressedThisFrame
-                && FindFirstObjectByType<Clube.Game.MiningCorpTutorial>() == null)
+            if (IsSetUp && keyboard != null && keyboard.pKey.wasPressedThisFrame && !InputLocked)
             {
-                // The tutorial is played as the player: P doesn't fly out of it (GL550).
                 IsPlayer = !IsPlayer;
             }
         }
+
+        // GL738 (replacing GL550): P works in the tutorial too. While the player's input is locked it doesn't: a P typed
+        // into the name box is only a letter, and the cart ride and being caught play through.
+        private bool InputLocked => player != null && player.TryGetComponent(out Clube.Game.PlayerController walker) && walker.InputLocked;
 
         private void Switch(bool toPlayer)
         {

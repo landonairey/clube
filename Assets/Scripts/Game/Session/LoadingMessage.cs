@@ -1,0 +1,34 @@
+using UnityEngine;
+
+namespace Clube.Game
+{
+    /// <summary>
+    /// The line of text at the bottom of the screen while the game loads (GL742, GL743): what is being loaded and how far it
+    /// has got. <see cref="GameLoadScreen"/> shows it while a scene loads, <see cref="LoadCurtain"/> while the ground does.
+    /// </summary>
+    public static class LoadingMessage
+    {
+        public const string Surveying = "Surveying the map…";
+
+        private static GUIStyle style;
+
+        /// <summary>Where the game is going: the quarry, the family's parcel, or the land of a loaded game.</summary>
+        public static string Destination => GameSession.Tutorial ? "Loading the quarry"
+            : GameSession.ArrivesByCart || ArrivalCutscene.IsPlaying ? "Travelling to your family's parcel"
+            : "Loading the land";
+
+        /// <summary>The line while the ground round the player loads (<paramref name="progress"/> 0 to 1).</summary>
+        public static string Ground(float progress)
+        {
+            return $"{Destination}… {Mathf.RoundToInt(Mathf.Clamp01(progress) * 100f)}%";
+        }
+
+        /// <summary>Draws the line at the bottom of the screen, from <c>OnGUI</c>.</summary>
+        public static void Draw(string text)
+        {
+            style ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = GameUi.Font(18), wordWrap = false };
+            float height = style.lineHeight * 2f;
+            GUI.Label(new Rect(0f, Screen.height - height * 1.75f, Screen.width, height), text, style);
+        }
+    }
+}

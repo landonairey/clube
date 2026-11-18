@@ -42,7 +42,8 @@ namespace Clube.Game
         public static void LoadGame()
         {
             bool tutorial = GameSession.Tutorial && GameSession.Mode != GameMode.Demo && Application.CanStreamedLevelBeLoaded(Tutorial);
-            SceneManager.LoadScene(tutorial ? Tutorial : For(GameSession.Mode));
+            // GL742, GL743: loaded behind a screen that says so, not frozen on the last frame.
+            GameLoadScreen.Load(tutorial ? Tutorial : For(GameSession.Mode));
         }
 
         /// <summary>Back to the main menu, ending the session; quits when the menu isn't in the build.</summary>

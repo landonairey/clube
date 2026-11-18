@@ -20,6 +20,8 @@ namespace Clube.Game
 
         private const float WakeHour = CompanyWork.WorkStartHour - 1f;
         private const float WalkSpeed = 1.8f;
+        // Metres the workers keep from the player as they walk (GL740).
+        private const float PlayerClearance = 1.1f;
         private const float StepAlong = 1.1f;
         private const float StepDeeper = 0.5f;
         private const float StandOff = 1.2f;
@@ -518,7 +520,7 @@ namespace Clube.Game
         }
 
         // Walks the route a leg at a time; true on arrival at its last point.
-        private static bool WalkRoute(Worker w, Transform t, float dt)
+        private bool WalkRoute(Worker w, Transform t, float dt)
         {
             if (w.Route == null || w.RouteAt >= w.Route.Length)
             {
@@ -531,23 +533,41 @@ namespace Clube.Game
             return w.RouteAt >= w.Route.Length;
         }
 
-        private static bool WalkTo(Worker w, Transform t, Vector3 target, float dt)
+        private bool WalkTo(Worker w, Transform t, Vector3 target, float dt)
         {
             Vector3 at = t.localPosition;
             Vector3 flat = target - at;
             flat.y = 0f;
             float dist = flat.magnitude;
             w.Figure.Pose = FigureAction.Walk;
-            if (dist < 0.1f)
+            // GL740: the workers go round the player; a point the player stands on counts as reached from beside them.
+            Vector2 you = PlayerOnMap();
+            var goal = new Vector2(target.x, target.z);
+            bool taken = WalkAround.IsBlocked(goal, you, PlayerClearance);
+            if (dist < 0.1f || (taken && dist < PlayerClearance * 2f))
             {
-                t.localPosition = target;
+                if (!taken)
+                {
+                    t.localPosition = target;
+                }
                 return true;
             }
-            t.localRotation = Quaternion.LookRotation(flat / dist);
-            Vector3 next = at + flat / dist * Mathf.Min(WalkSpeed * dt, dist);
-            next.y = Mathf.Lerp(at.y, target.y, Mathf.Min(1f, WalkSpeed * dt / dist));
-            t.localPosition = next;
+            Vector2 step = WalkAround.Step(new Vector2(at.x, at.z), goal, you, PlayerClearance, WalkSpeed * dt);
+            Vector3 moved = new Vector3(step.x - at.x, 0f, step.y - at.z);
+            t.localRotation = Quaternion.LookRotation(moved.sqrMagnitude > 1e-6f ? moved.normalized : flat / dist);
+            t.localPosition = new Vector3(step.x, Mathf.Lerp(at.y, target.y, Mathf.Min(1f, WalkSpeed * dt / dist)), step.y);
             return false;
+        }
+
+        // Where the player stands in map space (x, z); far away when there is no player to go round.
+        private Vector2 PlayerOnMap()
+        {
+            if (tools == null)
+            {
+                return new Vector2(1e6f, 1e6f);
+            }
+            Vector3 local = map.InverseTransformPoint(tools.transform.position);
+            return new Vector2(local.x, local.z);
         }
 
         private static void FaceTowards(Transform t, Vector3 point)

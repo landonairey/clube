@@ -394,6 +394,7 @@ namespace Clube.Game
             Enable(lookAction);
             Enable(jumpAction);
             Enable(sprintAction);
+            Enable(crouchAction);
             Enable(freeCursorAction);
             SetCursorLocked(!IsCursorFree);
         }

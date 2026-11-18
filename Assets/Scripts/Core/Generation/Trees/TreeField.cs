@@ -50,8 +50,8 @@ namespace Clube.Core
 
         private readonly StartArea start;
 
-        // Cells given a tree to make up the start area's count; null until worked out.
-        private HashSet<Vector2Int> forced;
+        // Cells given a tree to make up an area's count, each with the area its tree must root in; null until worked out.
+        private Dictionary<Vector2Int, Rect> forced;
 
         public TreeField(TreeGeneration settings, int seed, ITerrainGenerator generator, StartArea start = null)
         {
@@ -135,12 +135,25 @@ namespace Clube.Core
             {
                 return;
             }
-            forced = new HashSet<Vector2Int>();
-            if (start == null || start.MinTrees <= 0)
+            forced = new Dictionary<Vector2Int, Rect>();
+            if (start != null && start.MinTrees > 0)
             {
-                return;
+                Stock(start.Area, start.MinTrees);
             }
-            Rect area = start.Area;
+        }
+
+        /// <summary>
+        /// GL745: makes sure an area has at least this many trees rooted in it, as <see cref="StartArea"/> does for a place
+        /// known only once the map is planned (the bounded map's starting parcel). Call before the area's chunks generate.
+        /// </summary>
+        public void EnsureTrees(Rect area, int minTrees)
+        {
+            StockStartArea();
+            Stock(area, minTrees);
+        }
+
+        private void Stock(Rect area, int minTrees)
+        {
             float size = CellSize;
             var empty = new List<Vector2Int>();
             int count = 0;
@@ -162,11 +175,11 @@ namespace Clube.Core
             }
             foreach (Vector2Int cell in empty)
             {
-                if (count >= start.MinTrees)
+                if (count >= minTrees)
                 {
                     break;
                 }
-                forced.Add(cell);
+                forced[cell] = area;
                 cells.Remove(cell);
                 if (TreeIn(cell).Parts != null)
                 {
@@ -199,9 +212,9 @@ namespace Clube.Core
         // The cell's tree, or none: a roll, a spot inside the cell, and flat ground there.
         private Tree Grow(Vector2Int cell)
         {
-            if (forced != null && forced.Contains(cell))
+            if (forced != null && forced.TryGetValue(cell, out Rect area))
             {
-                return GrowForced(cell);
+                return GrowForced(cell, area);
             }
             if (!TryGetSpot(cell, out Vector2 spot))
             {
@@ -263,10 +276,9 @@ namespace Clube.Core
 
         // A tree the start area needs: hashed spots in the part of the cell inside the area, the
         // first on flat ground; none when the cell has no flat spot.
-        private Tree GrowForced(Vector2Int cell)
+        private Tree GrowForced(Vector2Int cell, Rect area)
         {
             float size = CellSize;
-            Rect area = start.Area;
             float fromX = Mathf.Max(cell.x * size, area.xMin) + 1f;
             float toX = Mathf.Min((cell.x + 1) * size, area.xMax) - 1f;
             float fromZ = Mathf.Max(cell.y * size, area.yMin) + 1f;

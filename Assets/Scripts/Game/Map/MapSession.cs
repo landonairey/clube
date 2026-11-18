@@ -13,6 +13,9 @@ namespace Clube.Game
     /// </summary>
     public class MapSession : MonoBehaviour, IColumnHold
     {
+        // Fewest trees rooted on the starting parcel (GL745).
+        private const int StartParcelTrees = 3;
+
         [SerializeField]
         private WorldView worldView;
 
@@ -159,12 +162,26 @@ namespace Clube.Game
 
             Vector2 at = MapStart.Pick(Plan, Survey);
             StartPosition = worldView.transform.TransformPoint(new Vector3(at.x, generator.Height(at.x, at.y), at.y));
+            PlantStartParcel(at);
             PlacePlayer();
             BindLimit();
             UnityEngine.Debug.Log(
                 $"Map session: seed {terrain.Seed}, {Plan.Settlements.Count} settlements, {Plan.Roads.Count} roads, {Plan.WaterRoutes.Count} water routes; "
                 + $"survey and plan {LastBuildSeconds:0.0} s ({Survey.Timings}; {Plan.Timings}); start {StartPosition}", this);
             Rebuilt?.Invoke();
+        }
+
+        // GL745: the starting parcel has a couple of trees, whatever the seed gave it.
+        private void PlantStartParcel(Vector2 at)
+        {
+            PlayerParcels parcels = player != null ? player.GetComponent<PlayerParcels>() : null;
+            if (parcels == null || worldView.Trees == null)
+            {
+                return;
+            }
+            float size = parcels.SizeInChunks * worldView.World.Grid.ChunkWorldSize.x;
+            var corner = new Vector2(Mathf.Floor(at.x / size) * size, Mathf.Floor(at.y / size) * size);
+            worldView.Trees.EnsureTrees(new Rect(corner, new Vector2(size, size)), StartParcelTrees);
         }
 
         private void PlacePlayer()
@@ -202,17 +219,5 @@ namespace Clube.Game
             limit.Bind(this);
         }
 
-        private void OnGUI()
-        {
-            if (!IsBuilding)
-            {
-                return;
-            }
-            const float width = 360f, height = 48f;
-            var box = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.4f, width, height);
-            GUI.Box(box, GUIContent.none);
-            var style = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 18 };
-            GUI.Label(box, "Surveying the map…", style);
-        }
     }
 }

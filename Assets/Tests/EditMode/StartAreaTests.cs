@@ -39,6 +39,31 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void TreeField_EnsureTrees_StocksAPlaceKnownOnlyOnceTheMapIsPlanned()
+        {
+            // GL745: the bounded map's starting parcel.
+            VoxelMaterial wood = VoxelMaterial.Create(11, "Wood", VoxelMaterialCategory.Plant);
+            VoxelMaterial leaves = VoxelMaterial.Create(12, "Leaves", VoxelMaterialCategory.Plant);
+            try
+            {
+                var settings = new TreeGeneration { Chance = 0f, CellSize = 10f, Wood = wood, Leaves = leaves };
+                var field = new TreeField(settings, 7, new FlatGenerator(20f));
+                var parcel = new Rect(320f, -64f, 32f, 32f);
+                Assert.AreEqual(0, RootedIn(field, parcel), "Asked before the plan, as the map's survey does.");
+
+                field.EnsureTrees(parcel, 3);
+                Assert.AreEqual(3, RootedIn(field, parcel));
+                field.EnsureTrees(parcel, 3);
+                Assert.AreEqual(3, RootedIn(field, parcel), "Already stocked: none added.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(wood);
+                Object.DestroyImmediate(leaves);
+            }
+        }
+
+        [Test]
         public void LayerTable_AddsAClayDeposit_OnlyWhenNoneReachesTheArea()
         {
             VoxelMaterial clay = VoxelMaterial.Create(13, "Clay");

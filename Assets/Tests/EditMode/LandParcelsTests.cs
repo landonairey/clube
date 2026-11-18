@@ -16,6 +16,28 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void PointsOutside_AreOffTheParcel_NearestSideFirst()
+        {
+            // GL744: where the cart can set the player down, to walk onto the family's land.
+            var parcels = new LandParcels(32f, 100, 100);
+            var parcel = new Vector2Int(2, 1);
+            Vector2[] points = parcels.PointsOutside(parcel, new Vector2(70f, 60f), 6f);
+
+            Assert.AreEqual(4, points.Length);
+            Assert.AreEqual(new Vector2(70f, 70f), points[0], "The north side is 4 m away, the nearest.");
+            foreach (Vector2 point in points)
+            {
+                Assert.AreNotEqual(parcel, parcels.ParcelAt(new Vector3(point.x, 0f, point.y)));
+                Assert.AreEqual(6f, SideDistance(parcels.AreaOf(parcel), point), 1e-3f);
+            }
+        }
+
+        private static float SideDistance(Rect area, Vector2 point)
+        {
+            return Mathf.Max(area.xMin - point.x, point.x - area.xMax, area.yMin - point.y, point.y - area.yMax);
+        }
+
+        [Test]
         public void ParcelsWhoseCentreIsOutsideTheSaleArea_CannotBeBought()
         {
             // GL666: a playable area of x < 50 m; parcels of 32 m have centres at 16, 48, 80...

@@ -33,7 +33,19 @@ namespace Clube.Game
         private const float EyeOnBed = 1.05f;
         private const float BedBack = -0.35f;
         private const float LyingRoll = 80f;
+        private const float RidePitch = 22f;
         private const float DriveOffSeconds = 6f;
+
+        // GL743: the ride waits under the loading line until frames come evenly (the world is still settling just after the
+        // player is placed), for at most this long; a slow frame never skips more of the animation than the longest step.
+        private const float CalmFrameSeconds = 0.05f;
+        private const int CalmFrames = 20;
+        private const float MostSettlingSeconds = 8f;
+        private const float LongestStep = 0.05f;
+
+        // GL744: metres outside the family's parcel the cart drops the player, and the most the ground there may differ.
+        private const float DropOutside = 6f;
+        private const float DropMaxRise = 4f;
 
         private PlayerController player;
         private PlayerSpawn spawn;
@@ -50,6 +62,8 @@ namespace Clube.Game
         private float phaseTime;
         private float sinceStart;
         private float sinceFall;
+        private float settling;
+        private int calmFrames;
         private float cartAlong;
         private float cartSpeed;
         private float cartTip;
@@ -130,13 +144,13 @@ namespace Clube.Game
             if (phase == Phase.Waiting)
             {
                 // Black until the ground under the parcel is there.
-                if (!spawn.IsPlaced)
+                if (!spawn.IsPlaced || !Settled())
                 {
                     return;
                 }
                 Begin();
             }
-            float dt = Time.deltaTime;
+            float dt = Mathf.Min(Time.deltaTime, LongestStep);
             phaseTime += dt;
             sinceStart += dt;
             if (phase != Phase.DriveOff && Skipped())
@@ -167,11 +181,60 @@ namespace Clube.Game
             DriveCart(dt);
         }
 
-        // The player is placed on the parcel: that's where the cart will stop. Take the player out of the controller's hands.
-        private void Begin()
+        // True once the family's parcel is granted (where the player landed) and frames come evenly, or the wait is up.
+        private bool Settled()
+        {
+            PlayerParcels parcels = player.GetComponent<PlayerParcels>();
+            if (parcels != null && parcels.enabled && (parcels.Parcels == null || parcels.Parcels.Owned.Count == 0))
+            {
+                return false;
+            }
+            settling += Time.unscaledDeltaTime;
+            calmFrames = Time.unscaledDeltaTime <= CalmFrameSeconds ? calmFrames + 1 : 0;
+            return calmFrames >= CalmFrames || settling >= MostSettlingSeconds;
+        }
+
+        // GL744: the cart stops just outside the parcel, facing it, so the first thing to do is walk onto the land.
+        private void ChooseStop()
         {
             stop = player.transform.position;
             yaw = player.transform.eulerAngles.y;
+            PlayerParcels parcels = player.GetComponent<PlayerParcels>();
+            if (parcels == null || !parcels.enabled || parcels.Parcels == null || worldView == null)
+            {
+                return;
+            }
+            LandParcels land = parcels.Parcels;
+            Vector3 local = worldView.transform.InverseTransformPoint(stop);
+            Vector2Int parcel = land.ParcelAt(local);
+            Vector2 centre = land.CentreOf(parcel);
+            foreach (Vector2 point in land.PointsOutside(parcel, new Vector2(local.x, local.z), DropOutside))
+            {
+                Vector3 above = worldView.transform.TransformPoint(new Vector3(point.x, local.y + 40f, point.y));
+                if (!worldView.Raycast(new Ray(above, -worldView.transform.up), out Vector3 ground) || Mathf.Abs(ground.y - stop.y) > DropMaxRise
+                    || IsWet(point))
+                {
+                    continue;
+                }
+                stop = ground;
+                Vector3 toLand = worldView.transform.TransformPoint(new Vector3(centre.x, local.y, centre.y)) - stop;
+                yaw = Mathf.Atan2(toLand.x, toLand.z) * Mathf.Rad2Deg;
+                player.Teleport(stop + Vector3.up * 0.05f);
+                return;
+            }
+        }
+
+        private static bool IsWet(Vector2 point)
+        {
+            MapSession session = MapSession.Current;
+            System.Func<float, float, bool> wet = session != null && session.Map != null ? SettlementWriter.WetOf(session.Map.Water) : null;
+            return wet != null && wet(point.x, point.y);
+        }
+
+        // The player is placed by the parcel: that's where the cart will stop. Take the player out of the controller's hands.
+        private void Begin()
+        {
+            ChooseStop();
             heading = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
             headBase = head.localPosition;
             standingEye = headBase.y;
@@ -211,9 +274,9 @@ namespace Clube.Game
         {
             cartAlong = ArrivalTimeline.RideAlong(phaseTime);
             cart.Place(cartAlong, 0f, true);
-            // Lying on their back, looking at the sky, rocked by the ruts.
+            // GL743: lying back with the head propped up, looking along the cart's bed, rocked by the ruts.
             float sway = Mathf.Sin(sinceStart * 3.1f) + 0.5f * Mathf.Sin(sinceStart * 7.3f);
-            Look(OnBed(BedBack), LyingEye, -90f + sway * 1.5f, Mathf.Sin(sinceStart * 2.3f) * 2f);
+            Look(OnBed(BedBack), LyingEye, RidePitch + sway * 1.5f, Mathf.Sin(sinceStart * 2.3f) * 2f);
             if (phaseTime >= ArrivalTimeline.RideSeconds)
             {
                 SetPhase(Phase.Tip);
@@ -227,7 +290,7 @@ namespace Clube.Game
             cart.Place(0f, cartTip, false);
             // The load slides down the tilted bed towards the back.
             float slide = Mathf.Clamp01((s - 0.45f) / 0.55f);
-            Look(OnBed(BedBack - 0.75f * slide * slide), LyingEye, -90f + 15f * slide, 8f * slide);
+            Look(OnBed(BedBack - 0.75f * slide * slide), LyingEye, RidePitch - 20f * slide, 8f * slide);
             if (s >= 1f)
             {
                 eye = OnBed(BedBack - 0.75f);
@@ -381,6 +444,11 @@ namespace Clube.Game
             {
                 GUI.color = new Color(0f, 0f, 0f, black);
                 GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            }
+            if (phase == Phase.Waiting)
+            {
+                GUI.color = Color.white;
+                LoadingMessage.Draw(LoadingMessage.Ground(spawn != null ? spawn.Progress : 0f));
             }
             if (IsPlaying && phase != Phase.Waiting)
             {

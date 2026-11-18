@@ -20,7 +20,6 @@ namespace Clube.Game
         private PlayerSpawn spawn;
         private bool placedOnce;
         private float waitingSince = -1f;
-        private GUIStyle style;
 
         /// <summary>True while the curtain covers the view.</summary>
         public bool IsUp { get; private set; }
@@ -61,12 +60,9 @@ namespace Clube.Game
             GUI.color = colour;
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
-            style ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 22 };
+            GUI.color = Color.white;
             MapSession session = MapSession.Current;
-            string text = session != null && !session.IsReady
-                ? "Surveying the map…"
-                : $"Loading the land… {Mathf.RoundToInt(spawn.Progress * 100f)}%";
-            GUI.Label(new Rect(0f, Screen.height * 0.5f - 24f, Screen.width, 48f), text, style);
+            LoadingMessage.Draw(session != null && !session.IsReady ? LoadingMessage.Surveying : LoadingMessage.Ground(spawn.Progress));
             GUI.color = was;
         }
     }
