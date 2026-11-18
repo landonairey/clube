@@ -5,7 +5,6 @@ using System.Text;
 using Clube.Core;
 using Clube.Game;
 using Unity.Profiling;
-using Unity.Profiling.LowLevel.Unsafe;
 using UnityEngine;
 
 namespace Clube.Debug
@@ -25,7 +24,6 @@ namespace Clube.Debug
         private const float DefaultSeconds = 180f;
         private const int Seed = 1;
         private const int MarkersShown = 24;
-        private const int MostRecorders = 6000;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void StartIfAsked()
@@ -63,10 +61,7 @@ namespace Clube.Debug
         private readonly List<float> grass = new List<float>();
         private readonly List<float> allocated = new List<float>();
         private readonly List<float> drawCalls = new List<float>();
-        private readonly List<ProfilerRecorderHandle> handles = new List<ProfilerRecorderHandle>();
-        private readonly HashSet<string> watched = new HashSet<string>();
-        private readonly List<(string name, ProfilerRecorder recorder)> markers = new List<(string, ProfilerRecorder)>();
-        private readonly Dictionary<string, double> markerTotals = new Dictionary<string, double>();
+        private readonly FrameMarkers markers = new FrameMarkers();
         private ProfilerRecorder allocatedRecorder;
         private ProfilerRecorder drawCallsRecorder;
         private double surveyed = -1, stood = -1, shown = -1, loaded = -1;
@@ -85,7 +80,7 @@ namespace Clube.Debug
             GameScenes.LoadGame();
 
             double windowEnd = WindowSeconds;
-            WatchNewMarkers();
+            markers.WatchNew();
             while (clock.Elapsed.TotalSeconds < seconds)
             {
                 yield return null;
@@ -94,59 +89,16 @@ namespace Clube.Debug
                 {
                     Report(windowEnd - WindowSeconds, windowEnd);
                     windowEnd += WindowSeconds;
-                    WatchNewMarkers();
+                    markers.WatchNew();
                 }
             }
             text.AppendLine($"Milestones: map surveyed {surveyed:0.0} s, player stood {stood:0.0} s, view shown {shown:0.0} s, area loaded {loaded:0.0} s");
             Write(text.ToString());
-            foreach ((string _, ProfilerRecorder recorder) in markers)
-            {
-                recorder.Dispose();
-            }
+            markers.Dispose();
             allocatedRecorder.Dispose();
             drawCallsRecorder.Dispose();
             GameScenes.Quit();
         }
-
-        // Script code and the engine's main-thread work, by name; new names appear as systems first run.
-        private void WatchNewMarkers()
-        {
-            handles.Clear();
-            ProfilerRecorderHandle.GetAvailable(handles);
-            foreach (ProfilerRecorderHandle handle in handles)
-            {
-                if (markers.Count >= MostRecorders)
-                {
-                    return;
-                }
-                ProfilerRecorderDescription description = ProfilerRecorderHandle.GetDescription(handle);
-                if (description.UnitType != ProfilerMarkerDataUnit.TimeNanoseconds || !IsWatched(description) || !watched.Add(description.Name))
-                {
-                    continue;
-                }
-                var recorder = new ProfilerRecorder(handle, 1, ProfilerRecorderOptions.Default | ProfilerRecorderOptions.CollectOnlyOnCurrentThread);
-                recorder.Start();
-                markers.Add((description.Name, recorder));
-            }
-        }
-
-        // Every script's own code, and the engine's main stages by name: the Editor has thousands of other markers.
-        private static bool IsWatched(ProfilerRecorderDescription description)
-        {
-            string name = description.Name;
-            return description.Category == ProfilerCategory.Scripts || EngineMarkers.Contains(name)
-                || name.EndsWith(".Update()") || name.EndsWith(".LateUpdate()") || name.EndsWith(".FixedUpdate()") || name.EndsWith(".OnGUI()");
-        }
-
-        private static readonly HashSet<string> EngineMarkers = new HashSet<string>
-        {
-            "PlayerLoop", "Update.ScriptRunBehaviourUpdate", "PreLateUpdate.ScriptRunBehaviourLateUpdate", "FixedBehaviourUpdate",
-            "Update.ScriptRunDelayedDynamicFrameRate", "PostLateUpdate.FinishFrameRendering", "PostLateUpdate.UpdateAllRenderers",
-            "FixedUpdate.PhysicsFixedUpdate", "Physics.Simulate", "Physics.BakePhysXCollisionMeshData", "Physics.SyncColliderTransform",
-            "Inl_RenderCameraStack", "CullScriptable", "GC.Collect", "JobHandle.Complete", "Semaphore.WaitForSignal",
-            "Gfx.WaitForPresentOnGfxThread", "Application.Integrate Assets in Background", "GameObject.AddComponent",
-            "GameObject.Activate", "Mesh.UploadMeshData", "UGUI.Rendering.RenderOverlays", "GUI.Repaint",
-        };
 
         private void Sample()
         {
@@ -162,15 +114,7 @@ namespace Clube.Debug
             frames.Add(Time.unscaledDeltaTime * 1000f);
             allocated.Add(allocatedRecorder.Valid ? allocatedRecorder.LastValue / 1024f : 0f);
             drawCalls.Add(drawCallsRecorder.Valid ? drawCallsRecorder.LastValue : 0f);
-            foreach ((string name, ProfilerRecorder recorder) in markers)
-            {
-                long value = recorder.Valid ? recorder.LastValue : 0;
-                if (value > 0)
-                {
-                    markerTotals.TryGetValue(name, out double total);
-                    markerTotals[name] = total + value * 1e-6;
-                }
-            }
+            markers.Sample();
 
             MapSession session = MapSession.Current;
             WorldView world = session != null ? session.WorldView : null;
@@ -227,9 +171,9 @@ namespace Clube.Debug
                 string treeCounts = treeView != null ? $"; distant trees {treeView.TreeCount} placed, {treeView.DrawnCount} in view, {treeView.PendingTiles} tiles waiting" : "";
                 text.AppendLine($"  render distance {world.RenderDistance}, pending {world.PendingCount}, renderers {world.Stats.Renderers}{treeCounts}; phases (last frame): {world.Stats.Phases}");
             }
-            if (markerTotals.Count > 0 && frames.Count > 0)
+            string top = markers.Top(MarkersShown, frames.Count);
+            if (top.Length > 0)
             {
-                string top = string.Join("; ", markerTotals.OrderByDescending(m => m.Value).Take(MarkersShown).Select(m => $"{m.Key} {m.Value / frames.Count:0.00}"));
                 text.AppendLine($"  markers (ms a frame): {top}");
             }
             UnityEngine.Debug.Log($"[tutorialbench] {from:0}-{to:0} s: {frames.Count / WindowSeconds:0.0} FPS, {state}");
@@ -237,7 +181,7 @@ namespace Clube.Debug
             {
                 values.Clear();
             }
-            markerTotals.Clear();
+            markers.Clear();
         }
 
         private static string Line(string name, List<float> values, string unit = " ms")

@@ -97,6 +97,36 @@ namespace Clube.Core
             return loaded.TryGetValue(coord, out chunk);
         }
 
+        /// <summary>
+        /// True when every chunk of a box (the world's layers of it) is loaded. Without <paramref name="missing"/> it stops at
+        /// the first that isn't; with it, every chunk still to load is added there.
+        /// </summary>
+        public bool AreLoaded(Vector3Int min, Vector3Int max, int heightInChunks, List<Vector3Int> missing = null)
+        {
+            bool all = true;
+            for (int y = Mathf.Max(0, min.y); y <= Mathf.Min(heightInChunks - 1, max.y); y++)
+            {
+                for (int z = min.z; z <= max.z; z++)
+                {
+                    for (int x = min.x; x <= max.x; x++)
+                    {
+                        var coord = new Vector3Int(x, y, z);
+                        if (IsLoaded(coord))
+                        {
+                            continue;
+                        }
+                        if (missing == null)
+                        {
+                            return false;
+                        }
+                        missing.Add(coord);
+                        all = false;
+                    }
+                }
+            }
+            return all;
+        }
+
         /// <summary>True once any edit has touched the chunk.</summary>
         public bool IsEdited(Vector3Int coord)
         {

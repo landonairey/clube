@@ -12,6 +12,9 @@ namespace Clube.Game
     /// </summary>
     public class MapCarts : MonoBehaviour
     {
+        // Frames between looks at a cart out of sight (GL770).
+        private const int HiddenLookFrames = 8;
+
         [SerializeField]
         private MapSession session;
 
@@ -111,6 +114,11 @@ namespace Clube.Game
                 CartRun run = runs[i];
                 bool held = seconds < heldUntil[i];
                 delays[i] += held ? passed : 0.0;
+                // GL770: a cart nobody can see is only looked at now and then, for whether it has come into range.
+                if (carts[i] == null && (i + Time.frameCount) % HiddenLookFrames != 0)
+                {
+                    continue;
+                }
                 if (!roads.TryLine(run.Road, out RoadLine line, out IReadOnlyList<RouteBridges.Span> bridges))
                 {
                     Hide(i);

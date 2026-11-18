@@ -205,6 +205,12 @@ namespace Clube.Core
         /// </summary>
         public bool IsLoadingInSight => IsLoading && (Hurry || (streamer?.IsLoadingDrawnArea ?? false));
 
+        /// <summary>Loads these chunks ahead of the rest (GL770): a road or settlement piece near the player is waiting for them.</summary>
+        public void RequestChunks(List<Vector3Int> chunks)
+        {
+            streamer?.Request(chunks);
+        }
+
         /// <summary>
         /// Set while something waits behind a curtain for the ground round the focus (GL653: a spawn): nothing is being
         /// watched, so work that is rationed by the frame (writing roads and settlements into the ground) may take most of it.

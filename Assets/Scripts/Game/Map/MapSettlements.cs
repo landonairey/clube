@@ -24,6 +24,13 @@ namespace Clube.Game
         private static readonly ProfilerMarker WriteMarker = new ProfilerMarker("MapSettlements.Write");
         private static readonly ProfilerMarker FitMarker = new ProfilerMarker("MapSettlements.Fit");
 
+        private readonly FrameAllowance allowance = new FrameAllowance();
+        // Metres from the viewer within which a piece is written whatever the allowance says (GL770).
+        private const float CloseMetres = 64f;
+        // Metres from the viewer within which a piece's missing chunks are fetched ahead of the rest (GL770).
+        private const float RequestMetres = 128f;
+        private readonly List<Vector3Int> missing = new List<Vector3Int>();
+
         // GL729: the keepers' dispositions (DispositionBook.Save).
         private const string DispositionsKey = "shopdisposition.book";
 
@@ -250,6 +257,7 @@ namespace Clube.Game
             }
             Vector3 local = session.WorldView.transform.InverseTransformPoint(view.transform.position);
             var viewer = new Vector2(local.x, local.z);
+            float started = Time.realtimeSinceStartup;
             if ((viewer - collectedAt).sqrMagnitude > 6f * 6f || Time.unscaledTime - collectedTime > 1f)
             {
                 using (CollectMarker.Auto())
@@ -257,9 +265,21 @@ namespace Clube.Game
                     Collect(viewer);
                 }
             }
-            using (WriteMarker.Auto())
+            // GL770: one piece can take several frames' budget: the frames after it pay that back.
+            bool mayWrite = allowance.MayWork(writeBudgetMilliseconds, Time.frameCount);
+            bool inSight = session.WorldView.IsLoadingInSight;
+            // A piece close by holds the ground the player is about to walk on: it doesn't wait its turn.
+            bool close = pending.Count > 0 && pending[0].Distance < CloseMetres;
+            if (inSight || mayWrite || close)
             {
-                Write();
+                using (WriteMarker.Auto())
+                {
+                    Write();
+                }
+            }
+            if (!inSight)
+            {
+                allowance.Spend((Time.realtimeSinceStartup - started) * 1000f);
             }
             HeldColumns = hold.Count;
         }
@@ -557,8 +577,13 @@ namespace Clube.Game
                     continue;
                 }
                 checks++;
-                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece))
+                missing.Clear();
+                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece, missing))
                 {
+                    if (next.Distance < RequestMetres)
+                    {
+                        view.RequestChunks(missing);
+                    }
                     continue;
                 }
                 float before = Time.realtimeSinceStartup;

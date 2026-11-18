@@ -38,6 +38,9 @@ namespace Clube.Core
         // Scattered chunks are kept while the focus is within this many radii of them across the ground.
         private const float KeepRadii = 3f;
 
+        // Metres the focus moves before the chunks are looked over again.
+        private const float ScanMoveMetres = 4f;
+
         // The grid's rolls: x and z of the point in a cell, its turn, its height, and whether it's wheat.
         private const int SaltX = 1;
         private const int SaltZ = 2;
@@ -429,11 +432,11 @@ namespace Clube.Core
                 radius = reach;
                 scanPending = true;
             }
-            // The chunks are looked over only when something changed: a new mesh, the focus moving a
-            // metre, or the last look running out of time.
+            // The chunks are looked over only when something changed: a new mesh, the focus moving a few
+            // metres (GL770: every metre was six looks a second at a run), or the last look running out of time.
             Vector3 focus = worldView.Focus.position;
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
-            if (scanPending || (focus - scannedFrom).sqrMagnitude > 1f)
+            if (scanPending || (focus - scannedFrom).sqrMagnitude > ScanMoveMetres * ScanMoveMetres)
             {
                 Scan(focus);
             }

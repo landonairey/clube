@@ -13,6 +13,11 @@ namespace Clube.Game
     /// </summary>
     public class MapBoats : MonoBehaviour
     {
+        // Frames between looks at a boat out of sight (GL770).
+        private const int HiddenLookFrames = 8;
+
+        private readonly Dictionary<(int, IReadOnlyList<string>), List<ItemDefinition>> goodsFor = new Dictionary<(int, IReadOnlyList<string>), List<ItemDefinition>>();
+
         [SerializeField]
         private MapSession session;
 
@@ -37,11 +42,9 @@ namespace Clube.Game
         private int mostBoats = 10;
 
         private readonly List<VesselClass> classes = VesselClass.Defaults();
-        private readonly List<ItemDefinition> goods = new List<ItemDefinition>();
         private readonly Dictionary<long, RoadLine> lanes = new Dictionary<long, RoadLine>();
         private readonly Dictionary<long, OffMapPath> offMapLanes = new Dictionary<long, OffMapPath>();
         private readonly Dictionary<long, float> offMapStarts = new Dictionary<long, float>();
-        private readonly List<ItemDefinition> nextGoods = new List<ItemDefinition>();
         private RunWay[] runWays = System.Array.Empty<RunWay>();
         private SettlementDocks docks;
         private MapSettlements settlements;
@@ -259,6 +262,7 @@ namespace Clube.Game
             }
             if (session.Version != version)
             {
+                goodsFor.Clear();
                 StartOver();
             }
             Camera view = Camera.main;
@@ -275,6 +279,11 @@ namespace Clube.Game
             {
                 bool held = seconds < heldUntil[i];
                 delays[i] += held ? passed : 0.0;
+                // GL770: a boat nobody can see is only looked at now and then, for whether it has come into range.
+                if (boats[i] == null && (i + Time.frameCount) % HiddenLookFrames != 0)
+                {
+                    continue;
+                }
                 BoatRun run = runs[i];
                 RunPlace state = run.At(seconds - delays[i]);
                 if (held)
@@ -298,8 +307,7 @@ namespace Clube.Game
                 {
                     RoadLine lane = way.Lane;
                     int seed = session.Plan.Seed + run.Index * 977;
-                    CargoLoad.GoodsOf(session.Plan, catalog, state.Outbound || run.To < 0 ? run.From : run.To, goods);
-                    CargoLoad.Only(goods, catalog, run.CargoWords);
+                    List<ItemDefinition> goods = GoodsFor(state.Outbound || run.To < 0 ? run.From : run.To, run);
                     // GL726: lying at a settlement's dock, it is moored at its berth while its hands unload and load.
                     DockLayout dock = state.Moving ? null : state.Outbound ? way.ToDock : way.FromDock;
                     if (dock != null)
@@ -307,8 +315,7 @@ namespace Clube.Game
                         Vector2 moored = lane.Flat(state.Outbound ? lane.Length : 0f);
                         Vector2 heading = lane.Direction(state.Outbound ? lane.Length : 0f) * (state.Outbound ? 1f : -1f);
                         boats[i].Float(moored, SurfaceAt(moored, boats[i].Surface), heading, false);
-                        CargoLoad.GoodsOf(session.Plan, catalog, state.Outbound ? run.To : run.From, nextGoods);
-                        CargoLoad.Only(nextGoods, catalog, run.CargoWords);
+                        List<ItemDefinition> nextGoods = GoodsFor(state.Outbound ? run.To : run.From, run);
                         Vector2 drop = dock.SetDown(run.Index);
                         Vector3 dropAt = session.WorldView.transform.TransformPoint(new Vector3(drop.x, docks.DeckHeight(dock), drop.y));
                         boats[i].Stop(TradeStop.At(state.Rested, run.Class.RestSeconds, 0f), state.Trip, goods, state.Trip + 1, nextGoods, seed, dropAt);
@@ -338,6 +345,20 @@ namespace Clube.Game
                     }
                 }
             }
+        }
+
+        // GL770: what a settlement loads onto a vessel of this cargo, worked out once: looked through the catalog for every boat in sight, every frame, it was most of what the boats cost.
+        private List<ItemDefinition> GoodsFor(int settlement, BoatRun run)
+        {
+            var key = (settlement, run.CargoWords);
+            if (!goodsFor.TryGetValue(key, out List<ItemDefinition> found))
+            {
+                found = new List<ItemDefinition>();
+                CargoLoad.GoodsOf(session.Plan, catalog, settlement, found);
+                CargoLoad.Only(found, catalog, run.CargoWords);
+                goodsFor[key] = found;
+            }
+            return found;
         }
 
         private Boat Launch(BoatRun run)
