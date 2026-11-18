@@ -70,23 +70,14 @@ namespace Clube.Core
         /// <summary>Keeps a parcel from ever being bought or granted (GL408: the town's land). False when it was already locked.</summary>
         public bool Lock(Vector2Int parcel)
         {
-            if (!locked.Add(parcel))
-            {
-                return false;
-            }
-            Changed?.Invoke();
-            return true;
+            // Not a change of owner (GL770): a settlement locks hundreds at once, and each one redrew the player's whole fence.
+            return locked.Add(parcel);
         }
 
         /// <summary>Lets a locked parcel be owned again (GL473: the player bought the trading post). False when it wasn't locked.</summary>
         public bool Unlock(Vector2Int parcel)
         {
-            if (!locked.Remove(parcel))
-            {
-                return false;
-            }
-            Changed?.Invoke();
-            return true;
+            return locked.Remove(parcel);
         }
 
         /// <summary>True for a parcel nobody can buy (the town's land, GL408).</summary>
