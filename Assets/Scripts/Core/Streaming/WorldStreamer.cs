@@ -298,9 +298,10 @@ namespace Clube.Core
         private const double PlayingAddShare = 0.7;
         private const int PlayingStartsPastBudget = 2;
 
-        // The layers under and over a column's ground that load first while playing (trees and road cuttings reach into them),
-        // the columns round the player that always do, and the columns' ground layers remembered.
-        private const int GroundLayersBelow = 3, GroundLayersAbove = 6, MinimumGroundReach = 8, MostGroundLayersKept = 20000;
+        // The layers under and over a column's ground that load first while playing: all a road or settlement piece waits for
+        // before it is written and its ground shown (cuttings below; trees and buildings above). Then the columns round the
+        // player that always do, and the columns' ground layers remembered.
+        private const int GroundLayersBelow = 4, GroundLayersAbove = 12, MinimumGroundReach = 8, MostGroundLayersKept = 20000;
         private readonly Dictionary<Vector2Int, int> groundLayers = new Dictionary<Vector2Int, int>();
         private int groundCursor;
 

@@ -80,6 +80,7 @@ namespace Clube.Debug
         private Transform body;
         private float walked;
         private float underfootGround = 1f, nearGround = 1f, drawnGround = 1f;
+        private string underfootWhy = "";
         private FarTerrainView farView;
         private float longestFrame;
         private string longestFrameWent = "";
@@ -221,7 +222,7 @@ namespace Clube.Debug
             World chunks = world.World;
             Vector3 size = chunks.Grid.ChunkWorldSize;
             Vector3Int centre = chunks.Grid.WorldToChunk(world.transform.InverseTransformPoint(body.position));
-            int columns = 0, ready = 0;
+            int columns = 0, ready = 0, unloaded = 0, held = 0, unmeshed = 0;
             for (int z = -radius; z <= radius; z++)
             {
                 for (int x = -radius; x <= radius; x++)
@@ -233,17 +234,30 @@ namespace Clube.Debug
                     columns++;
                     int cx = centre.x + x, cz = centre.z + z;
                     int ground = Mathf.FloorToInt(session.Map.Height((cx + 0.5f) * size.x, (cz + 0.5f) * size.z) / size.y);
-                    bool shown = true;
+                    bool shown = true, loaded = true;
                     for (int y = Mathf.Max(0, ground - 1); y <= ground + 1 && shown; y++)
                     {
                         // A chunk waiting to be meshed again after an edit still shows its last mesh.
                         var coord = new Vector3Int(cx, y, cz);
-                        shown = chunks.TryGetChunk(coord, out Chunk chunk) && (!chunk.IsDirty || world.Renderers.ContainsKey(coord));
+                        loaded = chunks.TryGetChunk(coord, out Chunk chunk);
+                        shown = loaded && (!chunk.IsDirty || world.Renderers.ContainsKey(coord));
                     }
                     ready += shown ? 1 : 0;
+                    if (!shown)
+                    {
+                        world.ColumnState(new Vector2Int(cx, cz), out _, out _, out bool waiting);
+                        unloaded += loaded ? 0 : 1;
+                        held += loaded && waiting ? 1 : 0;
+                        unmeshed += loaded && !waiting ? 1 : 0;
+                    }
                 }
             }
-            return columns > 0 ? (float)ready / columns : 1f;
+            float share = columns > 0 ? (float)ready / columns : 1f;
+            if (radius == UnderfootColumns && share < underfootGround)
+            {
+                underfootWhy = $"{unloaded} columns not loaded, {held} held for roads and settlements, {unmeshed} waiting for a mesh";
+            }
+            return share;
         }
 
         // Stands the player on the route at the distance walked, there and back, facing the way it goes.
@@ -307,7 +321,8 @@ namespace Clube.Debug
             text.AppendLine(Line("  streamer", streamer) + " | " + Line("far terrain", far) + " | " + Line("coarse terrain", lod) + " | " + Line("distant trees", trees)
                             + " | " + Line("water", water) + " | " + Line("grass", grass));
             text.AppendLine(Line("  draw calls", drawCalls, "") + " | " + Line("allocated", allocated, " KB"));
-            text.AppendLine($"  ground ready at its worst: {underfootGround * 100f:0}% within {UnderfootColumns * 4} m, {nearGround * 100f:0}% within {NearColumns * 4} m, {drawnGround * 100f:0}% within {world.DetailDistance * 4} m");
+            text.AppendLine($"  ground ready at its worst: {underfootGround * 100f:0}% within {UnderfootColumns * 4} m, {nearGround * 100f:0}% within {NearColumns * 4} m, {drawnGround * 100f:0}% within {world.DetailDistance * 4} m"
+                            + (underfootGround < 1f ? $" (underfoot: {underfootWhy})" : ""));
             underfootGround = nearGround = drawnGround = 1f;
             text.AppendLine($"  pending {world.PendingCount}, loading {world.IsLoading}, in sight {world.IsLoadingInSight}, renderers {world.Stats.Renderers}; phases (last frame): {world.Stats.Phases}");
             string top = markers.Top(MarkersShown, frames.Count);

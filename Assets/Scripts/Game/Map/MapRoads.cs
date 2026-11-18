@@ -24,6 +24,8 @@ namespace Clube.Game
         private const float IdleLookSeconds = 0.2f;
         private float nextLookTime;
         private readonly FrameAllowance allowance = new FrameAllowance();
+        // Metres from the viewer within which a piece is written whatever the allowance says (GL770).
+        private const float CloseMetres = 64f;
 
         // Pieces looked at each frame for whether their chunks have loaded.
         private const int ChecksPerFrame = 32;
@@ -301,7 +303,9 @@ namespace Clube.Game
             // GL770: one piece can take several frames' budget: the frames after it pay that back.
             bool mayWrite = allowance.MayWork(writeBudgetMilliseconds, Time.frameCount);
             bool inSight = session.WorldView.IsLoadingInSight;
-            if (inSight || mayWrite)
+            // A piece close by holds the ground the player is about to walk on: it doesn't wait its turn.
+            bool close = pending.Count > 0 && pending[0].Distance < CloseMetres * CloseMetres;
+            if (inSight || mayWrite || close)
             {
                 using (WriteMarker.Auto())
                 {

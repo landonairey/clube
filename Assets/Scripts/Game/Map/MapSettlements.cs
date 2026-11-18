@@ -25,6 +25,8 @@ namespace Clube.Game
         private static readonly ProfilerMarker FitMarker = new ProfilerMarker("MapSettlements.Fit");
 
         private readonly FrameAllowance allowance = new FrameAllowance();
+        // Metres from the viewer within which a piece is written whatever the allowance says (GL770).
+        private const float CloseMetres = 64f;
 
         // GL729: the keepers' dispositions (DispositionBook.Save).
         private const string DispositionsKey = "shopdisposition.book";
@@ -263,7 +265,9 @@ namespace Clube.Game
             // GL770: one piece can take several frames' budget: the frames after it pay that back.
             bool mayWrite = allowance.MayWork(writeBudgetMilliseconds, Time.frameCount);
             bool inSight = session.WorldView.IsLoadingInSight;
-            if (inSight || mayWrite)
+            // A piece close by holds the ground the player is about to walk on: it doesn't wait its turn.
+            bool close = pending.Count > 0 && pending[0].Distance < CloseMetres;
+            if (inSight || mayWrite || close)
             {
                 using (WriteMarker.Auto())
                 {
