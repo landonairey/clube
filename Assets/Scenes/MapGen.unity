@@ -7998,7 +7998,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.MapRoadTint
   session: {fileID: 1350119487}
   texelSize: 2
-  tint: {r: 1.1, g: 1.08, b: 1.05, a: 1}
 --- !u!114 &1350119501
 MonoBehaviour:
   m_ObjectHideFlags: 0

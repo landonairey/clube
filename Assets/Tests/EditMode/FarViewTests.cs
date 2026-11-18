@@ -137,6 +137,41 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void AMaterialsMeanColour_IsItsTexturesInLinearSpace()
+        {
+            var texture = new Texture2D(4, 4, TextureFormat.RGBA32, true, false);
+            made.Add(texture);
+            var texels = new Color32[16];
+            for (int i = 0; i < texels.Length; i++)
+            {
+                texels[i] = new Color32(128, 128, 128, 255);
+            }
+            texture.SetPixels32(texels);
+            texture.Apply(true, false);
+
+            Color mean = VoxelMaterial.MeanLinearColor(texture, Color.magenta);
+
+            Assert.AreEqual(((Color)new Color32(128, 128, 128, 255)).linear.r, mean.r, 0.01f, "sRGB texels are read as linear");
+            Assert.AreEqual(Color.red.linear.r, VoxelMaterial.MeanLinearColor(null, Color.red).r, 1e-3f, "no texture: the fallback");
+        }
+
+#if UNITY_EDITOR
+        [Test]
+        public void ThePavedRoadsSurface_IsADarkNeutralGrey_NotItsDebugColour()
+        {
+            MaterialRegistry registry = UnityEditor.AssetDatabase.LoadAssetAtPath<MaterialRegistry>(
+                UnityEditor.AssetDatabase.GUIDToAssetPath(UnityEditor.AssetDatabase.FindAssets("t:MaterialRegistry")[0]));
+            RoadClassDefinition paved = RoadClassDefinition.Defaults().Find(road => road.Class == RoadClass.PavedCartPath);
+
+            Color mean = registry.Find(paved.Surface).MeanColor;
+
+            Assert.AreEqual(0.2f, mean.r, 0.04f, "the cobbles' own brightness");
+            Assert.AreEqual(mean.r, mean.g, 0.03f, "grey");
+            Assert.AreEqual(mean.r, mean.b, 0.03f, "grey");
+        }
+#endif
+
+        [Test]
         public void TheHaze_KeepsNearLandClear_AndBuildsWithDistance()
         {
             Assert.AreEqual(0.5f, AirHaze.HazeAt(7000f, 7000f), 1e-4f, "half lost at the half distance");

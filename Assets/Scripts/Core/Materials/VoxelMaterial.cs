@@ -218,6 +218,31 @@ namespace Clube.Core
 
         public Color DebugColor => debugColor;
 
+        /// <summary>
+        /// GL757: the colour it looks from far off, in linear space as shaders take it: its texture's mean, or its
+        /// <see cref="DebugColor"/> without a readable texture. The debug colour is only a marker, far lighter than most textures.
+        /// </summary>
+        public Color MeanColor => MeanLinearColor(albedo, debugColor);
+
+        /// <summary>A texture's mean colour in linear space, read from its smallest mip level; <paramref name="fallback"/> (sRGB) if it can't be read.</summary>
+        public static Color MeanLinearColor(Texture2D texture, Color fallback)
+        {
+            if (texture == null || !texture.isReadable)
+            {
+                return fallback.linear;
+            }
+            Color32[] texels = texture.GetPixels32(texture.mipmapCount - 1);
+            var sum = new Vector3();
+            foreach (Color32 texel in texels)
+            {
+                Color colour = texel;
+                colour = texture.isDataSRGB ? colour.linear : colour;
+                sum += new Vector3(colour.r, colour.g, colour.b);
+            }
+            sum /= Mathf.Max(1, texels.Length);
+            return new Color(sum.x, sum.y, sum.z);
+        }
+
         public float Hardness => hardness;
 
         /// <summary>The item extracting it gives (O6), or null.</summary>
