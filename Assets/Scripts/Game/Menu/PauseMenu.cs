@@ -14,8 +14,8 @@ namespace Clube.Game
     /// </summary>
     public class PauseMenu : MonoBehaviour
     {
-        private const float Width = 300f;
-        private const float NamingWidth = 460f;
+        private const float Width = 380f;
+        private const float NamingWidth = 520f;
         private const float ButtonHeight = 40f;
         private const string NameField = "SaveName";
 
@@ -244,7 +244,7 @@ namespace Clube.Game
 
         private void DrawPaused()
         {
-            float height = 56f + 4f * (ButtonHeight + 10f) + 16f;
+            float height = 96f + 4f * (ButtonHeight + 10f) + 16f;
             BeginPopup(Width, height);
             GUILayout.Label("Paused", titleStyle);
             GUILayout.Space(8f);
@@ -288,7 +288,7 @@ namespace Clube.Game
             Event current = Event.current;
             bool enter = current.type == EventType.KeyDown && (current.keyCode == KeyCode.Return || current.keyCode == KeyCode.KeypadEnter);
 
-            float height = 56f + 22f + 40f + 22f + ButtonHeight + 28f + (problem != null ? 40f : 0f);
+            float height = 96f + 22f + 50f + 40f + ButtonHeight + 28f + (problem != null ? 60f : 0f);
             BeginPopup(NamingWidth, height);
             GUILayout.Label("Save game", titleStyle);
             GUILayout.Space(6f);
@@ -328,6 +328,7 @@ namespace Clube.Game
         private static void BeginPopup(float width, float height)
         {
             width = Mathf.Min(width, Screen.width - 32f);
+            height = Mathf.Min(height, Screen.height - 16f);
             var area = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(area);
             GUILayout.BeginArea(new Rect(area.x + 20f, area.y + 12f, area.width - 40f, area.height - 24f));

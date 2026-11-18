@@ -99,12 +99,12 @@ namespace Clube.Game
             GUILayout.Label("Game mode", styles.Label);
             GUILayout.Space(4f);
             GUILayout.BeginHorizontal();
-            if (GameUi.LayoutButton(OpeningText(!debug, "Demo", ""), styles.ModeButton, GUILayout.Height(36f)))
+            if (GameUi.LayoutButton(OpeningText(!debug, "Demo", ""), styles.ModeButton, GUILayout.MinHeight(36f)))
             {
                 debug = false;
             }
             GUILayout.Space(4f);
-            if (GameUi.LayoutButton(OpeningText(debug, "Debug", ""), styles.ModeButton, GUILayout.Height(36f)))
+            if (GameUi.LayoutButton(OpeningText(debug, "Debug", ""), styles.ModeButton, GUILayout.MinHeight(36f)))
             {
                 debug = true;
             }
@@ -112,7 +112,7 @@ namespace Clube.Game
             GUILayout.Space(6f);
             foreach (ModeEntry entry in debug ? DebugModes : DemoModes)
             {
-                if (GameUi.LayoutButton(OpeningText(Mode == entry.Mode, entry.Name, entry.About), styles.ModeButton, GUILayout.Height(40f)) && debug)
+                if (GameUi.LayoutButton(OpeningText(Mode == entry.Mode, entry.Name, entry.About), styles.ModeButton, GUILayout.MinHeight(40f)) && debug)
                 {
                     debugSelected = entry.Mode;
                 }
@@ -147,12 +147,12 @@ namespace Clube.Game
                 GUILayout.Space(14f);
                 GUILayout.Label("Opening", styles.Label);
                 GUILayout.Space(4f);
-                if (GameUi.LayoutButton(OpeningText(withTutorial, "Tutorial", "A day's work at the Mining Corp quarry."), styles.ModeButton, GUILayout.Height(40f)))
+                if (GameUi.LayoutButton(OpeningText(withTutorial, "Tutorial", "A day's work at the Mining Corp quarry."), styles.ModeButton, GUILayout.MinHeight(40f)))
                 {
                     withTutorial = true;
                 }
                 GUILayout.Space(4f);
-                if (GameUi.LayoutButton(OpeningText(!withTutorial, "Skip it", "Start on your family's parcel."), styles.ModeButton, GUILayout.Height(40f)))
+                if (GameUi.LayoutButton(OpeningText(!withTutorial, "Skip it", "Start on your family's parcel."), styles.ModeButton, GUILayout.MinHeight(40f)))
                 {
                     withTutorial = false;
                 }

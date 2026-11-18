@@ -40,7 +40,7 @@ namespace Clube.Game
             postWood.a = 1f;
             frame.Box(new Vector3(0f, PostHeight * 0.5f - 0.4f, 0f), new Vector3(0.16f, PostHeight + 0.8f, 0.16f), Quaternion.identity, postWood);
             frame.Box(new Vector3(0f, PostHeight + 0.03f, 0f), new Vector3(0.22f, 0.06f, 0.22f), Quaternion.identity, postWood * 0.85f);
-            float width = Mathf.Clamp(0.5f + name.Length * 0.12f, 1.1f, 2.4f);
+            float width = Mathf.Clamp(0.5f + Signpost.TextWidth(name, LetterSize) * 1.05f, 1.1f, 4f);
             float armY = PostHeight - 0.18f;
             Vector3 hang;
             if (sideArm)

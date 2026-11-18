@@ -9,8 +9,8 @@ namespace Clube.Game
     /// </summary>
     public sealed class AudioSettingsPage
     {
-        public const float Width = 420f;
-        public const float Height = 330f;
+        public const float Width = 520f;
+        public const float Height = 380f;
 
         /// <summary>Draws the popup's contents in the current layout area; true when Back was pressed.</summary>
         public bool Draw(GUIStyle title, GUIStyle label, GUIStyle hint, GUIStyle button)
