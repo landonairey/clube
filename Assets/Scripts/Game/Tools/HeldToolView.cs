@@ -97,6 +97,7 @@ namespace Clube.Game
         private float swingSeconds = 0.42f;
 
         private readonly Dictionary<ItemDefinition, Mesh> meshes = new Dictionary<ItemDefinition, Mesh>();
+        private readonly Dictionary<ItemDefinition, HeldItemMeshes.HeldItem> lumps = new Dictionary<ItemDefinition, HeldItemMeshes.HeldItem>();
         private PlayerToolUser toolUser;
         private PlayerController player;
         private CharacterController body;
@@ -119,6 +120,8 @@ namespace Clube.Game
         private GUIStyle noteStyle;
 
         private const float TwoPi = Mathf.PI * 2f;
+        private static readonly int MainTex = Shader.PropertyToID("_MainTex");
+        private static readonly int Tiling = Shader.PropertyToID("_Tiling");
 
         /// <summary>The Clube/Held Item material, which dropped items are drawn with too (GL610).</summary>
         public Material Material => material;
@@ -348,12 +351,24 @@ namespace Clube.Game
         {
             if (!meshes.TryGetValue(item, out Mesh mesh))
             {
-                mesh = item is TorchDefinition torch ? HeldToolMeshes.BuildTorch(torch.IsLit)
-                    : item is BucketDefinition ? HeldToolMeshes.BuildBucket()
-                    : HeldItemMeshes.IsHeldAsModel(item) ? HeldItemMeshes.For(item, Materials())
-                    : HeldToolMeshes.Build(item as ToolDefinition);
+                if (HeldItemMeshes.IsHeldAsModel(item))
+                {
+                    HeldItemMeshes.HeldItem made = HeldItemMeshes.For(item, Materials());
+                    lumps.Add(item, made);
+                    mesh = made.Mesh;
+                }
+                else
+                {
+                    mesh = item is TorchDefinition torch ? HeldToolMeshes.BuildTorch(torch.IsLit)
+                        : item is BucketDefinition ? HeldToolMeshes.BuildBucket()
+                        : HeldToolMeshes.Build(item as ToolDefinition);
+                }
                 meshes.Add(item, mesh);
             }
+            // The texture a lump of ore or stone wears (GL754); the rest of the held things are vertex-coloured.
+            bool textured = lumps.TryGetValue(item, out HeldItemMeshes.HeldItem lump) && lump.Texture != null;
+            instance.SetTexture(MainTex, textured ? lump.Texture : Texture2D.whiteTexture);
+            instance.SetFloat(Tiling, textured ? lump.Tiling : 1f);
             return mesh;
         }
 
