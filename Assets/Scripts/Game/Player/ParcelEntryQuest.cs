@@ -10,9 +10,9 @@ namespace Clube.Game
     /// </summary>
     public class ParcelEntryQuest : MonoBehaviour
     {
-        // Metres the arrow's tip hangs over the ground, and how many times the size of the tutorial's arrow it is.
-        private const float ArrowHeight = 9f;
+        // How many times the size of the tutorial's arrow it is, and how far its middle is over its tip at that size.
         private const float ArrowScale = 6f;
+        private const float TipBelowMiddle = 0.9f;
 
         private PlayerQuests quests;
         private PlayerParcels parcels;
@@ -55,13 +55,11 @@ namespace Clube.Game
         private void Build(LandParcels land)
         {
             WorldView world = parcels.WorldView;
-            Vector2 centre = land.CentreOf(land.Owned.First());
-            Vector3 top = world.transform.TransformPoint(new Vector3(centre.x, world.Config.WorldHeightInChunks * world.World.Grid.ChunkWorldSize.y, centre.y));
-            Vector3 ground = world.Raycast(new Ray(top, -world.transform.up), out Vector3 hit) ? hit : new Vector3(top.x, transform.position.y, top.z);
+            Vector2Int parcel = land.Home ?? land.Owned.First();
             anchor = new GameObject("Family parcel arrow");
             anchor.transform.SetParent(world.transform, true);
-            anchor.transform.position = ground;
-            QuestArrow arrow = QuestArrow.Build(anchor.transform, ArrowHeight, new Material(Shader.Find("Clube/Low Poly")));
+            anchor.transform.position = ParcelArrowSpot.TipOver(world, land, parcel, transform.position.y);
+            QuestArrow arrow = QuestArrow.Build(anchor.transform, TipBelowMiddle, new Material(Shader.Find("Clube/Low Poly")));
             arrow.transform.localScale = Vector3.one * ArrowScale;
             arrow.gameObject.SetActive(true);
             if (minimap != null)

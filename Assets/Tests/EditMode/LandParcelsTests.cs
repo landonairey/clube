@@ -16,20 +16,33 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void PointsOutside_AreOffTheParcel_NearestSideFirst()
+        public void PointsAround_AreOffTheParcel_NearestFirst()
         {
-            // GL744: where the cart can set the player down, to walk onto the family's land.
+            // GL744, GL766: where the cart can set the player down, to walk onto the family's land.
             var parcels = new LandParcels(32f, 100, 100);
             var parcel = new Vector2Int(2, 1);
-            Vector2[] points = parcels.PointsOutside(parcel, new Vector2(70f, 60f), 6f);
+            var from = new Vector2(70f, 60f);
+            Vector2[] points = parcels.PointsAround(parcel, from, 6f, 4f);
 
-            Assert.AreEqual(4, points.Length);
-            Assert.AreEqual(new Vector2(70f, 70f), points[0], "The north side is 4 m away, the nearest.");
-            foreach (Vector2 point in points)
+            Assert.AreEqual(44, points.Length, "11 steps along each of the four 44 m sides.");
+            for (int i = 0; i < points.Length; i++)
             {
-                Assert.AreNotEqual(parcel, parcels.ParcelAt(new Vector3(point.x, 0f, point.y)));
-                Assert.AreEqual(6f, SideDistance(parcels.AreaOf(parcel), point), 1e-3f);
+                Assert.AreNotEqual(parcel, parcels.ParcelAt(new Vector3(points[i].x, 0f, points[i].y)));
+                Assert.AreEqual(6f, SideDistance(parcels.AreaOf(parcel), points[i]), 1e-3f);
+                Assert.IsTrue(i == 0 || (points[i] - from).sqrMagnitude >= (points[i - 1] - from).sqrMagnitude);
             }
+        }
+
+        [Test]
+        public void Home_IsTheFirstParcelGiven_AndStaysSo()
+        {
+            // GL764: the map's Home icon.
+            var parcels = new LandParcels(32f, 100, 100);
+            Assert.IsNull(parcels.Home);
+
+            parcels.Grant(new Vector2Int(3, 4));
+            parcels.Grant(new Vector2Int(3, 5));
+            Assert.AreEqual(new Vector2Int(3, 4), parcels.Home);
         }
 
         private static float SideDistance(Rect area, Vector2 point)

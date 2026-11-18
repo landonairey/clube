@@ -31,6 +31,8 @@ namespace Clube.Game
         private bool labLayer;
 
         private PlayerController player;
+        private PlayerParcels parcels;
+        private bool legendHasHome;
         private bool hasPauseMenu;
         private Texture2D picture;
         private int pictureVersion = -1;
@@ -70,6 +72,7 @@ namespace Clube.Game
         private void Awake()
         {
             player = GetComponent<PlayerController>();
+            parcels = GetComponent<PlayerParcels>();
         }
 
         private void Start()
@@ -211,7 +214,8 @@ namespace Clube.Game
             picture.Apply(false);
             pictureVersion = session.Version;
             resources = SurveyResource.For(session.Survey);
-            legend = MapLegend.For(session.Plan);
+            legendHasHome = TryGetHome(out _);
+            legend = MapLegend.For(session.Plan, legendHasHome);
             resourceBuilt = -2;
             resourceShown = Mathf.Min(resourceShown, resources.Count - 1);
             zoom = 1f;
@@ -303,6 +307,11 @@ namespace Clube.Game
             GUI.DrawTextureWithTexCoords(view, picture, new Rect(centre.x - span * 0.5f, centre.y - span * 0.5f, span, span));
 
             float ui = GameUi.Font(100) / 100f;
+            if (TryGetHome(out _) != legendHasHome)
+            {
+                legendHasHome = !legendHasHome;
+                legend = MapLegend.For(session.Plan, legendHasHome);
+            }
             legendBox = MapLegend.Place(view, legend.Count, Screen.width, ui);
             GUI.color = new Color(0f, 0f, 0f, 0.7f);
             GUI.DrawTexture(legendBox, Texture2D.whiteTexture);
@@ -398,6 +407,10 @@ namespace Clube.Game
                 Badge(icon, at, size, 1.5f * scale, settlement.Type);
             }
             DrawVessels(area, scale);
+            if (TryGetHome(out Vector2 home) && view.Contains(ToScreen(area, home)))
+            {
+                HomeBadge(ToScreen(area, home), HomeIconSize * scale, 2f * scale);
+            }
             DrawPlayer(session, area, scale);
             clip = new Rect(0f, 0f, Screen.width, Screen.height);
             DrawLegendSymbols(scale, ui);
@@ -583,6 +596,9 @@ namespace Clube.Game
                         Vector2[] icon = MapIcons.Triangles(row.Type.Icon);
                         Badge(icon, mid, 7f * ui, 1.2f * ui, row.Type);
                         break;
+                    case MapLegendSymbol.Home:
+                        HomeBadge(mid, 7f * ui, 1.2f * ui);
+                        break;
                     case MapLegendSymbol.Player:
                         Shape(Arrow, mid, 8f * ui, 0f, Color.black);
                         Shape(Arrow, mid, 6f * ui, 0f, new Color(1f, 0.25f, 0.2f));
@@ -673,6 +689,31 @@ namespace Clube.Game
             Shape(icon, at, size * 0.85f, 0f, thieves ? Color.black : BadgeSilver);
         }
 
+        // GL764: the family's parcel is the brightest thing on the map: a gold disc with a white rim.
+        private const float HomeIconSize = 11f;
+        private static readonly Color HomeGold = new Color(1f, 0.78f, 0.12f);
+
+        private static void HomeBadge(Vector2 at, float size, float rim)
+        {
+            float radius = size * 1.3f;
+            Disc(at, radius + rim, Color.white);
+            Disc(at, radius, HomeGold);
+            Shape(MapIcons.Triangles("home"), at, size * 0.85f, 0f, BadgeWood);
+        }
+
+        // The family's parcel, once there is one (the tutorial has no parcels).
+        private bool TryGetHome(out Vector2 position)
+        {
+            position = default;
+            LandParcels land = parcels != null && parcels.enabled ? parcels.Parcels : null;
+            if (land == null || !land.Home.HasValue)
+            {
+                return false;
+            }
+            position = land.CentreOf(land.Home.Value);
+            return true;
+        }
+
         private static void Disc(Vector2 at, float radius, Color colour)
         {
             const int Segments = 24;
@@ -739,6 +780,11 @@ namespace Clube.Game
                 // Every place is named under its icon; the smallest in smaller letters until zoomed in, so the whole map stays readable.
                 bool small = settlement.Type.Parcels < 4f && zoom < 2f;
                 GameUi.OutlinedLabel(new Rect(at.x - 120f, at.y + size * 1.3f + 1f, 240f, GameUi.Font(14) * 2f), settlement.Name, small ? smallNameStyle : nameStyle);
+            }
+            if (TryGetHome(out Vector2 home) && view.Contains(ToScreen(area, home)))
+            {
+                Vector2 at = ToScreen(area, home);
+                GameUi.OutlinedLabel(new Rect(at.x - 120f, at.y + HomeIconSize * scale * 1.3f + 1f, 240f, GameUi.Font(14) * 2f), "Home", nameStyle);
             }
             return hovered;
         }

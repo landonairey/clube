@@ -114,6 +114,27 @@ namespace Clube.Core
             }
         }
 
+        /// <summary>True when any tree reaches into the box (GL766: ground the cart can set the player down on).</summary>
+        public bool AnyPartIn(Bounds box)
+        {
+            CollectParts(box, gathered);
+            return gathered.Count > 0;
+        }
+
+        /// <summary>The height of the highest tree top over an area (x, z); null with no tree there (GL765).</summary>
+        public float? TallestTop(Rect area)
+        {
+            var box = new Bounds(new Vector3(area.center.x, 0f, area.center.y), new Vector3(area.width, 100000f, area.height));
+            CollectParts(box, gathered);
+            float? tallest = null;
+            foreach (TreePart part in gathered)
+            {
+                float top = part.Bounds(0f).max.y;
+                tallest = tallest.HasValue ? Mathf.Max(tallest.Value, top) : top;
+            }
+            return tallest;
+        }
+
         /// <summary>The tree parts reaching a chunk, as generation jobs read them (empty when none).</summary>
         public NativeArray<TreePart> CollectJobParts(Bounds box, Allocator allocator)
         {

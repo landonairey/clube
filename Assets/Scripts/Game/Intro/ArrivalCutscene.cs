@@ -43,9 +43,19 @@ namespace Clube.Game
         private const float MostSettlingSeconds = 8f;
         private const float LongestStep = 0.12f;
 
-        // GL744: metres outside the family's parcel the cart drops the player, and the most the ground there may differ.
-        private const float DropOutside = 6f;
+        // GL744: metres outside the family's parcel the cart may drop the player, nearest first, the spacing of the places
+        // tried along its sides, and the most the ground there may differ.
+        private static readonly float[] DropOutside = { 6f, 10f, 14f };
+        private const float DropSpacing = 4f;
         private const float DropMaxRise = 4f;
+
+        // GL766: metres round the drop kept free of trees, and how high that is checked. GL765: the eye's height, the steps of
+        // the look towards the parcel's arrow, and the most the player is left looking up at it.
+        private const float DropClearHalfWidth = 3f;
+        private const float DropClearHeight = 44f;
+        private const float DropEyeHeight = 1.6f;
+        private const float SightStep = 2f;
+        private const float MostLookUp = 35f;
 
         private PlayerController player;
         private PlayerSpawn spawn;
@@ -55,6 +65,7 @@ namespace Clube.Game
         private Vector3 headBase;
         private float standingEye;
         private float yaw;
+        private float endPitch;
         private Vector3 stop;
         private Vector3 heading;
 
@@ -212,22 +223,75 @@ namespace Clube.Game
             LandParcels land = parcels.Parcels;
             Vector3 local = worldView.transform.InverseTransformPoint(stop);
             Vector2Int parcel = land.ParcelAt(local);
-            Vector2 centre = land.CentreOf(parcel);
             // The land's own height: the player may have been set down on top of one of the parcel's trees.
             float here = session.Map.Height(local.x, local.z);
-            foreach (Vector2 point in land.PointsOutside(parcel, new Vector2(local.x, local.z), DropOutside))
+            Vector3 tip = worldView.transform.InverseTransformPoint(ParcelArrowSpot.TipOver(worldView, land, parcel, here));
+            var points = new System.Collections.Generic.List<Vector2>();
+            foreach (float margin in DropOutside)
             {
-                float height = session.Map.Height(point.x, point.y);
-                if (Mathf.Abs(height - here) > DropMaxRise || IsWet(point))
-                {
-                    continue;
-                }
-                stop = worldView.transform.TransformPoint(new Vector3(point.x, height, point.y));
-                Vector3 toLand = worldView.transform.TransformPoint(new Vector3(centre.x, height, centre.y)) - stop;
-                yaw = Mathf.Atan2(toLand.x, toLand.z) * Mathf.Rad2Deg;
+                points.AddRange(land.PointsAround(parcel, new Vector2(local.x, local.z), margin, DropSpacing));
+            }
+            TreeField trees = worldView.Trees;
+            int best = ArrivalDropSpot.Pick(points.Count,
+                i => Mathf.Abs(session.Map.Height(points[i].x, points[i].y) - here) <= DropMaxRise && !IsWet(points[i]),
+                i => GroundIsClear(trees, points[i], session.Map.Height(points[i].x, points[i].y)),
+                i => ViewIsClear(trees, points[i], session.Map.Height(points[i].x, points[i].y), tip));
+            if (best < 0)
+            {
+                // Nowhere round the parcel to stop: on the land itself, under any tree the player was set down on.
+                stop = worldView.transform.TransformPoint(new Vector3(local.x, here, local.z));
                 player.Teleport(stop + Vector3.up * 0.05f);
                 return;
             }
+            Vector2 point = points[best];
+            float height = session.Map.Height(point.x, point.y);
+            stop = worldView.transform.TransformPoint(new Vector3(point.x, height, point.y));
+            Vector2 toArrow = new Vector2(tip.x - point.x, tip.z - point.y);
+            yaw = Mathf.Atan2(toArrow.x, toArrow.y) * Mathf.Rad2Deg;
+            // GL765: they get up looking at the arrow over their land.
+            endPitch = -Mathf.Min(MostLookUp, Mathf.Atan2(tip.y - height - DropEyeHeight, toArrow.magnitude) * Mathf.Rad2Deg);
+            player.Teleport(stop + Vector3.up * 0.05f);
+        }
+
+        // GL766: no tree over the place the cart stops and the player lands.
+        private static bool GroundIsClear(TreeField trees, Vector2 point, float height)
+        {
+            var size = new Vector3(DropClearHalfWidth * 2f, DropClearHeight, DropClearHalfWidth * 2f);
+            return trees == null || !trees.AnyPartIn(new Bounds(new Vector3(point.x, height + DropClearHeight * 0.5f, point.y), size));
+        }
+
+        // GL765: no tree between the eye of someone standing there and the parcel's arrow.
+        private static bool ViewIsClear(TreeField trees, Vector2 point, float height, Vector3 tip)
+        {
+            if (trees == null)
+            {
+                return true;
+            }
+            var eye = new Vector3(point.x, height + DropEyeHeight, point.y);
+            int steps = Mathf.CeilToInt(Vector3.Distance(eye, tip) / SightStep);
+            for (int i = 1; i < steps; i++)
+            {
+                if (trees.AnyPartIn(new Bounds(Vector3.Lerp(eye, tip, i / (float)steps), Vector3.one)))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // GL766: the land's own height under a world position, for the cart and the fall to tell the ground from a tree.
+        private System.Func<Vector3, float> LandHeight()
+        {
+            MapSession session = MapSession.Current;
+            if (session == null || session.Map == null || worldView == null)
+            {
+                return null;
+            }
+            return at =>
+            {
+                Vector3 local = worldView.transform.InverseTransformPoint(at);
+                return worldView.transform.TransformPoint(new Vector3(local.x, session.Map.Height(local.x, local.z), local.z)).y;
+            };
         }
 
         private static bool IsWet(Vector2 point)
@@ -255,7 +319,7 @@ namespace Clube.Game
                 : FindFirstObjectByType<MapSettlements>() is MapSettlements settlements ? settlements.LowPolyMaterial : null;
             if (material != null && worldView != null)
             {
-                cart = new ArrivalCart(material, worldView, stop, heading);
+                cart = new ArrivalCart(material, worldView, stop, heading, LandHeight());
                 cartAlong = -ArrivalTimeline.ApproachMetres;
                 cart.Place(cartAlong, 0f, true);
                 SetPhase(Phase.Ride);
@@ -346,7 +410,7 @@ namespace Clube.Game
             float rising = ArrivalTimeline.Smooth((s - 0.25f) / 0.75f);
             float eyeHeight = Mathf.Lerp(LyingEye, standingEye, rising);
             Vector3 at = new Vector3(eye.x, GroundAt(eye) + eyeHeight, eye.z);
-            Look(at, eyeHeight, Mathf.Lerp(-8f, 0f, righting), Mathf.Lerp(LyingRoll, 0f, righting));
+            Look(at, eyeHeight, Mathf.Lerp(-8f, endPitch, righting), Mathf.Lerp(LyingRoll, 0f, righting));
             if (s >= 1f)
             {
                 Finish(new Vector3(eye.x, GroundAt(eye), eye.z));
@@ -412,7 +476,7 @@ namespace Clube.Game
             bool skipped = phase != Phase.Rise;
             player.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
             head.localPosition = headBase;
-            head.localRotation = Quaternion.identity;
+            head.localRotation = Quaternion.Euler(endPitch, 0f, 0f);
             player.Body.enabled = true;
             player.Teleport(new Vector3(feet.x, feet.y + 0.05f, feet.z));
             player.InputLocked = false;

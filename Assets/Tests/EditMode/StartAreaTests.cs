@@ -64,6 +64,35 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void TreeField_KnowsWhereTreesStand_AndHowTallTheyAre()
+        {
+            // GL765, GL766: the parcel's arrow hangs over the trees, and the cart stops clear of them.
+            VoxelMaterial wood = VoxelMaterial.Create(11, "Wood", VoxelMaterialCategory.Plant);
+            VoxelMaterial leaves = VoxelMaterial.Create(12, "Leaves", VoxelMaterialCategory.Plant);
+            try
+            {
+                var settings = new TreeGeneration { Chance = 0f, CellSize = 10f, Wood = wood, Leaves = leaves };
+                var field = new TreeField(settings, 7, new FlatGenerator(20f));
+                var parcel = new Rect(320f, -64f, 32f, 32f);
+                Assert.IsNull(field.TallestTop(parcel), "No trees yet.");
+
+                field.EnsureTrees(parcel, 3);
+                float? tallest = field.TallestTop(parcel);
+                Assert.IsTrue(tallest.HasValue);
+                Assert.Greater(tallest.Value, 20f, "Above the ground they stand on.");
+
+                var column = new Vector3(parcel.width, 200f, parcel.height);
+                Assert.IsTrue(field.AnyPartIn(new Bounds(new Vector3(parcel.center.x, 20f, parcel.center.y), column)));
+                Assert.IsFalse(field.AnyPartIn(new Bounds(new Vector3(parcel.center.x + 500f, 20f, parcel.center.y), column)));
+            }
+            finally
+            {
+                Object.DestroyImmediate(wood);
+                Object.DestroyImmediate(leaves);
+            }
+        }
+
+        [Test]
         public void LayerTable_AddsAClayDeposit_OnlyWhenNoneReachesTheArea()
         {
             VoxelMaterial clay = VoxelMaterial.Create(13, "Clay");

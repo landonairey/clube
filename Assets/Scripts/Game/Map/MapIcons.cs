@@ -14,6 +14,10 @@ namespace Clube.Game
         {
             ["tent"] = Join(Triangle(-1f, -0.8f, 1f, -0.8f, 0f, 0.9f)),
             ["house"] = Join(Box(-0.7f, -0.8f, 0.7f, 0.1f), Triangle(-1f, 0.1f, 1f, 0.1f, 0f, 0.9f)),
+            // GL764: the family's parcel: a house with a door and a chimney.
+            ["home"] = Join(
+                Box(-0.7f, -0.8f, -0.2f, 0.1f), Box(0.2f, -0.8f, 0.7f, 0.1f), Box(-0.2f, -0.2f, 0.2f, 0.1f),
+                Triangle(-1f, 0.1f, 1f, 0.1f, 0f, 1f), Box(0.4f, 0.3f, 0.7f, 0.95f)),
             ["houses"] = Join(
                 Box(-1f, -0.8f, -0.1f, -0.1f), Triangle(-1.1f, -0.1f, 0f, -0.1f, -0.55f, 0.5f),
                 Box(0.1f, -0.8f, 1f, 0.2f), Triangle(0f, 0.2f, 1.1f, 0.2f, 0.55f, 0.9f)),
