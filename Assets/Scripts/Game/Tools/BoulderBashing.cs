@@ -132,6 +132,8 @@ namespace Clube.Game
         /// <summary>True when Place would bash this frame: a stone or crushable ore in hand, aimed at a boulder within reach.</summary>
         public bool CanBash => (HoldsSomethingToBash(out _, out _) || HoldsSomethingToRefine(out _)) && AimsAtBoulder();
 
+        private bool knapOnRelease;
+
         private void Awake()
         {
             player = GetComponent<PlayerController>();
@@ -167,6 +169,20 @@ namespace Clube.Game
                     return;
                 }
             }
+            // A mixed stone: a tap that ends before the first refine pass makes the hand axe (GL767).
+            if (pressed && AimsAtBoulder() && HoldsMixedStone(out _))
+            {
+                knapOnRelease = true;
+            }
+            if (knapOnRelease && placeAction.action.WasReleasedThisFrame())
+            {
+                knapOnRelease = false;
+                if (AimsAtBoulder() && HoldsMixedStone(out int stoneSlot))
+                {
+                    KnapStone(stoneSlot);
+                }
+                return;
+            }
             UpdateHold();
         }
 
@@ -187,6 +203,7 @@ namespace Clube.Game
             refineProgress += Time.deltaTime;
             if (refineProgress >= secondsPerVolume)
             {
+                knapOnRelease = false;
                 refineProgress = 0f;
                 // The flat rock works twice the batch of a boulder (GL454).
                 int batches = AimsAtFlatRock() ? flatRockBatches : 1;
@@ -309,12 +326,7 @@ namespace Clube.Game
             ItemStack held = items[slot];
             if (held.Item == stone)
             {
-                items.RemoveAt(slot, 1);
-                inventory.GiveOrDrop(handAxe, 1);
-                skills?.Skills.Award(SkillType.Crafting, handAxeExperience);
-                Message?.Invoke($"Knocked the stone into a {handAxe.DisplayName.ToLowerInvariant()}");
-                HandAxeMade?.Invoke();
-                return true;
+                return KnapStone(slot);
             }
             if (skills != null && !skills.Skills.Has(crushSkill, crushLevel))
             {
@@ -373,6 +385,29 @@ namespace Clube.Game
                 OreCrushed(worldView.transform.TransformPoint(worldView.World.Grid.SampleToWorld(boulder)), ore);
             }
             return true;
+        }
+
+        // One stone off the stack becomes a hand axe, mixed or clean.
+        private bool KnapStone(int slot)
+        {
+            inventory.Inventory.RemoveAt(slot, 1);
+            inventory.GiveOrDrop(handAxe, 1);
+            skills?.Skills.Award(SkillType.Crafting, handAxeExperience);
+            Message?.Invoke($"Knocked the stone into a {handAxe.DisplayName.ToLowerInvariant()}");
+            HandAxeMade?.Invoke();
+            return true;
+        }
+
+        // A stone with a mix in it, held: a tap knaps it into a hand axe, holding picks it over instead (GL767).
+        private bool HoldsMixedStone(out int slot)
+        {
+            slot = hotbar != null ? hotbar.SelectedSlot : -1;
+            if (handAxe == null || HandAxeDisabled || slot < 0 || inventory == null || inventory.Inventory == null || !HoldsSomethingToRefine(out _))
+            {
+                return false;
+            }
+            ItemStack stack = inventory.Inventory[slot];
+            return stack.Item == stone && stack.Count > 0;
         }
 
         // A stone, or ore with a crushed form, in the selected slot. A stone with a mix in it is picked over instead (GL487); a clean one is knapped into a hand axe.

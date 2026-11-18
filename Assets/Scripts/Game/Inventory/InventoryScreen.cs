@@ -157,7 +157,7 @@ namespace Clube.Game
             float bottom = gridTopLeft.y + InventoryGridGui.PlayerHeight(inventory) + InventoryGridGui.RowGap;
             trashSlot = new Rect(panel.xMax - Padding - InventoryGridGui.SlotSize, bottom, InventoryGridGui.SlotSize, InventoryGridGui.SlotSize);
             DrawSortAndTrash(items, new Rect(gridTopLeft.x, bottom + (InventoryGridGui.SlotSize - 36f) * 0.5f, 190f, 36f));
-            HandleMouse(items, gridTopLeft);
+            HandleMouse(items, gridTopLeft, panel);
             InventoryGridGui.DrawPlayer(gridTopLeft, inventory, drag.Pressed);
             if (drag.IsDragging)
             {
@@ -184,14 +184,17 @@ namespace Clube.Game
 
         // GL71, GL191: InventoryDrag moves, splits and carries stacks between slots; here a click sends a stack
         // across (backpack to hotbar, hotbar to backpack, or into the tool slot), and a drop on the trash destroys it.
-        private void HandleMouse(Inventory items, Vector2 gridTopLeft)
+        private void HandleMouse(Inventory items, Vector2 gridTopLeft, Rect panel)
         {
             InventoryDragResult result = drag.Handle(inventory, gridTopLeft);
             switch (result.Kind)
             {
                 case InventoryDragKind.DroppedOutside:
-                    // Gone for good (GL173).
-                    InventoryGridGui.Trash(items, result, trashSlot);
+                    // Gone for good (GL173); let go beyond the screen it drops on the ground (GL768).
+                    if (!InventoryGridGui.Trash(items, result, trashSlot) && !panel.Contains(result.Position))
+                    {
+                        inventory.DropFromSlot(result.Slot, result.Count);
+                    }
                     break;
                 case InventoryDragKind.Clicked:
                     int pressed = result.Slot;
