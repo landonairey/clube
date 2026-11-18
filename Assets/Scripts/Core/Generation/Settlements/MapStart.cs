@@ -32,7 +32,8 @@ namespace Clube.Core
             PlannedSettlement best = null, bestWithShop = null;
             foreach (PlannedSettlement settlement in plan.Settlements)
             {
-                if (settlement.Type.Id != StartType || settlement.Type.Hostile)
+                // GL734: the tutorial's quarry is where the job was, not the family's land.
+                if (settlement.Type.Id != StartType || settlement.Type.Hostile || settlement.IsQuarry)
                 {
                     continue;
                 }

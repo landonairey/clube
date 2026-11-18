@@ -50,7 +50,67 @@ namespace Clube.Core
                 {
                 }
             }
+            PickQuarry(plan);
             GuaranteeEvery(plan);
+        }
+
+        /// <summary>
+        /// GL734: makes one settlement the tutorial's stone quarry: of the first quarry type (<see cref="WorldPlanRules.QuarryTypes"/>)
+        /// that has one (on the capital's land first), the one whose ground suits the quarry specialty best. All its shops
+        /// become that one specialty, which the guarantee pass then keeps.
+        /// </summary>
+        private void PickQuarry(WorldPlan plan)
+        {
+            EconomySpecialty quarry = specialties.Find(s => s.Id == context.Rules.QuarrySpecialty);
+            if (quarry == null)
+            {
+                return;
+            }
+            PlannedSettlement capital = plan.Capital;
+            PlannedSettlement best = null;
+            for (int pass = 0; pass < 2 && best == null; pass++)
+            {
+                foreach (string typeId in context.Rules.QuarryTypes)
+                {
+                    float bestFit = float.NegativeInfinity;
+                    foreach (PlannedSettlement settlement in plan.Settlements)
+                    {
+                        bool mainland = capital == null || settlement.Land == capital.Land;
+                        if (settlement.Type.Id != typeId || settlement.Type.Hostile || settlement.Type.Shops == 0 || (pass == 0 && !mainland))
+                        {
+                            continue;
+                        }
+                        float fit = Fit(settlement, quarry);
+                        if (fit > bestFit)
+                        {
+                            bestFit = fit;
+                            best = settlement;
+                        }
+                    }
+                    if (best != null)
+                    {
+                        break;
+                    }
+                }
+            }
+            if (best == null)
+            {
+                plan.Notes.Add("No settlement could be the tutorial's stone quarry.");
+                return;
+            }
+            foreach (PlannedShop shop in best.Shops)
+            {
+                inWorld[shop.Specialty]--;
+            }
+            best.Shops.Clear();
+            best.IsQuarry = true;
+            inWorld[quarry]++;
+            best.Shops.Add(new PlannedShop
+            {
+                Specialty = quarry, Guaranteed = true,
+                Reason = $"{quarry.Name} ({quarry.Chain}): the stone quarry the opening tutorial is played at; it trades stone and nothing else.",
+            });
+            best.Reasons.Add("The stone quarry of the opening tutorial, walled round with its quarry pit.");
         }
 
         /// <summary>How well a specialty suits a settlement, 0 to 1: the scarcest of the resources it needs nearby.</summary>
@@ -191,7 +251,8 @@ namespace Clube.Core
         public static void AddExtra(PlanContext context, PlannedSettlement settlement, string specialtyId, string reason)
         {
             EconomySpecialty specialty = context.Rules.Specialties.Find(s => s.Id == specialtyId);
-            if (specialty != null && !settlement.Has(specialtyId))
+            // GL734: the quarry trades stone and nothing else.
+            if (specialty != null && !settlement.Has(specialtyId) && !settlement.IsQuarry)
             {
                 settlement.Shops.Add(new PlannedShop { Specialty = specialty, Reason = reason });
             }

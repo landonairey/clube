@@ -44,6 +44,12 @@ namespace Clube.Core
         /// <summary>The warehouse's footprint, across the fields' open south end.</summary>
         public static readonly Rect Warehouse = new Rect(32f, -6f, 36f, 22f);
 
+        /// <summary>
+        /// GL734: the yard the tutorial needs level, the fields and the warehouse across their south end; on the bounded map
+        /// it is the floor of the quarry settlement's pit (<see cref="QuarryYard"/>).
+        /// </summary>
+        public static readonly Rect Yard = Rect.MinMaxRect(30f, -6f, 70f, 46f);
+
         /// <summary>Metres the mountain climbs for each metre out from the fields: steeper than the player can walk.</summary>
         public const float MountainSlope = 1.6f;
 

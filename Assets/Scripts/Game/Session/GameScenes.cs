@@ -11,7 +11,10 @@ namespace Clube.Game
     {
         public const string MainMenu = "MainMenu";
 
-        /// <summary>The opening tutorial's own map (GL514), played before a new game's world when chosen.</summary>
+        /// <summary>
+        /// The opening tutorial's own map (GL514), played before a lab game's world when chosen. The demo plays the tutorial on
+        /// its own bounded map instead, in the quarry settlement's pit (GL734, <see cref="MapTutorialStarter"/>).
+        /// </summary>
         public const string Tutorial = "Tutorial";
 
         /// <summary>True when the main menu can be loaded (it's in the build's scene list).</summary>
@@ -38,7 +41,7 @@ namespace Clube.Game
         /// <summary>Starts the session's game in its mode's scene.</summary>
         public static void LoadGame()
         {
-            bool tutorial = GameSession.Tutorial && Application.CanStreamedLevelBeLoaded(Tutorial);
+            bool tutorial = GameSession.Tutorial && GameSession.Mode != GameMode.Demo && Application.CanStreamedLevelBeLoaded(Tutorial);
             SceneManager.LoadScene(tutorial ? Tutorial : For(GameSession.Mode));
         }
 

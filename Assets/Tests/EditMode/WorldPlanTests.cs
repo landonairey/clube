@@ -204,6 +204,19 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Plan_HasOneStoneQuarry_TradingStoneAlone_WhoseKeepersStartAtZero()
+        {
+            List<PlannedSettlement> quarries = plan.Settlements.FindAll(s => s.IsQuarry);
+            Assert.That(quarries.Count, Is.EqualTo(1), "GL734: one quarry settlement");
+            PlannedSettlement quarry = plan.Quarry;
+            Assert.That(quarry.Type.Id, Is.EqualTo("village"), "a village, the first quarry type, when the map has one");
+            Assert.That(quarry.Shops.Select(s => s.Specialty.Id), Is.EqualTo(new[] { "stone-quarry" }), "stone and nothing else");
+            Assert.That(plan.StartingDisposition(quarry.Index), Is.EqualTo(0));
+            int other = plan.Settlements.First(s => !s.IsQuarry).Index;
+            Assert.That(plan.StartingDisposition(other), Is.EqualTo(Disposition.Start));
+        }
+
+        [Test]
         public void Plan_EverySpecialtyOccurs_AndBiggerTypesHoldMoreShops()
         {
             foreach (EconomySpecialty specialty in plan.Rules.Specialties)
@@ -212,7 +225,8 @@ namespace Clube.Core.Tests
             }
             foreach (PlannedSettlement settlement in plan.Settlements)
             {
-                Assert.That(settlement.Shops.Count, Is.EqualTo(settlement.Type.Shops), settlement.Name);
+                // GL734: the tutorial's quarry holds its one stone quarry, whatever its type.
+                Assert.That(settlement.Shops.Count, Is.EqualTo(settlement.IsQuarry ? 1 : settlement.Type.Shops), settlement.Name);
                 Assert.That(settlement.Shops.Select(shop => shop.Specialty.Id), Is.Unique, settlement.Name);
                 Assert.That(settlement.Shops.All(shop => shop.Reason.Length > 0 && shop.Specialty.CraftLevel <= settlement.Type.CraftLevel));
             }

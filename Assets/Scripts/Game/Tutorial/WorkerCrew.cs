@@ -164,6 +164,12 @@ namespace Clube.Game
             w.Phase = Phase.Approach;
         }
 
+        // A point of the map space in the world's own space (its terrain data's): the same in the Tutorial scene, the quarry pit's offset on the bounded map (GL734).
+        private Vector3 ToData(Vector3 mapPoint)
+        {
+            return world.transform.InverseTransformPoint(map.TransformPoint(mapPoint));
+        }
+
         // True when a worker standing at a post (this spot, this pass) would be inside terrain (GL580).
         private bool BodyBlocked(float along, int pass)
         {
@@ -175,7 +181,7 @@ namespace Clube.Game
             Vector3 post = PostOf(probe);
             foreach (float up in BodyHeights)
             {
-                SphereStrike.FindTargets(world.World, post + Vector3.up * up, BodyRadius, targets);
+                SphereStrike.FindTargets(world.World, ToData(post + Vector3.up * up), BodyRadius, targets);
                 if (targets.Count > 0)
                 {
                     return true;
@@ -423,8 +429,10 @@ namespace Clube.Game
             World data = world.World;
             float height = StrikeHeights[w.Swings % StrikeHeights.Length];
             var centre = new Vector3(w.Along, CompanyWork.Ground + height, FaceZ(w));
+            // GL734: the map space may be the quarry pit's, away from the world's own origin.
+            Vector3 inWorld = ToData(centre);
             float radius = (tools != null ? tools.Collecting.ToolRadius : 0.6f) * (pick != null ? pick.ReachScale : 1f);
-            SphereStrike.FindTargets(data, centre, radius, targets);
+            SphereStrike.FindTargets(data, inWorld, radius, targets);
             if (targets.Count == 0)
             {
                 w.Clear++;
@@ -435,7 +443,7 @@ namespace Clube.Game
             Strikes++;
             MaterialRegistry materials = world.Config.Materials;
             float iso = world.Config.IsoLevel;
-            VoxelMaterial hit = ToolStrike.AimedMaterial(data, data.Grid.WorldToVoxel(centre), iso, materials);
+            VoxelMaterial hit = ToolStrike.AimedMaterial(data, data.Grid.WorldToVoxel(inWorld), iso, materials);
             collected.Clear();
             minedFrom.Clear();
             StrikeResult result = pick != null

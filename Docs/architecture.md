@@ -927,6 +927,12 @@ settlements of `Generation/`); the bodies are Game (`Game/People/`, `Game/Travel
   goods are bound (`TradeStop.GoodsBoundFor`) and `CargoTheft` lowers that shop's `Disposition` (`TradeStop.ShopTaking`,
   `Theft.PointsFor`). Map keepers' dispositions live in `MapSettlements.Dispositions` (a `DispositionBook` by
   settlement and shop, saved as one named value), so they outlast the keeper and count for a shop not yet built.
+- **The tutorial's quarry (GL734).** The plan makes one settlement the stone quarry (`PlannedSettlement.IsQuarry`, one
+  shop); its layout adds a `QuarryYard` (a sunk stone terrace the size of `CompanyWork.Yard`) and a town wall round both,
+  and `DispositionBook.StartOf` starts its keepers at 0. The demo's tutorial is not in any scene: `MapTutorialStarter`
+  makes `MiningCorpTutorial` from a Resources prefab when MapGen loads with `GameSession.Tutorial` set, and the tutorial's
+  map space (everything in `CompanyWork` and `CompanyWarehouse` coordinates) is a transform at `QuarryYard.Origin`; code
+  that writes terrain in map space takes that origin. The Tutorial scene stays as the fallback for a map with no pit.
 - **Thieves (GL617).** A thieves' camp is a settlement whose type has a `Band` and names its `Residents` occupation:
   `SettlementLayout` houses the band, `SettlementRoster` makes them residents, and they are `Villager`s like anyone
   (plus a `Bandit`, the `IToolTarget` that makes a struck thief drop his sack and lie dazed; there is no health). Their
