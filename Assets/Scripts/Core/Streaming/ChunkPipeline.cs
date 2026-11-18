@@ -164,6 +164,19 @@ namespace Clube.Core
         // highest ground beside the column (a cliff's top) could reach.
         private const float SkyClearance = 96f;
 
+        /// <summary>The layer of chunks a column's ground lies in; false for a world whose ground has no height to ask.</summary>
+        public bool TryGroundLayer(Vector2Int column, out int layer)
+        {
+            layer = 0;
+            if (!(generator is HeightfieldGenerator heightfield))
+            {
+                return false;
+            }
+            Vector3 size = grid.ChunkWorldSize;
+            layer = Mathf.FloorToInt(heightfield.Height((column.x + 0.5f) * size.x, (column.y + 0.5f) * size.z) / size.y);
+            return true;
+        }
+
         public bool StartGeneration(Vector3Int coord)
         {
             if (IsGenerating(coord))

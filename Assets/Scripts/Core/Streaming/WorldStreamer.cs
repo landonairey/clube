@@ -151,8 +151,8 @@ namespace Clube.Core
         private bool hasChunksToMesh;
         // Whether the last look left dirty chunks unlooked at, the frame's starts being used up.
         private bool meshingBehind;
-        // Dirty chunks allowed to wait, per start a rationed frame makes, before generation pauses (GL759).
-        private const int MeshBacklogPerStart = 16;
+        // Dirty chunks allowed to wait before generation pauses (GL759).
+        private const int MostMeshBacklog = 600;
 
         // Wanted chunks that came up before their column's heights were ready (ChunkPipeline.StartGeneration).
         private readonly List<Vector3Int> waitingForColumns = new List<Vector3Int>();
@@ -295,7 +295,14 @@ namespace Clube.Core
 
         // While playing: milliseconds a frame for streaming, and the job starts a frame makes however late it is (GL770).
         private const float PlayingBudgetMilliseconds = 5f;
+        private const double PlayingAddShare = 0.7;
         private const int PlayingStartsPastBudget = 2;
+
+        // The layers under and over a column's ground that load first while playing (trees and road cuttings reach into them),
+        // the columns round the player that always do, and the columns' ground layers remembered.
+        private const int GroundLayersBelow = 3, GroundLayersAbove = 6, MinimumGroundReach = 8, MostGroundLayersKept = 20000;
+        private readonly Dictionary<Vector2Int, int> groundLayers = new Dictionary<Vector2Int, int>();
+        private int groundCursor;
 
         private bool curtainLifted;
         private bool wasHurrying;
@@ -349,7 +356,8 @@ namespace Clube.Core
             // least one result a frame, so neither can starve the other.
             ApplyMeshes(budget * 0.5);
             phases.ApplyMeshes = Lap();
-            AddGenerated(budget);
+            // While playing some of the budget is left for starting what is nearest.
+            AddGenerated(IsPlaying ? budget * PlayingAddShare : budget);
             phases.AddChunks = Lap();
             StartGenerating();
             phases.StartGeneration = Lap();
@@ -536,6 +544,7 @@ namespace Clube.Core
             }
             loadCursor = 0;
             loadLayer = 0;
+            groundCursor = 0;
             wantedLoaded = 0;
             int layers = settings.HeightInChunks;
             foreach (Vector2Int column in wantedColumns)
@@ -639,14 +648,18 @@ namespace Clube.Core
             }
             // GL759: while rationed, no new chunks while meshing is behind: every waiting chunk is looked at each frame, so a
             // pile of them would slow the frame more and more. Chunks held for roads don't count: they need their neighbours.
-            if (RationsStarts && meshingBehind && dirtyScratch.Count > pastBudget * MeshBacklogPerStart)
+            if (RationsStarts && meshingBehind && dirtyScratch.Count > MostMeshBacklog)
+            {
+                return;
+            }
+            int started = 0;
+            if (IsPlaying && !StartGroundFirst(limit, pastBudget, ref started))
             {
                 return;
             }
             // At least a job limit's worth of starts a frame, as before; more while the budget lasts.
             // A column with every layer loaded is passed over in one step, so moving the area (which puts
             // the cursor back to the nearest column) costs a look per column, not per chunk.
-            int started = 0;
             int layers = settings.HeightInChunks;
             while (loadCursor < wantedColumns.Count && pipeline.GenerationJobsRunning < limit
                    && (started < pastBudget || Before(budget)))
@@ -664,21 +677,77 @@ namespace Clube.Core
                     loadCursor++;
                 }
                 started++;
-                if (world.IsLoaded(coord) || pipeline.IsGenerating(coord))
+                StartChunk(coord);
+            }
+        }
+
+        // Starts a chunk unless it is loaded or on its way; true when there was something to start.
+        private bool StartChunk(Vector3Int coord)
+        {
+            if (world.IsLoaded(coord) || pipeline.IsGenerating(coord))
+            {
+                return false;
+            }
+            if (world.TryRestoreKept(coord, out _))
+            {
+                wantedLoaded++;
+                ChunkLoaded?.Invoke(coord);
+                return true;
+            }
+            if (!pipeline.StartGeneration(coord))
+            {
+                waitingForColumns.Add(coord);
+            }
+            return true;
+        }
+
+        // GL770: while playing, the layers round the ground of the drawn columns come first, nearest first: a column's 104
+        // layers are mostly sky and deep rock nobody sees, and loading them bottom up left the ground ahead of a walker missing.
+        // True once every drawn column's ground is on its way, so the rest of the layers may follow.
+        private bool StartGroundFirst(int limit, int pastBudget, ref int started)
+        {
+            int reach = (settings.DetailDistance > 0 ? Mathf.Max(DrawRadius, MinimumGroundReach) : wantedDistance) + 1;
+            Vector3Int centre = wantedCentre.Value;
+            while (groundCursor < wantedColumns.Count)
+            {
+                if (pipeline.GenerationJobsRunning >= limit || (started >= pastBudget && !Before(budget)))
                 {
-                    continue;
+                    return false;
                 }
-                if (world.TryRestoreKept(coord, out _))
+                Vector2Int column = wantedColumns[groundCursor];
+                int dx = column.x - centre.x, dz = column.y - centre.z;
+                if (dx * dx + dz * dz > reach * reach || !TryGroundLayer(column, out int ground))
                 {
-                    wantedLoaded++;
-                    ChunkLoaded?.Invoke(coord);
-                    continue;
+                    // The columns go out from the middle: the rest are further still.
+                    groundCursor = wantedColumns.Count;
+                    return true;
                 }
-                if (!pipeline.StartGeneration(coord))
+                groundCursor++;
+                int top = Mathf.Min(settings.HeightInChunks - 1, ground + GroundLayersAbove);
+                for (int y = Mathf.Max(0, ground - GroundLayersBelow); y <= top; y++)
                 {
-                    waitingForColumns.Add(coord);
+                    started += StartChunk(new Vector3Int(column.x, y, column.y)) ? 1 : 0;
                 }
             }
+            return true;
+        }
+
+        private bool TryGroundLayer(Vector2Int column, out int layer)
+        {
+            if (groundLayers.TryGetValue(column, out layer))
+            {
+                return true;
+            }
+            if (!pipeline.TryGroundLayer(column, out layer))
+            {
+                return false;
+            }
+            if (groundLayers.Count >= MostGroundLayersKept)
+            {
+                groundLayers.Clear();
+            }
+            groundLayers[column] = layer;
+            return true;
         }
 
         private void ApplyMeshes(double untilMilliseconds)

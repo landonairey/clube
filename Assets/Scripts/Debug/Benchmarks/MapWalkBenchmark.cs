@@ -29,6 +29,8 @@ namespace Clube.Debug
         // Over the ground, clear of road beds raised above it: a player inside the ground is lifted out by PlayerSpawn.
         private const float CarriedHeight = 2.5f;
         private const int MarkersShown = 24;
+        // Chunks round the player whose ground is checked, and how often.
+        private const int NearColumns = 12, GroundLookFrames = 30;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void StartIfAsked()
@@ -77,6 +79,7 @@ namespace Clube.Debug
         private WorldView world;
         private Transform body;
         private float walked;
+        private float nearGround = 1f, drawnGround = 1f;
 
         private IEnumerator Start()
         {
@@ -199,8 +202,42 @@ namespace Clube.Debug
                 }
                 Carry();
                 Sample();
+                if (Time.frameCount % GroundLookFrames == 0)
+                {
+                    nearGround = Mathf.Min(nearGround, GroundReady(NearColumns));
+                    drawnGround = Mathf.Min(drawnGround, GroundReady(world.DetailDistance));
+                }
             }
             Report(name, t);
+        }
+
+        // The share of the columns within so many chunks of the player whose ground is loaded and meshed: frames are no use if the ground lags behind.
+        private float GroundReady(int radius)
+        {
+            World chunks = world.World;
+            Vector3 size = chunks.Grid.ChunkWorldSize;
+            Vector3Int centre = chunks.Grid.WorldToChunk(world.transform.InverseTransformPoint(body.position));
+            int columns = 0, ready = 0;
+            for (int z = -radius; z <= radius; z++)
+            {
+                for (int x = -radius; x <= radius; x++)
+                {
+                    if (x * x + z * z > radius * radius)
+                    {
+                        continue;
+                    }
+                    columns++;
+                    int cx = centre.x + x, cz = centre.z + z;
+                    int ground = Mathf.FloorToInt(session.Map.Height((cx + 0.5f) * size.x, (cz + 0.5f) * size.z) / size.y);
+                    bool shown = true;
+                    for (int y = Mathf.Max(0, ground - 1); y <= ground + 1 && shown; y++)
+                    {
+                        shown = chunks.TryGetChunk(new Vector3Int(cx, y, cz), out Chunk chunk) && !chunk.IsDirty;
+                    }
+                    ready += shown ? 1 : 0;
+                }
+            }
+            return columns > 0 ? (float)ready / columns : 1f;
         }
 
         // Stands the player on the route at the distance walked, there and back, facing the way it goes.
@@ -258,6 +295,8 @@ namespace Clube.Debug
             text.AppendLine(Line("  streamer", streamer) + " | " + Line("far terrain", far) + " | " + Line("coarse terrain", lod) + " | " + Line("distant trees", trees)
                             + " | " + Line("water", water) + " | " + Line("grass", grass));
             text.AppendLine(Line("  draw calls", drawCalls, "") + " | " + Line("allocated", allocated, " KB"));
+            text.AppendLine($"  ground ready at its worst: {nearGround * 100f:0}% within {NearColumns * 4} m, {drawnGround * 100f:0}% within {world.DetailDistance * 4} m");
+            nearGround = drawnGround = 1f;
             text.AppendLine($"  pending {world.PendingCount}, loading {world.IsLoading}, in sight {world.IsLoadingInSight}, renderers {world.Stats.Renderers}; phases (last frame): {world.Stats.Phases}");
             string top = markers.Top(MarkersShown, frames.Count);
             if (top.Length > 0)
