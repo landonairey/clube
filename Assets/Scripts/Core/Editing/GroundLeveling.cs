@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -14,6 +15,9 @@ namespace Clube.Core
     {
         // Most plant samples a tree is cleared by: well over the biggest generated tree.
         private const int MaxTreeSamples = 60000;
+
+        // Plant samples looked at in one step of a sliced cut: about a millisecond.
+        private const int SamplesPerStep = 64;
 
         // Depth under the surface that new ground is topsoil (grass) rather than dirt, in metres.
         private const float TopsoilDepth = 0.6f;
@@ -113,22 +117,43 @@ namespace Clube.Core
         /// <summary>Levels an area: trees on it are cleared, then each column is set to its flat or ramped height.</summary>
         public static void Level(World world, MaterialRegistry materials, Area area, float iso)
         {
+            SlicedWork.RunToEnd(LevelSteps(world, materials, area, iso));
+        }
+
+        /// <summary>
+        /// <see cref="Level"/> in small steps for <see cref="SlicedWork"/> (GL771): cutting down a wood for one road piece took
+        /// most of a second. The trees still go first and the ground after them, so it ends the same as one call.
+        /// </summary>
+        public static IEnumerator LevelSteps(World world, MaterialRegistry materials, Area area, float iso)
+        {
             WorldGrid grid = world.Grid;
-            float voxel = grid.VoxelSize;
             VoxelMaterial grass = materials != null ? materials.Find("Grass") : null;
             VoxelMaterial dirt = materials != null ? materials.Find("Dirt") : null;
             Vector2 outer = area.Half + Vector2.one * Mathf.Max(0f, area.Ramp);
             var natural = new NaturalHeights(area, outer);
             Vector3Int low = grid.WorldToNearestSample(new Vector3(area.Centre.x - outer.x, 0f, area.Centre.y - outer.y));
             Vector3Int high = grid.WorldToNearestSample(new Vector3(area.Centre.x + outer.x, 0f, area.Centre.y + outer.y));
-            ClearTreesOnGround(world, materials, area, low, high, natural, iso);
+            yield return null;
+            yield return ClearTreesOnGround(world, materials, area, low, high, natural, iso);
+            for (int z = low.z; z <= high.z; z++)
+            {
+                LevelRows(world, materials, area, natural, grass, dirt, low.x, high.x, z, z, iso);
+                yield return null;
+            }
+        }
 
+        // Sets the columns of these rows to their flat or ramped height.
+        private static void LevelRows(World world, MaterialRegistry materials, Area area, NaturalHeights natural, VoxelMaterial grass, VoxelMaterial dirt,
+            int lowX, int highX, int lowZ, int highZ, float iso)
+        {
+            WorldGrid grid = world.Grid;
+            float voxel = grid.VoxelSize;
             // Past the ground, solid samples (a boulder) are cleared until this many samples of air in a row.
             const int AirToStop = 4;
             int headroom = Mathf.CeilToInt(area.Headroom / voxel);
-            for (int z = low.z; z <= high.z; z++)
+            for (int z = lowZ; z <= highZ; z++)
             {
-                for (int x = low.x; x <= high.x; x++)
+                for (int x = lowX; x <= highX; x++)
                 {
                     Vector3 column = grid.SampleToWorld(new Vector3Int(x, 0, z));
                     if (area.Inside != null && !area.Inside(column.x, column.z))
@@ -345,20 +370,49 @@ namespace Clube.Core
 
         // Trees standing anywhere on a levelled area: only a band just over the ground of each column is searched for their
         // trunks (the ground as it was and as it will be), then each tree found is cut down whole.
-        private static void ClearTreesOnGround(World world, MaterialRegistry materials, Area area, Vector3Int low, Vector3Int high, NaturalHeights natural, float iso)
+        private static IEnumerator ClearTreesOnGround(World world, MaterialRegistry materials, Area area, Vector3Int low, Vector3Int high, NaturalHeights natural, float iso)
         {
             if (materials == null)
             {
-                return;
+                yield break;
             }
             WorldGrid grid = world.Grid;
-            const float TrunkBand = 2f;
             var front = new Stack<Vector3Int>();
             var seen = new HashSet<Vector3Int>();
             int floorY = int.MaxValue;
             for (int z = low.z; z <= high.z; z++)
             {
-                for (int x = low.x; x <= high.x; x++)
+                FindTrunks(world, materials, area, natural, low.x, high.x, z, iso, front, seen, ref floorY);
+                yield return null;
+            }
+            // A wide area may hold a small wood: room for a few dozen trees.
+            // A road through a wood (TreeReach): the cut stops a little way out, or touching crowns would take the wood with them.
+            int reach = area.TreeReach > 0f ? Mathf.CeilToInt(area.TreeReach / grid.VoxelSize) : int.MaxValue / 4;
+            var within = new RectInt(low.x - reach, low.z - reach, high.x - low.x + 2 * reach, high.z - low.z + 2 * reach);
+            var cutOff = area.TreeReach > 0f ? new List<Vector3Int>() : null;
+            var flood = new PlantFlood(world, materials, front, seen, floorY, iso, MaxTreeSamples * 20, area.TreeReach > 0f ? within : (RectInt?)null, cutOff);
+            while (!flood.Step(SamplesPerStep))
+            {
+                yield return null;
+            }
+            if (cutOff != null)
+            {
+                var severed = new SeveredParts(world, materials, cutOff, iso);
+                while (!severed.Step(SamplesPerStep))
+                {
+                    yield return null;
+                }
+            }
+        }
+
+        // The plant samples of one row of columns, in the band just over the ground where trunks stand.
+        private static void FindTrunks(World world, MaterialRegistry materials, Area area, NaturalHeights natural, int lowX, int highX, int z, float iso,
+            Stack<Vector3Int> front, HashSet<Vector3Int> seen, ref int floorY)
+        {
+            WorldGrid grid = world.Grid;
+            const float TrunkBand = 2f;
+            {
+                for (int x = lowX; x <= highX; x++)
                 {
                     Vector3 column = grid.SampleToWorld(new Vector3Int(x, 0, z));
                     if (area.Inside != null && !area.Inside(column.x, column.z))
@@ -382,47 +436,87 @@ namespace Clube.Core
                     }
                 }
             }
-            // A wide area may hold a small wood: room for a few dozen trees.
-            // A road through a wood (TreeReach): the cut stops a little way out, or touching crowns would take the wood with them.
-            int reach = area.TreeReach > 0f ? Mathf.CeilToInt(area.TreeReach / grid.VoxelSize) : int.MaxValue / 4;
-            var within = new RectInt(low.x - reach, low.z - reach, high.x - low.x + 2 * reach, high.z - low.z + 2 * reach);
-            var cutOff = area.TreeReach > 0f ? new List<Vector3Int>() : null;
-            FloodClear(world, materials, front, seen, floorY, iso, MaxTreeSamples * 20, area.TreeReach > 0f ? within : (RectInt?)null, cutOff);
-            if (cutOff != null)
-            {
-                ClearSevered(world, materials, cutOff, iso);
-            }
         }
 
         // GL652: what a cut that stops at a reach leaves behind. The part of a tree past the reach is still there; where
         // its trunk went with the cut, it hangs in the air (a branch, half a crown). Each such remainder is followed, and
         // cleared unless some of it still stands on the ground (a neighbouring tree whose crown touched) or runs down
         // into ground that is not loaded, or it is too large to be the remainder of one tree.
-        private static void ClearSevered(World world, MaterialRegistry materials, List<Vector3Int> cutOff, float iso)
+        private sealed class SeveredParts
         {
-            var seen = new HashSet<Vector3Int>();
-            var part = new List<Vector3Int>();
-            var front = new Stack<Vector3Int>();
-            foreach (Vector3Int start in cutOff)
+            private readonly World world;
+            private readonly MaterialRegistry materials;
+            private readonly List<Vector3Int> cutOff;
+            private readonly float iso;
+            private readonly HashSet<Vector3Int> seen = new HashSet<Vector3Int>();
+            private readonly List<Vector3Int> part = new List<Vector3Int>();
+            private readonly Stack<Vector3Int> front = new Stack<Vector3Int>();
+            private int nextStart;
+            private int nextCleared;
+            private bool following;
+            private bool clearing;
+            private bool stands;
+
+            public SeveredParts(World world, MaterialRegistry materials, List<Vector3Int> cutOff, float iso)
+            {
+                this.world = world;
+                this.materials = materials;
+                this.cutOff = cutOff;
+                this.iso = iso;
+            }
+
+            // Works through this many samples; true once every remainder has been dealt with.
+            public bool Step(int samples)
+            {
+                while (samples > 0)
+                {
+                    samples--;
+                    if (clearing)
+                    {
+                        world.SetDensity(part[nextCleared++], 0f);
+                        clearing = nextCleared < part.Count;
+                    }
+                    else if (following)
+                    {
+                        Follow();
+                    }
+                    else if (nextStart >= cutOff.Count)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        Begin(cutOff[nextStart++]);
+                    }
+                }
+                return !clearing && !following && nextStart >= cutOff.Count;
+            }
+
+            private void Begin(Vector3Int start)
             {
                 if (seen.Contains(start) || Read(world, start, out _) < iso || !IsPlant(world, materials, start))
                 {
-                    continue;
+                    return;
                 }
                 part.Clear();
                 front.Clear();
                 front.Push(start);
                 seen.Add(start);
-                bool stands = false;
-                while (front.Count > 0 && !stands)
+                stands = false;
+                following = true;
+            }
+
+            // One more sample of the remainder being followed.
+            private void Follow()
+            {
+                Vector3Int sample = front.Pop();
+                part.Add(sample);
+                if (part.Count > MaxTreeSamples)
                 {
-                    Vector3Int sample = front.Pop();
-                    part.Add(sample);
-                    if (part.Count > MaxTreeSamples)
-                    {
-                        stands = true;
-                        break;
-                    }
+                    stands = true;
+                }
+                else
+                {
                     foreach (Vector3Int step in Around)
                     {
                         Vector3Int next = sample + step;
@@ -453,38 +547,74 @@ namespace Clube.Core
                         }
                     }
                 }
-                if (stands)
+                if (stands || front.Count == 0)
                 {
-                    continue;
-                }
-                foreach (Vector3Int sample in part)
-                {
-                    world.SetDensity(sample, 0f);
+                    following = false;
+                    clearing = !stands && part.Count > 0;
+                    nextCleared = 0;
                 }
             }
         }
 
         // Empties every solid plant sample joined to the ones in front, never below floorY.
-        private static void FloodClear(World world, MaterialRegistry materials, Stack<Vector3Int> front, HashSet<Vector3Int> seen, int floorY, float iso, int most, RectInt? within = null, List<Vector3Int> cutOff = null)
+        private static void FloodClear(World world, MaterialRegistry materials, Stack<Vector3Int> front, HashSet<Vector3Int> seen, int floorY, float iso, int most)
         {
-            while (front.Count > 0 && seen.Count < most)
+            new PlantFlood(world, materials, front, seen, floorY, iso, most, null, null).Step(int.MaxValue);
+        }
+
+        // The flood of a cut, a few samples at a time.
+        private sealed class PlantFlood
+        {
+            private readonly World world;
+            private readonly MaterialRegistry materials;
+            private readonly Stack<Vector3Int> front;
+            private readonly HashSet<Vector3Int> seen;
+            private readonly int floorY;
+            private readonly float iso;
+            private readonly int most;
+            private readonly RectInt? within;
+            private readonly List<Vector3Int> cutOff;
+
+            public PlantFlood(World world, MaterialRegistry materials, Stack<Vector3Int> front, HashSet<Vector3Int> seen, int floorY, float iso, int most, RectInt? within, List<Vector3Int> cutOff)
             {
-                Vector3Int sample = front.Pop();
-                world.SetDensity(sample, 0f);
-                foreach (Vector3Int step in Around)
+                this.world = world;
+                this.materials = materials;
+                this.front = front;
+                this.seen = seen;
+                this.floorY = floorY;
+                this.iso = iso;
+                this.most = most;
+                this.within = within;
+                this.cutOff = cutOff;
+            }
+
+            // Empties up to this many samples; true once the flood has run out.
+            public bool Step(int samples)
+            {
+                while (front.Count > 0 && seen.Count < most)
                 {
-                    Vector3Int next = sample + step;
-                    if (within.HasValue && (next.x < within.Value.xMin || next.x > within.Value.xMax || next.z < within.Value.yMin || next.z > within.Value.yMax))
+                    if (samples-- <= 0)
                     {
-                        cutOff?.Add(next);
-                        continue;
+                        return false;
                     }
-                    if (next.y >= floorY && !seen.Contains(next) && Read(world, next, out _) >= iso && IsPlant(world, materials, next))
+                    Vector3Int sample = front.Pop();
+                    world.SetDensity(sample, 0f);
+                    foreach (Vector3Int step in Around)
                     {
-                        seen.Add(next);
-                        front.Push(next);
+                        Vector3Int next = sample + step;
+                        if (within.HasValue && (next.x < within.Value.xMin || next.x > within.Value.xMax || next.z < within.Value.yMin || next.z > within.Value.yMax))
+                        {
+                            cutOff?.Add(next);
+                            continue;
+                        }
+                        if (next.y >= floorY && !seen.Contains(next) && Read(world, next, out _) >= iso && IsPlant(world, materials, next))
+                        {
+                            seen.Add(next);
+                            front.Push(next);
+                        }
                     }
                 }
+                return true;
             }
         }
 
