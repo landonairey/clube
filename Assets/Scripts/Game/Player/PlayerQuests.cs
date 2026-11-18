@@ -19,6 +19,9 @@ namespace Clube.Game
         public const string MainSection = "Main Objectives";
         public const string SideSection = "Side Quests";
 
+        /// <summary>GL744: the first quest: walk onto the family's parcel (<see cref="ParcelEntryQuest"/>).</summary>
+        public const string EnterParcel = "enter-parcel";
+
         // Seconds between looks at the inventory.
         private const float CheckInterval = 0.25f;
         private const float CoinGoal = 10000f;
@@ -32,6 +35,7 @@ namespace Clube.Game
         // What to do next, for the early quests (GL447), shown under the quest box.
         private static readonly System.Collections.Generic.Dictionary<string, string> Tips = new System.Collections.Generic.Dictionary<string, string>
         {
+            [EnterParcel] = "Follow the yellow arrow. The land under it is your family's: it is the only ground you may dig.",
             ["pick-up-stone"] = "Loose stones on the surface can be collected by hand; hard rock stone needs a tool to gather.",
             ["hand-axe"] = "With a stone selected in the hotbar, right click a boulder to shape it into a hand axe.",
             ["gather-wood"] = "Use the hand axe to cut down a birch tree. Maple trees need a better tool. Climb trees by holding SPACE to cut off smaller sections of limbs. As your Woodcutting level increases so does your tree cutting yield.",
@@ -69,6 +73,7 @@ namespace Clube.Game
         public static QuestLog CreateLog()
         {
             var log = new QuestLog();
+            log.Add(EnterParcel, "Enter your family's parcel", MainSection);
             log.Add("pick-up-stone", "Pick up a stone", MainSection);
             log.Add("hand-axe", "Craft a stone into a hand axe on a boulder", MainSection);
             log.Add("gather-wood", "Gather wood", MainSection);
@@ -103,6 +108,7 @@ namespace Clube.Game
             parcels = GetComponent<PlayerParcels>();
             carver = GetComponent<FlatRockCarver>();
             rest = GetComponent<RestScreen>();
+            gameObject.AddComponent<ParcelEntryQuest>();
         }
 
         private void OnEnable()

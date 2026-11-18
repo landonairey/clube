@@ -4,18 +4,18 @@ namespace Clube.Game
 {
     /// <summary>
     /// The timings and easing of the arrival cutscene (GL583), apart from the scene objects: how long each part lasts, and the
-    /// black the screen starts under while the character's eyes open. About 10 s in all.
+    /// black the screen starts under while the character's eyes open. About 16 s in all.
     /// </summary>
     public static class ArrivalTimeline
     {
         /// <summary>Seconds in the cart, driving up under the sky.</summary>
-        public const float RideSeconds = 5f;
+        public const float RideSeconds = 8f;
 
         /// <summary>Seconds the cart stands still and tips.</summary>
-        public const float TipSeconds = 1.5f;
+        public const float TipSeconds = 2f;
 
         /// <summary>Seconds lying where the player landed.</summary>
-        public const float LieSeconds = 1.7f;
+        public const float LieSeconds = 3.5f;
 
         /// <summary>Seconds getting up.</summary>
         public const float RiseSeconds = 1.8f;

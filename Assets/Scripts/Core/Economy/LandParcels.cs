@@ -104,6 +104,29 @@ namespace Clube.Core
             return new Vector2((parcel.x + 0.5f) * Size, (parcel.y + 0.5f) * Size);
         }
 
+        /// <summary>The square of land a parcel covers (x, z, metres from the world origin).</summary>
+        public Rect AreaOf(Vector2Int parcel)
+        {
+            return new Rect(parcel.x * Size, parcel.y * Size, Size, Size);
+        }
+
+        /// <summary>
+        /// GL744: the points <paramref name="margin"/> metres outside a parcel's four sides, level with a point (x, z), the
+        /// nearest side first: where someone can be set down to walk onto the land.
+        /// </summary>
+        public Vector2[] PointsOutside(Vector2Int parcel, Vector2 from, float margin)
+        {
+            Rect area = AreaOf(parcel);
+            float x = Mathf.Clamp(from.x, area.xMin, area.xMax), z = Mathf.Clamp(from.y, area.yMin, area.yMax);
+            var points = new[]
+            {
+                new Vector2(area.xMin - margin, z), new Vector2(area.xMax + margin, z),
+                new Vector2(x, area.yMin - margin), new Vector2(x, area.yMax + margin),
+            };
+            System.Array.Sort(points, (a, b) => (a - from).sqrMagnitude.CompareTo((b - from).sqrMagnitude));
+            return points;
+        }
+
         /// <summary>True when a parcel's centre is inside <see cref="SaleArea"/> (always, with none).</summary>
         public bool IsInSaleArea(Vector2Int parcel)
         {

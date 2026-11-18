@@ -515,6 +515,35 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void TheQuarryPit_KeepsClearOfARoadRunningBetweenItsSamples()
+        {
+            // GL739: a narrow road between the survey's rows left a ridge of uncut ground across the floor.
+            var rules = new SettlementSiteRules();
+            PlannedSettlement village = Settlement("village", 6, 1, new Vector2(1000f, 1000f));
+            village.IsQuarry = true;
+            SettlementSite open = SettlementLayout.Plan(village, 32f, rules, (x, z) => 40f);
+            float between = open.Quarry.Area.center.y + 2f - Mathf.Repeat(open.Quarry.Area.height * 0.5f + rules.Ramp, 4f);
+            var roads = new List<SettlementRoad>
+            {
+                new SettlementRoad { Points = new[] { new Vector2(700f, between), new Vector2(1300f, between) }, Reach = 1.5f, HalfWidth = 1f },
+            };
+
+            PlannedSettlement again = Settlement("village", 6, 1, new Vector2(1000f, 1000f));
+            again.IsQuarry = true;
+            SettlementSite site = SettlementLayout.Plan(again, 32f, rules, (x, z) => 40f, roads: roads);
+
+            Assert.IsNotNull(site.Quarry);
+            for (float x = site.Quarry.Area.xMin; x <= site.Quarry.Area.xMax; x += 1f)
+            {
+                for (float z = site.Quarry.Area.yMin; z <= site.Quarry.Area.yMax; z += 0.5f)
+                {
+                    Assert.Greater(site.RoadBeyond(x, z), rules.RoadBlend, "no road shapes the floor");
+                    Assert.AreEqual(site.Quarry.Floor, site.HeightAt(x, z), 1e-3f, "the floor is level everywhere");
+                }
+            }
+        }
+
+        [Test]
         public void TheCapitalHasACastleAndAGuardTower_InsideATownWall_AndACityAGuardTower()
         {
             var rules = new SettlementSiteRules();

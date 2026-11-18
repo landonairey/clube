@@ -21,6 +21,10 @@ namespace Clube.Core
         private const int QuarrySlides = 3;
         private const float QuarrySlideStep = 16f;
 
+        // Metres between the samples of the land under the pit, and the furthest any point of it is from one.
+        private const float SurveyStep = 4f;
+        private const float SampleReach = SurveyStep * 0.7072f;
+
         /// <summary>The floor (x, z): <see cref="CompanyWork.Yard"/>'s size, north up.</summary>
         public Rect Area;
 
@@ -118,12 +122,13 @@ namespace Clube.Core
         {
             low = float.MaxValue;
             high = float.MinValue;
-            const float step = 4f;
-            for (float x = area.xMin - ramp; x <= area.xMax + ramp; x += step)
+            for (float x = area.xMin - ramp; x <= area.xMax + ramp; x += SurveyStep)
             {
-                for (float z = area.yMin - ramp; z <= area.yMax + ramp; z += step)
+                for (float z = area.yMin - ramp; z <= area.yMax + ramp; z += SurveyStep)
                 {
-                    if ((closedAt != null && closedAt(x, z)) || site.RoadBeyond(x, z) <= 0f)
+                    // GL739: a road is kept out by its distance. One running between the samples was left standing on a
+                    // ridge of uncut ground, a tall stone wall across the pit's floor.
+                    if ((closedAt != null && closedAt(x, z)) || site.RoadBeyond(x, z) <= site.Rules.RoadBlend + SampleReach)
                     {
                         return false;
                     }
