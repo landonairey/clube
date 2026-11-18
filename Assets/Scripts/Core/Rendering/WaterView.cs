@@ -15,7 +15,8 @@ namespace Clube.Core
     /// triangles per map cell (<see cref="WaterSheetMesh.AddCell"/>), which ripple; past it, a few big meshes built once
     /// (<see cref="CoarseWaterMesher"/>: level water as large sheets, single cells only along shores and rivers). The
     /// shader draws the first inside a square round the viewer and the second outside it, so nothing is rebuilt as the
-    /// viewer moves but the handful of tiles entering the square. All are drawn in the <c>Clube/Water</c> shader.
+    /// viewer moves but the handful of tiles entering the square; the square reaches only as far as the tiles built
+    /// (<see cref="WaterDetailSquare"/>, GL761). All are drawn in the <c>Clube/Water</c> shader.
     /// </summary>
     [RequireComponent(typeof(WorldView))]
     public sealed class WaterView : MonoBehaviour
@@ -252,8 +253,10 @@ namespace Clube.Core
                 far.SetTexture(CoverageMaskId, coverage.Texture);
                 far.SetVector(CoverageId, area);
             }
-            detailMaterial.SetVector(DetailId, new Vector4(middle.x, middle.z, farDetailMetres, 1f));
-            coarseMaterial.SetVector(DetailId, new Vector4(middle.x, middle.z, farDetailMetres, 2f));
+            // GL761: the square stops short of tiles still waiting, so the coarse sheets go on drawing the water there.
+            float ready = WaterDetailSquare.ReadyHalfWidth(DetailCentreOnMap(), dirtyTiles, tilesAcross, Tile * water.CellSize, farDetailMetres);
+            detailMaterial.SetVector(DetailId, new Vector4(middle.x, middle.z, ready, 1f));
+            coarseMaterial.SetVector(DetailId, new Vector4(middle.x, middle.z, ready, 2f));
         }
 
         private void OnDestroy()
@@ -652,10 +655,11 @@ namespace Clube.Core
         }
 
         // Far water, coarse (GL626): the whole map's water in a few big meshes, built once (CoarseWaterMesher). They
-        // take what's left of the frame's budget after the chunks and the detailed tiles (one at least).
+        // take what's left of the frame's budget after the chunks and the detailed tiles, and one is built every frame
+        // whatever those took (GL761): everything else falls back on them.
         private void RebuildRegions()
         {
-            bool first = dirtyChunks.Count == 0 && dirtyTiles.Count == 0;
+            bool first = true;
             while (dirtyRegions.Count > 0 && (budget.Elapsed.TotalMilliseconds < buildBudgetMs || first))
             {
                 first = false;
@@ -714,16 +718,14 @@ namespace Clube.Core
                     tiles.Remove(tile);
                 }
             }
-            bool first = dirtyChunks.Count == 0;
+            // GL761: nearest first and one every frame, however many chunks are waiting: streaming over open sea keeps
+            // chunks waiting for minutes, and the detail square can't grow past a tile that isn't built.
+            float2 viewer = DetailCentreOnMap();
+            bool first = true;
             while (dirtyTiles.Count > 0 && (budget.Elapsed.TotalMilliseconds < buildBudgetMs || first))
             {
                 first = false;
-                int tile = -1;
-                foreach (int dirty in dirtyTiles)
-                {
-                    tile = dirty;
-                    break;
-                }
+                int tile = WaterDetailSquare.Nearest(viewer, dirtyTiles, tilesAcross, tileWidth);
                 dirtyTiles.Remove(tile);
                 BuildTile(tile);
             }
@@ -734,6 +736,13 @@ namespace Clube.Core
         {
             Vector3 focus = worldView.Focus != null ? transform.InverseTransformPoint(worldView.Focus.position) : Vector3.zero;
             return new Vector2(focus.x, focus.z);
+        }
+
+        // The same, in metres from the water map's corner, as the tiles are counted.
+        private float2 DetailCentreOnMap()
+        {
+            Vector2 centre = DetailCentre();
+            return new float2(centre.x, centre.y) - water.Origin;
         }
 
         private void BuildTile(int tile)
