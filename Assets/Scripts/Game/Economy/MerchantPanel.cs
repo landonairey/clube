@@ -305,7 +305,7 @@ namespace Clube.Game
                 return $"Disposition {disposition.Value}/{Disposition.Max}: fair prices.";
             }
             int points = Disposition.Max - disposition.Value;
-            float toNext = Disposition.CoinsPerPoint - disposition.Carried;
+            float toNext = Disposition.CoinsForPoint(disposition.Value) - disposition.Carried;
             return $"Disposition {disposition.Value}/{Disposition.Max}: prices {points}% against you; {Wallet.Format(toNext)} more trade raises it.";
         }
 

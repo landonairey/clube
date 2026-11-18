@@ -45,16 +45,33 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void Disposition_StartsAtTen_RisesOnePointPerHundredCoins()
+        public void Disposition_StartsAtTen_RisesOnePointPerTenCoins()
         {
             var disposition = new Disposition();
             Assert.AreEqual(10, disposition.Value);
-            Assert.AreEqual(0, disposition.Record(99f));
-            Assert.AreEqual(1, disposition.Record(1f));
+            Assert.AreEqual(0, disposition.Record(9f));
+            Assert.AreEqual(1, disposition.Record(1.5f), "10c of trade is the first point (GL769)");
             Assert.AreEqual(11, disposition.Value);
-            Assert.AreEqual(3, disposition.Record(350f));
-            Assert.AreEqual(14, disposition.Value);
-            Assert.AreEqual(50f, disposition.Carried, 1e-3f);
+            Assert.AreEqual(0.5f, disposition.Carried, 1e-3f);
+        }
+
+        [Test]
+        public void Disposition_PointsCostMoreAsItRises_TenThenAHundredThenAThousand()
+        {
+            Assert.AreEqual(10f, Disposition.CoinsForPoint(Disposition.Start), 1e-3f);
+            Assert.AreEqual(100f, Disposition.CoinsForPoint(50), 1e-2f);
+            Assert.AreEqual(1000f, Disposition.CoinsForPoint(90), 0.5f);
+            Assert.AreEqual(Disposition.CoinsForPoint(Disposition.Start), Disposition.CoinsForPoint(0), "no cheaper below the start");
+            for (int value = 1; value < Disposition.Max; value++)
+            {
+                Assert.GreaterOrEqual(Disposition.CoinsForPoint(value), Disposition.CoinsForPoint(value - 1), $"at {value}");
+            }
+            var disposition = new Disposition(50);
+            Assert.AreEqual(0, disposition.Record(99f));
+            Assert.AreEqual(1, disposition.Record(1.5f), "about 100c at 50");
+            var late = new Disposition(90);
+            Assert.AreEqual(0, late.Record(990f));
+            Assert.AreEqual(1, late.Record(15f), "about 1000c at 90");
         }
 
         [Test]
