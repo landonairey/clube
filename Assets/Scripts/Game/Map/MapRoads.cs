@@ -485,7 +485,7 @@ namespace Clube.Game
                 return;
             }
             // GL759: nothing was ready at the last look, and chunks take a while to load: no need to ask again every frame.
-            if (!session.WorldView.IsLoading && Time.unscaledTime < nextLookTime)
+            if (!session.WorldView.IsLoadingInSight && Time.unscaledTime < nextLookTime)
             {
                 return;
             }
@@ -493,7 +493,7 @@ namespace Clube.Game
             WorldConfig config = session.WorldView.Config;
             World world = session.WorldView.World;
             // While the area loads in bulk the ground is waiting to be shown: more of the frame goes to writing it.
-            float writeBudgetMilliseconds = session.WorldView.IsLoading
+            float writeBudgetMilliseconds = session.WorldView.IsLoadingInSight
                 ? Mathf.Max(this.writeBudgetMilliseconds, session.WorldView.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds) : this.writeBudgetMilliseconds;
             float started = Time.realtimeSinceStartup;
             int checks = 0;

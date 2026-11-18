@@ -272,6 +272,18 @@ namespace Clube.Core
         /// <summary>True while the area loads in bulk, with the larger loading budget (see <see cref="StreamingSettings.LoadingBudgetMilliseconds"/>).</summary>
         public bool IsLoading => bulkLoading;
 
+        /// <summary>
+        /// True while the bulk load is still on the chunks that will be drawn. False once only the hidden ones past the
+        /// detail distance are left (GL759): at a long render distance those take minutes, with the game being played.
+        /// </summary>
+        public bool IsLoadingDrawnArea => bulkLoading && !IsLoadingHiddenOnly;
+
+        // The bulk load is on to hidden chunks and someone is playing: starting jobs keeps to the frame's budget (GL759).
+        private bool RationsStarts => bulkLoading && !Hurry && IsLoadingHiddenOnly;
+
+        // Starts a frame may make past its budget: as many as while playing when rationed, else the whole job limit.
+        private int StartsPastBudget => RationsStarts ? Mathf.Max(4, JobsUtility.JobWorkerCount * JobsPerWorker) : MaxJobsInFlight;
+
         // True once the bulk load has started every drawn column and is on to the hidden ones past the detail distance.
         private bool IsLoadingHiddenOnly =>
             settings.FarLoadingBudgetMilliseconds > 0f && settings.DetailDistance > 0 && hasDrawCentre
@@ -592,8 +604,9 @@ namespace Clube.Core
         private void StartGenerating()
         {
             int limit = MaxJobsInFlight;
+            int pastBudget = StartsPastBudget;
             for (int i = 0; i < waitingForColumns.Count && pipeline.GenerationJobsRunning < limit
-                            && (i < limit || Before(budget));)
+                            && (i < pastBudget || Before(budget));)
             {
                 Vector3Int waiting = waitingForColumns[i];
                 if (!IsWanted(waiting) || world.IsLoaded(waiting) || pipeline.StartGeneration(waiting))
@@ -611,7 +624,7 @@ namespace Clube.Core
             int started = 0;
             int layers = settings.HeightInChunks;
             while (loadCursor < wantedColumns.Count && pipeline.GenerationJobsRunning < limit
-                   && (started < limit || Before(budget)))
+                   && (started < pastBudget || Before(budget)))
             {
                 Vector2Int column = wantedColumns[loadCursor];
                 if (loadLayer == 0 && world.LoadedLayersIn(column) >= layers)
@@ -677,13 +690,18 @@ namespace Clube.Core
             }
             world.CollectDirty(dirtyScratch);
             var nearest = new NearestChunkHeap(dirtyScratch, wantedCentre.Value);
-            while (pipeline.MeshingCount < limit && nearest.TryTake(out Vector3Int coord))
+            bool rationed = RationsStarts;
+            int pastBudget = StartsPastBudget;
+            int started = 0;
+            while (pipeline.MeshingCount < limit && (!rationed || started < pastBudget || Before(budget))
+                   && nearest.TryTake(out Vector3Int coord))
             {
                 if (!IsWanted(coord) || pipeline.IsMeshing(coord) || IsHeld(coord))
                 {
                     continue;
                 }
                 hasChunksToMesh = true;
+                started++;
                 Chunk chunk = world.Chunks[coord];
                 ChunkMeshSettings chunkSettings = ForChunk(current, coord);
                 if (HasNoSurface(chunk, chunkSettings))

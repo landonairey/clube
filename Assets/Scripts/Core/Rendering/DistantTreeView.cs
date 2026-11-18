@@ -235,7 +235,7 @@ namespace Clube.Core
             using (BuilderMarker.Auto())
             {
                 // GL759: behind the loading curtain as many tiles as the builder likes; in play only a sliver of the frame.
-                builder.StartBudgetMilliseconds = worldView.IsLoading ? float.PositiveInfinity : PlayStartBudgetMilliseconds;
+                builder.StartBudgetMilliseconds = worldView.Hurry ? float.PositiveInfinity : PlayStartBudgetMilliseconds;
                 builder.Update(worldView.transform.InverseTransformPoint(worldView.Focus.position));
             }
             if (builder.Version != syncedVersion)

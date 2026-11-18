@@ -543,7 +543,7 @@ namespace Clube.Game
                 Trim = registry != null ? registry.Find("Maple boards") : null,
             };
             // While the area loads in bulk the ground is waiting to be shown: more of the frame goes to writing it.
-            float budget = view.IsLoading ? Mathf.Max(writeBudgetMilliseconds, view.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds) : writeBudgetMilliseconds;
+            float budget = view.IsLoadingInSight ? Mathf.Max(writeBudgetMilliseconds, view.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds) : writeBudgetMilliseconds;
             float started = Time.realtimeSinceStartup;
             bool wrote = false;
             int checks = 0;
