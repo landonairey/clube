@@ -58,6 +58,11 @@ namespace Clube.Core
         // Reeds stand on banks steeper than a bush's ground (GL723): the y of the ground's normal.
         private const float ReedMinUp = 0.6f;
 
+        // GL770: how far the focus moves between looks over the chunks, and how often bushes on new chunks join the draw.
+        private const float ScanMoveMetres = 4f;
+        private const float GrowBatchSeconds = 0.25f;
+
+        private static readonly int InstanceMatricesId = Shader.PropertyToID("_InstanceMatrices");
         private static readonly int FadeStart = Shader.PropertyToID("_FadeStart");
         private static readonly int FadeEnd = Shader.PropertyToID("_FadeEnd");
         private static readonly BushSize[] Sizes = { BushSize.Small, BushSize.Medium, BushSize.Large };
@@ -112,12 +117,21 @@ namespace Clube.Core
         private GrassScatter grassScatter;
         private MaterialPropertyBlock properties;
         private bool batchesDirty;
+        private bool grownDirty;
+        private float batchedAt;
         private bool scanPending = true;
         private Vector3 scannedFrom;
+        // Chunks in reach with no bushes yet, nearest first once sorted (GL770).
+        private readonly List<(float Distance, Vector3Int Coord, ChunkRenderer Renderer)> waiting = new List<(float, Vector3Int, ChunkRenderer)>();
+        private int waitingNext;
+        private bool waitingUnsorted;
 
         private sealed class Scattered
         {
             public readonly List<Bush> Bushes = new List<Bush>();
+            // The bushes' matrices by batch, worked out once until the bushes change (GL770).
+            public readonly List<Matrix4x4>[] Matrices = { new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>() };
+            public bool Packed;
             public bool Drawn;
         }
 
@@ -213,6 +227,7 @@ namespace Clube.Core
                     continue;
                 }
                 scattered.Bushes.RemoveAt(index);
+                scattered.Packed = false;
                 removed.Add(bush.Cell);
                 batchesDirty |= scattered.Drawn;
                 return true;
@@ -247,6 +262,8 @@ namespace Clube.Core
                 Recycle(scattered);
             }
             bushes.Clear();
+            waiting.Clear();
+            waitingNext = 0;
             batchesDirty = true;
             scanPending = true;
         }
@@ -260,18 +277,23 @@ namespace Clube.Core
                     Destroy(mesh);
                 }
             }
+            foreach (InstanceBatches batch in batches)
+            {
+                batch.Dispose();
+            }
         }
 
         private void OnChunkMeshed(Vector3Int coord, ChunkRenderer chunkRenderer)
         {
-            scanPending = true;
             if (!bushes.TryGetValue(coord, out Scattered scattered))
             {
+                Await(coord, chunkRenderer);
                 return;
             }
             if (!scattered.Drawn || chunkRenderer == null)
             {
                 Drop(coord);
+                Await(coord, chunkRenderer);
                 return;
             }
 
@@ -293,7 +315,24 @@ namespace Clube.Core
                 removed.Add(old.Cell);
                 Broken?.Invoke(old);
             }
+            scattered.Packed = false;
             batchesDirty = true;
+        }
+
+        // A newly meshed chunk in reach joins the chunks waiting for bushes, without a full look (GL770: while the world
+        // streams a chunk meshes nearly every frame, and looking over every cell in reach each time cost 2.4 ms a frame).
+        private void Await(Vector3Int coord, ChunkRenderer chunkRenderer)
+        {
+            if (chunkRenderer == null || worldView.Focus == null)
+            {
+                return;
+            }
+            float distance = Distance(chunkRenderer, worldView.Focus.position);
+            if (distance <= radius * radius)
+            {
+                waiting.Add((distance, coord, chunkRenderer));
+                waitingUnsorted = true;
+            }
         }
 
         private void OnChunkUnloaded(Vector3Int coord)
@@ -309,10 +348,11 @@ namespace Clube.Core
                 return;
             }
             Vector3 focus = worldView.Focus.position;
-            if (scanPending || (focus - scannedFrom).sqrMagnitude > 4f)
+            if (scanPending || (focus - scannedFrom).sqrMagnitude > ScanMoveMetres * ScanMoveMetres)
             {
                 Scan(focus);
             }
+            Grow();
             Draw();
         }
 
@@ -344,50 +384,67 @@ namespace Clube.Core
                 Drop(coord);
             }
 
-            // New chunks in reach, nearest first, within the time a frame allows.
-            clock.Restart();
-            World world = worldView.World;
-            Vector3 chunkSize = world.Grid.ChunkWorldSize;
-            Vector3Int centre = world.Grid.WorldToChunk(worldView.transform.InverseTransformPoint(focus));
-            var reach = new Vector3Int(Mathf.CeilToInt(radius / chunkSize.x), Mathf.CeilToInt(radius / chunkSize.y), Mathf.CeilToInt(radius / chunkSize.z));
-            for (int ring = 0; ring <= Mathf.Max(reach.x, reach.z); ring++)
+            // The meshed chunks in reach that have no bushes yet wait their turn.
+            waiting.Clear();
+            waitingNext = 0;
+            foreach (KeyValuePair<Vector3Int, ChunkRenderer> pair in worldView.Renderers)
             {
-                for (int dz = -ring; dz <= ring; dz++)
+                if (bushes.ContainsKey(pair.Key))
                 {
-                    for (int dx = -ring; dx <= ring; dx++)
-                    {
-                        if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != ring)
-                        {
-                            continue;
-                        }
-                        for (int dy = -reach.y; dy <= reach.y; dy++)
-                        {
-                            var coord = new Vector3Int(centre.x + dx, centre.y + dy, centre.z + dz);
-                            if (bushes.ContainsKey(coord)
-                                || !worldView.Renderers.TryGetValue(coord, out ChunkRenderer chunkRenderer)
-                                || Distance(chunkRenderer, focus) > near)
-                            {
-                                continue;
-                            }
-                            if (clock.Elapsed.TotalMilliseconds > scatterMilliseconds)
-                            {
-                                scanPending = true;
-                                return;
-                            }
-                            Scattered scattered = spare.Count > 0 ? spare.Pop() : new Scattered();
-                            Scatter(chunkRenderer, scattered);
-                            scattered.Drawn = true;
-                            bushes.Add(coord, scattered);
-                            batchesDirty = true;
-                        }
-                    }
+                    continue;
+                }
+                float distance = Distance(pair.Value, focus);
+                if (distance <= near)
+                {
+                    waiting.Add((distance, pair.Key, pair.Value));
                 }
             }
+            waitingUnsorted = true;
+        }
+
+        // Grows bushes on the waiting chunks, nearest first, within the time a frame allows and at least one a frame.
+        private void Grow()
+        {
+            if (waitingNext >= waiting.Count)
+            {
+                return;
+            }
+            if (waitingUnsorted)
+            {
+                waiting.RemoveRange(0, waitingNext);
+                waitingNext = 0;
+                waiting.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+                waitingUnsorted = false;
+            }
+            clock.Restart();
+            bool grewOne = false;
+            while (waitingNext < waiting.Count)
+            {
+                if (grewOne && clock.Elapsed.TotalMilliseconds > scatterMilliseconds)
+                {
+                    return;
+                }
+                (float _, Vector3Int coord, ChunkRenderer chunkRenderer) = waiting[waitingNext++];
+                // Grown already (listed twice), or its renderer has gone back to the pool since.
+                if (bushes.ContainsKey(coord) || !worldView.Renderers.TryGetValue(coord, out ChunkRenderer current) || current != chunkRenderer)
+                {
+                    continue;
+                }
+                Scattered scattered = spare.Count > 0 ? spare.Pop() : new Scattered();
+                Scatter(chunkRenderer, scattered);
+                scattered.Drawn = true;
+                bushes.Add(coord, scattered);
+                grownDirty = true;
+                grewOne = true;
+            }
+            waiting.Clear();
+            waitingNext = 0;
         }
 
         private void Scatter(ChunkRenderer chunkRenderer, Scattered scattered)
         {
             scattered.Bushes.Clear();
+            scattered.Packed = false;
             spots.Clear();
             int seed = Seed;
             TreeCover trees = CoverOf(worldView.Trees);
@@ -477,47 +534,60 @@ namespace Clube.Core
                 receiveShadows = true,
                 layer = gameObject.layer,
             };
-            if (batchesDirty)
+            if (batchesDirty || (grownDirty && Time.unscaledTime - batchedAt >= GrowBatchSeconds))
             {
                 RebuildBatches();
             }
+            // One draw per mesh from a buffer uploaded when the bushes change (GL770), as the grass does (GL416).
             for (int i = 0; i < batches.Length; i++)
             {
-                batches[i].Draw(parameters, meshes[i]);
+                batches[i].DrawFromBuffer(parameters, meshes[i], InstanceMatricesId);
             }
         }
 
         private void RebuildBatches()
         {
             batchesDirty = false;
+            grownDirty = false;
+            batchedAt = Time.unscaledTime;
             foreach (InstanceBatches batch in batches)
             {
                 batch.Clear();
             }
-            int seed = Seed;
-            int total = 0, reedTotal = 0;
             foreach (Scattered scattered in bushes.Values)
             {
                 if (!scattered.Drawn)
                 {
                     continue;
                 }
-                foreach (Bush bush in scattered.Bushes)
+                if (!scattered.Packed)
                 {
-                    if (bush.IsReeds)
-                    {
-                        Quaternion yaw = Quaternion.Euler(0f, reeds.YawOf(seed, bush.Cell), 0f);
-                        batches[ReedBatch].Add(Matrix4x4.TRS(bush.Position, yaw, Vector3.one * bush.Height));
-                        reedTotal++;
-                        continue;
-                    }
-                    Quaternion turn = Quaternion.Euler(0f, growth.YawOf(seed, bush.Cell), 0f);
-                    batches[(int)bush.Size].Add(Matrix4x4.TRS(bush.Position, turn, Vector3.one * bush.Height));
-                    total++;
+                    Pack(scattered);
+                }
+                for (int i = 0; i < batches.Length; i++)
+                {
+                    batches[i].AddRange(scattered.Matrices[i]);
                 }
             }
-            BushCount = total;
-            ReedCount = reedTotal;
+            ReedCount = batches[ReedBatch].Count;
+            BushCount = batches[0].Count + batches[1].Count + batches[2].Count;
+        }
+
+        // Works out the chunk's bushes' matrices, by batch.
+        private void Pack(Scattered scattered)
+        {
+            foreach (List<Matrix4x4> matrices in scattered.Matrices)
+            {
+                matrices.Clear();
+            }
+            int seed = Seed;
+            foreach (Bush bush in scattered.Bushes)
+            {
+                float yaw = bush.IsReeds ? reeds.YawOf(seed, bush.Cell) : growth.YawOf(seed, bush.Cell);
+                int batch = bush.IsReeds ? ReedBatch : (int)bush.Size;
+                scattered.Matrices[batch].Add(Matrix4x4.TRS(bush.Position, Quaternion.Euler(0f, yaw, 0f), Vector3.one * bush.Height));
+            }
+            scattered.Packed = true;
         }
 
         private void Drop(Vector3Int coord)
@@ -533,6 +603,7 @@ namespace Clube.Core
         private void Recycle(Scattered scattered)
         {
             scattered.Bushes.Clear();
+            scattered.Packed = false;
             scattered.Drawn = false;
             spare.Push(scattered);
         }

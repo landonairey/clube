@@ -34,7 +34,7 @@ Shader "Clube/Grass"
 
         // Grass drawn from a buffer of matrices (GL416): GrassScatter uploads the tufts' matrices only when they change and
         // draws each mesh once (Graphics.RenderMeshPrimitives); copying every matrix to every draw each frame cost several
-        // milliseconds. Bushes still draw as ordinary instances, through the per-draw arrays.
+        // milliseconds. Bushes draw the same way (GL770).
         #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
             StructuredBuffer<float4x4> _InstanceMatrices;
 
