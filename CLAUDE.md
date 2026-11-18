@@ -33,7 +33,7 @@ change starts pulling in a later chapter's direction.
 
 ## Current state
 Milestone 1 (Chapters 0–3) is built; work is Milestone 2's gameplay passes (GL items),
-tracked in the objectives doc. **Now: "Playtest 2026-11-14 close-out" (GL644–GL696, batches Z1–Z8), then "Week of 2026-11-16" (GL697–GL737, batches W1–W12); one branch and PR per batch, each cut from `main` after the one before merged; the world is a bounded 5 km map (P15 decided), scene `MapGen`.** A driver session runs the queue from [Docs/handoff-20261116.md](Docs/handoff-20261116.md) alone; a batch session starts from [Docs/batch-brief.md](Docs/batch-brief.md).
+tracked in the objectives doc. **Now: "Week of 2026-11-17" (GL738–GL759, batches X1–X8); one branch and PR per batch, each cut from `main` after the one before merged; the world is a bounded 5 km map (P15 decided), scene `MapGen`.** A driver session runs the queue from [Docs/handoff-20261118.md](Docs/handoff-20261118.md) alone; a batch session starts from [Docs/batch-brief.md](Docs/batch-brief.md).
 
 What's built, pass by pass, with class names: [Docs/history.md](Docs/history.md). Don't
 read it whole — grep it for a class name or ID (`GL344`, `TreeFeller`) to find how and
