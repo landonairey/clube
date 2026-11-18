@@ -28,7 +28,7 @@ namespace Clube.Debug
         private const float ShortestRoute = 400f;
         // Over the ground, clear of road beds raised above it: a player inside the ground is lifted out by PlayerSpawn.
         private const float CarriedHeight = 2.5f;
-        private const int MarkersShown = 24;
+        private const int MarkersShown = 45, LongFrameMarkers = 10;
         // Chunks round the player whose ground is checked, and how often.
         private const int NearColumns = 12, GroundLookFrames = 30;
 
@@ -80,6 +80,9 @@ namespace Clube.Debug
         private Transform body;
         private float walked;
         private float nearGround = 1f, drawnGround = 1f;
+        private FarTerrainView farView;
+        private float longestFrame;
+        private string longestFrameWent = "";
 
         private IEnumerator Start()
         {
@@ -272,8 +275,14 @@ namespace Clube.Debug
                 gpu.Add((float)timing[0].gpuFrameTime);
             }
             frames.Add(Time.unscaledDeltaTime * 1000f);
+            if (Time.unscaledDeltaTime * 1000f > longestFrame)
+            {
+                longestFrame = Time.unscaledDeltaTime * 1000f;
+                longestFrameWent = markers.TopOfLastFrame(LongFrameMarkers);
+            }
             streamer.Add((float)world.Stats.FrameMilliseconds);
-            far.Add(Cost(FindAnyObjectByType<FarTerrainView>(), v => v.LastUpdateMilliseconds));
+            farView = farView != null ? farView : FindAnyObjectByType<FarTerrainView>();
+            far.Add(Cost(farView, v => v.LastUpdateMilliseconds));
             lod.Add(Cost(world.GetComponent<TerrainLodView>(), v => v.LastUpdateMilliseconds));
             trees.Add(Cost(world.GetComponent<DistantTreeView>(), v => v.LastUpdateMilliseconds));
             water.Add(Cost(world.GetComponent<WaterView>(), v => v.LastUpdateMilliseconds));
@@ -302,7 +311,9 @@ namespace Clube.Debug
             if (top.Length > 0)
             {
                 text.AppendLine($"  markers (ms a frame): {top}");
+                text.AppendLine($"  longest frame {longestFrame:0} ms: {longestFrameWent}");
             }
+            longestFrame = 0f;
             UnityEngine.Debug.Log($"[walkbench] {name}: {frames.Count / seconds:0.0} FPS");
         }
 

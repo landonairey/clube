@@ -69,6 +69,17 @@ namespace Clube.Debug
             }
         }
 
+        /// <summary>The costliest markers of the last frame alone, in milliseconds: what a long frame went on.</summary>
+        public string TopOfLastFrame(int count)
+        {
+            return string.Join("; ", markers
+                .Select(m => (m.name, value: m.recorder.Valid ? m.recorder.LastValue : 0L))
+                .Where(m => m.value > 0)
+                .OrderByDescending(m => m.value)
+                .Take(count)
+                .Select(m => $"{Short(m.name)} {m.value * 1e-6:0.0}"));
+        }
+
         /// <summary>The costliest markers of the stretch, in milliseconds a frame; empty where the engine times none.</summary>
         public string Top(int count, int frames)
         {
