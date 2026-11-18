@@ -14,7 +14,7 @@ namespace Clube.Game
     /// The wheel zooms on the pointer and a drag pans. The lab layer adds a resource of the survey and, under the
     /// pointer, why a site and its shops were picked (ST7). In a scene with no map session the key does nothing.
     /// </summary>
-    public class WorldMapScreen : MonoBehaviour
+    public class WorldMapScreen : MonoBehaviour, IMapScreen
     {
         private const float MaxZoom = 12f;
 

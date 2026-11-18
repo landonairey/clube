@@ -114,8 +114,8 @@ namespace Clube.Game
         private void Awake()
         {
             player = GetComponent<PlayerController>();
-            // GL749: the Map row, after the field log, only where the scene has a map (the Tutorial scene has none: M does nothing there).
-            if (!rows.Exists(r => r.Action == "Map") && FindAnyObjectByType<WorldMapScreen>(FindObjectsInactive.Include) != null)
+            // GL749: the Map row, after the field log, only where the player has a map screen (GL760: the Tutorial scene's is the company's site).
+            if (!rows.Exists(r => r.Action == "Map") && GetComponent<IMapScreen>() != null)
             {
                 int journal = rows.FindIndex(r => r.Action == "Journal");
                 rows.Insert(journal >= 0 ? journal + 1 : rows.Count, new Row("Map", "Map"));

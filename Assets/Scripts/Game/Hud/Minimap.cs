@@ -171,8 +171,8 @@ namespace Clube.Game
             GUI.color = previous;
         }
 
-        // A white arrow with a dark edge, pointing up.
-        private static Texture2D PaintArrow()
+        /// <summary>A white arrow with a dark edge, pointing up.</summary>
+        public static Texture2D PaintArrow()
         {
             const int width = 18, tall = 22;
             var texture = new Texture2D(width, tall, TextureFormat.RGBA32, false) { name = "Minimap arrow" };
