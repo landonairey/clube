@@ -22,7 +22,7 @@ namespace Clube.Debug
     {
         private const string Flag = "-tutorialbench";
         private const float WindowSeconds = 5f;
-        private const float DefaultSeconds = 120f;
+        private const float DefaultSeconds = 180f;
         private const int Seed = 1;
         private const int MarkersShown = 24;
         private const int MostRecorders = 6000;
@@ -120,7 +120,7 @@ namespace Clube.Debug
                     return;
                 }
                 ProfilerRecorderDescription description = ProfilerRecorderHandle.GetDescription(handle);
-                if (description.UnitType != ProfilerMarkerDataUnit.TimeNanoseconds || !IsWatched(description.Category) || !watched.Add(description.Name))
+                if (description.UnitType != ProfilerMarkerDataUnit.TimeNanoseconds || !IsWatched(description) || !watched.Add(description.Name))
                 {
                     continue;
                 }
@@ -130,12 +130,23 @@ namespace Clube.Debug
             }
         }
 
-        private static bool IsWatched(ProfilerCategory category)
+        // Every script's own code, and the engine's main stages by name: the Editor has thousands of other markers.
+        private static bool IsWatched(ProfilerRecorderDescription description)
         {
-            return category == ProfilerCategory.Scripts || category == ProfilerCategory.Internal || category == ProfilerCategory.Render
-                || category == ProfilerCategory.Physics || category == ProfilerCategory.Loading || category == ProfilerCategory.Gui
-                || category == ProfilerCategory.Animation || category == ProfilerCategory.Ai;
+            string name = description.Name;
+            return description.Category == ProfilerCategory.Scripts || EngineMarkers.Contains(name)
+                || name.EndsWith(".Update()") || name.EndsWith(".LateUpdate()") || name.EndsWith(".FixedUpdate()") || name.EndsWith(".OnGUI()");
         }
+
+        private static readonly HashSet<string> EngineMarkers = new HashSet<string>
+        {
+            "PlayerLoop", "Update.ScriptRunBehaviourUpdate", "PreLateUpdate.ScriptRunBehaviourLateUpdate", "FixedBehaviourUpdate",
+            "Update.ScriptRunDelayedDynamicFrameRate", "PostLateUpdate.FinishFrameRendering", "PostLateUpdate.UpdateAllRenderers",
+            "FixedUpdate.PhysicsFixedUpdate", "Physics.Simulate", "Physics.BakePhysXCollisionMeshData", "Physics.SyncColliderTransform",
+            "Inl_RenderCameraStack", "CullScriptable", "GC.Collect", "JobHandle.Complete", "Semaphore.WaitForSignal",
+            "Gfx.WaitForPresentOnGfxThread", "Application.Integrate Assets in Background", "GameObject.AddComponent",
+            "GameObject.Activate", "Mesh.UploadMeshData", "UGUI.Rendering.RenderOverlays", "GUI.Repaint",
+        };
 
         private void Sample()
         {
@@ -212,7 +223,9 @@ namespace Clube.Debug
             text.AppendLine(Line("  allocated", allocated, " KB") + " | " + Line("draw calls", drawCalls, ""));
             if (world != null && world.IsReady)
             {
-                text.AppendLine($"  pending {world.PendingCount}, renderers {world.Stats.Renderers}; phases (last frame): {world.Stats.Phases}");
+                DistantTreeView treeView = world.GetComponent<DistantTreeView>();
+                string treeCounts = treeView != null ? $"; distant trees {treeView.TreeCount} placed, {treeView.DrawnCount} in view, {treeView.PendingTiles} tiles waiting" : "";
+                text.AppendLine($"  pending {world.PendingCount}, renderers {world.Stats.Renderers}{treeCounts}; phases (last frame): {world.Stats.Phases}");
             }
             if (markerTotals.Count > 0 && frames.Count > 0)
             {

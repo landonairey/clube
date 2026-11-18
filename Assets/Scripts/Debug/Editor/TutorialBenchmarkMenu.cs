@@ -33,6 +33,8 @@ namespace Clube.Debug.Editor
                 return;
             }
             SessionState.SetBool(ArmedKey, false);
+            // Each script's Update is only timed while the Profiler records.
+            UnityEditorInternal.ProfilerDriver.enabled = true;
             EditorApplication.update += KeepFramesComing;
             TutorialBenchmark.Run();
         }
@@ -41,6 +43,7 @@ namespace Clube.Debug.Editor
         {
             if (!EditorApplication.isPlaying)
             {
+                UnityEditorInternal.ProfilerDriver.enabled = false;
                 EditorApplication.update -= KeepFramesComing;
                 return;
             }
