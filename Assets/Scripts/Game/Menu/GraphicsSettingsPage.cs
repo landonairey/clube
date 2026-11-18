@@ -11,7 +11,7 @@ namespace Clube.Game
     /// </summary>
     public sealed class GraphicsSettingsPage
     {
-        public const float Width = 560f;
+        public const float Width = 760f;
         public const float Height = 700f;
 
         private static readonly FrameRateLimit[] Limits = { FrameRateLimit.Fps30, FrameRateLimit.Fps60, FrameRateLimit.VSync, FrameRateLimit.Unlimited };

@@ -54,7 +54,7 @@ namespace Clube.Game
                 bool isSelected = i == selected;
                 string text = $"{(isSelected ? "●" : "○")}  <b>{Escape(save.Name)}</b>\n      <size=12>{Describe(save)}</size>";
                 // A click flips the toggle: on another row it selects that one, on the selected row it loads.
-                if (GUILayout.Toggle(isSelected, text, styles.ModeButton, GUILayout.Height(52f)) != isSelected)
+                if (GUILayout.Toggle(isSelected, text, styles.ModeButton, GUILayout.MinHeight(52f)) != isSelected)
                 {
                     if (isSelected && !confirmingDelete)
                     {

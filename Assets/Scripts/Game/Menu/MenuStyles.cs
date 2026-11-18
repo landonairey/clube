@@ -29,7 +29,7 @@ namespace Clube.Game
             Caption = new GUIStyle(Label) { fontSize = GameUi.Font(12), alignment = TextAnchor.MiddleCenter, normal = { textColor = Dim } };
             Corner = new GUIStyle(Caption) { alignment = TextAnchor.LowerRight };
             Button = new GUIStyle(GUI.skin.button) { fontSize = GameUi.Font(19) };
-            ModeButton = new GUIStyle(GUI.skin.button) { fontSize = GameUi.Font(16), alignment = TextAnchor.MiddleLeft, padding = new RectOffset(14, 10, 6, 6), richText = true };
+            ModeButton = new GUIStyle(GUI.skin.button) { fontSize = GameUi.Font(16), alignment = TextAnchor.MiddleLeft, padding = new RectOffset(14, 10, 6, 6), richText = true, wordWrap = true };
             Field = new GUIStyle(GUI.skin.textField) { fontSize = GameUi.Font(18), alignment = TextAnchor.MiddleLeft, padding = new RectOffset(8, 8, 4, 4) };
         }
 

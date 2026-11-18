@@ -41,6 +41,9 @@ namespace Clube.Game
         private NewGamePage newGame;
         private MapPreview mapPreview;
         private LoadGamePage loadGame;
+        private bool settingsOpen;
+        private GraphicsSettingsPage graphics;
+        private AudioSettingsPage audioPage;
         private List<SaveEntry> saves;
         private string problem;
         private int vSyncBefore;
@@ -77,13 +80,17 @@ namespace Clube.Game
             styles ??= new MenuStyles();
             DrawBackground();
 
-            float width = Mathf.Min(Screen.width - 32f, newGame != null || loadGame != null ? 460f : 520f);
+            float width = Mathf.Min(Screen.width - 32f, settingsOpen ? 640f : newGame != null || loadGame != null ? 460f : 520f);
             // Beside the diorama (GL480): the column on the left, the cut-open parcel on the right.
             float left = HasDiorama ? Mathf.Max(28f, Screen.width * 0.07f) : (Screen.width - width) * 0.5f;
             var column = new Rect(left, 16f, width, Screen.height - 48f);
             if (newGame != null)
             {
                 DrawNewGame(column);
+            }
+            else if (settingsOpen)
+            {
+                DrawSettings(column);
             }
             else if (loadGame != null)
             {
@@ -100,7 +107,7 @@ namespace Clube.Game
         {
             if (!HasDiorama)
             {
-                Shade(new Rect(column.x - 12f, column.y + column.height * 0.5f - 195f, column.width + 24f, 390f));
+                Shade(new Rect(column.x - 12f, column.y + column.height * 0.5f - 225f, column.width + 24f, 450f));
             }
             GUILayout.BeginArea(column);
             GUILayout.FlexibleSpace();
@@ -125,6 +132,11 @@ namespace Clube.Game
             GUI.enabled = wasEnabled;
             GUILayout.Label(SavesCaption(), styles.Caption);
             GUILayout.Space(10f);
+            if (GameUi.LayoutButton("Settings", styles.Button, GUILayout.Height(48f)))
+            {
+                settingsOpen = true;
+            }
+            GUILayout.Space(10f);
             if (GameUi.LayoutButton("Exit", styles.Button, GUILayout.Height(48f)))
             {
                 GameScenes.Quit();
@@ -133,6 +145,52 @@ namespace Clube.Game
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
             GUILayout.FlexibleSpace();
+            GUILayout.EndArea();
+        }
+
+        // GL746: Settings off the title: Video and Audio, the same pages the pause popup opens.
+        private void DrawSettings(Rect column)
+        {
+            if (graphics != null)
+            {
+                Rect page = Page(column, GraphicsSettingsPage.Height);
+                GUILayout.BeginArea(Inside(page));
+                if (graphics.Draw(styles.Heading, styles.Label, styles.Caption, styles.Button))
+                {
+                    graphics = null;
+                }
+                GUILayout.EndArea();
+                return;
+            }
+            if (audioPage != null)
+            {
+                Rect page = Page(column, AudioSettingsPage.Height + 40f);
+                GUILayout.BeginArea(Inside(page));
+                if (audioPage.Draw(styles.Heading, styles.Label, styles.Caption, styles.Button))
+                {
+                    audioPage = null;
+                }
+                GUILayout.EndArea();
+                return;
+            }
+            Rect panel = Page(column, 330f);
+            GUILayout.BeginArea(Inside(panel));
+            GUILayout.Label("Settings", styles.Heading);
+            GUILayout.Space(14f);
+            if (GameUi.LayoutButton("Video", styles.Button, GUILayout.Height(48f)))
+            {
+                graphics = new GraphicsSettingsPage();
+            }
+            GUILayout.Space(10f);
+            if (GameUi.LayoutButton("Audio", styles.Button, GUILayout.Height(48f)))
+            {
+                audioPage = new AudioSettingsPage();
+            }
+            GUILayout.Space(10f);
+            if (GameUi.LayoutButton("Back", styles.Button, GUILayout.Height(48f)))
+            {
+                settingsOpen = false;
+            }
             GUILayout.EndArea();
         }
 

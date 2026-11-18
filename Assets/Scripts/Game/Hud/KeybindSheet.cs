@@ -114,6 +114,12 @@ namespace Clube.Game
         private void Awake()
         {
             player = GetComponent<PlayerController>();
+            // GL749: the Map row, after the field log, only where the scene has a map (the Tutorial scene has none: M does nothing there).
+            if (!rows.Exists(r => r.Action == "Map") && FindAnyObjectByType<WorldMapScreen>(FindObjectsInactive.Include) != null)
+            {
+                int journal = rows.FindIndex(r => r.Action == "Journal");
+                rows.Insert(journal >= 0 ? journal + 1 : rows.Count, new Row("Map", "Map"));
+            }
         }
 
         private void OnEnable()
@@ -172,9 +178,15 @@ namespace Clube.Game
             }
 
             BuildLines();
-            const float rowHeight = 25f;
-            const float keyWidth = 130f;
-            const float labelWidth = 300f;
+            // GL747: sized to the words in the typeface (Uncial Antiqua is wide), not to fixed numbers.
+            float rowHeight = Mathf.Max(25f, labelStyle.lineHeight + 8f);
+            float keyWidth = 130f;
+            float labelWidth = 300f;
+            foreach ((string keys, string label) in lines)
+            {
+                keyWidth = Mathf.Max(keyWidth, keyStyle.CalcSize(new GUIContent(keys)).x + 8f);
+                labelWidth = Mathf.Max(labelWidth, labelStyle.CalcSize(new GUIContent(label)).x + 8f);
+            }
             // Above the axes gizmo in the corner.
             float height = lines.Count * rowHeight + 10f;
             var box = new Rect(8f, Screen.height - 130f - height, keyWidth + labelWidth + 16f, height);

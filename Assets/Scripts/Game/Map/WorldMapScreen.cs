@@ -190,6 +190,24 @@ namespace Clube.Game
             LastPictureSeconds = Time.realtimeSinceStartup - start;
         }
 
+        // GL751: what a settlement is known for (its shops' economy specialties), not how many people live there.
+        private static void AppendGoods(StringBuilder text, PlannedSettlement settlement)
+        {
+            var names = new List<string>();
+            foreach (PlannedShop shop in settlement.Shops)
+            {
+                string name = shop.Specialty != null ? shop.Specialty.Name : null;
+                if (name != null && !names.Contains(name))
+                {
+                    names.Add(name);
+                }
+            }
+            if (names.Count > 0)
+            {
+                text.Append("Goods: ").AppendLine(string.Join(", ", names));
+            }
+        }
+
         private void EnsureStyles()
         {
             if (nameStyle != null && nameStyle.fontSize == GameUi.Font(14))
@@ -348,7 +366,7 @@ namespace Clube.Game
                 }
                 float size = IconSize(settlement) * scale;
                 Vector2[] icon = MapIcons.Triangles(settlement.Type.Icon);
-                Badge(icon, at, size, 1.5f * scale);
+                Badge(icon, at, size, 1.5f * scale, settlement.Type);
             }
             DrawVessels(area, scale);
             DrawPlayer(session, area, scale);
@@ -385,7 +403,7 @@ namespace Clube.Game
                 Vector2 at = ToScreen(area, boats.PositionOf(i));
                 if (boats.Runs[i].Cargo != null && view.Contains(at))
                 {
-                    GameUi.OutlinedLabel(new Rect(at.x - 120f, at.y + 6f, 240f, 20f), boats.Runs[i].Name, smallNameStyle);
+                    GameUi.OutlinedLabel(new Rect(at.x - 120f, at.y + 6f, 240f, GameUi.Font(11) * 2f), boats.Runs[i].Name, smallNameStyle);
                 }
             }
         }
@@ -534,7 +552,7 @@ namespace Clube.Game
                         break;
                     case MapLegendSymbol.Icon:
                         Vector2[] icon = MapIcons.Triangles(row.Type.Icon);
-                        Badge(icon, mid, 7f * ui, 1.2f * ui);
+                        Badge(icon, mid, 7f * ui, 1.2f * ui, row.Type);
                         break;
                     case MapLegendSymbol.Player:
                         Shape(Arrow, mid, 8f * ui, 0f, Color.black);
@@ -616,12 +634,14 @@ namespace Clube.Game
         private static readonly Color BadgeWood = new Color(0.17f, 0.10f, 0.06f);
         private static readonly Color BadgeSilver = new Color(0.78f, 0.80f, 0.84f);
 
-        private static void Badge(Vector2[] icon, Vector2 at, float size, float rim)
+        private static void Badge(Vector2[] icon, Vector2 at, float size, float rim, SettlementType type)
         {
+            // GL752: a thieves' camp is the camp's tent in black (on a silver disc, so it still shows).
+            bool thieves = type != null && type.Id == "thieves-camp";
             float radius = size * 1.3f;
             Disc(at, radius + rim, BadgeSilver);
-            Disc(at, radius, BadgeWood);
-            Shape(icon, at, size * 0.85f, 0f, BadgeSilver);
+            Disc(at, radius, thieves ? BadgeSilver : BadgeWood);
+            Shape(icon, at, size * 0.85f, 0f, thieves ? Color.black : BadgeSilver);
         }
 
         private static void Disc(Vector2 at, float radius, Color colour)
@@ -689,14 +709,15 @@ namespace Clube.Game
                 }
                 // Every place is named under its icon; the smallest in smaller letters until zoomed in, so the whole map stays readable.
                 bool small = settlement.Type.Parcels < 4f && zoom < 2f;
-                GameUi.OutlinedLabel(new Rect(at.x - 120f, at.y + size + 1f, 240f, 22f), settlement.Name, small ? smallNameStyle : nameStyle);
+                GameUi.OutlinedLabel(new Rect(at.x - 120f, at.y + size * 1.3f + 1f, 240f, GameUi.Font(14) * 2f), settlement.Name, small ? smallNameStyle : nameStyle);
             }
             return hovered;
         }
 
         private void DrawNotes(MapSession session, PlannedSettlement hovered)
         {
-            var hint = new Rect(view.xMin, view.yMax + 2f, view.width, 22f);
+            float hintHeight = noteStyle.lineHeight + 8f;
+            var hint = new Rect(view.xMin, Mathf.Min(view.yMax + 2f, Screen.height - hintHeight), view.width, hintHeight);
             noteStyle.alignment = TextAnchor.UpperCenter;
             GUI.Label(hint, "M or Esc: close  ·  wheel: zoom  ·  drag: pan", noteStyle);
             noteStyle.alignment = TextAnchor.UpperLeft;
@@ -723,7 +744,8 @@ namespace Clube.Game
                 return;
             }
             var text = new StringBuilder();
-            text.Append("<b>").Append(hovered.Name).Append("</b>  ").Append(hovered.Type.Name).Append(", about ").Append(hovered.Population).AppendLine(" people");
+            text.Append("<b>").Append(hovered.Name).Append("</b>  ").AppendLine(hovered.Type.Name);
+            AppendGoods(text, hovered);
             if (labLayer)
             {
                 foreach (string reason in hovered.Reasons)

@@ -54,7 +54,7 @@ namespace Clube.Game
             {
                 SignArm arm = arms[i];
                 string words = $"{arm.Name}  {Distance(arm.Metres)}";
-                float length = Mathf.Clamp(0.34f + words.Length * 0.052f, 0.9f, 1.9f);
+                float length = Mathf.Clamp(0.5f + TextWidth(words) * 1.05f, 0.9f, 3.2f);
                 float height = TopBoard - i * BoardStep;
                 Vector3 at = top * (height / PostHeight);
                 var way = new Vector3(arm.Direction.x, 0f, arm.Direction.y);
@@ -125,6 +125,34 @@ namespace Clube.Game
                 return $"{Mathf.Max(10, Mathf.RoundToInt(metres / 10f) * 10)} m";
             }
             return (metres / 1000f).ToString("0.0", CultureInfo.InvariantCulture) + " km";
+        }
+
+        /// <summary>
+        /// The width in metres of <paramref name="words"/> on a sign at a letter size (GL748), measured in the game's typeface
+        /// so boards are cut to fit the words (the widest line, for words over several lines).
+        /// </summary>
+        public static float TextWidth(string words, float letterSize = LetterSize)
+        {
+            Font font = GameFont.Get();
+            float widest = 0f;
+            foreach (string line in words.Split('\n'))
+            {
+                font.RequestCharactersInTexture(line, 64);
+                float pixels = 0f;
+                foreach (char c in line)
+                {
+                    if (font.GetCharacterInfo(c, out CharacterInfo info, 64))
+                    {
+                        pixels += info.advance;
+                    }
+                    else
+                    {
+                        pixels += 32f;
+                    }
+                }
+                widest = Mathf.Max(widest, pixels);
+            }
+            return widest * letterSize * 0.1f;
         }
 
         // Words on a board's face: a TextMesh facing -z at yaw 0, in the shared sign-text material (hidden behind things).
