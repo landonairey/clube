@@ -23,6 +23,7 @@ namespace Clube.Game
         // Seconds between looks for pieces whose chunks have loaded, while none are ready (GL759).
         private const float IdleLookSeconds = 0.2f;
         private float nextLookTime;
+        private readonly FrameAllowance allowance = new FrameAllowance();
 
         // Pieces looked at each frame for whether their chunks have loaded.
         private const int ChecksPerFrame = 32;
@@ -289,6 +290,7 @@ namespace Clube.Game
             }
             Vector3 local = session.WorldView.transform.InverseTransformPoint(view.transform.position);
             var viewer = new Vector2(local.x, local.z);
+            float started = Time.realtimeSinceStartup;
             if (moreToWorkOut || (viewer - collectedAt).sqrMagnitude > 6f * 6f || Time.unscaledTime - collectedTime > 1f)
             {
                 using (CollectMarker.Auto())
@@ -296,9 +298,19 @@ namespace Clube.Game
                     Collect(viewer);
                 }
             }
-            using (WriteMarker.Auto())
+            // GL770: one piece can take several frames' budget: the frames after it pay that back.
+            bool mayWrite = allowance.MayWork(writeBudgetMilliseconds, Time.frameCount);
+            bool inSight = session.WorldView.IsLoadingInSight;
+            if (inSight || mayWrite)
             {
-                Write();
+                using (WriteMarker.Auto())
+                {
+                    Write();
+                }
+            }
+            if (!inSight)
+            {
+                allowance.Spend((Time.realtimeSinceStartup - started) * 1000f);
             }
         }
 

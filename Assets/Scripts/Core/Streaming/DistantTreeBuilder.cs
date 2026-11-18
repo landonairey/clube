@@ -51,6 +51,8 @@ namespace Clube.Core
         private Vector2Int focusTile;
         private bool hasFocus;
         private int nextWanted;
+        private readonly FrameAllowance allowance = new FrameAllowance();
+        private int updates;
 
         public sealed class Tile
         {
@@ -137,7 +139,10 @@ namespace Clube.Core
             int starts = MaxStartsPerFrame;
             long began = System.Diagnostics.Stopwatch.GetTimestamp();
             double budgetTicks = StartBudgetMilliseconds * 0.001 * System.Diagnostics.Stopwatch.Frequency;
-            while (starts > 0 && nextWanted < wanted.Count)
+            // GL770: one tile can take more than a frame's budget: the frames after it pay that back.
+            bool paysBack = StartBudgetMilliseconds > 0f && !float.IsInfinity(StartBudgetMilliseconds);
+            updates++;
+            while (starts > 0 && nextWanted < wanted.Count && (!paysBack || allowance.MayWork(StartBudgetMilliseconds, updates)))
             {
                 Vector2Int coord = wanted[nextWanted++];
                 if (!tiles.ContainsKey(coord))
@@ -149,6 +154,10 @@ namespace Clube.Core
                         break;
                     }
                 }
+            }
+            if (paysBack)
+            {
+                allowance.Spend((float)((System.Diagnostics.Stopwatch.GetTimestamp() - began) * 1000.0 / System.Diagnostics.Stopwatch.Frequency));
             }
 
             foreach (Tile running in tiles.Values)

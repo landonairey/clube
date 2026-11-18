@@ -56,6 +56,7 @@ namespace Clube.Game
         private float nextLook;
         // The settlement whose trees and digs are being worked out, a slice a frame (GL762).
         private SlicedWork preparing;
+        private readonly FrameAllowance allowance = new FrameAllowance();
 
         /// <summary>Trees taken away and voxels dug out by the work done while nobody watched, this session.</summary>
         public int TreesTaken { get; private set; }
@@ -73,10 +74,22 @@ namespace Clube.Game
             {
                 return;
             }
-            if (preparing != null && preparing.Run(people.View.Hurry ? PrepareBehindCurtainMilliseconds : PrepareMilliseconds))
+            // GL770: laying out one dig can take many frames' budget: the frames after it pay that back.
+            bool hurry = people.View.Hurry;
+            bool mayPrepare = allowance.MayWork(PrepareMilliseconds, Time.frameCount);
+            if (preparing != null && (hurry || mayPrepare))
             {
-                StopPreparing();
-                nextLook = 0f;
+                float started = Time.realtimeSinceStartup;
+                bool done = preparing.Run(hurry ? PrepareBehindCurtainMilliseconds : PrepareMilliseconds);
+                if (!hurry)
+                {
+                    allowance.Spend((Time.realtimeSinceStartup - started) * 1000f);
+                }
+                if (done)
+                {
+                    StopPreparing();
+                    nextLook = 0f;
+                }
             }
             if (Time.unscaledTime < nextLook)
             {
