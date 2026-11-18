@@ -35,6 +35,7 @@ namespace Clube.Core.Tests
         public void DestroyMaterials()
         {
             Hydrology.DisposeAll();
+            CanyonReach.DisposeAll();
             foreach (VoxelMaterial material in new[] { stone, dirt, grass, sand, copper, wood, leaves })
             {
                 Object.DestroyImmediate(material);
@@ -559,8 +560,10 @@ namespace Clube.Core.Tests
         [Test]
         public void TheDryMapHasTheFinishedMapsGround()
         {
-            // GL636: the preview's land is the game's land; only the water is left out.
+            // GL636: the preview's land is the game's land; only the water is left out, and with it the dry lands'
+            // canyons (GL737), which are cut round the water.
             TerrainSettings settings = Island();
+            settings.Map.Cliffs.CanyonDepth = 0f;
             BoundedMapGenerator dry = BoundedMapGenerator.CreateDry(settings);
             BoundedMapGenerator wet = BoundedMapGenerator.Create(settings);
             Assert.IsFalse(dry.Water.IsCreated);

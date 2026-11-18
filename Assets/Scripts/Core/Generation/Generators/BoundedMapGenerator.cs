@@ -37,6 +37,9 @@ namespace Clube.Core
 
         public override WaterMap Water { get; }
 
+        /// <summary>The height field itself: its shape, inland cliffs and canyons (GL737).</summary>
+        public BoundedMapHeight Ground => Field;
+
         public override bool HasValleys => true;
 
         /// <summary>The same map with rivers, lakes and the sea.</summary>
