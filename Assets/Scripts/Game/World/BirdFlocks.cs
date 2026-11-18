@@ -107,6 +107,7 @@ namespace Clube.Game
 
         private void Update()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Birds");
             Camera view = Camera.main;
             if (view == null)
             {
@@ -138,6 +139,7 @@ namespace Clube.Game
 
         private void LateUpdate()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Birds");
             // Once a frame: instanced draws' buffers are only freed when a real frame ends.
             if (material == null || drawnFrame == Time.frameCount)
             {

@@ -161,6 +161,7 @@ namespace Clube.Core
 
         private void LateUpdate()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Far terrain");
             if (!show || worldView == null || !worldView.IsReady || worldView.Focus == null || material == null)
             {
                 Problem = material == null ? "No far terrain material" : null;
@@ -270,7 +271,7 @@ namespace Clube.Core
             }
             runtimeMaterial.SetVector(NearRectId, Vector4.zero);
 
-            coverage ??= new ChunkCoverageMask(worldView, WorldView.MaxRenderDistance);
+            coverage ??= ChunkCoverageMask.SharedFor(worldView);
             Vector3Int focusChunk = worldView.FocusChunk;
             coverage.Update(new Vector2Int(focusChunk.x, focusChunk.z));
             WorldConfig config = worldView.Config;

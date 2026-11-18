@@ -279,6 +279,7 @@ namespace Clube.Game
 
         private void Update()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Roads");
             hold.Enabled = build;
             if (session == null || !session.IsReady || session.Plan == null)
             {
@@ -304,7 +305,7 @@ namespace Clube.Game
                 }
             }
             // GL770: one piece can take several frames' budget: the frames after it pay that back.
-            bool mayWrite = allowance.MayWork(writeBudgetMilliseconds, Time.frameCount);
+            bool mayWrite = allowance.MayWork(writeBudgetMilliseconds, Time.frameCount) && FrameBudget.HasRoom;
             bool inSight = session.WorldView.IsLoadingInSight;
             // A piece close by holds the ground the player is about to walk on: it doesn't wait its turn.
             bool close = pending.Count > 0 && pending[0].Distance < CloseMetres * CloseMetres;

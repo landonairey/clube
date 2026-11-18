@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Clube.Core
@@ -148,7 +149,11 @@ namespace Clube.Core
             var footprint = new Rect(centre.x - half, centre.y - half, side, side);
             // GL734: the quarry settlement's heights reach over its quarry pit and the wall round it too.
             float reach = half + rules.Margin + (settlement.IsQuarry ? QuarryYard.Reach(rules) : 0f);
-            var grid = new HeightGrid(new Rect(centre.x - reach, centre.y - reach, reach * 2f, reach * 2f), heightAt, heightsAt);
+            HeightGrid grid;
+            using (GridMarker.Auto())
+            {
+                grid = new HeightGrid(new Rect(centre.x - reach, centre.y - reach, reach * 2f, reach * 2f), heightAt, heightsAt);
+            }
 
             // Rows run along the hillside: across whichever axis the land climbs most along.
             Vector2 gradient = grid.Gradient();
@@ -161,25 +166,40 @@ namespace Clube.Core
             var site = new SettlementSite(settlement, rules, footprint, along, up, gradient.magnitude, grid.At, roads);
 
             int wanted = BuildingsWanted(settlement, rules);
-            List<Slot> taken = Take(site, rules, wanted, half, closedAt, 0);
-            if (taken.Count < wanted)
+            List<Slot> taken;
+            using (TakeMarker.Auto())
             {
-                // Short of ground inside its parcels: a row further out each way, and a place further along each row.
-                taken = Take(site, rules, wanted, half, closedAt, 1);
+                taken = Take(site, rules, wanted, half, closedAt, 0);
+                if (taken.Count < wanted)
+                {
+                    // Short of ground inside its parcels: a row further out each way, and a place further along each row.
+                    taken = Take(site, rules, wanted, half, closedAt, 1);
+                }
             }
             if (taken.Count < wanted)
             {
                 site.Notes.Add($"{settlement.Name}: ground for {taken.Count} of its {wanted} buildings (the rest is water, road or too steep to terrace).");
             }
-            Build(site, rules, taken, voxel);
+            using (BuildMarker.Auto())
+            {
+                Build(site, rules, taken, voxel);
+            }
             if (settlement.IsQuarry)
             {
                 QuarryYard.Plan(site, heightAt, closedAt, voxel);
             }
-            PlanWall(site);
-            SettlementLights.Plan(site, rules.LightKinds);
+            using (WallMarker.Auto())
+            {
+                PlanWall(site);
+                SettlementLights.Plan(site, rules.LightKinds);
+            }
             return site;
         }
+
+        private static readonly ProfilerMarker GridMarker = new ProfilerMarker("SettlementLayout.Grid");
+        private static readonly ProfilerMarker TakeMarker = new ProfilerMarker("SettlementLayout.Take");
+        private static readonly ProfilerMarker BuildMarker = new ProfilerMarker("SettlementLayout.Build");
+        private static readonly ProfilerMarker WallMarker = new ProfilerMarker("SettlementLayout.Wall");
 
         // The places for buildings, nearest the centre first, each on ground that can be terraced with its neighbours.
         private static List<Slot> Take(SettlementSite site, SettlementSiteRules rules, int wanted, float half, Func<float, float, bool> closedAt, int extra)

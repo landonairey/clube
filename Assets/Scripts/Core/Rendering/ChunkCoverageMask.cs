@@ -13,12 +13,19 @@ namespace Clube.Core
     /// </summary>
     public sealed class ChunkCoverageMask : System.IDisposable
     {
+        private static readonly Dictionary<WorldView, ChunkCoverageMask> SharedMasks = new Dictionary<WorldView, ChunkCoverageMask>();
+
         private readonly WorldView view;
         private readonly System.Func<Vector2Int, bool> alsoReady;
         private readonly int size;
         private readonly HashSet<Vector3Int> meshed = new HashSet<Vector3Int>();
         private readonly Dictionary<Vector2Int, int> layersMeshed = new Dictionary<Vector2Int, int>();
+        // The columns with every layer meshed: all a refill needs to look at (GL770).
+        private readonly HashSet<Vector2Int> fullColumns = new HashSet<Vector2Int>();
+        private int layers;
         private readonly byte[] texels;
+        private int users = 1;
+        private bool isShared;
         private Vector2Int origin;
         private bool hasOrigin;
         private bool dirty;
@@ -30,6 +37,7 @@ namespace Clube.Core
         {
             this.view = view;
             this.alsoReady = alsoReady;
+            layers = view.Config.WorldHeightInChunks;
             size = radius * 2 + 3;
             texels = new byte[size * size];
             Texture = new Texture2D(size, size, TextureFormat.R8, false, true)
@@ -52,6 +60,23 @@ namespace Clube.Core
             }
             view.ChunkMeshed += OnMeshed;
             view.ChunkUnloaded += OnUnloaded;
+        }
+
+        /// <summary>
+        /// The mask every view of this world without a further condition uses (GL770): the far terrain, coarse terrain,
+        /// distant trees and distant buildings each kept and refilled their own copy of the same texture. Each user calls
+        /// <see cref="Dispose"/> once.
+        /// </summary>
+        public static ChunkCoverageMask SharedFor(WorldView view)
+        {
+            if (SharedMasks.TryGetValue(view, out ChunkCoverageMask mask))
+            {
+                mask.users++;
+                return mask;
+            }
+            mask = new ChunkCoverageMask(view, WorldView.MaxRenderDistance) { isShared = true };
+            SharedMasks.Add(view, mask);
+            return mask;
         }
 
         public Texture2D Texture { get; }
@@ -77,7 +102,21 @@ namespace Clube.Core
         public void Update(Vector2Int focusColumn)
         {
             Vector2Int wantedOrigin = focusColumn - new Vector2Int(size / 2, size / 2);
-            if (!hasOrigin || wantedOrigin != origin || drawVersion != view.DrawVersion)
+            bool newHeight = view.Config.WorldHeightInChunks != layers;
+            if (newHeight)
+            {
+                // The labs can change the world's height while it runs.
+                layers = view.Config.WorldHeightInChunks;
+                fullColumns.Clear();
+                foreach (KeyValuePair<Vector2Int, int> column in layersMeshed)
+                {
+                    if (column.Value >= layers)
+                    {
+                        fullColumns.Add(column.Key);
+                    }
+                }
+            }
+            if (newHeight || !hasOrigin || wantedOrigin != origin || drawVersion != view.DrawVersion)
             {
                 origin = wantedOrigin;
                 hasOrigin = true;
@@ -95,6 +134,14 @@ namespace Clube.Core
 
         public void Dispose()
         {
+            if (--users > 0)
+            {
+                return;
+            }
+            if (isShared)
+            {
+                SharedMasks.Remove(view);
+            }
             view.ChunkMeshed -= OnMeshed;
             view.ChunkUnloaded -= OnUnloaded;
             Object.Destroy(Texture);
@@ -107,6 +154,10 @@ namespace Clube.Core
                 var column = new Vector2Int(coord.x, coord.z);
                 layersMeshed.TryGetValue(column, out int count);
                 layersMeshed[column] = count + 1;
+                if (count + 1 >= layers)
+                {
+                    fullColumns.Add(column);
+                }
                 SetTexel(column);
             }
         }
@@ -125,6 +176,10 @@ namespace Clube.Core
                 {
                     layersMeshed[column] = count;
                 }
+                if (count < layers)
+                {
+                    fullColumns.Remove(column);
+                }
                 SetTexel(column);
             }
         }
@@ -137,8 +192,7 @@ namespace Clube.Core
 
         private bool IsCovered(Vector2Int column)
         {
-            return layersMeshed.TryGetValue(column, out int count) && count >= view.Config.WorldHeightInChunks && view.IsColumnDrawn(column)
-                   && (alsoReady == null || alsoReady(column));
+            return fullColumns.Contains(column) && view.IsColumnDrawn(column) && (alsoReady == null || alsoReady(column));
         }
 
         private void SetTexel(Vector2Int column)
@@ -161,13 +215,17 @@ namespace Clube.Core
             }
         }
 
+        // Only the fully meshed columns can be covered (GL770): asking about all 17 000 texels each time the focus crossed a
+        // column cost a millisecond or more per mask.
         private void Refill()
         {
-            for (int y = 0; y < size; y++)
+            System.Array.Clear(texels, 0, texels.Length);
+            foreach (Vector2Int column in fullColumns)
             {
-                for (int x = 0; x < size; x++)
+                Vector2Int texel = column - origin;
+                if (texel.x >= 0 && texel.y >= 0 && texel.x < size && texel.y < size && IsCovered(column))
                 {
-                    texels[x + y * size] = IsCovered(origin + new Vector2Int(x, y)) ? (byte)255 : (byte)0;
+                    texels[texel.x + texel.y * size] = 255;
                 }
             }
             dirty = true;

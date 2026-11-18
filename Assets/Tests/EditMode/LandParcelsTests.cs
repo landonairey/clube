@@ -99,5 +99,21 @@ namespace Clube.Core.Tests
             Assert.AreEqual(2, changes);
             Assert.IsTrue(parcels.IsOwnedAt(new Vector3(70f, 0f, 5f)));
         }
+
+        [Test]
+        public void LockingLand_IsNoChangeOfOwner_SoTheFenceIsNotRedrawn()
+        {
+            var parcels = new LandParcels(32f, 100, 50);
+            parcels.Grant(Vector2Int.zero);
+            int changes = 0;
+            parcels.Changed += () => changes++;
+
+            Assert.IsTrue(parcels.Lock(new Vector2Int(5, 5)));
+            Assert.IsFalse(parcels.Lock(new Vector2Int(5, 5)), "Locked already.");
+            Assert.IsTrue(parcels.Unlock(new Vector2Int(5, 5)));
+            Assert.IsFalse(parcels.Unlock(new Vector2Int(5, 5)), "Not locked any more.");
+
+            Assert.AreEqual(0, changes);
+        }
     }
 }

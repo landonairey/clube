@@ -224,6 +224,7 @@ namespace Clube.Game
 
         private void Update()
         {
+            using FrameCost.Scope cost = FrameCost.Of("People (SettlementPeople)");
             if (session == null || settlements == null || !session.IsReady || session.Plan == null)
             {
                 return;

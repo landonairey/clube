@@ -24,6 +24,8 @@ namespace Clube.Debug
             "Inl_RenderCameraStack", "CullScriptable", "GC.Collect", "JobHandle.Complete", "Semaphore.WaitForSignal",
             "Gfx.WaitForPresentOnGfxThread", "Application.Integrate Assets in Background", "GameObject.AddComponent",
             "GameObject.Activate", "Mesh.UploadMeshData", "UGUI.Rendering.RenderOverlays", "GUI.Repaint",
+            "GC.Alloc", "WaitForJobGroupID", "Gfx.WaitForGfxCommandsFromMainThread", "Gfx.PresentFrame", "UpdateRendererBoundingVolumes",
+            "RenderPipelineManager.DoRenderLoop_Internal()", "CullResults.CreateSharedRendererScene", "Light.Shadows", "Shadows.CullLights",
         };
 
         private static readonly Regex AssemblyPrefix = new Regex(@"^[\w\.]+\.dll!(?:[\w\.]+::)?");
@@ -113,7 +115,8 @@ namespace Clube.Debug
         private static bool IsWatched(ProfilerRecorderDescription description)
         {
             string name = description.Name;
-            return description.Category == ProfilerCategory.Scripts || EngineMarkers.Contains(name)
+            return description.Category == ProfilerCategory.Scripts || description.Category == ProfilerCategory.Gui
+                || description.Category == ProfilerCategory.Physics || EngineMarkers.Contains(name)
                 || name.EndsWith(".Update()") || name.EndsWith(".LateUpdate()") || name.EndsWith(".FixedUpdate()") || name.EndsWith(".OnGUI()")
                 || name.Contains(".Update() [Invoke]") || name.Contains(".LateUpdate() [Invoke]") || name.Contains(".FixedUpdate() [Invoke]");
         }

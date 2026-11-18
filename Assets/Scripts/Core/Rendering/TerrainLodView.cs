@@ -186,6 +186,7 @@ namespace Clube.Core
 
         private void LateUpdate()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Coarse terrain");
             if (!show || worldView == null || !worldView.IsReady || worldView.Focus == null)
             {
                 Problem = null;
@@ -325,7 +326,7 @@ namespace Clube.Core
         // copy of the surface material (one change per level, and the SRP batcher still batches).
         private void UpdateClips()
         {
-            coverage ??= new ChunkCoverageMask(worldView, WorldView.MaxRenderDistance);
+            coverage ??= ChunkCoverageMask.SharedFor(worldView);
             Vector3Int focusChunk = worldView.FocusChunk;
             coverage.Update(new Vector2Int(focusChunk.x, focusChunk.z));
             WorldConfig config = worldView.Config;

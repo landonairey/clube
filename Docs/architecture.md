@@ -1024,7 +1024,9 @@ it, and when it's done. None needs the big picture changed. Measure with
 *Clube → Benchmarks → World streaming (P3)* (frames) and *World meshing (K32)*
 (stages), Burst safety checks off for real numbers; record results in
 `benchmarks.md`. In the built demo: `clube.exe -townbench` (the town) and `-roambench` (walking the whole map,
-GL560). Rough value order.
+GL560). Rough value order. Walking on the bounded map: `clube.exe -walkbench` reports each system's time from the release
+build (`FrameCost`, `PlayerLoopTimes`, `ProcessLoad`); [walking-fps-breakdown-20261118.md](walking-fps-breakdown-20261118.md)
+has the breakdown and the architectural findings, ranked by expected gain.
 
 1. **Budget the job starts too.** `WorldStreamer.StartGenerating` / `StartMeshing`
    aren't held to the frame budget (scheduling 38 jobs with their ore lookups and

@@ -168,6 +168,7 @@ namespace Clube.Core
 
         private void LateUpdate()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Water");
             frameTimer.Restart();
             ITerrainGenerator generator = worldView.Generator;
             if (generator != builtFor)
@@ -192,7 +193,10 @@ namespace Clube.Core
                 WaterGeneration settings = worldView.Config.Terrain.Water;
                 Live.SoilWater = settings.SoilWater;
                 Live.HoldSoilWaterFull = settings.HoldSoilWaterFull;
-                Live.Step(budgetMs: flowBudgetMs);
+                using (FrameCost.Of("Water: flow"))
+                {
+                    Live.Step(budgetMs: flowBudgetMs);
+                }
             }
             if (world != null)
             {
@@ -214,10 +218,19 @@ namespace Clube.Core
                 RecheckDrawnChunks(world);
             }
             budget.Restart();
-            RebuildChunks();
-            UpdateDetailTiles();
-            RebuildRegions();
-            UpdateFarClip(world);
+            using (FrameCost.Of("Water: chunk meshes"))
+            {
+                RebuildChunks();
+            }
+            using (FrameCost.Of("Water: detail tiles"))
+            {
+                UpdateDetailTiles();
+                RebuildRegions();
+            }
+            using (FrameCost.Of("Water: coverage"))
+            {
+                UpdateFarClip(world);
+            }
             if (holder != null && holder.activeSelf != show)
             {
                 holder.SetActive(show);
@@ -600,6 +613,7 @@ namespace Clube.Core
             }
             buildOrder.Sort((a, b) => a.Order.CompareTo(b.Order));
             float limit = awaiting.Count > 0 ? Mathf.Max(buildBudgetMs, catchUpBudgetMs) : buildBudgetMs;
+            limit = worldView.Hurry ? limit : FrameBudget.Limit(limit);
             int built = 0;
             foreach ((int _, Vector3Int next) in buildOrder)
             {

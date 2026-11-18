@@ -411,6 +411,8 @@ namespace Clube.Core
 
         private void Update()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Streaming (WorldView.Update)");
+            FrameBudget.StartFrame(Time.frameCount);
             if (World == null || Focus == null)
             {
                 return;
@@ -440,6 +442,7 @@ namespace Clube.Core
         // After the frame's edits (tools and the player edit in Update).
         private void LateUpdate()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Chunk drawing (WorldView.LateUpdate)");
             if (streamer != null && Focus != null)
             {
                 streamer.RebuildEdited(FocusLocal);
