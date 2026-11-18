@@ -93,6 +93,12 @@ namespace Clube.Debug
                 state.Result = DebugMaterialChunk.Make(Object.FindFirstObjectByType<WorldView>(), player.transform);
             }
 
+            // The meteor event (GL736): one lands where the player stands.
+            if (frame.ButtonRow("Call meteor on player") == 0)
+            {
+                state.Result = CheatCommands.CallMeteor(player.transform.position);
+            }
+
             // Skill levels (GL630).
             state.Result = SkillCheatControls.Draw(frame, player.GetComponent<PlayerSkills>()) ?? state.Result;
 

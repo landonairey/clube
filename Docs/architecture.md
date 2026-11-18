@@ -946,6 +946,10 @@ settlements of `Generation/`); the bodies are Game (`Game/People/`, `Game/Travel
   `RaiderRuns` gives a camp with water of its own a boat of a `Raider` class; `PirateBoats` sails it on the `pirate`
   occupation's `prowl` shifts, boards a vessel that passes, and lands the haul in the stash.
 
+### Clams and meteors (GL735, GL736)
+
+Both are made at run time, no scene holds them. `ClamBedsStarter` (scene load) adds `ClamBeds` and a `ClamPanel` on the player; `ClamBeds` asks `ClamScatter` (Core, pure) for hashed cells and keeps a `Clam` on those whose spot is under water. `MeteorEvent.Find()` makes the event on first call (debug cheat); the shape is `MeteorPlan` (Core), the crater a normal `ApplyBrush` pair of edits.
+
 ## 7. Where the next systems plug in
 
 Notes for upcoming chapters, so new code lands in the right layer.
