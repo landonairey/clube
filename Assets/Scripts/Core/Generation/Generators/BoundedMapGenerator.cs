@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Collections;
@@ -16,9 +17,13 @@ namespace Clube.Core
     {
         private readonly List<BiomeDefinition> biomeTable;
 
+        // Not readonly: passed by reference to the Burst-compiled height (GL762).
+        private BoundedMapHeight heightField;
+
         public BoundedMapGenerator(BoundedMapHeight field, MapLayout layout, List<BiomeDefinition> biomes, BiomeField biomeField)
             : base(field)
         {
+            heightField = field;
             Water = field.Water;
             Layout = layout;
             biomeTable = biomes;
@@ -42,6 +47,12 @@ namespace Clube.Core
 
         public override bool HasValleys => true;
 
+        /// <summary>The ground's height at (x, z), through Burst (GL762): settlements, roads and people ask it point by point.</summary>
+        public override float Height(float x, float z)
+        {
+            return BoundedMapHeightCalls.At(ref heightField, x, z);
+        }
+
         /// <summary>The same map with rivers, lakes and the sea.</summary>
         public BoundedMapGenerator WithWater(WaterMap water)
         {
@@ -61,11 +72,56 @@ namespace Clube.Core
                 return dry;
             }
 
-            MapDefinition map = settings.Map;
-            MapLayout layout = dry.Layout;
+            WaterMap water = WaterOf(settings, dry, out string key);
+            return dry.WithWater(water).WithCanyons(CanyonsOf(settings, key, water));
+        }
 
+        /// <summary>
+        /// Works out the water <see cref="Create"/> will need, a step at a time (GL762, <see cref="SlicedWork"/>): it is kept,
+        /// so a scene can be started behind a load screen that keeps drawing, and <see cref="Create"/> then takes a moment.
+        /// </summary>
+        public static IEnumerator PrepareSteps(TerrainSettings settings)
+        {
+            if (!settings.Water.Enabled)
+            {
+                yield break;
+            }
+            BoundedMapGenerator dry = CreateDry(settings);
+            yield return Hydrology.PrepareSteps(WaterKey(settings), dry, settings.Water, TerrainGenerators.BanksFor(settings), KeepDry(settings),
+                settings.Erosion.MinPondArea, ExtentOf(settings, dry.Layout));
+            CanyonsOf(settings, WaterKey(settings), WaterOf(settings, dry, out _));
+        }
+
+        private static WaterMap WaterOf(TerrainSettings settings, BoundedMapGenerator dry, out string key)
+        {
+            key = WaterKey(settings);
+            return Hydrology.For(key, dry, settings.Water, TerrainGenerators.BanksFor(settings), KeepDry(settings), settings.Erosion.MinPondArea,
+                ExtentOf(settings, dry.Layout));
+        }
+
+        // The dry lands' canyons are cut round the water once it is known (GL737).
+        private static Canyons CanyonsOf(TerrainSettings settings, string key, WaterMap water)
+        {
+            MapDefinition map = settings.Map;
+            return CanyonReach.For(key + "|canyons " + map.Cliffs.CanyonKey(), map.Cliffs.ToCanyons(settings.Seed, map.Climate.RegionSize), water);
+        }
+
+        private static string WaterKey(TerrainSettings settings)
+        {
+            return $"bounded|{settings.Seed}|{settings.SurfaceLevel}|{settings.Amplitude}|{settings.FeatureSize}|"
+                + $"{settings.MountainCoverage}|{settings.Lacunarity}|{settings.Persistence}|{settings.Erosion.Key}|{settings.Map.Key(settings.Seed)}";
+        }
+
+        private static Rect KeepDry(TerrainSettings settings)
+        {
+            return settings.StartArea.Enabled ? settings.StartArea.Area : default;
+        }
+
+        private static WaterExtent ExtentOf(TerrainSettings settings, MapLayout layout)
+        {
+            MapDefinition map = settings.Map;
             MapShape shape = layout.Shape;
-            var extent = new WaterExtent
+            return new WaterExtent
             {
                 AreaSize = layout.Size + 2f * map.WaterMargin,
                 FlowCellSize = map.FlowCellSize,
@@ -74,15 +130,6 @@ namespace Clube.Core
                 IsSea = point => shape.IsSeaSide(point.x, point.y),
                 IsDry = point => IsDesert(shape, point),
             };
-            string key = $"bounded|{settings.Seed}|{settings.SurfaceLevel}|{settings.Amplitude}|{settings.FeatureSize}|"
-                + $"{settings.MountainCoverage}|{settings.Lacunarity}|{settings.Persistence}|{settings.Erosion.Key}|{map.Key(settings.Seed)}";
-            Rect keepDry = settings.StartArea.Enabled ? settings.StartArea.Area : default;
-            WaterMap water = Hydrology.For(
-                key, dry, settings.Water, TerrainGenerators.BanksFor(settings), keepDry, settings.Erosion.MinPondArea, extent);
-            // The dry lands' canyons are cut round the water once it is known (GL737).
-            Canyons canyons = CanyonReach.For(
-                key + "|canyons " + map.Cliffs.CanyonKey(), map.Cliffs.ToCanyons(settings.Seed, map.Climate.RegionSize), water);
-            return dry.WithWater(water).WithCanyons(canyons);
         }
 
         /// <summary>The same map with its dry lands raised into tablelands round their water (GL737).</summary>
@@ -140,6 +187,17 @@ namespace Clube.Core
                 float2 p = Points[index];
                 Valleys[index] = Field.Valley(p.x, p.y);
             }
+        }
+    }
+
+    /// <summary>One height of a bounded map as a Burst-compiled call: about the cost of a job's, from managed code (GL762).</summary>
+    [BurstCompile]
+    internal static class BoundedMapHeightCalls
+    {
+        [BurstCompile]
+        public static float At(ref BoundedMapHeight field, float x, float z)
+        {
+            return field.Height(x, z);
         }
     }
 

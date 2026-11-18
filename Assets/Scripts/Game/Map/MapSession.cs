@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Clube.Core;
 using UnityEngine;
 
@@ -9,7 +10,7 @@ namespace Clube.Game
     /// surveys the map (<see cref="ResourceSurvey"/>) and plans its settlements, roads and water routes
     /// (<see cref="WorldPlan"/>), once per generated map, and sets the player down by the capital
     /// (<see cref="MapStart"/>). The world map, the ground markers and later the settlements read the map from here.
-    /// The survey runs its height jobs from the main thread, so it stalls a few seconds behind a message.
+    /// GL762: the survey and plan are seconds of main-thread work, run a slice a frame so the load screen keeps drawing.
     /// </summary>
     public class MapSession : MonoBehaviour, IColumnHold
     {
@@ -31,8 +32,13 @@ namespace Clube.Game
         [SerializeField, Range(20f, 80f)]
         private float surveyCellSize = 40f;
 
+        // Milliseconds of each frame the survey and plan take, behind the load screen (GL762).
+        private const float BuildMilliseconds = 100f;
+
         private BoundedMapGenerator built;
         private int waitedFrames;
+        private SlicedWork building;
+        private BoundedMapGenerator buildingFor;
 
         /// <summary>Raised when a map has been surveyed and planned (at start, and after each regenerate).</summary>
         public event Action Rebuilt;
@@ -54,6 +60,9 @@ namespace Clube.Game
 
         /// <summary>True from the frame before the survey starts until it is done.</summary>
         public bool IsBuilding { get; private set; }
+
+        /// <summary>How far the survey and plan have got, 0 to 1.</summary>
+        public float BuildProgress => building != null ? building.Progress : 0f;
 
         /// <summary>Counts the maps built, so views know when to redraw.</summary>
         public int Version { get; private set; }
@@ -86,6 +95,7 @@ namespace Clube.Game
             {
                 worldView.RemoveHold(this);
             }
+            StopBuilding();
         }
 
         /// <summary>
@@ -101,6 +111,14 @@ namespace Clube.Game
         public void Rebuild()
         {
             built = null;
+            StopBuilding();
+        }
+
+        private void StopBuilding()
+        {
+            building?.Dispose();
+            building = null;
+            buildingFor = null;
         }
 
         private void Update()
@@ -115,15 +133,21 @@ namespace Clube.Game
                 Map = null;
                 built = null;
                 IsBuilding = false;
+                StopBuilding();
                 return;
             }
             if (generator == built)
             {
                 return;
             }
+            if (buildingFor != null && buildingFor != generator)
+            {
+                // The world was regenerated under the survey: it starts again on the new map.
+                StopBuilding();
+            }
             if (!IsBuilding)
             {
-                // A frame for the message to show before the stall.
+                // A frame for the message to show before the work starts.
                 IsBuilding = true;
                 waitedFrames = 0;
                 return;
@@ -132,14 +156,25 @@ namespace Clube.Game
             {
                 return;
             }
-            Build(generator);
+            if (building == null)
+            {
+                building = new SlicedWork(BuildSteps(generator));
+                buildingFor = generator;
+            }
+            if (building.Run(BuildMilliseconds))
+            {
+                UnityEngine.Debug.Log($"Map session: longest step of the survey and plan {building.LongestStepMilliseconds:0} ms", this);
+                StopBuilding();
+            }
         }
 
-        private void Build(BoundedMapGenerator generator)
+        private IEnumerator BuildSteps(BoundedMapGenerator generator)
         {
-            float start = Time.realtimeSinceStartup;
+            var watch = System.Diagnostics.Stopwatch.StartNew();
             TerrainSettings terrain = Terrain;
-            Survey = ResourceSurvey.Build(terrain, generator, worldView.Ores, worldView.Trees, surveyCellSize);
+            ResourceSurvey survey = null;
+            yield return new SlicedWork.Part(
+                ResourceSurvey.BuildSteps(terrain, generator, worldView.Ores, worldView.Trees, surveyCellSize, done => survey = done), 0f, SurveyShare);
             // GL634: the road classes' slope limits are shares of the slope the player can walk, the controller's own limit.
             var rules = new WorldPlanRules();
             CharacterController walker = player != null ? player.GetComponentInChildren<CharacterController>(true) : null;
@@ -151,13 +186,15 @@ namespace Clube.Game
             {
                 rules.SetWalkableSlope(walker.slopeLimit);
             }
-            Plan = WorldPlanner.Build(Survey, terrain.Seed, rules);
+            WorldPlan plan = WorldPlanner.Build(survey, terrain.Seed, rules);
             // The plan is from the survey's 40 m cells: its roads are put on the real ground, and signposts on them (GL631, GL632).
-            WorldRoads.Finish(Plan, generator);
+            yield return new SlicedWork.Part(WorldRoads.FinishSteps(plan, generator), SurveyShare, 1f);
+            Survey = survey;
+            Plan = plan;
             Map = generator;
             built = generator;
             IsBuilding = false;
-            LastBuildSeconds = Time.realtimeSinceStartup - start;
+            LastBuildSeconds = (float)watch.Elapsed.TotalSeconds;
             Version++;
 
             Vector2 at = MapStart.Pick(Plan, Survey);
@@ -179,6 +216,9 @@ namespace Clube.Game
                 + $"survey and plan {LastBuildSeconds:0.0} s ({Survey.Timings}; {Plan.Timings}); start {StartPosition}", this);
             Rebuilt?.Invoke();
         }
+
+        // The share of the build the survey is, for the load screen's progress: the roads take the rest.
+        private const float SurveyShare = 0.35f;
 
         // GL745: the starting parcel has a couple of trees, whatever the seed gave it.
         private void PlantStartParcel(Vector2 at)

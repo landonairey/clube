@@ -1,0 +1,15 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff3f84a1a1039c14cba838c80ddc730a, type: 3}
+  m_Name: MapLoadSettings
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.MapLoadSettings
+  world: {fileID: 11400000, guid: 4655a9f34d841ed4598e1c0a76921b36, type: 2}

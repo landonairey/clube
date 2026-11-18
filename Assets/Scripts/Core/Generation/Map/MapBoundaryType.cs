@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 namespace Clube.Core
@@ -208,6 +209,7 @@ namespace Clube.Core
     /// <summary>A <see cref="MapBoundaryType"/> as plain values (K35).</summary>
     public struct BoundaryProfile
     {
+        [MarshalAs(UnmanagedType.U1)] // Blittable, for BoundedMapHeightCalls.
         public bool Ocean;
         public float EdgeHeight;
         public float Flatten;
@@ -222,6 +224,7 @@ namespace Clube.Core
         public float LimitSoftness;
 
         /// <summary>True for an edge with nothing past it (the void): no sea stands there.</summary>
+        [MarshalAs(UnmanagedType.U1)]
         public bool Empty;
     }
 }

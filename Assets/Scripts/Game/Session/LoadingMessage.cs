@@ -17,6 +17,25 @@ namespace Clube.Game
             : GameSession.ArrivesByCart || ArrivalCutscene.IsPlaying ? "Travelling to your family's parcel"
             : "Loading the land";
 
+        /// <summary>The line while the map's rivers and lakes are worked out (<paramref name="progress"/> 0 to 1), before its scene starts (GL762).</summary>
+        public static string Charting(float progress)
+        {
+            return $"Charting the rivers… {Mathf.RoundToInt(Mathf.Clamp01(progress) * 100f)}%";
+        }
+
+        /// <summary>The line while the map is surveyed and planned (<paramref name="progress"/> 0 to 1), so it is seen to move (GL762).</summary>
+        public static string Survey(float progress)
+        {
+            return $"{Surveying} {Mathf.RoundToInt(Mathf.Clamp01(progress) * 100f)}%";
+        }
+
+        /// <summary>The line for where the load has got in a scene: the map's survey until it is ready, then the ground (<paramref name="groundProgress"/> 0 to 1).</summary>
+        public static string InScene(float groundProgress)
+        {
+            MapSession session = MapSession.Current;
+            return session != null && !session.IsReady ? Survey(session.BuildProgress) : Ground(groundProgress);
+        }
+
         /// <summary>The line while the ground round the player loads (<paramref name="progress"/> 0 to 1).</summary>
         public static string Ground(float progress)
         {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -176,6 +177,16 @@ namespace Clube.Core
         public static ResourceSurvey Build(
             TerrainSettings terrain, ITerrainGenerator generator, OreField oreField, TreeField trees, float cellSize = 40f)
         {
+            ResourceSurvey survey = null;
+            SlicedWork.RunToEnd(BuildSteps(terrain, generator, oreField, trees, cellSize, done => survey = done));
+            return survey;
+        }
+
+        /// <summary>The survey a step at a time (GL762, <see cref="SlicedWork"/>); <paramref name="done"/> is given the finished survey.</summary>
+        /// <exception cref="ArgumentException">The generator isn't a bounded map's.</exception>
+        public static IEnumerator BuildSteps(
+            TerrainSettings terrain, ITerrainGenerator generator, OreField oreField, TreeField trees, float cellSize, Action<ResourceSurvey> done)
+        {
             if (!(generator is BoundedMapGenerator map))
             {
                 throw new ArgumentException("The resource survey needs a bounded map's generator (TerrainGeneratorType.BoundedMap).", nameof(generator));
@@ -190,10 +201,24 @@ namespace Clube.Core
             }
             var survey = new ResourceSurvey(area, cellSize, size, map.Biomes.Biomes, oreMaterials);
             ChunkFillSettings fill = ChunkGenerator.SettingsFor(terrain.Layers, oreField, DensityFormat.Byte, terrain.StartArea, generator);
+            // The clock runs only while this works, not over the frames between its steps.
             var watch = System.Diagnostics.Stopwatch.StartNew();
-            survey.SurveyGround(map, fill);
+            float[] heights = survey.GroundHeights(map);
+            for (int cz = 0; cz < size; cz++)
+            {
+                survey.SurveyGroundRow(cz, map, fill, heights);
+                watch.Stop();
+                yield return GroundShare * (cz + 1) / size;
+                watch.Start();
+            }
             long ground = watch.ElapsedMilliseconds;
-            survey.SurveyWater(map.Water);
+            for (int cz = 0; cz < size; cz++)
+            {
+                survey.SurveyWaterRow(cz, map.Water);
+                watch.Stop();
+                yield return GroundShare + WaterShare * (cz + 1) / size;
+                watch.Start();
+            }
             long water = watch.ElapsedMilliseconds;
             if (trees != null)
             {
@@ -202,11 +227,17 @@ namespace Clube.Core
             long treesDone = watch.ElapsedMilliseconds;
             if (oreField != null)
             {
-                survey.SurveyOres(map, oreField);
+                IEnumerator ores = survey.SurveyOres(map, oreField);
+                while (ores.MoveNext())
+                {
+                    watch.Stop();
+                    yield return GroundShare + WaterShare + (1f - GroundShare - WaterShare) * (float)ores.Current;
+                    watch.Start();
+                }
             }
             survey.MarkOutside(map.Layout);
             survey.Timings = $"ground {ground} ms, water {water - ground} ms, trees {treesDone - water} ms, ores {watch.ElapsedMilliseconds - treesDone} ms";
-            return survey;
+            done(survey);
         }
 
         // Past the playable edge (GL639), and where an edge's limit holds the player back (GL640), nothing is the map's to use: those cells keep their height, biome and sea,
@@ -243,133 +274,133 @@ namespace Clube.Core
         }
 
         // Height, flatness, biome and the surface materials, from a grid of ground samples in each cell.
-        private void SurveyGround(BoundedMapGenerator map, ChunkFillSettings fill)
+        private float[] GroundHeights(BoundedMapGenerator map)
+        {
+            float spacing = CellSize / SamplesPerSide;
+            int side = Size * SamplesPerSide;
+            return Heights(map, side * side, i => new float2(
+                Area.xMin + (i % side + 0.5f) * spacing, Area.yMin + (i / side + 0.5f) * spacing));
+        }
+
+        private void SurveyGroundRow(int cz, BoundedMapGenerator map, ChunkFillSettings fill, float[] heights)
         {
             const int s = SamplesPerSide;
             float spacing = CellSize / s;
             int side = Size * s;
-            float[] heights = Heights(map, side * side, i => new float2(
-                Area.xMin + (i % side + 0.5f) * spacing, Area.yMin + (i / side + 0.5f) * spacing));
             BiomeField biomes = map.BiomeField;
             WaterMap water = map.Water;
             LayerTable layers = fill.Layers;
             byte sand = water.Banks.Sand, clay = layers.Clay != 0 ? layers.Clay : water.Banks.Clay;
-            for (int cz = 0; cz < Size; cz++)
+            for (int cx = 0; cx < Size; cx++)
             {
-                for (int cx = 0; cx < Size; cx++)
+                var cell = new SurveyCell();
+                float slope = 0f;
+                int dry = 0;
+                for (int sz = 0; sz < s; sz++)
                 {
-                    var cell = new SurveyCell();
-                    float slope = 0f;
-                    int dry = 0;
-                    for (int sz = 0; sz < s; sz++)
+                    for (int sx = 0; sx < s; sx++)
                     {
-                        for (int sx = 0; sx < s; sx++)
-                        {
-                            int x = cx * s + sx, z = cz * s + sz;
-                            float h = heights[x + z * side];
-                            // Slope to the next sample each way (the one before on the grid's far edges).
-                            float hx = heights[(x + 1 < side ? x + 1 : x - 1) + z * side];
-                            float hz = heights[x + (z + 1 < side ? z + 1 : z - 1) * side];
-                            float gradient = math.length(new float2(hx - h, hz - h)) / spacing;
-                            cell.Height += h;
-                            slope += gradient;
+                        int x = cx * s + sx, z = cz * s + sz;
+                        float h = heights[x + z * side];
+                        // Slope to the next sample each way (the one before on the grid's far edges).
+                        float hx = heights[(x + 1 < side ? x + 1 : x - 1) + z * side];
+                        float hz = heights[x + (z + 1 < side ? z + 1 : z - 1) * side];
+                        float gradient = math.length(new float2(hx - h, hz - h)) / spacing;
+                        cell.Height += h;
+                        slope += gradient;
 
-                            var p = new float2(Area.xMin + (x + 0.5f) * spacing, Area.yMin + (z + 0.5f) * spacing);
-                            if (water.TryCell(p, out int wet) && water.Kind[wet] != 0)
-                            {
-                                continue;
-                            }
-                            dry++;
-                            BiomeRow row = biomes.Rows[biomes.IndexAt(p.x, p.y, h)];
-                            BiomeDefinition biome = Biomes[biomes.IndexAt(p.x, p.y, h)];
-                            cell.Grazing += biome.Grazing;
-                            cell.Game += biome.Game;
-                            // The surface material the fill would lay: bare rock, else clay, else the water's banks, else the biome's top.
-                            byte banks = water.MaterialAt(p, 0.05f, fill.Seed);
-                            if (layers.IsSteep(gradient, h) || (row.Top == layers.Base && layers.Base != layers.Top))
-                            {
-                                cell.Stone++;
-                            }
-                            else if (banks == sand && sand != 0)
-                            {
-                                cell.Sand++;
-                            }
-                            else if ((banks != WaterMap.Keep && banks == clay && clay != 0) || ChunkFillKernel.ClayDepthAt(fill.Seed, p, layers) > 0f)
-                            {
-                                cell.Clay++;
-                            }
-                            else if (row.Top == sand && sand != 0)
-                            {
-                                cell.Sand++;
-                            }
+                        var p = new float2(Area.xMin + (x + 0.5f) * spacing, Area.yMin + (z + 0.5f) * spacing);
+                        if (water.TryCell(p, out int wet) && water.Kind[wet] != 0)
+                        {
+                            continue;
+                        }
+                        dry++;
+                        BiomeRow row = biomes.Rows[biomes.IndexAt(p.x, p.y, h)];
+                        BiomeDefinition biome = Biomes[biomes.IndexAt(p.x, p.y, h)];
+                        cell.Grazing += biome.Grazing;
+                        cell.Game += biome.Game;
+                        // The surface material the fill would lay: bare rock, else clay, else the water's banks, else the biome's top.
+                        byte banks = water.MaterialAt(p, 0.05f, fill.Seed);
+                        if (layers.IsSteep(gradient, h) || (row.Top == layers.Base && layers.Base != layers.Top))
+                        {
+                            cell.Stone++;
+                        }
+                        else if (banks == sand && sand != 0)
+                        {
+                            cell.Sand++;
+                        }
+                        else if ((banks != WaterMap.Keep && banks == clay && clay != 0) || ChunkFillKernel.ClayDepthAt(fill.Seed, p, layers) > 0f)
+                        {
+                            cell.Clay++;
+                        }
+                        else if (row.Top == sand && sand != 0)
+                        {
+                            cell.Sand++;
                         }
                     }
-                    cell.Height /= s * s;
-                    cell.Flatness = 1f - Mathf.Clamp01(slope / (s * s) / SteepestFlat);
-                    Vector2 centre = CellCentre(cx, cz);
-                    cell.Biome = biomes.IndexAt(centre.x, centre.y, cell.Height);
-                    if (dry > 0)
-                    {
-                        cell.Stone /= dry;
-                        cell.Sand /= dry;
-                        cell.Clay /= dry;
-                        cell.Grazing = cell.Grazing / dry * cell.Flatness;
-                        cell.Game /= dry;
-                    }
-                    cells[cx + cz * Size] = cell;
                 }
+                cell.Height /= s * s;
+                cell.Flatness = 1f - Mathf.Clamp01(slope / (s * s) / SteepestFlat);
+                Vector2 centre = CellCentre(cx, cz);
+                cell.Biome = biomes.IndexAt(centre.x, centre.y, cell.Height);
+                if (dry > 0)
+                {
+                    cell.Stone /= dry;
+                    cell.Sand /= dry;
+                    cell.Clay /= dry;
+                    cell.Grazing = cell.Grazing / dry * cell.Flatness;
+                    cell.Game /= dry;
+                }
+                cells[cx + cz * Size] = cell;
             }
         }
 
         // Sea, rivers and lakes: the water map's own cells under each survey cell (every other one on fine maps).
-        private void SurveyWater(WaterMap water)
+        private void SurveyWaterRow(int cz, WaterMap water)
         {
             if (!water.IsCreated)
             {
-                for (int i = 0; i < cells.Length; i++)
+                for (int cx = 0; cx < Size; cx++)
                 {
-                    cells[i].Land = 1f;
+                    cells[cx + cz * Size].Land = 1f;
                 }
                 return;
             }
             float step = water.CellSize * Mathf.Max(1, Mathf.RoundToInt(2f / water.CellSize));
             int per = Mathf.Max(1, Mathf.FloorToInt(CellSize / step));
-            for (int cz = 0; cz < Size; cz++)
+            for (int cx = 0; cx < Size; cx++)
             {
-                for (int cx = 0; cx < Size; cx++)
+                int sea = 0, river = 0, lake = 0;
+                for (int j = 0; j < per; j++)
                 {
-                    int sea = 0, river = 0, lake = 0;
-                    for (int j = 0; j < per; j++)
+                    for (int i = 0; i < per; i++)
                     {
-                        for (int i = 0; i < per; i++)
+                        var p = new float2(Area.xMin + cx * CellSize + (i + 0.5f) * step, Area.yMin + cz * CellSize + (j + 0.5f) * step);
+                        if (!water.TryCell(p, out int w) || water.Kind[w] == 0)
                         {
-                            var p = new float2(Area.xMin + cx * CellSize + (i + 0.5f) * step, Area.yMin + cz * CellSize + (j + 0.5f) * step);
-                            if (!water.TryCell(p, out int w) || water.Kind[w] == 0)
-                            {
-                                continue;
-                            }
-                            if (water.Kind[w] == (byte)WaterKind.River)
-                            {
-                                river++;
-                            }
-                            else if (water.IsSea(w))
-                            {
-                                sea++;
-                            }
-                            else
-                            {
-                                lake++;
-                            }
+                            continue;
+                        }
+                        if (water.Kind[w] == (byte)WaterKind.River)
+                        {
+                            river++;
+                        }
+                        else if (water.IsSea(w))
+                        {
+                            sea++;
+                        }
+                        else
+                        {
+                            lake++;
                         }
                     }
-                    float total = per * per;
-                    ref SurveyCell cell = ref cells[cx + cz * Size];
-                    cell.Sea = sea / total;
-                    cell.FreshWater = (river + lake) / total;
-                    cell.Land = 1f - cell.Sea - cell.FreshWater;
-                    cell.River = river > 0;
-                    cell.Coast = sea > 0 && cell.Land > 0.02f;
                 }
+                float total = per * per;
+                ref SurveyCell cell = ref cells[cx + cz * Size];
+                cell.Sea = sea / total;
+                cell.FreshWater = (river + lake) / total;
+                cell.Land = 1f - cell.Sea - cell.FreshWater;
+                cell.River = river > 0;
+                cell.Coast = sea > 0 && cell.Land > 0.02f;
             }
         }
 
@@ -434,7 +465,7 @@ namespace Clube.Core
 
         // Ore nodes: every try the ore field would make between the ground and the deepest ore, the ground over all of a
         // band's tries from one job, then the field's own rule for which become nodes.
-        private void SurveyOres(BoundedMapGenerator map, OreField oreField)
+        private IEnumerator SurveyOres(BoundedMapGenerator map, OreField oreField)
         {
             float oreCell = oreField.CellSize;
             int x0 = Mathf.FloorToInt(Area.xMin / oreCell), z0 = Mathf.FloorToInt(Area.yMin / oreCell);
@@ -509,8 +540,12 @@ namespace Clube.Core
                     ground.Dispose();
                     points.Dispose();
                 }
+                yield return (float)Mathf.Min(nz, bz + band) / nz;
             }
         }
+
+        // The shares of the survey the ground and the water are, for the load screen's progress: the ores take the rest.
+        private const float GroundShare = 0.15f, WaterShare = 0.15f;
 
         // The ground's height at a list of points, from one Burst job.
         private static float[] Heights(HeightfieldGenerator ground, int count, Func<int, float2> point)

@@ -1,4 +1,7 @@
 using System.Collections.Generic;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -352,19 +355,43 @@ namespace Clube.Core
             {
                 return;
             }
-            for (int i = 0; i < water.Kind.Length; i++)
+            // GL762: in a Burst job: millions of cells, a second of the first frame when looked at here.
+            var wet = new NativeArray<bool>(tilesAcross * tilesAcross, Allocator.TempJob);
+            new WetTilesJob { Kind = water.Kind, Width = size.x, Tile = Tile, TilesAcross = tilesAcross, Wet = wet }.Run();
+            for (int tile = 0; tile < wet.Length; tile++)
             {
-                if (water.Kind[i] != (byte)WaterKind.Dry)
+                if (wet[tile])
                 {
-                    wetTiles.Add(i % size.x / Tile + i / size.x / Tile * tilesAcross);
+                    wetTiles.Add(tile);
                 }
             }
+            wet.Dispose();
             coarse = new CoarseWaterMesher(water, Region);
             for (int region = 0; region < coarse.RegionCount; region++)
             {
                 if (coarse.HasWater(region))
                 {
                     dirtyRegions.Add(region);
+                }
+            }
+        }
+
+        // Which tiles of the water map have any water on them.
+        [BurstCompile]
+        private struct WetTilesJob : IJob
+        {
+            [ReadOnly] public NativeArray<byte> Kind;
+            public int Width, Tile, TilesAcross;
+            [WriteOnly] public NativeArray<bool> Wet;
+
+            public void Execute()
+            {
+                for (int i = 0; i < Kind.Length; i++)
+                {
+                    if (Kind[i] != (byte)WaterKind.Dry)
+                    {
+                        Wet[i % Width / Tile + i / Width / Tile * TilesAcross] = true;
+                    }
                 }
             }
         }

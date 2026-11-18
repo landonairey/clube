@@ -31,6 +31,9 @@ namespace Clube.Game
         // The most trees taken and voxels dug at one look, so a long absence is caught up over a few frames.
         private const int TreesAtOnce = 4, VoxelsAtOnce = 3000;
 
+        // Milliseconds a frame for working out a settlement's trees and digs: more while the load curtain is up (GL762).
+        private const float PrepareMilliseconds = 2f, PrepareBehindCurtainMilliseconds = 30f;
+
         private sealed class Progress
         {
             public SettlementWorks Works;
@@ -51,6 +54,8 @@ namespace Clube.Game
         private PlayerParcels parcels;
         private WorldPlan plan;
         private float nextLook;
+        // The settlement whose trees and digs are being worked out, a slice a frame (GL762).
+        private SlicedWork preparing;
 
         /// <summary>Trees taken away and voxels dug out by the work done while nobody watched, this session.</summary>
         public int TreesTaken { get; private set; }
@@ -64,7 +69,16 @@ namespace Clube.Game
 
         private void Update()
         {
-            if (people == null || !people.IsRunning || Time.unscaledTime < nextLook)
+            if (people == null || !people.IsRunning)
+            {
+                return;
+            }
+            if (preparing != null && preparing.Run(people.View.Hurry ? PrepareBehindCurtainMilliseconds : PrepareMilliseconds))
+            {
+                StopPreparing();
+                nextLook = 0f;
+            }
+            if (Time.unscaledTime < nextLook)
             {
                 return;
             }
@@ -73,11 +87,13 @@ namespace Clube.Game
             {
                 plan = people.Plan;
                 progress.Clear();
+                StopPreparing();
                 parcels = FindAnyObjectByType<PlayerParcels>();
             }
             double now = people.Now;
             int treeBudget = TreesAtOnce, voxelBudget = VoxelsAtOnce;
             IReadOnlyList<PlannedSettlement> settlements = people.Plan.Settlements;
+            PrepareNearest(settlements);
             for (int i = 0; i < settlements.Count; i++)
             {
                 if ((settlements[i].Position - people.Viewer).sqrMagnitude > LookRange * LookRange)
@@ -98,6 +114,46 @@ namespace Clube.Game
             }
         }
 
+        private void OnDestroy()
+        {
+            StopPreparing();
+        }
+
+        private void StopPreparing()
+        {
+            preparing?.Dispose();
+            preparing = null;
+        }
+
+        // Starts on the nearest settlement in reach whose trees and digs are not worked out yet: its people are the first seen.
+        private void PrepareNearest(IReadOnlyList<PlannedSettlement> settlements)
+        {
+            if (preparing != null)
+            {
+                return;
+            }
+            SettlementWorks nearest = null;
+            float best = LookRange * LookRange;
+            for (int i = 0; i < settlements.Count; i++)
+            {
+                float distance = (settlements[i].Position - people.Viewer).sqrMagnitude;
+                if (distance > best)
+                {
+                    continue;
+                }
+                SettlementWorks works = people.WorksOf(i);
+                if (works != null && !works.IsPrepared)
+                {
+                    nearest = works;
+                    best = distance;
+                }
+            }
+            if (nearest != null)
+            {
+                preparing = new SlicedWork(nearest.PrepareSteps());
+            }
+        }
+
         private Progress ProgressOf(int settlement)
         {
             if (progress.TryGetValue(settlement, out Progress made))
@@ -105,7 +161,7 @@ namespace Clube.Game
                 return made;
             }
             SettlementWorks works = people.WorksOf(settlement);
-            if (works == null)
+            if (works == null || !works.IsPrepared)
             {
                 return null;
             }

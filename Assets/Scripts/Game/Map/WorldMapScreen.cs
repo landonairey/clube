@@ -34,6 +34,11 @@ namespace Clube.Game
         private bool hasPauseMenu;
         private Texture2D picture;
         private int pictureVersion = -1;
+        // The picture being drawn a slice a frame (GL762), the map it is of, and its pixels when done.
+        private SlicedWork drawing;
+        private int drawingVersion;
+        private Color32[] drawn;
+        private const float DrawMilliseconds = 3f, DrawBehindCurtainMilliseconds = 30f;
         private Material shapes;
         private List<SurveyResource> resources;
         private float[] resourceAmounts;
@@ -91,6 +96,7 @@ namespace Clube.Game
 
         private void OnDestroy()
         {
+            drawing?.Dispose();
             if (picture != null)
             {
                 Destroy(picture);
@@ -105,10 +111,11 @@ namespace Clube.Game
         {
             // GL664: the picture is drawn as soon as the map is planned, while the player still waits behind the load
             // curtain, not on the first M (a pause of seconds). It needs jobs, so it is drawn here on the main thread.
+            // GL762: a row at a time, so the load screen keeps drawing.
             MapSession planned = MapSession.Current;
             if (!IsOpen && planned != null && planned.IsReady && pictureVersion != planned.Version)
             {
-                EnsurePicture(planned);
+                DrawPicture(planned, planned.WorldView.Hurry ? DrawBehindCurtainMilliseconds : DrawMilliseconds);
             }
             if (PauseMenu.IsPaused || (player != null && !player.enabled))
             {
@@ -166,12 +173,33 @@ namespace Clube.Game
             }
         }
 
+        // The map opened before its picture was finished: the rest of it now.
         private void EnsurePicture(MapSession session)
         {
-            if (picture != null && pictureVersion == session.Version)
+            if (picture == null || pictureVersion != session.Version)
+            {
+                DrawPicture(session, float.PositiveInfinity);
+            }
+        }
+
+        // Draws some more of the picture of the session's map, and shows it once it is done.
+        private void DrawPicture(MapSession session, float milliseconds)
+        {
+            if (drawing != null && drawingVersion != session.Version)
+            {
+                drawing.Dispose();
+                drawing = null;
+            }
+            if (drawing == null)
+            {
+                drawingVersion = session.Version;
+                drawing = new SlicedWork(MapPicture.RenderSteps(session.Map, session.Survey, resolution, done => drawn = done));
+            }
+            if (!drawing.Run(milliseconds))
             {
                 return;
             }
+            drawing = null;
             float start = Time.realtimeSinceStartup;
             if (picture == null || picture.width != resolution)
             {
@@ -184,7 +212,8 @@ namespace Clube.Game
                     name = "World map", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear,
                 };
             }
-            picture.SetPixels32(MapPicture.Render(session.Map, session.Survey, resolution));
+            picture.SetPixels32(drawn);
+            drawn = null;
             picture.Apply(false);
             pictureVersion = session.Version;
             resources = SurveyResource.For(session.Survey);

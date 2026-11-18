@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -80,6 +81,15 @@ namespace Clube.Core
         public static int Bore(WorldPlan plan, Func<float, float, float> heightAt, Func<Vector2[], float[]> heightsAt = null,
             Func<float, float, RoadWater> waterAt = null, RoadTunnelRules rules = null)
         {
+            int bored = 0;
+            SlicedWork.RunToEnd(BoreSteps(plan, heightAt, heightsAt, waterAt, rules, count => bored += count));
+            return bored;
+        }
+
+        /// <summary>The tunnels a road at a time (GL762); <paramref name="bored"/> is told how many each road got.</summary>
+        public static IEnumerator BoreSteps(WorldPlan plan, Func<float, float, float> heightAt, Func<Vector2[], float[]> heightsAt,
+            Func<float, float, RoadWater> waterAt, RoadTunnelRules rules, Action<int> bored)
+        {
             rules ??= new RoadTunnelRules();
             Func<Vector2[], float[]> heights = heightsAt ?? (points =>
             {
@@ -90,7 +100,6 @@ namespace Clube.Core
                 }
                 return result;
             });
-            int bored = 0;
             foreach (PlannedRoad road in plan.Roads)
             {
                 RoadClassDefinition definition = plan.Rules.Road(road.Class);
@@ -100,9 +109,9 @@ namespace Clube.Core
                     continue;
                 }
                 // GL737: the road is read on what it is built on (its graded bed), so a tunnel only stands in for what grading could not ease.
-                bored += Bore(plan, road, definition, RoadGrading.HeightsAt(road, heights), waterAt, rules);
+                bored(Bore(plan, road, definition, RoadGrading.HeightsAt(road, heights), waterAt, rules));
+                yield return null;
             }
-            return bored;
         }
 
         /// <summary>

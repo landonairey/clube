@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -81,11 +82,19 @@ namespace Clube.Core
         public static void Grade(WorldPlan plan, Func<float, float, float> heightAt, Func<Vector2[], float[]> heightsAt = null,
             Func<float, float, RoadWater> waterAt = null)
         {
+            SlicedWork.RunToEnd(GradeSteps(plan, heightAt, heightsAt, waterAt));
+        }
+
+        /// <summary>As <see cref="Grade(WorldPlan, Func{float, float, float}, Func{Vector2[], float[]}, Func{float, float, RoadWater})"/>, a road at a time (GL762).</summary>
+        public static IEnumerator GradeSteps(WorldPlan plan, Func<float, float, float> heightAt, Func<Vector2[], float[]> heightsAt,
+            Func<float, float, RoadWater> waterAt)
+        {
             foreach (PlannedRoad road in plan.Roads)
             {
                 if (road.Refined && road.Points.Count >= 2)
                 {
                     Grade(road, plan.Rules.Road(road.Class), plan.Rules.BuildCosts, heightAt, heightsAt, waterAt);
+                    yield return null;
                 }
             }
         }

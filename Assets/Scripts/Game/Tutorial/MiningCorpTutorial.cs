@@ -968,6 +968,11 @@ namespace Clube.Game
                 GUI.color = new Color(1f, 1f, 1f, fade);
                 var middle = new Rect(Screen.width * 0.15f, Screen.height * 0.3f, Screen.width * 0.7f, Screen.height * 0.4f);
                 GUI.Label(middle, StoryText(), storyStyle);
+                // GL762: this card covers the load curtain, so the loading line is drawn on it too.
+                if (step == Step.Arriving)
+                {
+                    LoadingMessage.Draw(LoadingMessage.InScene(spawn != null ? spawn.Progress : 0f));
+                }
                 GUI.color = before;
             }
         }

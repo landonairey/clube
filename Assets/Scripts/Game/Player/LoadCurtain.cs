@@ -61,8 +61,7 @@ namespace Clube.Game
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
             GUI.color = Color.white;
-            MapSession session = MapSession.Current;
-            LoadingMessage.Draw(session != null && !session.IsReady ? LoadingMessage.Surveying : LoadingMessage.Ground(spawn.Progress));
+            LoadingMessage.Draw(LoadingMessage.InScene(spawn.Progress));
             GUI.color = was;
         }
     }
