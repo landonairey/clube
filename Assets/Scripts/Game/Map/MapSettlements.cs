@@ -244,6 +244,7 @@ namespace Clube.Game
 
         private void Update()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Settlements");
             hold.Enabled = build;
             if (session == null || !session.IsReady || session.Plan == null)
             {

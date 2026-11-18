@@ -168,6 +168,7 @@ namespace Clube.Core
 
         private void LateUpdate()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Water");
             frameTimer.Restart();
             ITerrainGenerator generator = worldView.Generator;
             if (generator != builtFor)

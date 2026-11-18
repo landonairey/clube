@@ -196,6 +196,7 @@ namespace Clube.Core
 
         private void LateUpdate()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Distant trees");
             if (!show || worldView == null || !worldView.IsReady || worldView.Focus == null)
             {
                 Problem = material == null ? "No distant tree material" : null;

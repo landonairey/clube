@@ -53,6 +53,7 @@ namespace Clube.Game
 
         private void Update()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Falling ground");
             World world = worldView.World;
             if (world == null)
             {

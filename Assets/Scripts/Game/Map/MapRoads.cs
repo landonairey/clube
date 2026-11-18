@@ -279,6 +279,7 @@ namespace Clube.Game
 
         private void Update()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Roads");
             hold.Enabled = build;
             if (session == null || !session.IsReady || session.Plan == null)
             {

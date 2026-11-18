@@ -167,6 +167,7 @@ namespace Clube.Game
 
         private void Update()
         {
+            using FrameCost.Scope cost = FrameCost.Of("People (Villager)");
             if (People == null || !People.IsRunning)
             {
                 return;

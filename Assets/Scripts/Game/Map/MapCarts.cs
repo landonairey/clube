@@ -91,6 +91,7 @@ namespace Clube.Game
 
         private void Update()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Carts");
             if (session == null || roads == null || !session.IsReady || session.Plan == null)
             {
                 return;

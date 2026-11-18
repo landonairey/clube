@@ -256,6 +256,7 @@ namespace Clube.Game
 
         private void Update()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Boats");
             if (session == null || !session.IsReady || session.Plan == null)
             {
                 return;

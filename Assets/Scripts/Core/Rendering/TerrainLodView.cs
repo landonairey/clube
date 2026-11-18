@@ -186,6 +186,7 @@ namespace Clube.Core
 
         private void LateUpdate()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Coarse terrain");
             if (!show || worldView == null || !worldView.IsReady || worldView.Focus == null)
             {
                 Problem = null;

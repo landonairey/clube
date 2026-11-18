@@ -194,6 +194,7 @@ namespace Clube.Core
 
         private void LateUpdate()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Distant buildings");
             // Once a frame: a script pumping LateUpdate by hand would queue draws whose GPU buffers only a real frame frees.
             if (!show || material == null || settlements.Count == 0 || worldView == null || !worldView.IsReady || Time.frameCount == drawnFrame)
             {

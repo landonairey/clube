@@ -174,6 +174,7 @@ namespace Clube.Game
 
         private void LateUpdate()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Clouds");
             Camera view = Camera.main;
             // Once a frame: instanced draws' buffers are only freed when a real frame ends.
             if (view == null || material == null || drawnFrame == Time.frameCount)

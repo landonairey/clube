@@ -161,6 +161,7 @@ namespace Clube.Core
 
         private void LateUpdate()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Far terrain");
             if (!show || worldView == null || !worldView.IsReady || worldView.Focus == null || material == null)
             {
                 Problem = material == null ? "No far terrain material" : null;

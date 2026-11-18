@@ -123,6 +123,7 @@ namespace Clube.Game
 
         private void Update()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Animals");
             if (worldView == null || !worldView.IsReady || material == null)
             {
                 return;

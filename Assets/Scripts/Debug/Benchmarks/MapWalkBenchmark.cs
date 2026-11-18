@@ -29,6 +29,7 @@ namespace Clube.Debug
         // Over the ground, clear of road beds raised above it: a player inside the ground is lifted out by PlayerSpawn.
         private const float CarriedHeight = 2.5f;
         private const int MarkersShown = 70, LongFrameMarkers = 16, LoopStagesShown = 12;
+        private const double SlowSystemMilliseconds = 8.0;
         // Chunks round the player whose ground is checked, and how often.
         private const int UnderfootColumns = 4, NearColumns = 12, GroundLookFrames = 30;
 
@@ -60,6 +61,7 @@ namespace Clube.Debug
         private readonly PlayerLoopTimes loopTimes = new PlayerLoopTimes();
         private readonly ProcessLoad load = new ProcessLoad();
         private readonly Dictionary<Vector2Int, int> groundLayers = new Dictionary<Vector2Int, int>();
+        private readonly Dictionary<string, (double total, double worst, int slow)> systems = new Dictionary<string, (double, double, int)>();
         private readonly List<float> batches = new List<float>();
         private readonly List<float> setPasses = new List<float>();
         private readonly List<float> triangles = new List<float>();
@@ -104,8 +106,6 @@ namespace Clube.Debug
             batchesRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Batches Count");
             setPassRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Render, "SetPass Calls Count");
             trianglesRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Triangles Count");
-            // A development build times each script's Update only while its Profiler records.
-            UnityEngine.Profiling.Profiler.enabled = UnityEngine.Debug.isDebugBuild && !Application.isEditor || UnityEngine.Profiling.Profiler.enabled;
             float started = Time.realtimeSinceStartup;
             GameSession.StartNew(GameMode.Demo, Seed, "Benchmark");
             GameSession.ArrivesByCart = false;
@@ -151,6 +151,7 @@ namespace Clube.Debug
                             + $"stood on the map {Time.realtimeSinceStartup - started:0} s after Start");
 
             loopTimes.Install();
+            FrameCost.Measuring = true;
             yield return Stretch("stand at the start, before", StandSeconds, false);
             float done = 0f;
             int window = 0;
@@ -330,10 +331,29 @@ namespace Clube.Debug
             grass.Add(Cost(world.GetComponent<GrassScatter>(), v => v.LastUpdateMilliseconds));
             drawCalls.Add(drawCallsRecorder.Valid ? drawCallsRecorder.LastValue : 0f);
             allocated.Add(allocatedRecorder.Valid ? allocatedRecorder.LastValue / 1024f : 0f);
+            SampleSystems();
             batches.Add(batchesRecorder.Valid ? batchesRecorder.LastValue : 0f);
             setPasses.Add(setPassRecorder.Valid ? setPassRecorder.LastValue : 0f);
             triangles.Add(trianglesRecorder.Valid ? trianglesRecorder.LastValue / 1000f : 0f);
             markers.Sample();
+        }
+
+        // Each system's time this frame: its average, its worst frame, and how many frames it alone took a long time.
+        private void SampleSystems()
+        {
+            foreach (FrameCost cost in FrameCost.All)
+            {
+                double milliseconds = cost.TakeMilliseconds();
+                systems.TryGetValue(cost.Name, out (double total, double worst, int slow) seen);
+                systems[cost.Name] = (seen.total + milliseconds, System.Math.Max(seen.worst, milliseconds), seen.slow + (milliseconds > SlowSystemMilliseconds ? 1 : 0));
+            }
+        }
+
+        private string SystemsReport()
+        {
+            int count = Mathf.Max(1, frames.Count);
+            return string.Join("; ", systems.OrderByDescending(s => s.Value.total)
+                .Select(s => $"{s.Key} {s.Value.total / count:0.00} (worst {s.Value.worst:0}, {s.Value.slow} slow)"));
         }
 
         private static float Cost<T>(T view, System.Func<T, float> read) where T : Behaviour
@@ -355,6 +375,7 @@ namespace Clube.Debug
             underfootGround = nearGround = drawnGround = 1f;
             text.AppendLine($"  pending {world.PendingCount}, loading {world.IsLoading}, in sight {world.IsLoadingInSight}, renderers {world.Stats.Renderers}; phases (last frame): {world.Stats.Phases}");
             text.AppendLine($"  player loop (ms a frame): {loopTimes.Top(LoopStagesShown, frames.Count)}");
+            text.AppendLine($"  systems (ms a frame; worst frame; frames over {SlowSystemMilliseconds:0} ms): {SystemsReport()}");
             string top = markers.Top(MarkersShown, frames.Count);
             if (top.Length > 0)
             {
@@ -385,6 +406,7 @@ namespace Clube.Debug
             {
                 values.Clear();
             }
+            systems.Clear();
             load.Clear();
             collectionsAtStart = System.GC.CollectionCount(0);
             heapAtStart = System.GC.GetTotalMemory(false);
@@ -418,6 +440,7 @@ namespace Clube.Debug
                 folder = System.IO.Path.Combine(folder, "Temp");
             }
             System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "walkbench.txt"), report);
+            FrameCost.Measuring = false;
             markers.Dispose();
             loopTimes.Dispose();
             drawCallsRecorder.Dispose();

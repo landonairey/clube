@@ -417,6 +417,7 @@ namespace Clube.Core
 
         private void LateUpdate()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Grass");
             if (!worldView.IsReady || worldView.Focus == null || grass == null || material == null)
             {
                 return;

@@ -70,6 +70,7 @@ namespace Clube.Game
 
         private void Update()
         {
+            using FrameCost.Scope cost = FrameCost.Of("Settlement workings");
             if (people == null || !people.IsRunning)
             {
                 return;
