@@ -196,12 +196,12 @@ namespace Clube.Game
             {
                 return;
             }
-            nameStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter, fontSize = GameUi.Font(14), fontStyle = FontStyle.Bold, wordWrap = false };
+            nameStyle = new GUIStyle(GUI.skin.label) { font = GameFont.Get(), alignment = TextAnchor.UpperCenter, fontSize = GameUi.Font(14), fontStyle = FontStyle.Bold, wordWrap = false };
             nameStyle.normal.textColor = Color.white;
             smallNameStyle = new GUIStyle(nameStyle) { fontSize = GameUi.Font(11), fontStyle = FontStyle.Normal };
             legendStyle = new GUIStyle(nameStyle) { alignment = TextAnchor.MiddleLeft, fontSize = GameUi.Font(13), fontStyle = FontStyle.Normal };
             sideStyle = new GUIStyle(nameStyle) { alignment = TextAnchor.MiddleCenter, fontSize = GameUi.Font(16) };
-            noteStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperLeft, fontSize = GameUi.Font(13), wordWrap = true };
+            noteStyle = new GUIStyle(GUI.skin.label) { font = GameFont.Get(), alignment = TextAnchor.UpperLeft, fontSize = GameUi.Font(13), wordWrap = true };
             noteStyle.normal.textColor = Color.white;
         }
 
@@ -240,6 +240,7 @@ namespace Clube.Game
                 return;
             }
             EnsurePicture(session);
+            GameUi.Apply();
             EnsureStyles();
             GUI.depth = -10;
             Rect area = session.Layout.Bounds;
@@ -347,8 +348,7 @@ namespace Clube.Game
                 }
                 float size = IconSize(settlement) * scale;
                 Vector2[] icon = MapIcons.Triangles(settlement.Type.Icon);
-                Shape(icon, at, size + 2.5f * scale, 0f, Color.black);
-                Shape(icon, at, size, 0f, MapPicture.SettlementColour(settlement.Type));
+                Badge(icon, at, size, 1.5f * scale);
             }
             DrawVessels(area, scale);
             DrawPlayer(session, area, scale);
@@ -534,8 +534,7 @@ namespace Clube.Game
                         break;
                     case MapLegendSymbol.Icon:
                         Vector2[] icon = MapIcons.Triangles(row.Type.Icon);
-                        Shape(icon, mid, 7f * ui + 2f, 0f, Color.black);
-                        Shape(icon, mid, 7f * ui, 0f, MapPicture.SettlementColour(row.Type));
+                        Badge(icon, mid, 7f * ui, 1.2f * ui);
                         break;
                     case MapLegendSymbol.Player:
                         Shape(Arrow, mid, 8f * ui, 0f, Color.black);
@@ -611,6 +610,31 @@ namespace Clube.Game
             GL.Vertex3(at.x - h, at.y - h, 0f);
             GL.Vertex3(at.x + h, at.y + h, 0f);
             GL.Vertex3(at.x - h, at.y + h, 0f);
+        }
+
+        // GL733: a settlement's badge is a dark wood disc with a thin silver rim and the type's icon in silver.
+        private static readonly Color BadgeWood = new Color(0.17f, 0.10f, 0.06f);
+        private static readonly Color BadgeSilver = new Color(0.78f, 0.80f, 0.84f);
+
+        private static void Badge(Vector2[] icon, Vector2 at, float size, float rim)
+        {
+            float radius = size * 1.3f;
+            Disc(at, radius + rim, BadgeSilver);
+            Disc(at, radius, BadgeWood);
+            Shape(icon, at, size * 0.85f, 0f, BadgeSilver);
+        }
+
+        private static void Disc(Vector2 at, float radius, Color colour)
+        {
+            const int Segments = 24;
+            GL.Color(colour);
+            for (int i = 0; i < Segments; i++)
+            {
+                float a = i * Mathf.PI * 2f / Segments, b = (i + 1) * Mathf.PI * 2f / Segments;
+                GL.Vertex3(at.x, at.y, 0f);
+                GL.Vertex3(at.x + Mathf.Cos(a) * radius, at.y + Mathf.Sin(a) * radius, 0f);
+                GL.Vertex3(at.x + Mathf.Cos(b) * radius, at.y + Mathf.Sin(b) * radius, 0f);
+            }
         }
 
         // Triangles in a (-1..1) square with y up, turned clockwise by yaw (degrees, 0 = north) about the centre.
