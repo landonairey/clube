@@ -50,9 +50,6 @@ namespace Clube.Core
         private const float WaterStep = 2f;
         private const int WaterPerCell = 4;
 
-        // The planner's bridge cost is for one survey cell of river.
-        private const float PlannedCellSize = 40f;
-
         // Rise over run is measured over at least this many metres of a finished road: a single step of ground is not a slope.
         private const float SlopeRun = 12f;
 
@@ -116,7 +113,7 @@ namespace Clube.Core
         private const byte Unknown = byte.MaxValue;
 
         // The shares a grid point's neighbours have in its evened-out height, by how many points away they are.
-        private static readonly float[][] EvenWeight = { new[] { 1f }, new[] { 2f, 1f }, new[] { 6f, 4f, 1f } };
+        private static readonly float[][] EvenWeight = { new[] { 1f }, new[] { 2f, 1f }, new[] { 6f, 4f, 1f }, new[] { 20f, 15f, 6f, 1f } };
 
         private readonly Func<float, float, float> heightAt;
         private readonly Func<float, float, RoadWater> waterAt;
@@ -125,9 +122,12 @@ namespace Clube.Core
         private readonly int width, depth, waterWidth, waterDepth;
         private readonly float[] heights;
         // The ground as a cart path's bed evens it out: each grid point with its neighbours.
-        private readonly float[][] evenedBy = new float[3][];
+        private readonly float[][] evenedBy = new float[4][];
         private readonly int[] asked;
         private int evenReach;
+        // GL737: the reach grading evens the ground over (0 for a class that is not graded), and the prices of each way of building.
+        private int gradeReach;
+        private RoadBuildCosts costs = new RoadBuildCosts();
         private bool bridgesSea;
         // Water every 2 m and closed ground every 8 m, each looked up once.
         private readonly byte[] water;
@@ -159,8 +159,10 @@ namespace Clube.Core
             depth = Mathf.CeilToInt((area.yMax - origin.y) / CellSize) + 1;
             int count = width * depth;
             heights = new float[count];
-            evenedBy[1] = new float[count];
-            evenedBy[2] = new float[count];
+            for (int reach = 1; reach < evenedBy.Length; reach++)
+            {
+                evenedBy[reach] = new float[count];
+            }
             asked = new int[count];
             closed = new byte[count];
             allowed = new int[count];
@@ -168,8 +170,10 @@ namespace Clube.Core
             for (int i = 0; i < count; i++)
             {
                 heights[i] = float.NaN;
-                evenedBy[1][i] = float.NaN;
-                evenedBy[2][i] = float.NaN;
+                for (int reach = 1; reach < evenedBy.Length; reach++)
+                {
+                    evenedBy[reach][i] = float.NaN;
+                }
                 closed[i] = Unknown;
             }
             waterWidth = (width - 1) * WaterPerCell + 1;
@@ -212,6 +216,7 @@ namespace Clube.Core
                 return road.Refined;
             }
             RoadClassDefinition definition = plan.Rules.Road(road.Class);
+            costs = plan.Rules.BuildCosts ?? new RoadBuildCosts();
             var planned = new List<Vector2>(road.Points);
             Vector2 end = EndOf(plan, road, planned[planned.Count - 1]);
 
@@ -315,10 +320,17 @@ namespace Clube.Core
         // bed will be, so a gentle line across a rough hillside is seen for what it is; for a footpath the ground itself.
         private float GroundOf(int node)
         {
-            if (evenReach == 0)
+            return Evened(node, evenReach);
+        }
+
+        // The ground at a grid point evened over its neighbours within a reach (0: the ground itself).
+        private float Evened(int node, int reach)
+        {
+            if (reach == 0)
             {
                 return HeightOf(node);
             }
+            int evenReach = reach;
             float[] evened = evenedBy[evenReach];
             if (float.IsNaN(evened[node]))
             {
@@ -351,12 +363,13 @@ namespace Clube.Core
                 return;
             }
             var wanted = new List<int>();
+            int reach = Mathf.Max(evenReach, gradeReach);
             foreach (int node in slotNode)
             {
                 int x = node % width, z = node / width;
-                for (int dz = -evenReach; dz <= evenReach; dz++)
+                for (int dz = -reach; dz <= reach; dz++)
                 {
-                    for (int dx = -evenReach; dx <= evenReach; dx++)
+                    for (int dx = -reach; dx <= reach; dx++)
                     {
                         int nx = x + dx, nz = z + dz;
                         if (nx < 0 || nz < 0 || nx >= width || nz >= depth)
@@ -501,6 +514,8 @@ namespace Clube.Core
             OpenNode(goal);
             // A bed evened over 16 m or more is taken from two grid points each way, a shorter one from one.
             evenReach = definition.GradeLength <= 0f || definition.MaxCut <= 0f ? 0 : definition.GradeLength >= 2f * CellSize ? 2 : 1;
+            // GL737: a graded class may also be cut and filled deeper (RoadGrading), which evens the ground over a longer run.
+            gradeReach = evenReach == 0 || costs.GradeDepth <= 0f ? 0 : Mathf.Clamp(Mathf.RoundToInt(costs.GradeRun / CellSize), evenReach, evenedBy.Length - 1);
             FetchHeights();
             int states = slotNode.Count * (Ways + 1), steps = slotNode.Count * Ways;
             if (stateCost.Length < states)
@@ -524,7 +539,8 @@ namespace Clube.Core
             int goalX = goal % width, goalZ = goal / width;
             // The heap is ordered by the cost so far plus the straight line still to go: no stretch costs less than its length.
             Push(0f, first);
-            float perWetMetre = definition.BridgeCost / PlannedCellSize;
+            // GL737: a bridge's deck at the bridge price by the metre (its ends at the class's own price, below).
+            float perWetMetre = costs.Relative(RoadWork.Bridge);
             int found = -1;
             while (heapCount > 0)
             {
@@ -650,6 +666,7 @@ namespace Clube.Core
             float partMetres = metres / parts;
             float dry = 0f;
             float before = GroundOf(from);
+            float beforeGraded = gradeReach > 0 ? Evened(from, gradeReach) : 0f;
             for (int k = 1; k <= parts; k++)
             {
                 float px = fx + dx * k / (float)parts, pz = fz + dz * k / (float)parts;
@@ -664,7 +681,15 @@ namespace Clube.Core
                     return -1f;
                 }
                 float after = low == high ? GroundOf(low) : Mathf.Lerp(GroundOf(low), GroundOf(high), t);
-                dry += definition.StretchCost(partMetres, Mathf.Abs(after - before) / partMetres);
+                // GL737: over the limit it may be graded, where the ground evened over the grading run is within it.
+                float gradedSlope = float.MaxValue;
+                if (gradeReach > 0)
+                {
+                    float afterGraded = low == high ? Evened(low, gradeReach) : Mathf.Lerp(Evened(low, gradeReach), Evened(high, gradeReach), t);
+                    gradedSlope = Mathf.Abs(afterGraded - beforeGraded) / partMetres;
+                    beforeGraded = afterGraded;
+                }
+                dry += costs.StretchCost(definition, partMetres, Mathf.Abs(after - before) / partMetres, gradedSlope);
                 before = after;
             }
             if (wet > 0)
@@ -674,7 +699,7 @@ namespace Clube.Core
                 float wetMetres = metres * wet / looks;
                 float starting = WaterAt(a) == RoadWater.Dry ? definition.BridgeCost * 0.5f : 0f;
                 float deck = definition.StretchCost(metres, Mathf.Abs(before - GroundOf(from)) / metres);
-                return deck + wetMetres * perWetMetre * (lake ? 3f : 1f) + metres * sea / looks * perWetMetre * SeaBridgePrice + starting;
+                return deck + wetMetres * perWetMetre * (lake ? costs.LakePrice : 1f) + metres * sea / looks * perWetMetre * SeaBridgePrice + starting;
             }
             return dry;
         }
