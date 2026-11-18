@@ -50,10 +50,13 @@ namespace Clube.Core
             var refiner = new RoadRefiner(plan.Area, heightAt, water.IsCreated ? WaterOf(water) : null, closedAt) { HeightsAt = heightsAt };
             for (int i = 0; i < plan.Roads.Count; i++)
             {
-                refiner.Refine(plan, plan.Roads[i]);
-                watch.Stop();
-                yield return RefinedShare * (i + 1) / plan.Roads.Count;
-                watch.Start();
+                IEnumerator legs = refiner.RefineSteps(plan, plan.Roads[i], null);
+                while (legs.MoveNext())
+                {
+                    watch.Stop();
+                    yield return RefinedShare * i / plan.Roads.Count;
+                    watch.Start();
+                }
             }
             Func<float, float, RoadWater> waterAt = water.IsCreated ? WaterOf(water) : null;
             // GL737: graded into the ground where it is over its limit, as the search priced it.

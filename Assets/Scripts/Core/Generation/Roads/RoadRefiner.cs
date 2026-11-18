@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -211,9 +212,18 @@ namespace Clube.Core
         /// <summary>Refines one road; false (and a note on the plan) when it had to be left on its planned line.</summary>
         public bool Refine(WorldPlan plan, PlannedRoad road)
         {
+            bool refined = road.Refined;
+            SlicedWork.RunToEnd(RefineSteps(plan, road, done => refined = done));
+            return refined;
+        }
+
+        /// <summary>Refines one road a leg at a time (GL762, <see cref="SlicedWork"/>); <paramref name="done"/> is told what <see cref="Refine(WorldPlan, PlannedRoad)"/> returns.</summary>
+        public IEnumerator RefineSteps(WorldPlan plan, PlannedRoad road, Action<bool> done)
+        {
             if (road.Refined || road.Points.Count < 2)
             {
-                return road.Refined;
+                done?.Invoke(road.Refined);
+                yield break;
             }
             RoadClassDefinition definition = plan.Rules.Road(road.Class);
             costs = plan.Rules.BuildCosts ?? new RoadBuildCosts();
@@ -253,6 +263,7 @@ namespace Clube.Core
                 whole &= route != null;
                 List<Vector2> rounded = route != null ? Round(route) : leg;
                 result.AddRange(s == 0 ? rounded : rounded.GetRange(1, rounded.Count - 1));
+                yield return null;
             }
             if (!whole)
             {
@@ -266,7 +277,7 @@ namespace Clube.Core
             road.Points = result;
             road.Refined = true;
             Measure(road, definition);
-            return whole;
+            done?.Invoke(whole);
         }
 
         // Where a road ends: at its settlement, or on the (new) line of the road it joined.
