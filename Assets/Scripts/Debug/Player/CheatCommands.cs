@@ -12,7 +12,7 @@ namespace Clube.Debug
     /// </summary>
     public static class CheatCommands
     {
-        public const string Help = "coins <amount> · give <item> [count] · level <skill|all> <n> · xp <skill> <amount> · time <hour> [days on] · help";
+        public const string Help = "coins <amount> · give <item> [count] · level <skill|all> <n> · xp <skill> <amount> · time <hour> [days on] · meteor · help";
 
         /// <summary>Runs one command line; returns what happened, for the panel to show.</summary>
         public static string Run(string line, PlayerInventory inventory, PlayerWallet wallet, ItemCatalog catalog, PlayerSkills skills = null)
@@ -60,6 +60,10 @@ namespace Clube.Debug
 
                 case "time":
                     return SetClock(words);
+
+                case "meteor":
+                    var who = UnityEngine.Object.FindFirstObjectByType<PlayerController>();
+                    return who != null ? CallMeteor(who.transform.position) : "No player here (Play mode only)";
 
                 default:
                     return $"Unknown command \"{words[0]}\". {Help}";
@@ -146,6 +150,17 @@ namespace Clube.Debug
                 skills.Skills.SetLevel(skill, level);
             }
             return $"All {SkillSet.Types.Count} skills: level {UnityEngine.Mathf.Clamp(level, 0, SkillSet.MaxLevel)}";
+        }
+
+        /// <summary>Brings a meteor down on a place (GL736); says what happened.</summary>
+        public static string CallMeteor(UnityEngine.Vector3 target)
+        {
+            MeteorEvent meteor = MeteorEvent.Find();
+            if (meteor == null)
+            {
+                return "No world here for a meteor (Play mode in a world scene only)";
+            }
+            return meteor.Call(target) ? "A meteor is falling on you" : "No meteor: one is already falling, or no terrain is loaded there";
         }
 
         public static string GiveCoins(PlayerWallet wallet, int coins)
