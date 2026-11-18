@@ -307,7 +307,7 @@ namespace Clube.Core
 
         private void UpdateCoverage()
         {
-            coverage ??= new ChunkCoverageMask(worldView, WorldView.MaxRenderDistance);
+            coverage ??= ChunkCoverageMask.SharedFor(worldView);
             Vector3Int focusChunk = worldView.FocusChunk;
             coverage.Update(new Vector2Int(focusChunk.x, focusChunk.z));
             WorldConfig config = worldView.Config;

@@ -271,7 +271,7 @@ namespace Clube.Core
             }
             runtimeMaterial.SetVector(NearRectId, Vector4.zero);
 
-            coverage ??= new ChunkCoverageMask(worldView, WorldView.MaxRenderDistance);
+            coverage ??= ChunkCoverageMask.SharedFor(worldView);
             Vector3Int focusChunk = worldView.FocusChunk;
             coverage.Update(new Vector2Int(focusChunk.x, focusChunk.z));
             WorldConfig config = worldView.Config;
