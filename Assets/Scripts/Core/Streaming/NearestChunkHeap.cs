@@ -25,6 +25,9 @@ namespace Clube.Core
             }
         }
 
+        /// <summary>Chunks not taken yet.</summary>
+        public int Remaining => count;
+
         /// <summary>The nearest chunk not taken yet; false when none are left.</summary>
         public bool TryTake(out Vector3Int coord)
         {

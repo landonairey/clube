@@ -149,6 +149,10 @@ namespace Clube.Core
         private readonly List<Vector3Int> dirtyScratch = new List<Vector3Int>();
         // Whether the last look found a dirty chunk that may be meshed (StartMeshing).
         private bool hasChunksToMesh;
+        // Whether the last look left dirty chunks unlooked at, the frame's starts being used up.
+        private bool meshingBehind;
+        // Dirty chunks allowed to wait, per start a rationed frame makes, before generation pauses (GL759).
+        private const int MeshBacklogPerStart = 16;
 
         // Wanted chunks that came up before their column's heights were ready (ChunkPipeline.StartGeneration).
         private readonly List<Vector3Int> waitingForColumns = new List<Vector3Int>();
@@ -618,6 +622,12 @@ namespace Clube.Core
                     i++;
                 }
             }
+            // GL759: while rationed, no new chunks while meshing is behind: every waiting chunk is looked at each frame, so a
+            // pile of them would slow the frame more and more. Chunks held for roads don't count: they need their neighbours.
+            if (RationsStarts && meshingBehind && dirtyScratch.Count > pastBudget * MeshBacklogPerStart)
+            {
+                return;
+            }
             // At least a job limit's worth of starts a frame, as before; more while the budget lasts.
             // A column with every layer loaded is passed over in one step, so moving the area (which puts
             // the cursor back to the nearest column) costs a look per column, not per chunk.
@@ -711,6 +721,7 @@ namespace Clube.Core
                 }
                 pipeline.StartMesh(coord, chunk, chunkSettings);
             }
+            meshingBehind = nearest.Remaining > 0;
         }
 
         // A uniform chunk has no surface, unless it's solid with a sealed face: that face is a wall.
