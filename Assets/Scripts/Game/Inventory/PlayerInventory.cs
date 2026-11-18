@@ -146,6 +146,23 @@ namespace Clube.Game
             return dropped.Spawn(stack, true, at, Quaternion.Euler(0f, head.eulerAngles.y + 180f, 0f), toss) != null;
         }
 
+        /// <summary>Drags out of the screen drop this much of a slot on the ground as a sack (GL768): the whole stack (a part included) when <paramref name="count"/> covers it. Returns what was dropped; nothing when there is no way to drop it.</summary>
+        public bool DropFromSlot(int slot, int count)
+        {
+            ItemStack held = Inventory[slot];
+            if (held.IsEmpty || count < 1)
+            {
+                return false;
+            }
+            ItemStack taken = count >= held.Count ? Inventory.TakeAll(slot) : new ItemStack(held.Item, Inventory.RemoveAt(slot, count), held.Contents, held.Wear, held.Quality);
+            if (DropAhead(taken))
+            {
+                return true;
+            }
+            Inventory.Add(taken.Item, taken.Count, taken.Contents, taken.Wear, taken.Quality, taken.Part);
+            return false;
+        }
+
         private DroppedItems dropped;
 
         // What the tools gather comes in as stacks, with their contents and quality.
