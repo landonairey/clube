@@ -17,10 +17,6 @@ namespace Clube.Game
         [SerializeField, Range(1f, 8f)]
         private float texelSize = 2f;
 
-        [Tooltip("How much of the surface material's colour is kept: worn roads read a little lighter than their material from afar.")]
-        [SerializeField]
-        private Color tint = new Color(1.1f, 1.08f, 1.05f);
-
         private int version = -1;
 
         private void Update()
@@ -57,11 +53,11 @@ namespace Clube.Game
             TerrainRoadTint.Set(mask, session.WorldView.transform.position);
         }
 
-        private Color32 ColourOf(MaterialRegistry materials, string surface)
+        // GL757: the surface's real colour, in linear space like the rest of the terrain's albedo.
+        private static Color32 ColourOf(MaterialRegistry materials, string surface)
         {
             VoxelMaterial material = materials != null && !string.IsNullOrEmpty(surface) ? materials.Find(surface) : null;
-            Color colour = material != null ? material.DebugColor : new Color(0.55f, 0.47f, 0.36f);
-            colour *= tint;
+            Color colour = material != null ? material.MeanColor : new Color(0.55f, 0.47f, 0.36f).linear;
             colour.a = 1f;
             return colour;
         }
