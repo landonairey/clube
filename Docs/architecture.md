@@ -441,7 +441,8 @@ flowchart LR
 - **The sea past the map** (GL600): the water map covers the map plus `WaterMargin`; `WaterView.BuildOuterSea` adds one
   flat mesh at sea level from its edge to 40 km, in cells growing from 256 m, wherever `MapShape.IsSeaSide`.
   `Water.shader` darkens and closes the water by its depth from the camera depth texture (GL673), so the ground under
-  and past it is hidden; it needs the depth texture on (PC_RPAsset has it).
+  and past it is hidden; it needs the depth texture on (PC_RPAsset has it). Its still-water waves are bent and patchy by world
+  position alone (`WaveWarp`, `WavePatch`, GL758), so every sheet and chunk agrees where they meet.
 
 **Adding a generator:** write an `IHeightField` (or `IVolumeField`) struct in
 `Fields/`; a generator class in `Generators/` deriving from
