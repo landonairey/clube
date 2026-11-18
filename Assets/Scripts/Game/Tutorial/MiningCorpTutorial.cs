@@ -142,8 +142,6 @@ namespace Clube.Game
         private Vector3 origin;
         private Rect yardArea;
         private float leashCheckAt;
-        private WorldMapScreen worldMap;
-        private CompanySiteMapScreen siteMap;
 
         /// <summary>True while the tutorial runs.</summary>
         public bool IsRunning => step != Step.Off;
@@ -237,14 +235,6 @@ namespace Clube.Game
 
         private void OnDestroy()
         {
-            if (worldMap != null)
-            {
-                worldMap.Blocked = false;
-            }
-            if (siteMap != null)
-            {
-                Destroy(siteMap);
-            }
             if (journal != null)
             {
                 journal.Journal.Frozen = false;
@@ -449,20 +439,6 @@ namespace Clube.Game
             }
         }
 
-        // GL760: on the bounded map M shows only the company's site during the job, not the whole world.
-        private void ShowSiteMap()
-        {
-            worldMap = player.GetComponent<WorldMapScreen>();
-            if (worldMap == null)
-            {
-                return;
-            }
-            worldMap.Close();
-            worldMap.Blocked = true;
-            siteMap = player.gameObject.AddComponent<CompanySiteMapScreen>();
-            siteMap.Bind(worldMap.ToggleAction, yard);
-        }
-
         // Metres past the quarry pit's floor the player may go before being brought back (its banks and a little more).
         private const float YardLeash = 8f;
 
@@ -479,7 +455,6 @@ namespace Clube.Game
                 {
                     return;
                 }
-                ShowSiteMap();
                 warehouse = CompanyWarehouse.Build(yard, material, this, supplies, valuables, textMaterial, cratePrefab);
                 spawn.SetDownOver(OnMap(CompanyWarehouse.Spawn) + Vector3.up);
                 placing = true;

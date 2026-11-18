@@ -6343,7 +6343,6 @@ GameObject:
   - component: {fileID: 1697135615}
   - component: {fileID: 1697135616}
   - component: {fileID: 1697135617}
-  - component: {fileID: 1697135618}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -7576,19 +7575,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f600faea3dbf53b4997948e09b5cf99e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerName
---- !u!114 &1697135618
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1697135560}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bd368f146ad9b284784e9789c7787dfa, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Game::Clube.Game.CompanySiteMapScreen
-  toggleAction: {fileID: -6694151744374951791, guid: 052faaac586de48259a63d0c4782560b, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
