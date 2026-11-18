@@ -13,6 +13,9 @@ namespace Clube.Core
         public float2 Moisture;
         public byte Top;
         public byte Band;
+
+        /// <summary>Non-zero when the biome's rock near the surface lies in the field's <see cref="BiomeField.Strata"/> (GL737).</summary>
+        public byte Layered;
     }
 
     /// <summary>
@@ -34,6 +37,9 @@ namespace Clube.Core
         public float TemperatureNoise;
         public float RegionSize;
 
+        /// <summary>The bands the layered biomes' rock lies in (GL737); none leaves it the base material.</summary>
+        public RockStrata Strata;
+
         private const int TemperatureSalt = 0x54454D50;
         private const int MoistureSalt = 0x4D4F4953;
 
@@ -45,6 +51,13 @@ namespace Clube.Core
         /// <summary>The field for a map's biome table; ids a biome leaves unset are the terrain layers' own.</summary>
         public static BiomeField From(IReadOnlyList<BiomeDefinition> biomes, MapClimate climate, MapShape shape, LayerTable layers)
         {
+            return From(biomes, climate, shape, layers, RockStrata.None);
+        }
+
+        /// <summary>The same, with the strata the layered biomes' rock lies in (GL737).</summary>
+        public static BiomeField From(
+            IReadOnlyList<BiomeDefinition> biomes, MapClimate climate, MapShape shape, LayerTable layers, RockStrata strata)
+        {
             var field = new BiomeField
             {
                 Shape = shape,
@@ -54,6 +67,7 @@ namespace Clube.Core
                 NorthCooling = climate.NorthCooling,
                 TemperatureNoise = Mathf.Max(0f, climate.TemperatureNoise),
                 RegionSize = Mathf.Max(50f, climate.RegionSize),
+                Strata = strata,
             };
             for (int i = 0; i < biomes.Count && i < MaxBiomes; i++)
             {
@@ -65,6 +79,7 @@ namespace Clube.Core
                     Moisture = new float2(biome.Moisture.x, biome.Moisture.y),
                     Top = biome.Top != null ? biome.Top.Id : layers.Top,
                     Band = biome.Band != null ? biome.Band.Id : layers.Band,
+                    Layered = biome.LayeredRock && strata.IsCreated ? (byte)1 : (byte)0,
                 });
             }
             return field;
@@ -86,8 +101,24 @@ namespace Clube.Core
             float north = Shape.Half > 0f ? math.clamp(bent.y / Shape.Half, -1.5f, 1.5f) : 0f;
             temperature = BaseTemperature - NorthCooling * north - LapseRate * math.max(0f, elevation)
                           + wander * TemperatureNoise + edgeTemperature;
-            float noise = GradientNoise.Fractal(math.hash(new int2(Seed, MoistureSalt)), bent.x / RegionSize, bent.y / RegionSize, 3);
-            moisture = math.saturate(0.5f + noise * 0.95f + edgeMoisture);
+            moisture = Moisture(Seed, RegionSize, bent, edgeMoisture);
+        }
+
+        /// <summary>
+        /// The moisture (0 dry to 1 wet) at (x, z) on a map, as <see cref="Climate"/> gives it: the height field reads it
+        /// too (GL737: canyons in the dry lands), with no biome table.
+        /// </summary>
+        public static float MoistureAt(in MapShape shape, float regionSize, float x, float z)
+        {
+            shape.EdgeClimate(x, z, out _, out float edgeMoisture);
+            float2 bent = shape.IsCreated ? shape.Warp(new float2(x, z)) : new float2(x, z);
+            return Moisture(shape.Seed, math.max(50f, regionSize), bent, edgeMoisture);
+        }
+
+        private static float Moisture(int seed, float regionSize, float2 bent, float edgeMoisture)
+        {
+            float noise = GradientNoise.Fractal(math.hash(new int2(seed, MoistureSalt)), bent.x / regionSize, bent.y / regionSize, 3);
+            return math.saturate(0.5f + noise * 0.95f + edgeMoisture);
         }
 
         /// <summary>The biome's index in the table for a column whose ground is at <paramref name="height"/>; the last when none matches.</summary>

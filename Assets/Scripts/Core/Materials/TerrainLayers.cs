@@ -41,6 +41,10 @@ namespace Clube.Core
         [SerializeField]
         private float steepMinHeight = 24f;
 
+        [Tooltip("Slopes at least this steep (degrees) show the base material at any height: cliff faces (GL737). 90 turns it off.")]
+        [SerializeField, Range(10f, 90f)]
+        private float cliffAngle = 90f;
+
         [Tooltip("Surface height (metres) above which every column shows the base material whatever its slope, on flat tops and gentle benches too (GL578). 0 turns it off.")]
         [SerializeField]
         private float baseAboveHeight;
@@ -138,6 +142,13 @@ namespace Clube.Core
         {
             get => steepMinHeight;
             set => steepMinHeight = value;
+        }
+
+        /// <summary>Slopes at least this steep, in degrees, show the base material at any height: cliff faces (GL737); 90 is off.</summary>
+        public float CliffAngle
+        {
+            get => cliffAngle;
+            set => cliffAngle = Mathf.Clamp(value, 10f, 90f);
         }
 
         /// <summary>Surface height above which all ground is the base material, steep or not (GL578); 0 is off.</summary>

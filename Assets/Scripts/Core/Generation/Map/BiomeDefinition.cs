@@ -59,6 +59,10 @@ namespace Clube.Core
         [SerializeField]
         private Color mapColor = new Color(0.45f, 0.65f, 0.3f);
 
+        [Tooltip("On: its rock near the surface lies in the map's strata (GL737: canyons' layered limestone, sandstone, granite and stone) instead of the base material.")]
+        [SerializeField]
+        private bool layeredRock;
+
         public BiomeDefinition()
         {
         }
@@ -95,6 +99,13 @@ namespace Clube.Core
         public float Game => Mathf.Clamp01(game);
         public Color MapColor => mapColor;
 
+        /// <summary>True when its rock near the surface lies in the map's strata (<see cref="CliffSettings.Strata"/>, GL737).</summary>
+        public bool LayeredRock
+        {
+            get => layeredRock;
+            set => layeredRock = value;
+        }
+
         public const string OceanName = "Ocean";
         public const string BeachName = "Beach";
         public const string AlpineName = "Alpine";
@@ -107,9 +118,20 @@ namespace Clube.Core
         /// <summary>
         /// The built-in table, from the materials a terrain already has: sea floor and beaches of sand, bare rock where
         /// it's cold (the peaks), sand desert where it's hot and dry, grassy steppe where it's dry (GL674), thin birch
-        /// highlands, thick mixed forest where it's wet, and grassland everywhere else.
+        /// highlands, thick mixed forest where it's wet, and grassland everywhere else. The desert's and the steppe's rock
+        /// is layered (GL737), so their canyons show the strata.
         /// </summary>
         public static List<BiomeDefinition> Defaults(VoxelMaterial sand, VoxelMaterial dirt, VoxelMaterial stone)
+        {
+            List<BiomeDefinition> table = Table(sand, stone);
+            foreach (BiomeDefinition biome in table)
+            {
+                biome.layeredRock = biome.name == DesertName || biome.name == SteppeName;
+            }
+            return table;
+        }
+
+        private static List<BiomeDefinition> Table(VoxelMaterial sand, VoxelMaterial stone)
         {
             var all = new Vector2(-Any, Any);
             return new List<BiomeDefinition>

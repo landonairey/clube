@@ -109,6 +109,7 @@ MonoBehaviour:
       baseMaterial: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
       steepAngle: 35
       steepMinHeight: 40
+      cliffAngle: 58
       baseAboveHeight: 0
       ridgeDepth: 0.6
       ridgeWidth: 3.5
@@ -525,3 +526,38 @@ MonoBehaviour:
         TemperatureNoise: 4
         RegionSize: 1400
       biomes: []
+      cliffs:
+        spacing: 850
+        runLength: 420
+        coverage: 0.45
+        drop: {x: 6, y: 24}
+        face: 3.5
+        swell: {x: 3, y: 50}
+        seaCliffCoverage: 0.4
+        seaCliffRun: 1100
+        seaCliffHeight: 40
+        seaCliffFace: 7
+        canyonDepth: 34
+        canyonFloor: 8
+        canyonWall: 40
+        canyonLedges: 4
+        dryness: {x: 0.27, y: 0.32}
+        strata:
+        - material: {fileID: 11400000, guid: aa9c2158c6b3c5a4cad1576fe3f9b8da, type: 2}
+          thickness: 4
+        - material: {fileID: 11400000, guid: 8500c22d9c5cd77479ccd03988a1447b, type: 2}
+          thickness: 2.5
+        - material: {fileID: 11400000, guid: aa9c2158c6b3c5a4cad1576fe3f9b8da, type: 2}
+          thickness: 2
+        - material: {fileID: 11400000, guid: 6db6d35be483c714e9abe5092df70a14, type: 2}
+          thickness: 3
+        - material: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+          thickness: 3.5
+        - material: {fileID: 11400000, guid: 8500c22d9c5cd77479ccd03988a1447b, type: 2}
+          thickness: 1.5
+        - material: {fileID: 11400000, guid: aa9c2158c6b3c5a4cad1576fe3f9b8da, type: 2}
+          thickness: 3
+        - material: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
+          thickness: 2
+        strataDepth: 8
+        strataWander: 3
