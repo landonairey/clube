@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Unity.Mathematics;
 
 namespace Clube.Core
@@ -28,6 +29,7 @@ namespace Clube.Core
         private int octaves;
         private float lacunarity;
         private float persistence;
+        [MarshalAs(UnmanagedType.U1)] // Blittable, for BoundedMapHeightCalls.
         private bool smoothMassifs;
         private DistantRanges distant;
         private WaterMap water;

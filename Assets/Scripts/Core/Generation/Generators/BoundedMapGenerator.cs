@@ -16,9 +16,13 @@ namespace Clube.Core
     {
         private readonly List<BiomeDefinition> biomeTable;
 
+        // Not readonly: passed by reference to the Burst-compiled height (GL762).
+        private BoundedMapHeight heightField;
+
         public BoundedMapGenerator(BoundedMapHeight field, MapLayout layout, List<BiomeDefinition> biomes, BiomeField biomeField)
             : base(field)
         {
+            heightField = field;
             Water = field.Water;
             Layout = layout;
             biomeTable = biomes;
@@ -41,6 +45,12 @@ namespace Clube.Core
         public BoundedMapHeight Ground => Field;
 
         public override bool HasValleys => true;
+
+        /// <summary>The ground's height at (x, z), through Burst (GL762): settlements, roads and people ask it point by point.</summary>
+        public override float Height(float x, float z)
+        {
+            return BoundedMapHeightCalls.At(ref heightField, x, z);
+        }
 
         /// <summary>The same map with rivers, lakes and the sea.</summary>
         public BoundedMapGenerator WithWater(WaterMap water)
@@ -140,6 +150,17 @@ namespace Clube.Core
                 float2 p = Points[index];
                 Valleys[index] = Field.Valley(p.x, p.y);
             }
+        }
+    }
+
+    /// <summary>One height of a bounded map as a Burst-compiled call: about the cost of a job's, from managed code (GL762).</summary>
+    [BurstCompile]
+    internal static class BoundedMapHeightCalls
+    {
+        [BurstCompile]
+        public static float At(ref BoundedMapHeight field, float x, float z)
+        {
+            return field.Height(x, z);
         }
     }
 

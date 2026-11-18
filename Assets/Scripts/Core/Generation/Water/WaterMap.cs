@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Unity.Collections;
 using Unity.Mathematics;
 
@@ -43,6 +44,7 @@ namespace Clube.Core
         public WaterBanks Banks;
 
         /// <summary>True when the map has a sea (GL591): lake cells standing at <see cref="SeaLevel"/>, joined to the map's edge.</summary>
+        [MarshalAs(UnmanagedType.U1)] // Blittable, for BoundedMapHeightCalls.
         public bool HasSea;
         public float SeaLevel;
 
