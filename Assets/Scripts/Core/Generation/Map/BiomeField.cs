@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using Unity.Burst;
 using Unity.Collections;
+using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -267,27 +269,45 @@ namespace Clube.Core
             int count = coarseSize * coarseSize;
             var points = new NativeArray<float2>(count, Allocator.TempJob);
             var heights = new NativeArray<float>(count, Allocator.TempJob);
+            var indices = new NativeArray<byte>(count, Allocator.TempJob);
+            var temperatures = new NativeArray<float>(count, Allocator.TempJob);
             try
             {
                 for (int i = 0; i < count; i++)
                 {
                     points[i] = coarseOrigin + (new float2(i % coarseSize, i / coarseSize) + 0.5f) * CoarseCell;
                 }
-                ground.SchedulePointHeights(points, heights).Complete();
-                var indices = new byte[count];
-                var temperatures = new float[count];
-                for (int i = 0; i < count; i++)
-                {
-                    indices[i] = (byte)field.IndexAt(points[i].x, points[i].y, heights[i]);
-                    field.Climate(points[i].x, points[i].y, heights[i], out _, out temperatures[i], out _);
-                }
-                coarseTemperature = temperatures;
-                coarse = indices;
+                // GL762: in a Burst job, as the chunks' fill reads the same field: asked cell by cell it stalled a frame for over a second.
+                JobHandle heightsDone = ground.SchedulePointHeights(points, heights);
+                new CoarseCellsJob { Field = field, Points = points, Heights = heights, Indices = indices, Temperatures = temperatures }
+                    .ScheduleParallel(count, 256, heightsDone).Complete();
+                coarseTemperature = temperatures.ToArray();
+                coarse = indices.ToArray();
             }
             finally
             {
                 points.Dispose();
                 heights.Dispose();
+                indices.Dispose();
+                temperatures.Dispose();
+            }
+        }
+
+        [BurstCompile]
+        private struct CoarseCellsJob : IJobFor
+        {
+            [ReadOnly] public BiomeField Field;
+            [ReadOnly] public NativeArray<float2> Points;
+            [ReadOnly] public NativeArray<float> Heights;
+            [WriteOnly] public NativeArray<byte> Indices;
+            [WriteOnly] public NativeArray<float> Temperatures;
+
+            public void Execute(int index)
+            {
+                float2 point = Points[index];
+                Indices[index] = (byte)Field.IndexAt(point.x, point.y, Heights[index]);
+                Field.Climate(point.x, point.y, Heights[index], out _, out float temperature, out _);
+                Temperatures[index] = temperature;
             }
         }
     }
