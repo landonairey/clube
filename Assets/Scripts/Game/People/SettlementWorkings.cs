@@ -353,7 +353,11 @@ namespace Clube.Game
             }
             foreach (KeyValuePair<int, Progress> made in progress)
             {
-                values[KeyPrefix + made.Key] = Save(made.Value);
+                string saved = Save(made.Value);
+                if (saved != "|")
+                {
+                    values[KeyPrefix + made.Key] = saved;
+                }
             }
         }
 

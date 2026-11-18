@@ -156,7 +156,8 @@ namespace Clube.Core
             {
                 foreach (string work in DigWorks)
                 {
-                    if (SiteOf(resident.Shop, work == WorkRate.DigTunnel) == target)
+                    // Only a resident who does the work has a site for it: asking for one would lay one.
+                    if (hours.Weekly(resident.Occupation, work) > 0d && SiteOf(resident.Shop, work == WorkRate.DigTunnel) == target)
                     {
                         voxels += hours.Before(resident.Occupation, work, time) * WorkRate.Of(rates, work);
                     }
