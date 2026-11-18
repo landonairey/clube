@@ -236,7 +236,9 @@ namespace Clube.Debug
                     bool shown = true;
                     for (int y = Mathf.Max(0, ground - 1); y <= ground + 1 && shown; y++)
                     {
-                        shown = chunks.TryGetChunk(new Vector3Int(cx, y, cz), out Chunk chunk) && !chunk.IsDirty;
+                        // A chunk waiting to be meshed again after an edit still shows its last mesh.
+                        var coord = new Vector3Int(cx, y, cz);
+                        shown = chunks.TryGetChunk(coord, out Chunk chunk) && (!chunk.IsDirty || world.Renderers.ContainsKey(coord));
                     }
                     ready += shown ? 1 : 0;
                 }
