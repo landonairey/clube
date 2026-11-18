@@ -955,6 +955,7 @@ settlements of `Generation/`); the bodies are Game (`Game/People/`, `Game/Travel
   makes `MiningCorpTutorial` from a Resources prefab when MapGen loads with `GameSession.Tutorial` set, and the tutorial's
   map space (everything in `CompanyWork` and `CompanyWarehouse` coordinates) is a transform at `QuarryYard.Origin`; code
   that writes terrain in map space takes that origin. The Tutorial scene stays as the fallback for a map with no pit.
+- **The start of a new game (GL742-GL745).** `MapSession` picks the family's parcel after the plan (`MapStart.FamilyParcel`: off settlements' locked land and the roads) and stocks it (`TreeField.EnsureTrees`). `GameScenes.LoadGame` loads through `GameLoadScreen`; `LoadCurtain` and `ArrivalCutscene` carry on with the same `LoadingMessage` line. The cart drops the player just outside the parcel and `ParcelEntryQuest` leads them onto it.
 - **Thieves (GL617).** A thieves' camp is a settlement whose type has a `Band` and names its `Residents` occupation:
   `SettlementLayout` houses the band, `SettlementRoster` makes them residents, and they are `Villager`s like anyone
   (plus a `Bandit`, the `IToolTarget` that makes a struck thief drop his sack and lie dazed; there is no health). Their
