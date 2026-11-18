@@ -27,3 +27,9 @@ free for commercial use, no credit required. Downloaded 2026-10-28.
 | `Actions/Parcel` | buying land | [Interface Sounds](https://kenney.nl/assets/interface-sounds), RPG Audio | `confirmation_002`, `handleCoins2` (played together) |
 
 Wanted, not in these packs: fire or bellows for smelting, a grittier rock-pick strike, dirt digging.
+
+## Fonts
+
+| Font | Used for | Licence |
+|---|---|---|
+| [Uncial Antiqua](https://fonts.google.com/specimen/Uncial+Antiqua) by Brian J. Bonislawsky (Astigmatic) | every screen, HUD, signboard and the map (`GameFont`, GL732) | SIL Open Font License 1.1; text in `Assets/Resources/Fonts/UncialAntiqua-OFL.txt` |

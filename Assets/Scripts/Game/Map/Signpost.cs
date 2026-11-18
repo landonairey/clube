@@ -135,7 +135,7 @@ namespace Clube.Game
             go.transform.localPosition = at;
             go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
             var text = go.AddComponent<TextMesh>();
-            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            Font font = GameFont.Get();
             text.font = font;
             text.text = words;
             text.fontSize = 64;

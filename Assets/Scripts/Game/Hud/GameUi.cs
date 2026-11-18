@@ -91,6 +91,7 @@ namespace Clube.Game
                 return;
             }
             applied = skin;
+            skin.font = GameFont.Get();
             int size = Font(DefaultFontSize);
             foreach (GUIStyle style in new[] { skin.label, skin.button, skin.box, skin.textField, skin.textArea, skin.toggle, skin.window })
             {
