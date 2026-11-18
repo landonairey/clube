@@ -135,6 +135,13 @@ namespace Clube.Game
         private PlayerJournal journal;
         private string outcome = "";
         private GUIStyle quotaStyle;
+        // GL734: on the bounded map the tutorial is played in the quarry settlement's pit: its map space sits there.
+        private MapSession mapSession;
+        private MapSettlements mapSettlements;
+        private Transform yard;
+        private Vector3 origin;
+        private Rect yardArea;
+        private float leashCheckAt;
 
         /// <summary>True while the tutorial runs.</summary>
         public bool IsRunning => step != Step.Off;
@@ -150,7 +157,8 @@ namespace Clube.Game
 
         private void Start()
         {
-            // Its own scene: it runs for a new game that chose it, or when the scene is played on its own.
+            // Its own scene: it runs for a new game that chose it, or when the scene is played on its own. On the bounded
+            // map (GL734) it is made only for a new game that chose it (MapTutorialStarter).
             if ((GameSession.IsActive && !GameSession.Tutorial) || player == null || worldView == null)
             {
                 return;
@@ -171,6 +179,18 @@ namespace Clube.Game
                 skillsHud.enabled = false;
             }
             player.ClimbingDisabled = true;
+            // GL734: all the land is the company's: no parcel is granted where the player lands (on the bounded map that would
+            // make the quarry the family's land), none is offered, and no fence is drawn. The game scene loads afresh after.
+            PlayerParcels parcels = player.GetComponentInChildren<PlayerParcels>(true);
+            if (parcels != null)
+            {
+                parcels.enabled = false;
+                ParcelBorders borders = parcels.GetComponent<ParcelBorders>();
+                if (borders != null)
+                {
+                    borders.enabled = false;
+                }
+            }
             inventoryScreen = player.GetComponentInChildren<InventoryScreen>();
             questHud = player.GetComponentInChildren<QuestHud>(true);
             // GL540: the journals are for the family's own parcel, after the job.
@@ -251,9 +271,10 @@ namespace Clube.Game
             {
                 // The ground streams in over the first seconds: clear it once more so nothing grows in the building (GL520).
                 regroundAt = 0f;
-                CompanyWarehouse.ClearGround(worldView);
-                TutorialTerrain.Apply(worldView);
+                CompanyWarehouse.ClearGround(worldView, origin);
+                TutorialTerrain.Apply(worldView, origin);
             }
+            KeepInYard();
             if (lead != null)
             {
                 lead.Face(player.transform.position);
@@ -349,7 +370,77 @@ namespace Clube.Game
 
         private Quaternion LookRotation => player.Head != null ? player.Head.rotation : player.transform.rotation;
 
-        private Vector3 OnMap(Vector3 point) => worldView.transform.TransformPoint(point);
+        private Vector3 OnMap(Vector3 point) => (yard != null ? yard : worldView.transform).TransformPoint(point);
+
+        /// <summary>
+        /// GL734: gives a tutorial made at runtime its world and player (<see cref="MapTutorialStarter"/>, on the bounded
+        /// map); call before its first frame.
+        /// </summary>
+        public void Bind(WorldView world, PlayerController playerController)
+        {
+            worldView = world;
+            player = playerController;
+        }
+
+        // Where the map space sits: the world's own origin on the Tutorial map; on the bounded map (GL734) the quarry
+        // settlement's pit, once the map is planned and the quarry laid out. False while waiting.
+        private bool FindYard()
+        {
+            if (yard != null)
+            {
+                return true;
+            }
+            mapSession ??= FindAnyObjectByType<MapSession>();
+            if (mapSession == null)
+            {
+                yard = worldView.transform;
+                origin = Vector3.zero;
+                return true;
+            }
+            mapSettlements ??= FindAnyObjectByType<MapSettlements>();
+            if (!mapSession.IsReady || mapSession.Plan == null || mapSettlements == null)
+            {
+                return false;
+            }
+            PlannedSettlement quarry = mapSession.Plan.Quarry;
+            SettlementSite site = quarry != null ? mapSettlements.SiteOf(quarry.Index) : null;
+            if (site == null || site.Quarry == null)
+            {
+                // No quarry on this map: the job is played on its own map instead.
+                UnityEngine.Debug.LogWarning("Mining Corp tutorial: the map has no quarry pit; playing the Tutorial scene.", this);
+                step = Step.Off;
+                UnityEngine.SceneManagement.SceneManager.LoadScene(GameScenes.Tutorial);
+                return false;
+            }
+            origin = site.Quarry.Origin;
+            yardArea = site.Quarry.Area;
+            var anchor = new GameObject($"Mining Corp yard ({quarry.Name})").transform;
+            anchor.SetParent(worldView.transform, false);
+            anchor.localPosition = origin;
+            yard = anchor;
+            return true;
+        }
+
+        // GL734: the quarry pit's banks can be climbed out of on the bounded map; a new hire who leaves the company's ground
+        // during the job is walked back to the bunk.
+        private void KeepInYard()
+        {
+            if (mapSession == null || yard == null || step <= Step.Name || step >= Step.Caught || !spawn.IsPlaced || Time.time < leashCheckAt)
+            {
+                return;
+            }
+            leashCheckAt = Time.time + 0.5f;
+            Vector3 local = worldView.transform.InverseTransformPoint(player.transform.position);
+            float beyond = SettlementSite.Beyond(yardArea, new Vector2(local.x, local.z));
+            if (beyond > YardLeash)
+            {
+                spawn.SetDownOver(OnMap(CompanyWarehouse.Spawn) + Vector3.up);
+                note = "Crew lead: \"Off the company's ground already? Back to work, and stay in the pit.\"";
+            }
+        }
+
+        // Metres past the quarry pit's floor the player may go before being brought back (its banks and a little more).
+        private const float YardLeash = 8f;
 
         // Waits for the world, builds the warehouse, sets the player down behind it and puts the crew lead and the cart out.
         private void Arrive()
@@ -360,7 +451,11 @@ namespace Clube.Game
             }
             if (!placing)
             {
-                warehouse = CompanyWarehouse.Build(worldView.transform, material, this, supplies, valuables, textMaterial, cratePrefab);
+                if (!FindYard())
+                {
+                    return;
+                }
+                warehouse = CompanyWarehouse.Build(yard, material, this, supplies, valuables, textMaterial, cratePrefab);
                 spawn.SetDownOver(OnMap(CompanyWarehouse.Spawn) + Vector3.up);
                 placing = true;
             }
@@ -369,8 +464,8 @@ namespace Clube.Game
                 return;
             }
             // The ground round the player is loaded now: no grass under the warehouse floor.
-            CompanyWarehouse.ClearGround(worldView);
-            TutorialTerrain.Apply(worldView);
+            CompanyWarehouse.ClearGround(worldView, origin);
+            TutorialTerrain.Apply(worldView, origin);
             regroundAt = Time.time + 4f;
             // GL577: the tutorial starts when work does (09:00), so the player can dig at once; the crew gets up from bed on the usual schedule.
             if (dayNight != null && dayNight.Day == 1 && dayNight.ClockHour < CompanyWork.WorkStartHour)
@@ -383,7 +478,7 @@ namespace Clube.Game
             Vector3 cartAt = OnMap(CompanyWarehouse.CartSpot);
             cart = OreCart.Build(cartAt, Vector3.right, material, this);
             shed = ToolShed.Build(OnMap(CompanyWarehouse.ShedSpot), Vector3.right, material, this, textMaterial);
-            WorkerCrew.Build(worldView.transform, material, worldView, tools, pick as ToolDefinition);
+            WorkerCrew.Build(yard, material, worldView, tools, pick as ToolDefinition);
             player.LookTowards(leadAt);
             // A new hire owns nothing: whatever a new game hands out waits for the player's own land.
             EmptyInventory();

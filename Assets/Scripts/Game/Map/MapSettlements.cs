@@ -378,7 +378,8 @@ namespace Clube.Game
             {
                 return;
             }
-            Rect area = site.Footprint;
+            // GL734: the quarry's parcels reach over its pit, to its wall.
+            Rect area = site.Quarry != null ? site.Bounds : site.Footprint;
             for (float z = area.yMin; z < area.yMax + parcels.Size; z += parcels.Size)
             {
                 for (float x = area.xMin; x < area.xMax + parcels.Size; x += parcels.Size)

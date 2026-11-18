@@ -129,7 +129,8 @@ namespace Clube.Game
         /// Turns the ground under the warehouse to a material without grass (dirt), so no grass grows up through its
         /// floor. Map space, through the world's edit path.
         /// </summary>
-        public static void ClearGround(WorldView world)
+        /// <param name="origin">Where the map space's origin is in the world's own space: zero on the Tutorial map, the quarry pit's offset on the bounded map (GL734).</param>
+        public static void ClearGround(WorldView world, Vector3 origin = default)
         {
             VoxelMaterial dirt = world.Config.Materials != null ? world.Config.Materials.Find("Dirt") : null;
             if (dirt == null || world.World == null)
@@ -138,8 +139,8 @@ namespace Clube.Game
             }
             WorldGrid grid = world.World.Grid;
             Rect r = CompanyWork.Warehouse;
-            Vector3Int min = grid.WorldToNearestSample(new Vector3(r.xMin - Margin, G - 0.75f, r.yMin - Margin));
-            Vector3Int max = grid.WorldToNearestSample(new Vector3(r.xMax + Margin, G + 0.75f, r.yMax + Margin));
+            Vector3Int min = grid.WorldToNearestSample(origin + new Vector3(r.xMin - Margin, G - 0.75f, r.yMin - Margin));
+            Vector3Int max = grid.WorldToNearestSample(origin + new Vector3(r.xMax + Margin, G + 0.75f, r.yMax + Margin));
             for (int x = min.x; x <= max.x; x++)
             {
                 for (int y = min.y; y <= max.y; y++)

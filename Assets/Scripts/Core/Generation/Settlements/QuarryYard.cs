@@ -15,6 +15,12 @@ namespace Clube.Core
         /// <summary>Metres under the floor the quarry's ground is stone.</summary>
         public const float StoneDepth = 6f;
 
+        // Places tried for the pit: rings out from the settlement, and slides along each side either way of its middle.
+        private const int QuarryRings = 3;
+        private const float QuarryRingStep = 16f;
+        private const int QuarrySlides = 3;
+        private const float QuarrySlideStep = 16f;
+
         /// <summary>The floor (x, z): <see cref="CompanyWork.Yard"/>'s size, north up.</summary>
         public Rect Area;
 
@@ -39,7 +45,8 @@ namespace Clube.Core
         /// <summary>Metres the quarry's walls and its stone reach past its floor: the banks round it.</summary>
         public static float Reach(SettlementSiteRules rules)
         {
-            return rules.QuarryGap + Mathf.Max(CompanyWork.Yard.width, CompanyWork.Yard.height) + rules.Ramp + rules.WallSetback + 4f;
+            return rules.QuarryGap + (QuarryRings - 1) * QuarryRingStep + QuarrySlides * QuarrySlideStep
+                + Mathf.Max(CompanyWork.Yard.width, CompanyWork.Yard.height) + rules.Ramp + rules.WallSetback + 4f;
         }
 
         /// <summary>
@@ -55,29 +62,38 @@ namespace Clube.Core
             Vector2 size = CompanyWork.Yard.size;
             float gap = rules.QuarryGap + rules.Ramp;
             Vector2 centre = bounds.center;
-            var corners = new[]
-            {
-                // North, south, east, west of the settlement.
-                new Vector2(centre.x - size.x * 0.5f, bounds.yMax + gap),
-                new Vector2(centre.x - size.x * 0.5f, bounds.yMin - gap - size.y),
-                new Vector2(bounds.xMax + gap, centre.y - size.y * 0.5f),
-                new Vector2(bounds.xMin - gap - size.x, centre.y - size.y * 0.5f),
-            };
             QuarryYard best = null;
-            float bestRelief = float.MaxValue;
-            foreach (Vector2 corner in corners)
+            float bestScore = float.MaxValue;
+            // Each side of the settlement (north, south, east, west), sliding along it, and in rings further out.
+            for (int ring = 0; ring < QuarryRings; ring++)
             {
-                var area = new Rect(Snap(corner.x, voxel), Snap(corner.y, voxel), size.x, size.y);
-                if (!Survey(site, area, rules.Ramp, heightAt, closedAt, out float low, out float high))
+                float away = gap + ring * QuarryRingStep;
+                for (int side = 0; side < 4; side++)
                 {
-                    continue;
-                }
-                float relief = high - low;
-                if (relief < bestRelief)
-                {
-                    bestRelief = relief;
-                    best = new QuarryYard { Area = area, Floor = Snap(low - rules.QuarryDepth, voxel) };
-                    best.natural = new Vector2(low, high);
+                    for (int s = -QuarrySlides; s <= QuarrySlides; s++)
+                    {
+                        float slide = s * QuarrySlideStep;
+                        Vector2 corner = side switch
+                        {
+                            0 => new Vector2(centre.x - size.x * 0.5f + slide, bounds.yMax + away),
+                            1 => new Vector2(centre.x - size.x * 0.5f + slide, bounds.yMin - away - size.y),
+                            2 => new Vector2(bounds.xMax + away, centre.y - size.y * 0.5f + slide),
+                            _ => new Vector2(bounds.xMin - away - size.x, centre.y - size.y * 0.5f + slide),
+                        };
+                        var area = new Rect(Snap(corner.x, voxel), Snap(corner.y, voxel), size.x, size.y);
+                        if (!Survey(site, area, rules.Ramp, heightAt, closedAt, out float low, out float high))
+                        {
+                            continue;
+                        }
+                        // The most level ground, nearest the settlement: a metre of relief weighs as much as 4 m further out.
+                        float score = (high - low) + (ring * QuarryRingStep + Mathf.Abs(slide)) * 0.25f;
+                        if (score < bestScore)
+                        {
+                            bestScore = score;
+                            best = new QuarryYard { Area = area, Floor = Snap(low - rules.QuarryDepth, voxel) };
+                            best.natural = new Vector2(low, high);
+                        }
+                    }
                 }
             }
             if (best == null)
