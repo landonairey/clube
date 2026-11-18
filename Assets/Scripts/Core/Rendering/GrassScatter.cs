@@ -558,9 +558,10 @@ namespace Clube.Core
             }
             clock.Restart();
             bool grewOne = false;
+            float allowed = worldView.Hurry ? scatterMilliseconds : FrameBudget.Limit(scatterMilliseconds);
             while (waitingNext < waiting.Count)
             {
-                if (grewOne && clock.Elapsed.TotalMilliseconds > scatterMilliseconds)
+                if (grewOne && clock.Elapsed.TotalMilliseconds > allowed)
                 {
                     return;
                 }

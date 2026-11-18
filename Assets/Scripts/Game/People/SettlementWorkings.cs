@@ -77,10 +77,11 @@ namespace Clube.Game
             }
             // GL770: laying out one dig can take many frames' budget: the frames after it pay that back.
             bool hurry = people.View.Hurry;
-            bool mayPrepare = allowance.MayWork(PrepareMilliseconds, Time.frameCount);
+            bool mayPrepare = allowance.MayWork(PrepareMilliseconds, Time.frameCount) && FrameBudget.HasRoom;
             if (preparing != null && (hurry || mayPrepare))
             {
                 float started = Time.realtimeSinceStartup;
+                using FrameCost.Scope prepareCost = FrameCost.Of("Settlement workings: prepare");
                 bool done = preparing.Run(hurry ? PrepareBehindCurtainMilliseconds : PrepareMilliseconds);
                 if (!hurry)
                 {
@@ -107,7 +108,11 @@ namespace Clube.Game
             double now = people.Now;
             int treeBudget = TreesAtOnce, voxelBudget = VoxelsAtOnce;
             IReadOnlyList<PlannedSettlement> settlements = people.Plan.Settlements;
-            PrepareNearest(settlements);
+            using (FrameCost.Of("Settlement workings: choose next"))
+            {
+                PrepareNearest(settlements);
+            }
+            using FrameCost.Scope applyCost = FrameCost.Of("Settlement workings: trees and digs");
             for (int i = 0; i < settlements.Count; i++)
             {
                 if ((settlements[i].Position - people.Viewer).sqrMagnitude > LookRange * LookRange)

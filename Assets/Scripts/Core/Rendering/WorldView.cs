@@ -412,6 +412,7 @@ namespace Clube.Core
         private void Update()
         {
             using FrameCost.Scope cost = FrameCost.Of("Streaming (WorldView.Update)");
+            FrameBudget.StartFrame(Time.frameCount);
             if (World == null || Focus == null)
             {
                 return;

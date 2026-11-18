@@ -236,7 +236,8 @@ namespace Clube.Core
             using (BuilderMarker.Auto())
             {
                 // GL759: behind the loading curtain as many tiles as the builder likes; in play only a sliver of the frame.
-                builder.StartBudgetMilliseconds = worldView.Hurry ? float.PositiveInfinity : PlayStartBudgetMilliseconds;
+                // Never quite nothing: a budget of 0 is the builder's "no limit".
+                builder.StartBudgetMilliseconds = worldView.Hurry ? float.PositiveInfinity : Mathf.Max(0.1f, FrameBudget.Limit(PlayStartBudgetMilliseconds));
                 builder.Update(worldView.transform.InverseTransformPoint(worldView.Focus.position));
             }
             if (builder.Version != syncedVersion)

@@ -613,6 +613,7 @@ namespace Clube.Core
             }
             buildOrder.Sort((a, b) => a.Order.CompareTo(b.Order));
             float limit = awaiting.Count > 0 ? Mathf.Max(buildBudgetMs, catchUpBudgetMs) : buildBudgetMs;
+            limit = worldView.Hurry ? limit : FrameBudget.Limit(limit);
             int built = 0;
             foreach ((int _, Vector3Int next) in buildOrder)
             {
