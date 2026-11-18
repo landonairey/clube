@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
@@ -27,30 +28,74 @@ namespace Clube.Core
         public static float Finish(WorldPlan plan, Func<float, float, float> heightAt, WaterMap water, Func<float, float, bool> closedAt = null,
             Func<Vector2[], float[]> heightsAt = null)
         {
-            float started = Time.realtimeSinceStartup;
+            float seconds = 0f;
+            SlicedWork.RunToEnd(FinishSteps(plan, heightAt, water, closedAt, heightsAt, taken => seconds = taken));
+            return seconds;
+        }
+
+        /// <summary>A bounded map's roads finished a road at a time (GL762, <see cref="SlicedWork"/>).</summary>
+        public static IEnumerator FinishSteps(WorldPlan plan, BoundedMapGenerator map)
+        {
+            MapLayout layout = map.Layout;
+            return FinishSteps(plan, map.Height, map.Water, (x, z) => !layout.WalksFreely(x, z), HeightsOf(map), null);
+        }
+
+        private static IEnumerator FinishSteps(WorldPlan plan, Func<float, float, float> heightAt, WaterMap water, Func<float, float, bool> closedAt,
+            Func<Vector2[], float[]> heightsAt, Action<float> done)
+        {
+            // The clock runs only while this works, not over the frames between its steps.
+            var watch = System.Diagnostics.Stopwatch.StartNew();
             // GL753: the roads down to the docks end on the real shore, so they are refined and graded to it.
             DockLandings.Land(plan, heightAt, water.IsCreated ? WaterOf(water) : null, closedAt);
             var refiner = new RoadRefiner(plan.Area, heightAt, water.IsCreated ? WaterOf(water) : null, closedAt) { HeightsAt = heightsAt };
-            refiner.Refine(plan);
+            for (int i = 0; i < plan.Roads.Count; i++)
+            {
+                refiner.Refine(plan, plan.Roads[i]);
+                watch.Stop();
+                yield return RefinedShare * (i + 1) / plan.Roads.Count;
+                watch.Start();
+            }
             Func<float, float, RoadWater> waterAt = water.IsCreated ? WaterOf(water) : null;
             // GL737: graded into the ground where it is over its limit, as the search priced it.
-            RoadGrading.Grade(plan, heightAt, heightsAt, waterAt);
+            IEnumerator grading = RoadGrading.GradeSteps(plan, heightAt, heightsAt, waterAt);
+            while (grading.MoveNext())
+            {
+                watch.Stop();
+                yield return null;
+                watch.Start();
+            }
             // GL642: where a cart path is still over its limit for a long stretch, a tunnel under it, where that costs less.
-            int tunnels = RoadTunnels.Bore(plan, heightAt, heightsAt, waterAt);
+            int tunnels = 0;
+            IEnumerator boring = RoadTunnels.BoreSteps(plan, heightAt, heightsAt, waterAt, null, bored => tunnels += bored);
+            while (boring.MoveNext())
+            {
+                watch.Stop();
+                yield return null;
+                watch.Start();
+            }
             if (tunnels > 0)
             {
                 // The tunnelled roads graded again on their new line (a bore's floor is its own grade).
-                RoadGrading.Grade(plan, heightAt, heightsAt, waterAt);
+                IEnumerator again = RoadGrading.GradeSteps(plan, heightAt, heightsAt, waterAt);
+                while (again.MoveNext())
+                {
+                    watch.Stop();
+                    yield return null;
+                    watch.Start();
+                }
             }
             if (water.IsCreated)
             {
                 DockLandings.Prune(plan, heightAt, water.SeaLevel);
             }
             plan.Signposts = SignpostPlanner.Plan(plan);
-            float seconds = Time.realtimeSinceStartup - started;
+            float seconds = (float)watch.Elapsed.TotalSeconds;
             plan.Timings += $", roads on the ground {seconds * 1000f:0} ms ({refiner.Refined} refined, {refiner.Kept} kept, {tunnels} tunnels, {plan.Signposts.Count} signposts)";
-            return seconds;
+            done?.Invoke(seconds);
         }
+
+        // The share of the finishing that refining the roads is, for the load screen's progress.
+        private const float RefinedShare = 0.8f;
 
         /// <summary>A map's heights at many points in one job: asked one by one they are most of the time its roads take.</summary>
         public static Func<Vector2[], float[]> HeightsOf(HeightfieldGenerator map)
