@@ -52,6 +52,12 @@ namespace Clube.Game
 
         public bool IsOpen { get; private set; }
 
+        /// <summary>The key that opens the map, for a screen standing in for it (GL760).</summary>
+        public InputActionReference ToggleAction => toggleAction;
+
+        /// <summary>While true M doesn't open this map: the tutorial shows only the company's site (GL760).</summary>
+        public bool Blocked { get; set; }
+
         /// <summary>Whether the lab layer (resources and reasons) is drawn.</summary>
         public bool LabLayer
         {
@@ -118,7 +124,7 @@ namespace Clube.Game
                 return;
             }
             MapSession session = MapSession.Current;
-            if (toggleAction == null || !toggleAction.action.WasPressedThisFrame() || session == null || !session.IsReady)
+            if (Blocked || toggleAction == null || !toggleAction.action.WasPressedThisFrame() || session == null || !session.IsReady)
             {
                 return;
             }
@@ -260,7 +266,7 @@ namespace Clube.Game
             EnsurePicture(session);
             GameUi.Apply();
             EnsureStyles();
-            GUI.depth = -10;
+            GUI.depth = GameUi.MapScreenDepth;
             Rect area = session.Layout.Bounds;
 
             float side = Mathf.Min(Screen.height * 0.9f, Screen.width * 0.9f);

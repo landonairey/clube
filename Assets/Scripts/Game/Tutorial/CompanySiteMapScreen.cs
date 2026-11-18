@@ -5,8 +5,9 @@ using UnityEngine.InputSystem;
 namespace Clube.Game
 {
     /// <summary>
-    /// The map on M in the Tutorial scene (GL760), which has no bounded map for <see cref="WorldMapScreen"/> to show: the
-    /// Mining Corp's site (<see cref="CompanySiteMap"/>) with its places named, the player, and the minimap's quest mark.
+    /// The map on M during the tutorial (GL760): the Mining Corp's site (<see cref="CompanySiteMap"/>) with its places named,
+    /// the player, and the minimap's quest mark. It is on the player in the Tutorial scene; on the bounded map the tutorial
+    /// adds it for as long as the job lasts (<see cref="Bind"/>), in place of <see cref="WorldMapScreen"/>.
     /// </summary>
     public class CompanySiteMapScreen : MonoBehaviour, IMapScreen
     {
@@ -18,7 +19,7 @@ namespace Clube.Game
 
         private PlayerController player;
         private Minimap minimap;
-        private WorldView world;
+        private Transform site;
         private bool hasPauseMenu;
         private int openedFrame = -1;
         private Texture2D picture;
@@ -33,9 +34,21 @@ namespace Clube.Game
             minimap = GetComponent<Minimap>();
         }
 
+        /// <summary>Sets the key and where the site's map space sits, for a screen added at runtime.</summary>
+        public void Bind(InputActionReference toggle, Transform siteOrigin)
+        {
+            toggleAction = toggle;
+            site = siteOrigin;
+            toggleAction?.action.Enable();
+        }
+
         private void Start()
         {
-            world = FindAnyObjectByType<WorldView>();
+            if (site == null)
+            {
+                WorldView world = FindAnyObjectByType<WorldView>();
+                site = world != null ? world.transform : null;
+            }
             // With a pause menu in the scene, Esc reaches the map through it (GL204).
             hasPauseMenu = FindFirstObjectByType<PauseMenu>() != null;
         }
@@ -134,7 +147,7 @@ namespace Clube.Game
             }
             GameUi.Apply();
             EnsureAssets();
-            GUI.depth = -10;
+            GUI.depth = GameUi.MapScreenDepth;
             float side = Mathf.Min(Screen.width, Screen.height) * 0.86f;
             var view = new Rect((Screen.width - side) * 0.5f, (Screen.height - side) * 0.5f, side, side);
 
@@ -147,7 +160,7 @@ namespace Clube.Game
             Place(view, "Work fields", CompanyWork.Fields.center);
             Place(view, "Tool shed", Flat(CompanyWarehouse.ShedSpot));
             Place(view, "Ore cart", Flat(CompanyWarehouse.CartSpot));
-            Place(view, "The mountain", new Vector2(CompanyWork.Fields.center.x, CompanyWork.Fields.yMax + 16f));
+            Place(view, "The rock face", new Vector2(CompanyWork.Fields.center.x, CompanyWork.Fields.yMax + 16f));
             DrawQuestMark(view);
             DrawPlayer(view);
 
@@ -163,10 +176,10 @@ namespace Clube.Game
             return new Vector2(view.x + Mathf.Clamp01(fraction.x) * view.width, view.yMax - Mathf.Clamp01(fraction.y) * view.height);
         }
 
-        // A point of the world on the site's ground: the world's own space is the tutorial map's.
+        // A point of the world in the site's map space.
         private Vector2 OnSite(Vector3 position)
         {
-            return Flat(world != null ? world.transform.InverseTransformPoint(position) : position);
+            return Flat(site != null ? site.InverseTransformPoint(position) : position);
         }
 
         private void Place(Rect view, string text, Vector2 point)
