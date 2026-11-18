@@ -147,6 +147,8 @@ namespace Clube.Core
 
         // The world's dirty chunks, collected each frame (World.CollectDirty).
         private readonly List<Vector3Int> dirtyScratch = new List<Vector3Int>();
+        // Whether the last look found a dirty chunk that may be meshed (StartMeshing).
+        private bool hasChunksToMesh;
 
         // Wanted chunks that came up before their column's heights were ready (ChunkPipeline.StartGeneration).
         private readonly List<Vector3Int> waitingForColumns = new List<Vector3Int>();
@@ -327,7 +329,7 @@ namespace Clube.Core
 
             // The bulk load is over once everything wanted has been started, loaded and meshed.
             if (bulkLoading && loadCursor >= wantedColumns.Count && waitingForColumns.Count == 0 && PendingCount == 0
-                && pipeline.GeneratingCount == 0 && pipeline.MeshingCount == 0 && dirtyScratch.Count == 0)
+                && pipeline.GeneratingCount == 0 && pipeline.MeshingCount == 0 && !hasChunksToMesh)
             {
                 bulkLoading = false;
             }
@@ -666,20 +668,22 @@ namespace Clube.Core
             }
             ChunkMeshSettings current = meshSettings();
 
-            // The world's dirty chunks in the wanted area, nearest first.
-            world.CollectDirty(dirtyScratch);
-            dirtyScratch.RemoveAll(coord => !IsWanted(coord) || pipeline.IsMeshing(coord) || IsHeld(coord));
-            if (wantedCentre.HasValue)
+            // The world's dirty chunks in the wanted area, nearest first. GL759: at a long render distance tens of thousands
+            // wait, and a frame starts only a few: a heap orders just those, where sorting them all took 20 ms a frame.
+            hasChunksToMesh = false;
+            if (!wantedCentre.HasValue)
             {
-                Vector3Int centre = wantedCentre.Value;
-                dirtyScratch.Sort((a, b) => DistanceSquared(a, centre).CompareTo(DistanceSquared(b, centre)));
+                return;
             }
-            foreach (Vector3Int coord in dirtyScratch)
+            world.CollectDirty(dirtyScratch);
+            var nearest = new NearestChunkHeap(dirtyScratch, wantedCentre.Value);
+            while (pipeline.MeshingCount < limit && nearest.TryTake(out Vector3Int coord))
             {
-                if (pipeline.MeshingCount >= limit)
+                if (!IsWanted(coord) || pipeline.IsMeshing(coord) || IsHeld(coord))
                 {
-                    break;
+                    continue;
                 }
+                hasChunksToMesh = true;
                 Chunk chunk = world.Chunks[coord];
                 ChunkMeshSettings chunkSettings = ForChunk(current, coord);
                 if (HasNoSurface(chunk, chunkSettings))
@@ -999,12 +1003,6 @@ namespace Clube.Core
             float dx = Mathf.Max(min.x - focus.x, 0f, focus.x - max.x);
             float dz = Mathf.Max(min.z - focus.z, 0f, focus.z - max.z);
             return Mathf.Sqrt(dx * dx + dz * dz);
-        }
-
-        private static int DistanceSquared(Vector3Int a, Vector3Int b)
-        {
-            Vector3Int d = a - b;
-            return d.x * d.x + d.y * d.y + d.z * d.z;
         }
 
         // Whether this frame's streaming has run for less than the given time so far.
