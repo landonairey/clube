@@ -22,18 +22,31 @@ Material:
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs: []
+    m_TexEnvs:
+    - _CoverageMask:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
     - _Alpha: 0.68
     - _Bob: 0.035
+    - _ClipCovered: 0
     - _FlowBand: 2.2
     - _FlowSpeed: 0.45
+    - _FoamSpeed: 1.1
     - _Glimmer: 1
+    - _Murk: 3.5
     - _Ripple: 0.035
+    - _ShoreFoam: 0.7
+    - _Swell: 0.6
+    - _SwellFrom: 3
     - _Twinkle: 0.05
     m_Colors:
+    - _Abyss: {r: 0.03, g: 0.089999996, b: 0.13999996, a: 1}
+    - _Coverage: {r: 0, g: 0, b: 1, a: 0}
     - _Deep: {r: 0.15, g: 0.3, b: 0.37, a: 1}
+    - _Detail: {r: 0, g: 0, b: 0, a: 0}
     - _Foam: {r: 0.82, g: 0.87, b: 0.86, a: 1}
     - _Light: {r: 0.33, g: 0.5, b: 0.55, a: 1}
   m_BuildTextureStacks: []
