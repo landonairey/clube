@@ -10,6 +10,7 @@ namespace Clube.Game
         Line,
         Swatch,
         Icon,
+        Home,
         Player,
     }
 
@@ -35,7 +36,7 @@ namespace Clube.Game
     /// <summary>
     /// The world map's legend (GL635) as rows of data: the three road classes and the two water routes in their line
     /// types (<see cref="MapPicture.RoadStyle"/>), a bridge, the sea and fresh water, each settlement type the plan
-    /// has with its icon, and the player. A new road class, route kind or settlement type is a new row with no new
+    /// has with its icon, the family's parcel once there is one (GL764), and the player. A new road class, route kind or settlement type is a new row with no new
     /// drawing code; <see cref="WorldMapScreen"/> draws each symbol with what it draws the map with.
     /// </summary>
     public static class MapLegend
@@ -44,7 +45,7 @@ namespace Clube.Game
         public const float SymbolWidth = 40f;
         public const float Width = 200f;
 
-        public static List<MapLegendRow> For(WorldPlan plan)
+        public static List<MapLegendRow> For(WorldPlan plan, bool hasHome = false)
         {
             var rows = new List<MapLegendRow>();
             for (RoadClass roadClass = RoadClass.PavedCartPath; roadClass >= RoadClass.Footpath; roadClass--)
@@ -73,6 +74,10 @@ namespace Clube.Game
             foreach (SettlementType type in types)
             {
                 rows.Add(new MapLegendRow(MapLegendSymbol.Icon, type.Name, type: type));
+            }
+            if (hasHome)
+            {
+                rows.Add(new MapLegendRow(MapLegendSymbol.Home, "Home"));
             }
             rows.Add(new MapLegendRow(MapLegendSymbol.Player, "You"));
             return rows;

@@ -14,12 +14,18 @@ namespace Clube.Game
         private readonly WorldView worldView;
         private readonly Vector3 stop;
         private readonly Vector3 direction;
+        private readonly System.Func<Vector3, float> landHeight;
         private float lastHeight;
 
+        // GL766: a surface this many metres over the land itself is a tree, not ground.
+        private const float TreeOverLand = 1.5f;
+
         /// <summary>Builds the cart <paramref name="material"/> is for, standing at <paramref name="stop"/>, heading <paramref name="direction"/> (flat).</summary>
-        public ArrivalCart(Material material, WorldView worldView, Vector3 stop, Vector3 direction)
+        /// <param name="landHeight">The land's own height under a world position, without its trees; null where the world can't tell.</param>
+        public ArrivalCart(Material material, WorldView worldView, Vector3 stop, Vector3 direction, System.Func<Vector3, float> landHeight = null)
         {
             this.worldView = worldView;
+            this.landHeight = landHeight;
             this.stop = stop;
             this.direction = direction;
             lastHeight = stop.y;
@@ -42,7 +48,8 @@ namespace Clube.Game
             var ray = new Ray(new Vector3(at.x, lastHeight + 30f, at.z), Vector3.down);
             if (worldView != null && worldView.Raycast(ray, out Vector3 hit))
             {
-                lastHeight = hit.y;
+                float land = landHeight != null ? landHeight(at) : hit.y;
+                lastHeight = hit.y > land + TreeOverLand ? land : hit.y;
             }
             return lastHeight;
         }

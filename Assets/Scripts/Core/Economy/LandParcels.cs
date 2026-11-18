@@ -44,6 +44,9 @@ namespace Clube.Core
 
         public IReadOnlyCollection<Vector2Int> Owned => owned;
 
+        /// <summary>The family's own parcel, the first one given (GL764); null until then.</summary>
+        public Vector2Int? Home { get; private set; }
+
         /// <summary>Parcels bought so far: those owned beyond the first, which was given.</summary>
         public int Bought => Mathf.Max(0, owned.Count - 1);
 
@@ -111,18 +114,23 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// GL744: the points <paramref name="margin"/> metres outside a parcel's four sides, level with a point (x, z), the
-        /// nearest side first: where someone can be set down to walk onto the land.
+        /// GL744, GL766: points all the way round a parcel, <paramref name="margin"/> metres outside its sides and about
+        /// <paramref name="spacing"/> metres apart, the nearest to (x, z) first: where someone can be set down to walk onto the land.
         /// </summary>
-        public Vector2[] PointsOutside(Vector2Int parcel, Vector2 from, float margin)
+        public Vector2[] PointsAround(Vector2Int parcel, Vector2 from, float margin, float spacing)
         {
             Rect area = AreaOf(parcel);
-            float x = Mathf.Clamp(from.x, area.xMin, area.xMax), z = Mathf.Clamp(from.y, area.yMin, area.yMax);
-            var points = new[]
+            float west = area.xMin - margin, east = area.xMax + margin, south = area.yMin - margin, north = area.yMax + margin;
+            int steps = Mathf.Max(1, Mathf.CeilToInt((east - west) / Mathf.Max(0.01f, spacing)));
+            var points = new Vector2[steps * 4];
+            for (int i = 0; i < steps; i++)
             {
-                new Vector2(area.xMin - margin, z), new Vector2(area.xMax + margin, z),
-                new Vector2(x, area.yMin - margin), new Vector2(x, area.yMax + margin),
-            };
+                float t = i / (float)steps;
+                points[i * 4] = new Vector2(Mathf.Lerp(west, east, t), south);
+                points[i * 4 + 1] = new Vector2(east, Mathf.Lerp(south, north, t));
+                points[i * 4 + 2] = new Vector2(Mathf.Lerp(east, west, t), north);
+                points[i * 4 + 3] = new Vector2(west, Mathf.Lerp(north, south, t));
+            }
             System.Array.Sort(points, (a, b) => (a - from).sqrMagnitude.CompareTo((b - from).sqrMagnitude));
             return points;
         }
@@ -167,6 +175,7 @@ namespace Clube.Core
             {
                 return false;
             }
+            Home ??= parcel;
             Changed?.Invoke();
             return true;
         }
