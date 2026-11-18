@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Sandstone
   category: 0
   albedo: {fileID: 2800000, guid: 120be0a06cbe97a48af8cf273d64e382, type: 3}
-  debugColor: {r: 0.78, g: 0.54, b: 0.35, a: 1}
+  debugColor: {r: 0.52, g: 0.46, b: 0.38, a: 1}
   hardness: 3
   drop: {fileID: 11400000, guid: d8c6b6b88a1c142498952985e1d8a12a, type: 2}
   pileShape: 1
