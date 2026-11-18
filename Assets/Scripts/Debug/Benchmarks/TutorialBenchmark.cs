@@ -225,7 +225,7 @@ namespace Clube.Debug
             {
                 DistantTreeView treeView = world.GetComponent<DistantTreeView>();
                 string treeCounts = treeView != null ? $"; distant trees {treeView.TreeCount} placed, {treeView.DrawnCount} in view, {treeView.PendingTiles} tiles waiting" : "";
-                text.AppendLine($"  pending {world.PendingCount}, renderers {world.Stats.Renderers}{treeCounts}; phases (last frame): {world.Stats.Phases}");
+                text.AppendLine($"  render distance {world.RenderDistance}, pending {world.PendingCount}, renderers {world.Stats.Renderers}{treeCounts}; phases (last frame): {world.Stats.Phases}");
             }
             if (markerTotals.Count > 0 && frames.Count > 0)
             {
