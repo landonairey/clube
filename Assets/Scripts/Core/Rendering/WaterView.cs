@@ -719,7 +719,7 @@ namespace Clube.Core
                 }
             }
             // GL761: nearest first and one every frame, however many chunks are waiting: streaming over open sea keeps
-            // chunks waiting for minutes, and the detail square can't grow past a tile that isn't built.
+            // chunks waiting long after the viewer arrives, and the detail square can't grow past a tile that isn't built.
             float2 viewer = DetailCentreOnMap();
             bool first = true;
             while (dirtyTiles.Count > 0 && (budget.Elapsed.TotalMilliseconds < buildBudgetMs || first))
