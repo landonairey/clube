@@ -45,6 +45,9 @@ namespace Clube.Game
         private readonly Dictionary<int, List<Villager>> living = new Dictionary<int, List<Villager>>();
         private readonly Dictionary<ToolDefinition, Mesh> toolMeshes = new Dictionary<ToolDefinition, Mesh>();
         private readonly List<int> leaving = new List<int>();
+        private readonly List<WorkRate> rates = WorkRate.Defaults();
+        private readonly Dictionary<int, SettlementWorks> works = new Dictionary<int, SettlementWorks>();
+        private DutyHours dutyHours;
         private KeptHeights heights;
         private System.Func<float, float, RoadWater> water;
         private DayNightCycle clock;
@@ -100,6 +103,42 @@ namespace Clube.Game
         public int Day => clock != null ? clock.Day : 1;
 
         public float Hour => clock != null ? clock.Hour : 12f;
+
+        /// <summary>Hours on the clock since the game began (midnight before day 1), as the duty shifts count them (GL730).</summary>
+        public double Now => clock != null ? (clock.Day - 1) * 24d + clock.ClockHour : 12d;
+
+        /// <summary>How fast each work gets on (GL730); change a row to change every settlement.</summary>
+        public List<WorkRate> Rates => rates;
+
+        /// <summary>The hours the occupations spend on each work (GL730).</summary>
+        public DutyHours DutyHours => dutyHours ??= new DutyHours(duties);
+
+        /// <summary>Where settlements' people may fell and dig (GL731: never round the player's start); null before the map is ready.</summary>
+        public WorkLand Land { get; private set; }
+
+        /// <summary>
+        /// What a settlement's people work and how far they have got (GL730), worked out on the first ask from the
+        /// settlement as laid out; null before the map is ready.
+        /// </summary>
+        public SettlementWorks WorksOf(int settlement)
+        {
+            if (!IsRunning || settlement < 0 || settlement >= Plan.Settlements.Count)
+            {
+                return null;
+            }
+            if (!works.TryGetValue(settlement, out SettlementWorks found))
+            {
+                SettlementSite site = settlements.LaidSite(settlement);
+                if (site == null)
+                {
+                    return null;
+                }
+                found = new SettlementWorks(site, SettlementRoster.Build(site, occupations, Plan.Seed), duties, Land,
+                    View.Trees, View.World.Grid, Ground, IsDry);
+                works[settlement] = found;
+            }
+            return found;
+        }
 
         /// <summary>The duty an occupation gives right now.</summary>
         public Duty DutyNow(Occupation occupation)
@@ -274,6 +313,7 @@ namespace Clube.Game
             root = new GameObject("People").transform;
             root.SetParent(View.transform, false);
             living.Clear();
+            works.Clear();
             Living = 0;
             Thieves = FindAnyObjectByType<ThievesCamps>();
             heights = new KeptHeights(session.Map.Height);
@@ -285,7 +325,32 @@ namespace Clube.Game
             }
             Feller = FindAnyObjectByType<TreeFeller>();
             Herds = FindAnyObjectByType<AnimalHerds>();
+            Land = new WorkLand(Plan, StartOf(), ParcelSize());
             Trees = View.Config.Terrain != null && View.Config.Terrain.Trees != null ? TreeMaterials.From(View.Config.Terrain.Trees) : null;
+        }
+
+        // Where the player starts (x, z, the world's own metres).
+        private Vector2? StartOf()
+        {
+            Vector3 start = ToLocal(session.StartPosition);
+            return new Vector2(start.x, start.z);
+        }
+
+        // The land parcels' width: the player's own, else the default eight chunks.
+        private float ParcelSize()
+        {
+            PlayerParcels parcels = FindAnyObjectByType<PlayerParcels>();
+            return (parcels != null ? parcels.SizeInChunks : 8) * View.World.Grid.ChunkWorldSize.x;
+        }
+
+        // GL730: the work done while nobody watched is applied by a component of its own, which goes with the people
+        // (added here so MapGen's scene needs no change).
+        private void Awake()
+        {
+            if (GetComponent<SettlementWorkings>() == null)
+            {
+                gameObject.AddComponent<SettlementWorkings>();
+            }
         }
 
         // Puts a settlement's residents in the world, as many as the cap leaves room for.

@@ -128,14 +128,12 @@ namespace Clube.Game
         }
 
         /// <summary>
-        /// True where work may change the ground: outside the settlement (by <paramref name="margin"/> metres) and off the
-        /// plan's roads.
+        /// True where work may change the ground: outside the settlement (by <paramref name="margin"/> metres), off the
+        /// plan's roads and off the player's starting parcel and the eight round it (GL731, <see cref="WorkLand"/>).
         /// </summary>
         public bool MayWorkAt(Vector2 spot, float margin)
         {
-            Rect town = Site.Bounds;
-            bool inTown = spot.x > town.xMin - margin && spot.x < town.xMax + margin && spot.y > town.yMin - margin && spot.y < town.yMax + margin;
-            return !inTown && !People.Plan.IsOnRoad(spot, margin);
+            return People.Land.MayWork(Site.Bounds, spot, margin);
         }
 
         // IClosableInteractable: someone to look at, with nothing to trade.

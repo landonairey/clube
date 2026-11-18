@@ -438,6 +438,53 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// Fells a standing tree and takes it away whole (GL730: a tree a settlement's woodcutters felled and chopped up
+        /// while nobody watched): its trunk is cut through at <paramref name="trunk"/>'s height (every wood sample of that
+        /// layer joined to it, out to <paramref name="reach"/> samples), and what that cuts off goes, leaves and all
+        /// (<see cref="FindSevered"/>). The stump stays. Returns the wood samples taken; 0 when no wood is at the trunk.
+        /// </summary>
+        public static int ClearStanding(World world, Vector3Int trunk, TreeMaterials trees, float iso, int reach = 16)
+        {
+            if (!IsWood(world, trunk, trees, iso))
+            {
+                return 0;
+            }
+            var cut = new List<Vector3Int>();
+            var seen = new HashSet<Vector3Int> { trunk };
+            var front = new Stack<Vector3Int>();
+            front.Push(trunk);
+            Vector3Int low = trunk, high = trunk;
+            while (front.Count > 0)
+            {
+                Vector3Int at = front.Pop();
+                cut.Add(at);
+                low = Vector3Int.Min(low, at);
+                high = Vector3Int.Max(high, at);
+                foreach (Vector3Int step in LayerSteps)
+                {
+                    Vector3Int next = at + step;
+                    if (Mathf.Abs(next.x - trunk.x) <= reach && Mathf.Abs(next.z - trunk.z) <= reach && seen.Add(next) && IsWood(world, next, trees, iso))
+                    {
+                        front.Push(next);
+                    }
+                }
+            }
+            foreach (Vector3Int sample in cut)
+            {
+                world.SetDensity(sample, 0f);
+            }
+            FelledLimb limb = FindSevered(world, low, high, trees, iso);
+            if (limb == null)
+            {
+                return cut.Count;
+            }
+            Remove(world, limb);
+            return cut.Count + limb.WoodCount;
+        }
+
+        private static readonly Vector3Int[] LayerSteps = { Vector3Int.right, Vector3Int.left, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1) };
+
+        /// <summary>
         /// An offset from the cut turned 90° over towards <paramref name="direction"/> (a unit step along x or z): what pointed
         /// up now points that way, and what pointed that way now points down. Exact on the sample grid.
         /// </summary>

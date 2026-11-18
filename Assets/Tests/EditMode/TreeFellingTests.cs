@@ -242,5 +242,19 @@ namespace Clube.Core.Tests
             Assert.That(world.GetMaterial(new Vector3Int(12, 8, 12)), Is.EqualTo(Wood), "The other trunk stands.");
             Assert.That(world.GetDensity(new Vector3Int(12, 9, 12)), Is.GreaterThanOrEqualTo(0.5f), "The fallen wood lies over it there.");
         }
+
+        [Test]
+        public void ClearStanding_TakesTheTreeAway_AndLeavesTheStump()
+        {
+            int taken = TreeFelling.ClearStanding(world, new Vector3Int(6, 4, 12), trees, 0.5f);
+
+            Assert.That(taken, Is.GreaterThan(10));
+            Assert.That(world.GetDensity(new Vector3Int(6, 3, 12)), Is.GreaterThanOrEqualTo(0.5f), "The stump stays.");
+            Assert.That(world.GetDensity(new Vector3Int(6, 8, 12)), Is.LessThan(0.5f), "The trunk is gone.");
+            Assert.That(world.GetDensity(new Vector3Int(11, 9, 12)), Is.LessThan(0.5f), "The branch is gone.");
+            Assert.That(world.GetDensity(new Vector3Int(6, 13, 12)), Is.LessThan(0.5f), "The crown is gone.");
+            Assert.That(world.GetDensity(new Vector3Int(2, 2, 2)), Is.GreaterThanOrEqualTo(0.5f), "The ground stays.");
+            Assert.That(TreeFelling.ClearStanding(world, new Vector3Int(6, 4, 12), trees, 0.5f), Is.Zero, "Nothing is left to take.");
+        }
     }
 }
