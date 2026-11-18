@@ -131,10 +131,10 @@ namespace Clube.Debug.Editor
                 { "fallen pine needles", (new Color(0.4f, 0.27f, 0.15f), new Color(0.52f, 0.37f, 0.22f), null, Wear.Leaves) },
                 // Sandstone and granite (GL737), the canyons' strata. Added last, so no seed moves.
                 // Sandstone: a dusty tan between the dirt and the stone (GL756; was an orange 0.72, 0.47, 0.3 to 0.84, 0.6, 0.4).
-                { "sandstone", (new Color(0.5f, 0.41f, 0.32f), new Color(0.6f, 0.5f, 0.4f), null, Wear.Whole) },
+                { "sandstone", (new Color(0.47f, 0.41f, 0.34f), new Color(0.56f, 0.5f, 0.42f), null, Wear.Whole) },
                 // Granite: interlocking grains of dull pink feldspar, pale quartz and black mica (GL755), where cassiterite is plain
                 // stone with round dark specks; no brighter than stone (GL756).
-                { "granite", (new Color(0.48f, 0.42f, 0.4f), new Color(0.56f, 0.55f, 0.53f), new Color(0.27f, 0.25f, 0.25f), Wear.Grains) },
+                { "granite", (new Color(0.48f, 0.43f, 0.41f), new Color(0.55f, 0.54f, 0.52f), new Color(0.33f, 0.31f, 0.31f), Wear.Grains) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]
@@ -504,15 +504,15 @@ namespace Clube.Debug.Editor
 
         // Shares of a coarse-grained rock's grains: the rest are its first mineral.
         private const float SecondMineralShare = 0.3f;
-        private const float ThirdMineralShare = 0.13f;
+        private const float ThirdMineralShare = 0.11f;
 
-        // Coarse crystalline rock (GL755): wrapped Voronoi cells about 7 cm across, so their straight sides interlock, each one
+        // Coarse crystalline rock (GL755): wrapped Voronoi cells about 4 cm across, so their straight sides interlock, each one
         // mineral in its own shade, a little darker where grains meet. The dark mineral's grains are smaller. The
         // noise already painted stays as a faint mottling. Wraps so it tiles.
         private static void PaintGrains(Texture2D texture, System.Random random, Color first, Color second, Color third)
         {
             int size = texture.width;
-            int across = Mathf.Max(4, size / 18);
+            int across = Mathf.Max(4, size / 11);
             float cell = size / (float)across;
             var centres = new Vector2[across * across];
             var colours = new Color[centres.Length];
