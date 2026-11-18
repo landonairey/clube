@@ -29,6 +29,13 @@ namespace Clube.Game
             return $"{Surveying} {Mathf.RoundToInt(Mathf.Clamp01(progress) * 100f)}%";
         }
 
+        /// <summary>The line for where the load has got in a scene: the map's survey until it is ready, then the ground (<paramref name="groundProgress"/> 0 to 1).</summary>
+        public static string InScene(float groundProgress)
+        {
+            MapSession session = MapSession.Current;
+            return session != null && !session.IsReady ? Survey(session.BuildProgress) : Ground(groundProgress);
+        }
+
         /// <summary>The line while the ground round the player loads (<paramref name="progress"/> 0 to 1).</summary>
         public static string Ground(float progress)
         {
