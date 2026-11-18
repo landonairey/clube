@@ -40,8 +40,6 @@ namespace Clube.Core
         public float MinSteepLength = 60f;
         /// <summary>The most road one tunnel may stand in for, in metres along the road.</summary>
         public float Reach = 1500f;
-        /// <summary>What a metre of tunnel costs, in metres of over-limit road it must take out: a tunnel is bored only where it is worth its length.</summary>
-        public float LengthPrice = 0.15f;
         /// <summary>The most tunnels on one road.</summary>
         public int MostPerRoad = 3;
         public float MinLength = 40f;
@@ -101,7 +99,8 @@ namespace Clube.Core
                 {
                     continue;
                 }
-                bored += Bore(plan, road, definition, heights, waterAt, rules);
+                // GL737: the road is read on what it is built on (its graded bed), so a tunnel only stands in for what grading could not ease.
+                bored += Bore(plan, road, definition, RoadGrading.HeightsAt(road, heights), waterAt, rules);
             }
             return bored;
         }
@@ -140,7 +139,8 @@ namespace Clube.Core
             };
         }
 
-        private static bool TryFloor(PlannedRoad road, Vector2 point, out float floor)
+        /// <summary>The floor's height at (x, z) when that lies in one of the road's tunnels.</summary>
+        public static bool TryFloor(PlannedRoad road, Vector2 point, out float floor)
         {
             foreach (RoadTunnel tunnel in road.Tunnels)
             {
@@ -203,14 +203,20 @@ namespace Clube.Core
             // One tunnel at a time: of every pair of points of the road a bore could join, the one that takes the most
             // over-limit road out for its length. (Distances along stay the road's first ones throughout: a tunnel
             // already bored then reads as a long level stretch, and nothing has to be measured again in between.)
+            RoadBuildCosts costs = plan.Rules.BuildCosts;
             for (int round = 0; round < rules.MostPerRoad; round++)
             {
-                // Metres of road over its limit before each point.
+                // Metres of road over its limit before each point, and what the road before each point costs (GL737: as the
+                // road search prices it, so over the limit is dear; water at the bridge price).
                 var steepBefore = new float[points.Count];
+                var costBefore = new float[points.Count];
                 for (int i = 0; i < points.Count - 1; i++)
                 {
-                    bool over = Slope(along, ground, wet, i, run, out float slope) && slope > definition.MaxSlope;
-                    steepBefore[i + 1] = steepBefore[i] + (over ? along[i + 1] - along[i] : 0f);
+                    float metres = along[i + 1] - along[i];
+                    bool measured = Slope(along, ground, wet, i, run, out float slope);
+                    bool over = measured && slope > definition.MaxSlope;
+                    steepBefore[i + 1] = steepBefore[i] + (over ? metres : 0f);
+                    costBefore[i + 1] = costBefore[i] + (wet[i] ? metres * costs.Relative(RoadWork.Bridge) : definition.StretchCost(metres, measured ? slope : 0f));
                 }
                 if (steepBefore[points.Count - 1] < rules.MinSteepLength)
                 {
@@ -236,7 +242,9 @@ namespace Clube.Core
                         {
                             continue;
                         }
-                        float worth = removed - rules.LengthPrice * chord;
+                        // GL737: worth what the road it stands in for costs, less what the bore costs at the tunnel price.
+                        float bore = costs.Relative(RoadWork.Tunnel) * definition.StretchCost(chord, Mathf.Abs(ground[b] - ground[a]) / chord);
+                        float worth = costBefore[b] - costBefore[a] - bore;
                         if (worth > 0f)
                         {
                             candidates.Add((worth, a, b));

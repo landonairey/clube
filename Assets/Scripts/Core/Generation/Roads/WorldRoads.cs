@@ -30,8 +30,16 @@ namespace Clube.Core
             float started = Time.realtimeSinceStartup;
             var refiner = new RoadRefiner(plan.Area, heightAt, water.IsCreated ? WaterOf(water) : null, closedAt) { HeightsAt = heightsAt };
             refiner.Refine(plan);
-            // GL642: where a cart path is still over its limit for a long stretch, a tunnel under it.
-            int tunnels = RoadTunnels.Bore(plan, heightAt, heightsAt, water.IsCreated ? WaterOf(water) : null);
+            Func<float, float, RoadWater> waterAt = water.IsCreated ? WaterOf(water) : null;
+            // GL737: graded into the ground where it is over its limit, as the search priced it.
+            RoadGrading.Grade(plan, heightAt, heightsAt, waterAt);
+            // GL642: where a cart path is still over its limit for a long stretch, a tunnel under it, where that costs less.
+            int tunnels = RoadTunnels.Bore(plan, heightAt, heightsAt, waterAt);
+            if (tunnels > 0)
+            {
+                // The tunnelled roads graded again on their new line (a bore's floor is its own grade).
+                RoadGrading.Grade(plan, heightAt, heightsAt, waterAt);
+            }
             plan.Signposts = SignpostPlanner.Plan(plan);
             float seconds = Time.realtimeSinceStartup - started;
             plan.Timings += $", roads on the ground {seconds * 1000f:0} ms ({refiner.Refined} refined, {refiner.Kept} kept, {tunnels} tunnels, {plan.Signposts.Count} signposts)";

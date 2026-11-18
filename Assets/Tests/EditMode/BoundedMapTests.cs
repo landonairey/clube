@@ -35,6 +35,7 @@ namespace Clube.Core.Tests
         public void DestroyMaterials()
         {
             Hydrology.DisposeAll();
+            CanyonReach.DisposeAll();
             foreach (VoxelMaterial material in new[] { stone, dirt, grass, sand, copper, wood, leaves })
             {
                 Object.DestroyImmediate(material);
@@ -176,6 +177,8 @@ namespace Clube.Core.Tests
             // Ocean, desert and ridge corners (the void is a cliff by design), on level land so only the shape shows.
             var map = new MapDefinition();
             map.SetSides(MapBoundaryType.OceanName, MapBoundaryType.DesertName, MapBoundaryType.OceanName, MapBoundaryType.MountainRidgeName);
+            // A sea cliff (GL737) is a step by design; this is about the sides' blend.
+            map.Cliffs.SeaCliffCoverage = 0f;
             MapShape shape = map.Resolve(9, Level).Shape;
             float half = shape.Half;
 
@@ -559,8 +562,10 @@ namespace Clube.Core.Tests
         [Test]
         public void TheDryMapHasTheFinishedMapsGround()
         {
-            // GL636: the preview's land is the game's land; only the water is left out.
+            // GL636: the preview's land is the game's land; only the water is left out, and with it the dry lands'
+            // canyons (GL737), which are cut round the water.
             TerrainSettings settings = Island();
+            settings.Map.Cliffs.CanyonDepth = 0f;
             BoundedMapGenerator dry = BoundedMapGenerator.CreateDry(settings);
             BoundedMapGenerator wet = BoundedMapGenerator.Create(settings);
             Assert.IsFalse(dry.Water.IsCreated);

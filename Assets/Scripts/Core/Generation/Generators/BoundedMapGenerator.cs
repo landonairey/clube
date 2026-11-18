@@ -37,6 +37,9 @@ namespace Clube.Core
 
         public override WaterMap Water { get; }
 
+        /// <summary>The height field itself: its shape, inland cliffs and canyons (GL737).</summary>
+        public BoundedMapHeight Ground => Field;
+
         public override bool HasValleys => true;
 
         /// <summary>The same map with rivers, lakes and the sea.</summary>
@@ -76,7 +79,16 @@ namespace Clube.Core
             Rect keepDry = settings.StartArea.Enabled ? settings.StartArea.Area : default;
             WaterMap water = Hydrology.For(
                 key, dry, settings.Water, TerrainGenerators.BanksFor(settings), keepDry, settings.Erosion.MinPondArea, extent);
-            return dry.WithWater(water);
+            // The dry lands' canyons are cut round the water once it is known (GL737).
+            Canyons canyons = CanyonReach.For(
+                key + "|canyons " + map.Cliffs.CanyonKey(), map.Cliffs.ToCanyons(settings.Seed, map.Climate.RegionSize), water);
+            return dry.WithWater(water).WithCanyons(canyons);
+        }
+
+        /// <summary>The same map with its dry lands raised into tablelands round their water (GL737).</summary>
+        public BoundedMapGenerator WithCanyons(Canyons canyons)
+        {
+            return new BoundedMapGenerator(Field.WithCanyons(canyons), Layout, biomeTable, BiomeField);
         }
 
 
@@ -100,13 +112,14 @@ namespace Clube.Core
                 settings.Erosion.BaseOctaves, settings.Lacunarity, settings.Persistence).WithSmoothMassifs();
             var field = new BoundedMapHeight(
                 land, settings.Erosion.ToFilter(settings.Seed), layout.Shape, settings.SurfaceLevel,
-                Mathf.Max(settings.Amplitude, map.PeakHeight));
+                Mathf.Max(settings.Amplitude, map.PeakHeight))
+                .WithEscarpments(map.Cliffs.ToEscarpments(settings.Seed, layout.SeaLevel));
 
             LayerTable layers = LayerTable.From(settings.Layers);
             List<BiomeDefinition> biomes = map.Biomes.Count > 0
                 ? map.Biomes
                 : BiomeDefinition.Defaults(settings.Water.Sand, settings.Layers?.Band, settings.Layers?.Base);
-            BiomeField biomeField = Clube.Core.BiomeField.From(biomes, map.Climate, layout.Shape, layers);
+            BiomeField biomeField = Clube.Core.BiomeField.From(biomes, map.Climate, layout.Shape, layers, map.Cliffs.ToStrata(settings.Seed));
             return new BoundedMapGenerator(field, layout, biomes, biomeField);
         }
 

@@ -227,13 +227,15 @@ namespace Clube.Core
 
         // A bounded map's biomes (GL591): each column's top and band layers become its biome's (sand in a desert, bare
         // earth on the steppe). Only those two layers change, by the column's global position and ground height, so
-        // borders agree; bare rock, clay, the water's banks and ore are laid as everywhere else.
+        // borders agree; bare rock, clay, the water's banks and ore are laid as everywhere else. In a layered biome (GL737)
+        // the base rock near the surface (a canyon's walls) takes the strata's band at its height instead.
         private static void StampBiomes(NativeArray<float> depths, in ChunkSampleGrid grid, in ChunkFillSettings settings, NativeArray<byte> materials)
         {
             int3 count = grid.SampleCount;
             float lod = settings.LodScale > 0f ? settings.LodScale : 1f;
-            byte top = settings.Layers.Top, band = settings.Layers.Band;
+            byte top = settings.Layers.Top, band = settings.Layers.Band, rock = settings.Layers.Base;
             BiomeField biomes = settings.Biomes;
+            RockStrata strata = biomes.Strata;
             for (int z = 0; z < count.z; z++)
             {
                 for (int x = 0; x < count.x; x++)
@@ -241,14 +243,21 @@ namespace Clube.Core
                     float3 foot = grid.Position(x, 0, z);
                     float ground = foot.y + depths[grid.Index(x, 0, z)] * lod;
                     BiomeRow row = biomes.Rows[biomes.IndexAt(foot.x, foot.z, ground)];
-                    if (row.Top == top && row.Band == band)
+                    bool layered = row.Layered != 0 && strata.IsCreated;
+                    if (row.Top == top && row.Band == band && !layered)
                     {
                         continue;
                     }
+                    float shift = layered ? strata.ShiftAt(foot.x, foot.z) : 0f;
                     for (int y = 0; y < count.y; y++)
                     {
                         int i = grid.Index(x, y, z);
                         byte material = materials[i];
+                        if (layered && material == rock && depths[i] * lod < strata.Depth)
+                        {
+                            materials[i] = strata.BandAt(grid.Position(x, y, z).y + shift);
+                            continue;
+                        }
                         // Top first: where the layers use one material for both, the biome's top wins near the surface.
                         if (material == top && depths[i] < settings.Layers.TopDepth)
                         {

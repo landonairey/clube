@@ -36,7 +36,10 @@ namespace Clube.Core
         public float EasySlope = 0.2f;
         /// <summary>Width in metres, for cutting it into the terrain (GL613).</summary>
         public float Width;
-        /// <summary>What crossing one cell of river costs the route, in metres of level road: how far it goes round to save a bridge.</summary>
+        /// <summary>
+        /// What building a bridge's ends costs the route where it starts one, in metres of level road: how far it goes round to
+        /// save a bridge. GL737: its deck is priced by the metre at <see cref="RoadBuildCosts.Bridge"/> on top.
+        /// </summary>
         public float BridgeCost;
         /// <summary>GL633: the material its top layer is made of, by name in the <see cref="MaterialRegistry"/>.</summary>
         public string Surface;

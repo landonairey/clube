@@ -71,6 +71,15 @@ namespace Clube.Core
         public float Ceiling;
 
         /// <summary>
+        /// Sea cliffs (GL737): the share of the coast that is cliff, the metres along it over which cliffs come and go,
+        /// the metres a cliff's top stands over the plains (at most <see cref="InlandRise"/>) and across its face.
+        /// </summary>
+        public float SeaCliffCoverage;
+        public float SeaCliffRun;
+        public float SeaCliffHeight;
+        public float SeaCliffFace;
+
+        /// <summary>
         /// Round lands and round bites out of them (x, z, radius, kind), joined and cut in order: mainlands, the sea's
         /// reaches into them, lands and islets, bays. Above 0 a kind adds land; below 0 it takes it away.
         /// </summary>
@@ -93,6 +102,7 @@ namespace Clube.Core
         private const uint WobbleSalt = 0x574F4242u;
         private const uint RoughSalt = 0x524F5547u;
         private const uint WallSalt = 0x57414C4Cu;
+        private const uint SeaCliffSalt = 0x53434C46u;
 
         // Metres of land field a metre of range adds: a range out at sea stands on land of its own.
         private const float RangeLand = 2.5f;
@@ -146,12 +156,20 @@ namespace Clube.Core
             float range = RangeAt(bent);
             float land = HeldLand(LandAt(p, bent, range), inside, weights);
 
+            // Along a sea cliff (GL737) the land closes in: the beach, the hills and the ranges all rise from the water
+            // across the cliff's face instead of over their own widths, so the cliff stands as tall as the land behind it.
+            float cliff = SeaCliffAt(bent);
+            float shore = land >= 0f && cliff > 0f ? land * math.lerp(1f, BeachWidth / math.max(1f, SeaCliffFace), cliff) : land;
+
             // The coast: the beach up to the plains and the slow rise inland; the shelf down to the sea's floor.
             float ground;
             if (land >= 0f)
             {
-                ground = SeaLevel + (PlainsLevel - SeaLevel) * (1f - math.exp(-land / BeachWidth))
-                         + InlandRise * (1f - math.exp(-land / (Half * 0.5f)));
+                float inland = 1f - math.exp(-land / (Half * 0.5f));
+                ground = SeaLevel + (PlainsLevel - SeaLevel) * (1f - math.exp(-shore / BeachWidth)) + InlandRise * inland;
+                // A cliff's top stands over the plains and stays level inland: what it adds goes as the inland rise comes,
+                // so the ground behind it never falls back towards the cliff (no hollow for a lake to fill).
+                ground += math.min(SeaCliffHeight, InlandRise) * cliff * (1f - math.exp(-shore / BeachWidth)) * (1f - inland);
             }
             else
             {
@@ -167,7 +185,7 @@ namespace Clube.Core
             float gain = math.lerp(LowlandRelief, RangeRelief, math.saturate(range / 90f));
             // High on a crest the hills give way, so a summit stands as tall as it was planned and no taller.
             float relief = (landHeight - PlainsLevel) * gain * (1f - 0.6f * math.saturate((range - 140f) / 140f));
-            float h = ground + relief * math.smoothstep(-30f, 150f, land) + range * math.smoothstep(-60f, 200f, land);
+            float h = ground + relief * math.smoothstep(-30f, 150f, shore) + range * math.smoothstep(-60f, 200f, shore);
 
             float wobble = 0f;
             if (inside < Reach)
@@ -484,6 +502,21 @@ namespace Clube.Core
         {
             float size = Half * 0.36f;
             return math.clamp(GradientNoise.Fractal(Salted(WobbleSalt), x / size, z / size, 2) * 1.6f, -1f, 1f);
+        }
+
+        /// <summary>How far the coast near a point is cliff (GL737): 0 for a beach, 1 for a full sea cliff, by a noise along the coast.</summary>
+        public float SeaCliffAt(float2 bent)
+        {
+            if (SeaCliffCoverage <= 0f || SeaCliffRun <= 0f)
+            {
+                return 0f;
+            }
+            float run = 0.5f + 0.5f * math.clamp(
+                GradientNoise.Fractal(Salted(SeaCliffSalt), bent.x / SeaCliffRun, bent.y / SeaCliffRun, 2) * 1.6f, -1f, 1f);
+            float threshold = 1f - SeaCliffCoverage;
+            // A wide taper: along the coast a cliff eases down to the beach over a few hundred metres, so a coast road
+            // can climb from one to the other.
+            return math.smoothstep(threshold - 0.16f, threshold + 0.16f, run);
         }
 
         private uint Salted(uint salt)

@@ -126,6 +126,10 @@ namespace Clube.Debug.Editor
                 { "pine wood", (new Color(0.3f, 0.22f, 0.16f), new Color(0.42f, 0.33f, 0.25f), null, Wear.Bark) },
                 { "pine needles", (new Color(0.08f, 0.2f, 0.12f), new Color(0.16f, 0.3f, 0.18f), null, Wear.Leaves) },
                 { "fallen pine needles", (new Color(0.4f, 0.27f, 0.15f), new Color(0.52f, 0.37f, 0.22f), null, Wear.Leaves) },
+                // Sandstone and granite (GL737), the canyons' strata: sandstone a warm orange-tan, granite pinkish grey speckled
+                // dark. Added last, so no seed moves.
+                { "sandstone", (new Color(0.72f, 0.47f, 0.3f), new Color(0.84f, 0.6f, 0.4f), null, Wear.Whole) },
+                { "granite", (new Color(0.6f, 0.54f, 0.53f), new Color(0.74f, 0.68f, 0.66f), new Color(0.13f, 0.13f, 0.14f), Wear.Whole) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]

@@ -295,6 +295,18 @@ flowchart LR
   after the layers and before clay, banks and ore. `BiomeMap` (`BoundedMapGenerator.Biomes`, `BiomeMap.For(generator)`) is
   the main-thread query; trees read it through `TreeGeneration.Climate` (`TreeForests.ChanceIn`, `TreeShape.IsMaple`), from a
   16 m grid filled by one job on first use, so the voxel trees and the distant trees agree.
+- **Cliffs, canyons and strata** (GL737, `MapDefinition.Cliffs`, a `CliffSettings`): three changes to the map's ground,
+  each at its own stage. Sea cliffs are in `MapShape.Apply`'s coast (`SeaCliffAt`): the beach, hills and ranges rise
+  across the cliff's face, and a lift of at most `InlandRise` is taken back by the inland rise, so the ground behind a
+  cliff never falls towards it. Inland cliffs (`Escarpments`) are added by `BoundedMapHeight` after the erosion and
+  before the water, so rivers fall over them or pool against them. Canyons (`Canyons`) come after the water: `CanyonReach`
+  builds (Burst, cached by the water's key) each water cell's metres to the nearest water, and `BoundedMapHeight.RawHeight`
+  raises dry land (`BiomeField.MoistureAt`) into a tableland in ledges from it, broken here and there by scree slopes
+  (`RampAt`) gentle enough for a cart road; they only ever raise dry ground away from water, so the water map stays true.
+  The road refiner knows nothing of the breaks: it finds one only when its corridor reaches it. `CreateDry` (the preview) has no canyons. Strata (`RockStrata`, in `BiomeField`) are
+  materials only: in a `LayeredRock` biome the kernel's `StampBiomes` turns base rock within `Depth` of the surface into the
+  band at its height; deeper rock stays the base, where ores grow. `TerrainLayers.CliffAngle` makes any face that steep
+  bare rock, whatever its height.
 - **The resource survey** (GL592): `ResourceSurvey.Build` grids the map without voxels. It calls what the chunks call
   (`OreField.AppendTries` + `MarkPlaced`, `TreeField.TryGetSpot` + `IsFlatEnough`, `ChunkFillKernel.ClayDepthAt`,
   `WaterMap.MaterialAt`, `LayerTable.IsSteep`, `BiomeField.IndexAt`) and gets every ground height from
@@ -347,10 +359,20 @@ flowchart LR
 - **Tunnels** (GL642): `RoadTunnels.Bore` runs inside `WorldRoads.Finish`, after the refiner. For each cart path still
   over its limit it scores every pair of its points a straight bore could join (grade within a share of the class's
   limit, ground never far under the floor and well over it for a third of the length, no water over it, no junction or
-  settlement between) by the over-limit metres taken out less a price per metre of bore, takes the best, and repeats
+  settlement between) by what the road it stands in for costs (`StretchCost`, so over-limit metres are dear) less the
+  bore's cost at the tunnel price, takes the best, and repeats
   (`RoadTunnelRules`). The bore becomes one straight part of `PlannedRoad.Points` and a `RoadTunnel` in
-  `PlannedRoad.Tunnels`. A road's `RoadLine` is made with `RoadTunnels.HeightAt(road, ...)`, which gives the tunnel's
-  floor inside a tunnel: the bed then leads in on the floor, and `RoadWriter` digs the open cutting at each end.
+  `PlannedRoad.Tunnels`. A road's `RoadLine` is made with `RoadGrading.HeightAt(road, ...)`, which gives the tunnel's
+  floor inside a tunnel and the graded bed on a graded stretch: the bed then leads in on the floor, and `RoadWriter`
+  digs the open cutting at each end.
+- **Road build costs and grading** (GL737): `RoadBuildCosts` (`WorldPlanRules.BuildCosts`) prices each `RoadWork` by
+  the voxel of road length: path 1, grade 2, bridge 3, tunnel 3. The refiner prices a step over the limit at the grading
+  price where the ground evened over `GradeRun` (±24 m) is within it, and a bridge deck at the bridge price (its ends at
+  the class's `BridgeCost`); the planner prices bridges the same way. `WorldRoads.Finish` runs refine → `RoadGrading.Grade`
+  → `RoadTunnels.Bore` → grade again. `RoadGrading` reads each road every 2 m and makes a graded class's bed the mean of
+  the highest and lowest lines within the slope limit under and over the ground, kept within `GradeDepth` (3 m): it
+  fills `PlannedRoad.Grades` (bed heights the road is built on), `Works` (metres per way), `BuildCost`, and measures
+  `SteepLength`/`SteepestSlope` on what is built (bed, tunnel floor; water bridged).
   `TunnelWriter` (`Editing/`) carves the part with 4.5 m of ground overhead a metre at a time (`SquareVoxels.Carve`, an
   arch, the floor surfaced as the road); `MapRoads` skips the road's pieces over the bore (`TunnelWriter.IsBored`),
   queues the bore's metres after the road's pieces, stands a `TunnelPortal` at each end and saves what is bored.

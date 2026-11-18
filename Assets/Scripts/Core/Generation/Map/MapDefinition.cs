@@ -92,6 +92,10 @@ namespace Clube.Core
         [SerializeField]
         private List<BiomeDefinition> biomes = new List<BiomeDefinition>();
 
+        [Tooltip("Inland cliffs, sea cliffs, the dry lands' canyons and the strata their walls show (GL737).")]
+        [SerializeField]
+        private CliffSettings cliffs = new CliffSettings();
+
         public float Size
         {
             get => Mathf.Max(256f, size);
@@ -162,6 +166,9 @@ namespace Clube.Core
         /// <summary>The biome table as set; empty means the built-in one (<see cref="BiomeDefinition.Defaults"/>).</summary>
         public List<BiomeDefinition> Biomes => biomes;
 
+        /// <summary>The map's cliffs, canyons and strata (GL737).</summary>
+        public CliffSettings Cliffs => cliffs ??= new CliffSettings();
+
         /// <summary>The boundary type name set by hand for a side (used when <see cref="PickSidesFromSeed"/> is off).</summary>
         public string SideName(MapSide side)
         {
@@ -225,7 +232,8 @@ namespace Clube.Core
             key.Append(Size).Append('|').Append(InlandRise).Append('|').Append(CoastHeight).Append('|').Append(PeakHeight).Append('|').Append(PeakRadius)
                 .Append('|').Append(WaterMargin).Append('|').Append(FlowCellSize).Append('|').Append(WaterCellSize)
                 .Append('|').Append(EdgeWobble).Append('|').Append(VoxelFloor).Append('|').Append(VoxelCeiling)
-                .Append('|').Append(layout.ShapeType.Name).Append(resolved.CoastWander).Append('#').Append(hash);
+                .Append('|').Append(layout.ShapeType.Name).Append(resolved.CoastWander).Append('#').Append(hash)
+                .Append("|cliffs ").Append(Cliffs.Key());
             for (int i = 0; i < 4; i++)
             {
                 BoundaryProfile p = layout.Boundary((MapSide)i).ToProfile();
@@ -315,6 +323,10 @@ namespace Clube.Core
                 CoastWander = half * 0.11f * shapeType.CoastWander,
                 Floor = VoxelFloor,
                 Ceiling = VoxelCeiling,
+                SeaCliffCoverage = Cliffs.SeaCliffCoverage,
+                SeaCliffRun = Cliffs.SeaCliffRun,
+                SeaCliffHeight = Cliffs.SeaCliffHeight,
+                SeaCliffFace = Cliffs.SeaCliffFace,
             };
             float depth = 0f;
             foreach (MapBoundaryType type in chosen)

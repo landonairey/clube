@@ -103,6 +103,12 @@ namespace Clube.Core
         public float SteepestSlope;
         /// <summary>Metres of it steeper than its class should be: where no gentler way exists.</summary>
         public float SteepLength;
+        /// <summary>GL737: the stretches graded into the ground (cut-and-fill), each with its bed's heights; the road is built on them.</summary>
+        public List<RoadGrade> Grades = new List<RoadGrade>();
+        /// <summary>GL737: metres of it made each way, once it is on the real ground (<see cref="RoadGrading"/>).</summary>
+        public RoadWorks Works;
+        /// <summary>GL737: what building it costs at the plan's <see cref="WorldPlanRules.BuildCosts"/>, in voxel prices.</summary>
+        public float BuildCost;
         /// <summary>
         /// GL725: true for a trade road out of the map, from <see cref="From"/> to the edge of the free ground on a land side
         /// (<see cref="ExitSide"/>); its carts go on past the edge, to the larger world.
@@ -171,6 +177,8 @@ namespace Clube.Core
         public List<EconomySpecialty> Specialties = EconomySpecialty.Defaults();
         public List<RoadClassDefinition> Roads = RoadClassDefinition.Defaults();
         public List<NamedVessel> Vessels = NamedVessel.Defaults();
+        /// <summary>GL737: what each way of making a road costs (path, grading, bridge, tunnel); roads are planned for the least.</summary>
+        public RoadBuildCosts BuildCosts = new RoadBuildCosts();
 
         /// <summary>The slope angle the player can walk, in degrees, where no player says otherwise (the controller's limit in every scene).</summary>
         public const float DefaultWalkableSlope = 50f;

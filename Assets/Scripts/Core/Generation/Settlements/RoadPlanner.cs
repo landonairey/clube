@@ -297,7 +297,15 @@ namespace Clube.Core
             }
             // A water cell is bridged at a price over what its slope costs: a river coming down a mountain is no way up it.
             float stretch = definition.StretchCost(metres, Mathf.Abs(context.Cells[to].Height - context.Cells[from].Height) / metres);
-            return IsWater(to) ? stretch + definition.BridgeCost : stretch;
+            if (!IsWater(to))
+            {
+                return stretch;
+            }
+            // GL737: its deck at the bridge price by the metre (dearer over still water), and its ends at the class's own
+            // price where the bridge starts.
+            RoadBuildCosts costs = context.Rules.BuildCosts;
+            float deck = metres * costs.Relative(RoadWork.Bridge) * (context.Cells[to].River ? 1f : costs.LakePrice);
+            return stretch + deck + (IsWater(from) ? 0f : definition.BridgeCost);
         }
 
         // GL651: as StepCost, but the sea may be crossed, dearly by the metre.

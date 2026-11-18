@@ -94,6 +94,12 @@ namespace Clube.Debug
             // Bare rock on steep mountain slopes (GL21) and small surface rocks (GL22).
             float steep = frame.Slider($"{Name(layers.Base)} on slopes from (°, 90 off)", layers.SteepAngle, 10f, 90f, "0");
             float steepHeight = frame.Slider("…above height (m)", layers.SteepMinHeight, 0f, 64f, "0.#");
+            float cliff = frame.Slider($"{Name(layers.Base)} on cliffs from (°, any height, 90 off)", layers.CliffAngle, 10f, 90f, "0");
+            if (!Mathf.Approximately(cliff, layers.CliffAngle))
+            {
+                layers.CliffAngle = cliff;
+                config.NotifyChanged();
+            }
             float baseAbove = frame.Slider($"{Name(layers.Base)} everywhere above (m, 0 off)", layers.BaseAboveHeight, 0f, 128f, "0.#");
             float rocks = frame.Slider($"{Name(layers.Rock)} chance per column", layers.RockChance, 0f, 0.05f, "0.000");
             if (!Mathf.Approximately(baseAbove, layers.BaseAboveHeight))

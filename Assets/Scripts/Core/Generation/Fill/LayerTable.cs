@@ -25,6 +25,9 @@ namespace Clube.Core
         /// <summary>Surface height, in metres, above which steep columns show the base material.</summary>
         public float SteepMinHeight;
 
+        /// <summary>Surface gradient from which a column is bare rock at any height: a cliff face (GL737); 0 is off.</summary>
+        public float CliffGradient;
+
         /// <summary>Surface height above which every column is the base material, steep or not (GL578); 0 is off.</summary>
         public float BaseAboveHeight;
 
@@ -109,6 +112,7 @@ namespace Clube.Core
                 Base = layers.Base != null ? layers.Base.Id : (byte)0,
                 SteepGradient = layers.SteepAngle < 89.9f ? math.tan(math.radians(layers.SteepAngle)) : 0f,
                 SteepMinHeight = layers.SteepMinHeight,
+                CliffGradient = layers.CliffAngle < 89.9f ? math.tan(math.radians(layers.CliffAngle)) : 0f,
                 BaseAboveHeight = layers.BaseAboveHeight,
                 RidgeDepth = layers.RidgeDepth,
                 RidgeWidth = layers.RidgeWidth,
@@ -142,10 +146,11 @@ namespace Clube.Core
         public bool IsSteep(float gradient, float surfaceHeight)
         {
             return (SteepGradient > 0f && gradient >= SteepGradient && surfaceHeight >= SteepMinHeight)
+                || (CliffGradient > 0f && gradient >= CliffGradient)
                 || (BaseAboveHeight > 0f && surfaceHeight >= BaseAboveHeight);
         }
 
         /// <summary>True when some columns can be bare rock, so the fill needs the per-column steep flags.</summary>
-        public bool HasBareRock => SteepGradient > 0f || BaseAboveHeight > 0f;
+        public bool HasBareRock => SteepGradient > 0f || CliffGradient > 0f || BaseAboveHeight > 0f;
     }
 }
