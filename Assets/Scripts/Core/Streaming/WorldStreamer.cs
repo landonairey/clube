@@ -438,7 +438,6 @@ namespace Clube.Core
         {
             TakeMaterialised();
             scratch.Clear();
-            StreamingMarkers.RebuildScan.Begin();
             // A chunk shown once and dirty again was edited. Held chunks were never shown, so the parked ones needn't be looked at.
             dirtyChunks.Take(world);
             foreach (Vector3Int dirtyCoord in dirtyChunks.Waiting)
@@ -452,7 +451,6 @@ namespace Clube.Core
                     }
                 }
             }
-            StreamingMarkers.RebuildScan.End();
             if (scratch.Count == 0)
             {
                 return;
@@ -713,16 +711,12 @@ namespace Clube.Core
                     chunk.Release();
                     continue;
                 }
-                StreamingMarkers.WorldAdd.Begin();
                 world.Add(coord, chunk);
-                StreamingMarkers.WorldAdd.End();
                 if (wanted)
                 {
                     wantedLoaded++;
                 }
-                StreamingMarkers.ChunkLoaded.Begin();
                 ChunkLoaded?.Invoke(coord);
-                StreamingMarkers.ChunkLoaded.End();
             }
         }
 
@@ -734,7 +728,6 @@ namespace Clube.Core
         {
             int limit = MaxJobsInFlight;
             int pastBudget = StartsPastBudget;
-            StreamingMarkers.Waiting.Begin();
             for (int i = 0; i < waitingForColumns.Count && pipeline.GenerationJobsRunning < limit
                             && (i < pastBudget || Before(budget));)
             {
@@ -748,7 +741,6 @@ namespace Clube.Core
                     i++;
                 }
             }
-            StreamingMarkers.Waiting.End();
             // GL759: while rationed, no new chunks while meshing is behind: every waiting chunk is looked at each frame, so a
             // pile of them would slow the frame more and more. Chunks held for roads don't count: they need their neighbours.
             if (RationsStarts && meshingBehind && dirtyScratch.Count > MostMeshBacklog)
@@ -756,7 +748,6 @@ namespace Clube.Core
                 return;
             }
             int started = 0;
-            StreamingMarkers.Requested.Begin();
             while (requested.Count > 0 && pipeline.GenerationJobsRunning < limit && (started < pastBudget || Before(budget)))
             {
                 Vector3Int coord = requested.Dequeue();
@@ -766,15 +757,11 @@ namespace Clube.Core
                     started += StartChunk(coord) ? 1 : 0;
                 }
             }
-            StreamingMarkers.Requested.End();
-            StreamingMarkers.GroundFirst.Begin();
             bool groundDone = !IsPlaying || StartGroundFirst(limit, pastBudget, ref started);
-            StreamingMarkers.GroundFirst.End();
             if (!groundDone)
             {
                 return;
             }
-            using var cursorMarker = StreamingMarkers.Cursor.Auto();
             // At least a job limit's worth of starts a frame, as before; more while the budget lasts.
             // A column with every layer loaded is passed over in one step, so moving the area (which puts
             // the cursor back to the nearest column) costs a look per column, not per chunk.
@@ -851,14 +838,11 @@ namespace Clube.Core
         // False while the column's heights aren't ready.
         private bool TryProve(Vector2Int column)
         {
-            StreamingMarkers.ProveColumn.Begin();
             bool proved = pipeline.TryProveColumn(column, settings.HeightInChunks, out UniformLayers layers);
-            StreamingMarkers.ProveColumn.End();
             if (!proved)
             {
                 return false;
             }
-            using var proveMarker = StreamingMarkers.WorldProve.Auto();
             int added = world.ProveColumn(column, layers, settings.HeightInChunks);
             if (IsColumnWanted(column))
             {
@@ -887,7 +871,6 @@ namespace Clube.Core
                     return true;
                 }
             }
-            using var startMarker = StreamingMarkers.StartGeneration.Auto();
             return pipeline.StartGeneration(coord);
         }
 
@@ -996,7 +979,6 @@ namespace Clube.Core
                     result.Discard();
                     continue;
                 }
-                using var applyMarker = StreamingMarkers.ApplyMesh.Auto();
                 Apply(result.Coord, chunk, result);
             }
         }
@@ -1018,25 +1000,18 @@ namespace Clube.Core
             {
                 return;
             }
-            StreamingMarkers.CollectDirty.Begin();
             dirtyChunks.Take(world);
             dirtyChunks.LookAtParked(world, IsColumnHeld);
             dirtyChunks.CollectWaiting(world, dirtyScratch);
-            StreamingMarkers.CollectDirty.End();
-            StreamingMarkers.Heap.Begin();
             var nearest = new NearestChunkHeap(dirtyScratch, wantedCentre.Value);
-            StreamingMarkers.Heap.End();
-            using var loopMarker = StreamingMarkers.MeshLoop.Auto();
             bool rationed = RationsStarts;
             int pastBudget = StartsPastBudget;
             int started = 0;
             while (pipeline.MeshingCount < limit && (!rationed || started < pastBudget || Before(budget))
                    && nearest.TryTake(out Vector3Int coord))
             {
-                StreamingMarkers.IsHeld.Begin();
                 bool skip = !IsWanted(coord) || pipeline.IsMeshing(coord);
                 bool held = !skip && IsHeld(coord);
-                StreamingMarkers.IsHeld.End();
                 if (held)
                 {
                     dirtyChunks.Park(coord);

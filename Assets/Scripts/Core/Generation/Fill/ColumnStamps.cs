@@ -68,16 +68,12 @@ namespace Clube.Core
             // As ChunkGenerator.CollectTrees: the trees, then each stamp field's parts, each with what the chunk tests.
             Parts.Clear();
             TreeBounds.Clear();
-            StreamingMarkers.GatherTrees.Begin();
             if (trees != null)
             {
                 trees.CollectParts(tall, Parts, TreeBounds);
             }
-            StreamingMarkers.GatherTrees.End();
             int treeParts = Parts.Count;
-            StreamingMarkers.GatherRocks.Begin();
             boulders?.CollectParts(tall, Parts, TreeField.GatherMargin);
-            StreamingMarkers.GatherRocks.End();
             float stampTop = float.MinValue;
             foreach (TreePart part in Parts)
             {
@@ -91,16 +87,13 @@ namespace Clube.Core
             {
                 float top = Mathf.Min(Mathf.Max(highest + rampReach, stampTop) + 2f * layerHeight, last.max.y + layerHeight);
                 oreBox = ColumnBox(first, first.min.y - layerHeight, Mathf.Max(top, first.max.y + layerHeight));
-                StreamingMarkers.GatherOres.Begin();
                 oreField.CollectNodes(oreBox, Nodes);
-                StreamingMarkers.GatherOres.End();
             }
             else
             {
                 Nodes.Clear();
             }
 
-            using var marksMarker = StreamingMarkers.GatherMarks.Auto();
             bool exact = SameFootprint(tall, first) && (oreField == null || SameFootprint(oreBox, first));
             var gathered = new ColumnStamps(Parts.Count, Nodes.Count, oreField != null, exact)
             {

@@ -211,9 +211,7 @@ namespace Clube.Core
             ColumnStamps stamps = StampsFor(column, heights);
             float highest = heights.Highest;
             float lowest = heights.Lowest;
-            StreamingMarkers.WaterTop.Begin();
             float waterTop = WaterFill.HighestSurfaceNear(heightfield.Water, grid, column);
-            StreamingMarkers.WaterTop.End();
             float buriedBelow = lowest - SurfaceLayersDepth();
             layers.AirMaterial = ChunkFillKernel.AllAir(fillSettings.Layers).Material;
             layers.RockMaterial = fillSettings.Layers.Base;
@@ -290,7 +288,6 @@ namespace Clube.Core
                         QueueKnown(task, air: false);
                         return true;
                     }
-                    using var columnMarker = StreamingMarkers.ScheduleFill.Auto();
                     task.Output = RentOutput(task.Grid.Length);
                     task.Column = column;
                     column.Users++;
@@ -300,7 +297,6 @@ namespace Clube.Core
                 }
             }
 
-            using (StreamingMarkers.CollectTrees.Auto())
             task.Trees = ChunkGenerator.CollectTrees(trees, boulders, task.Grid, Allocator.Persistent);
             if (generator == null || (task.Trees.Length == 0 && IsAboveSurface(coord, task.Grid)))
             {
@@ -311,7 +307,6 @@ namespace Clube.Core
                 return true;
             }
 
-            using (StreamingMarkers.CollectOres.Auto())
             task.Ores = ChunkGenerator.CollectOres(ores, task.Grid, Allocator.Persistent);
             if (column != null && task.Trees.Length == 0 && task.Ores.Length == 0 && IsBuried(task.Grid, column))
             {
@@ -323,7 +318,6 @@ namespace Clube.Core
                 return true;
             }
 
-            using var scheduleMarker = StreamingMarkers.ScheduleFill.Auto();
             task.Output = RentOutput(task.Grid.Length);
             if (generator is HeightfieldGenerator heightfield)
             {
@@ -375,7 +369,6 @@ namespace Clube.Core
                 }
                 generatedCoords.Remove(task.Coord);
                 coord = task.Coord;
-                using var fromOutputMarker = StreamingMarkers.FromOutput.Auto();
                 chunk = task.Air ? AirChunk(task.Grid)
                     : task.Solid ? RockChunk(task.Grid)
                     : ChunkGenerator.FromOutput(task.Grid, task.Output, createStorage);
@@ -409,13 +402,8 @@ namespace Clube.Core
                 stale.Data.Dispose();
             }
 
-            StreamingMarkers.AllocMesh.Begin();
             Mesh.MeshDataArray data = Mesh.AllocateWritableMeshData(1);
-            StreamingMarkers.AllocMesh.End();
-            StreamingMarkers.Snapshot.Begin();
             ChunkMeshInput input = ChunkMeshInput.Snapshot(chunk, Allocator.Persistent);
-            StreamingMarkers.Snapshot.End();
-            StreamingMarkers.ScheduleMesh.Begin();
             var task = new MeshTask
             {
                 Coord = coord,
@@ -424,7 +412,6 @@ namespace Clube.Core
                 VoxelSize = settings.VoxelSize,
                 Handle = ChunkMeshJobs.Schedule(input, settings, data),
             };
-            StreamingMarkers.ScheduleMesh.End();
             chunk.MarkClean();
             meshing.Add(coord, task);
         }

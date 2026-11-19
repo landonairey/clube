@@ -87,11 +87,18 @@ namespace Clube.Core
         private readonly List<OreNode> nearby = new List<OreNode>();
         private readonly Vector3 maxReach;
 
+        // A heightfield's tries are placed with heights from a job (PlaceAll); null for other grounds.
+        private readonly HeightfieldGenerator heightfield;
+        private readonly List<Vector3Int> toPlace = new List<Vector3Int>();
+        private readonly List<OreNode[]> placedNodes = new List<OreNode[]>();
+        private readonly List<Vector3> tryCentres = new List<Vector3>();
+
         public OreField(OreGeneration settings, int seed, ITerrainGenerator generator)
         {
             this.settings = settings;
             this.seed = seed;
             this.generator = generator;
+            heightfield = generator as HeightfieldGenerator;
             hosts = new ulong[settings.Ores.Count];
             for (int i = 0; i < settings.Ores.Count; i++)
             {
@@ -141,9 +148,85 @@ namespace Clube.Core
             {
                 cells.Clear();
             }
-            nodes = PlaceNodes(cell);
+            nodes = PlaceOne(cell);
             cells.Add(cell, nodes);
             return nodes;
+        }
+
+        // GL774: a heightfield's tries are placed with the ground's heights worked out in one Burst job for many cells (the
+        // height was nearly all a cell's cost, and a column's deep cells try dozens of times to place nothing). Every caller
+        // places through here, so the nodes are the same whoever asks.
+        private OreNode[] PlaceOne(Vector3Int cell)
+        {
+            toPlace.Clear();
+            toPlace.Add(cell);
+            placedNodes.Clear();
+            PlaceAll(toPlace, placedNodes);
+            return placedNodes[0];
+        }
+
+        // The nodes of each cell in the list, in order, into the other.
+        private void PlaceAll(List<Vector3Int> cellList, List<OreNode[]> into)
+        {
+            if (heightfield == null)
+            {
+                foreach (Vector3Int cell in cellList)
+                {
+                    int none = 0;
+                    into.Add(PlaceNodes(cell, default, ref none));
+                }
+                return;
+            }
+
+            // Every try's spot first; then which of them lie in their ore's depth range, as PlaceNodes walks them.
+            tryCentres.Clear();
+            float size = CellSize;
+            foreach (Vector3Int cell in cellList)
+            {
+                Vector3 cellOrigin = (Vector3)cell * size;
+                for (int specIndex = 0; specIndex < settings.Ores.Count; specIndex++)
+                {
+                    OreSpec spec = settings.Ores[specIndex];
+                    if (!Places(spec))
+                    {
+                        continue;
+                    }
+                    int salt = spec.Ore.Id * 1000;
+                    int tries = NodeCount(spec, cell, salt) * PlacementTries;
+                    for (int attempt = 0; attempt < tries; attempt++)
+                    {
+                        tryCentres.Add(TryCentre(cell, cellOrigin, size, salt + 1 + attempt * 3));
+                    }
+                }
+            }
+            var heights = new NativeArray<float>(tryCentres.Count, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+            try
+            {
+                if (tryCentres.Count > 0)
+                {
+                    var points = new NativeArray<float2>(tryCentres.Count, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+                    for (int i = 0; i < tryCentres.Count; i++)
+                    {
+                        points[i] = new float2(tryCentres[i].x, tryCentres[i].z);
+                    }
+                    heightfield.SchedulePointHeights(points, heights).Complete();
+                    points.Dispose();
+                }
+                int next = 0;
+                foreach (Vector3Int cell in cellList)
+                {
+                    into.Add(PlaceNodes(cell, heights, ref next));
+                }
+            }
+            finally
+            {
+                heights.Dispose();
+            }
+        }
+
+        private static bool Places(OreSpec spec)
+        {
+            return spec?.Ore != null && spec.NodesPerCell > 0f && spec.PeakProbability > 0f;
         }
 
         /// <summary>
@@ -152,7 +235,7 @@ namespace Clube.Core
         /// </summary>
         public OreNode[] NodesInCellUncached(Vector3Int cell)
         {
-            return cells.TryGetValue(cell, out OreNode[] nodes) ? nodes : PlaceNodes(cell);
+            return cells.TryGetValue(cell, out OreNode[] nodes) ? nodes : PlaceOne(cell);
         }
 
         /// <summary>The deepest any ore's nodes lie below the surface, in metres.</summary>
@@ -182,6 +265,7 @@ namespace Clube.Core
             float size = CellSize;
             Vector3Int from = Vector3Int.FloorToInt((box.min - maxReach) / size);
             Vector3Int to = Vector3Int.FloorToInt((box.max + maxReach) / size);
+            PlaceMissing(from, to);
             for (int z = from.z; z <= to.z; z++)
             {
                 for (int y = from.y; y <= to.y; y++)
@@ -200,6 +284,44 @@ namespace Clube.Core
                         }
                     }
                 }
+            }
+        }
+
+        // Places the cells of the range not placed yet all at once (GL774), into the cache.
+        private void PlaceMissing(Vector3Int from, Vector3Int to)
+        {
+            if (heightfield == null)
+            {
+                return;
+            }
+            toPlace.Clear();
+            for (int z = from.z; z <= to.z; z++)
+            {
+                for (int y = from.y; y <= to.y; y++)
+                {
+                    for (int x = from.x; x <= to.x; x++)
+                    {
+                        var cell = new Vector3Int(x, y, z);
+                        if (!cells.ContainsKey(cell))
+                        {
+                            toPlace.Add(cell);
+                        }
+                    }
+                }
+            }
+            if (toPlace.Count == 0 || toPlace.Count >= MaxCachedCells)
+            {
+                return;
+            }
+            if (cells.Count + toPlace.Count >= MaxCachedCells)
+            {
+                cells.Clear();
+            }
+            placedNodes.Clear();
+            PlaceAll(toPlace, placedNodes);
+            for (int i = 0; i < toPlace.Count; i++)
+            {
+                cells[toPlace[i]] = placedNodes[i];
             }
         }
 
@@ -308,7 +430,9 @@ namespace Clube.Core
         // Keeps grade rolls apart from the placement rolls.
         private const int GradeSalt = 0x47524144;
 
-        private OreNode[] PlaceNodes(Vector3Int cell)
+        // A cell's nodes. With the tries' ground heights given (PlaceAll), they are read from next on, every try of every
+        // spec in turn whether or not it is needed; without, the generator is asked.
+        private OreNode[] PlaceNodes(Vector3Int cell, NativeArray<float> heights, ref int next)
         {
             scratch.Clear();
             float size = CellSize;
@@ -316,7 +440,7 @@ namespace Clube.Core
             for (int specIndex = 0; specIndex < settings.Ores.Count; specIndex++)
             {
                 OreSpec spec = settings.Ores[specIndex];
-                if (spec?.Ore == null || spec.NodesPerCell <= 0f || spec.PeakProbability <= 0f)
+                if (!Places(spec))
                 {
                     continue;
                 }
@@ -325,11 +449,16 @@ namespace Clube.Core
                 int salt = spec.Ore.Id * 1000;
                 int count = NodeCount(spec, cell, salt);
                 int tries = count * PlacementTries;
+                int first = next;
+                if (heights.IsCreated)
+                {
+                    next += tries;
+                }
                 for (int attempt = 0, placed = 0; attempt < tries && placed < count; attempt++)
                 {
                     int nodeSalt = salt + 1 + attempt * 3;
                     Vector3 centre = TryCentre(cell, cellOrigin, size, nodeSalt);
-                    float depth = generator.Depth(centre);
+                    float depth = heights.IsCreated ? heights[first + attempt] - centre.y : generator.Depth(centre);
                     if (depth < spec.MinDepth || depth > spec.MaxDepth)
                     {
                         continue;
