@@ -528,16 +528,24 @@ there, so walls show the underground while the chunk's data stays as generated.
    and one buried deeper than the surface layers below its lowest point, with no
    ore node or tree reaching it, is all base rock: both are made without a job
    and don't count against the limit, only the frame budget. At WorldLab's 104 m
-   square and 40 layers that is 94% of the chunks. With `StreamingSettings.SparseChunks` (streamed worlds; a fixed
+   square and 40 layers that is 94% of the chunks. A heightfield column's tree parts, rocks and ore nodes are gathered
+   once (`ColumnStamps`, GL774), with exact masks of the layers each reaches (the same box tests a chunk's own gathering
+   makes, so the proof and the chunks made without a job use them); a chunk's share is picked at the start of its fill
+   job (`ColumnStamps.ScheduleFill`, Burst), so starting it asks no field on the main thread, and its fill buffers are
+   reused from finished chunks. `OreField` places a heightfield's nodes with every try's ground height from one
+   point-heights job (`PlaceMissing`), whoever asks, so all callers see the same nodes. With `StreamingSettings.SparseChunks` (streamed worlds; a fixed
    area loads whole) each wanted column is first **proven** (`ProveAhead`, nearest first, 1 ms a frame while playing,
    its own phase in `StreamingPhases`): its proven layers count as loaded at once and are never started, and the load
    cursor waits at a column not proven yet rather than start all its layers. A column's proof is dropped when it
    unloads.
 
-6. **Start meshing**: the world's dirty chunks (`World.CollectDirty`, kept as a
-   set, not scanned), nearest first; uniform ones need no job.
+6. **Start meshing**: the dirty chunks, nearest first; uniform ones need no job. They are taken from the world as they
+   become dirty (`World.TakeDirty`) into `DirtyChunks`, which parks the chunks of held columns (GL774): at render
+   distance 64 a hundred thousand wait for roads, and scanning them every frame was most of this step. A slice of the
+   parked columns is looked at each frame (every one within 16 frames); a column let go sends its chunks back.
 7. **Colliders**: cook shapes in jobs (`Physics.BakeMesh`) for renderers within
-   the collider radius; assign finished ones; drop shapes well outside it.
+   the collider radius; assign finished ones; drop shapes well outside it (walking only the chunks given a shape). Only
+   a mesh landing near the last look's focus sets off another look.
 8. **Flush**: start the scheduled jobs on the workers now.
 
 Steps 3–4 always take at least one result each, so neither can starve the other,

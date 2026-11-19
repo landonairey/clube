@@ -52,8 +52,10 @@ namespace Clube.Core
 
         private readonly List<Vector3Int> scratch = new List<Vector3Int>();
         private readonly List<Vector2Int> columnScratch = new List<Vector2Int>();
-        private readonly List<TreePart> proofParts = new List<TreePart>();
-        private readonly List<OreNode> proofNodes = new List<OreNode>();
+
+        // Fill buffers handed back by finished chunks, for the next ones (GL774), and the most kept.
+        private const int MostSpareBuffers = 256;
+        private readonly Stack<ChunkFillOutput> spareOutputs = new Stack<ChunkFillOutput>();
         private int frame;
 
         /// <param name="format">The density format the world's storage holds (<see cref="World.PreferredFormat"/>).</param>
@@ -204,48 +206,21 @@ namespace Clube.Core
             int height = Mathf.Min(heightInChunks, UniformLayers.MaxLayers);
             float layerHeight = grid.ChunkWorldSize.y;
             float span = first.Top - first.Bottom;
-            Bounds footprint = first.Bounds;
-            var tall = new Bounds(
-                new Vector3(footprint.center.x, first.Bottom + height * layerHeight * 0.5f, footprint.center.z),
-                new Vector3(footprint.size.x, height * layerHeight + span, footprint.size.z));
 
-            // What reaches each layer, as generation would gather it from the layer's own box.
-            ulong treesLow = 0UL, treesHigh = 0UL, oresLow = 0UL, oresHigh = 0UL;
-            proofParts.Clear();
-            trees?.CollectParts(tall, proofParts);
-            boulders?.CollectParts(tall, proofParts, TreeField.GatherMargin);
-            foreach (TreePart part in proofParts)
-            {
-                Bounds bounds = part.Bounds(TreeField.GatherMargin);
-                MarkLayers(bounds.min.y, bounds.max.y, first.Bottom, span, layerHeight, height, ref treesLow, ref treesHigh);
-            }
+            // What reaches each layer, exactly as generation gathers it from the layer's own box (GL774).
+            ColumnStamps stamps = StampsFor(column, heights);
             float highest = heights.Highest;
             float lowest = heights.Lowest;
             float waterTop = WaterFill.HighestSurfaceNear(heightfield.Water, grid, column);
             float buriedBelow = lowest - SurfaceLayersDepth();
-
-            // Ores only matter to the layers that could be rock, wholly under the surface layers: asking about the cells of
-            // the sky as well tried and failed to place a node in each, a height lookup a try.
-            if (ores != null && buriedBelow >= first.Top)
-            {
-                float rockTop = Mathf.Min(buriedBelow, first.Bottom + height * layerHeight);
-                var buried = new Bounds(
-                    new Vector3(footprint.center.x, (first.Bottom + rockTop) * 0.5f, footprint.center.z),
-                    new Vector3(footprint.size.x, rockTop - first.Bottom, footprint.size.z));
-                ores.CollectNodes(buried, proofNodes);
-                foreach (OreNode node in proofNodes)
-                {
-                    MarkLayers(node.Centre.y - node.Reach.y, node.Centre.y + node.Reach.y, first.Bottom, span, layerHeight, height, ref oresLow, ref oresHigh);
-                }
-            }
             layers.AirMaterial = ChunkFillKernel.AllAir(fillSettings.Layers).Material;
             layers.RockMaterial = fillSettings.Layers.Base;
             for (int layer = 0; layer < height; layer++)
             {
                 float bottom = first.Bottom + layer * layerHeight;
                 float top = bottom + span;
-                bool treeHere = (((layer < 64 ? treesLow : treesHigh) >> (layer & 63)) & 1UL) != 0UL;
-                bool oreHere = (((layer < 64 ? oresLow : oresHigh) >> (layer & 63)) & 1UL) != 0UL;
+                bool treeHere = !stamps.Knows(layer) || stamps.TreesReach(layer);
+                bool oreHere = !stamps.Covers(layer) || stamps.OresReach(layer);
                 bool clearOfWater = bottom > waterTop + grid.VoxelSize;
                 if (clearOfWater && (bottom >= highest + fillSettings.RampReach + SkyClearance || (!treeHere && bottom >= highest + fillSettings.RampReach)))
                 {
@@ -257,29 +232,6 @@ namespace Clube.Core
                 }
             }
             return true;
-        }
-
-        // Marks the layers whose box the height range reaches, edges included, as a box test does.
-        private static void MarkLayers(float min, float max, float bottom, float span, float layerHeight, int height, ref ulong low, ref ulong high)
-        {
-            int from = Mathf.Max(0, Mathf.FloorToInt((min - bottom - span) / layerHeight));
-            int to = Mathf.Min(height - 1, Mathf.CeilToInt((max - bottom) / layerHeight));
-            for (int layer = from; layer <= to; layer++)
-            {
-                float layerBottom = bottom + layer * layerHeight;
-                if (max < layerBottom || min > layerBottom + span)
-                {
-                    continue;
-                }
-                if (layer < 64)
-                {
-                    low |= 1UL << layer;
-                }
-                else
-                {
-                    high |= 1UL << (layer - 64);
-                }
-            }
         }
 
         public bool StartGeneration(Vector3Int coord)
@@ -318,6 +270,33 @@ namespace Clube.Core
                 generatedCoords.Add(coord);
                 return true;
             }
+
+            // GL774: a heightfield chunk takes its trees and ores from its column's, picked in a job ahead of its fill.
+            ColumnStamps stamps = column != null ? StampsFor(new Vector2Int(coord.x, coord.z), column) : null;
+            if (stamps != null && stamps.Knows(coord.y))
+            {
+                bool treesHere = stamps.TreesReach(coord.y);
+                if (!treesHere && IsAboveSurface(coord, task.Grid))
+                {
+                    QueueKnown(task, air: true);
+                    return true;
+                }
+                if (stamps.Covers(coord.y))
+                {
+                    if (!treesHere && !stamps.OresReach(coord.y) && IsBuried(task.Grid, column))
+                    {
+                        QueueKnown(task, air: false);
+                        return true;
+                    }
+                    task.Output = RentOutput(task.Grid.Length);
+                    task.Column = column;
+                    column.Users++;
+                    task.Handle = stamps.ScheduleFill(coord.y, column.Heights, column.Range, task.Grid, fillSettings, task.Output, column.Job);
+                    generating.Add(coord, task);
+                    return true;
+                }
+            }
+
             task.Trees = ChunkGenerator.CollectTrees(trees, boulders, task.Grid, Allocator.Persistent);
             if (generator == null || (task.Trees.Length == 0 && IsAboveSurface(coord, task.Grid)))
             {
@@ -339,7 +318,7 @@ namespace Clube.Core
                 return true;
             }
 
-            task.Output = ChunkFillOutput.Allocate(task.Grid.Length, fillSettings.Format, Allocator.Persistent);
+            task.Output = RentOutput(task.Grid.Length);
             if (generator is HeightfieldGenerator heightfield)
             {
                 task.Column = column ?? ColumnFor(new Vector2Int(coord.x, coord.z), task.Grid.BorderedColumns, heightfield);
@@ -385,7 +364,7 @@ namespace Clube.Core
                 GenerationTask task = generated.Dequeue();
                 if (task.Cancelled)
                 {
-                    task.Dispose();
+                    Recycle(task);
                     continue;
                 }
                 generatedCoords.Remove(task.Coord);
@@ -393,7 +372,7 @@ namespace Clube.Core
                 chunk = task.Air ? AirChunk(task.Grid)
                     : task.Solid ? RockChunk(task.Grid)
                     : ChunkGenerator.FromOutput(task.Grid, task.Output, createStorage);
-                task.Dispose();
+                Recycle(task);
                 return true;
             }
             coord = default;
@@ -611,6 +590,10 @@ namespace Clube.Core
             }
             generated.Clear();
             generatedCoords.Clear();
+            while (spareOutputs.Count > 0)
+            {
+                spareOutputs.Pop().Dispose();
+            }
 
             foreach (MeshTask task in meshing.Values)
             {
@@ -711,6 +694,47 @@ namespace Clube.Core
             ChunkFillSummary air = ChunkFillKernel.AllAir(fillSettings.Layers);
             var sampleCount = new Vector3Int(chunkGrid.SampleCount.x, chunkGrid.SampleCount.y, chunkGrid.SampleCount.z);
             return Chunk.Uniform(sampleCount, 0f, air.Material, createStorage);
+        }
+
+        // A fill job's buffers: one handed back by a finished chunk when there is one. The job writes every sample, so
+        // nothing need be cleared.
+        private ChunkFillOutput RentOutput(int length)
+        {
+            if (spareOutputs.Count > 0 && spareOutputs.Peek().Materials.Length == length)
+            {
+                return spareOutputs.Pop();
+            }
+            return ChunkFillOutput.Allocate(length, fillSettings.Format, Allocator.Persistent);
+        }
+
+        // Hands a taken or cancelled chunk's buffers back for the next ones (GL774: allocating them was a part of each start).
+        private void Recycle(GenerationTask task)
+        {
+            if (task.Output.IsCreated && spareOutputs.Count < MostSpareBuffers && task.Output.Materials.Length == task.Grid.Length)
+            {
+                spareOutputs.Push(task.Output);
+                task.Output = default;
+            }
+            task.Dispose();
+        }
+
+        // A chunk known without a job, all air or all base rock, ready to be taken.
+        private void QueueKnown(GenerationTask task, bool air)
+        {
+            task.Air = air;
+            task.Solid = !air;
+            generated.Enqueue(task);
+            generatedCoords.Add(task.Coord);
+        }
+
+        // The column's tree parts, rocks and ore nodes, gathered the first time they're asked for (GL774); its heights must be ready.
+        private ColumnStamps StampsFor(Vector2Int column, ColumnHeights heights)
+        {
+            if (heights.Stamps == null)
+            {
+                heights.Stamps = ColumnStamps.Gather(grid, column, heights.Highest, fillSettings.RampReach, trees, boulders, ores);
+            }
+            return heights.Stamps;
         }
 
         private ColumnHeights ColumnFor(Vector2Int column, ColumnBlock block, HeightfieldGenerator heightfield)
@@ -842,6 +866,8 @@ namespace Clube.Core
             public JobHandle Job;
             public int Users;
             public int LastUsedFrame;
+            // What reaches the column (GL774), gathered once its heights are known; read by the chunks' pick jobs.
+            public ColumnStamps Stamps;
 
             public ColumnHeights(int length)
             {
@@ -874,6 +900,7 @@ namespace Clube.Core
                 Job.Complete();
                 Heights.Dispose();
                 Range.Dispose();
+                Stamps?.Dispose();
             }
         }
 

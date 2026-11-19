@@ -86,7 +86,18 @@ namespace Clube.Core
         /// </summary>
         public void CollectParts(Bounds box, List<TreePart> results)
         {
+            CollectParts(box, results, null);
+        }
+
+        /// <summary>
+        /// The same parts, with each one's tree's bounds beside it in <paramref name="treeBounds"/> (cleared first; skipped
+        /// when null): what a box inside this one tests to pick its own parts without asking the field again
+        /// (<see cref="ColumnStamps"/>, GL774).
+        /// </summary>
+        public void CollectParts(Bounds box, List<TreePart> results, List<Bounds> treeBounds)
+        {
             results.Clear();
+            treeBounds?.Clear();
             StockStartArea();
             float size = CellSize;
             float reach = settings.MaxSpread + GatherMargin;
@@ -108,6 +119,7 @@ namespace Clube.Core
                         if (part.Bounds(GatherMargin).Intersects(box))
                         {
                             results.Add(part);
+                            treeBounds?.Add(tree.Bounds);
                         }
                     }
                 }

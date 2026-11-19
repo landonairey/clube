@@ -104,7 +104,7 @@ namespace Clube.Core
         public bool IsDirty => isDirty;
 
         // Told when a clean chunk becomes dirty, so the world can keep a set of dirty chunks
-        // instead of scanning them all (World.CollectDirty).
+        // instead of scanning them all (World.TakeDirty).
         internal Action<Chunk> BecameDirty { get; set; }
 
         public float GetDensity(Vector3Int sample)

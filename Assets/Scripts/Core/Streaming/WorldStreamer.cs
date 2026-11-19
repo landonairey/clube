@@ -159,7 +159,10 @@ namespace Clube.Core
         private int unloadingNext;
         private int unloadingLayer;
 
-        // The world's dirty chunks, collected each frame (World.CollectDirty).
+        // The dirty chunks waiting for a mesh, held ones parked (GL774), and those this frame looks at.
+        private readonly DirtyChunks dirtyChunks = new DirtyChunks();
+        // Chunks whose collider was given a shape (some since cleared): the ones a move may have left far away.
+        private readonly HashSet<Vector3Int> shaped = new HashSet<Vector3Int>();
         private readonly List<Vector3Int> dirtyScratch = new List<Vector3Int>();
         // Whether the last look found a dirty chunk that may be meshed (StartMeshing).
         private bool hasChunksToMesh;
@@ -435,10 +438,11 @@ namespace Clube.Core
         {
             TakeMaterialised();
             scratch.Clear();
-            world.CollectDirty(dirtyScratch);
-            foreach (Vector3Int dirtyCoord in dirtyScratch)
+            // A chunk shown once and dirty again was edited. Held chunks were never shown, so the parked ones needn't be looked at.
+            dirtyChunks.Take(world);
+            foreach (Vector3Int dirtyCoord in dirtyChunks.Waiting)
             {
-                if (meshedOnce.Contains(dirtyCoord))
+                if (meshedOnce.Contains(dirtyCoord) && world.TryPeekChunk(dirtyCoord, out Chunk dirtyChunk) && dirtyChunk.IsDirty)
                 {
                     scratch.Add(dirtyCoord);
                     if (scratch.Count >= Mathf.Max(1, settings.MaxEditsPerFrame))
@@ -566,6 +570,7 @@ namespace Clube.Core
                 ChunkUnloaded?.Invoke(coord);
             }
             meshedOnce.Clear();
+            dirtyChunks.Clear();
             waitingForColumns.Clear();
             wantedLoaded = 0;
             bulkLoading = true;
@@ -752,7 +757,8 @@ namespace Clube.Core
                     started += StartChunk(coord) ? 1 : 0;
                 }
             }
-            if (IsPlaying && !StartGroundFirst(limit, pastBudget, ref started))
+            bool groundDone = !IsPlaying || StartGroundFirst(limit, pastBudget, ref started);
+            if (!groundDone)
             {
                 return;
             }
@@ -832,7 +838,8 @@ namespace Clube.Core
         // False while the column's heights aren't ready.
         private bool TryProve(Vector2Int column)
         {
-            if (!pipeline.TryProveColumn(column, settings.HeightInChunks, out UniformLayers layers))
+            bool proved = pipeline.TryProveColumn(column, settings.HeightInChunks, out UniformLayers layers);
+            if (!proved)
             {
                 return false;
             }
@@ -993,7 +1000,9 @@ namespace Clube.Core
             {
                 return;
             }
-            world.CollectDirty(dirtyScratch);
+            dirtyChunks.Take(world);
+            dirtyChunks.LookAtParked(world, IsColumnHeld);
+            dirtyChunks.CollectWaiting(world, dirtyScratch);
             var nearest = new NearestChunkHeap(dirtyScratch, wantedCentre.Value);
             bool rationed = RationsStarts;
             int pastBudget = StartsPastBudget;
@@ -1001,7 +1010,13 @@ namespace Clube.Core
             while (pipeline.MeshingCount < limit && (!rationed || started < pastBudget || Before(budget))
                    && nearest.TryTake(out Vector3Int coord))
             {
-                if (!IsWanted(coord) || pipeline.IsMeshing(coord) || IsHeld(coord))
+                bool skip = !IsWanted(coord) || pipeline.IsMeshing(coord);
+                bool held = !skip && IsHeld(coord);
+                if (held)
+                {
+                    dirtyChunks.Park(coord);
+                }
+                if (skip || held)
                 {
                     continue;
                 }
@@ -1055,7 +1070,7 @@ namespace Clube.Core
             stats.Vertices -= chunkRenderer.LastBuildStats.VertexCount;
             stats.Triangles -= chunkRenderer.LastBuildStats.TriangleCount;
             chunkRenderer.ApplyMesh(result);
-            collidersDirty = true;
+            NoteMeshChanged(coord);
             stats.Vertices += chunkRenderer.LastBuildStats.VertexCount;
             stats.Triangles += chunkRenderer.LastBuildStats.TriangleCount;
             if (settings.DetailDistance > 0 && world.IsEdited(coord))
@@ -1079,9 +1094,19 @@ namespace Clube.Core
                 stats.Triangles -= chunkRenderer.LastBuildStats.TriangleCount;
                 chunkRenderer.ClearMesh();
                 chunkRenderer.Collider?.Clear();
-                collidersDirty = true;
+                NoteMeshChanged(coord);
             }
             ChunkMeshed?.Invoke(coord, chunkRenderer);
+        }
+
+        // GL774: only a mesh within reach of the last look's focus can need a bake before the focus moves (which looks again):
+        // while the far area streams in, meshes land every frame, and each used to set off a look over the columns round the focus.
+        private void NoteMeshChanged(Vector3Int coord)
+        {
+            if (HorizontalDistance(coord, collidersFocus) <= settings.ColliderRadius + 2f * world.Grid.ChunkWorldSize.x)
+            {
+                collidersDirty = true;
+            }
         }
 
         // Cooks colliders for chunks near the focus and drops those well outside, then takes finished bakes.
@@ -1101,9 +1126,13 @@ namespace Clube.Core
                 if (renderers.TryGet(coord, out ChunkRenderer chunkRenderer) && chunkRenderer.Collider != null
                     && chunkRenderer.MeshVersion == version && HorizontalDistance(coord, focus) <= dropDistance)
                 {
-                    chunkRenderer.Collider.Assign(chunkRenderer.Mesh, version);
+                    AssignShape(coord, chunkRenderer, version);
                 }
-                collidersDirty = true;
+                else
+                {
+                    // A stale bake: the chunk may need another.
+                    collidersDirty = true;
+                }
             }
 
             // Shapes only exist near the focus, so far ones are dropped only when the focus moves to
@@ -1112,14 +1141,21 @@ namespace Clube.Core
             if (collidersCentre != centre)
             {
                 collidersCentre = centre;
-                foreach (KeyValuePair<Vector3Int, ChunkRenderer> entry in renderers.Active)
+                // GL774: only the chunks given a shape, not every renderer (30,000 of them at a long render distance).
+                scratch.Clear();
+                scratch.AddRange(shaped);
+                foreach (Vector3Int coord in scratch)
                 {
-                    ChunkCollider chunkCollider = entry.Value.Collider;
+                    ChunkCollider chunkCollider = renderers.TryGet(coord, out ChunkRenderer chunkRenderer) ? chunkRenderer.Collider : null;
+                    if (chunkCollider == null || chunkCollider.Version < 0)
+                    {
+                        shaped.Remove(coord);
+                    }
                     // Well outside (a chunk of slack, so the edge doesn't flicker): no shape needed.
-                    if (chunkCollider != null && chunkCollider.Version >= 0 && !pipeline.IsBaking(entry.Key)
-                        && HorizontalDistance(entry.Key, focus) > dropDistance)
+                    else if (!pipeline.IsBaking(coord) && HorizontalDistance(coord, focus) > dropDistance)
                     {
                         chunkCollider.Clear();
+                        shaped.Remove(coord);
                     }
                 }
                 collidersDirty = true;
@@ -1138,10 +1174,12 @@ namespace Clube.Core
             {
                 for (int dx = -reach; dx <= reach; dx++)
                 {
-                    // Only the layers with a renderer: asking every layer of every column was 23,000 lookups a look.
-                    foreach (int layer in renderers.LayersIn(new Vector2Int(centre.x + dx, centre.z + dz)))
+                    // Only the layers with a renderer: asking every layer of every column was 23,000 lookups a look. By
+                    // index: a foreach over the read-only list boxed an enumerator for every column.
+                    IReadOnlyList<int> rendered = renderers.LayersIn(new Vector2Int(centre.x + dx, centre.z + dz));
+                    for (int i = 0; i < rendered.Count; i++)
                     {
-                        var coord = new Vector3Int(centre.x + dx, layer, centre.z + dz);
+                        var coord = new Vector3Int(centre.x + dx, rendered[i], centre.z + dz);
                         if (!renderers.TryGet(coord, out ChunkRenderer chunkRenderer) || chunkRenderer.Collider == null)
                         {
                             continue;
@@ -1154,7 +1192,7 @@ namespace Clube.Core
                         }
                         if (chunkRenderer.Mesh.vertexCount == 0)
                         {
-                            chunkCollider.Assign(chunkRenderer.Mesh, chunkRenderer.MeshVersion);
+                            AssignShape(coord, chunkRenderer, chunkRenderer.MeshVersion);
                             continue;
                         }
                         pipeline.StartBake(coord, chunkRenderer.Mesh, chunkRenderer.MeshVersion, chunkCollider.CookingOptions);
@@ -1287,7 +1325,7 @@ namespace Clube.Core
             FinishBake(coord, chunkRenderer);
             if (chunkRenderer.Mesh.vertexCount == 0)
             {
-                chunkRenderer.Collider.Assign(chunkRenderer.Mesh, chunkRenderer.MeshVersion);
+                AssignShape(coord, chunkRenderer, chunkRenderer.MeshVersion);
                 return;
             }
             pipeline.StartBake(coord, chunkRenderer.Mesh, chunkRenderer.MeshVersion, chunkRenderer.Collider.CookingOptions);
@@ -1300,8 +1338,15 @@ namespace Clube.Core
             int version = pipeline.FinishBakeNow(coord);
             if (version >= 0 && chunkRenderer.Collider != null && version == chunkRenderer.MeshVersion)
             {
-                chunkRenderer.Collider.Assign(chunkRenderer.Mesh, version);
+                AssignShape(coord, chunkRenderer, version);
             }
+        }
+
+        // Gives the chunk's collider the shape of its mesh's version, and notes it among those with a shape.
+        private void AssignShape(Vector3Int coord, ChunkRenderer chunkRenderer, int version)
+        {
+            chunkRenderer.Collider.Assign(chunkRenderer.Mesh, version);
+            shaped.Add(coord);
         }
 
         private void Release(Vector3Int coord)

@@ -38,7 +38,7 @@ namespace Clube.Core
         // Columns (x, z) holding an edited chunk: the world draws them in full at any distance (P18).
         private readonly HashSet<Vector2Int> editedColumns = new HashSet<Vector2Int>();
 
-        // Loaded chunks that became dirty since they were last collected (CollectDirty); a chunk may
+        // Loaded chunks that became dirty since they were last taken (TakeDirty); a chunk may
         // have been cleaned since, so readers check.
         private readonly HashSet<Vector3Int> dirty = new HashSet<Vector3Int>();
         private readonly HashSet<Vector3Int> waterChanged = new HashSet<Vector3Int>();
@@ -231,25 +231,18 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Adds every loaded chunk that is dirty now to <paramref name="into"/> (cleared first), and
-        /// forgets the ones cleaned since they were noted: what needs meshing, found without
-        /// scanning every loaded chunk.
+        /// Adds the chunks that became dirty since the last take to <paramref name="into"/> and forgets them (GL774): what
+        /// needs meshing, found without scanning every loaded chunk. A chunk is noted again only once it has been cleaned and
+        /// becomes dirty anew, so the caller keeps what it took until then (the streamer's <c>DirtyChunks</c>). Some may have
+        /// been cleaned or unloaded since they were noted.
         /// </summary>
-        public void CollectDirty(List<Vector3Int> into)
+        public void TakeDirty(List<Vector3Int> into)
         {
-            into.Clear();
             foreach (Vector3Int coord in dirty)
             {
-                if (loaded.TryGetValue(coord, out Chunk chunk) && chunk.IsDirty)
-                {
-                    into.Add(coord);
-                }
+                into.Add(coord);
             }
-            if (into.Count != dirty.Count)
-            {
-                dirty.Clear();
-                dirty.UnionWith(into);
-            }
+            dirty.Clear();
         }
 
         /// <summary>
