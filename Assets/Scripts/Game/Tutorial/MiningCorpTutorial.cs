@@ -167,7 +167,8 @@ namespace Clube.Game
             inventory = player.GetComponentInChildren<PlayerInventory>();
             wallet = player.GetComponentInChildren<PlayerWallet>();
             tools = player.GetComponentInChildren<PlayerToolUser>();
-            // GL527, GL529: a new hire sees no skill levels and earns no xp, and can't climb.
+            // GL527: a new hire sees no skill levels and earns no xp. Climbing works here as everywhere (GL782 undid GL529),
+            // so a hire who digs a hole gets out with Space; the yard leash (KeepInYard) walks one who leaves the pit back.
             PlayerSkills playerSkills = player.GetComponentInChildren<PlayerSkills>();
             if (playerSkills != null)
             {
@@ -178,7 +179,6 @@ namespace Clube.Game
             {
                 skillsHud.enabled = false;
             }
-            player.ClimbingDisabled = true;
             // GL734: all the land is the company's: no parcel is granted where the player lands (on the bounded map that would
             // make the quarry the family's land), none is offered, and no fence is drawn. The game scene loads afresh after.
             PlayerParcels parcels = player.GetComponentInChildren<PlayerParcels>(true);
