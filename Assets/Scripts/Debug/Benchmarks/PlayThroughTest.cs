@@ -195,13 +195,9 @@ namespace Clube.Debug
             yield return TheGameLoaded(null);
             yield return Seconds(15f);
             Check(GameSession.Tutorial, "the tutorial is under way");
+            PlayerController player = FindAnyObjectByType<PlayerController>();
+            Check(player != null && player.IsInMenu, "the crew lead asks for the character's name");
             yield return Picture("tutorial");
-            yield return Press(Key.M);
-            yield return Seconds(1f);
-            WorldMapScreen map = FindAnyObjectByType<WorldMapScreen>();
-            Check(map != null && map.IsOpen, "M opens the map in the tutorial");
-            yield return Press(Key.M);
-            yield return Seconds(0.5f);
             GameScenes.LoadMainMenu();
             yield return TheMenuAgain();
         }
@@ -354,8 +350,9 @@ namespace Clube.Debug
             GameScenes.LoadGame();
             yield return TheGameLoaded(before);
             yield return Seconds(8f);
-            float moved = Vector3.Distance(savedPosition, FindAnyObjectByType<PlayerController>().transform.position);
-            Check(moved < 5f, $"the player is back where the game was saved ({moved:0.0} m off)");
+            Vector3 position = FindAnyObjectByType<PlayerController>().transform.position;
+            float moved = Vector3.Distance(savedPosition, position);
+            Check(moved < 5f, $"the player is back where the game was saved ({moved:0.0} m off: saved at {savedPosition}, now at {position})");
             float coins = FindAnyObjectByType<PlayerWallet>().Wallet.Coins;
             Check(Mathf.Abs(coins - savedCoins) < 0.01f, $"the coins came back ({coins:0} of {savedCoins:0})");
             int count = FindAnyObjectByType<PlayerInventory>().Inventory.Count(savedItem);
