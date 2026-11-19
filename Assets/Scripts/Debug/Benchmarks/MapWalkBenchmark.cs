@@ -85,6 +85,8 @@ namespace Clube.Debug
         private readonly List<float> grass = new List<float>();
         private readonly List<float> drawCalls = new List<float>();
         private readonly List<float> allocated = new List<float>();
+        private readonly Dictionary<string, (double total, double worst)> systemBytes = new Dictionary<string, (double, double)>();
+        private long lastThreadBytes = -1L;
         private readonly List<Vector2> route = new List<Vector2>();
         private readonly List<float> along = new List<float>();
         private int distanceOverride;
@@ -340,7 +342,9 @@ namespace Clube.Debug
             water.Add(Cost(world.GetComponent<WaterView>(), v => v.LastUpdateMilliseconds));
             grass.Add(Cost(world.GetComponent<GrassScatter>(), v => v.LastUpdateMilliseconds));
             drawCalls.Add(drawCallsRecorder.Valid ? drawCallsRecorder.LastValue : 0f);
-            allocated.Add(allocatedRecorder.Valid ? allocatedRecorder.LastValue / 1024f : 0f);
+            long threadBytes = System.GC.GetAllocatedBytesForCurrentThread();
+            allocated.Add(allocatedRecorder.Valid && allocatedRecorder.LastValue > 0 ? allocatedRecorder.LastValue / 1024f : lastThreadBytes >= 0 ? (threadBytes - lastThreadBytes) / 1024f : 0f);
+            lastThreadBytes = threadBytes;
             SampleSystems();
             StreamingPhases phases = world.Stats.Phases;
             phaseTotals[0] += phases.Poll;
@@ -368,6 +372,9 @@ namespace Clube.Debug
             foreach (FrameCost cost in FrameCost.All)
             {
                 double milliseconds = cost.TakeMilliseconds();
+                double kilobytes = cost.TakeBytes() / 1024.0;
+                systemBytes.TryGetValue(cost.Name, out (double total, double worst) bytesSeen);
+                systemBytes[cost.Name] = (bytesSeen.total + kilobytes, System.Math.Max(bytesSeen.worst, kilobytes));
                 systems.TryGetValue(cost.Name, out (double total, double worst, int slow) seen);
                 systems[cost.Name] = (seen.total + milliseconds, System.Math.Max(seen.worst, milliseconds), seen.slow + (milliseconds > SlowSystemMilliseconds ? 1 : 0));
                 if (walkingNow && milliseconds > OverFrameMilliseconds)
@@ -383,6 +390,14 @@ namespace Clube.Debug
             int count = Mathf.Max(1, frames.Count);
             return string.Join("; ", systems.OrderByDescending(s => s.Value.total)
                 .Select(s => $"{s.Key} {s.Value.total / count:0.00} (worst {s.Value.worst:0}, {s.Value.slow} slow)"));
+        }
+
+        // Where the main thread's garbage comes from (GL778): KB allocated a frame inside each timed system, biggest first.
+        private string AllocationReport()
+        {
+            int count = Mathf.Max(1, frames.Count);
+            return string.Join("; ", systemBytes.OrderByDescending(s => s.Value.total).Where(s => s.Value.total > 0.0)
+                .Select(s => $"{s.Key} {s.Value.total / count:0.00} (worst {s.Value.worst:0})"));
         }
 
         private static float Cost<T>(T view, System.Func<T, float> read) where T : Behaviour
@@ -405,6 +420,7 @@ namespace Clube.Debug
             text.AppendLine($"  pending {world.PendingCount}, proven uniform {world.World.CountProvenLayers()}, chunks held {world.World.LoadedCount}, loading {world.IsLoading}, in sight {world.IsLoadingInSight}, chunk meshes {world.Stats.Renderers}, regions {world.Stats.Regions} ({world.Stats.RegionsDrawn} drawn, {world.Stats.RegionsWaiting} waiting); phases (last frame): {world.Stats.Phases}");
             text.AppendLine($"  player loop (ms a frame): {loopTimes.Top(LoopStagesShown, frames.Count)}");
             text.AppendLine($"  systems (ms a frame; worst frame; frames over {SlowSystemMilliseconds:0} ms): {SystemsReport()}");
+            text.AppendLine($"  allocation by system (KB a frame; worst frame): {AllocationReport()}");
             int phaseFrames = Mathf.Max(1, frames.Count);
             text.AppendLine("  streaming phases (ms a frame): " + string.Join(", ", PhaseNames.Select((phase, i) => $"{phase} {phaseTotals[i] / phaseFrames:0.00} (worst {phaseWorst[i]:0})")));
             string top = markers.Top(MarkersShown, frames.Count);
@@ -440,6 +456,7 @@ namespace Clube.Debug
                 values.Clear();
             }
             systems.Clear();
+            systemBytes.Clear();
             System.Array.Clear(phaseTotals, 0, phaseTotals.Length);
             System.Array.Clear(phaseWorst, 0, phaseWorst.Length);
             load.Clear();
