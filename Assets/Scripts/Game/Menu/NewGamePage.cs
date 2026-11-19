@@ -62,7 +62,10 @@ namespace Clube.Game
 
         private static string OpeningText(bool chosen, string name, string about)
         {
-            return $"{(chosen ? "●" : "○")}  <b>{name}</b>    <size=13>{about}</size>";
+            // The description on its own line (GL788): a wrapped line of mixed sizes was cut off by the row.
+            return string.IsNullOrEmpty(about)
+                ? $"{(chosen ? "●" : "○")}  <b>{name}</b>"
+                : $"{(chosen ? "●" : "○")}  <b>{name}</b>\n      <size=13>{about}</size>";
         }
 
         /// <summary>The seed the text makes.</summary>
@@ -130,7 +133,7 @@ namespace Clube.Game
             GUILayout.BeginHorizontal();
             GUI.SetNextControlName("Seed");
             seedText = GUILayout.TextField(seedText, 24, styles.Field, GUILayout.Height(36f));
-            if (GameUi.LayoutButton("Random", styles.Button, GUILayout.Width(110f), GUILayout.Height(36f)))
+            if (GameUi.LayoutButton("Random", styles.Button, GUILayout.MinWidth(110f), GUILayout.MinHeight(36f)))
             {
                 seedText = Random.Range(1, 1000000).ToString();
                 GUI.FocusControl(null);
@@ -160,12 +163,12 @@ namespace Clube.Game
 
             GUILayout.Space(22f);
             GUILayout.BeginHorizontal();
-            if (GameUi.LayoutButton("Back", styles.Button, GUILayout.Height(46f)))
+            if (GameUi.LayoutButton("Back", styles.Button, GUILayout.MinHeight(46f)))
             {
                 choice = Choice.Back;
             }
             GUILayout.Space(12f);
-            if (GameUi.LayoutButton("Start", styles.Button, GUILayout.Height(46f)))
+            if (GameUi.LayoutButton("Start", styles.Button, GUILayout.MinHeight(46f)))
             {
                 choice = Choice.Start;
             }

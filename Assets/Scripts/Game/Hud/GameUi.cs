@@ -65,11 +65,25 @@ namespace Clube.Game
             return Clicked(GUI.Button(rect, text, style), text);
         }
 
-        /// <summary>An auto-laid-out button that clicks when pressed (GL491).</summary>
+        /// <summary>
+        /// An auto-laid-out button that clicks when pressed (GL491). One sizing rule for every menu button (GL788):
+        /// it is never smaller than its text plus padding, so a wide font can't clip it; the caller's sizes
+        /// are minimums (use <c>MinWidth</c>/<c>MinHeight</c>, not fixed ones).
+        /// </summary>
         public static bool LayoutButton(string text, GUIStyle style, params GUILayoutOption[] options)
         {
-            return Clicked(GUILayout.Button(text, style, options), text);
+            var content = new GUIContent(text);
+            Vector2 size = style.CalcSize(content);
+            var fit = new System.Collections.Generic.List<GUILayoutOption>(options) { GUILayout.MinHeight(size.y + ButtonMargin) };
+            if (!style.wordWrap)
+            {
+                fit.Add(GUILayout.MinWidth(size.x + 2f * ButtonMargin));
+            }
+            return Clicked(GUILayout.Button(content, style, fit.ToArray()), text);
         }
+
+        // Breathing room added to a button's measured text, on top of the style's own padding.
+        private const float ButtonMargin = 8f;
 
         private static bool Clicked(bool pressed, string text)
         {

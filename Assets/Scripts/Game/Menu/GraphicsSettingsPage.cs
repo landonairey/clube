@@ -12,7 +12,7 @@ namespace Clube.Game
     public sealed class GraphicsSettingsPage
     {
         public const float Width = 760f;
-        public const float Height = 700f;
+        public const float Height = 780f;
 
         private static readonly FrameRateLimit[] Limits = { FrameRateLimit.Fps30, FrameRateLimit.Fps60, FrameRateLimit.VSync, FrameRateLimit.Unlimited };
         private static string[] limitLabels;
@@ -68,7 +68,7 @@ namespace Clube.Game
             GUILayout.Label("Only the sky stops: drying and smelting go on.", hint);
 
             GUILayout.FlexibleSpace();
-            return GameUi.LayoutButton("Back", button, GUILayout.Height(36f));
+            return GameUi.LayoutButton("Back", button, GUILayout.MinHeight(36f));
         }
 
         // The resolution presets by aspect, and window or full screen (GL462). Dragging a window's edge changes its size too.

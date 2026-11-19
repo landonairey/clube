@@ -255,30 +255,30 @@ namespace Clube.Game
             BeginPopup(Width, height);
             GUILayout.Label("Paused", titleStyle);
             GUILayout.Space(8f);
-            if (GameUi.LayoutButton("Back", buttonStyle, GUILayout.Height(ButtonHeight)))
+            if (GameUi.LayoutButton("Back", buttonStyle, GUILayout.MinHeight(ButtonHeight)))
             {
                 SetOpen(false);
             }
             GUILayout.Space(10f);
             // Video and Audio side by side (GL275, GL276).
             GUILayout.BeginHorizontal();
-            if (GameUi.LayoutButton("Video", buttonStyle, GUILayout.Height(ButtonHeight)))
+            if (GameUi.LayoutButton("Video", buttonStyle, GUILayout.MinHeight(ButtonHeight)))
             {
                 OpenGraphics();
             }
             GUILayout.Space(10f);
-            if (GameUi.LayoutButton("Audio", buttonStyle, GUILayout.Height(ButtonHeight)))
+            if (GameUi.LayoutButton("Audio", buttonStyle, GUILayout.MinHeight(ButtonHeight)))
             {
                 audioPage = new AudioSettingsPage();
             }
             GUILayout.EndHorizontal();
             GUILayout.Space(10f);
-            if (GameUi.LayoutButton("Save and Exit", buttonStyle, GUILayout.Height(ButtonHeight)))
+            if (GameUi.LayoutButton("Save and Exit", buttonStyle, GUILayout.MinHeight(ButtonHeight)))
             {
                 StartNaming();
             }
             GUILayout.Space(10f);
-            if (GameUi.LayoutButton("Exit Without Saving", buttonStyle, GUILayout.Height(ButtonHeight)))
+            if (GameUi.LayoutButton("Exit Without Saving", buttonStyle, GUILayout.MinHeight(ButtonHeight)))
             {
                 Exit();
             }
@@ -312,13 +312,13 @@ namespace Clube.Game
                 : SaveSlots.Exists(name) ? "Replaces the save with this name." : " ", hintStyle);
             GUILayout.Space(4f);
             GUILayout.BeginHorizontal();
-            if (GameUi.LayoutButton("Cancel", buttonStyle, GUILayout.Height(ButtonHeight)))
+            if (GameUi.LayoutButton("Cancel", buttonStyle, GUILayout.MinHeight(ButtonHeight)))
             {
                 saveName = null;
                 problem = null;
             }
             GUILayout.Space(10f);
-            if (GameUi.LayoutButton("Save", buttonStyle, GUILayout.Height(ButtonHeight)) || enter)
+            if (GameUi.LayoutButton("Save", buttonStyle, GUILayout.MinHeight(ButtonHeight)) || enter)
             {
                 SaveAndExit();
             }

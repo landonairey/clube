@@ -1,3 +1,4 @@
+using Clube.Core;
 using UnityEngine;
 
 namespace Clube.Game
@@ -14,7 +15,7 @@ namespace Clube.Game
 
         private static string version;
 
-        /// <summary>e.g. "v0.1.0 · build 412 (a514430)".</summary>
+        /// <summary>e.g. "v0.2.1312 (e84d3c5)"; in the Editor "v0.2 · Editor" (GL790).</summary>
         public static string Version
         {
             get
@@ -24,7 +25,7 @@ namespace Clube.Game
                     var text = Resources.Load<TextAsset>(ResourceName);
                     version = text != null && !string.IsNullOrWhiteSpace(text.text)
                         ? text.text.Trim()
-                        : $"v{Application.version} · Editor";
+                        : BuildVersion.ForEditor(Application.version);
                 }
                 return version;
             }

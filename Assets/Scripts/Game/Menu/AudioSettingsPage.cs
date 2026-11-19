@@ -10,7 +10,7 @@ namespace Clube.Game
     public sealed class AudioSettingsPage
     {
         public const float Width = 520f;
-        public const float Height = 380f;
+        public const float Height = 450f;
 
         /// <summary>Draws the popup's contents in the current layout area; true when Back was pressed.</summary>
         public bool Draw(GUIStyle title, GUIStyle label, GUIStyle hint, GUIStyle button)
@@ -21,7 +21,7 @@ namespace Clube.Game
             Slider("Footsteps", null, AudioChannel.Footsteps, label, hint);
             Slider("Ambient", "Wind, leaves and birds", AudioChannel.Ambient, label, hint);
             GUILayout.FlexibleSpace();
-            if (GameUi.LayoutButton("Defaults", button, GUILayout.Height(30f)))
+            if (GameUi.LayoutButton("Defaults", button, GUILayout.MinHeight(30f)))
             {
                 foreach (AudioChannel channel in System.Enum.GetValues(typeof(AudioChannel)))
                 {
@@ -29,7 +29,7 @@ namespace Clube.Game
                 }
             }
             GUILayout.Space(6f);
-            return GameUi.LayoutButton("Back", button, GUILayout.Height(36f));
+            return GameUi.LayoutButton("Back", button, GUILayout.MinHeight(36f));
         }
 
         private static void Slider(string name, string about, AudioChannel channel, GUIStyle label, GUIStyle hint)
