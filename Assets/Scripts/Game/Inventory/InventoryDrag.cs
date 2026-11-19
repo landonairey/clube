@@ -98,20 +98,21 @@ namespace Clube.Game
         /// The same over any inventory laid out by <see cref="InventoryGridGui.DrawGrid"/> from <paramref name="gridTopLeft"/>
         /// (GL367: a chest's slots): moves and splits within it, and reports clicks and drops outside it.
         /// </summary>
-        public InventoryDragResult HandleGrid(Inventory items, Vector2 gridTopLeft)
+        public InventoryDragResult HandleGrid(Inventory items, Vector2 gridTopLeft, bool splitOnRightClick = true)
         {
-            return Handle(items, (point, reach) => InventoryGridGui.GridSlotNear(gridTopLeft, items, point, reach));
+            return Handle(items, (point, reach) => InventoryGridGui.GridSlotNear(gridTopLeft, items, point, reach), splitOnRightClick);
         }
 
-        // The drag itself, over slots found by slotNear(point, reach).
-        private InventoryDragResult Handle(Inventory items, System.Func<Vector2, float, int> slotNear)
+        // The drag itself, over slots found by slotNear(point, reach). A station's rows leave the right click to
+        // InventoryGridGui.PullHalf (GL300), so they don't split.
+        private InventoryDragResult Handle(Inventory items, System.Func<Vector2, float, int> slotNear, bool splitOnRightClick = true)
         {
             Event current = Event.current;
             int over = slotNear(current.mousePosition, 0f);
             var none = new InventoryDragResult(InventoryDragKind.None, -1, 0, current.mousePosition);
 
             // A right click splits a stack in half into an empty slot (GL191).
-            if (current.type == EventType.MouseDown && current.button == 1 && over >= 0 && items[over].Count >= 2)
+            if (splitOnRightClick && current.type == EventType.MouseDown && current.button == 1 && over >= 0 && items[over].Count >= 2)
             {
                 items.Split(over, items[over].Count / 2);
                 current.Use();

@@ -44,6 +44,14 @@ namespace Clube.Game
         private GUIStyle countStyle;
         private Vector2 listScroll;
         private readonly InventoryDrag drag = new InventoryDrag();
+        // The station's own rows drag too (GL792): input, output, fuel and the fitted slot, each its own drag.
+        private readonly InventoryDrag inputDrag = new InventoryDrag();
+        private readonly InventoryDrag outputDrag = new InventoryDrag();
+        private readonly InventoryDrag fuelDrag = new InventoryDrag();
+        private readonly InventoryDrag upgradeDrag = new InventoryDrag();
+        private Rect panelRect;
+        private InventoryDrag carriedDrag;
+        private Inventory carriedRow;
 
         /// <summary>The station being used, or null when closed.</summary>
         public StationObject Current { get; private set; }
@@ -77,6 +85,10 @@ namespace Clube.Game
                 station.Station.Chosen = null;
             }
             drag.Reset();
+            inputDrag.Reset();
+            outputDrag.Reset();
+            fuelDrag.Reset();
+            upgradeDrag.Reset();
             openedFrame = Time.frameCount;
             if (player != null)
             {
@@ -167,6 +179,9 @@ namespace Clube.Game
             // The trash slot (GL224) sits in a row under your items.
             float height = Padding * 2f + 32f + rightHeight + 12f + 30f + InventoryGridGui.PlayerHeight(inventory) + InventoryGridGui.RowGap + slot;
             var panel = new Rect((Screen.width - width) * 0.5f, Mathf.Max(0f, (Screen.height - height) * 0.5f), width, height);
+            panelRect = panel;
+            carriedDrag = null;
+            carriedRow = null;
             InventoryGridGui.Panel(panel);
             float x = panel.x + Padding;
             float y = panel.y + Padding;
@@ -193,13 +208,25 @@ namespace Clube.Game
             }
             else if (mouse.Kind == InventoryDragKind.DroppedOutside && !InventoryGridGui.Trash(items, mouse, trashSlot))
             {
-                DropOnStation(station, items, mouse, inputSlots, fuelSlots, upgradeSlot);
+                // Beyond the screen it drops on the ground (GL792), as from the inventory (GL768).
+                if (!panel.Contains(mouse.Position))
+                {
+                    inventory.DropFromSlot(mouse.Slot, mouse.Count);
+                }
+                else
+                {
+                    DropOnStation(station, items, mouse, inputSlots, fuelSlots, upgradeSlot);
+                }
             }
             InventoryGridGui.DrawPlayer(grid, inventory, drag.Pressed);
             InventoryGridGui.DrawTrash(trashSlot, drag.IsDragging);
             if (drag.IsDragging)
             {
                 drag.DrawCarried(items);
+            }
+            else if (carriedDrag != null)
+            {
+                carriedDrag.DrawCarried(carriedRow);
             }
             else
             {
@@ -306,22 +333,14 @@ namespace Clube.Game
             inputSlots = new Rect(x, y, station.Input.SlotCount * (slot + gap), slot);
             fuelSlots = Rect.zero;
             upgradeSlot = Rect.zero;
-            int input = InventoryGridGui.DrawRow(new Vector2(x, y), station.Input);
-            if (input >= 0)
-            {
-                station.Input.MoveTo(input, items, keepApart: true);
-            }
+            StationRow(new Vector2(x, y), station.Input, inputDrag, items);
             InventoryGridGui.PullHalf(station.Input, items, true);
             string missing = shown != null && station.Chosen == shown ? DrawMissing(new Vector2(x, y), station, shown) : null;
             float workX = x + station.Input.SlotCount * (slot + gap) + 8f;
             float workWidth = Mathf.Max(80f, area.xMax - workX - slot - 8f);
             DrawWork(new Rect(workX, y, workWidth, slot), station);
             var outputAt = new Vector2(area.xMax - slot, y);
-            int output = InventoryGridGui.DrawRow(outputAt, station.Output);
-            if (output >= 0)
-            {
-                station.Output.MoveTo(output, items, keepApart: true);
-            }
+            StationRow(outputAt, station.Output, outputDrag, items);
             InventoryGridGui.PullHalf(station.Output, items, true);
             // What it's about to make, greyed out in the empty output slot (GL58).
             Recipe upcoming = station.Upcoming;
@@ -341,11 +360,7 @@ namespace Clube.Game
             {
                 GUI.Label(new Rect(x, y + 18f, 40f, 28f), "Fuel");
                 fuelSlots = new Rect(x + 44f, y, slot, slot);
-                int fuel = InventoryGridGui.DrawRow(new Vector2(x + 44f, y), station.Fuel);
-                if (fuel >= 0)
-                {
-                    station.Fuel.MoveTo(fuel, items, keepApart: true);
-                }
+                StationRow(new Vector2(x + 44f, y), station.Fuel, fuelDrag, items);
                 InventoryGridGui.PullHalf(station.Fuel, items, true);
                 float burnX = x + 44f + slot + 12f;
                 DrawBurn(new Rect(burnX, y, Mathf.Min(WorkWidth, area.xMax - burnX), slot), station);
@@ -355,11 +370,7 @@ namespace Clube.Game
                 // What's fitted to the station (GL703): a hammer on the flat rock cuts the strikes.
                 GUI.Label(new Rect(x, y + 18f, 60f, 28f), "Fitted");
                 upgradeSlot = new Rect(x + 64f, y, slot, slot);
-                int fitted = InventoryGridGui.DrawRow(new Vector2(x + 64f, y), station.Upgrades);
-                if (fitted >= 0)
-                {
-                    station.Upgrades.MoveTo(fitted, items, keepApart: true);
-                }
+                StationRow(new Vector2(x + 64f, y), station.Upgrades, upgradeDrag, items);
                 ItemStack upgrade = station.Upgrades[0];
                 string note = upgrade.IsEmpty ? "A hammer fitted here cuts the strikes" : $"{upgrade.Item.DisplayName}: {upgrade.Item.Upgrade.StrikePower:0.#}x strikes";
                 GUI.Label(new Rect(x + 64f + slot + 12f, y + 18f, Mathf.Max(60f, area.xMax - x - slot - 76f), 28f), note);
@@ -561,6 +572,35 @@ namespace Clube.Game
             else if (station.Upgrades != null && upgradeSlot.Contains(drop.Position) && station.Upgrades.Accepts(0, stack.Item))
             {
                 FitUpgrade(station, items, drop.Slot);
+            }
+        }
+
+        // One of the station's rows (GL792): a click takes the stack to your items as before; a drag let go elsewhere on
+        // the screen takes it to your items, and beyond the screen drops it on the ground. The right click is left to
+        // PullHalf (GL300).
+        private void StationRow(Vector2 topLeft, Inventory row, InventoryDrag rowDrag, Inventory items)
+        {
+            InventoryDragResult result = rowDrag.HandleGrid(row, topLeft, splitOnRightClick: false);
+            if (result.Kind == InventoryDragKind.Clicked)
+            {
+                row.MoveTo(result.Slot, items, result.Count, keepApart: true);
+            }
+            else if (result.Kind == InventoryDragKind.DroppedOutside)
+            {
+                if (panelRect.Contains(result.Position))
+                {
+                    row.MoveTo(result.Slot, items, result.Count, keepApart: true);
+                }
+                else
+                {
+                    inventory.DropFrom(row, result.Slot, result.Count);
+                }
+            }
+            InventoryGridGui.DrawRow(topLeft, row, rowDrag.Pressed);
+            if (rowDrag.IsDragging)
+            {
+                carriedDrag = rowDrag;
+                carriedRow = row;
             }
         }
 

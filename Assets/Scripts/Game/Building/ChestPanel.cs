@@ -156,10 +156,19 @@ namespace Clube.Game
             {
                 chest.MoveTo(inChest.Slot, items, inChest.Count);
             }
+            else if (inChest.Kind == InventoryDragKind.DroppedOutside && !panel.Contains(inChest.Position))
+            {
+                // Let go beyond the screen it drops on the ground (GL792), as from the inventory (GL768).
+                inventory.DropFrom(chest, inChest.Slot, inChest.Count);
+            }
             InventoryDragResult mouse = drag.Handle(inventory, grid);
             if (mouse.Kind == InventoryDragKind.Clicked)
             {
                 items.MoveTo(mouse.Slot, chest, mouse.Count);
+            }
+            else if (mouse.Kind == InventoryDragKind.DroppedOutside && !panel.Contains(mouse.Position))
+            {
+                inventory.DropFromSlot(mouse.Slot, mouse.Count);
             }
             else if (mouse.Kind == InventoryDragKind.DroppedOutside && chestArea.Contains(mouse.Position))
             {

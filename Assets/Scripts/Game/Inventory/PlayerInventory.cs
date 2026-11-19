@@ -149,17 +149,26 @@ namespace Clube.Game
         /// <summary>Drags out of the screen drop this much of a slot on the ground as a sack (GL768): the whole stack (a part included) when <paramref name="count"/> covers it. Returns what was dropped; nothing when there is no way to drop it.</summary>
         public bool DropFromSlot(int slot, int count)
         {
-            ItemStack held = Inventory[slot];
+            return DropFrom(Inventory, slot, count);
+        }
+
+        /// <summary>
+        /// The same from any inventory the player has open (GL792: a station's or a chest's slots dragged off its screen):
+        /// that much of the slot goes on the ground in front of the player as a sack. What can't be dropped stays.
+        /// </summary>
+        public bool DropFrom(Inventory source, int slot, int count)
+        {
+            ItemStack held = source[slot];
             if (held.IsEmpty || count < 1)
             {
                 return false;
             }
-            ItemStack taken = count >= held.Count ? Inventory.TakeAll(slot) : new ItemStack(held.Item, Inventory.RemoveAt(slot, count), held.Contents, held.Wear, held.Quality);
+            ItemStack taken = count >= held.Count ? source.TakeAll(slot) : new ItemStack(held.Item, source.RemoveAt(slot, count), held.Contents, held.Wear, held.Quality);
             if (DropAhead(taken))
             {
                 return true;
             }
-            Inventory.Add(taken.Item, taken.Count, taken.Contents, taken.Wear, taken.Quality, taken.Part);
+            source.Add(taken.Item, taken.Count, taken.Contents, taken.Wear, taken.Quality, taken.Part);
             return false;
         }
 
