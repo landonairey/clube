@@ -56,6 +56,10 @@ namespace Clube.Core
         [SerializeField]
         private List<ItemPrice> prices = new List<ItemPrice>();
 
+        [Tooltip("GL797: items every shop sells whatever its trade (early materials, so a stuck player can always buy them), at this list's prices.")]
+        [SerializeField]
+        private List<ItemDefinition> soldEverywhere = new List<ItemDefinition>();
+
         /// <summary>Makes a price list in code (tests); the game's are assets.</summary>
         public static PriceList Create(params ItemPrice[] prices)
         {
@@ -65,6 +69,16 @@ namespace Clube.Core
         }
 
         public IReadOnlyList<ItemPrice> Prices => prices;
+
+        /// <summary>GL797: what every shop sells on top of its own trade (stone and birch wood in the game's list).</summary>
+        public IReadOnlyList<ItemDefinition> SoldEverywhere => soldEverywhere;
+
+        /// <summary>Sets <see cref="SoldEverywhere"/> (tests); the game's list is in the asset.</summary>
+        public void SetSoldEverywhere(params ItemDefinition[] items)
+        {
+            soldEverywhere.Clear();
+            soldEverywhere.AddRange(items);
+        }
 
         /// <summary>
         /// The share of each listed price actually paid (GL471: a shopkeeper's disposition pays less), 1 by default.
@@ -77,6 +91,7 @@ namespace Clube.Core
         public PriceList Scaled(float share)
         {
             PriceList copy = Create(prices.ToArray());
+            copy.soldEverywhere.AddRange(soldEverywhere);
             copy.Share = Math.Max(0f, share);
             return copy;
         }

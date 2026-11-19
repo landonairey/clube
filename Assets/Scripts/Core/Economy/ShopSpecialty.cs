@@ -126,7 +126,8 @@ namespace Clube.Core
 
         /// <summary>
         /// What the shop sells and for how much: one lot of each item it sells (as the price list counts lots, e.g. 2 sticks),
-        /// at what the list pays times the markup, rounded up to a whole coin. Items the list has no price for aren't sold.
+        /// at what the list pays times the markup, rounded up to a whole coin, then the list's
+        /// <see cref="PriceList.SoldEverywhere"/> items it doesn't already sell (GL797). Items the list has no price for aren't sold.
         /// </summary>
         public List<ItemPrice> Offers(PriceList master)
         {
@@ -137,14 +138,27 @@ namespace Clube.Core
             }
             foreach (ItemDefinition item in sells)
             {
-                if (item == null || (item is TorchDefinition torch && torch.IsLit) || !master.TryGetLot(item, out int coins, out int lot))
+                AddOffer(offers, item, master);
+            }
+            // GL797: every shop also sells the price list's early materials, whatever its trade.
+            foreach (ItemDefinition item in master.SoldEverywhere)
+            {
+                if (!sells.Contains(item))
                 {
-                    continue;
+                    AddOffer(offers, item, master);
                 }
-                int asked = Math.Max(1, (int)Math.Ceiling(coins * sellMarkup - 1e-4f));
-                offers.Add(new ItemPrice(item, asked, lot));
             }
             return offers;
+        }
+
+        private void AddOffer(List<ItemPrice> offers, ItemDefinition item, PriceList master)
+        {
+            if (item == null || (item is TorchDefinition torch && torch.IsLit) || !master.TryGetLot(item, out int coins, out int lot))
+            {
+                return;
+            }
+            int asked = Math.Max(1, (int)Math.Ceiling(coins * sellMarkup - 1e-4f));
+            offers.Add(new ItemPrice(item, asked, lot));
         }
     }
 }

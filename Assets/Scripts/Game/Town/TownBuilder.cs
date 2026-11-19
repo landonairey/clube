@@ -143,22 +143,24 @@ namespace Clube.Game
             root.SetParent(town.Root, false);
             root.SetPositionAndRotation(town.ToScene(At(plan, plot.Centre, floor)), town.SceneRotation(yaw));
 
-            FitShop(root, shop, parts.Material, parts.TextMaterial, parts.SleepingRollPrefab, plan.Seed);
+            SleepingRoll bed = FitShop(root, shop, parts.Material, parts.TextMaterial, parts.SleepingRollPrefab, plan.Seed);
 
             var keeperObject = new GameObject($"{shop.ShopName} keeper");
             keeperObject.transform.SetParent(town.Root, false);
             Shopkeeper keeper = keeperObject.AddComponent<Shopkeeper>();
             keeper.Setup(shop, parts.Prices, parts.Hours, parts.Clock, town, parts.Material, plan.Seed + (int)shop.Kind * 977, parts.DailyCoins,
-                parts.Post != null ? parts.Post.DispositionOf(shop.Kind) : null);
+                parts.Post != null ? parts.Post.DispositionOf(shop.Kind) : null, bed);
             return keeper;
         }
 
         /// <summary>
         /// A shop's fittings under its root (at the middle of its floor, its front out of +z): the sign under the lintel, the
         /// keeper's sleeping roll and the wares on the counter. The town's shops and a planned settlement's (GL613) share it.
+        /// Returns the keeper's roll, which the player can sleep in (GL798), or null without a prefab.
         /// </summary>
-        public static void FitShop(Transform root, ShopSpecialty shop, Material material, Material textMaterial, GameObject sleepingRollPrefab, int seed)
+        public static SleepingRoll FitShop(Transform root, ShopSpecialty shop, Material material, Material textMaterial, GameObject sleepingRollPrefab, int seed)
         {
+            SleepingRoll bed = null;
             float d = TownLayout.ShopDepth * 0.5f;
             // The sign hangs under the lintel over the open front.
             GameObject sign = Local("Sign", root, TownMeshes.SignBoard(shop.Colour), material, new Vector3(0f, TownLayout.ShopHeight - 0.45f, d + 0.06f));
@@ -166,11 +168,16 @@ namespace Clube.Game
             // The game's own sleeping roll, lying along the back wall on the floor (GL417).
             if (sleepingRollPrefab != null)
             {
-                GameObject roll = ModelCopy.Copy(sleepingRollPrefab, root, "Sleeping roll");
+                GameObject roll = ModelCopy.Copy(sleepingRollPrefab, root, "Sleeping roll", colliders: true);
                 roll.transform.localPosition = new Vector3(TownLayout.BedCentre.x, 0f, TownLayout.BedCentre.y);
                 roll.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+                // GL798: the player may sleep in it, which wakes the keeper (their Setup hooks it up).
+                bed = roll.AddComponent<SleepingRoll>();
+                bed.FitsGround = false;
+                bed.Label = $"Sleep in {shop.KeeperName}'s bed";
             }
             Display(root, shop, material, seed);
+            return bed;
         }
 
         // A model in a shop's (or any parent's) own frame.
