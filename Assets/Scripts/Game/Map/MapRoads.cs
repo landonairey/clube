@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using Clube.Core;
 using Unity.Profiling;
@@ -26,6 +27,11 @@ namespace Clube.Game
         private readonly FrameAllowance allowance = new FrameAllowance();
         // The piece being written over several frames (GL771): one at a time, as each cuts down the trees in its way first.
         private const float LeastWriteMilliseconds = 0.5f;
+        private const float CollectMilliseconds = 1.5f;
+        // The look over the roads for pieces to write, and what it has found so far (GL771).
+        private readonly List<(int Road, int Piece, float Distance)> nextPending = new List<(int, int, float)>();
+        private readonly List<(int Road, int Tunnel, int Piece, float Distance)> nextBoring = new List<(int, int, int, float)>();
+        private SlicedWork collecting;
         private SlicedWork writing;
         private RoadWriter writingRoad;
         private int writingPiece;
@@ -94,7 +100,6 @@ namespace Clube.Game
         private int version = -1;
         private Vector2 collectedAt;
         private float collectedTime = float.MinValue;
-        private bool moreToWorkOut;
 
         // GL653: the ground a road is still to be written into is not shown until it is. A road not worked out holds
         // the box round its line, widened by what its bed may reach either side.
@@ -303,11 +308,20 @@ namespace Clube.Game
             Vector3 local = session.WorldView.transform.InverseTransformPoint(view.transform.position);
             var viewer = new Vector2(local.x, local.z);
             float started = Time.realtimeSinceStartup;
-            if (moreToWorkOut || (viewer - collectedAt).sqrMagnitude > 6f * 6f || Time.unscaledTime - collectedTime > 1f)
+            if (collecting == null && ((viewer - collectedAt).sqrMagnitude > 6f * 6f || Time.unscaledTime - collectedTime > 1f))
+            {
+                collecting = new SlicedWork(CollectSteps(viewer));
+            }
+            if (collecting != null)
             {
                 using (CollectMarker.Auto())
+                using (FrameCost.Of("Roads: look for pieces"))
                 {
-                    Collect(viewer);
+                    if (collecting.Run(session.WorldView.Hurry ? float.PositiveInfinity : CollectMilliseconds))
+                    {
+                        collecting.Dispose();
+                        collecting = null;
+                    }
                 }
             }
             // GL770: one piece can take several frames' budget: the frames after it pay that back.
@@ -354,6 +368,8 @@ namespace Clube.Game
             }
             writing?.Dispose();
             writing = null;
+            collecting?.Dispose();
+            collecting = null;
             pending.Clear();
             hold.Clear();
             heights = new KeptHeights(session.Map.Height);
@@ -460,16 +476,15 @@ namespace Clube.Game
         }
 
         // Finds what there is to do round the viewer: pieces to write (nearest first), bridges and signposts to stand.
-        private void Collect(Vector2 viewer)
+        // GL771: a road at a time over several frames: looking over them all was over 16 ms about once a second. What was
+        // found before goes on being written until the new list is ready.
+        private IEnumerator CollectSteps(Vector2 viewer)
         {
             collectedAt = viewer;
             collectedTime = Time.unscaledTime;
-            nextLookTime = 0f;
-            moreToWorkOut = false;
-            pending.Clear();
-            boring.Clear();
+            nextPending.Clear();
+            nextBoring.Clear();
             World world = session.WorldView.World;
-            bool workedOutOne = false;
             float buildRange = Range();
             for (int i = 0; i < bounds.Length; i++)
             {
@@ -478,17 +493,13 @@ namespace Clube.Game
                 {
                     continue;
                 }
-                if (built[i] == null)
-                {
-                    // A road's heights are a few tens of milliseconds: one new road a frame.
-                    if (workedOutOne)
-                    {
-                        moreToWorkOut = true;
-                        continue;
-                    }
-                    workedOutOne = true;
-                }
+                // A road's heights are a few tens of milliseconds: a step of their own.
+                bool isNew = built[i] == null;
                 Built road = WorkOut(i);
+                if (isNew)
+                {
+                    yield return null;
+                }
                 if (road == null)
                 {
                     continue;
@@ -497,13 +508,20 @@ namespace Clube.Game
                 road.Writer.Unwritten(viewer, buildRange, found);
                 foreach (int piece in found)
                 {
-                    pending.Add((i, piece, (road.Writer.Middle(piece) - viewer).sqrMagnitude));
+                    nextPending.Add((i, piece, (road.Writer.Middle(piece) - viewer).sqrMagnitude));
                 }
                 BuildBridges(i, road, viewer, world);
                 CollectTunnels(i, road, viewer, world);
+                yield return null;
             }
-            pending.Sort((a, b) => a.Distance.CompareTo(b.Distance));
-            boring.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            nextPending.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            nextBoring.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            pending.Clear();
+            pending.AddRange(nextPending);
+            boring.Clear();
+            boring.AddRange(nextBoring);
+            nextLookTime = 0f;
+            yield return null;
             BuildSignposts(viewer, world);
         }
 
@@ -636,7 +654,7 @@ namespace Clube.Game
                 foreach (int piece in found)
                 {
                     Vector3 middle = bore.Middle(piece);
-                    boring.Add((index, t, piece, (new Vector2(middle.x, middle.z) - viewer).sqrMagnitude));
+                    nextBoring.Add((index, t, piece, (new Vector2(middle.x, middle.z) - viewer).sqrMagnitude));
                 }
                 for (int end = 0; end < 2 && bore.Pieces > 0 && material != null; end++)
                 {

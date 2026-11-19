@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using Clube.Core;
@@ -30,6 +31,11 @@ namespace Clube.Game
         private readonly FrameAllowance allowance = new FrameAllowance();
         // The piece being written over several frames (GL771): one at a time, as what stands on it waits for it.
         private const float LeastWriteMilliseconds = 0.5f;
+        private const float CollectMilliseconds = 1.5f;
+        // The look over the settlements for pieces to write, and what it has found so far (GL771).
+        private readonly List<(int Index, float Distance)> nextNear = new List<(int, float)>();
+        private readonly List<(int Settlement, int Piece, float Distance)> nextPending = new List<(int, int, float)>();
+        private SlicedWork collecting;
         private SlicedWork writing;
         private SettlementWriter writingSettlement;
         private int writingPiece;
@@ -269,11 +275,20 @@ namespace Clube.Game
             Vector3 local = session.WorldView.transform.InverseTransformPoint(view.transform.position);
             var viewer = new Vector2(local.x, local.z);
             float started = Time.realtimeSinceStartup;
-            if ((viewer - collectedAt).sqrMagnitude > 6f * 6f || Time.unscaledTime - collectedTime > 1f)
+            if (collecting == null && ((viewer - collectedAt).sqrMagnitude > 6f * 6f || Time.unscaledTime - collectedTime > 1f))
+            {
+                collecting = new SlicedWork(CollectSteps(viewer));
+            }
+            if (collecting != null)
             {
                 using (CollectMarker.Auto())
+                using (FrameCost.Of("Settlements: look for pieces"))
                 {
-                    Collect(viewer);
+                    if (collecting.Run(session.WorldView.Hurry ? float.PositiveInfinity : CollectMilliseconds))
+                    {
+                        collecting.Dispose();
+                        collecting = null;
+                    }
                 }
             }
             // GL770: one piece can take several frames' budget: the frames after it pay that back.
@@ -313,6 +328,8 @@ namespace Clube.Game
             }
             writing?.Dispose();
             writing = null;
+            collecting?.Dispose();
+            collecting = null;
             hold.Clear();
             pending.Clear();
             heights = new KeptHeights(session.Map.Height);
@@ -527,15 +544,16 @@ namespace Clube.Game
         }
 
         // Finds the settlements near the viewer and their pieces that can be written, nearest first; one new one is laid out a frame.
-        private void Collect(Vector2 viewer)
+        // GL771: a settlement at a time over several frames. What was found before goes on being written until the new
+        // list is ready.
+        private IEnumerator CollectSteps(Vector2 viewer)
         {
             collectedAt = viewer;
             collectedTime = Time.unscaledTime;
-            near.Clear();
-            pending.Clear();
+            nextNear.Clear();
+            nextPending.Clear();
             WorldPlan plan = session.Plan;
             float range = Range();
-            bool workedOutOne = false;
             for (int i = 0; i < plan.Settlements.Count; i++)
             {
                 PlannedSettlement settlement = plan.Settlements[i];
@@ -546,28 +564,28 @@ namespace Clube.Game
                 }
                 if (built[i] == null)
                 {
-                    if (workedOutOne)
-                    {
-                        collectedTime = float.MinValue;
-                        continue;
-                    }
-                    workedOutOne = true;
                     using (WorkOutMarker.Auto())
                     {
                         WorkOut(i);
                     }
+                    yield return null;
                 }
-                near.Add((i, distance));
+                nextNear.Add((i, distance));
                 SettlementWriter writer = built[i].Writer;
                 found.Clear();
                 writer.Ready(viewer, range, found);
                 foreach (int piece in found)
                 {
-                    pending.Add((i, piece, SettlementSite.Beyond(writer.Footprint(piece), viewer)));
+                    nextPending.Add((i, piece, SettlementSite.Beyond(writer.Footprint(piece), viewer)));
                 }
+                yield return null;
             }
-            near.Sort((a, b) => a.Distance.CompareTo(b.Distance));
-            pending.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            nextNear.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            nextPending.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            near.Clear();
+            near.AddRange(nextNear);
+            pending.Clear();
+            pending.AddRange(nextPending);
             fitDue = true;
         }
 
