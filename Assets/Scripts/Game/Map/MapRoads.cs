@@ -28,6 +28,7 @@ namespace Clube.Game
         // The piece being written over several frames (GL771): one at a time, as each cuts down the trees in its way first.
         private const float LeastWriteMilliseconds = 0.5f;
         private const float CollectMilliseconds = 1.5f;
+        private const int AskEveryFrames = 8;
         // The look over the roads for pieces to write, and what it has found so far (GL771).
         private readonly List<(int Road, int Piece, float Distance)> nextPending = new List<(int, int, float)>();
         private readonly List<(int Road, int Tunnel, int Piece, float Distance)> nextBoring = new List<(int, int, int, float)>();
@@ -525,6 +526,13 @@ namespace Clube.Game
             BuildSignposts(viewer, world);
         }
 
+        // GL771: the chunks a piece is missing are listed now and then: listing them for 32 pieces every frame was over
+        // 10 ms, and the streamer remembers what it was asked for. Otherwise the check stops at the first one missing.
+        private static bool AsksForChunks(float distanceSquared)
+        {
+            return distanceSquared < RequestMetres * RequestMetres && Time.frameCount % AskEveryFrames == 0;
+        }
+
         // Runs the piece in hand for this long (at least one step); true once no piece is left in hand.
         private bool RunWriting(float milliseconds)
         {
@@ -590,9 +598,9 @@ namespace Clube.Game
                 }
                 checks++;
                 missing.Clear();
-                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece, missing))
+                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece, AsksForChunks(next.Distance) ? missing : null))
                 {
-                    if (next.Distance < RequestMetres * RequestMetres)
+                    if (missing.Count > 0)
                     {
                         session.WorldView.RequestChunks(missing);
                     }
@@ -617,9 +625,9 @@ namespace Clube.Game
                 TunnelWriter bore = built[next.Road].Tunnels[next.Tunnel];
                 checks++;
                 missing.Clear();
-                if (!bore.Loaded(world, config.WorldHeightInChunks, next.Piece, missing))
+                if (!bore.Loaded(world, config.WorldHeightInChunks, next.Piece, AsksForChunks(next.Distance) ? missing : null))
                 {
-                    if (next.Distance < RequestMetres * RequestMetres)
+                    if (missing.Count > 0)
                     {
                         session.WorldView.RequestChunks(missing);
                     }
