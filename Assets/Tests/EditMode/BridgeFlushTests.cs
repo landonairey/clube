@@ -97,7 +97,10 @@ namespace Clube.Core.Tests
                 terrain.Seed = 1;
                 var map = (BoundedMapGenerator)TerrainGenerators.Create(terrain);
                 ResourceSurvey survey = ResourceSurvey.Build(terrain, map, OreField.Create(terrain, map), TreeField.Create(terrain, map), 40f);
-                WorldPlan plan = WorldPlanner.Build(survey, terrain.Seed);
+                // As the game plans it: the road classes' limits from the player's walkable slope (50 degrees in MapGen).
+                var rules = new WorldPlanRules();
+                rules.SetWalkableSlope(50f);
+                WorldPlan plan = WorldPlanner.Build(survey, terrain.Seed, rules);
                 WorldRoads.Finish(plan, map);
                 Vector2 start = MapStart.Pick(plan, survey);
                 var clearance = BridgeClearance.For(plan, VesselClass.Defaults());

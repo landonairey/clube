@@ -446,6 +446,9 @@ namespace Clube.Core.Tests
             Assert.IsFalse(AnimalFooting.WayClear(0f, new[] { 0.05f, 1.2f }, 2, 0.5f, 45f), "a wall after a level step: refused");
             Assert.IsTrue(AnimalFooting.WayClear(0f, new[] { -0.3f, -0.6f }, 2, 0.5f, 45f), "a short way down: walked");
             Assert.IsFalse(AnimalFooting.WayClear(0f, new[] { -0.5f, -3f }, 2, 0.5f, 45f), "a drop: refused");
+            // Nor is one put down where it could not walk away: a boulder's top, a cliff's face.
+            Assert.IsTrue(AnimalFooting.StandsOn(0f, new[] { 0.3f, -0.4f, 0.1f, 0f }, 4, 1f, 45f), "a hillside");
+            Assert.IsFalse(AnimalFooting.StandsOn(0f, new[] { 0.8f, 1.3f, -1.3f, 0.2f }, 4, 1f, 45f), "a boulder's top");
         }
     }
 }

@@ -265,7 +265,7 @@ namespace Clube.Game
                     float angle = (float)random.NextDouble() * Mathf.PI * 2f, far = Mathf.Sqrt((float)random.NextDouble()) * spread;
                     float x = site.Centre.x + Mathf.Cos(angle) * far, z = site.Centre.y + Mathf.Sin(angle) * far;
                     if (!TryOpenGround(x, z, playerHeight, out float height, out VoxelMaterial ground, out bool wet)
-                        || wet || (ground != null && ground.Kind == MaterialKind.Plant))
+                        || wet || (ground != null && ground.Kind == MaterialKind.Plant) || !Level(x, z, height, site.Species))
                     {
                         continue;
                     }
@@ -279,6 +279,24 @@ namespace Clube.Game
                     break;
                 }
             }
+        }
+
+        // GL800: metres round a spawn point the ground is looked at, and room for the looks.
+        private const float LevelLook = 1f;
+        private static readonly float[] Around = new float[4];
+
+        // GL800: an animal is put down only where it could walk away: no slope round it steeper than its species climbs.
+        private bool Level(float x, float z, float height, AnimalSpecies species)
+        {
+            for (int i = 0; i < Around.Length; i++)
+            {
+                float angle = i * Mathf.PI * 0.5f;
+                if (!TryGround(x + Mathf.Cos(angle) * LevelLook, z + Mathf.Sin(angle) * LevelLook, height, out Around[i], out _))
+                {
+                    return false;
+                }
+            }
+            return AnimalFooting.StandsOn(height, Around, Around.Length, LevelLook, species.MaxClimbDegrees);
         }
 
         /// <summary>An animal died: it leaves its herd and is remembered as dead; its body stays as the carcass.</summary>
