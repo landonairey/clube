@@ -43,6 +43,13 @@ namespace Clube.Game
 
         private readonly List<VesselClass> classes = VesselClass.Defaults();
         private readonly Dictionary<long, RoadLine> lanes = new Dictionary<long, RoadLine>();
+        // The lane being searched for (GL771).
+        private const float LaneSearchMilliseconds = 2f;
+        private SlicedWork laneWork;
+        private WaterLanes.LaneFound laneFound;
+        private int laneRoute;
+        private VesselClass laneVessel;
+        private float laneMilliseconds;
         private readonly Dictionary<long, OffMapPath> offMapLanes = new Dictionary<long, OffMapPath>();
         private readonly Dictionary<long, float> offMapStarts = new Dictionary<long, float>();
         private RunWay[] runWays = System.Array.Empty<RunWay>();
@@ -126,11 +133,48 @@ namespace Clube.Game
         public bool TryLane(int routeIndex, VesselClass vessel, out RoadLine lane)
         {
             long key = LaneKey(routeIndex, vessel);
-            if (!lanes.TryGetValue(key, out lane))
+            if (lanes.TryGetValue(key, out lane))
             {
-                float start = Time.realtimeSinceStartup;
+                return lane != null;
+            }
+            // GL771: a lane is searched for over several frames, one at a time; the boat sets out once it is known.
+            if (laneWork == null)
+            {
+                laneFound = new WaterLanes.LaneFound();
+                laneRoute = routeIndex;
+                laneVessel = vessel;
+                laneMilliseconds = 0f;
+                laneWork = new SlicedWork(WaterLanes.ForSteps(session.Plan.WaterRoutes[routeIndex], vessel, session.Map.Water, laneFound));
+            }
+            return false;
+        }
+
+        // Works on the lane being searched for, and keeps it once it is found.
+        private void SearchLane()
+        {
+            if (laneWork == null)
+            {
+                return;
+            }
+            float before = Time.realtimeSinceStartup;
+            bool done = laneWork.Run(session.WorldView.Hurry ? float.PositiveInfinity : LaneSearchMilliseconds);
+            laneMilliseconds += (Time.realtimeSinceStartup - before) * 1000f;
+            if (!done)
+            {
+                return;
+            }
+            laneWork.Dispose();
+            laneWork = null;
+            FinishLane(laneRoute, laneVessel, laneFound.Points, laneFound.Whole);
+        }
+
+        private void FinishLane(int routeIndex, VesselClass vessel, List<Vector2> points, bool whole)
+        {
+            long key = LaneKey(routeIndex, vessel);
+            RoadLine lane;
+            {
+                float start = Time.realtimeSinceStartup - laneMilliseconds * 0.001f;
                 WaterRoute route = session.Plan.WaterRoutes[routeIndex];
-                List<Vector2> points = WaterLanes.For(route, vessel, session.Map.Water, out bool whole);
                 if (route.To < 0 && points != null && points.Count >= 2 && session.Layout != null)
                 {
                     // GL725: a route out to the open sea sails on past the map's edge, to ports beyond it: where its lane stops
@@ -160,7 +204,6 @@ namespace Clube.Game
                     }
                 }
             }
-            return lane != null;
         }
 
         /// <summary>
@@ -266,6 +309,7 @@ namespace Clube.Game
                 goodsFor.Clear();
                 StartOver();
             }
+            SearchLane();
             Camera view = Camera.main;
             if (view == null)
             {
@@ -416,6 +460,8 @@ namespace Clube.Game
             boats = new Boat[runs.Count];
             delays = new double[runs.Count];
             heldUntil = new double[runs.Count];
+            laneWork?.Dispose();
+            laneWork = null;
             lanes.Clear();
             offMapLanes.Clear();
             offMapStarts.Clear();

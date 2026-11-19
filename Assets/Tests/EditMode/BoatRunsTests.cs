@@ -83,6 +83,31 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void ALaneSearchedInSmallSteps_IsTheLaneOneCallFinds()
+        {
+            var planned = new List<Vector2>();
+            for (int i = 0; i <= 15; i++)
+            {
+                planned.Add(new Vector2(i * 40f, 0f));
+            }
+            List<Vector2> atOnce = WaterLanes.Find(planned, Winding, 2f, 70f, out bool whole);
+
+            var found = new WaterLanes.LaneFound();
+            int steps = 0;
+            using (var work = new SlicedWork(WaterLanes.FindSteps(planned, Winding, 2f, 70f, found)))
+            {
+                while (!work.Run(0f))
+                {
+                    steps++;
+                }
+            }
+
+            Assert.Greater(steps, 10, "the search is spread over many steps");
+            Assert.AreEqual(whole, found.Whole);
+            CollectionAssert.AreEqual(atOnce, found.Points);
+        }
+
+        [Test]
         public void ALane_FollowsTheWindingWater_WhereThePlannedLineCutsAcrossTheLand()
         {
             var planned = new List<Vector2>();
