@@ -71,6 +71,7 @@ namespace Clube.Game
         private bool placed;
         private bool sweeping;
         private float lastHour;
+        private KeeperBed bed;
 
         /// <summary>The shop this keeper keeps.</summary>
         public ShopSpecialty Shop => shop;
@@ -89,13 +90,14 @@ namespace Clube.Game
 
         /// <summary>Sets the keeper up for a shop in the town; called once, before the first frame.</summary>
         public void Setup(ShopSpecialty shop, PriceList master, ShopHours hours, DayNightCycle clock, TownContext town, Material material, int seed,
-            float dailyCoins = 525f, Disposition disposition = null)
+            float dailyCoins = 525f, Disposition disposition = null, SleepingRoll bedRoll = null)
         {
             this.shop = shop;
             this.hours = hours;
             this.clock = clock;
             this.town = town;
             trade = new ShopTrade(shop, master, dailyCoins, clock != null ? clock.Day : 0, disposition);
+            bed = bedRoll != null ? new KeeperBed(bedRoll, trade.Disposition) : null;
             plot = TownLayout.PlotOf(shop.Kind);
             chores = TownLayout.ChoresOf(shop.Kind);
             figure = gameObject.AddComponent<FigureRig>();
@@ -105,7 +107,11 @@ namespace Clube.Game
         private void OnDestroy()
         {
             trade?.Release();
+            bed?.Release();
         }
+
+        // Asleep on the roll: E on them offers their bed (GL798), since they lie over it.
+        private bool Asleep => placed && activity == KeeperActivity.Sleep && place == Place.Bed && route.Count == 0;
 
         private float Hour => clock != null ? clock.Hour : 12f;
 
@@ -141,7 +147,7 @@ namespace Clube.Game
 
         // IClosableInteractable.
 
-        public bool IsAvailable => AtCounter;
+        public bool IsAvailable => AtCounter || (Asleep && bed != null);
 
         public string Prompt
         {
@@ -152,9 +158,13 @@ namespace Clube.Game
                 {
                     return $"Talk to {who}";
                 }
+                if (Asleep && bed != null)
+                {
+                    return $"{bed.Roll.Label} (wakes {who})";
+                }
                 string opens = ShopHours.Format(hours.Open);
                 string name = char.ToUpperInvariant(who[0]) + who.Substring(1);
-                if (activity == KeeperActivity.Sleep && place == Place.Bed && route.Count == 0)
+                if (Asleep)
                 {
                     return $"{name} is asleep. The shop opens at {opens}";
                 }
@@ -173,6 +183,10 @@ namespace Clube.Game
             {
                 panel.Open(this);
             }
+            else if (Asleep && bed != null)
+            {
+                bed.Interact(by);
+            }
         }
 
         private void Update()
@@ -185,8 +199,9 @@ namespace Clube.Game
             // A new day: the purse is full again (GL426).
             trade.OnDay(clock != null ? clock.Day : 0);
             activity = hours.At(hour);
+            bed?.Night(activity == KeeperActivity.Sleep);
             Place wanted = activity == KeeperActivity.Counter ? Place.Counter
-                : activity == KeeperActivity.Sleep ? Place.Bed
+                : activity == KeeperActivity.Sleep && (bed == null || !bed.Woken) ? Place.Bed
                 : MinesAfterWork ? Place.Shaft : Place.Chore;
             // A jump in the clock (resting on a sleeping roll, GL290) skips the walk.
             bool jumped = placed && Mathf.Abs(Mathf.DeltaAngle(lastHour * 15f, hour * 15f)) / 15f > ClockJumpHours;

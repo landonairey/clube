@@ -768,12 +768,12 @@ namespace Clube.Game
                 shop.SetParent(root, false);
                 shop.localPosition = new Vector3(building.Centre.x, building.Pad + TownLayout.FloorHeight, building.Centre.y);
                 shop.localRotation = Quaternion.Euler(0f, building.Yaw, 0f);
-                TownBuilder.FitShop(shop, specialty, material, textMaterial, sleepingRollPrefab, seed);
+                SleepingRoll bed = TownBuilder.FitShop(shop, specialty, material, textMaterial, sleepingRollPrefab, seed);
                 var keeperObject = new GameObject($"{specialty.ShopName} keeper");
                 keeperObject.transform.SetParent(shop, false);
                 SettlementKeeper keeper = keeperObject.AddComponent<SettlementKeeper>();
                 keeper.Setup(specialty, prices, hours, clock, shop, material, seed, dailyCoins,
-                    Dispositions.Of(index, settlement.Shops.IndexOf(building.Shop)));
+                    Dispositions.Of(index, settlement.Shops.IndexOf(building.Shop)), bed);
                 keepers.Add(keeper);
                 ShopsFitted++;
             }

@@ -17,6 +17,9 @@ namespace Clube.Core
         /// <summary>The most it reaches: fair prices.</summary>
         public const int Max = 100;
 
+        /// <summary>GL798: points a keeper's disposition falls when the player sleeps in their bed (the user: "only 1pt").</summary>
+        public const int BedPenalty = 1;
+
         /// <summary>Coins of trade for a point at disposition 10, where a keeper starts (GL769: "around 1pt for ~10c").</summary>
         public const float CoinsAtStart = 10f;
 
@@ -126,6 +129,12 @@ namespace Clube.Core
             Carried = 0f;
             Changed?.Invoke();
             return before - Value;
+        }
+
+        /// <summary>GL798: the player slept in this keeper's bed; takes <see cref="BedPenalty"/> off, never below 0.</summary>
+        public int SleptInBed()
+        {
+            return Lower(BedPenalty);
         }
 
         /// <summary>Puts back a saved value and the coins carried towards the next point.</summary>

@@ -78,6 +78,7 @@ namespace Clube.Game
             {
                 resting = true;
                 restedHours = 0f;
+                roll.OnSlept();
             }
         }
 

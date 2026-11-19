@@ -22,6 +22,15 @@ namespace Clube.Game
 
         public string Prompt => Label;
 
+        /// <summary>Raised when the player starts resting here (GL798: a shopkeeper whose bed it is wakes).</summary>
+        public event System.Action Slept;
+
+        /// <summary>Called by <see cref="RestScreen"/> when a rest on this roll begins.</summary>
+        public void OnSlept()
+        {
+            Slept?.Invoke();
+        }
+
         public void Interact(PlayerInteractor by)
         {
             RestScreen rest = by.GetComponent<RestScreen>();
