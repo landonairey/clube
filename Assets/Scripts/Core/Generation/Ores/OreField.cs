@@ -70,8 +70,8 @@ namespace Clube.Core
         /// <summary>A node's reach in σ: beyond 3σ the chance is under 1.2% of the peak.</summary>
         public const float ReachInSigmas = OreRoll.ReachInSigmas;
 
-        // Cells kept before the cache is cleared; enough for a large loaded area.
-        private const int MaxCachedCells = 8192;
+        // Cells kept before the cache is cleared; enough for every layer of a large loaded area (GL773 asks about whole columns).
+        private const int MaxCachedCells = 65536;
 
         // Tries per expected node at finding a centroid inside the depth range.
         private const int PlacementTries = 4;

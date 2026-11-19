@@ -525,9 +525,12 @@ namespace Clube.Core
             // radius (some 58 000 at 96 m) cost about 4 ms each time the focus moved a metre.
             waiting.Clear();
             waitingNext = 0;
+            Vector3 focusLocal = worldView.transform.InverseTransformPoint(focus);
+            Vector3 chunkSize = worldView.World.Grid.ChunkWorldSize;
+            float reach = ChunkReach.InWorldSpace(worldView.transform, radius);
             foreach (KeyValuePair<Vector3Int, ChunkRenderer> pair in worldView.Renderers)
             {
-                if (tufts.ContainsKey(pair.Key))
+                if (tufts.ContainsKey(pair.Key) || !ChunkReach.MayBeWithin(pair.Key, focusLocal, chunkSize, reach))
                 {
                     continue;
                 }

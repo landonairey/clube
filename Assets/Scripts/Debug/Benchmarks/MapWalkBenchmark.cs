@@ -60,7 +60,7 @@ namespace Clube.Debug
         private readonly FrameTiming[] timing = new FrameTiming[1];
         private readonly FrameMarkers markers = new FrameMarkers();
         private readonly PlayerLoopTimes loopTimes = new PlayerLoopTimes();
-        private static readonly string[] PhaseNames = { "poll", "area", "apply meshes", "add chunks", "start generating", "start meshing", "colliders" };
+        private static readonly string[] PhaseNames = { "poll", "area", "apply meshes", "add chunks", "prove", "start generating", "start meshing", "colliders" };
         private readonly double[] phaseTotals = new double[PhaseNames.Length];
         private readonly double[] phaseWorst = new double[PhaseNames.Length];
         private readonly ProcessLoad load = new ProcessLoad();
@@ -274,8 +274,8 @@ namespace Clube.Debug
                     {
                         // A chunk waiting to be meshed again after an edit still shows its last mesh.
                         var coord = new Vector3Int(cx, y, cz);
-                        loaded = chunks.TryGetChunk(coord, out Chunk chunk);
-                        shown = loaded && (!chunk.IsDirty || world.Renderers.ContainsKey(coord));
+                        loaded = chunks.IsLoaded(coord);
+                        shown = loaded && (!chunks.TryPeekChunk(coord, out Chunk chunk) || !chunk.IsDirty || world.Renderers.ContainsKey(coord));
                     }
                     ready += shown ? 1 : 0;
                     if (!shown)
@@ -347,10 +347,11 @@ namespace Clube.Debug
             phaseTotals[1] += phases.Area;
             phaseTotals[2] += phases.ApplyMeshes;
             phaseTotals[3] += phases.AddChunks;
-            phaseTotals[4] += phases.StartGeneration;
-            phaseTotals[5] += phases.StartMeshing;
-            phaseTotals[6] += phases.Colliders;
-            double[] thisFrame = { phases.Poll, phases.Area, phases.ApplyMeshes, phases.AddChunks, phases.StartGeneration, phases.StartMeshing, phases.Colliders };
+            phaseTotals[4] += phases.Prove;
+            phaseTotals[5] += phases.StartGeneration;
+            phaseTotals[6] += phases.StartMeshing;
+            phaseTotals[7] += phases.Colliders;
+            double[] thisFrame = { phases.Poll, phases.Area, phases.ApplyMeshes, phases.AddChunks, phases.Prove, phases.StartGeneration, phases.StartMeshing, phases.Colliders };
             for (int i = 0; i < thisFrame.Length; i++)
             {
                 phaseWorst[i] = System.Math.Max(phaseWorst[i], thisFrame[i]);
@@ -401,7 +402,7 @@ namespace Clube.Debug
             text.AppendLine($"  ground ready at its worst: {underfootGround * 100f:0}% within {UnderfootColumns * 4} m, {nearGround * 100f:0}% within {NearColumns * 4} m, {drawnGround * 100f:0}% within {world.DetailDistance * 4} m"
                             + (underfootGround < 1f ? $" (underfoot: {underfootWhy})" : ""));
             underfootGround = nearGround = drawnGround = 1f;
-            text.AppendLine($"  pending {world.PendingCount}, loading {world.IsLoading}, in sight {world.IsLoadingInSight}, renderers {world.Stats.Renderers}; phases (last frame): {world.Stats.Phases}");
+            text.AppendLine($"  pending {world.PendingCount}, proven uniform {world.World.CountProvenLayers()}, chunks held {world.World.LoadedCount}, loading {world.IsLoading}, in sight {world.IsLoadingInSight}, renderers {world.Stats.Renderers}; phases (last frame): {world.Stats.Phases}");
             text.AppendLine($"  player loop (ms a frame): {loopTimes.Top(LoopStagesShown, frames.Count)}");
             text.AppendLine($"  systems (ms a frame; worst frame; frames over {SlowSystemMilliseconds:0} ms): {SystemsReport()}");
             int phaseFrames = Mathf.Max(1, frames.Count);

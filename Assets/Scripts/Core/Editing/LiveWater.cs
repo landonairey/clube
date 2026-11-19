@@ -112,7 +112,7 @@ namespace Clube.Core
 
         private bool HasWater(Vector3Int sample)
         {
-            return World.TryGetOwner(sample, out Chunk chunk, out Vector3Int local) && chunk.HasWater && chunk.GetWater(local) > 0f;
+            return World.TryPeekOwner(sample, out Chunk chunk, out Vector3Int local) && chunk.HasWater && chunk.GetWater(local) > 0f;
         }
 
         /// <summary>

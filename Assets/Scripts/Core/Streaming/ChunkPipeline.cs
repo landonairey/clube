@@ -52,6 +52,8 @@ namespace Clube.Core
 
         private readonly List<Vector3Int> scratch = new List<Vector3Int>();
         private readonly List<Vector2Int> columnScratch = new List<Vector2Int>();
+        private readonly List<TreePart> proofParts = new List<TreePart>();
+        private readonly List<OreNode> proofNodes = new List<OreNode>();
         private int frame;
 
         /// <param name="format">The density format the world's storage holds (<see cref="World.PreferredFormat"/>).</param>
@@ -175,6 +177,109 @@ namespace Clube.Core
             Vector3 size = grid.ChunkWorldSize;
             layer = Mathf.FloorToInt(heightfield.Height((column.x + 0.5f) * size.x, (column.y + 0.5f) * size.z) / size.y);
             return true;
+        }
+
+        /// <summary>True when this terrain's chunks can be proven uniform from their column (<see cref="TryProveColumn"/>).</summary>
+        public bool CanProveColumns => generator is HeightfieldGenerator;
+
+        /// <summary>
+        /// Works out which layers of a column are all air or all rock (GL773), by the same tests <see cref="StartGeneration"/>
+        /// makes per chunk, so that a proven layer is exactly what generating it would give. Air must also stand clear of the
+        /// map's water, which is written into chunks as they load. False until the column's heights are ready: call again.
+        /// </summary>
+        public bool TryProveColumn(Vector2Int column, int heightInChunks, out UniformLayers layers)
+        {
+            layers = default;
+            if (!(generator is HeightfieldGenerator heightfield))
+            {
+                return false;
+            }
+            ChunkSampleGrid first = ChunkSampleGrid.ForChunk(grid, new Vector3Int(column.x, 0, column.y));
+            ColumnHeights heights = ColumnFor(column, first.BorderedColumns, heightfield);
+            if (!heights.Job.IsCompleted)
+            {
+                return false;
+            }
+
+            int height = Mathf.Min(heightInChunks, UniformLayers.MaxLayers);
+            float layerHeight = grid.ChunkWorldSize.y;
+            float span = first.Top - first.Bottom;
+            Bounds footprint = first.Bounds;
+            var tall = new Bounds(
+                new Vector3(footprint.center.x, first.Bottom + height * layerHeight * 0.5f, footprint.center.z),
+                new Vector3(footprint.size.x, height * layerHeight + span, footprint.size.z));
+
+            // What reaches each layer, as generation would gather it from the layer's own box.
+            ulong treesLow = 0UL, treesHigh = 0UL, oresLow = 0UL, oresHigh = 0UL;
+            proofParts.Clear();
+            trees?.CollectParts(tall, proofParts);
+            boulders?.CollectParts(tall, proofParts, TreeField.GatherMargin);
+            foreach (TreePart part in proofParts)
+            {
+                Bounds bounds = part.Bounds(TreeField.GatherMargin);
+                MarkLayers(bounds.min.y, bounds.max.y, first.Bottom, span, layerHeight, height, ref treesLow, ref treesHigh);
+            }
+            float highest = heights.Highest;
+            float lowest = heights.Lowest;
+            float waterTop = WaterFill.HighestSurfaceNear(heightfield.Water, grid, column);
+            float buriedBelow = lowest - SurfaceLayersDepth();
+
+            // Ores only matter to the layers that could be rock, wholly under the surface layers: asking about the cells of
+            // the sky as well tried and failed to place a node in each, a height lookup a try.
+            if (ores != null && buriedBelow >= first.Top)
+            {
+                float rockTop = Mathf.Min(buriedBelow, first.Bottom + height * layerHeight);
+                var buried = new Bounds(
+                    new Vector3(footprint.center.x, (first.Bottom + rockTop) * 0.5f, footprint.center.z),
+                    new Vector3(footprint.size.x, rockTop - first.Bottom, footprint.size.z));
+                ores.CollectNodes(buried, proofNodes);
+                foreach (OreNode node in proofNodes)
+                {
+                    MarkLayers(node.Centre.y - node.Reach.y, node.Centre.y + node.Reach.y, first.Bottom, span, layerHeight, height, ref oresLow, ref oresHigh);
+                }
+            }
+            layers.AirMaterial = ChunkFillKernel.AllAir(fillSettings.Layers).Material;
+            layers.RockMaterial = fillSettings.Layers.Base;
+            for (int layer = 0; layer < height; layer++)
+            {
+                float bottom = first.Bottom + layer * layerHeight;
+                float top = bottom + span;
+                bool treeHere = (((layer < 64 ? treesLow : treesHigh) >> (layer & 63)) & 1UL) != 0UL;
+                bool oreHere = (((layer < 64 ? oresLow : oresHigh) >> (layer & 63)) & 1UL) != 0UL;
+                bool clearOfWater = bottom > waterTop + grid.VoxelSize;
+                if (clearOfWater && (bottom >= highest + fillSettings.RampReach + SkyClearance || (!treeHere && bottom >= highest + fillSettings.RampReach)))
+                {
+                    layers.SetAir(layer);
+                }
+                else if (!treeHere && !oreHere && top <= buriedBelow)
+                {
+                    layers.SetRock(layer);
+                }
+            }
+            return true;
+        }
+
+        // Marks the layers whose box the height range reaches, edges included, as a box test does.
+        private static void MarkLayers(float min, float max, float bottom, float span, float layerHeight, int height, ref ulong low, ref ulong high)
+        {
+            int from = Mathf.Max(0, Mathf.FloorToInt((min - bottom - span) / layerHeight));
+            int to = Mathf.Min(height - 1, Mathf.CeilToInt((max - bottom) / layerHeight));
+            for (int layer = from; layer <= to; layer++)
+            {
+                float layerBottom = bottom + layer * layerHeight;
+                if (max < layerBottom || min > layerBottom + span)
+                {
+                    continue;
+                }
+                if (layer < 64)
+                {
+                    low |= 1UL << layer;
+                }
+                else
+                {
+                    high |= 1UL << (layer - 64);
+                }
+            }
         }
 
         public bool StartGeneration(Vector3Int coord)
@@ -585,9 +690,14 @@ namespace Clube.Core
         // checked by the caller.
         private bool IsBuried(ChunkSampleGrid chunkGrid, ColumnHeights column)
         {
+            return chunkGrid.Top <= column.Lowest - SurfaceLayersDepth();
+        }
+
+        // How far under the ground its surface layers, the density ramp and clay lenses reach.
+        private float SurfaceLayersDepth()
+        {
             LayerTable layers = fillSettings.Layers;
-            float surfaceLayers = Mathf.Max(fillSettings.RampReach, Mathf.Max(layers.BandEnd, layers.ClayDepth) * Mathf.Max(1f, fillSettings.LodScale));
-            return chunkGrid.Top <= column.Lowest - surfaceLayers;
+            return Mathf.Max(fillSettings.RampReach, Mathf.Max(layers.BandEnd, layers.ClayDepth) * Mathf.Max(1f, fillSettings.LodScale));
         }
 
         private Chunk RockChunk(ChunkSampleGrid chunkGrid)

@@ -206,7 +206,7 @@ namespace Clube.Core
                 {
                     dirtyChunks.Add(coord);
                     meshless.Remove(coord);
-                    if (world.TryGetChunk(coord, out Chunk chunk) && chunk.HasWater)
+                    if (world.TryPeekChunk(coord, out Chunk chunk) && chunk.HasWater)
                     {
                         wetChunks.Add(coord);
                     }
@@ -498,7 +498,7 @@ namespace Clube.Core
         private void OnDensityChanged(Vector3Int sample)
         {
             World world = worldView.World;
-            if (world != null && world.TryGetOwner(sample, out Chunk chunk, out _) && chunk.HasWater)
+            if (world != null && world.TryPeekOwner(sample, out Chunk chunk, out _) && chunk.HasWater)
             {
                 dirtyChunks.Add(world.Grid.VoxelToChunk(sample));
                 meshless.Remove(world.Grid.VoxelToChunk(sample));
@@ -519,7 +519,7 @@ namespace Clube.Core
             {
                 Live.WakeChunk(coord);
             }
-            if (world.TryGetChunk(coord, out Chunk chunk) && chunk.HasWater)
+            if (world.TryPeekChunk(coord, out Chunk chunk) && chunk.HasWater)
             {
                 wetChunks.Add(coord);
                 dirtyChunks.Add(coord);
@@ -527,7 +527,7 @@ namespace Clube.Core
             }
             foreach (Vector3Int step in Faces)
             {
-                if (world.TryGetChunk(coord + step, out Chunk next) && next.HasWater)
+                if (world.TryPeekChunk(coord + step, out Chunk next) && next.HasWater)
                 {
                     dirtyChunks.Add(coord + step);
                     meshless.Remove(coord + step);
