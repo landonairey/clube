@@ -220,6 +220,18 @@ namespace Clube.Core
             return true;
         }
 
+        /// <summary>
+        /// Copies every sample's water, in sixteenths, into an array of one byte per sample (x fastest), for jobs (GL775);
+        /// only when <see cref="HasWater"/>.
+        /// </summary>
+        public void CopyWater(NativeArray<byte> into)
+        {
+            if (water != null)
+            {
+                into.CopyFrom(water);
+            }
+        }
+
         /// <summary>A sample's carve flags (<see cref="CarveFlags"/>): whether the voxel above it, and the one below it, are carved.</summary>
         public byte GetCarveFlags(Vector3Int sample)
         {

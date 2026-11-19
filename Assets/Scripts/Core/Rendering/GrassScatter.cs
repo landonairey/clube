@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -40,17 +41,6 @@ namespace Clube.Core
 
         // Metres the focus moves before the chunks are looked over again.
         private const float ScanMoveMetres = 4f;
-
-        // The grid's rolls: x and z of the point in a cell, its turn, its height, and whether it's wheat.
-        private const int SaltX = 1;
-        private const int SaltZ = 2;
-        private const int SaltYaw = 3;
-        private const int SaltHeight = 4;
-        private const int SaltWheat = 5;
-        private const int SaltDahlia = 6;
-        private const int SaltDahliaStray = 7;
-        private const int SaltDahliaColour = 8;
-        private const int SaltThin = 9;
 
         // Past thinFrom each instance is a clump of this many small tufts (GL380): a quarter as many instances for the same
         // grass, since many tiny instances cost more than their few triangles.
@@ -176,8 +166,9 @@ namespace Clube.Core
         private readonly InstanceBatches[] dahliaBatches = new InstanceBatches[DahliaGrowth.Colours];
         private readonly List<OreNode> dahliaNodes = new List<OreNode>();
         private readonly List<OreNode> nodeScratch = new List<OreNode>();
-        private readonly GrassyGround ground = new GrassyGround();
-        private readonly List<GroundSpot> spots = new List<GroundSpot>();
+        // Chunks are scattered in Burst jobs, a batch at a time (GL775); the tufts each queued chunk fills.
+        private readonly GrassScatterBatch batch = new GrassScatterBatch();
+        private readonly List<Scattered> batchTargets = new List<Scattered>(GrassScatterBatch.MaxChunks);
         private readonly System.Diagnostics.Stopwatch clock = new System.Diagnostics.Stopwatch();
         private readonly GrassLawn lawn = new GrassLawn();
         private readonly GrassLawnMap lawnMap = new GrassLawnMap();
@@ -208,12 +199,9 @@ namespace Clube.Core
         private sealed class Scattered
         {
             public readonly List<Matrix4x4> Grass = new List<Matrix4x4>();
+            // Grass and wheat come sorted by each tuft's thinning pick (0-1), so a far chunk draws the first share of its
+            // list and the same tufts stay as the share grows or shrinks (GL379).
             public readonly List<Matrix4x4> Wheat = new List<Matrix4x4>();
-
-            // Each tuft's thinning pick (0-1) while scattering; the tufts are then sorted by it, so a far chunk draws the
-            // first share of its list and the same tufts stay as the share grows or shrinks (GL379).
-            public readonly List<(float Pick, Matrix4x4 Matrix)> GrassPicks = new List<(float, Matrix4x4)>();
-            public readonly List<(float Pick, Matrix4x4 Matrix)> WheatPicks = new List<(float, Matrix4x4)>();
             public readonly List<Matrix4x4>[] Dahlias = NewLists();
 
             private static List<Matrix4x4>[] NewLists()
@@ -230,32 +218,10 @@ namespace Clube.Core
             // The chunk's centre in the world, for its distance when the batches are packed.
             public Vector3 Centre;
 
-            // Sorts the tufts by their thinning pick into the drawn lists (GL379).
-            public void Order()
-            {
-                Sort(GrassPicks, Grass);
-                Sort(WheatPicks, Wheat);
-            }
-
-            private static void Sort(List<(float Pick, Matrix4x4 Matrix)> picks, List<Matrix4x4> into)
-            {
-                picks.Sort(ByPick);
-                into.Clear();
-                foreach ((float _, Matrix4x4 matrix) in picks)
-                {
-                    into.Add(matrix);
-                }
-                picks.Clear();
-            }
-
-            private static readonly System.Comparison<(float Pick, Matrix4x4 Matrix)> ByPick = (a, b) => a.Pick.CompareTo(b.Pick);
-
             public void Clear()
             {
                 Grass.Clear();
                 Wheat.Clear();
-                GrassPicks.Clear();
-                WheatPicks.Clear();
                 foreach (List<Matrix4x4> dahlias in Dahlias)
                 {
                     dahlias.Clear();
@@ -350,6 +316,7 @@ namespace Clube.Core
                 batch?.Dispose();
             }
             DestroyMeshes();
+            batch.Dispose();
         }
 
         private void DestroyMeshes()
@@ -401,7 +368,8 @@ namespace Clube.Core
             // without grass and none left floating; the grid keeps the tufts on unchanged ground in place.
             if (scattered.Drawn && chunkRenderer != null)
             {
-                Scatter(chunkRenderer, scattered);
+                Queue(chunkRenderer, scattered);
+                RunBatch();
                 batchesDirty = true;
             }
             else
@@ -568,17 +536,22 @@ namespace Clube.Core
                 {
                     return;
                 }
-                (float _, Vector3Int coord, ChunkRenderer chunkRenderer) = waiting[waitingNext++];
-                // Grown already (listed twice), or its renderer has gone back to the pool since.
-                if (tufts.ContainsKey(coord) || !worldView.Renderers.TryGetValue(coord, out ChunkRenderer current) || current != chunkRenderer)
+                // A batch of the nearest chunks at a time, scattered together on the worker threads (GL775).
+                while (waitingNext < waiting.Count && !batch.IsFull)
                 {
-                    continue;
+                    (float _, Vector3Int coord, ChunkRenderer chunkRenderer) = waiting[waitingNext++];
+                    // Grown already (listed twice), or its renderer has gone back to the pool since.
+                    if (tufts.ContainsKey(coord) || !worldView.Renderers.TryGetValue(coord, out ChunkRenderer current) || current != chunkRenderer)
+                    {
+                        continue;
+                    }
+                    Scattered scattered = spare.Count > 0 ? spare.Pop() : new Scattered();
+                    Queue(chunkRenderer, scattered);
+                    scattered.Drawn = true;
+                    tufts.Add(coord, scattered);
+                    grownDirty = true;
                 }
-                Scattered scattered = spare.Count > 0 ? spare.Pop() : new Scattered();
-                Scatter(chunkRenderer, scattered);
-                scattered.Drawn = true;
-                tufts.Add(coord, scattered);
-                grownDirty = true;
+                RunBatch();
                 grewOne = true;
             }
             waiting.Clear();
@@ -610,60 +583,68 @@ namespace Clube.Core
             return dx * dx + dz * dz;
         }
 
-        // Fills the chunk's tufts: one per grid cell on grassy ground, grass or wheat, as tall as the place grows it.
-        private void Scatter(ChunkRenderer chunkRenderer, Scattered scattered)
+        // Queues the chunk for the next batch (GL775): one tuft per grid cell on grassy ground, grass, wheat or a dahlia, as
+        // tall as the place grows it (GrassScatterJob). The main thread only gathers what the job reads: the tree roots round
+        // the chunk and the gold nodes under it.
+        private void Queue(ChunkRenderer chunkRenderer, Scattered scattered)
         {
             scattered.Clear();
+            Vector3 chunkSize = worldView.World.Grid.ChunkWorldSize;
+            scattered.Centre = chunkRenderer.Transform.position + chunkSize * 0.5f;
+            GrassScatterBatch.Slot slot = batch.Add();
+            batchTargets.Add(scattered);
             if (density <= 0f)
             {
                 return;
             }
-            spots.Clear();
-            ground.Find(chunkRenderer, grass, minUp, 1f / Mathf.Sqrt(density), 0, SaltX, SaltZ, 0f, spots);
-            scattered.Centre = chunkRenderer.Transform.position + worldView.World.Grid.ChunkWorldSize * 0.5f;
-
-            TreeCover trees = CoverOf(worldView.Trees);
-            int seed = worldView.Config.Terrain.Seed;
-            // The gold nodes under this chunk's ground, if any: dahlias grow over them (GL265).
-            Vector3 chunkMin = worldView.transform.InverseTransformPoint(chunkRenderer.Transform.position);
-            Vector3 chunkSize = worldView.World.Grid.ChunkWorldSize;
-            dahlias.NodesUnder(worldView.Ores, new Bounds(chunkMin + chunkSize * 0.5f, chunkSize), dahliaNodes, nodeScratch);
-            foreach (GroundSpot spot in spots)
+            slot.Mesh = chunkRenderer.Mesh;
+            slot.ChunkToWorld = chunkRenderer.Transform.localToWorldMatrix;
+            slot.WorldToLocal = worldView.transform.worldToLocalMatrix;
+            slot.Rules = new GrassTuftRules
             {
-                int ix = spot.Cell.x, iz = spot.Cell.y;
-                Vector3 local = worldView.transform.InverseTransformPoint(spot.Position);
-                float forest = trees.At(local.x, local.z);
-                float yaw = VoxelHash.Uniform(0, ix, 0, iz, SaltYaw) * 360f;
-                float roll = VoxelHash.Uniform(0, ix, 0, iz, SaltHeight);
-                Quaternion rotation = Quaternion.FromToRotation(Vector3.up, Vector3.Lerp(Vector3.up, spot.Normal, 0.5f)) * Quaternion.Euler(0f, yaw, 0f);
-
-                if (dahliaNodes.Count > 0)
-                {
-                    float share = dahlias.ShareAt(dahliaNodes, local, out int node);
-                    if (share > 0f && VoxelHash.Uniform(0, ix, 0, iz, SaltDahlia) < share)
-                    {
-                        int colour = DahliaGrowth.ColourOf(dahliaNodes[node], VoxelHash.Uniform(0, ix, 0, iz, SaltDahliaStray), VoxelHash.Uniform(0, ix, 0, iz, SaltDahliaColour));
-                        float tall = dahlias.HeightFor(roll);
-                        // Upright: flowers stand straight whatever the slope.
-                        scattered.Dahlias[colour].Add(Matrix4x4.TRS(spot.Position, Quaternion.Euler(0f, yaw, 0f), Vector3.one * tall));
-                        continue;
-                    }
-                }
-
-                float wheatHere = growth.WheatAt(seed, local.x, local.z, forest);
-                if (wheatHere > 0f && VoxelHash.Uniform(0, ix, 0, iz, SaltWheat) < wheatHere)
-                {
-                    float tall = growth.WheatHeightFor(roll);
-                    scattered.WheatPicks.Add((VoxelHash.Uniform(0, ix, 0, iz, SaltThin), Matrix4x4.TRS(spot.Position, rotation, new Vector3(tall * 0.8f, tall, tall * 0.8f))));
-                    continue;
-                }
-                float baseSize = Mathf.Lerp(height.x, height.y, roll);
-                float scale = growth.HeightScale(forest, local.y);
-                // Taller grass is a little wider, but mostly it reaches up.
-                float width = baseSize * Mathf.Sqrt(scale);
-                scattered.GrassPicks.Add((VoxelHash.Uniform(0, ix, 0, iz, SaltThin), Matrix4x4.TRS(spot.Position, rotation, new Vector3(width, baseSize * scale, width))));
+                GroundId = grass.Id,
+                Cell = 1f / Mathf.Sqrt(density),
+                MinUp = minUp,
+                Height = height,
+                Seed = worldView.Config.Terrain.Seed,
+                Growth = growth.Rules,
+                Dahlias = dahlias.Rules,
+            };
+            // The tree roots near enough to thicken the cover over the chunk (a metre spare all round).
+            Vector3 chunkMin = worldView.transform.InverseTransformPoint(chunkRenderer.Transform.position);
+            slot.Cover = CoverOf(worldView.Trees).Fill(chunkMin.x - 1f, chunkMin.z - 1f, chunkMin.x + chunkSize.x + 1f, chunkMin.z + chunkSize.z + 1f, slot.Roots);
+            // The gold nodes under this chunk's ground, if any: dahlias grow over them (GL265).
+            dahlias.NodesUnder(worldView.Ores, new Bounds(chunkMin + chunkSize * 0.5f, chunkSize), dahliaNodes, nodeScratch);
+            foreach (OreNode node in dahliaNodes)
+            {
+                slot.DahliaNodes.Add(node.Centre);
+                slot.DahliaPatches.Add(DahliaGrowth.PatchOf(node));
             }
-            scattered.Order();
+        }
+
+        // Scatters the queued chunks on the worker threads and hands each its tufts.
+        private void RunBatch()
+        {
+            batch.Run();
+            for (int i = 0; i < batch.Count; i++)
+            {
+                GrassScatterBatch.Slot slot = batch[i];
+                Scattered scattered = batchTargets[i];
+                foreach (float4x4 matrix in slot.Grass)
+                {
+                    scattered.Grass.Add(matrix);
+                }
+                foreach (float4x4 matrix in slot.Wheat)
+                {
+                    scattered.Wheat.Add(matrix);
+                }
+                foreach (DahliaTuft dahlia in slot.Dahlias)
+                {
+                    scattered.Dahlias[dahlia.Colour].Add(dahlia.Matrix);
+                }
+            }
+            batch.Clear();
+            batchTargets.Clear();
         }
 
         // How thick the trees stand, from the world's tree field (made again if the world gets a new one).
