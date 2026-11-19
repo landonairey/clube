@@ -170,10 +170,18 @@ namespace Clube.Core
             dig.Plan = dig.Bore ? DigPlan.Tunnel(dig.Top, dig.Along, BoreWidth, BoreHeight, BoreLength) : DigPlan.Pit(dig.Top, PitRadius, PitDepth);
             IReadOnlyList<Vector3Int> voxels = dig.Plan.Voxels;
             dig.Ground = new bool[voxels.Count];
+            // GL771: the voxels of a column share its ground: asked per voxel, one tunnel took over 40 ms.
+            var columns = new Dictionary<Vector2Int, float>();
             for (int i = 0; i < voxels.Count; i++)
             {
                 Vector3 at = grid.SampleToWorld(voxels[i]);
-                dig.Ground[i] = at.y < ground(at.x, at.z);
+                var column = new Vector2Int(voxels[i].x, voxels[i].z);
+                if (!columns.TryGetValue(column, out float top))
+                {
+                    top = ground(at.x, at.z);
+                    columns.Add(column, top);
+                }
+                dig.Ground[i] = at.y < top;
                 if (dig.Ground[i])
                 {
                     dig.GroundVoxels++;
