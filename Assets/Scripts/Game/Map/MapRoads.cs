@@ -411,14 +411,9 @@ namespace Clube.Game
             RoadClassDefinition definition = plan.Rules.Road(road.Class);
             // The line keeps its own heights, so it asks the generator itself rather than filling the store with a road's length of them.
             float started = Time.realtimeSinceStartup;
-            // In a tunnel (GL642) the line runs on the tunnel's floor, so the bed leads into it.
-            // GL737: on a graded stretch it runs on the planned bed (cut-and-fill), so the bed is built as the plan priced it.
-            var line = new RoadLine(road.Points, RoadGrading.HeightAt(road, session.Map.Height), 1f,
-                RoadGrading.HeightsAt(road, WorldRoads.HeightsOf(session.Map)));
+            RoadLine line = WorldRoads.LineOf(road, session.Map);
             // GL651: over the sea the deck stands high enough for what sails under; a ravine gets a dry span.
-            List<RouteBridges.Span> bridges = RouteBridges.Find(line, session.Map.Water, true, BridgeClearance.For(plan, vessels));
-            bridges.AddRange(RouteBridges.Ravines(line, bridges));
-            bridges.Sort((a, b) => a.Start.CompareTo(b.Start));
+            List<RouteBridges.Span> bridges = RouteBridges.ForRoad(line, session.Map.Water, BridgeClearance.For(plan, vessels));
             // Where it ends on another road, its bed meets that road's bed.
             float endHeight = float.NaN;
             Built joinedRoad = null;

@@ -8,7 +8,7 @@ namespace Clube.Core
     /// The shape a road is cut into the ground with (GL613), from its class's numbers: how wide it is at each point (a
     /// trodden path's edges wander), and for the cart paths a bed evened out along the road ("wider and flatter") that
     /// meets the ground over a shoulder at each side. A footpath has no bed: it follows the ground and only changes what
-    /// grows on it. Bridges are left alone: the bed is the ground's own height at their ends.
+    /// grows on it. At a bridge's ends the bed meets the deck's height (GL799).
     /// </summary>
     public sealed class RoadBed
     {
@@ -40,6 +40,92 @@ namespace Clube.Core
                     {
                         float fromEnd = line.Length - i * line.HeightSpacing;
                         bed[i] += lift * (1f - Mathf.Clamp01(fromEnd / definition.GradeLength));
+                    }
+                }
+                deckAt = MeetDecks(line, this.bridges, bed);
+            }
+        }
+
+        /// <summary>GL799: the mean slope of the ramp a road's bed takes up or down to a bridge's deck.</summary>
+        public const float DeckApproachSlope = 0.12f;
+
+        // GL799: the shortest and longest ramp onto a deck, in metres.
+        private const float LeastDeckApproach = 3f, MostDeckApproach = 24f;
+
+        /// <summary>
+        /// GL799 ("bridges are not flush with paths"): the deck's ends stand on the bank's highest point (or over the
+        /// water), while the bed held to the ground there; so the bed takes the deck's height under the deck and at both
+        /// its ends, and ramps back onto its own grade over a few metres either side. The sample just outside each end
+        /// keeps the deck's height too; <see cref="HeightAlong"/> runs straight from it to the deck's end, which seldom
+        /// falls on a sample. Returns the bridge over each sample (-1 for none).
+        /// </summary>
+        private static int[] MeetDecks(RoadLine line, IReadOnlyList<RouteBridges.Span> bridges, float[] bed)
+        {
+            if (bridges.Count == 0)
+            {
+                return null;
+            }
+            float spacing = line.HeightSpacing;
+            var original = (float[])bed.Clone();
+            var weight = new float[bed.Length];
+            var target = new float[bed.Length];
+            var deckAt = new int[bed.Length];
+            var inside = new bool[bed.Length];
+            for (int i = 0; i < bed.Length; i++)
+            {
+                deckAt[i] = -1;
+            }
+            for (int s = 0; s < bridges.Count; s++)
+            {
+                RouteBridges.Span span = bridges[s];
+                float length = Mathf.Max(1e-3f, span.End - span.Start);
+                for (int i = 0; i < bed.Length; i++)
+                {
+                    float distance = i * spacing;
+                    if (distance >= span.Start && distance <= span.End)
+                    {
+                        inside[i] = true;
+                        deckAt[i] = s;
+                        bed[i] = span.HeightAt((distance - span.Start) / length);
+                    }
+                }
+            }
+            foreach (RouteBridges.Span span in bridges)
+            {
+                Approach(span.Start, span.HeightAt(0f), -1);
+                Approach(span.End, span.HeightAt(1f), 1);
+            }
+            for (int i = 0; i < bed.Length; i++)
+            {
+                if (!inside[i] && weight[i] > 0f)
+                {
+                    bed[i] = Mathf.Lerp(original[i], target[i], weight[i]);
+                }
+            }
+            return deckAt;
+
+            // One ramp, outwards from a deck end at `at` in `direction` (-1 back along the road, 1 on).
+            void Approach(float at, float deck, int direction)
+            {
+                int first = direction < 0 ? Mathf.FloorToInt(at / spacing - 1e-4f) : Mathf.CeilToInt(at / spacing + 1e-4f);
+                if (first < 0 || first >= bed.Length)
+                {
+                    return;
+                }
+                float ramp = Mathf.Clamp(Mathf.Abs(deck - original[first]) / DeckApproachSlope, LeastDeckApproach, MostDeckApproach);
+                for (int i = first; i >= 0 && i < bed.Length && !inside[i]; i += direction)
+                {
+                    float beyond = Mathf.Abs(i - first) * spacing;
+                    if (beyond >= ramp)
+                    {
+                        break;
+                    }
+                    float t = 1f - beyond / ramp;
+                    float w = t * t * (3f - 2f * t);
+                    if (w > weight[i])
+                    {
+                        weight[i] = w;
+                        target[i] = deck;
                     }
                 }
             }
@@ -75,10 +161,34 @@ namespace Clube.Core
             {
                 return Line.HeightAlong(distance);
             }
-            float f = Mathf.Clamp(distance, 0f, Line.Length) / Line.HeightSpacing;
+            float spacing = Line.HeightSpacing;
+            distance = Mathf.Clamp(distance, 0f, Line.Length);
+            float f = distance / spacing;
             int i = Mathf.Min((int)f, bed.Length - 2);
+            if (deckAt != null && (deckAt[i] >= 0 || deckAt[i + 1] >= 0))
+            {
+                // GL799: on a deck its own height; between a deck's end and the bed's sample beyond it, straight from one to the other.
+                int s = deckAt[i] >= 0 ? deckAt[i] : deckAt[i + 1];
+                RouteBridges.Span span = bridges[s];
+                if (distance >= span.Start && distance <= span.End)
+                {
+                    return span.HeightAt((distance - span.Start) / Mathf.Max(1e-3f, span.End - span.Start));
+                }
+                if (distance < span.Start && deckAt[i] < 0)
+                {
+                    return Mathf.Lerp(bed[i], span.HeightAt(0f), (distance - i * spacing) / Mathf.Max(1e-4f, span.Start - i * spacing));
+                }
+                if (distance > span.End && deckAt[i + 1] < 0)
+                {
+                    float next = (i + 1) * spacing;
+                    return Mathf.Lerp(span.HeightAt(1f), bed[i + 1], (distance - span.End) / Mathf.Max(1e-4f, next - span.End));
+                }
+            }
             return Mathf.Lerp(bed[i], bed[i + 1], f - i);
         }
+
+        // GL799: for each of the bed's samples, the bridge whose deck it lies under, or -1; null without bridges.
+        private int[] deckAt;
 
         /// <summary>True when a stretch of the road lies wholly on a bridge's deck: nothing is written under it.</summary>
         public bool OnBridge(float from, float to)

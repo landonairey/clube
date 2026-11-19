@@ -157,6 +157,18 @@ namespace Clube.Core
             return spans;
         }
 
+        /// <summary>
+        /// A world road's bridges, as the game builds them: over all water (<see cref="Find(RoadLine, in WaterMap, bool, Func{Vector2, float})"/>)
+        /// and over dry ravines (<see cref="Ravines"/>), in order along the road.
+        /// </summary>
+        public static List<Span> ForRoad(RoadLine route, in WaterMap water, Func<Vector2, float> seaClearance)
+        {
+            List<Span> spans = Find(route, water, true, seaClearance);
+            spans.AddRange(Ravines(route, spans));
+            spans.Sort((a, b) => a.Start.CompareTo(b.Start));
+            return spans;
+        }
+
         /// <summary>GL651: the longest dry span over a ravine, in metres.</summary>
         public const float RavineMaxSpan = 36f;
 

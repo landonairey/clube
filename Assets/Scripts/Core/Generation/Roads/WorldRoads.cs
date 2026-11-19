@@ -100,6 +100,15 @@ namespace Clube.Core
         // The share of the finishing that refining the roads is, for the load screen's progress.
         private const float RefinedShare = 0.8f;
 
+        /// <summary>
+        /// A finished road's line on the map's ground, metre by metre, as the game lays it: in a tunnel (GL642) it runs on
+        /// the tunnel's floor, and on a graded stretch (GL737) on the planned cut-and-fill bed.
+        /// </summary>
+        public static RoadLine LineOf(PlannedRoad road, BoundedMapGenerator map)
+        {
+            return new RoadLine(road.Points, RoadGrading.HeightAt(road, map.Height), 1f, RoadGrading.HeightsAt(road, HeightsOf(map)));
+        }
+
         /// <summary>A map's heights at many points in one job: asked one by one they are most of the time its roads take.</summary>
         public static Func<Vector2[], float[]> HeightsOf(HeightfieldGenerator map)
         {
