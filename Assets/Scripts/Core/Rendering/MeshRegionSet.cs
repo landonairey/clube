@@ -248,11 +248,13 @@ namespace Clube.Core
         /// </summary>
         public int Build(Vector3 focus, float alwaysWithin, float buildWithin, int vertexBudget)
         {
+            using FrameCost.Scope whole = FrameCost.Of("Regions: Build");
             LastBuildVertices = 0;
             if (dirty.Count == 0)
             {
                 return 0;
             }
+            FrameCost.Scope collecting = FrameCost.Of("Regions: collect");
             candidates.Clear();
             foreach (Region region in dirty)
             {
@@ -263,7 +265,11 @@ namespace Clube.Core
                     candidates.Add((distance <= alwaysWithin || region.Urgent ? -1f : distance, region));
                 }
             }
-            candidates.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            collecting.Dispose();
+            using (FrameCost.Scope sorting = FrameCost.Of("Regions: sort"))
+            {
+                candidates.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            }
             // The budget counts only the regions past those that must be merged, and always lets one through.
             int merged = 0;
             int spent = 0;
@@ -290,6 +296,7 @@ namespace Clube.Core
             {
                 merge.Run();
             }
+            using FrameCost.Scope finishing = FrameCost.Of("Regions: finish");
             foreach ((float _, Region region) in candidates)
             {
                 if (!dirty.Contains(region))
