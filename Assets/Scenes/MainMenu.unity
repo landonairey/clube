@@ -373,7 +373,7 @@ MonoBehaviour:
   splash: {fileID: 2800000, guid: 292adb6812325a44285ddc8e38c71e3f, type: 3}
   mapConfig: {fileID: 11400000, guid: 4655a9f34d841ed4598e1c0a76921b36, type: 2}
   diorama: {fileID: 1861159258}
-  title: clube
+  title: Fossa Terra
   subtitle: Extract, Refine, Craft, Build your World
 --- !u!1 &1861159257
 GameObject:
