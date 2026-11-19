@@ -387,9 +387,12 @@ namespace Clube.Core
             // The meshed chunks in reach that have no bushes yet wait their turn.
             waiting.Clear();
             waitingNext = 0;
+            Vector3 focusLocal = worldView.transform.InverseTransformPoint(focus);
+            Vector3 chunkSize = worldView.World.Grid.ChunkWorldSize;
+            float reach = ChunkReach.InWorldSpace(worldView.transform, radius);
             foreach (KeyValuePair<Vector3Int, ChunkRenderer> pair in worldView.Renderers)
             {
-                if (bushes.ContainsKey(pair.Key))
+                if (bushes.ContainsKey(pair.Key) || !ChunkReach.MayBeWithin(pair.Key, focusLocal, chunkSize, reach))
                 {
                     continue;
                 }

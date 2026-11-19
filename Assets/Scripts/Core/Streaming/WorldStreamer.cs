@@ -1138,7 +1138,8 @@ namespace Clube.Core
             {
                 for (int dx = -reach; dx <= reach; dx++)
                 {
-                    for (int layer = 0; layer < settings.HeightInChunks; layer++)
+                    // Only the layers with a renderer: asking every layer of every column was 23,000 lookups a look.
+                    foreach (int layer in renderers.LayersIn(new Vector2Int(centre.x + dx, centre.z + dz)))
                     {
                         var coord = new Vector3Int(centre.x + dx, layer, centre.z + dz);
                         if (!renderers.TryGet(coord, out ChunkRenderer chunkRenderer) || chunkRenderer.Collider == null)

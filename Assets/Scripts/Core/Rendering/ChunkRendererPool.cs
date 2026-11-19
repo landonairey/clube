@@ -16,6 +16,11 @@ namespace Clube.Core
         private readonly bool withColliders;
         private readonly Dictionary<Vector3Int, ChunkRenderer> active = new Dictionary<Vector3Int, ChunkRenderer>();
         private readonly Stack<ChunkRenderer> idle = new Stack<ChunkRenderer>();
+
+        // The layers of each column (x, z) that have a renderer (GL773): a column has a few, among a hundred layers mostly
+        // proven air or rock, so looks round the focus ask only about these.
+        private readonly Dictionary<Vector2Int, List<int>> layersByColumn = new Dictionary<Vector2Int, List<int>>();
+        private readonly Stack<List<int>> spareLayerLists = new Stack<List<int>>();
         private Material[] materials;
         private Material[] farMaterials;
 
@@ -46,6 +51,12 @@ namespace Clube.Core
             return active.TryGetValue(coord, out chunkRenderer);
         }
 
+        /// <summary>The layers of a column (x, z) that have a renderer, in no order.</summary>
+        public IReadOnlyList<int> LayersIn(Vector2Int column)
+        {
+            return layersByColumn.TryGetValue(column, out List<int> layers) ? layers : (IReadOnlyList<int>)Array.Empty<int>();
+        }
+
         /// <summary>A renderer showing the chunk at its origin: an idle one if there is one, otherwise a new one.</summary>
         public ChunkRenderer Take(World world, Vector3Int coord, Chunk chunk, Func<ChunkMeshSettings> meshSettings)
         {
@@ -55,6 +66,13 @@ namespace Clube.Core
             ShowOverlays(coord, chunkRenderer, IsWithinOverlayRadius(coord), force: true);
             ApplyDrawn(coord, chunkRenderer);
             active.Add(coord, chunkRenderer);
+            var column = new Vector2Int(coord.x, coord.z);
+            if (!layersByColumn.TryGetValue(column, out List<int> layers))
+            {
+                layers = spareLayerLists.Count > 0 ? spareLayerLists.Pop() : new List<int>();
+                layersByColumn.Add(column, layers);
+            }
+            layers.Add(coord.y);
             return chunkRenderer;
         }
 
@@ -66,6 +84,16 @@ namespace Clube.Core
                 return;
             }
             active.Remove(coord);
+            var column = new Vector2Int(coord.x, coord.z);
+            if (layersByColumn.TryGetValue(column, out List<int> layers))
+            {
+                layers.Remove(coord.y);
+                if (layers.Count == 0)
+                {
+                    layersByColumn.Remove(column);
+                    spareLayerLists.Push(layers);
+                }
+            }
             withOverlays.Remove(coord);
             chunkRenderer.Renderer.forceRenderingOff = false;
             chunkRenderer.Hide();
@@ -127,10 +155,10 @@ namespace Clube.Core
         /// <summary>Applies the draw rule to the column's renderers, layers 0 to <paramref name="height"/> - 1.</summary>
         public void RefreshColumn(Vector2Int column, int height)
         {
-            for (int y = 0; y < height; y++)
+            foreach (int y in LayersIn(column))
             {
                 var coord = new Vector3Int(column.x, y, column.y);
-                if (active.TryGetValue(coord, out ChunkRenderer chunkRenderer))
+                if (y < height && active.TryGetValue(coord, out ChunkRenderer chunkRenderer))
                 {
                     ApplyDrawn(coord, chunkRenderer);
                 }
