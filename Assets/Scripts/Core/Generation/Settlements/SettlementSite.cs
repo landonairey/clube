@@ -342,8 +342,8 @@ namespace Clube.Core
         /// <summary>Metres from a point to a rectangle (x, z); 0 inside it.</summary>
         public static float Beyond(Rect area, Vector2 point)
         {
-            float dx = Mathf.Max(area.xMin - point.x, 0f, point.x - area.xMax);
-            float dz = Mathf.Max(area.yMin - point.y, 0f, point.y - area.yMax);
+            float dx = Mathf.Max(Mathf.Max(area.xMin - point.x, 0f), point.x - area.xMax);
+            float dz = Mathf.Max(Mathf.Max(area.yMin - point.y, 0f), point.y - area.yMax);
             return Mathf.Sqrt(dx * dx + dz * dz);
         }
 

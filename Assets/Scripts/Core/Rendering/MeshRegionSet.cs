@@ -449,8 +449,8 @@ namespace Clube.Core
         private float HorizontalDistance(Region region, Vector3 focus)
         {
             // The bounds are kept on the region (GL778): the delegate and the vector sums ran for every dirty region every frame.
-            float dx = Mathf.Max(region.Min.x - focus.x, 0f, focus.x - region.Max.x);
-            float dz = Mathf.Max(region.Min.z - focus.z, 0f, focus.z - region.Max.z);
+            float dx = Mathf.Max(Mathf.Max(region.Min.x - focus.x, 0f), focus.x - region.Max.x);
+            float dz = Mathf.Max(Mathf.Max(region.Min.z - focus.z, 0f), focus.z - region.Max.z);
             return Mathf.Sqrt(dx * dx + dz * dz);
         }
 

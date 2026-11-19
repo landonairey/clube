@@ -126,8 +126,8 @@ namespace Clube.Game
             for (int slot = 0; slot < items.SlotCount; slot++)
             {
                 var rect = new Rect(topLeft.x + (slot % Columns) * (SlotSize + Gap), topLeft.y + (slot / Columns) * (SlotSize + Gap), SlotSize, SlotSize);
-                float dx = Mathf.Max(rect.xMin - point.x, 0f, point.x - rect.xMax);
-                float dy = Mathf.Max(rect.yMin - point.y, 0f, point.y - rect.yMax);
+                float dx = Mathf.Max(Mathf.Max(rect.xMin - point.x, 0f), point.x - rect.xMax);
+                float dy = Mathf.Max(Mathf.Max(rect.yMin - point.y, 0f), point.y - rect.yMax);
                 float distance = dx * dx + dy * dy;
                 if (distance < nearestDistance)
                 {
@@ -162,8 +162,8 @@ namespace Clube.Game
                     int index = slot - hotbar;
                     rect = new Rect(topLeft.x + (index % Columns) * (SlotSize + Gap), topLeft.y + (index / Columns) * (SlotSize + Gap), SlotSize, SlotSize);
                 }
-                float dx = Mathf.Max(rect.xMin - point.x, 0f, point.x - rect.xMax);
-                float dy = Mathf.Max(rect.yMin - point.y, 0f, point.y - rect.yMax);
+                float dx = Mathf.Max(Mathf.Max(rect.xMin - point.x, 0f), point.x - rect.xMax);
+                float dy = Mathf.Max(Mathf.Max(rect.yMin - point.y, 0f), point.y - rect.yMax);
                 float distance = dx * dx + dy * dy;
                 if (distance < nearestDistance)
                 {

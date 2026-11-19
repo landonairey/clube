@@ -1443,8 +1443,8 @@ namespace Clube.Core
         {
             Vector3 min = world.Grid.ChunkOrigin(coord);
             Vector3 max = min + world.Grid.ChunkWorldSize;
-            float dx = Mathf.Max(min.x - focus.x, 0f, focus.x - max.x);
-            float dz = Mathf.Max(min.z - focus.z, 0f, focus.z - max.z);
+            float dx = Mathf.Max(Mathf.Max(min.x - focus.x, 0f), focus.x - max.x);
+            float dz = Mathf.Max(Mathf.Max(min.z - focus.z, 0f), focus.z - max.z);
             return Mathf.Sqrt(dx * dx + dz * dz);
         }
 
