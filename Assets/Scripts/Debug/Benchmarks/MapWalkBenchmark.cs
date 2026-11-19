@@ -60,7 +60,7 @@ namespace Clube.Debug
         private readonly FrameTiming[] timing = new FrameTiming[1];
         private readonly FrameMarkers markers = new FrameMarkers();
         private readonly PlayerLoopTimes loopTimes = new PlayerLoopTimes();
-        private static readonly string[] PhaseNames = { "poll", "area", "apply meshes", "add chunks", "start generating", "start meshing", "colliders" };
+        private static readonly string[] PhaseNames = { "poll", "area", "apply meshes", "add chunks", "prove", "start generating", "start meshing", "colliders" };
         private readonly double[] phaseTotals = new double[PhaseNames.Length];
         private readonly double[] phaseWorst = new double[PhaseNames.Length];
         private readonly ProcessLoad load = new ProcessLoad();
@@ -347,10 +347,11 @@ namespace Clube.Debug
             phaseTotals[1] += phases.Area;
             phaseTotals[2] += phases.ApplyMeshes;
             phaseTotals[3] += phases.AddChunks;
-            phaseTotals[4] += phases.StartGeneration;
-            phaseTotals[5] += phases.StartMeshing;
-            phaseTotals[6] += phases.Colliders;
-            double[] thisFrame = { phases.Poll, phases.Area, phases.ApplyMeshes, phases.AddChunks, phases.StartGeneration, phases.StartMeshing, phases.Colliders };
+            phaseTotals[4] += phases.Prove;
+            phaseTotals[5] += phases.StartGeneration;
+            phaseTotals[6] += phases.StartMeshing;
+            phaseTotals[7] += phases.Colliders;
+            double[] thisFrame = { phases.Poll, phases.Area, phases.ApplyMeshes, phases.AddChunks, phases.Prove, phases.StartGeneration, phases.StartMeshing, phases.Colliders };
             for (int i = 0; i < thisFrame.Length; i++)
             {
                 phaseWorst[i] = System.Math.Max(phaseWorst[i], thisFrame[i]);

@@ -219,19 +219,25 @@ namespace Clube.Core
                 Bounds bounds = part.Bounds(TreeField.GatherMargin);
                 MarkLayers(bounds.min.y, bounds.max.y, first.Bottom, span, layerHeight, height, ref treesLow, ref treesHigh);
             }
-            if (ores != null)
+            float highest = heights.Highest;
+            float lowest = heights.Lowest;
+            float waterTop = WaterFill.HighestSurfaceNear(heightfield.Water, grid, column);
+            float buriedBelow = lowest - SurfaceLayersDepth();
+
+            // Ores only matter to the layers that could be rock, wholly under the surface layers: asking about the cells of
+            // the sky as well tried and failed to place a node in each, a height lookup a try.
+            if (ores != null && buriedBelow >= first.Top)
             {
-                ores.CollectNodes(tall, proofNodes);
+                float rockTop = Mathf.Min(buriedBelow, first.Bottom + height * layerHeight);
+                var buried = new Bounds(
+                    new Vector3(footprint.center.x, (first.Bottom + rockTop) * 0.5f, footprint.center.z),
+                    new Vector3(footprint.size.x, rockTop - first.Bottom, footprint.size.z));
+                ores.CollectNodes(buried, proofNodes);
                 foreach (OreNode node in proofNodes)
                 {
                     MarkLayers(node.Centre.y - node.Reach.y, node.Centre.y + node.Reach.y, first.Bottom, span, layerHeight, height, ref oresLow, ref oresHigh);
                 }
             }
-
-            float highest = heights.Highest;
-            float lowest = heights.Lowest;
-            float waterTop = WaterFill.HighestSurfaceNear(heightfield.Water, grid, column);
-            float buriedBelow = lowest - SurfaceLayersDepth();
             layers.AirMaterial = ChunkFillKernel.AllAir(fillSettings.Layers).Material;
             layers.RockMaterial = fillSettings.Layers.Base;
             for (int layer = 0; layer < height; layer++)

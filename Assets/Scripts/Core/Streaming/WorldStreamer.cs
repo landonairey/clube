@@ -105,6 +105,9 @@ namespace Clube.Core
         /// <summary>Copying generated chunks out of their buffers into the world.</summary>
         public double AddChunks;
 
+        /// <summary>Proving chunk columns' sky and deep rock uniform (GL773).</summary>
+        public double Prove;
+
         /// <summary>Scheduling generation jobs (buffers, ore nodes).</summary>
         public double StartGeneration;
 
@@ -119,7 +122,7 @@ namespace Clube.Core
 
         public override string ToString()
         {
-            return $"poll {Poll:0.00} · area {Area:0.00} · add {AddChunks:0.00} · generate {StartGeneration:0.00} · " +
+            return $"poll {Poll:0.00} · area {Area:0.00} · add {AddChunks:0.00} · prove {Prove:0.00} · generate {StartGeneration:0.00} · " +
                    $"apply {ApplyMeshes:0.00} · mesh {StartMeshing:0.00} · colliders {Colliders:0.00} ms";
         }
     }
@@ -394,6 +397,7 @@ namespace Clube.Core
             AddGenerated(IsPlaying ? budget * PlayingAddShare : budget);
             phases.AddChunks = Lap();
             ProveAhead();
+            phases.Prove = Lap();
             StartGenerating();
             phases.StartGeneration = Lap();
             StartMeshing();
