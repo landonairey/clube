@@ -458,7 +458,7 @@ namespace Clube.Core
                 case Kind.Wall:
                     if (materials.Stone != null)
                     {
-                        SquareVoxels.Build(world, SettlementWalls.Blocks(site, stretches[piece.Index], world.Grid.VoxelSize, materials.Stone.Id, wetAt), iso);
+                        yield return SquareVoxels.BuildSteps(world, SettlementWalls.Blocks(site, stretches[piece.Index], world.Grid.VoxelSize, materials.Stone.Id, wetAt), iso);
                     }
                     break;
                 default:
@@ -468,10 +468,10 @@ namespace Clube.Core
                         break;
                     }
                     bool turnAbout = piece.Index % 2 == 1;
-                    SquareVoxels.Build(world, SettlementStructures.Blocks(site.Buildings[piece.Index], world.Grid.VoxelSize, materials.Stone.Id,
+                    yield return SquareVoxels.BuildSteps(world, SettlementStructures.Blocks(site.Buildings[piece.Index], world.Grid.VoxelSize, materials.Stone.Id,
                         (turnAbout ? materials.Trim : materials.Boards).Id, (turnAbout ? materials.Boards : materials.Trim).Id, piece.Part, BuildingSlices), iso);
                     // GL711: the roof's top drawn as a slant over its square steps.
-                    SquareVoxels.Shape(world, SettlementStructures.RoofSkin(site.Buildings[piece.Index], world.Grid.VoxelSize, piece.Part, BuildingSlices),
+                    yield return SquareVoxels.ShapeSteps(world, SettlementStructures.RoofSkin(site.Buildings[piece.Index], world.Grid.VoxelSize, piece.Part, BuildingSlices),
                         (turnAbout ? materials.Trim : materials.Boards).Id);
                     break;
                 }
