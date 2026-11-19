@@ -19,7 +19,7 @@ namespace Clube.Game
     /// register as <see cref="IGuiDrawer"/>s while enabled and this draws them in depth order (and hands events to the front
     /// one first, as Unity does); the always-on HUD is on a canvas (<see cref="HudCanvas"/>) and doesn't come here.
     /// </summary>
-    public sealed class GuiHost : MonoBehaviour, IGuiDrawer
+    public sealed class GuiHost : MonoBehaviour
     {
         private static readonly List<IGuiDrawer> Drawers = new List<IGuiDrawer>();
         private static GuiHost instance;
@@ -65,22 +65,17 @@ namespace Clube.Game
             Drawers.Remove(drawer);
         }
 
-        private void OnEnable()
-        {
-            GuiHost.Add(this);
-        }
-
-        private void OnDisable()
-        {
-            GuiHost.Remove(this);
-        }
-
-        int IGuiDrawer.GuiDepth => 0;
-
-        void IGuiDrawer.DrawGui()
+        // Unity calls this, not an interface method: until GL781 the host had no OnGUI at all, so no screen ever drew or got input.
+        private void OnGUI()
         {
             GameUi.Apply();
-            if (Event.current.type == EventType.Repaint)
+            DrawAll(Event.current.type == EventType.Repaint);
+        }
+
+        /// <summary>Draws every registered drawer: back to front on a repaint; front first for any other event, so input goes to the screen on top.</summary>
+        public static void DrawAll(bool repaint)
+        {
+            if (repaint)
             {
                 for (int i = 0; i < Drawers.Count; i++)
                 {
