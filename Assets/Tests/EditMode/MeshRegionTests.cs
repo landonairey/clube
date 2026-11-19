@@ -111,7 +111,7 @@ namespace Clube.Core.Tests
             Assert.That(first.sharedMesh.vertices[4], Is.EqualTo(quad.vertices[0] + new Vector3(4f, 0f, 4f)), "the second cell moved to its place");
             Assert.That(FilterOf(parent, "Region -1, 0, 0").transform.localPosition, Is.EqualTo(new Vector3(-8f, 0f, 0f)));
 
-            regions.SetShownRule(region => region.x >= 0);
+            regions.SetShownRule(region => region.x >= 0 ? RegionDraw.Whole : RegionDraw.None);
             Assert.That(regions.DrawnCount, Is.EqualTo(2));
             regions.SetVisible(new Vector3Int(2, 0, 0), false);
             Assert.That(regions.DrawnCount, Is.EqualTo(1), "a region with no visible cell is switched off");
@@ -140,8 +140,34 @@ namespace Clube.Core.Tests
             Assert.That(regions.Build(Vector3.zero, 5f, float.PositiveInfinity, 4), Is.EqualTo(3));
             Assert.That(regions.DirtyCount, Is.EqualTo(7));
             // Hidden and beyond the build distance: left for later.
-            regions.SetShownRule(region => false);
+            regions.SetShownRule(region => RegionDraw.None);
             Assert.That(regions.Build(Vector3.zero, 0f, 15f, int.MaxValue), Is.EqualTo(1), "only x = 3 lies within 15 m");
+            regions.Dispose();
+        }
+
+        [Test]
+        public void RegionSet_DrawnPartly_MergesOnlyTheCellsDrawn_AndAgainWhenItTurnsWhole()
+        {
+            var parent = Make(new GameObject("Regions"));
+            var regions = new MeshRegionSet(parent.transform, "Region", new Vector3Int(2, 1, 2), Vector3.one * 4f, cell => (Vector3)cell * 4f);
+            Mesh quad = Quad(0f, false);
+            regions.Set(new Vector3Int(0, 0, 0), quad);
+            regions.Set(new Vector3Int(1, 0, 0), quad);
+            regions.Set(new Vector3Int(1, 0, 1), quad);
+            bool whole = false;
+            regions.SetShownRule(region => whole ? RegionDraw.Whole : RegionDraw.Partly, cell => cell.x == 1);
+            regions.Build(Vector3.zero, 0f, float.PositiveInfinity, int.MaxValue);
+            MeshFilter filter = FilterOf(parent, "Region 0, 0, 0");
+            Assert.That(filter.sharedMesh.vertexCount, Is.EqualTo(8), "the two cells at x = 1");
+            Assert.That(regions.IsCellShown(new Vector3Int(1, 0, 1)), Is.True);
+            Assert.That(regions.IsCellShown(new Vector3Int(0, 0, 0)), Is.False);
+
+            whole = true;
+            regions.RefreshShown();
+            Assert.That(regions.DirtyCount, Is.EqualTo(1), "drawn another way: merged again");
+            // Far away and past any budget, it's still merged now.
+            regions.Build(Vector3.one * 1000f, 0f, 0f, 0);
+            Assert.That(filter.sharedMesh.vertexCount, Is.EqualTo(12));
             regions.Dispose();
         }
 

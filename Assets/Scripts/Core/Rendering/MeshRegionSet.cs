@@ -4,6 +4,14 @@ using UnityEngine;
 
 namespace Clube.Core
 {
+    /// <summary>How a region of a <see cref="MeshRegionSet"/> is drawn: not at all, only some of its cells, or whole.</summary>
+    public enum RegionDraw
+    {
+        None,
+        Partly,
+        Whole,
+    }
+
     /// <summary>
     /// Draws many small meshes on a grid (members: a world's chunks, a coarse terrain level's chunks) as a few big ones
     /// (GL776): the members of each block of <see cref="Span"/> grid cells (a region) are merged into one mesh with one
@@ -28,7 +36,8 @@ namespace Clube.Core
         private readonly List<Mesh> sources = new List<Mesh>();
         private readonly List<Vector3> offsets = new List<Vector3>();
         private readonly MeshMerge merge = new MeshMerge();
-        private Func<Vector3Int, bool> isShown;
+        private Func<Vector3Int, RegionDraw> drawRule;
+        private Func<Vector3Int, bool> drawnWhenPartly;
         private Func<Vector3Int, Material[]> materialsFor;
         private bool hidden;
 
@@ -105,7 +114,7 @@ namespace Clube.Core
             {
                 region = spare.Count > 0 ? spare.Pop() : new Region();
                 region.Coord = regionCoord;
-                region.Shown = isShown == null || isShown(regionCoord);
+                region.Draw = DrawOf(regionCoord);
                 regions.Add(regionCoord, region);
             }
             if (members.TryGetValue(cell, out Member member))
@@ -163,11 +172,26 @@ namespace Clube.Core
             return members.ContainsKey(cell);
         }
 
-        /// <summary>Which regions are drawn; null draws every one. Applies at once.</summary>
-        public void SetShownRule(Func<Vector3Int, bool> rule)
+        /// <summary>
+        /// How each region is drawn; null draws every one whole. A region drawn <see cref="RegionDraw.Partly"/> is merged from
+        /// only the cells <paramref name="cellDrawnWhenPartly"/> accepts. A shown region whose way of drawing changed is
+        /// merged again in the next <see cref="Build"/>, whatever the budget. Applies at once.
+        /// </summary>
+        public void SetShownRule(Func<Vector3Int, RegionDraw> rule, Func<Vector3Int, bool> cellDrawnWhenPartly = null)
         {
-            isShown = rule;
+            drawRule = rule;
+            drawnWhenPartly = cellDrawnWhenPartly;
             RefreshShown();
+        }
+
+        /// <summary>Notes that which cells a partly drawn region draws may have changed: it's merged again soon.</summary>
+        public void MarkChanged(Vector3Int regionCoord)
+        {
+            if (regions.TryGetValue(regionCoord, out Region region) && region.Draw == RegionDraw.Partly)
+            {
+                dirty.Add(region);
+                region.Urgent = true;
+            }
         }
 
         /// <summary>Applies the shown rule to every region again.</summary>
@@ -188,10 +212,16 @@ namespace Clube.Core
             }
         }
 
-        /// <summary>Whether the region is drawn by the rule (whether or not it has members).</summary>
-        public bool IsShown(Vector3Int regionCoord)
+        /// <summary>Whether a cell is drawn by the rule (whether or not it has a member).</summary>
+        public bool IsCellShown(Vector3Int cell)
         {
-            return isShown == null || isShown(regionCoord);
+            RegionDraw draw = DrawOf(RegionOf(cell));
+            return draw == RegionDraw.Whole || (draw == RegionDraw.Partly && drawnWhenPartly != null && drawnWhenPartly(cell));
+        }
+
+        private RegionDraw DrawOf(Vector3Int regionCoord)
+        {
+            return drawRule?.Invoke(regionCoord) ?? RegionDraw.Whole;
         }
 
         /// <summary>The materials each region draws with; applies at once, and to regions made later.</summary>
@@ -227,10 +257,10 @@ namespace Clube.Core
             foreach (Region region in dirty)
             {
                 float distance = HorizontalDistance(region, focus);
-                if (distance <= alwaysWithin || region.Shown || distance <= buildWithin)
+                if (distance <= alwaysWithin || region.Urgent || region.Draw != RegionDraw.None || distance <= buildWithin)
                 {
                     // Those that must be merged sort first.
-                    candidates.Add((distance <= alwaysWithin ? -1f : distance, region));
+                    candidates.Add((distance <= alwaysWithin || region.Urgent ? -1f : distance, region));
                 }
             }
             candidates.Sort((a, b) => a.Distance.CompareTo(b.Distance));
@@ -262,6 +292,8 @@ namespace Clube.Core
                 if (!dirty.Contains(region))
                 {
                     region.Built = true;
+                    region.BuiltFor = region.Merging;
+                    region.Urgent = false;
                     ApplyEnabled(region);
                 }
             }
@@ -287,19 +319,26 @@ namespace Clube.Core
             DrawnCount = 0;
         }
 
-        // Queues the region's merge; false when its members can't be merged yet (mixed vertex layouts).
+        // Queues the region's merge, of every cell or, drawn partly, of the cells drawn; false when its members can't be
+        // merged yet (mixed vertex layouts). One not drawn at all is merged whole, ready to be.
         private bool Queue(Region region)
         {
             sources.Clear();
             offsets.Clear();
             Vector3 origin = originOf(FirstCellOf(region.Coord));
+            region.Merging = region.Draw == RegionDraw.Partly ? RegionDraw.Partly : RegionDraw.Whole;
             foreach (Vector3Int cell in region.Cells)
             {
+                if (region.Merging == RegionDraw.Partly && (drawnWhenPartly == null || !drawnWhenPartly(cell)))
+                {
+                    continue;
+                }
                 Mesh mesh = members[cell].Mesh;
                 sources.Add(mesh);
                 offsets.Add(originOf(cell) - origin);
                 LastBuildVertices += mesh.vertexCount;
             }
+            region.HasGeometry = sources.Count > 0;
             EnsureObject(region, origin);
             return merge.Add(region.Mesh, sources, offsets);
         }
@@ -342,6 +381,8 @@ namespace Clube.Core
             }
             region.Drawn = false;
             region.Built = false;
+            region.Urgent = false;
+            region.HasGeometry = false;
             region.Named = false;
             region.Visible = 0;
             region.Cells.Clear();
@@ -350,12 +391,19 @@ namespace Clube.Core
 
         private void ApplyShown(Region region)
         {
-            bool shown = isShown == null || isShown(region.Coord);
-            if (shown != region.Shown)
+            RegionDraw draw = DrawOf(region.Coord);
+            if (draw == region.Draw)
             {
-                region.Shown = shown;
-                ApplyEnabled(region);
+                return;
             }
+            region.Draw = draw;
+            if (draw != RegionDraw.None && region.Built && draw != region.BuiltFor)
+            {
+                // Merged for the other way of drawing: it draws that until merged again, this frame.
+                dirty.Add(region);
+                region.Urgent = true;
+            }
+            ApplyEnabled(region);
         }
 
         private void ApplyMaterials(Region region)
@@ -374,7 +422,7 @@ namespace Clube.Core
 
         private void ApplyEnabled(Region region)
         {
-            bool drawn = !hidden && region.Shown && region.Built && region.Visible > 0 && region.Renderer != null;
+            bool drawn = !hidden && region.Draw != RegionDraw.None && region.Built && region.HasGeometry && region.Visible > 0 && region.Renderer != null;
             if (drawn == region.Drawn)
             {
                 return;
@@ -413,7 +461,11 @@ namespace Clube.Core
             public Mesh Mesh;
             public Material[] Materials;
             public int Visible;
-            public bool Shown = true;
+            public RegionDraw Draw = RegionDraw.Whole;
+            public RegionDraw BuiltFor;
+            public RegionDraw Merging;
+            public bool Urgent;
+            public bool HasGeometry;
             public bool Built;
             public bool Drawn;
             public bool Named;

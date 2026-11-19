@@ -138,6 +138,9 @@ namespace Clube.Core
         /// <summary>Changes whenever a column gains its first edit, or the edits are cleared: answers of <see cref="HasEditsIn"/> kept until it changes stay right.</summary>
         public int EditedColumnsVersion { get; private set; }
 
+        /// <summary>Raised when a column (x, z) gains its first edit, after <see cref="EditedColumnsVersion"/> changed.</summary>
+        public event Action<Vector2Int> ColumnEdited;
+
         /// <summary>True once any edit has touched a chunk of the column (x, z).</summary>
         public bool HasEditsIn(Vector2Int column)
         {
@@ -151,6 +154,7 @@ namespace Clube.Core
                 if (editedColumns.Add(new Vector2Int(coord.x, coord.z)))
                 {
                     EditedColumnsVersion++;
+                    ColumnEdited?.Invoke(new Vector2Int(coord.x, coord.z));
                 }
                 DropProofOfEdited(coord);
             }

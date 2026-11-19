@@ -218,8 +218,9 @@ namespace Clube.Core
             this.meshSettings = meshSettings;
             this.settings = settings;
             DrawVersion = ++drawVersions;
-            renderers.SetDrawRule(IsColumnDrawn);
+            renderers.SetDrawRule(IsRegionWithin, RegionHasEdits, world.HasEditsIn);
             world.ChunkMaterialised += NoteMaterialised;
+            world.ColumnEdited += NoteColumnEdited;
             world.ProvenLayersChanged += RaiseProvenLayersChanged;
         }
 
@@ -614,6 +615,7 @@ namespace Clube.Core
         public void Dispose()
         {
             world.ChunkMaterialised -= NoteMaterialised;
+            world.ColumnEdited -= NoteColumnEdited;
             world.ProvenLayersChanged -= RaiseProvenLayersChanged;
             pipeline.Dispose();
         }
@@ -1104,15 +1106,8 @@ namespace Clube.Core
             stats.Triangles += chunkRenderer.LastBuildStats.TriangleCount;
             if (settings.DetailDistance > 0 && world.IsEdited(coord))
             {
-                // An edited column's region is drawn whole at any distance: its other layers too.
-                var column = new Vector2Int(coord.x, coord.z);
-                renderers.RefreshColumn(column, settings.HeightInChunks);
-                if (hasDrawCentre && world.EditedColumnsVersion != drawnEditsVersion && !IsRegionWithin(column))
-                {
-                    // Drawn now only for its edits: the coverage mask must hear of the region's other columns too.
-                    drawnEditsVersion = world.EditedColumnsVersion;
-                    DrawVersion = ++drawVersions;
-                }
+                // An edited column is drawn whole at any distance: its other layers too.
+                renderers.RefreshColumn(new Vector2Int(coord.x, coord.z), settings.HeightInChunks);
             }
             ChunkMeshed?.Invoke(coord, chunkRenderer);
         }
@@ -1263,17 +1258,21 @@ namespace Clube.Core
         /// <summary>
         /// True when the world draws the column's chunks (x, z): every column with no detail distance, otherwise those of
         /// the regions (<see cref="ChunkRendererPool.RegionSpan"/> columns square, GL776) that reach within it of the focus
-        /// column, and every column of a region holding an edited chunk. Whole regions, since each draws as one renderer.
+        /// column (whole regions, since each draws as one renderer), and any column holding an edited chunk.
         /// </summary>
         public bool IsColumnDrawn(Vector2Int column)
         {
-            int distance = settings.DetailDistance;
-            return distance <= 0 || !hasDrawCentre || IsRegionWithin(column) || RegionHasEdits(renderers.RegionColumn(column));
+            return IsRegionWithin(column) || world.HasEditsIn(column);
         }
 
-        // Whether the nearest column of the column's region lies within the draw radius of the focus column.
+        // Whether the nearest column of the column's region lies within the draw radius of the focus column; every region
+        // with no detail distance.
         private bool IsRegionWithin(Vector2Int column)
         {
+            if (settings.DetailDistance <= 0 || !hasDrawCentre)
+            {
+                return true;
+            }
             Vector2Int first = renderers.RegionColumn(column);
             Vector3Int span = renderers.RegionSpan;
             var nearest = new Vector2Int(
@@ -1285,7 +1284,17 @@ namespace Clube.Core
         // Regions (by first column) known to hold edits or not, until a column gains its first edit.
         private readonly Dictionary<Vector2Int, bool> regionEdits = new Dictionary<Vector2Int, bool>();
         private int regionEditsVersion = -1;
-        private int drawnEditsVersion = -1;
+
+        // Keeps the cache current through new edits (roads and settlements write new columns all the time): only a clear
+        // of the world's edits, or an edit missed, empties it.
+        private void NoteColumnEdited(Vector2Int column)
+        {
+            if (regionEditsVersion == world.EditedColumnsVersion - 1)
+            {
+                regionEdits[renderers.RegionColumn(column)] = true;
+                regionEditsVersion = world.EditedColumnsVersion;
+            }
+        }
 
         private bool RegionHasEdits(Vector2Int first)
         {

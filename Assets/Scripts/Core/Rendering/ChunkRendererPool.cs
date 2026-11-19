@@ -41,9 +41,11 @@ namespace Clube.Core
         private Vector3Int overlayCentre;
         private int overlayRadius = -1;
 
-        // Which columns (x, z) draw their chunks (P18); null draws every one. Asked about one column of each region (the
-        // streamer's rule gives every column of a region the same answer). Chunks outside stay loaded, not drawn.
-        private Func<Vector2Int, bool> isColumnDrawn;
+        // Which chunks are drawn (P18), by the region's first column (x, z): regions within the detail distance whole, those
+        // past it only their edited columns (and not at all without any). Null draws every one. Chunks not drawn stay loaded.
+        private Func<Vector2Int, bool> isRegionWithin;
+        private Func<Vector2Int, bool> regionHasEdits;
+        private Func<Vector2Int, bool> isColumnEdited;
 
         /// <param name="parent">Chunk objects and region renderers sit under it, at their origin in its space.</param>
         /// <param name="withColliders">Give every chunk a <see cref="ChunkCollider"/> (M6).</param>
@@ -105,10 +107,16 @@ namespace Clube.Core
             return new Vector2Int(FloorDiv(column.x, regionSpan.x) * regionSpan.x, FloorDiv(column.y, regionSpan.z) * regionSpan.z);
         }
 
-        /// <summary>Whether a chunk at the coordinate would be drawn now (the draw rule for its region; false while hidden).</summary>
+        /// <summary>Whether a chunk at the coordinate would be drawn now (the draw rule; false while hidden).</summary>
         public bool IsDrawn(Vector3Int coord)
         {
-            return !hidden && (isColumnDrawn == null || isColumnDrawn(RegionColumn(new Vector2Int(coord.x, coord.z))));
+            if (hidden)
+            {
+                return false;
+            }
+            var column = new Vector2Int(coord.x, coord.z);
+            RegionDraw draw = DrawOf(RegionColumn(column));
+            return draw == RegionDraw.Whole || (draw == RegionDraw.Partly && isColumnEdited != null && isColumnEdited(column));
         }
 
         /// <summary>A chunk object for the chunk at its origin: an idle one if there is one, otherwise a new one.</summary>
@@ -186,12 +194,17 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Which columns (x, z) draw their chunks (P18): the others are loaded but not drawn. Null draws every one. Asked
-        /// about each region's first column. Applies to every region now and to those made later.
+        /// Which chunks are drawn (P18): every chunk of a region within the detail distance (<paramref name="regionWithin"/>,
+        /// asked with the region's first column), and past it only those in edited columns (<paramref name="columnEdited"/>;
+        /// <paramref name="regionEdited"/> says, by first column, whether a region has any, so the others aren't looked at).
+        /// The others stay loaded, not drawn. A null <paramref name="regionWithin"/> draws every chunk. Applies to every
+        /// region now and to those made later.
         /// </summary>
-        public void SetDrawRule(Func<Vector2Int, bool> rule)
+        public void SetDrawRule(Func<Vector2Int, bool> regionWithin, Func<Vector2Int, bool> regionEdited, Func<Vector2Int, bool> columnEdited)
         {
-            isColumnDrawn = rule;
+            isRegionWithin = regionWithin;
+            regionHasEdits = regionEdited;
+            isColumnEdited = columnEdited;
             RefreshDrawn();
         }
 
@@ -213,7 +226,10 @@ namespace Clube.Core
             int regionZ = first.y / regionSpan.z;
             for (int y = 0; y * regionSpan.y < height; y++)
             {
-                regions.RefreshShown(new Vector3Int(regionX, y, regionZ));
+                var region = new Vector3Int(regionX, y, regionZ);
+                regions.RefreshShown(region);
+                // Drawn partly, its newly edited column joins it.
+                regions.MarkChanged(region);
             }
         }
 
@@ -232,14 +248,20 @@ namespace Clube.Core
             regions?.Dispose();
             grid = worldGrid;
             regions = new MeshRegionSet(parent, "Chunk region", regionSpan, grid.ChunkWorldSize, grid.ChunkOrigin);
-            regions.SetShownRule(IsRegionShown);
+            regions.SetShownRule(region => DrawOf(new Vector2Int(region.x * regionSpan.x, region.z * regionSpan.z)),
+                cell => isColumnEdited != null && isColumnEdited(new Vector2Int(cell.x, cell.z)));
             regions.SetMaterialRule(MaterialsFor);
             regions.Hidden = hidden;
         }
 
-        private bool IsRegionShown(Vector3Int region)
+        // How the region starting at the column is drawn.
+        private RegionDraw DrawOf(Vector2Int firstColumn)
         {
-            return isColumnDrawn == null || isColumnDrawn(new Vector2Int(region.x * regionSpan.x, region.z * regionSpan.z));
+            if (isRegionWithin == null || isRegionWithin(firstColumn))
+            {
+                return RegionDraw.Whole;
+            }
+            return regionHasEdits != null && regionHasEdits(firstColumn) ? RegionDraw.Partly : RegionDraw.None;
         }
 
         private Material[] MaterialsFor(Vector3Int region)
