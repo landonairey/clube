@@ -33,6 +33,9 @@ namespace Clube.Game
         private const float LeastWriteMilliseconds = 0.5f;
         private const float CollectMilliseconds = 1.5f;
         private const int AskEveryFrames = 8;
+        // A piece the player is about to walk on holds the ground there: it gets this long a frame (GL771).
+        private const float CloseWriteMilliseconds = 6f;
+        private bool writingClose;
         // The look over the settlements for pieces to write, and what it has found so far (GL771).
         private readonly List<(int Index, float Distance)> nextNear = new List<(int, float)>();
         private readonly List<(int Settlement, int Piece, float Distance)> nextPending = new List<(int, int, float)>();
@@ -612,6 +615,7 @@ namespace Clube.Game
             }
             writing.Dispose();
             writing = null;
+            writingClose = false;
             hold.Remove(session.WorldView.World.Grid, HoldOf(writingSettlement, writingPiece));
             PiecesWritten++;
             LongestMilliseconds = Mathf.Max(LongestMilliseconds, writingMilliseconds);
@@ -641,7 +645,9 @@ namespace Clube.Game
             };
             // While the area loads in bulk the ground is waiting to be shown: more of the frame goes to writing it.
             float budget = view.IsLoadingInSight ? Mathf.Max(writeBudgetMilliseconds, view.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds) : writeBudgetMilliseconds;
-            budget = view.IsLoadingInSight ? budget : Mathf.Max(LeastWriteMilliseconds, FrameBudget.Limit(budget));
+            budget = view.IsLoadingInSight ? budget
+                : writingClose || (pending.Count > 0 && pending[0].Distance < CloseMetres) ? Mathf.Max(budget, CloseWriteMilliseconds)
+                : Mathf.Max(LeastWriteMilliseconds, FrameBudget.Limit(budget));
             float started = Time.realtimeSinceStartup;
             bool wrote = false;
             // GL771: a large piece is written over several frames, and the next waits for it.
@@ -677,6 +683,7 @@ namespace Clube.Game
                 writingSettlement = writer;
                 writingPiece = next.Piece;
                 writingKind = writer.KindOf(next.Piece);
+                writingClose = next.Distance < CloseMetres;
                 writingMilliseconds = 0f;
                 pending.RemoveAt(i--);
                 if (!RunWriting(budget - (Time.realtimeSinceStartup - started) * 1000f))

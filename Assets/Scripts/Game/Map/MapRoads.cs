@@ -29,6 +29,9 @@ namespace Clube.Game
         private const float LeastWriteMilliseconds = 0.5f;
         private const float CollectMilliseconds = 1.5f;
         private const int AskEveryFrames = 8;
+        // A piece the player is about to walk on holds the ground there: it gets this long a frame (GL771).
+        private const float CloseWriteMilliseconds = 6f;
+        private bool writingClose;
         // The look over the roads for pieces to write, and what it has found so far (GL771).
         private readonly List<(int Road, int Piece, float Distance)> nextPending = new List<(int, int, float)>();
         private readonly List<(int Road, int Tunnel, int Piece, float Distance)> nextBoring = new List<(int, int, int, float)>();
@@ -553,6 +556,7 @@ namespace Clube.Game
             }
             writing.Dispose();
             writing = null;
+            writingClose = false;
             hold.Remove(session.WorldView.World.Grid, HoldOf(writingRoad, writingPiece));
             PiecesWritten++;
             nextLookTime = 0f;
@@ -569,6 +573,7 @@ namespace Clube.Game
             bool inSight = session.WorldView.IsLoadingInSight;
             float writeBudgetMilliseconds = inSight
                 ? Mathf.Max(this.writeBudgetMilliseconds, session.WorldView.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds)
+                : writingClose || (pending.Count > 0 && pending[0].Distance < CloseMetres * CloseMetres) ? Mathf.Max(this.writeBudgetMilliseconds, CloseWriteMilliseconds)
                 : Mathf.Max(LeastWriteMilliseconds, FrameBudget.Limit(this.writeBudgetMilliseconds));
             float started = Time.realtimeSinceStartup;
             // GL771: a piece through a wood is written over several frames, and the next waits for it.
@@ -609,6 +614,7 @@ namespace Clube.Game
                 writing = new SlicedWork(writer.WriteSteps(world, config.Materials, Natural, config.IsoLevel, next.Piece));
                 writingRoad = writer;
                 writingPiece = next.Piece;
+                writingClose = next.Distance < CloseMetres * CloseMetres;
                 writingMilliseconds = 0f;
                 pending.RemoveAt(i--);
                 float left = writeBudgetMilliseconds - (Time.realtimeSinceStartup - started) * 1000f;

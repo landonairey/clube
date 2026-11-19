@@ -145,6 +145,7 @@ namespace Clube.Core
         private readonly List<Vector2Int> wantedColumns = new List<Vector2Int>();
         // The columns left behind, still to be unloaded (GL771).
         private const double PlayingUnloadMilliseconds = 2.0;
+        private const double EditRebuildMilliseconds = 8.0;
         private readonly List<Vector2Int> unloading = new List<Vector2Int>();
         private int unloadingNext;
         private int unloadingLayer;
@@ -434,8 +435,15 @@ namespace Clube.Core
             }
 
             ChunkMeshSettings current = meshSettings();
+            // GL771: what doesn't fit in the time stays dirty for the next frame.
+            long began = System.Diagnostics.Stopwatch.GetTimestamp();
+            long most = (long)(EditRebuildMilliseconds * 0.001 * System.Diagnostics.Stopwatch.Frequency);
             foreach (Vector3Int coord in scratch)
             {
+                if (IsPlaying && System.Diagnostics.Stopwatch.GetTimestamp() - began > most)
+                {
+                    break;
+                }
                 Chunk chunk = world.Chunks[coord];
 
                 // A mesh already on its way shows the chunk before the edit; take it out of the way first.
