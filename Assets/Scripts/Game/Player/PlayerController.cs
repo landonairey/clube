@@ -210,9 +210,6 @@ namespace Clube.Game
         /// <summary>True while walking, jumping, sprinting and crouching are off, so typing in a box can't move the player (GL519).</summary>
         public bool InputLocked { get; set; }
 
-        /// <summary>True where holding Jump against a steep face doesn't climb it (GL529: the tutorial).</summary>
-        public bool ClimbingDisabled { get; set; }
-
         /// <summary>True while climbing a steep face (GL467).</summary>
         public bool IsClimbing { get; private set; }
 
@@ -471,7 +468,7 @@ namespace Clube.Game
             bool jumpPressed = !InputLocked && jumpAction != null && jumpAction.action.WasPressedThisFrame();
             // Holding Jump jumps again at every landing.
             bool jumpHeld = !InputLocked && jumpAction != null && jumpAction.action.IsPressed();
-            if (Climb(jumpHeld && !isInMenu && !ClimbingDisabled, input))
+            if (Climb(jumpHeld && !isInMenu, input))
             {
                 return;
             }
