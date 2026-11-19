@@ -69,6 +69,10 @@ namespace Clube.Game
         [SerializeField, Min(0f)]
         private float handAxeExperience = 5f;
 
+        [Tooltip("The hand axe's starting durability by the stone's grade (GL794), in order: Poor, Medium, Good, High Grade, Pure.")]
+        [SerializeField]
+        private float[] handAxeDurabilityByGrade = (float[])ToolDurability.DefaultByGrade.Clone();
+
         [Header("Crushing ore (GL148)")]
         [SerializeField]
         private List<Crush> crushes = new List<Crush>();
@@ -395,11 +399,19 @@ namespace Clube.Game
             return true;
         }
 
-        // One stone off the stack becomes a hand axe, mixed or clean.
+        // One stone off the stack becomes a hand axe, mixed or clean; its durability comes from the stone's grade (GL794).
         private bool KnapStone(int slot)
         {
+            ItemStack held = inventory.Inventory[slot];
+            MaterialRegistry materials = worldView != null && worldView.Config != null ? worldView.Config.Materials : null;
+            float purity = held.Quality;
+            if (purity >= 0.995f && purity <= 1.005f && held.Contents != null && materials != null)
+            {
+                purity = materials.Quality(held.Contents, held.Item);
+            }
+            float durability = ToolDurability.FromGrade(purity, handAxeDurabilityByGrade);
             inventory.Inventory.RemoveAt(slot, 1);
-            inventory.GiveOrDrop(handAxe, 1);
+            inventory.GiveOrDrop(handAxe, 1, null, 0, durability);
             skills?.Skills.Award(SkillType.Crafting, handAxeExperience);
             Message?.Invoke($"Knocked the stone into a {handAxe.DisplayName.ToLowerInvariant()}");
             HandAxeMade?.Invoke();
