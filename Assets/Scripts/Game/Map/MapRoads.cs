@@ -28,7 +28,7 @@ namespace Clube.Game
         // The piece being written over several frames (GL771): one at a time, as each cuts down the trees in its way first.
         private const float LeastWriteMilliseconds = 0.5f;
         private const float CollectMilliseconds = 1.5f;
-        private const int AskEveryFrames = 8, PiecesAskedFor = 4;
+        private const int AskEveryFrames = 8;
         // A piece the player is about to walk on holds the ground there: it gets this long a frame (GL771).
         private const float CloseWriteMilliseconds = 6f;
         private bool writingClose;
@@ -529,11 +529,11 @@ namespace Clube.Game
             BuildSignposts(viewer, world);
         }
 
-        // GL771: the chunks a piece is missing are listed now and then: listing them for 32 pieces every frame was over
+        // GL771: each piece lists the chunks it is missing every few frames, in turn: listing them for 32 pieces every frame was over
         // 10 ms, and the streamer remembers what it was asked for. Otherwise the check stops at the first one missing.
         private static bool AsksForChunks(float distanceSquared, int check)
         {
-            return check <= PiecesAskedFor && distanceSquared < RequestMetres * RequestMetres && Time.frameCount % AskEveryFrames == 0;
+            return distanceSquared < RequestMetres * RequestMetres && (check + Time.frameCount) % AskEveryFrames == 0;
         }
 
         // Runs the piece in hand for this long (at least one step); true once no piece is left in hand.
