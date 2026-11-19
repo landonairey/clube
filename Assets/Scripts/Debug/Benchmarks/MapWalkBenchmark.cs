@@ -342,8 +342,8 @@ namespace Clube.Debug
             water.Add(Cost(world.GetComponent<WaterView>(), v => v.LastUpdateMilliseconds));
             grass.Add(Cost(world.GetComponent<GrassScatter>(), v => v.LastUpdateMilliseconds));
             drawCalls.Add(drawCallsRecorder.Valid ? drawCallsRecorder.LastValue : 0f);
-            long threadBytes = System.GC.GetAllocatedBytesForCurrentThread();
-            allocated.Add(allocatedRecorder.Valid && allocatedRecorder.LastValue > 0 ? allocatedRecorder.LastValue / 1024f : lastThreadBytes >= 0 ? (threadBytes - lastThreadBytes) / 1024f : 0f);
+            long threadBytes = System.GC.GetTotalMemory(false);
+            allocated.Add(allocatedRecorder.Valid && allocatedRecorder.LastValue > 0 ? allocatedRecorder.LastValue / 1024f : lastThreadBytes >= 0 ? Mathf.Max(0L, threadBytes - lastThreadBytes) / 1024f : 0f);
             lastThreadBytes = threadBytes;
             SampleSystems();
             StreamingPhases phases = world.Stats.Phases;

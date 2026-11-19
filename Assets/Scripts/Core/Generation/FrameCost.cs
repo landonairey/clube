@@ -46,10 +46,10 @@ namespace Clube.Core
                 ByName.Add(name, cost);
                 Costs.Add(cost);
             }
-            return new Scope(cost, Stopwatch.GetTimestamp(), GC.GetAllocatedBytesForCurrentThread());
+            return new Scope(cost, Stopwatch.GetTimestamp(), GC.GetTotalMemory(false));
         }
 
-        /// <summary>The bytes the main thread allocated inside the system's scopes since the last call, and starts again from nothing (GL778).</summary>
+        /// <summary>The managed heap growth (GetTotalMemory; the IL2CPP player has no per-thread count) inside the system's scopes since the last call, and starts again from nothing (GL778).</summary>
         public long TakeBytes()
         {
             long taken = bytes;
@@ -85,7 +85,7 @@ namespace Clube.Core
                 if (cost != null)
                 {
                     cost.ticks += Stopwatch.GetTimestamp() - started;
-                    cost.bytes += GC.GetAllocatedBytesForCurrentThread() - startedBytes;
+                    cost.bytes += Math.Max(0L, GC.GetTotalMemory(false) - startedBytes);
                 }
             }
         }
