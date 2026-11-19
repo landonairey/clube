@@ -46,8 +46,14 @@ namespace Clube.Game
         // A saved position to set the player down at instead of the highest ground (GL205), once.
         private Vector3? placeAt;
 
+        // True once a save has placed the player in this scene (GL787): the map's start no longer moves it.
+        private bool placedFromSave;
+
         /// <summary>True once the player stands in the world; false while waiting for ground.</summary>
         public bool IsPlaced => isPlaced;
+
+        /// <summary>True once a save has placed the player in this scene (GL787).</summary>
+        public bool PlacedFromSave => placedFromSave;
 
         /// <summary>
         /// Sets the player down where a save left it (GL205), in a cave or a pit too, once the ground there has
@@ -56,8 +62,23 @@ namespace Clube.Game
         public void PlaceAt(Vector3 position)
         {
             placeAt = position;
+            placedFromSave = true;
             transform.position = position;
             Wait();
+        }
+
+        /// <summary>
+        /// Sets the player down at the map's start (GL787): the same as <see cref="SetDownOver"/>, except that it does
+        /// nothing once a save has placed the player in this scene, since the map's survey finishes after a loaded game has
+        /// handed over its position, and a new game's start must not take the player away from where the game was saved.
+        /// </summary>
+        public void SetDownAtStart(Vector3 position)
+        {
+            if (placedFromSave)
+            {
+                return;
+            }
+            SetDownOver(position);
         }
 
         /// <summary>

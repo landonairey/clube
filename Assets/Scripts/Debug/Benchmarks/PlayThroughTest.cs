@@ -352,7 +352,8 @@ namespace Clube.Debug
             yield return Seconds(8f);
             Vector3 position = FindAnyObjectByType<PlayerController>().transform.position;
             float moved = Vector3.Distance(savedPosition, position);
-            Check(moved < 5f, $"the player is back where the game was saved ({moved:0.0} m off: saved at {savedPosition}, now at {position})");
+            // GL787: within half a metre of where the game was saved.
+            Check(moved < 0.5f, $"the player is back where the game was saved ({moved:0.0} m off: saved at {savedPosition}, now at {position})");
             float coins = FindAnyObjectByType<PlayerWallet>().Wallet.Coins;
             Check(Mathf.Abs(coins - savedCoins) < 0.01f, $"the coins came back ({coins:0} of {savedCoins:0})");
             int count = FindAnyObjectByType<PlayerInventory>().Inventory.Count(savedItem);
