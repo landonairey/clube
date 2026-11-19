@@ -114,6 +114,8 @@ namespace Clube.Core
             {
                 region = spare.Count > 0 ? spare.Pop() : new Region();
                 region.Coord = regionCoord;
+                region.Min = originOf(FirstCellOf(regionCoord));
+                region.Max = region.Min + Vector3.Scale(cellSize, Span);
                 region.Draw = DrawOf(regionCoord);
                 regions.Add(regionCoord, region);
             }
@@ -446,10 +448,9 @@ namespace Clube.Core
         // From the focus to the region's nearest point, horizontally.
         private float HorizontalDistance(Region region, Vector3 focus)
         {
-            Vector3 min = originOf(FirstCellOf(region.Coord));
-            Vector3 max = min + Vector3.Scale(cellSize, Span);
-            float dx = Mathf.Max(min.x - focus.x, 0f, focus.x - max.x);
-            float dz = Mathf.Max(min.z - focus.z, 0f, focus.z - max.z);
+            // The bounds are kept on the region (GL778): the delegate and the vector sums ran for every dirty region every frame.
+            float dx = Mathf.Max(region.Min.x - focus.x, 0f, focus.x - region.Max.x);
+            float dz = Mathf.Max(region.Min.z - focus.z, 0f, focus.z - region.Max.z);
             return Mathf.Sqrt(dx * dx + dz * dz);
         }
 
@@ -468,6 +469,7 @@ namespace Clube.Core
         {
             public readonly List<Vector3Int> Cells = new List<Vector3Int>();
             public Vector3Int Coord;
+            public Vector3 Min, Max;
             public MeshRenderer Renderer;
             public Mesh Mesh;
             public Material[] Materials;
