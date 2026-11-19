@@ -159,7 +159,10 @@ namespace Clube.Core
         private int unloadingNext;
         private int unloadingLayer;
 
-        // The world's dirty chunks, collected each frame (World.CollectDirty).
+        // The dirty chunks waiting for a mesh, held ones parked (GL774), and those this frame looks at.
+        private readonly DirtyChunks dirtyChunks = new DirtyChunks();
+        // Chunks whose collider was given a shape (some since cleared): the ones a move may have left far away.
+        private readonly HashSet<Vector3Int> shaped = new HashSet<Vector3Int>();
         private readonly List<Vector3Int> dirtyScratch = new List<Vector3Int>();
         // Whether the last look found a dirty chunk that may be meshed (StartMeshing).
         private bool hasChunksToMesh;
@@ -435,10 +438,12 @@ namespace Clube.Core
         {
             TakeMaterialised();
             scratch.Clear();
-            world.CollectDirty(dirtyScratch);
-            foreach (Vector3Int dirtyCoord in dirtyScratch)
+            StreamingMarkers.RebuildScan.Begin();
+            // A chunk shown once and dirty again was edited. Held chunks were never shown, so the parked ones needn't be looked at.
+            dirtyChunks.Take(world);
+            foreach (Vector3Int dirtyCoord in dirtyChunks.Waiting)
             {
-                if (meshedOnce.Contains(dirtyCoord))
+                if (meshedOnce.Contains(dirtyCoord) && world.TryPeekChunk(dirtyCoord, out Chunk dirtyChunk) && dirtyChunk.IsDirty)
                 {
                     scratch.Add(dirtyCoord);
                     if (scratch.Count >= Mathf.Max(1, settings.MaxEditsPerFrame))
@@ -447,6 +452,7 @@ namespace Clube.Core
                     }
                 }
             }
+            StreamingMarkers.RebuildScan.End();
             if (scratch.Count == 0)
             {
                 return;
@@ -566,6 +572,7 @@ namespace Clube.Core
                 ChunkUnloaded?.Invoke(coord);
             }
             meshedOnce.Clear();
+            dirtyChunks.Clear();
             waitingForColumns.Clear();
             wantedLoaded = 0;
             bulkLoading = true;
@@ -706,12 +713,16 @@ namespace Clube.Core
                     chunk.Release();
                     continue;
                 }
+                StreamingMarkers.WorldAdd.Begin();
                 world.Add(coord, chunk);
+                StreamingMarkers.WorldAdd.End();
                 if (wanted)
                 {
                     wantedLoaded++;
                 }
+                StreamingMarkers.ChunkLoaded.Begin();
                 ChunkLoaded?.Invoke(coord);
+                StreamingMarkers.ChunkLoaded.End();
             }
         }
 
@@ -723,6 +734,7 @@ namespace Clube.Core
         {
             int limit = MaxJobsInFlight;
             int pastBudget = StartsPastBudget;
+            StreamingMarkers.Waiting.Begin();
             for (int i = 0; i < waitingForColumns.Count && pipeline.GenerationJobsRunning < limit
                             && (i < pastBudget || Before(budget));)
             {
@@ -736,6 +748,7 @@ namespace Clube.Core
                     i++;
                 }
             }
+            StreamingMarkers.Waiting.End();
             // GL759: while rationed, no new chunks while meshing is behind: every waiting chunk is looked at each frame, so a
             // pile of them would slow the frame more and more. Chunks held for roads don't count: they need their neighbours.
             if (RationsStarts && meshingBehind && dirtyScratch.Count > MostMeshBacklog)
@@ -743,6 +756,7 @@ namespace Clube.Core
                 return;
             }
             int started = 0;
+            StreamingMarkers.Requested.Begin();
             while (requested.Count > 0 && pipeline.GenerationJobsRunning < limit && (started < pastBudget || Before(budget)))
             {
                 Vector3Int coord = requested.Dequeue();
@@ -752,10 +766,15 @@ namespace Clube.Core
                     started += StartChunk(coord) ? 1 : 0;
                 }
             }
-            if (IsPlaying && !StartGroundFirst(limit, pastBudget, ref started))
+            StreamingMarkers.Requested.End();
+            StreamingMarkers.GroundFirst.Begin();
+            bool groundDone = !IsPlaying || StartGroundFirst(limit, pastBudget, ref started);
+            StreamingMarkers.GroundFirst.End();
+            if (!groundDone)
             {
                 return;
             }
+            using var cursorMarker = StreamingMarkers.Cursor.Auto();
             // At least a job limit's worth of starts a frame, as before; more while the budget lasts.
             // A column with every layer loaded is passed over in one step, so moving the area (which puts
             // the cursor back to the nearest column) costs a look per column, not per chunk.
@@ -832,10 +851,14 @@ namespace Clube.Core
         // False while the column's heights aren't ready.
         private bool TryProve(Vector2Int column)
         {
-            if (!pipeline.TryProveColumn(column, settings.HeightInChunks, out UniformLayers layers))
+            StreamingMarkers.ProveColumn.Begin();
+            bool proved = pipeline.TryProveColumn(column, settings.HeightInChunks, out UniformLayers layers);
+            StreamingMarkers.ProveColumn.End();
+            if (!proved)
             {
                 return false;
             }
+            using var proveMarker = StreamingMarkers.WorldProve.Auto();
             int added = world.ProveColumn(column, layers, settings.HeightInChunks);
             if (IsColumnWanted(column))
             {
@@ -864,6 +887,7 @@ namespace Clube.Core
                     return true;
                 }
             }
+            using var startMarker = StreamingMarkers.StartGeneration.Auto();
             return pipeline.StartGeneration(coord);
         }
 
@@ -972,6 +996,7 @@ namespace Clube.Core
                     result.Discard();
                     continue;
                 }
+                using var applyMarker = StreamingMarkers.ApplyMesh.Auto();
                 Apply(result.Coord, chunk, result);
             }
         }
@@ -993,15 +1018,30 @@ namespace Clube.Core
             {
                 return;
             }
-            world.CollectDirty(dirtyScratch);
+            StreamingMarkers.CollectDirty.Begin();
+            dirtyChunks.Take(world);
+            dirtyChunks.LookAtParked(world, IsColumnHeld);
+            dirtyChunks.CollectWaiting(world, dirtyScratch);
+            StreamingMarkers.CollectDirty.End();
+            StreamingMarkers.Heap.Begin();
             var nearest = new NearestChunkHeap(dirtyScratch, wantedCentre.Value);
+            StreamingMarkers.Heap.End();
+            using var loopMarker = StreamingMarkers.MeshLoop.Auto();
             bool rationed = RationsStarts;
             int pastBudget = StartsPastBudget;
             int started = 0;
             while (pipeline.MeshingCount < limit && (!rationed || started < pastBudget || Before(budget))
                    && nearest.TryTake(out Vector3Int coord))
             {
-                if (!IsWanted(coord) || pipeline.IsMeshing(coord) || IsHeld(coord))
+                StreamingMarkers.IsHeld.Begin();
+                bool skip = !IsWanted(coord) || pipeline.IsMeshing(coord);
+                bool held = !skip && IsHeld(coord);
+                StreamingMarkers.IsHeld.End();
+                if (held)
+                {
+                    dirtyChunks.Park(coord);
+                }
+                if (skip || held)
                 {
                     continue;
                 }
@@ -1101,7 +1141,7 @@ namespace Clube.Core
                 if (renderers.TryGet(coord, out ChunkRenderer chunkRenderer) && chunkRenderer.Collider != null
                     && chunkRenderer.MeshVersion == version && HorizontalDistance(coord, focus) <= dropDistance)
                 {
-                    chunkRenderer.Collider.Assign(chunkRenderer.Mesh, version);
+                    AssignShape(coord, chunkRenderer, version);
                 }
                 collidersDirty = true;
             }
@@ -1112,14 +1152,21 @@ namespace Clube.Core
             if (collidersCentre != centre)
             {
                 collidersCentre = centre;
-                foreach (KeyValuePair<Vector3Int, ChunkRenderer> entry in renderers.Active)
+                // GL774: only the chunks given a shape, not every renderer (30,000 of them at a long render distance).
+                scratch.Clear();
+                scratch.AddRange(shaped);
+                foreach (Vector3Int coord in scratch)
                 {
-                    ChunkCollider chunkCollider = entry.Value.Collider;
+                    ChunkCollider chunkCollider = renderers.TryGet(coord, out ChunkRenderer chunkRenderer) ? chunkRenderer.Collider : null;
+                    if (chunkCollider == null || chunkCollider.Version < 0)
+                    {
+                        shaped.Remove(coord);
+                    }
                     // Well outside (a chunk of slack, so the edge doesn't flicker): no shape needed.
-                    if (chunkCollider != null && chunkCollider.Version >= 0 && !pipeline.IsBaking(entry.Key)
-                        && HorizontalDistance(entry.Key, focus) > dropDistance)
+                    else if (!pipeline.IsBaking(coord) && HorizontalDistance(coord, focus) > dropDistance)
                     {
                         chunkCollider.Clear();
+                        shaped.Remove(coord);
                     }
                 }
                 collidersDirty = true;
@@ -1154,7 +1201,7 @@ namespace Clube.Core
                         }
                         if (chunkRenderer.Mesh.vertexCount == 0)
                         {
-                            chunkCollider.Assign(chunkRenderer.Mesh, chunkRenderer.MeshVersion);
+                            AssignShape(coord, chunkRenderer, chunkRenderer.MeshVersion);
                             continue;
                         }
                         pipeline.StartBake(coord, chunkRenderer.Mesh, chunkRenderer.MeshVersion, chunkCollider.CookingOptions);
@@ -1287,7 +1334,7 @@ namespace Clube.Core
             FinishBake(coord, chunkRenderer);
             if (chunkRenderer.Mesh.vertexCount == 0)
             {
-                chunkRenderer.Collider.Assign(chunkRenderer.Mesh, chunkRenderer.MeshVersion);
+                AssignShape(coord, chunkRenderer, chunkRenderer.MeshVersion);
                 return;
             }
             pipeline.StartBake(coord, chunkRenderer.Mesh, chunkRenderer.MeshVersion, chunkRenderer.Collider.CookingOptions);
@@ -1300,8 +1347,15 @@ namespace Clube.Core
             int version = pipeline.FinishBakeNow(coord);
             if (version >= 0 && chunkRenderer.Collider != null && version == chunkRenderer.MeshVersion)
             {
-                chunkRenderer.Collider.Assign(chunkRenderer.Mesh, version);
+                AssignShape(coord, chunkRenderer, version);
             }
+        }
+
+        // Gives the chunk's collider the shape of its mesh's version, and notes it among those with a shape.
+        private void AssignShape(Vector3Int coord, ChunkRenderer chunkRenderer, int version)
+        {
+            chunkRenderer.Collider.Assign(chunkRenderer.Mesh, version);
+            shaped.Add(coord);
         }
 
         private void Release(Vector3Int coord)

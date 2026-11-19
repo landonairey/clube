@@ -188,8 +188,11 @@ namespace Clube.Core
                 {
                     for (int x = from.x; x <= to.x; x++)
                     {
-                        foreach (OreNode node in NodesInCell(new Vector3Int(x, y, z)))
+                        // By index: a foreach over the read-only list boxed an enumerator for every cell.
+                        IReadOnlyList<OreNode> nodes = NodesInCell(new Vector3Int(x, y, z));
+                        for (int i = 0; i < nodes.Count; i++)
                         {
+                            OreNode node = nodes[i];
                             if (new Bounds(node.Centre, node.Reach * 2f).Intersects(box))
                             {
                                 results.Add(node);
