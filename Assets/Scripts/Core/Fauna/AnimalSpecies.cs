@@ -77,6 +77,9 @@ namespace Clube.Core
 
         public float Health { get; set; } = 20f;
 
+        /// <summary>GL800: the steepest slope it walks up, in degrees (<see cref="AnimalFooting"/>); a goat could take more.</summary>
+        public float MaxClimbDegrees { get; set; } = 45f;
+
         /// <summary>How near the player gets before it bolts, in metres.</summary>
         public float Skittishness { get; set; } = 8f;
 
