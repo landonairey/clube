@@ -151,8 +151,9 @@ namespace Clube.Game
             Vector2 flat = line.Flat(distance);
             if (bridges != null)
             {
-                foreach (RouteBridges.Span span in bridges)
+                for (int s = 0; s < bridges.Count; s++)
                 {
+                    RouteBridges.Span span = bridges[s];
                     if (distance >= span.Start && distance <= span.End)
                     {
                         float t = Mathf.InverseLerp(span.Start, span.End, distance);

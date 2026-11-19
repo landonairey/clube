@@ -65,7 +65,7 @@ namespace Clube.Core
         /// <summary>Metres from a point (x, z) out of the open ground: the fields, and the strip south of them.</summary>
         public static float OutOfFields(float x, float z)
         {
-            float dx = Mathf.Max(Fields.xMin - x, x - Fields.xMax, 0f);
+            float dx = Mathf.Max(Mathf.Max(Fields.xMin - x, x - Fields.xMax), 0f);
             float dz = Mathf.Max(z - Fields.yMax, 0f);
             return Mathf.Sqrt(dx * dx + dz * dz);
         }

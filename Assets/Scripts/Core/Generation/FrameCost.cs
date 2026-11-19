@@ -17,6 +17,7 @@ namespace Clube.Core
         private static readonly double MillisecondsPerTick = 1000.0 / Stopwatch.Frequency;
 
         private long ticks;
+        private long bytes;
 
         private FrameCost(string name)
         {
@@ -45,7 +46,15 @@ namespace Clube.Core
                 ByName.Add(name, cost);
                 Costs.Add(cost);
             }
-            return new Scope(cost, Stopwatch.GetTimestamp());
+            return new Scope(cost, Stopwatch.GetTimestamp(), GC.GetTotalMemory(false));
+        }
+
+        /// <summary>The managed heap growth (GetTotalMemory; the IL2CPP player has no per-thread count) inside the system's scopes since the last call, and starts again from nothing (GL778).</summary>
+        public long TakeBytes()
+        {
+            long taken = bytes;
+            bytes = 0L;
+            return taken;
         }
 
         /// <summary>The milliseconds added up since the last call, and starts again from nothing.</summary>
@@ -61,11 +70,13 @@ namespace Clube.Core
         {
             private readonly FrameCost cost;
             private readonly long started;
+            private readonly long startedBytes;
 
-            internal Scope(FrameCost cost, long started)
+            internal Scope(FrameCost cost, long started, long startedBytes)
             {
                 this.cost = cost;
                 this.started = started;
+                this.startedBytes = startedBytes;
             }
 
             /// <summary>Adds the stretch to the system's time.</summary>
@@ -74,6 +85,7 @@ namespace Clube.Core
                 if (cost != null)
                 {
                     cost.ticks += Stopwatch.GetTimestamp() - started;
+                    cost.bytes += Math.Max(0L, GC.GetTotalMemory(false) - startedBytes);
                 }
             }
         }

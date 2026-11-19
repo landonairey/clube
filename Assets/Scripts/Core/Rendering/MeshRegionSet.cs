@@ -114,6 +114,8 @@ namespace Clube.Core
             {
                 region = spare.Count > 0 ? spare.Pop() : new Region();
                 region.Coord = regionCoord;
+                region.Min = originOf(FirstCellOf(regionCoord));
+                region.Max = region.Min + Vector3.Scale(cellSize, Span);
                 region.Draw = DrawOf(regionCoord);
                 regions.Add(regionCoord, region);
             }
@@ -248,11 +250,13 @@ namespace Clube.Core
         /// </summary>
         public int Build(Vector3 focus, float alwaysWithin, float buildWithin, int vertexBudget)
         {
+            using FrameCost.Scope whole = FrameCost.Of("Regions: Build");
             LastBuildVertices = 0;
             if (dirty.Count == 0)
             {
                 return 0;
             }
+            FrameCost.Scope collecting = FrameCost.Of("Regions: collect");
             candidates.Clear();
             foreach (Region region in dirty)
             {
@@ -263,7 +267,11 @@ namespace Clube.Core
                     candidates.Add((distance <= alwaysWithin || region.Urgent ? -1f : distance, region));
                 }
             }
-            candidates.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            collecting.Dispose();
+            using (FrameCost.Scope sorting = FrameCost.Of("Regions: sort"))
+            {
+                candidates.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            }
             // The budget counts only the regions past those that must be merged, and always lets one through.
             int merged = 0;
             int spent = 0;
@@ -286,7 +294,11 @@ namespace Clube.Core
                     }
                 }
             }
-            merge.Run();
+            using (FrameCost.Scope running = FrameCost.Of("Chunk drawing: merge run"))
+            {
+                merge.Run();
+            }
+            using FrameCost.Scope finishing = FrameCost.Of("Regions: finish");
             foreach ((float _, Region region) in candidates)
             {
                 if (!dirty.Contains(region))
@@ -340,6 +352,7 @@ namespace Clube.Core
             }
             region.HasGeometry = sources.Count > 0;
             EnsureObject(region, origin);
+            using FrameCost.Scope adding = FrameCost.Of("Chunk drawing: merge add");
             return merge.Add(region.Mesh, sources, offsets);
         }
 
@@ -435,10 +448,9 @@ namespace Clube.Core
         // From the focus to the region's nearest point, horizontally.
         private float HorizontalDistance(Region region, Vector3 focus)
         {
-            Vector3 min = originOf(FirstCellOf(region.Coord));
-            Vector3 max = min + Vector3.Scale(cellSize, Span);
-            float dx = Mathf.Max(min.x - focus.x, 0f, focus.x - max.x);
-            float dz = Mathf.Max(min.z - focus.z, 0f, focus.z - max.z);
+            // The bounds are kept on the region (GL778): the delegate and the vector sums ran for every dirty region every frame.
+            float dx = Mathf.Max(Mathf.Max(region.Min.x - focus.x, 0f), focus.x - region.Max.x);
+            float dz = Mathf.Max(Mathf.Max(region.Min.z - focus.z, 0f), focus.z - region.Max.z);
             return Mathf.Sqrt(dx * dx + dz * dz);
         }
 
@@ -457,6 +469,7 @@ namespace Clube.Core
         {
             public readonly List<Vector3Int> Cells = new List<Vector3Int>();
             public Vector3Int Coord;
+            public Vector3 Min, Max;
             public MeshRenderer Renderer;
             public Mesh Mesh;
             public Material[] Materials;

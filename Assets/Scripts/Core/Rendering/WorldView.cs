@@ -462,6 +462,9 @@ namespace Clube.Core
         private void LateUpdate()
         {
             using FrameCost.Scope cost = FrameCost.Of("Chunk drawing (WorldView.LateUpdate)");
+            using (FrameCost.Scope control = FrameCost.Of("control: empty scope"))
+            {
+            }
             if (streamer != null && Focus != null)
             {
                 streamer.RebuildEdited(FocusLocal);

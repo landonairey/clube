@@ -384,18 +384,24 @@ namespace Clube.Core
                 ? (IsLoadingHiddenOnly ? Mathf.Max(settings.FarLoadingBudgetMilliseconds, settings.FrameBudgetMilliseconds) : settings.LoadingBudgetMilliseconds)
                 : settings.FrameBudgetMilliseconds;
 
-            pipeline.Poll();
-            TakeMaterialised();
+            using (FrameCost.Of("Stream: poll"))
+            {
+                pipeline.Poll();
+                TakeMaterialised();
+            }
             phases.Poll = Lap();
 
             Vector3Int centre = world.Grid.WorldToChunk(focus);
             // Chunks only leave the wanted area when it changes; between changes, AddGenerated drops
             // late arrivals, so there's no need to scan every loaded chunk each frame.
-            if (UpdateWanted(centre))
+            using (FrameCost.Of("Stream: wanted and unload"))
             {
-                UnloadUnwanted(centre);
+                if (UpdateWanted(centre))
+                {
+                    UnloadUnwanted(centre);
+                }
+                UnloadSome(centre);
             }
-            UnloadSome(centre);
             float chunkWidth = world.Grid.ChunkWorldSize.x;
             renderers.SetOverlayFocus(centre, settings.OverlayRadius > 0f ? Mathf.CeilToInt(settings.OverlayRadius / chunkWidth) : -1);
             UpdateDrawRadius(centre.y);
@@ -404,18 +410,36 @@ namespace Clube.Core
 
             // Meshes first, with half the budget: they change what's on screen. Each stage takes at
             // least one result a frame, so neither can starve the other.
-            ApplyMeshes(budget * 0.5);
+            using (FrameCost.Of("Stream: apply meshes"))
+            {
+                ApplyMeshes(budget * 0.5);
+            }
             phases.ApplyMeshes = Lap();
             // While playing some of the budget is left for starting what is nearest.
-            AddGenerated(IsPlaying ? budget * PlayingAddShare : budget);
+            using (FrameCost.Of("Stream: add chunks"))
+            {
+                AddGenerated(IsPlaying ? budget * PlayingAddShare : budget);
+            }
             phases.AddChunks = Lap();
-            ProveAhead();
+            using (FrameCost.Of("Stream: prove ahead"))
+            {
+                ProveAhead();
+            }
             phases.Prove = Lap();
-            StartGenerating();
+            using (FrameCost.Of("Stream: start generating"))
+            {
+                StartGenerating();
+            }
             phases.StartGeneration = Lap();
-            StartMeshing();
+            using (FrameCost.Of("Stream: start meshing"))
+            {
+                StartMeshing();
+            }
             phases.StartMeshing = Lap();
-            UpdateColliders(focus);
+            using (FrameCost.Of("Stream: colliders"))
+            {
+                UpdateColliders(focus);
+            }
             phases.Colliders = Lap();
 
             // The bulk load is over once everything wanted has been started, loaded and meshed.
@@ -446,7 +470,11 @@ namespace Clube.Core
         /// </summary>
         public void RebuildEdited(Vector3 focus)
         {
-            RebuildEditedChunks(focus);
+            using (FrameCost.Scope edited = FrameCost.Of("Chunk drawing: edited chunks"))
+            {
+                RebuildEditedChunks(focus);
+            }
+            using FrameCost.Scope regionCost = FrameCost.Of("Chunk drawing: regions");
             BuildRegions(focus);
         }
 
@@ -466,10 +494,16 @@ namespace Clube.Core
 
         private void RebuildEditedChunks(Vector3 focus)
         {
-            TakeMaterialised();
+            using (FrameCost.Scope taking = FrameCost.Of("Chunk drawing: take materialised"))
+            {
+                TakeMaterialised();
+            }
             scratch.Clear();
             // A chunk shown once and dirty again was edited. Held chunks were never shown, so the parked ones needn't be looked at.
-            dirtyChunks.Take(world);
+            using (FrameCost.Scope taking = FrameCost.Of("Chunk drawing: take dirty"))
+            {
+                dirtyChunks.Take(world);
+            }
             foreach (Vector3Int dirtyCoord in dirtyChunks.Waiting)
             {
                 if (meshedOnce.Contains(dirtyCoord) && world.TryPeekChunk(dirtyCoord, out Chunk dirtyChunk) && dirtyChunk.IsDirty)
@@ -1433,8 +1467,8 @@ namespace Clube.Core
         {
             Vector3 min = world.Grid.ChunkOrigin(coord);
             Vector3 max = min + world.Grid.ChunkWorldSize;
-            float dx = Mathf.Max(min.x - focus.x, 0f, focus.x - max.x);
-            float dz = Mathf.Max(min.z - focus.z, 0f, focus.z - max.z);
+            float dx = Mathf.Max(Mathf.Max(min.x - focus.x, 0f), focus.x - max.x);
+            float dz = Mathf.Max(Mathf.Max(min.z - focus.z, 0f), focus.z - max.z);
             return Mathf.Sqrt(dx * dx + dz * dz);
         }
 

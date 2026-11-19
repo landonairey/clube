@@ -1094,6 +1094,8 @@ GL560). Rough value order. Walking on the bounded map: `clube.exe -walkbench` re
 build (`FrameCost`, `PlayerLoopTimes`, `ProcessLoad`); [walking-fps-breakdown-20261118.md](walking-fps-breakdown-20261118.md)
 has the breakdown and the architectural findings, ranked by expected gain.
 The Windows player is IL2CPP (GL772). `clube.exe -playthrough` plays a build from the menu through a saved and reloaded game and writes `playthrough.txt` beside the exe.
+
+Allocations (GL778): `-walkbench` prints "allocation by system" (KB a frame by `FrameCost` scope, from managed heap growth; the per-thread byte count and the Profiler recorder read 0 in the player). Never call `Mathf.Max` or `Mathf.Min` with three or more arguments in a per-frame loop: it is the `params` overload and allocates an array each call; nest two-argument calls. Walking still allocates about 55 KB a frame (3 collections a 15 s stretch); chunk data in the managed heap is what the load stretches collect for.
   Buildings (GL710, GL711): each `SettlementBuilding` carries a `BuildingDesign` row (`SettlementSiteRules.Buildings`,
   `BuildingDesign.Defaults()`: footprint, 1-3 stories, a roof-pitch range, a work yard, the settlement types and shop
   specialties it is for), picked by `BuildingDesign.Choose`; places keep the catalog's largest footprint.

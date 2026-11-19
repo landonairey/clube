@@ -38,12 +38,12 @@ namespace Clube.Game
         private float showRange = 170f;
 
         private readonly List<CartKind> kinds = CartKind.Defaults();
-        private readonly List<ItemDefinition> goods = new List<ItemDefinition>();
+        // What each settlement's shops sell, worked out once (GL778: it was rebuilt, with its enumerators, every frame for every cart at a stop).
+        private readonly Dictionary<int, List<ItemDefinition>> goodsBySettlement = new Dictionary<int, List<ItemDefinition>>();
         private readonly Dictionary<int, OffMapPath> offMapPaths = new Dictionary<int, OffMapPath>();
         private readonly Dictionary<int, RoadLine> offMapLines = new Dictionary<int, RoadLine>();
         private readonly Dictionary<long, TownWay> townWays = new Dictionary<long, TownWay>();
         private readonly Dictionary<int, SettlementWalks> walks = new Dictionary<int, SettlementWalks>();
-        private readonly List<ItemDefinition> nextGoods = new List<ItemDefinition>();
         private MapSettlements settlements;
         private List<CartRun> runs = new List<CartRun>();
         private RoadCart[] carts = System.Array.Empty<RoadCart>();
@@ -162,7 +162,7 @@ namespace Clube.Game
                         var drive = new RunPlace(0f, stop.Phase != StopPhase.Leaving, !parked, state.Trip);
                         carts[i].Place(session.WorldView, way.Line, null, null, inTown * way.Line.Length, drive);
                         List<ItemDefinition> arrived = GoodsOf(state.Outbound || run.To < 0 ? run.From : run.To);
-                        CargoLoad.GoodsOf(session.Plan, catalog, at, nextGoods);
+                        List<ItemDefinition> nextGoods = GoodsOf(at);
                         carts[i].Stop(stop, state.Trip, arrived, state.Trip + 1, nextGoods, session.Plan.Seed, session.WorldView.transform.TransformPoint(new Vector3(way.Door.x, Ground(way.Door), way.Door.y)));
                         continue;
                     }
@@ -212,6 +212,7 @@ namespace Clube.Game
             offMapPaths.Clear();
             offMapLines.Clear();
             townWays.Clear();
+            goodsBySettlement.Clear();
             walks.Clear();
             settlements = GetComponent<MapSettlements>();
             if (settlements == null)
@@ -312,8 +313,13 @@ namespace Clube.Game
         // What a settlement's shops sell, of the items that exist.
         private List<ItemDefinition> GoodsOf(int settlement)
         {
-            CargoLoad.GoodsOf(session.Plan, catalog, settlement, goods);
-            return goods;
+            if (!goodsBySettlement.TryGetValue(settlement, out List<ItemDefinition> sold))
+            {
+                sold = new List<ItemDefinition>();
+                CargoLoad.GoodsOf(session.Plan, catalog, settlement, sold);
+                goodsBySettlement[settlement] = sold;
+            }
+            return sold;
         }
     }
 }
