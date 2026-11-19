@@ -10,12 +10,13 @@ namespace Clube.Game
     /// underneath (GL447). Gone once every quest is done.
     /// </summary>
     [RequireComponent(typeof(PlayerQuests))]
-    public class QuestHud : MonoBehaviour
+    public class QuestHud : MonoBehaviour, IGuiDrawer
     {
         private const float Width = 400f * GameUi.FontScale;
 
         private PlayerQuests quests;
         private PlayerController player;
+        private QuestHudView view;
         private GUIStyle headingStyle;
         private GUIStyle questStyle;
         private GUIStyle tipHeadingStyle;
@@ -27,15 +28,46 @@ namespace Clube.Game
             player = GetComponent<PlayerController>();
         }
 
-        private void OnGUI()
+        private void OnEnable()
+        {
+            GuiHost.Add(this);
+        }
+
+        private void OnDisable()
+        {
+            GuiHost.Remove(this);
+        }
+
+        // The ordinary case, with no screen open: the boxes on the HUD canvas (GL777).
+        private void LateUpdate()
+        {
+            view ??= new QuestHudView();
+            QuestLog.Quest active = quests.Log.Active;
+            if (active == null || (player != null && (!player.enabled || player.IsInMenu)))
+            {
+                view.Refresh(null, null, null, null, null, 0f);
+                return;
+            }
+            string heading = active.Section == PlayerQuests.MainSection ? "Active Quest" : "Active Quest (side)";
+            view.Refresh(active.Id, active.Title, heading, SketchFor(active.Id), PlayerQuests.TipFor(active.Id), HudLayout.TopLeftFree);
+        }
+
+        private void OnDestroy()
+        {
+            view?.Destroy();
+        }
+
+        int IGuiDrawer.GuiDepth => -50;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
-            // It stays up while the inventory, a station screen or the field log is open (GL437), drawn over them.
-            if (Event.current.type != EventType.Repaint || (player != null && !player.enabled))
+            // While a screen is open it stays up, drawn over it (GL437): IMGUI is drawn over a canvas, so this one draws then, and the
+            // canvas box (below) is hidden.
+            if (Event.current.type != EventType.Repaint || player == null || !player.enabled || !player.IsInMenu)
             {
                 return;
             }
-            GUI.depth = -50;
             QuestLog.Quest active = quests.Log.Active;
             if (active == null)
             {

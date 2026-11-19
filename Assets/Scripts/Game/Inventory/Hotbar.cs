@@ -33,6 +33,7 @@ namespace Clube.Game
 
         private PlayerInventory inventory;
         private PlayerController player;
+        private HotbarView view;
 
         /// <summary>The selected slot, 0-based.</summary>
         public int Selected { get; private set; }
@@ -152,30 +153,18 @@ namespace Clube.Game
             Selected = ((Selected + by) % count + count) % count;
         }
 
-        private void OnGUI()
+        // The bar is on the HUD canvas (GL777), refreshed after the frame's input and edits.
+        private void LateUpdate()
         {
-            GameUi.Apply();
-            if (player != null && !player.enabled)
-            {
-                return;
-            }
-
-            int count = CellCount;
-            float width = count * SlotSize + (count - 1) * Gap;
-            float x = (Screen.width - width) * 0.5f;
-            float y = Screen.height - SlotSize - BottomMargin;
-            for (int slot = 0; slot < count; slot++)
-            {
-                var rect = new Rect(x + slot * (SlotSize + Gap), y, SlotSize, SlotSize);
-                ItemSlotGui.Draw(rect, inventory.Inventory[slot], slot == Selected, null);
-            }
-
+            view ??= new HotbarView();
             string name = !SelectedStack.IsEmpty ? SelectedStack.Item.DisplayName
                 : inventory.UsesToolSlot && Selected == PlayerInventory.ToolSlot ? "Tool slot (empty: bare hands)" : null;
-            if (name != null)
-            {
-                GUI.Label(new Rect(x, y - 32f, Mathf.Max(width, 560f), 30f), name);
-            }
+            view.Refresh(inventory, CellCount, Selected, name, player == null || player.enabled);
+        }
+
+        private void OnDestroy()
+        {
+            view?.Destroy();
         }
     }
 }

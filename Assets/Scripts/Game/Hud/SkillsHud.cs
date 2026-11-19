@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Clube.Game
 {
@@ -16,6 +17,7 @@ namespace Clube.Game
         private const float Width = 400f;
         private const float RowHeight = 36f;
         private const float LabelWidth = 190f;
+        private static readonly Color PanelColour = new Color(0.1f, 0.1f, 0.1f, 0.75f);
 
         private static readonly SkillType[] Shown = { SkillType.Crafting, SkillType.Woodcutting, SkillType.Mining, SkillType.Smelting, SkillType.Blacksmithing, SkillType.Prospecting, SkillType.Goldsmithing };
 
@@ -28,8 +30,12 @@ namespace Clube.Game
         private OreKnowledge knowledge;
         private string notice;
         private float noticeUntil;
-        private GUIStyle label;
-        private GUIStyle noticeStyle;
+        private RectTransform panel;
+        private Text[] labels;
+        private Image[] fills;
+        private int[] shownLevels;
+        private float[] shownProgress;
+        private Text noticeText;
 
         private void Awake()
         {
@@ -73,42 +79,87 @@ namespace Clube.Game
             noticeUntil = Time.time + NoticeSeconds;
         }
 
-        private void OnGUI()
+        // On the HUD canvas (GL777): built once, and a row or the notice is touched only when it changes.
+        private void LateUpdate()
         {
-            GameUi.Apply();
-            if (player != null && !player.enabled)
+            bool visible = player == null || player.enabled;
+            if (panel == null)
             {
+                Build();
+            }
+            HudCanvas.SetShown(panel.gameObject, visible);
+            if (!visible)
+            {
+                HudCanvas.SetShown(noticeText.gameObject, false);
                 return;
             }
-            label ??= new GUIStyle(GUI.skin.label) { fontSize = GameUi.Font(13), alignment = TextAnchor.MiddleLeft, normal = { textColor = Color.white } };
-            noticeStyle ??= new GUIStyle(GUI.skin.label)
+            for (int i = 0; i < Shown.Length; i++)
             {
-                fontSize = GameUi.Font(18), fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, normal = { textColor = new Color(1f, 0.9f, 0.45f) },
-            };
-
-            float x = Screen.width - Width - 12f;
-            float y = 12f;
-            GUI.Box(new Rect(x - 6f, y - 4f, Width + 12f, Shown.Length * RowHeight + 8f), GUIContent.none);
-            foreach (SkillType skill in Shown)
-            {
+                SkillType skill = Shown[i];
                 int level = skills.Skills.Level(skill);
                 float from = SkillSet.ExperienceFor(level);
                 float to = SkillSet.ExperienceFor(level + 1);
                 float xp = skills.Skills.Experience(skill);
                 float progress = to > from ? Mathf.Clamp01((xp - from) / (to - from)) : 1f;
-                GUI.Label(new Rect(x, y, LabelWidth, RowHeight), $"{skill} {level}", label);
-                var bar = new Rect(x + LabelWidth, y + 9f, Width - LabelWidth, 18f);
-                GUI.Box(bar, GUIContent.none);
-                Color previous = GUI.color;
-                GUI.color = new Color(0.45f, 0.85f, 0.4f);
-                GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * progress, bar.height), Texture2D.whiteTexture);
-                GUI.color = previous;
-                y += RowHeight;
+                if (level != shownLevels[i])
+                {
+                    shownLevels[i] = level;
+                    labels[i].text = $"{skill} {level}";
+                }
+                if (progress != shownProgress[i])
+                {
+                    shownProgress[i] = progress;
+                    HudCanvas.Place(fills[i].rectTransform, 0f, 0f, (Width - LabelWidth) * progress, 18f);
+                }
             }
-
-            if (notice != null && Time.time < noticeUntil)
+            bool noticeUp = notice != null && Time.time < noticeUntil;
+            HudCanvas.SetShown(noticeText.gameObject, noticeUp);
+            if (noticeUp)
             {
-                GUI.Label(new Rect(0f, Screen.height * 0.25f, Screen.width, 44f), notice, noticeStyle);
+                HudCanvas.SetText(noticeText, notice);
+            }
+        }
+
+        private void Build()
+        {
+            panel = HudCanvas.Fill(HudCanvas.Root, "Skills", PanelColour).rectTransform;
+            labels = new Text[Shown.Length];
+            fills = new Image[Shown.Length];
+            shownLevels = new int[Shown.Length];
+            shownProgress = new float[Shown.Length];
+            for (int i = 0; i < Shown.Length; i++)
+            {
+                shownLevels[i] = -1;
+                shownProgress[i] = -1f;
+                // Rows are placed from the panel's corner, 6 and 4 pixels in from the box edge.
+                labels[i] = HudCanvas.Label(panel, "Label", GameUi.Font(13), FontStyle.Normal, TextAnchor.MiddleLeft, Color.white);
+                HudCanvas.Place(labels[i].rectTransform, 6f, 4f + i * RowHeight, LabelWidth, RowHeight);
+                Image back = HudCanvas.Fill(panel, "Bar", PanelColour);
+                HudCanvas.Place(back.rectTransform, 6f + LabelWidth, 4f + i * RowHeight + 9f, Width - LabelWidth, 18f);
+                fills[i] = HudCanvas.Fill(back.transform, "Fill", new Color(0.45f, 0.85f, 0.4f));
+            }
+            noticeText = HudCanvas.Label(HudCanvas.Root, "SkillNotice", GameUi.Font(18), FontStyle.Bold, TextAnchor.MiddleCenter, new Color(1f, 0.9f, 0.45f));
+            HudCanvas.Resized += Layout;
+            Layout();
+        }
+
+        private void Layout()
+        {
+            if (panel == null)
+            {
+                return;
+            }
+            HudCanvas.Place(panel, Screen.width - Width - 12f - 6f, 12f - 4f, Width + 12f, Shown.Length * RowHeight + 8f);
+            HudCanvas.Place(noticeText.rectTransform, 0f, Screen.height * 0.25f, Screen.width, 44f);
+        }
+
+        private void OnDestroy()
+        {
+            HudCanvas.Resized -= Layout;
+            if (panel != null)
+            {
+                Destroy(panel.gameObject);
+                Destroy(noticeText.gameObject);
             }
         }
     }

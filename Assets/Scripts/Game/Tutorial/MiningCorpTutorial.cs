@@ -15,7 +15,7 @@ namespace Clube.Game
     /// any of it can be dug. Taking from a crate (<see cref="CompanyCrate"/>) gets the player caught: a fade to black,
     /// everything but their coins taken, and the game goes on in the world scene, on their family's parcel.
     /// </summary>
-    public class MiningCorpTutorial : MonoBehaviour, ISavedValues
+    public class MiningCorpTutorial : MonoBehaviour, IGuiDrawer, ISavedValues
     {
         private const string BindingGroup = "Keyboard&Mouse";
         private const int NameLength = 20;
@@ -913,14 +913,25 @@ namespace Clube.Game
             }
         }
 
-        private void OnGUI()
+        private void OnEnable()
+        {
+            GuiHost.Add(this);
+        }
+
+        private void OnDisable()
+        {
+            GuiHost.Remove(this);
+        }
+
+        int IGuiDrawer.GuiDepth => -100;
+
+        void IGuiDrawer.DrawGui()
         {
             if (step == Step.Off)
             {
                 return;
             }
             GameUi.Apply();
-            GUI.depth = -100;
             if (cardStyle == null)
             {
                 cardStyle = new GUIStyle(GUI.skin.box) { richText = true, wordWrap = true, alignment = TextAnchor.UpperLeft, fontSize = GameUi.Font(17), padding = new RectOffset(16, 16, 12, 12) };

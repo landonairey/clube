@@ -15,7 +15,7 @@ namespace Clube.Game
     /// locked, and <see cref="IsPlaying"/> stops saving; the cart's looks and path are <see cref="ArrivalCart"/>, its timings
     /// <see cref="ArrivalTimeline"/>. Space or Enter skips to standing at the parcel.
     /// </remarks>
-    public class ArrivalCutscene : MonoBehaviour
+    public class ArrivalCutscene : MonoBehaviour, IGuiDrawer
     {
         private enum Phase
         {
@@ -502,7 +502,19 @@ namespace Clube.Game
             AudioSource.PlayClipAtPoint(thud, at, SoundSettings.Gain(AudioChannel.Effects));
         }
 
-        private void OnGUI()
+        private void OnEnable()
+        {
+            GuiHost.Add(this);
+        }
+
+        private void OnDisable()
+        {
+            GuiHost.Remove(this);
+        }
+
+        int IGuiDrawer.GuiDepth => -200;
+
+        void IGuiDrawer.DrawGui()
         {
             float black = phase == Phase.Waiting ? 1f : ArrivalTimeline.Black(sinceStart);
             if (black <= 0f && phase != Phase.Ride)
@@ -510,7 +522,6 @@ namespace Clube.Game
                 return;
             }
             // Over the HUDs and the pause popup.
-            GUI.depth = -200;
             Color previous = GUI.color;
             if (black > 0f)
             {

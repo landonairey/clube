@@ -11,7 +11,7 @@ namespace Clube.Game
     /// cursor while open; Interact (E) closes it, as does walking away.
     /// </summary>
     [RequireComponent(typeof(PlayerInventory))]
-    public class ChestPanel : MonoBehaviour
+    public class ChestPanel : MonoBehaviour, IGuiDrawer
     {
         private const float Padding = 12f;
 
@@ -42,11 +42,13 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             closeAction?.action.Enable();
         }
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             Close();
         }
 
@@ -106,7 +108,9 @@ namespace Clube.Game
             }
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (Current == null)

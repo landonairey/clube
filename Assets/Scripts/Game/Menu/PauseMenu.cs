@@ -12,7 +12,7 @@ namespace Clube.Game
     /// (GL207), filled in with the default (world, mode, time); saving goes through <see cref="GameSessionHost"/>.
     /// Both exits return to the main menu.
     /// </summary>
-    public class PauseMenu : MonoBehaviour
+    public class PauseMenu : MonoBehaviour, IGuiDrawer
     {
         private const float Width = 380f;
         private const float NamingWidth = 520f;
@@ -76,6 +76,7 @@ namespace Clube.Game
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             if (IsOpen)
             {
                 SetOpen(false);
@@ -197,7 +198,14 @@ namespace Clube.Game
             }
         }
 
-        private void OnGUI()
+        private void OnEnable()
+        {
+            GuiHost.Add(this);
+        }
+
+        int IGuiDrawer.GuiDepth => -100;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (!IsOpen)
@@ -206,7 +214,6 @@ namespace Clube.Game
             }
             CreateStyles();
             // Over the lab panel and the HUDs.
-            GUI.depth = -100;
 
             // Lighter under the graphics popup, so a change to the field of view shows behind it.
             Color previous = GUI.color;

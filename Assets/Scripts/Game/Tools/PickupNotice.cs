@@ -13,7 +13,7 @@ namespace Clube.Game
     /// <see cref="PlayerToolUser.Collected"/>, and to the <see cref="ItemDropper"/>.
     /// </summary>
     [RequireComponent(typeof(PlayerToolUser))]
-    public class PickupNotice : MonoBehaviour
+    public class PickupNotice : MonoBehaviour, IGuiDrawer
     {
         private const float LineHeight = 22f;
 
@@ -48,6 +48,7 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             if (inventory != null)
             {
                 inventory.Added += OnAdded;
@@ -66,6 +67,7 @@ namespace Clube.Game
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             if (inventory != null)
             {
                 inventory.Added -= OnAdded;
@@ -121,7 +123,9 @@ namespace Clube.Game
             notices.Add(new Notice { Item = item, Kind = kind, Count = count, LastTime = Time.time });
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             notices.RemoveAll(notice => Time.time - notice.LastTime > showSeconds);

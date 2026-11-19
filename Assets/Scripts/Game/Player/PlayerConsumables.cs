@@ -12,7 +12,7 @@ namespace Clube.Game
     /// lasts starts the time again; it never adds up. While it lasts <see cref="CooldownShare"/> quickens the tools
     /// (<see cref="PlayerToolUser.CooldownFor"/>), and a line over the hotbar says until when. Kept in saves.
     /// </summary>
-    public class PlayerConsumables : MonoBehaviour, ISavedValues
+    public class PlayerConsumables : MonoBehaviour, IGuiDrawer, ISavedValues
     {
         private const string UntilKey = "consumable.until";
         private const string ItemKey = "consumable.item";
@@ -49,6 +49,7 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             placeAction?.action.Enable();
         }
 
@@ -84,7 +85,14 @@ namespace Clube.Game
             until = Days + drink.EffectHours / 24d;
         }
 
-        private void OnGUI()
+        private void OnDisable()
+        {
+            GuiHost.Remove(this);
+        }
+
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (!IsActive || player == null || !player.enabled || player.IsInMenu || Event.current.type != EventType.Repaint)

@@ -6,7 +6,7 @@ namespace Clube.Game
     /// A short line under the crosshair (GL146, GL152): why a hit took nothing ("Maple wood needs a bronze
     /// tool"), or what bashing made ("Made a hand axe"). Shows the latest message for a couple of seconds.
     /// </summary>
-    public class ToolHint : MonoBehaviour
+    public class ToolHint : MonoBehaviour, IGuiDrawer
     {
         private const float Seconds = 2.5f;
 
@@ -57,6 +57,7 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             if (tools != null)
             {
                 tools.Blocked += Show;
@@ -69,6 +70,7 @@ namespace Clube.Game
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             if (tools != null)
             {
                 tools.Blocked -= Show;
@@ -79,7 +81,9 @@ namespace Clube.Game
             }
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (message == null || Time.time >= until)

@@ -9,7 +9,7 @@ namespace Clube.Game
     /// the pearl to take it. Closing (Close, E, Escape, or walking away) makes the clam disappear, pearl or not.
     /// </summary>
     [RequireComponent(typeof(PlayerInventory))]
-    public class ClamPanel : MonoBehaviour
+    public class ClamPanel : MonoBehaviour, IGuiDrawer
     {
         private const float CloseDistance = 5f;
 
@@ -31,6 +31,7 @@ namespace Clube.Game
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             Close();
         }
 
@@ -75,7 +76,14 @@ namespace Clube.Game
             }
         }
 
-        private void OnGUI()
+        private void OnEnable()
+        {
+            GuiHost.Add(this);
+        }
+
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             if (clam == null)
             {

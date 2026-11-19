@@ -14,7 +14,7 @@ namespace Clube.Game
     /// Most quests are checked against the inventory a few times a second, so one counts however the item came
     /// (picked up, made, bought or loaded from a save); the rest listen for the moment they happen.
     /// </remarks>
-    public class PlayerQuests : MonoBehaviour
+    public class PlayerQuests : MonoBehaviour, IGuiDrawer
     {
         public const string MainSection = "Main Objectives";
         public const string SideSection = "Side Quests";
@@ -113,6 +113,7 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             Log.Completed += OnCompleted;
             if (skills != null)
             {
@@ -142,6 +143,7 @@ namespace Clube.Game
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             Log.Completed -= OnCompleted;
             if (skills != null)
             {
@@ -358,7 +360,9 @@ namespace Clube.Game
             noticeUntil = Time.unscaledTime + NoticeSeconds;
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (!Log.Frozen && notice != null && Time.unscaledTime < noticeUntil)

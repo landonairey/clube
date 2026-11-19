@@ -14,6 +14,7 @@ namespace Clube.Game
         private static readonly Color Background = new Color(0f, 0f, 0f, 0.55f);
         private static readonly Color Border = new Color(1f, 1f, 1f, 0.25f);
         private static readonly Color SelectedBorder = new Color(1f, 0.85f, 0.3f, 1f);
+        internal static readonly Color PurityColour = new Color(1f, 0.8f, 0.35f);
 
         private static GUIStyle nameStyle;
         private static GUIStyle countStyle;
@@ -41,27 +42,58 @@ namespace Clube.Game
         // Every stack shows how well it was made, in the upper right, 100% included (GL158): its quality
         // (GL118: sticks of 60% wood), or for mined material that isn't all its own material, how much of it
         // is (GL115: ore of a grade).
-        private static void DrawPurity(Rect rect, ItemStack stack)
+        /// <summary>The text in a stack's upper right corner, and its colour (the ordinary gold unless it is a grade, GL457).</summary>
+        internal static string PurityLabel(ItemStack stack, out Color colour)
         {
             float purity = stack.Quality;
             if (purity >= 0.995f && purity <= 1.005f && Materials != null && stack.Contents != null && !stack.Item.HidesContents && Materials.IsMaterialItem(stack.Item))
             {
                 purity = Materials.Quality(stack.Contents, stack.Item);
             }
-            // No padding or clipping: the skin's label padding cut the bottom off the digits (GL222).
-            purityStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = 20, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0), clipping = TextClipping.Overflow, normal = { textColor = new Color(1f, 0.8f, 0.35f) } };
-            var corner = new Rect(rect.x, rect.y + 3f, rect.width - 6f, 26f);
             if (ReadsAsGrades(stack))
             {
                 // A grade, in its colour, until Prospecting reads numbers (GL457).
                 Grade grade = ProspectReading.GradeOf(purity);
-                Color colour = purityStyle.normal.textColor;
-                purityStyle.normal.textColor = ProspectReading.ColourOf(grade);
-                GameUi.OutlinedLabel(corner, ProspectReading.ShortName(grade), purityStyle);
-                purityStyle.normal.textColor = colour;
-                return;
+                colour = ProspectReading.ColourOf(grade);
+                return ProspectReading.ShortName(grade);
             }
-            GameUi.OutlinedLabel(corner, QualityText.Percent(purity), purityStyle);
+            colour = PurityColour;
+            return QualityText.Percent(purity);
+        }
+
+        /// <summary>The count in a stack's lower right corner: a part item's amount (GL136), a stack's count, else null.</summary>
+        internal static string CountLabel(ItemStack stack)
+        {
+            // A part item (GL136): 0.48 of a tin bun.
+            return stack.Part > 0f ? stack.Amount.ToString("0.##") : stack.Count > 1 ? stack.Count.ToString() : null;
+        }
+
+        /// <summary>
+        /// The wear bar along a stack's bottom (GL118, GL286): how much of the tool's full hits is left, and how much of the
+        /// bar repairs have lost for good (grey at its end). False when the stack shows none.
+        /// </summary>
+        internal static bool WearBar(ItemStack stack, out float left, out float best)
+        {
+            left = best = 1f;
+            if (stack.IsEmpty || stack.MaxHits <= 0 || !(stack.Wear > 0 || stack.Quality < 0.995f))
+            {
+                return false;
+            }
+            // Against its full hits, so a tool of 60% quality starts with 60% of the bar (GL118).
+            left = Mathf.Clamp01((float)(stack.MaxHits - stack.Wear) / ((ToolDefinition)stack.Item).MaxHits);
+            best = Mathf.Clamp01((float)stack.MaxHits / ((ToolDefinition)stack.Item).MaxHits);
+            return true;
+        }
+
+        private static void DrawPurity(Rect rect, ItemStack stack)
+        {
+            // No padding or clipping: the skin's label padding cut the bottom off the digits (GL222).
+            purityStyle ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = 20, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0), clipping = TextClipping.Overflow, normal = { textColor = PurityColour } };
+            var corner = new Rect(rect.x, rect.y + 3f, rect.width - 6f, 26f);
+            string label = PurityLabel(stack, out Color colour);
+            purityStyle.normal.textColor = colour;
+            GameUi.OutlinedLabel(corner, label, purityStyle);
+            purityStyle.normal.textColor = PurityColour;
         }
 
         /// <param name="corner">Small text for the lower left, e.g. a merchant's price; null for none.</param>
@@ -82,14 +114,10 @@ namespace Clube.Game
                 {
                     GUI.Label(inner, stack.Item.DisplayName, nameStyle);
                 }
-                if (stack.Part > 0f)
+                string countText = CountLabel(stack);
+                if (countText != null)
                 {
-                    // A part item (GL136): 0.48 of a tin bun.
-                    GameUi.OutlinedLabel(Inset(rect, 3f), stack.Amount.ToString("0.##"), countStyle);
-                }
-                else if (stack.Count > 1)
-                {
-                    GameUi.OutlinedLabel(Inset(rect, 3f), stack.Count.ToString(), countStyle);
+                    GameUi.OutlinedLabel(Inset(rect, 3f), countText, countStyle);
                 }
                 DrawPurity(rect, stack);
                 if (stack.Item is BucketDefinition bucket)
@@ -100,13 +128,10 @@ namespace Clube.Game
                     Fill(new Rect(rect.x + 4f, rect.yMax - 12f, (rect.width - 8f) * full, 7f), new Color(0.3f, 0.6f, 0.85f));
                     GUI.Label(Inset(rect, 3f), bucket.WaterIn(stack).ToString(), countStyle);
                 }
-                if (stack.MaxHits > 0 && (stack.Wear > 0 || stack.Quality < 0.995f))
+                if (WearBar(stack, out float left, out float best))
                 {
-                    // Wear bar along the bottom: green when fresh, red when nearly gone.
-                    // Against its full hits, so a tool of 60% quality starts with 60% of the bar (GL118).
-                    float left = Mathf.Clamp01((float)(stack.MaxHits - stack.Wear) / ((ToolDefinition)stack.Item).MaxHits);
-                    // What repairs have lost for good (GL286) shows grey at the bar's end: it can't be mended back.
-                    float best = Mathf.Clamp01((float)stack.MaxHits / ((ToolDefinition)stack.Item).MaxHits);
+                    // Wear bar along the bottom: green when fresh, red when nearly gone. What repairs have lost for good
+                    // (GL286) shows grey at the bar's end: it can't be mended back.
                     if (best < 0.995f)
                     {
                         float width = rect.width - 8f;

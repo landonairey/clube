@@ -19,7 +19,7 @@ namespace Clube.Game
     /// and its cursor is locked, so clicks on a menu or the lab panel never dig.
     /// </remarks>
     [RequireComponent(typeof(PlayerController))]
-    public class PlayerDigTool : MonoBehaviour
+    public class PlayerDigTool : MonoBehaviour, IGuiDrawer
     {
         private const float RadiusStep = 0.5f;
         private const float CrosshairSize = 8f;
@@ -95,6 +95,7 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             digAction?.action.Enable();
             placeAction?.action.Enable();
             smallerAction?.action.Enable();
@@ -216,7 +217,14 @@ namespace Clube.Game
             return reference != null && reference.action.WasPressedThisFrame();
         }
 
-        private void OnGUI()
+        private void OnDisable()
+        {
+            GuiHost.Remove(this);
+        }
+
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (!player.enabled || player.IsCursorFree)

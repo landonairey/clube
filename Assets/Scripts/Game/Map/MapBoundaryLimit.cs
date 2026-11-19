@@ -19,7 +19,7 @@ namespace Clube.Game
     /// past the line (set down there, knocked there) is walked back to it.
     /// </remarks>
     [DisallowMultipleComponent]
-    public class MapBoundaryLimit : MonoBehaviour
+    public class MapBoundaryLimit : MonoBehaviour, IGuiDrawer
     {
         // Metres a second a player past the stop line is carried back in.
         private const float ReturnSpeed = 3f;
@@ -99,7 +99,19 @@ namespace Clube.Game
             haveLast = true;
         }
 
-        private void OnGUI()
+        private void OnEnable()
+        {
+            GuiHost.Add(this);
+        }
+
+        private void OnDisable()
+        {
+            GuiHost.Remove(this);
+        }
+
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             if (Limit <= 0.02f || string.IsNullOrEmpty(Message) || controller == null || controller.IsInMenu)
             {

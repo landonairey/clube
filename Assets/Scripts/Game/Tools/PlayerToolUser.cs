@@ -18,7 +18,7 @@ namespace Clube.Game
     /// <see cref="PlayerController"/> is enabled and its cursor is locked.
     /// </remarks>
     [RequireComponent(typeof(PlayerController))]
-    public class PlayerToolUser : MonoBehaviour
+    public class PlayerToolUser : MonoBehaviour, IGuiDrawer
     {
         [SerializeField]
         private WorldView worldView;
@@ -182,11 +182,13 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             useAction?.action.Enable();
         }
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             targets.Clear();
             HasReach = false;
             HasBush = false;
@@ -954,7 +956,9 @@ namespace Clube.Game
             return ores.ContentsAt(mined.Material, worldView.World.Grid.SampleToWorld(mined.Sample));
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (Time.time < brokenUntil)

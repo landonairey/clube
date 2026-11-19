@@ -14,7 +14,7 @@ namespace Clube.Game
     /// back up, with whatever a station holds.
     /// </summary>
     [RequireComponent(typeof(PlayerInventory), typeof(Hotbar), typeof(PlayerController))]
-    public class PlayerBuilder : MonoBehaviour
+    public class PlayerBuilder : MonoBehaviour, IGuiDrawer
     {
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
@@ -152,12 +152,14 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             buildAction?.action.Enable();
             rotateAction?.action.Enable();
         }
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             StopBuilding();
         }
 
@@ -480,7 +482,9 @@ namespace Clube.Game
             }
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (hint == null || !player.enabled || player.IsCursorFree)

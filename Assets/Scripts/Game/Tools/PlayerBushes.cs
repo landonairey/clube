@@ -10,7 +10,7 @@ namespace Clube.Game
     /// is on a bush in reach, a line under the dot says it can be picked. A clump of reeds by the water (GL723) gives reeds.
     /// </summary>
     [RequireComponent(typeof(PlayerToolUser))]
-    public class PlayerBushes : MonoBehaviour
+    public class PlayerBushes : MonoBehaviour, IGuiDrawer
     {
         [Tooltip("The item a bush's leaves come as.")]
         [SerializeField]
@@ -44,11 +44,13 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             tools.BushPicked += Give;
         }
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             tools.BushPicked -= Give;
             if (scatter != null)
             {
@@ -106,7 +108,9 @@ namespace Clube.Game
             }
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (!tools.isActiveAndEnabled || !tools.HasBush)

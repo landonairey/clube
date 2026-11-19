@@ -7,7 +7,7 @@ namespace Clube.Game
     /// blue-green, darker towards the edges, and the light ripples gently across it. Drawn behind the rest of the HUD.
     /// </summary>
     [RequireComponent(typeof(PlayerSwimming))]
-    public sealed class UnderwaterTint : MonoBehaviour
+    public sealed class UnderwaterTint : MonoBehaviour, IGuiDrawer
     {
         [SerializeField]
         private Color tint = new Color(0.12f, 0.3f, 0.33f, 0.55f);
@@ -40,7 +40,19 @@ namespace Clube.Game
             }
         }
 
-        private void OnGUI()
+        private void OnEnable()
+        {
+            GuiHost.Add(this);
+        }
+
+        private void OnDisable()
+        {
+            GuiHost.Remove(this);
+        }
+
+        int IGuiDrawer.GuiDepth => 50;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (shown <= 0f || Event.current.type != EventType.Repaint)
@@ -48,7 +60,6 @@ namespace Clube.Game
                 return;
             }
             shade ??= MakeShade();
-            GUI.depth = 50;
             Color before = GUI.color;
             float wave = 0.92f + 0.08f * Mathf.Sin(Time.time * 1.7f);
             GUI.color = new Color(1f, 1f, 1f, shown * wave);
