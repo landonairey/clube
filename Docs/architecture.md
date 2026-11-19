@@ -1028,6 +1028,7 @@ it, and when it's done. None needs the big picture changed. Measure with
 GL560). Rough value order. Walking on the bounded map: `clube.exe -walkbench` reports each system's time from the release
 build (`FrameCost`, `PlayerLoopTimes`, `ProcessLoad`); [walking-fps-breakdown-20261118.md](walking-fps-breakdown-20261118.md)
 has the breakdown and the architectural findings, ranked by expected gain.
+The Windows player is IL2CPP (GL772). `clube.exe -playthrough` plays a build from the menu through a saved and reloaded game and writes `playthrough.txt` beside the exe.
 
 1. **Budget the job starts too.** `WorldStreamer.StartGenerating` / `StartMeshing`
    aren't held to the frame budget (scheduling 38 jobs with their ore lookups and

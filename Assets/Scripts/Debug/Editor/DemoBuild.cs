@@ -99,6 +99,13 @@ namespace Clube.Debug.Editor
                 AssetDatabase.DeleteAsset(BuildInfoAsset);
             }
 
+            // IL2CPP leaves the C++ it compiled beside the game: over a gigabyte that is no part of it (GL772).
+            string compiledCode = Path.Combine(Path.GetDirectoryName(output), Path.GetFileNameWithoutExtension(output) + "_BackUpThisFolder_ButDontShipItWithYourGame");
+            if (Directory.Exists(compiledCode))
+            {
+                Directory.Delete(compiledCode, true);
+            }
+
             BuildSummary summary = report.summary;
             UnityEngine.Debug.Log(
                 $"Game demo build {summary.result} ({version}): {summary.totalErrors} errors, " +
