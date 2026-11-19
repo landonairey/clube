@@ -286,7 +286,10 @@ namespace Clube.Core
                     }
                 }
             }
-            merge.Run();
+            using (FrameCost.Scope running = FrameCost.Of("Chunk drawing: merge run"))
+            {
+                merge.Run();
+            }
             foreach ((float _, Region region) in candidates)
             {
                 if (!dirty.Contains(region))
@@ -340,6 +343,7 @@ namespace Clube.Core
             }
             region.HasGeometry = sources.Count > 0;
             EnsureObject(region, origin);
+            using FrameCost.Scope adding = FrameCost.Of("Chunk drawing: merge add");
             return merge.Add(region.Mesh, sources, offsets);
         }
 

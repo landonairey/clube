@@ -446,7 +446,11 @@ namespace Clube.Core
         /// </summary>
         public void RebuildEdited(Vector3 focus)
         {
-            RebuildEditedChunks(focus);
+            using (FrameCost.Scope edited = FrameCost.Of("Chunk drawing: edited chunks"))
+            {
+                RebuildEditedChunks(focus);
+            }
+            using FrameCost.Scope regionCost = FrameCost.Of("Chunk drawing: regions");
             BuildRegions(focus);
         }
 
@@ -466,10 +470,16 @@ namespace Clube.Core
 
         private void RebuildEditedChunks(Vector3 focus)
         {
-            TakeMaterialised();
+            using (FrameCost.Scope taking = FrameCost.Of("Chunk drawing: take materialised"))
+            {
+                TakeMaterialised();
+            }
             scratch.Clear();
             // A chunk shown once and dirty again was edited. Held chunks were never shown, so the parked ones needn't be looked at.
-            dirtyChunks.Take(world);
+            using (FrameCost.Scope taking = FrameCost.Of("Chunk drawing: take dirty"))
+            {
+                dirtyChunks.Take(world);
+            }
             foreach (Vector3Int dirtyCoord in dirtyChunks.Waiting)
             {
                 if (meshedOnce.Contains(dirtyCoord) && world.TryPeekChunk(dirtyCoord, out Chunk dirtyChunk) && dirtyChunk.IsDirty)
