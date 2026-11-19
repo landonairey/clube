@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 
 namespace Clube.Core
@@ -34,6 +35,10 @@ namespace Clube.Core
         {
             Vector3Int.up, Vector3Int.down, Vector3Int.right, Vector3Int.left, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
         };
+
+        // A step with a time limit looks at this many samples at most, and at the clock this often (GL771).
+        private const int MostLooksInALimitedStep = 4096;
+        private const int SamplesBetweenClockLooks = 16;
 
         private readonly GroundHold[] holds = new GroundHold[256];
         private readonly float iso;
@@ -107,23 +112,46 @@ namespace Clube.Core
         /// </summary>
         public int Step(int maxMoves = 2000)
         {
+            return Step(maxMoves, float.PositiveInfinity);
+        }
+
+        /// <summary>
+        /// A step that stops after about <paramref name="maxMilliseconds"/> (GL771): what it didn't reach stays awake for the
+        /// next step, so a big collapse takes longer to come down and no frame pays for all of it.
+        /// </summary>
+        public int Step(int maxMoves, float maxMilliseconds)
+        {
             if (awake.Count == 0)
             {
                 return 0;
             }
+            bool limited = !float.IsInfinity(maxMilliseconds);
+            long deadline = limited ? Stopwatch.GetTimestamp() + (long)(maxMilliseconds * 0.001 * Stopwatch.Frequency) : long.MaxValue;
             batch.Clear();
-            batch.AddRange(awake);
-            HashSet<Vector3Int> stepping = awake;
-            awake = next;
-            awake.Clear();
-            next = stepping;
+            next.Clear();
+            foreach (Vector3Int sample in awake)
+            {
+                if (limited && batch.Count >= MostLooksInALimitedStep)
+                {
+                    next.Add(sample);
+                }
+                else
+                {
+                    batch.Add(sample);
+                }
+            }
+            // What this step doesn't look at is awake for the next; what it wakes joins them.
+            (awake, next) = (next, awake);
             batch.Sort((a, b) => a.y.CompareTo(b.y));
             turn++;
-            FindLetGo();
+            FindLetGo(deadline);
             int moves = 0;
-            foreach (Vector3Int sample in batch)
+            bool outOfTime = false;
+            for (int i = 0; i < batch.Count; i++)
             {
-                if (moves >= maxMoves)
+                Vector3Int sample = batch[i];
+                outOfTime |= limited && i % SamplesBetweenClockLooks == SamplesBetweenClockLooks - 1 && Stopwatch.GetTimestamp() > deadline;
+                if (moves >= maxMoves || outOfTime)
                 {
                     awake.Add(sample);
                     continue;
@@ -186,13 +214,24 @@ namespace Clube.Core
         // is gathered, stopping at ground that stands (a solid column under it), which is 100% stable. Stability spreads
         // out from there, highest first: resting on a sample keeps its stability, reaching out sideways or hanging under
         // one costs the material's loss. Whatever ends at 0% (cut off from standing ground, or hanging too far out) lets go.
-        private void FindLetGo()
+        private void FindLetGo(long deadline)
         {
             letGo.Clear();
             regionSeen.Clear();
             standing.Clear();
-            foreach (Vector3Int sample in batch)
+            for (int i = 0; i < batch.Count; i++)
             {
+                // Out of time: the samples not measured wait for the next step, and don't fall on a guess.
+                if (i > 0 && deadline != long.MaxValue && i % SamplesBetweenClockLooks == 0 && Stopwatch.GetTimestamp() > deadline)
+                {
+                    for (int rest = i; rest < batch.Count; rest++)
+                    {
+                        awake.Add(batch[rest]);
+                    }
+                    batch.RemoveRange(i, batch.Count - i);
+                    return;
+                }
+                Vector3Int sample = batch[i];
                 if (regionSeen.Contains(sample) || falling.Contains(sample) || !IsHangingCandidate(sample))
                 {
                     continue;

@@ -147,6 +147,37 @@ namespace Clube.Core.Tests
             Assert.That(world.GetDensity(new Vector3Int(4, 1, 4)), Is.EqualTo(1f));
         }
 
+        [Test]
+        public void StepsWithNoTimeToSpare_StillBringTheGroundDown()
+        {
+            World world = Floor();
+            using var settling = new GroundSettling(world, FallOf, 0.5f);
+            for (int z = 1; z <= 6; z++)
+            {
+                for (int x = 1; x <= 6; x++)
+                {
+                    Put(world, new Vector3Int(x, 5, z), Dirt);
+                }
+            }
+            int before = Solid(world);
+
+            for (int i = 0; i < 5000 && settling.AwakeCount > 0; i++)
+            {
+                settling.Step(2000, 0f);
+            }
+
+            Assert.That(settling.AwakeCount, Is.EqualTo(0), "it gets there a few samples a step");
+            Assert.That(Solid(world), Is.EqualTo(before), "falling keeps the ground's volume");
+            for (int z = 1; z <= 6; z++)
+            {
+                for (int x = 1; x <= 6; x++)
+                {
+                    Assert.That(world.GetDensity(new Vector3Int(x, 5, z)), Is.LessThan(0.5f));
+                    Assert.That(world.GetMaterial(new Vector3Int(x, 1, z)), Is.EqualTo(Dirt));
+                }
+            }
+        }
+
         // GL327: dirt loses 34% a sample out (two hold), stone nothing (it holds while joined to standing ground).
         private static GroundHold HoldOf(byte id)
         {

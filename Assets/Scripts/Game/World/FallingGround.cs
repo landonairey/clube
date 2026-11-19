@@ -20,6 +20,10 @@ namespace Clube.Game
         [SerializeField, Range(50, 10000)]
         private int maxMovesPerStep = 1500;
 
+        [Tooltip("Most milliseconds a step may take; what it did not reach waits for the next (GL771).")]
+        [SerializeField, Range(1f, 16f)]
+        private float stepMilliseconds = 4f;
+
         private WorldView worldView;
         private GroundSettling settling;
         private float nextStep;
@@ -71,7 +75,7 @@ namespace Clube.Game
                 return;
             }
             nextStep = Time.time + stepSeconds;
-            settling.Step(maxMovesPerStep);
+            settling.Step(maxMovesPerStep, stepMilliseconds);
         }
 
         private void OnDestroy()
