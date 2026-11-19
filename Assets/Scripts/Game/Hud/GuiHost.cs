@@ -31,6 +31,18 @@ namespace Clube.Game
             instance = null;
         }
 
+        // Made before the first scene loads: creating it from a drawer's OnEnable, mid-load, crashed the IL2CPP player.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void Create()
+        {
+            if (instance == null)
+            {
+                var go = new GameObject("GuiHost");
+                DontDestroyOnLoad(go);
+                instance = go.AddComponent<GuiHost>();
+            }
+        }
+
         /// <summary>Registers a drawer (from its <c>OnEnable</c>).</summary>
         public static void Add(IGuiDrawer drawer)
         {
@@ -45,12 +57,6 @@ namespace Clube.Game
                 at--;
             }
             Drawers.Insert(at, drawer);
-            if (instance == null)
-            {
-                var go = new GameObject("GuiHost");
-                DontDestroyOnLoad(go);
-                instance = go.AddComponent<GuiHost>();
-            }
         }
 
         /// <summary>Unregisters a drawer (from its <c>OnDisable</c>).</summary>
