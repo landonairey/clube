@@ -141,6 +141,12 @@ namespace Clube.Game
             return new ItemStack(DisguiseFor(stack.Item, material), stack.Count, stack.Contents, 0, stack.Quality, stack.Part);
         }
 
+        /// <summary>The real item a per-ore "? ore" copy stands for; the item itself for anything else (GL796).</summary>
+        public ItemDefinition RealItem(ItemDefinition item)
+        {
+            return item != null && hiddenAs.TryGetValue(item, out var real) ? real.Item : item;
+        }
+
         /// <summary>True for a "? ore" item: the generic one or one of the per-ore copies.</summary>
         public bool IsUnknown(ItemDefinition item)
         {
