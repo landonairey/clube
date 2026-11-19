@@ -138,6 +138,16 @@ copy of their shared border samples; `World` keeps every copy identical (M2).
   edit changes a sample (`Chunk.Uniform`, `IsUniform`). At 8 voxels/m about three
   quarters of a world's chunks are uniform. They have no surface, so no mesh, no
   renderer and no collider either (five in six chunks have no surface at all).
+- **Proven layers (GL773, sparse chunks).** In a streamed heightfield world a column's sky and deep rock are proven
+  uniform from its heights, trees, ores and water (`ChunkPipeline.TryProveColumn`, the same tests generation makes per
+  chunk) and recorded as `UniformLayers` (`World.ProveColumn`, `World/WorldProvenColumns.cs`). A proven layer counts as
+  loaded (`IsLoaded`, `LoadedLayersIn`, `AreLoaded`) and answers `GetDensity` / `GetMaterial`, but holds **no `Chunk`**:
+  nothing is generated, stored or meshed. The real chunk is made on the spot (`ChunkMaterialised`) when a write changes
+  the layer (`SetDensity`, `SetMaterial`, `SetWater` with water, a carve) or when something asks for it with
+  `TryGetChunk` / `TryGetOwner`; readers to whom such a layer means "nothing here" use `TryPeekChunk` / `TryPeekOwner`
+  (the water). An edited chunk drops its proof; a layer touching an edited chunk is never proven, so it loads the usual way
+  and takes the edited border. `World.Chunks` and `LoadedCount` hold real chunks only. On MapGen about 94% of the
+  render distance's layers are proven.
 - **Materials** (`VoxelMaterials`) are uniform until a sample differs, the same
   idea.
 - **Water** (GL315) is a byte per sample (0-1 full), null until a sample holds
@@ -518,7 +528,11 @@ there, so walls show the underground while the chunk's data stays as generated.
    and one buried deeper than the surface layers below its lowest point, with no
    ore node or tree reaching it, is all base rock: both are made without a job
    and don't count against the limit, only the frame budget. At WorldLab's 104 m
-   square and 40 layers that is 94% of the chunks.
+   square and 40 layers that is 94% of the chunks. With `StreamingSettings.SparseChunks` (streamed worlds; a fixed
+   area loads whole) each wanted column is first **proven** (`ProveAhead`, nearest first, 1 ms a frame while playing,
+   its own phase in `StreamingPhases`): its proven layers count as loaded at once and are never started, and the load
+   cursor waits at a column not proven yet rather than start all its layers. A column's proof is dropped when it
+   unloads.
 
 6. **Start meshing**: the world's dirty chunks (`World.CollectDirty`, kept as a
    set, not scanned), nearest first; uniform ones need no job.
@@ -563,6 +577,8 @@ stateDiagram-v2
     [*] --> Wanted: enters the render distance
     Wanted --> Generating: StartGeneration (job)
     Wanted --> Loaded: air above its column, or kept edits restored
+    Wanted --> Proven: its column proves it all air or rock (GL773)
+    Proven --> Loaded: written to, or asked for (made on the spot)
     Generating --> Loaded: taken, World.Add
     Loaded --> Meshing: dirty (new, edited, or settings changed)
     Meshing --> Shown: mesh applied (renderer if it has a surface)
