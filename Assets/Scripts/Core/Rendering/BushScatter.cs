@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -104,11 +105,12 @@ namespace Clube.Core
         // One per bush size, then the reeds (GL723).
         private readonly InstanceBatches[] batches = { new InstanceBatches(), new InstanceBatches(), new InstanceBatches(), new InstanceBatches() };
         private readonly Mesh[] meshes = new Mesh[4];
-        private readonly GrassyGround ground = new GrassyGround();
-        private readonly List<GroundSpot> spots = new List<GroundSpot>();
-        private readonly List<GroundSpot> reedSpots = new List<GroundSpot>();
+        // Spots are found in Burst jobs, a batch of chunks at a time (GL775): reeds' first, bushes' second.
+        private readonly GroundSpotBatch spotBatch = new GroundSpotBatch();
+        private readonly List<Scattered> batchTargets = new List<Scattered>(GroundSpotBatch.MaxChunks);
         private readonly HashSet<Vector2Int> reedCells = new HashSet<Vector2Int>();
         private readonly VoxelMaterial[] reedGround = new VoxelMaterial[3];
+        private readonly VoxelMaterial[] singleGround = new VoxelMaterial[1];
         private readonly System.Diagnostics.Stopwatch clock = new System.Diagnostics.Stopwatch();
 
         private WorldView worldView;
@@ -281,6 +283,7 @@ namespace Clube.Core
             {
                 batch.Dispose();
             }
+            spotBatch.Dispose();
         }
 
         private void OnChunkMeshed(Vector3Int coord, ChunkRenderer chunkRenderer)
@@ -300,7 +303,8 @@ namespace Clube.Core
             // An edit rebuilt it: find its bushes again, and break the ones whose ground went or moved.
             before.Clear();
             before.AddRange(scattered.Bushes);
-            Scatter(chunkRenderer, scattered);
+            Queue(chunkRenderer, scattered);
+            RunBatch();
             foreach (Bush old in before)
             {
                 int index = scattered.Bushes.FindIndex(b => b.Cell == old.Cell);
@@ -428,32 +432,89 @@ namespace Clube.Core
                 {
                     return;
                 }
-                (float _, Vector3Int coord, ChunkRenderer chunkRenderer) = waiting[waitingNext++];
-                // Grown already (listed twice), or its renderer has gone back to the pool since.
-                if (bushes.ContainsKey(coord) || !worldView.Renderers.TryGetValue(coord, out ChunkRenderer current) || current != chunkRenderer)
+                // A batch of the nearest chunks at a time, their spots found together on the worker threads (GL775).
+                while (waitingNext < waiting.Count && !spotBatch.IsFull)
                 {
-                    continue;
+                    (float _, Vector3Int coord, ChunkRenderer chunkRenderer) = waiting[waitingNext++];
+                    // Grown already (listed twice), or its renderer has gone back to the pool since.
+                    if (bushes.ContainsKey(coord) || !worldView.Renderers.TryGetValue(coord, out ChunkRenderer current) || current != chunkRenderer)
+                    {
+                        continue;
+                    }
+                    Scattered scattered = spare.Count > 0 ? spare.Pop() : new Scattered();
+                    Queue(chunkRenderer, scattered);
+                    scattered.Drawn = true;
+                    bushes.Add(coord, scattered);
+                    grownDirty = true;
                 }
-                Scattered scattered = spare.Count > 0 ? spare.Pop() : new Scattered();
-                Scatter(chunkRenderer, scattered);
-                scattered.Drawn = true;
-                bushes.Add(coord, scattered);
-                grownDirty = true;
+                RunBatch();
                 grewOne = true;
             }
             waiting.Clear();
             waitingNext = 0;
         }
 
-        private void Scatter(ChunkRenderer chunkRenderer, Scattered scattered)
+        // Queues the chunk for the next batch: its mesh, and the two searches, reeds' (on grass, sand or clay, by fresh water)
+        // and bushes' (on grass), on the bushes' grid.
+        private void Queue(ChunkRenderer chunkRenderer, Scattered scattered)
         {
             scattered.Bushes.Clear();
             scattered.Packed = false;
-            spots.Clear();
+            GroundSpotBatch.Slot slot = spotBatch.Add();
+            batchTargets.Add(scattered);
+            slot.Mesh = chunkRenderer.Mesh;
+            slot.ToWorld = chunkRenderer.Transform.localToWorldMatrix;
+            int seed = Seed;
+            if (HasWater(out _))
+            {
+                TerrainSettings terrain = worldView.Config.Terrain;
+                reedGround[0] = grass;
+                reedGround[1] = terrain.Water.Sand;
+                reedGround[2] = terrain.Layers.Clay;
+                slot.First = Query(reedGround, ReedMinUp, seed);
+            }
+            singleGround[0] = grass;
+            slot.Second = Query(singleGround, minUp, seed);
+        }
+
+        private GroundSpotQuery Query(IReadOnlyList<VoxelMaterial> grounds, float up, int seed)
+        {
+            return new GroundSpotQuery
+            {
+                Grounds = GroundSpotQuery.Ids(grounds),
+                MinUp = up,
+                Cell = growth.CellSize,
+                Seed = seed,
+                SaltX = BushGrowth.SpotSaltX,
+                SaltZ = BushGrowth.SpotSaltZ,
+                Margin = BushGrowth.SpotMargin,
+            };
+        }
+
+        private bool HasWater(out WaterMap water)
+        {
+            water = worldView.Generator is HeightfieldGenerator heightfield ? heightfield.Water : WaterMap.None;
+            return water.IsCreated;
+        }
+
+        // Finds the queued chunks' spots on the worker threads, then grows each chunk's reeds and bushes on them.
+        private void RunBatch()
+        {
+            spotBatch.Run();
+            for (int i = 0; i < spotBatch.Count; i++)
+            {
+                GroundSpotBatch.Slot slot = spotBatch[i];
+                GrowOn(batchTargets[i], slot.FirstSpots, slot.SecondSpots);
+            }
+            spotBatch.Clear();
+            batchTargets.Clear();
+        }
+
+        private void GrowOn(Scattered scattered, NativeList<GroundSpot> reedSpots, NativeList<GroundSpot> spots)
+        {
             int seed = Seed;
             TreeCover trees = CoverOf(worldView.Trees);
-            ScatterReeds(chunkRenderer, scattered, seed);
-            ground.Find(chunkRenderer, grass, minUp, growth.CellSize, seed, BushGrowth.SpotSaltX, BushGrowth.SpotSaltZ, BushGrowth.SpotMargin, spots);
+            GrowReeds(scattered, seed, reedSpots);
             foreach (GroundSpot spot in spots)
             {
                 if (removed.Contains(spot.Cell) || reedCells.Contains(spot.Cell))
@@ -477,20 +538,13 @@ namespace Clube.Core
 
         // The chunk's reed clumps (GL723): on grass, sand or clay by fresh water, in the water's shallows too, one per bush cell;
         // a cell that grows reeds grows no bush.
-        private void ScatterReeds(ChunkRenderer chunkRenderer, Scattered scattered, int seed)
+        private void GrowReeds(Scattered scattered, int seed, NativeList<GroundSpot> reedSpots)
         {
             reedCells.Clear();
-            reedSpots.Clear();
-            WaterMap water = worldView.Generator is HeightfieldGenerator heightfield ? heightfield.Water : WaterMap.None;
-            if (!water.IsCreated)
+            if (!HasWater(out WaterMap water))
             {
                 return;
             }
-            TerrainSettings terrain = worldView.Config.Terrain;
-            reedGround[0] = grass;
-            reedGround[1] = terrain.Water.Sand;
-            reedGround[2] = terrain.Layers.Clay;
-            ground.Find(chunkRenderer, reedGround, ReedMinUp, growth.CellSize, seed, BushGrowth.SpotSaltX, BushGrowth.SpotSaltZ, BushGrowth.SpotMargin, reedSpots);
             foreach (GroundSpot spot in reedSpots)
             {
                 if (removed.Contains(spot.Cell))

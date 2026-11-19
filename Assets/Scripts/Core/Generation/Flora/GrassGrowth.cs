@@ -12,12 +12,6 @@ namespace Clube.Core
     [Serializable]
     public class GrassGrowth
     {
-        // Keeps the wheat fields' noise apart from the forests' (TreeForests) and everything else's.
-        private const int WheatSalt = 0x57484541;
-
-        // Half the width of a wheat field's ragged edge, in noise units (the noise runs 0-1).
-        private const float WheatEdge = 0.05f;
-
         [Tooltip("How much taller grass grows in open meadows than under dense trees: 1 doubles it.")]
         [SerializeField, Range(0f, 2f)]
         private float meadowGrowth = 1.3f;
@@ -85,8 +79,7 @@ namespace Clube.Core
         /// </summary>
         public float HeightScale(float forest, float altitude)
         {
-            float low = 1f - Mathf.InverseLerp(shorterWithAltitude.x, shorterWithAltitude.y, altitude);
-            return 1f + meadowGrowth * (1f - Mathf.Clamp01(forest)) * low;
+            return Rules.HeightScale(forest, altitude);
         }
 
         /// <summary>
@@ -95,24 +88,71 @@ namespace Clube.Core
         /// </summary>
         public float WheatAt(int seed, float x, float z, float forest)
         {
-            if (wheatShare <= 0f || forest >= wheatMaxForest)
-            {
-                return 0f;
-            }
-            float noise = 0.7f * ValueNoise.At(seed, x / wheatScale, z / wheatScale, 0, WheatSalt)
-                          + 0.3f * ValueNoise.At(seed, x / (wheatScale * 0.35f), z / (wheatScale * 0.35f), 1, WheatSalt);
-            // Like the forests: the sum gathers round 0.5, so the share maps onto a threshold that narrow way.
-            float threshold = 0.5f + (0.5f - wheatShare) * 0.6f;
-            float field = Mathf.InverseLerp(threshold - WheatEdge, threshold + WheatEdge, noise);
-            // Thinning towards the forest's edge too, so a field doesn't stop in a straight line at the trees.
-            float open = 1f - Mathf.InverseLerp(wheatMaxForest * 0.5f, wheatMaxForest, forest);
-            return Mathf.SmoothStep(0f, 1f, field) * open;
+            return Rules.WheatAt(seed, x, z, forest);
         }
 
         /// <summary>A wheat stalk's height, from a roll 0-1.</summary>
         public float WheatHeightFor(float roll)
         {
-            return Mathf.Lerp(wheatHeight.x, wheatHeight.y, roll);
+            return Rules.WheatHeightFor(roll);
+        }
+
+        /// <summary>The settings as a struct Burst jobs can carry (GL775); the methods above are its own.</summary>
+        public GrassGrowthRules Rules => new GrassGrowthRules
+        {
+            MeadowGrowth = meadowGrowth,
+            ShorterWithAltitude = shorterWithAltitude,
+            WheatShare = wheatShare,
+            WheatScale = wheatScale,
+            WheatMaxForest = wheatMaxForest,
+            WheatHeight = wheatHeight,
+        };
+    }
+
+    /// <summary><see cref="GrassGrowth"/>'s rules, as a struct for Burst jobs (GL775) and the class alike.</summary>
+    public struct GrassGrowthRules
+    {
+        // Keeps the wheat fields' noise apart from the forests' (TreeForests) and everything else's.
+        private const int WheatSalt = 0x57484541;
+
+        // Half the width of a wheat field's ragged edge, in noise units (the noise runs 0-1).
+        private const float WheatEdge = 0.05f;
+
+        public float MeadowGrowth;
+        public Vector2 ShorterWithAltitude;
+        public float WheatShare;
+        public float WheatScale;
+        public float WheatMaxForest;
+        public Vector2 WheatHeight;
+
+        /// <summary>See <see cref="GrassGrowth.HeightScale"/>.</summary>
+        public float HeightScale(float forest, float altitude)
+        {
+            float low = 1f - Mathf.InverseLerp(ShorterWithAltitude.x, ShorterWithAltitude.y, altitude);
+            return 1f + MeadowGrowth * (1f - Mathf.Clamp01(forest)) * low;
+        }
+
+        /// <summary>See <see cref="GrassGrowth.WheatAt"/>.</summary>
+        public float WheatAt(int seed, float x, float z, float forest)
+        {
+            if (WheatShare <= 0f || forest >= WheatMaxForest)
+            {
+                return 0f;
+            }
+            float noise = 0.7f * ValueNoise.At(seed, x / WheatScale, z / WheatScale, 0, WheatSalt)
+                          + 0.3f * ValueNoise.At(seed, x / (WheatScale * 0.35f), z / (WheatScale * 0.35f), 1, WheatSalt);
+            // Like the forests: the sum gathers round 0.5, so the share maps onto a threshold that narrow way.
+            float threshold = 0.5f + (0.5f - WheatShare) * 0.6f;
+            float field = Mathf.InverseLerp(threshold - WheatEdge, threshold + WheatEdge, noise);
+            // Thinning towards the forest's edge too, so a field doesn't stop in a straight line at the trees.
+            float open = 1f - Mathf.InverseLerp(WheatMaxForest * 0.5f, WheatMaxForest, forest);
+            return Mathf.SmoothStep(0f, 1f, field) * open;
+        }
+
+        /// <summary>See <see cref="GrassGrowth.WheatHeightFor"/>.</summary>
+        public float WheatHeightFor(float roll)
+        {
+            return Mathf.Lerp(WheatHeight.x, WheatHeight.y, roll);
         }
     }
 }

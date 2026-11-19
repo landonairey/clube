@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace Clube.Core
@@ -62,6 +64,40 @@ namespace Clube.Core
                 }
             }
             return Mathf.Clamp01(sum / dense);
+        }
+
+        /// <summary>
+        /// The tree roots a job needs to work out the cover anywhere from (<paramref name="minX"/>, <paramref name="minZ"/>) to
+        /// (<paramref name="maxX"/>, <paramref name="maxZ"/>) (GL775), into <paramref name="roots"/>, and the grid that reads them.
+        /// </summary>
+        public TreeCoverGrid Fill(float minX, float minZ, float maxX, float maxZ, NativeList<float3> roots)
+        {
+            roots.Clear();
+            if (trees == null)
+            {
+                return new TreeCoverGrid { HasTrees = false, Cell = 1f, Radius = radius, Dense = 1f };
+            }
+            float cell = trees.CellSize;
+            var grid = new TreeCoverGrid
+            {
+                FromX = Mathf.FloorToInt((minX - radius) / cell),
+                FromZ = Mathf.FloorToInt((minZ - radius) / cell),
+                Cell = cell,
+                Radius = radius,
+                Dense = dense,
+                HasTrees = true,
+            };
+            grid.Width = Mathf.FloorToInt((maxX + radius) / cell) - grid.FromX + 1;
+            grid.Depth = Mathf.FloorToInt((maxZ + radius) / cell) - grid.FromZ + 1;
+            for (int z = 0; z < grid.Depth; z++)
+            {
+                for (int x = 0; x < grid.Width; x++)
+                {
+                    Vector2? root = RootIn(new Vector2Int(grid.FromX + x, grid.FromZ + z));
+                    roots.Add(root.HasValue ? new float3(root.Value.x, root.Value.y, 1f) : float3.zero);
+                }
+            }
+            return grid;
         }
 
         private Vector2? RootIn(Vector2Int cell)

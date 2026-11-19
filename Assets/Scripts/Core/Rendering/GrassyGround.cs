@@ -17,7 +17,10 @@ namespace Clube.Core
     /// above, on an upward-facing triangle that shows grass, at the triangle's height there. The same ground always
     /// gives the same spots, so a rebuilt mesh keeps every spot whose ground is still there.
     /// </summary>
-    /// <remarks>Reads the mesh's positions, normals and material ids and weights (UV channels 2 and 3); keeps its buffers.</remarks>
+    /// <remarks>
+    /// Reads the mesh's positions, normals and material ids and weights (UV channels 2 and 3); keeps its buffers. Since GL775
+    /// the game finds spots in Burst jobs (<see cref="GroundSpotSearch"/>); this managed copy is the reference they're tested against.
+    /// </remarks>
     public sealed class GrassyGround
     {
         private readonly List<Vector3> vertices = new List<Vector3>();
@@ -25,14 +28,22 @@ namespace Clube.Core
         private readonly List<Vector3> ids = new List<Vector3>();
         private readonly List<Vector3> weights = new List<Vector3>();
         private readonly List<int> triangles = new List<int>();
-        private readonly List<byte> groundIds = new List<byte>();
-        private readonly VoxelMaterial[] single = new VoxelMaterial[1];
+        private IReadOnlyList<float> groundIds;
+
+        /// <summary>
+        /// True when a mesh's material id is <paramref name="ground"/>'s (ids are whole numbers carried as floats):
+        /// <see cref="Mathf.Approximately"/> written out, so Burst jobs can share it.
+        /// </summary>
+        public static bool SameId(float id, float ground)
+        {
+            return System.Math.Abs(ground - id) < System.Math.Max(1e-6f * System.Math.Max(System.Math.Abs(id), System.Math.Abs(ground)), 8f * float.Epsilon);
+        }
 
         private bool IsGround(float id)
         {
             for (int i = 0; i < groundIds.Count; i++)
             {
-                if (Mathf.Approximately(id, groundIds[i]))
+                if (SameId(id, groundIds[i]))
                 {
                     return true;
                 }
@@ -41,33 +52,16 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Adds the chunk's spots to <paramref name="spots"/>: on triangles facing up at least <paramref name="minUp"/>
-        /// (the y of the normal) and mostly <paramref name="grass"/>, one per <paramref name="cell"/>-metre grid cell, at
-        /// a point rolled with the seed and salts, kept <paramref name="margin"/> of the cell off its edges.
+        /// Adds the mesh's spots to <paramref name="spots"/>: on triangles facing up at least <paramref name="minUp"/>
+        /// (the y of the normal) and mostly the materials <paramref name="grounds"/> together, one per <paramref name="cell"/>-metre
+        /// grid cell, at a point rolled with the seed and salts, kept <paramref name="margin"/> of the cell off its edges.
+        /// <paramref name="toWorld"/> places the mesh in the world.
         /// </summary>
-        public void Find(ChunkRenderer chunkRenderer, VoxelMaterial grass, float minUp, float cell, int seed, int saltX, int saltZ, float margin, List<GroundSpot> spots)
+        public void Find(Mesh mesh, Matrix4x4 toWorld, IReadOnlyList<float> grounds, float minUp, float cell, int seed, int saltX, int saltZ, float margin,
+            List<GroundSpot> spots)
         {
-            if (grass == null)
-            {
-                return;
-            }
-            single[0] = grass;
-            Find(chunkRenderer, single, minUp, cell, seed, saltX, saltZ, margin, spots);
-        }
-
-        /// <summary>The same on triangles that are mostly any of <paramref name="grounds"/> together (GL723: reeds on grass, sand and clay).</summary>
-        public void Find(ChunkRenderer chunkRenderer, IReadOnlyList<VoxelMaterial> grounds, float minUp, float cell, int seed, int saltX, int saltZ, float margin, List<GroundSpot> spots)
-        {
-            Mesh mesh = chunkRenderer.Mesh;
-            groundIds.Clear();
-            foreach (VoxelMaterial ground in grounds)
-            {
-                if (ground != null)
-                {
-                    groundIds.Add(ground.Id);
-                }
-            }
-            if (mesh == null || mesh.vertexCount == 0 || cell <= 0f || groundIds.Count == 0)
+            groundIds = grounds;
+            if (mesh == null || mesh.vertexCount == 0 || cell <= 0f || grounds.Count == 0)
             {
                 return;
             }
@@ -76,12 +70,11 @@ namespace Clube.Core
             mesh.GetUVs(2, ids);
             mesh.GetUVs(3, weights);
             mesh.GetTriangles(triangles, 0);
-            if (ids.Count != vertices.Count || weights.Count != vertices.Count)
+            if (ids.Count != vertices.Count || weights.Count != vertices.Count || normals.Count != vertices.Count)
             {
                 return;
             }
 
-            Transform chunkTransform = chunkRenderer.Transform;
             float span = 1f - 2f * margin;
             for (int t = 0; t < triangles.Count; t += 3)
             {
@@ -91,9 +84,9 @@ namespace Clube.Core
                 {
                     continue;
                 }
-                Vector3 pa = chunkTransform.TransformPoint(vertices[a]);
-                Vector3 pb = chunkTransform.TransformPoint(vertices[b]);
-                Vector3 pc = chunkTransform.TransformPoint(vertices[c]);
+                Vector3 pa = toWorld.MultiplyPoint3x4(vertices[a]);
+                Vector3 pb = toWorld.MultiplyPoint3x4(vertices[b]);
+                Vector3 pc = toWorld.MultiplyPoint3x4(vertices[c]);
 
                 // The triangle seen from above, as barycentric weights over x and z.
                 float denominator = (pb.z - pc.z) * (pa.x - pc.x) + (pc.x - pb.x) * (pa.z - pc.z);

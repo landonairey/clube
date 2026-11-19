@@ -86,7 +86,7 @@ namespace Clube.Core
         /// <summary>A dahlia's height in metres from a roll 0-1.</summary>
         public float HeightFor(float roll)
         {
-            return Mathf.Lerp(height.x, height.y, Mathf.Clamp01(roll));
+            return Rules.HeightFor(roll);
         }
 
         /// <summary>
@@ -121,17 +121,10 @@ namespace Clube.Core
         {
             strongest = -1;
             float best = 0f;
-            float inverse = 1f / (2f * spread * spread);
+            DahliaRules rules = Rules;
             for (int i = 0; i < nodes.Count; i++)
             {
-                Vector3 centre = nodes[i].Centre;
-                float below = point.y - centre.y;
-                if (below <= 0f || below > deepest)
-                {
-                    continue;
-                }
-                float dx = point.x - centre.x, dz = point.z - centre.z;
-                float share = peakShare * Mathf.Exp(-(dx * dx + dz * dz) * inverse);
+                float share = rules.ShareOf(nodes[i].Centre, point);
                 if (share > best)
                 {
                     best = share;
@@ -144,9 +137,68 @@ namespace Clube.Core
         /// <summary>A patch's flower colour (0 to <see cref="Colours"/> - 1), from its node; now and then a flower strays.</summary>
         public static int ColourOf(OreNode node, float stray, float roll)
         {
+            return DahliaRules.ColourOf(PatchOf(node), stray, roll);
+        }
+
+        /// <summary>The colour most of a node's patch shows.</summary>
+        public static int PatchOf(OreNode node)
+        {
             Vector3 c = node.Centre;
-            int patch = (int)(VoxelHash.Hash(0, Mathf.RoundToInt(c.x * 4f), Mathf.RoundToInt(c.y * 4f), Mathf.RoundToInt(c.z * 4f), 0x4441) % Colours);
-            return stray < 0.15f ? Mathf.Min(Colours - 1, (int)(roll * Colours)) : patch;
+            return (int)(VoxelHash.Hash(0, Mathf.RoundToInt(c.x * 4f), Mathf.RoundToInt(c.y * 4f), Mathf.RoundToInt(c.z * 4f), 0x4441) % Colours);
+        }
+
+        /// <summary>The settings as a struct Burst jobs can carry (GL775).</summary>
+        public DahliaRules Rules => new DahliaRules { PeakShare = peakShare, Spread = spread, Deepest = deepest, Height = height };
+    }
+
+    /// <summary><see cref="DahliaGrowth"/>'s rules for one tuft, as a struct for Burst jobs (GL775) and the class alike.</summary>
+    public struct DahliaRules
+    {
+        public float PeakShare;
+        public float Spread;
+        public float Deepest;
+        public Vector2 Height;
+
+        /// <summary>The share of tufts at <paramref name="point"/> that are dahlias from the node at <paramref name="centre"/>.</summary>
+        public float ShareOf(Vector3 centre, Vector3 point)
+        {
+            float below = point.y - centre.y;
+            if (below <= 0f || below > Deepest)
+            {
+                return 0f;
+            }
+            float inverse = 1f / (2f * Spread * Spread);
+            float dx = point.x - centre.x, dz = point.z - centre.z;
+            return PeakShare * Mathf.Exp(-(dx * dx + dz * dz) * inverse);
+        }
+
+        /// <summary><see cref="DahliaGrowth.ShareAt"/> over node centres.</summary>
+        public float ShareAt(in Unity.Collections.NativeArray<Vector3> centres, Vector3 point, out int strongest)
+        {
+            strongest = -1;
+            float best = 0f;
+            for (int i = 0; i < centres.Length; i++)
+            {
+                float share = ShareOf(centres[i], point);
+                if (share > best)
+                {
+                    best = share;
+                    strongest = i;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>See <see cref="DahliaGrowth.HeightFor"/>.</summary>
+        public float HeightFor(float roll)
+        {
+            return Mathf.Lerp(Height.x, Height.y, Mathf.Clamp01(roll));
+        }
+
+        /// <summary>A flower's colour from its patch's (<see cref="DahliaGrowth.PatchOf"/>); now and then one strays.</summary>
+        public static int ColourOf(int patch, float stray, float roll)
+        {
+            return stray < 0.15f ? Mathf.Min(DahliaGrowth.Colours - 1, (int)(roll * DahliaGrowth.Colours)) : patch;
         }
     }
 }
