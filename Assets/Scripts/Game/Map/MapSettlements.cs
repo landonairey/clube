@@ -32,7 +32,7 @@ namespace Clube.Game
         // The piece being written over several frames (GL771): one at a time, as what stands on it waits for it.
         private const float LeastWriteMilliseconds = 0.5f;
         private const float CollectMilliseconds = 1.5f;
-        private const int AskEveryFrames = 8;
+        private const int AskEveryFrames = 8, PiecesAskedFor = 4;
         // A piece the player is about to walk on holds the ground there: it gets this long a frame (GL771).
         private const float CloseWriteMilliseconds = 6f;
         private bool writingClose;
@@ -594,9 +594,9 @@ namespace Clube.Game
         }
 
         // GL771: the chunks a piece is missing are listed now and then; otherwise the check stops at the first one missing.
-        private static bool AsksForChunks(float distance)
+        private static bool AsksForChunks(float distance, int check)
         {
-            return distance < RequestMetres && Time.frameCount % AskEveryFrames == 0;
+            return check <= PiecesAskedFor && distance < RequestMetres && Time.frameCount % AskEveryFrames == 0;
         }
 
         // Runs the piece in hand for this long (at least one step); true once no piece is left in hand.
@@ -671,7 +671,7 @@ namespace Clube.Game
                 }
                 checks++;
                 missing.Clear();
-                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece, AsksForChunks(next.Distance) ? missing : null))
+                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece, AsksForChunks(next.Distance, checks) ? missing : null))
                 {
                     if (missing.Count > 0)
                     {

@@ -28,7 +28,7 @@ namespace Clube.Game
         // The piece being written over several frames (GL771): one at a time, as each cuts down the trees in its way first.
         private const float LeastWriteMilliseconds = 0.5f;
         private const float CollectMilliseconds = 1.5f;
-        private const int AskEveryFrames = 8;
+        private const int AskEveryFrames = 8, PiecesAskedFor = 4;
         // A piece the player is about to walk on holds the ground there: it gets this long a frame (GL771).
         private const float CloseWriteMilliseconds = 6f;
         private bool writingClose;
@@ -531,9 +531,9 @@ namespace Clube.Game
 
         // GL771: the chunks a piece is missing are listed now and then: listing them for 32 pieces every frame was over
         // 10 ms, and the streamer remembers what it was asked for. Otherwise the check stops at the first one missing.
-        private static bool AsksForChunks(float distanceSquared)
+        private static bool AsksForChunks(float distanceSquared, int check)
         {
-            return distanceSquared < RequestMetres * RequestMetres && Time.frameCount % AskEveryFrames == 0;
+            return check <= PiecesAskedFor && distanceSquared < RequestMetres * RequestMetres && Time.frameCount % AskEveryFrames == 0;
         }
 
         // Runs the piece in hand for this long (at least one step); true once no piece is left in hand.
@@ -603,7 +603,7 @@ namespace Clube.Game
                 }
                 checks++;
                 missing.Clear();
-                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece, AsksForChunks(next.Distance) ? missing : null))
+                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece, AsksForChunks(next.Distance, checks) ? missing : null))
                 {
                     if (missing.Count > 0)
                     {
@@ -631,7 +631,7 @@ namespace Clube.Game
                 TunnelWriter bore = built[next.Road].Tunnels[next.Tunnel];
                 checks++;
                 missing.Clear();
-                if (!bore.Loaded(world, config.WorldHeightInChunks, next.Piece, AsksForChunks(next.Distance) ? missing : null))
+                if (!bore.Loaded(world, config.WorldHeightInChunks, next.Piece, AsksForChunks(next.Distance, checks) ? missing : null))
                 {
                     if (missing.Count > 0)
                     {
