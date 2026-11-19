@@ -7,8 +7,9 @@ namespace Clube.Game
 {
     /// <summary>
     /// The player's mining journal (GL73): fills a <see cref="MiningJournal"/> as they work. An ore
-    /// is found when they mine a sample of it (or of its cracked or loose stages), even before they
-    /// can tell it apart (<see cref="OreKnowledge"/>; the screen then shows it as unknown, GL77);
+    /// is found the first time an inventory entry of it is seen (GL796, <see cref="OreSighting"/>): its own stack mined
+    /// with a tool aimed at it, or popped out by refining; a dirt load with some of it inside doesn't count. Even before
+    /// they can tell it apart (<see cref="OreKnowledge"/>; the screen then shows it as unknown, GL77);
     /// the journal keeps how deep below the generated surface it first was, and the grades mined since. Recipes are learned as they're finished,
     /// and give an ore its uses. <see cref="JournalScreen"/> shows it.
     /// </summary>
@@ -29,6 +30,9 @@ namespace Clube.Game
         private PlayerToolUser tools;
         private PlayerSkills skills;
         private OreKnowledge knowledge;
+        private PlayerInventory inventory;
+        private Inventory watched;
+        private bool inventoryChanged;
 
         public MiningJournal Journal { get; } = new MiningJournal();
 
@@ -64,6 +68,7 @@ namespace Clube.Game
             tools = GetComponent<PlayerToolUser>();
             skills = GetComponent<PlayerSkills>();
             knowledge = GetComponent<OreKnowledge>();
+            inventory = GetComponent<PlayerInventory>();
         }
 
         private void OnEnable()
@@ -82,6 +87,66 @@ namespace Clube.Game
             {
                 skills.RecipeFinished -= Journal.RecordMade;
             }
+            if (watched != null)
+            {
+                watched.Changed -= OnInventoryChanged;
+                watched = null;
+            }
+        }
+
+        private void OnInventoryChanged()
+        {
+            inventoryChanged = true;
+        }
+
+        // Once a frame after the inventory changed (GL796), so a save loading its items and its journal in one go raises
+        // nothing: each slot's ore, when it is an entry of that ore type and the ore is new to the journal.
+        private void LateUpdate()
+        {
+            // Watched from the first frame, as the inventory is made in its own Awake.
+            Inventory items = inventory != null ? inventory.Inventory : null;
+            if (items != watched)
+            {
+                if (watched != null)
+                {
+                    watched.Changed -= OnInventoryChanged;
+                }
+                watched = items;
+                if (items != null)
+                {
+                    items.Changed += OnInventoryChanged;
+                    inventoryChanged = true;
+                }
+            }
+            if (!inventoryChanged || items == null)
+            {
+                return;
+            }
+            inventoryChanged = false;
+            for (int slot = 0; slot < items.SlotCount; slot++)
+            {
+                ItemStack stack = items[slot];
+                if (stack.IsEmpty)
+                {
+                    continue;
+                }
+                ItemDefinition item = knowledge != null ? knowledge.RealItem(stack.Item) : stack.Item;
+                VoxelMaterial ore = OreSighting.OreShownBy(item, ores);
+                if (ore != null && !Journal.HasFound(ore))
+                {
+                    float grade = stack.Contents != null ? GradeOf(ore, stack.Contents) : Mathf.Clamp01(stack.Quality);
+                    Journal.Record(ore, DepthAt(transform.position), grade);
+                }
+            }
+        }
+
+        private float DepthAt(Vector3 position)
+        {
+            if (worldView == null || worldView.Generator == null)
+            {
+                return 0f;
+            }
+            return Mathf.Max(0f, worldView.Generator.Depth(worldView.transform.InverseTransformPoint(position)));
         }
 
         /// <summary>
@@ -169,17 +234,13 @@ namespace Clube.Game
 
         private void OnUnearthed(VoxelMaterial material, Vector3 position, Composition contents)
         {
+            // Digging only adds samples to an ore already found (GL796): the find itself is its inventory entry.
             VoxelMaterial ore = OreOf(material);
-            if (ore == null)
+            if (ore == null || !Journal.HasFound(ore))
             {
                 return;
             }
-            float depth = 0f;
-            if (worldView != null && worldView.Generator != null)
-            {
-                depth = Mathf.Max(0f, worldView.Generator.Depth(worldView.transform.InverseTransformPoint(position)));
-            }
-            Journal.Record(ore, depth, GradeOf(ore, contents));
+            Journal.Record(ore, DepthAt(position), GradeOf(ore, contents));
         }
 
         // The journal's ore a mined material belongs to: itself, or the ore it broke down from.

@@ -61,6 +61,10 @@ namespace Clube.Core
         [SerializeField]
         private bool hidesContents;
 
+        [Tooltip("Its quality reads as a grade word, Poor, Medium, Good, High Grade or PURE, not a % (GL795: sticks).")]
+        [SerializeField]
+        private bool qualityAsGrade;
+
         [Tooltip("A bun's ingot (GL700): what hammering it makes. A furnace alloying with the bun takes the ingot in its place, and makes the lesser of the two forms. Empty for everything that has no ingot form (coal).")]
         [SerializeField]
         private ItemDefinition ingotForm;
@@ -201,6 +205,16 @@ namespace Clube.Core
 
         /// <summary>True when the player can't see what it's made of (GL76).</summary>
         public bool HidesContents => hidesContents;
+
+        /// <summary>True when its quality reads as a grade word, not a % (GL795: sticks).</summary>
+        public bool QualityAsGrade => qualityAsGrade;
+
+        /// <summary>Sets <see cref="QualityAsGrade"/>, for items made in code (tests).</summary>
+        public ItemDefinition WithQualityAsGrade(bool value = true)
+        {
+            qualityAsGrade = value;
+            return this;
+        }
 
         /// <summary>Sets its volume and burn time, for items made in code (tests, tools).</summary>
         public ItemDefinition With(float unitVolume = 1f, float burnSeconds = 0f, float fuelQuality = 1f)

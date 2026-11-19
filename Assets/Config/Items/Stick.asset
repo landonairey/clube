@@ -23,4 +23,5 @@ MonoBehaviour:
   fuelQuality: 0.7
   purityAs: {fileID: 0}
   hidesContents: 0
+  qualityAsGrade: 1
   dropForm: 0
