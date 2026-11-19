@@ -74,6 +74,11 @@ namespace Clube.Game
         private void Awake()
         {
             player = GetComponent<PlayerController>();
+            // Every game scene covers its wait for ground (GL780), not only the ones whose prefab was given a curtain.
+            if (GetComponent<LoadCurtain>() == null)
+            {
+                gameObject.AddComponent<LoadCurtain>();
+            }
         }
 
         private void OnEnable()

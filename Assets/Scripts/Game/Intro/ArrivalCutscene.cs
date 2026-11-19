@@ -523,15 +523,10 @@ namespace Clube.Game
             }
             // Over the HUDs and the pause popup.
             Color previous = GUI.color;
-            if (black > 0f)
+            if (black > 0f && !LoadCurtainView.IsUp)
             {
                 GUI.color = new Color(0f, 0f, 0f, black);
                 GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
-            }
-            if (phase == Phase.Waiting)
-            {
-                GUI.color = Color.white;
-                LoadingMessage.Draw(LoadingMessage.Ground(spawn != null ? spawn.Progress : 0f));
             }
             if (IsPlaying && phase != Phase.Waiting)
             {
