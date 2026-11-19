@@ -57,9 +57,14 @@ namespace Clube.Core
                         OnMeshed(loaded.Key, null);
                     }
                 }
+                foreach (Vector2Int column in view.World.ProvenColumns)
+                {
+                    LookAgain(column);
+                }
             }
             view.ChunkMeshed += OnMeshed;
             view.ChunkUnloaded += OnUnloaded;
+            view.ProvenLayersChanged += LookAgain;
         }
 
         /// <summary>
@@ -110,7 +115,7 @@ namespace Clube.Core
                 fullColumns.Clear();
                 foreach (KeyValuePair<Vector2Int, int> column in layersMeshed)
                 {
-                    if (column.Value >= layers)
+                    if (IsFull(column.Key))
                     {
                         fullColumns.Add(column.Key);
                     }
@@ -144,6 +149,7 @@ namespace Clube.Core
             }
             view.ChunkMeshed -= OnMeshed;
             view.ChunkUnloaded -= OnUnloaded;
+            view.ProvenLayersChanged -= LookAgain;
             Object.Destroy(Texture);
         }
 
@@ -154,11 +160,7 @@ namespace Clube.Core
                 var column = new Vector2Int(coord.x, coord.z);
                 layersMeshed.TryGetValue(column, out int count);
                 layersMeshed[column] = count + 1;
-                if (count + 1 >= layers)
-                {
-                    fullColumns.Add(column);
-                }
-                SetTexel(column);
+                LookAgain(column);
             }
         }
 
@@ -176,12 +178,28 @@ namespace Clube.Core
                 {
                     layersMeshed[column] = count;
                 }
-                if (count < layers)
-                {
-                    fullColumns.Remove(column);
-                }
-                SetTexel(column);
+                LookAgain(column);
             }
+        }
+
+        // Every layer meshed, or proven to have nothing to mesh (GL773).
+        private bool IsFull(Vector2Int column)
+        {
+            layersMeshed.TryGetValue(column, out int count);
+            return count + (view.World != null ? view.World.ProvenLayersIn(column) : 0) >= layers;
+        }
+
+        private void LookAgain(Vector2Int column)
+        {
+            if (IsFull(column))
+            {
+                fullColumns.Add(column);
+            }
+            else
+            {
+                fullColumns.Remove(column);
+            }
+            SetTexel(column);
         }
 
         /// <summary>Looks at a column again, after the further condition given to the constructor changed for it.</summary>

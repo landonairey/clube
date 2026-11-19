@@ -66,6 +66,12 @@ namespace Clube.Core
         /// there. Columns holding an edited chunk are always drawn. 0: every loaded chunk is drawn.
         /// </summary>
         public int DetailDistance;
+
+        /// <summary>
+        /// Layers the height map proves all air or all rock are neither generated, stored nor meshed until something writes
+        /// to them (GL773). Streamed heightfield worlds only: a fixed area loads whole.
+        /// </summary>
+        public bool SparseChunks;
     }
 
     /// <summary>Live counts from a <see cref="WorldStreamer"/>, for readouts.</summary>
@@ -201,7 +207,12 @@ namespace Clube.Core
             this.settings = settings;
             DrawVersion = ++drawVersions;
             renderers.SetDrawRule(IsColumnDrawn);
+            world.ChunkMaterialised += NoteMaterialised;
+            world.ProvenLayersChanged += RaiseProvenLayersChanged;
         }
+
+        /// <summary>How many of a column's layers are proven uniform changed (<see cref="World.ProvenLayersIn"/>).</summary>
+        public event Action<Vector2Int> ProvenLayersChanged;
 
         /// <summary>Raised when a chunk's data is added to the world.</summary>
         public event Action<Vector3Int> ChunkLoaded;
@@ -270,7 +281,7 @@ namespace Clube.Core
         private bool IsHeld(Vector3Int coord)
         {
             return Hold != null && !meshedOnce.Contains(coord) && IsColumnHeld(new Vector2Int(coord.x, coord.z))
-                   && world.TryGetChunk(coord, out Chunk chunk) && !chunk.IsUniform;
+                   && world.TryPeekChunk(coord, out Chunk chunk) && !chunk.IsUniform;
         }
 
         /// <summary>Wanted chunks not loaded yet.</summary>
@@ -358,6 +369,7 @@ namespace Clube.Core
                 : settings.FrameBudgetMilliseconds;
 
             pipeline.Poll();
+            TakeMaterialised();
             phases.Poll = Lap();
 
             Vector3Int centre = world.Grid.WorldToChunk(focus);
@@ -381,6 +393,7 @@ namespace Clube.Core
             // While playing some of the budget is left for starting what is nearest.
             AddGenerated(IsPlaying ? budget * PlayingAddShare : budget);
             phases.AddChunks = Lap();
+            ProveAhead();
             StartGenerating();
             phases.StartGeneration = Lap();
             StartMeshing();
@@ -416,6 +429,7 @@ namespace Clube.Core
         /// </summary>
         public void RebuildEdited(Vector3 focus)
         {
+            TakeMaterialised();
             scratch.Clear();
             world.CollectDirty(dirtyScratch);
             foreach (Vector3Int dirtyCoord in dirtyScratch)
@@ -498,7 +512,7 @@ namespace Clube.Core
             for (int layer = 0; layer < settings.HeightInChunks; layer++)
             {
                 var coord = new Vector3Int(column.x, layer, column.y);
-                if (!world.TryGetChunk(coord, out Chunk chunk) || !meshedOnce.Contains(coord) || pipeline.IsMeshing(coord))
+                if (!world.IsLoaded(coord) || !IsMeshed(coord) || pipeline.IsMeshing(coord))
                 {
                     return false;
                 }
@@ -519,14 +533,25 @@ namespace Clube.Core
             {
                 var coord = new Vector3Int(column.x, layer, column.y);
                 loaded += world.IsLoaded(coord) ? 1 : 0;
-                meshed += meshedOnce.Contains(coord) && !pipeline.IsMeshing(coord) ? 1 : 0;
+                meshed += IsMeshed(coord) && !pipeline.IsMeshing(coord) ? 1 : 0;
             }
             held = IsColumnHeld(column);
+        }
+
+        // Meshed, or proven to have nothing to mesh and not changed since.
+        private bool IsMeshed(Vector3Int coord)
+        {
+            return meshedOnce.Contains(coord)
+                   || (world.IsProvenUniform(coord) && (!world.TryPeekChunk(coord, out Chunk chunk) || !chunk.IsDirty));
         }
 
         /// <summary>Unloads every chunk (before regenerating): renderers go back to the pool, and <see cref="ChunkUnloaded"/> is raised for each.</summary>
         public void UnloadAll()
         {
+            world.ForgetAllProofs();
+            proving.Clear();
+            proveCursor = 0;
+            materialised.Clear();
             scratch.Clear();
             scratch.AddRange(world.Chunks.Keys);
             foreach (Vector3Int coord in scratch)
@@ -550,6 +575,8 @@ namespace Clube.Core
         /// </summary>
         public void Dispose()
         {
+            world.ChunkMaterialised -= NoteMaterialised;
+            world.ProvenLayersChanged -= RaiseProvenLayersChanged;
             pipeline.Dispose();
         }
 
@@ -574,6 +601,7 @@ namespace Clube.Core
             loadCursor = 0;
             loadLayer = 0;
             groundCursor = 0;
+            proveCursor = 0;
             wantedLoaded = 0;
             int layers = settings.HeightInChunks;
             foreach (Vector2Int column in wantedColumns)
@@ -635,6 +663,7 @@ namespace Clube.Core
                 {
                     continue;
                 }
+                world.ForgetColumnProof(column);
                 for (; unloadingLayer < settings.HeightInChunks && world.LoadedLayersIn(column) > 0; unloadingLayer++)
                 {
                     var coord = new Vector3Int(column.x, unloadingLayer, column.y);
@@ -694,7 +723,7 @@ namespace Clube.Core
                             && (i < pastBudget || Before(budget));)
             {
                 Vector3Int waiting = waitingForColumns[i];
-                if (!IsWanted(waiting) || world.IsLoaded(waiting) || pipeline.StartGeneration(waiting))
+                if (!IsWanted(waiting) || world.IsLoaded(waiting) || TryStartGeneration(waiting))
                 {
                     waitingForColumns.RemoveAt(i);
                 }
@@ -736,15 +765,127 @@ namespace Clube.Core
                     loadCursor++;
                     continue;
                 }
+                // Nearest first: a column not proven yet is waited for, or all its layers would start.
+                if (ProvesColumns && !world.IsColumnProven(column) && !TryProve(column))
+                {
+                    break;
+                }
                 var coord = new Vector3Int(column.x, loadLayer, column.y);
                 if (++loadLayer >= layers)
                 {
                     loadLayer = 0;
                     loadCursor++;
                 }
+                if (world.IsLoaded(coord))
+                {
+                    continue;
+                }
                 started++;
                 StartChunk(coord);
             }
+        }
+
+        // ---- Sparse chunks (GL773) ---------------------------------------------------------
+
+        // Columns whose heights are being worked out, and the most at a time; the time a frame may spend proving, while playing
+        // and while the area loads.
+        private const int MostColumnsProving = 256;
+        private const double PlayingProveMilliseconds = 1.0, LoadingProveMilliseconds = 6.0;
+
+        private readonly List<Vector2Int> proving = new List<Vector2Int>();
+        private readonly List<Vector3Int> materialised = new List<Vector3Int>();
+        private int proveCursor;
+
+        private bool ProvesColumns => settings.SparseChunks && !settings.FixedColumns.HasValue && pipeline.CanProveColumns;
+
+        // Proves the wanted columns nearest first, ahead of generating them: until a column is proven all its layers count as waiting.
+        private void ProveAhead()
+        {
+            if (!ProvesColumns)
+            {
+                return;
+            }
+            double until = frameClock.Elapsed.TotalMilliseconds + (IsPlaying ? PlayingProveMilliseconds : LoadingProveMilliseconds);
+            for (int i = proving.Count - 1; i >= 0 && Before(until); i--)
+            {
+                Vector2Int column = proving[i];
+                if (world.IsColumnProven(column) || !IsColumnWanted(column) || TryProve(column))
+                {
+                    proving[i] = proving[proving.Count - 1];
+                    proving.RemoveAt(proving.Count - 1);
+                }
+            }
+            while (proveCursor < wantedColumns.Count && proving.Count < MostColumnsProving && Before(until))
+            {
+                Vector2Int column = wantedColumns[proveCursor++];
+                if (!world.IsColumnProven(column) && !TryProve(column))
+                {
+                    proving.Add(column);
+                }
+            }
+        }
+
+        // False while the column's heights aren't ready.
+        private bool TryProve(Vector2Int column)
+        {
+            if (!pipeline.TryProveColumn(column, settings.HeightInChunks, out UniformLayers layers))
+            {
+                return false;
+            }
+            int added = world.ProveColumn(column, layers, settings.HeightInChunks);
+            if (IsColumnWanted(column))
+            {
+                wantedLoaded += added;
+            }
+            return true;
+        }
+
+        private bool IsColumnWanted(Vector2Int column)
+        {
+            return IsWanted(new Vector3Int(column.x, 0, column.y));
+        }
+
+        // Starts a chunk's generation, proving its column first; true when nothing more is needed now.
+        private bool TryStartGeneration(Vector3Int coord)
+        {
+            var column = new Vector2Int(coord.x, coord.z);
+            if (ProvesColumns && !world.IsColumnProven(column))
+            {
+                if (!TryProve(column))
+                {
+                    return false;
+                }
+                if (world.IsLoaded(coord))
+                {
+                    return true;
+                }
+            }
+            return pipeline.StartGeneration(coord);
+        }
+
+        // Raised in the middle of an edit, so it is only noted down here.
+        private void NoteMaterialised(Vector3Int coord)
+        {
+            materialised.Add(coord);
+        }
+
+        private void RaiseProvenLayersChanged(Vector2Int column)
+        {
+            ProvenLayersChanged?.Invoke(column);
+        }
+
+        // A proven layer given a chunk was shown already, as nothing: an edit to it rebuilds in the frame of the edit, like any
+        // shown chunk's. In a held column it waits to be meshed with the others, written.
+        private void TakeMaterialised()
+        {
+            foreach (Vector3Int coord in materialised)
+            {
+                if (world.TryPeekChunk(coord, out _) && !IsColumnHeld(new Vector2Int(coord.x, coord.z)))
+                {
+                    meshedOnce.Add(coord);
+                }
+            }
+            materialised.Clear();
         }
 
         // Starts a chunk unless it is loaded or on its way; true when there was something to start.
@@ -760,7 +901,7 @@ namespace Clube.Core
                 ChunkLoaded?.Invoke(coord);
                 return true;
             }
-            if (!pipeline.StartGeneration(coord))
+            if (!TryStartGeneration(coord))
             {
                 waitingForColumns.Add(coord);
             }
@@ -822,7 +963,7 @@ namespace Clube.Core
             while ((first || Before(untilMilliseconds)) && pipeline.TryTakeMeshed(out ChunkPipeline.MeshResult result))
             {
                 first = false;
-                if (!world.TryGetChunk(result.Coord, out Chunk chunk))
+                if (!world.TryPeekChunk(result.Coord, out Chunk chunk))
                 {
                     result.Discard();
                     continue;

@@ -98,6 +98,9 @@ namespace Clube.Core
         private bool regenerateRequested;
         private bool remeshRequested;
 
+        /// <summary>How many of a column's layers are proven uniform changed (GL773): those layers count as meshed.</summary>
+        public event Action<Vector2Int> ProvenLayersChanged;
+
         /// <summary>Raised when a chunk's data is loaded into the world (it may not have a renderer: see <see cref="ChunkMeshed"/>).</summary>
         public event Action<Vector3Int> ChunkLoaded;
 
@@ -486,11 +489,13 @@ namespace Clube.Core
                 MaxEditsPerFrame = 32,
                 FixedColumns = Config.FixedColumns,
                 SealEdges = Config.SealEdges,
+                SparseChunks = true,
             });
             streamer.Hold = IsHeld;
             streamer.ChunkLoaded += coord => ChunkLoaded?.Invoke(coord);
             streamer.ChunkUnloaded += coord => ChunkUnloaded?.Invoke(coord);
             streamer.ChunkMeshed += (coord, chunkRenderer) => ChunkMeshed?.Invoke(coord, chunkRenderer);
+            streamer.ProvenLayersChanged += column => ProvenLayersChanged?.Invoke(column);
         }
 
         // Waits for every job and pools every renderer; the world's data goes with it.

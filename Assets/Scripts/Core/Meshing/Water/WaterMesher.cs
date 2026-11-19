@@ -145,7 +145,7 @@ namespace Clube.Core
                 {
                     for (int dx = -1; dx <= 1; dx++)
                     {
-                        world.TryGetChunk(coord + new Vector3Int(dx, dy, dz), out Chunk next);
+                        world.TryPeekChunk(coord + new Vector3Int(dx, dy, dz), out Chunk next);
                         around[dx + 1 + 3 * (dy + 1 + 3 * (dz + 1))] = next;
                     }
                 }

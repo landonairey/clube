@@ -26,7 +26,7 @@ namespace Clube.Core
     /// Edited chunks are kept in memory when unloaded and come back as they were, until
     /// saving exists (Chapter 4).
     /// </remarks>
-    public sealed class World : IDensityField
+    public sealed partial class World : IDensityField
     {
         private readonly Dictionary<Vector3Int, Chunk> loaded = new Dictionary<Vector3Int, Chunk>();
 
@@ -87,14 +87,16 @@ namespace Clube.Core
         /// <summary>Edited chunks that are unloaded but kept in memory until saving exists, by coordinate.</summary>
         public IReadOnlyDictionary<Vector3Int, Chunk> KeptChunks => editedUnloaded;
 
+        /// <summary>True for a chunk in the world, or one proven all air or all rock that holds no chunk yet (GL773).</summary>
         public bool IsLoaded(Vector3Int coord)
         {
-            return loaded.ContainsKey(coord);
+            return loaded.ContainsKey(coord) || IsProvenUniform(coord);
         }
 
+        /// <summary>The chunk at a coordinate; a proven layer gets its real chunk now (GL773, see <see cref="TryPeekChunk"/>).</summary>
         public bool TryGetChunk(Vector3Int coord, out Chunk chunk)
         {
-            return loaded.TryGetValue(coord, out chunk);
+            return loaded.TryGetValue(coord, out chunk) || TryMaterialise(coord, out chunk);
         }
 
         /// <summary>
@@ -144,6 +146,7 @@ namespace Clube.Core
             if (edited.Add(coord))
             {
                 editedColumns.Add(new Vector2Int(coord.x, coord.z));
+                DropProofOfEdited(coord);
             }
         }
 
@@ -203,12 +206,14 @@ namespace Clube.Core
         /// </summary>
         public void Add(Vector3Int coord, Chunk chunk)
         {
+            // A proven layer already counts as loaded.
+            if (!TakeProof(coord))
+            {
+                var column = new Vector2Int(coord.x, coord.z);
+                loadedColumns[column] = LoadedLayersIn(column) + 1;
+            }
             loaded.Add(coord, chunk);
-            var column = new Vector2Int(coord.x, coord.z);
-            loadedColumns[column] = LoadedLayersIn(column) + 1;
-            loadedMin = anyLoaded ? Vector3Int.Min(loadedMin, coord) : coord;
-            loadedMax = anyLoaded ? Vector3Int.Max(loadedMax, coord) : coord;
-            anyLoaded = true;
+            NoteLoadedBox(coord);
             anyCarved |= chunk.HasCarves;
             chunk.BecameDirty = _ => dirty.Add(coord);
             if (chunk.IsDirty)
@@ -216,6 +221,13 @@ namespace Clube.Core
                 dirty.Add(coord);
             }
             CopyBordersFromEditedNeighbours(coord, chunk);
+        }
+
+        private void NoteLoadedBox(Vector3Int coord)
+        {
+            loadedMin = anyLoaded ? Vector3Int.Min(loadedMin, coord) : coord;
+            loadedMax = anyLoaded ? Vector3Int.Max(loadedMax, coord) : coord;
+            anyLoaded = true;
         }
 
         /// <summary>
@@ -270,14 +282,23 @@ namespace Clube.Core
             }
             loaded.Remove(coord);
             var column = new Vector2Int(coord.x, coord.z);
-            int layers = LoadedLayersIn(column) - 1;
-            if (layers > 0)
+            if (proven.TryGetValue(column, out ProvenColumn provenColumn) && provenColumn.Layers.IsUniform(coord.y))
             {
-                loadedColumns[column] = layers;
+                // Nothing changed it: the layer goes back to being proven, and still counts as loaded.
+                provenColumn.Materialised--;
+                proven[column] = provenColumn;
             }
             else
             {
-                loadedColumns.Remove(column);
+                int layers = LoadedLayersIn(column) - 1;
+                if (layers > 0)
+                {
+                    loadedColumns[column] = layers;
+                }
+                else
+                {
+                    loadedColumns.Remove(column);
+                }
             }
             dirty.Remove(coord);
             chunk.BecameDirty = null;
@@ -335,6 +356,7 @@ namespace Clube.Core
             }
             loaded.Clear();
             loadedColumns.Clear();
+            proven.Clear();
             dirty.Clear();
             waterChanged.Clear();
             anyLoaded = false;
@@ -354,6 +376,10 @@ namespace Clube.Core
                 {
                     return chunk.GetDensity(Grid.GlobalToLocal(sample, coord));
                 }
+                if (TryProvenSample(coord, out float density, out _))
+                {
+                    return density;
+                }
             }
             return null;
         }
@@ -370,7 +396,9 @@ namespace Clube.Core
             int changed = 0;
             foreach (Vector3Int coord in scratchChunks)
             {
-                if (!loaded.TryGetValue(coord, out Chunk chunk))
+                // A proven layer only needs its chunk once this changes it (GL773).
+                if (!loaded.TryGetValue(coord, out Chunk chunk)
+                    && (!TryProvenSample(coord, out float proofDensity, out _) || proofDensity == density || !TryMaterialise(coord, out chunk)))
                 {
                     continue;
                 }
@@ -403,6 +431,10 @@ namespace Clube.Core
                 {
                     return chunk.GetMaterial(Grid.GlobalToLocal(sample, coord));
                 }
+                if (TryProvenSample(coord, out _, out byte proofMaterial))
+                {
+                    return proofMaterial;
+                }
             }
             return null;
         }
@@ -416,7 +448,8 @@ namespace Clube.Core
             Grid.ChunksContainingSample(sample, scratchChunks);
             foreach (Vector3Int coord in scratchChunks)
             {
-                if (!loaded.TryGetValue(coord, out Chunk chunk))
+                if (!loaded.TryGetValue(coord, out Chunk chunk)
+                    && (!TryProvenSample(coord, out _, out byte proofMaterial) || proofMaterial == material || !TryMaterialise(coord, out chunk)))
                 {
                     continue;
                 }
@@ -435,17 +468,22 @@ namespace Clube.Core
         /// </summary>
         public bool TryGetOwner(Vector3Int sample, out Chunk chunk, out Vector3Int local)
         {
+            return TryGetChunk(OwnerOf(sample, out local), out chunk);
+        }
+
+        private Vector3Int OwnerOf(Vector3Int sample, out Vector3Int local)
+        {
             Vector3Int size = Grid.ChunkSize;
             var coord = new Vector3Int(
                 WorldGrid.FloorDiv(sample.x, size.x), WorldGrid.FloorDiv(sample.y, size.y), WorldGrid.FloorDiv(sample.z, size.z));
             local = sample - Vector3Int.Scale(coord, size);
-            return loaded.TryGetValue(coord, out chunk);
+            return coord;
         }
 
         /// <summary>How full of water a global sample is, 0-1 (GL315); 0 when not loaded.</summary>
         public float GetWater(Vector3Int sample)
         {
-            return TryGetOwner(sample, out Chunk chunk, out Vector3Int local) ? chunk.GetWater(local) : 0f;
+            return TryPeekOwner(sample, out Chunk chunk, out Vector3Int local) ? chunk.GetWater(local) : 0f;
         }
 
         /// <summary>
@@ -457,7 +495,9 @@ namespace Clube.Core
             Grid.ChunksContainingSample(sample, scratchChunks);
             foreach (Vector3Int coord in scratchChunks)
             {
-                if (loaded.TryGetValue(coord, out Chunk chunk) && chunk.SetWater(Grid.GlobalToLocal(sample, coord), amount))
+                // A proven layer holds no water: only water arriving needs its chunk.
+                if ((loaded.TryGetValue(coord, out Chunk chunk) || (amount > 0f && TryMaterialise(coord, out chunk)))
+                    && chunk.SetWater(Grid.GlobalToLocal(sample, coord), amount))
                 {
                     waterChanged.Add(coord);
                 }
@@ -531,7 +571,7 @@ namespace Clube.Core
             Grid.ChunksContainingSample(sample, scratchChunks);
             foreach (Vector3Int coord in scratchChunks)
             {
-                if (!loaded.TryGetValue(coord, out Chunk chunk))
+                if (!loaded.TryGetValue(coord, out Chunk chunk) && (!set || !TryMaterialise(coord, out chunk)))
                 {
                     continue;
                 }

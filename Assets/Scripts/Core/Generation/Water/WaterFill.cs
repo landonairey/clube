@@ -124,7 +124,7 @@ namespace Clube.Core
             int filled = 0;
             foreach (Vector3Int step in Sideways)
             {
-                if (!world.TryGetChunk(coord + step, out Chunk next) || !next.HasWater)
+                if (!world.TryPeekChunk(coord + step, out Chunk next) || !next.HasWater)
                 {
                     continue;
                 }
@@ -211,6 +211,37 @@ namespace Clube.Core
         }
 
         // True when any wet cell under the chunk (or a few metres round it) has its surface at or over the chunk's bottom.
+        /// <summary>
+        /// The highest water surface that could reach a chunk column (GL773): the wet cells under it and as far round as the
+        /// shore's run and a neighbouring chunk's seed carry water. Negative infinity with none.
+        /// </summary>
+        public static float HighestSurfaceNear(in WaterMap map, WorldGrid grid, Vector2Int column)
+        {
+            if (!map.IsCreated || map.Size.x <= 0 || map.Size.y <= 0)
+            {
+                return float.NegativeInfinity;
+            }
+            Vector3 size = grid.ChunkWorldSize;
+            float reach = ShoreReach * grid.VoxelSize + size.x;
+            var min = new float2(column.x * size.x - reach, column.y * size.z - reach);
+            var max = new float2((column.x + 1) * size.x + reach, (column.y + 1) * size.z + reach);
+            int2 from = math.max((int2)math.floor((min - map.Origin) / map.CellSize) - 1, 0);
+            int2 to = math.min((int2)math.floor((max - map.Origin) / map.CellSize) + 1, map.Size - 1);
+            float highest = float.NegativeInfinity;
+            for (int z = from.y; z <= to.y; z++)
+            {
+                for (int x = from.x; x <= to.x; x++)
+                {
+                    int i = x + z * map.Size.x;
+                    if (map.Kind[i] != 0)
+                    {
+                        highest = Mathf.Max(highest, map.Surface[i]);
+                    }
+                }
+            }
+            return highest;
+        }
+
         private static bool Touches(WorldGrid grid, Vector3Int coord, in WaterMap map)
         {
             Vector3 min = grid.ChunkOrigin(coord);
