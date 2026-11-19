@@ -5,7 +5,8 @@ namespace Clube.Core
     /// <summary>
     /// GL800: whether an animal may walk the ground ahead ("they cannot scale super steep surfaces"). The ground is looked
     /// at in short steps along its heading; a step that climbs steeper than its species' <see cref="AnimalSpecies.MaxClimbDegrees"/>
-    /// is refused, as is a drop deeper than it would jump down.
+    /// is refused, as is ground ahead steeper than that across the heading (a slanting way up a face), unless the way
+    /// goes down, and a drop deeper than it would jump down.
     /// </summary>
     public static class AnimalFooting
     {
@@ -17,11 +18,13 @@ namespace Clube.Core
 
         /// <summary>
         /// True when the ground ahead may be walked: <paramref name="from"/> is the animal's height, then the first
-        /// <paramref name="count"/> of <paramref name="heights"/> are the ground's every <paramref name="spacing"/> metres ahead.
+        /// <paramref name="count"/> of <paramref name="heights"/> are the ground's every <paramref name="spacing"/> metres
+        /// ahead; <paramref name="crossSlope"/> is the ground's rise a metre across the heading at the last of them.
         /// </summary>
-        public static bool WayClear(float from, float[] heights, int count, float spacing, float maxClimbDegrees)
+        public static bool WayClear(float from, float[] heights, int count, float spacing, float crossSlope, float maxClimbDegrees)
         {
-            float climb = Mathf.Tan(Mathf.Clamp(maxClimbDegrees, 0f, 89f) * Mathf.Deg2Rad) * spacing + StepAllowance;
+            float limit = Mathf.Tan(Mathf.Clamp(maxClimbDegrees, 0f, 89f) * Mathf.Deg2Rad);
+            float climb = limit * spacing + StepAllowance;
             float last = from;
             for (int i = 0; i < count; i++)
             {
@@ -31,7 +34,23 @@ namespace Clube.Core
                 }
                 last = heights[i];
             }
-            return from - last <= DropAllowance + DropPerMetre * spacing * count;
+            if (from - last > DropAllowance + DropPerMetre * spacing * count)
+            {
+                return false;
+            }
+            // The face ahead: no going on along or up ground steeper than the limit, only down off it.
+            float along = count > 1 ? (heights[count - 1] - heights[count - 2]) / spacing : (last - from) / spacing;
+            bool steep = along * along + crossSlope * crossSlope > limit * limit;
+            return !steep || last < from - StepAllowance;
+        }
+
+        /// <summary>
+        /// True when one frame's step of <paramref name="length"/> metres from ground at <paramref name="from"/> to ground at
+        /// <paramref name="to"/> climbs no steeper than the limit (a centimetre allowed for the surface's own roughness).
+        /// </summary>
+        public static bool StepClear(float from, float to, float length, float maxClimbDegrees)
+        {
+            return to - from <= Mathf.Tan(Mathf.Clamp(maxClimbDegrees, 0f, 89f) * Mathf.Deg2Rad) * length + 0.01f;
         }
 
         /// <summary>

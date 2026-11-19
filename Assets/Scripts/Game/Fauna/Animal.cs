@@ -34,6 +34,8 @@ namespace Clube.Game
         private float stride, swing, dip, lie, onSide;
         private float probeTimer;
         private bool wayClear;
+        private Vector2 probedHeading;
+        private float footing = float.NaN;
         private float hopTimer;
         private float phase;
         private float deadSeconds, emptySeconds;
@@ -138,9 +140,11 @@ namespace Clube.Game
             {
                 Vector2 heading = Brain.Heading;
                 probeTimer -= dt;
-                if (probeTimer <= 0f)
+                // GL800: a turn since the last look is a new way: looked at before it is walked.
+                if (probeTimer <= 0f || Vector2.Dot(heading, probedHeading) < 0.94f)
                 {
                     probeTimer = ProbeSeconds;
+                    probedHeading = heading;
                     float ahead = Mathf.Max(0.5f, Species.Length * 0.6f) + Brain.Speed * ProbeSeconds;
                     wayClear = WayClear(at, heading, ahead, local.y);
                     if (!wayClear)
@@ -149,8 +153,18 @@ namespace Clube.Game
                     }
                 }
                 Vector2 next = at + heading * (Brain.Speed * dt);
-                if (wayClear && owner.TryGround(next.x, next.y, local.y, out float ground, out _))
+                float stepLength = Brain.Speed * dt;
+                float ground = 0f;
+                bool found = wayClear && owner.TryGround(next.x, next.y, local.y, out ground, out _);
+                if (found && !float.IsNaN(footing) && !AnimalFooting.StepClear(footing, ground, stepLength, Species.MaxClimbDegrees))
                 {
+                    found = wayClear = false;
+                    Brain.Blocked();
+                }
+                if (found)
+                {
+                    // GL800: each frame's step is held to the limit too, so nothing creeps up a face between the looks.
+                    footing = ground;
                     speed = Brain.Speed;
                     local = new Vector3(next.x, Mathf.MoveTowards(local.y, ground, Mathf.Max(2f, speed * 1.5f) * dt), next.y);
                     transform.localPosition = local;
@@ -182,7 +196,13 @@ namespace Clube.Game
                 }
                 AheadHeights[i] = near = ground;
             }
-            return AnimalFooting.WayClear(height, AheadHeights, count, spacing, Species.MaxClimbDegrees);
+            // Across the heading at the last look, so a slanting way up a face is seen: the side that has ground in reach.
+            Vector2 end = at + heading * ahead, across = new Vector2(-heading.y, heading.x) * LookStep;
+            bool left = owner.TryGround(end.x - across.x, end.y - across.y, near, out float leftHeight, out _);
+            bool right = owner.TryGround(end.x + across.x, end.y + across.y, near, out float rightHeight, out _);
+            float crossSlope = left && right ? (rightHeight - leftHeight) / (2f * LookStep)
+                : left ? (near - leftHeight) / LookStep : right ? (rightHeight - near) / LookStep : 0f;
+            return AnimalFooting.WayClear(height, AheadHeights, count, spacing, crossSlope, Species.MaxClimbDegrees);
         }
 
         private void Animate(float dt, float speed)

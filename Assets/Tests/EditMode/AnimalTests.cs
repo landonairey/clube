@@ -438,14 +438,21 @@ namespace Clube.Core.Tests
             Assert.IsTrue(AnimalSpeciesTable.All.All(s => Mathf.Approximately(s.MaxClimbDegrees, 45f)));
             float Rise(float degrees) => Mathf.Tan(degrees * Mathf.Deg2Rad) * 0.5f;
             float[] Slope(float degrees) => new[] { Rise(degrees), Rise(degrees) * 2f };
-            Assert.IsTrue(AnimalFooting.WayClear(0f, Slope(30f), 2, 0.5f, 45f), "30 degrees up: walked");
-            Assert.IsTrue(AnimalFooting.WayClear(0f, Slope(44f), 2, 0.5f, 45f), "44 degrees up: walked");
-            Assert.IsFalse(AnimalFooting.WayClear(0f, Slope(52f), 2, 0.5f, 45f), "52 degrees up: refused");
-            Assert.IsFalse(AnimalFooting.WayClear(0f, Slope(80f), 2, 0.5f, 45f), "a cliff face: refused");
-            Assert.IsTrue(AnimalFooting.WayClear(0f, Slope(52f), 2, 0.5f, 60f), "a climber's limit takes it");
-            Assert.IsFalse(AnimalFooting.WayClear(0f, new[] { 0.05f, 1.2f }, 2, 0.5f, 45f), "a wall after a level step: refused");
-            Assert.IsTrue(AnimalFooting.WayClear(0f, new[] { -0.3f, -0.6f }, 2, 0.5f, 45f), "a short way down: walked");
-            Assert.IsFalse(AnimalFooting.WayClear(0f, new[] { -0.5f, -3f }, 2, 0.5f, 45f), "a drop: refused");
+            Assert.IsTrue(AnimalFooting.WayClear(0f, Slope(30f), 2, 0.5f, 0f, 45f), "30 degrees up: walked");
+            Assert.IsTrue(AnimalFooting.WayClear(0f, Slope(44f), 2, 0.5f, 0f, 45f), "44 degrees up: walked");
+            Assert.IsFalse(AnimalFooting.WayClear(0f, Slope(52f), 2, 0.5f, 0f, 45f), "52 degrees up: refused");
+            Assert.IsFalse(AnimalFooting.WayClear(0f, Slope(80f), 2, 0.5f, 0f, 45f), "a cliff face: refused");
+            Assert.IsTrue(AnimalFooting.WayClear(0f, Slope(52f), 2, 0.5f, 0f, 60f), "a climber's limit takes it");
+            Assert.IsFalse(AnimalFooting.WayClear(0f, new[] { 0.05f, 1.2f }, 2, 0.5f, 0f, 45f), "a wall after a level step: refused");
+            Assert.IsTrue(AnimalFooting.WayClear(0f, new[] { -0.3f, -0.6f }, 2, 0.5f, 0f, 45f), "a short way down: walked");
+            Assert.IsFalse(AnimalFooting.WayClear(0f, new[] { -0.5f, -3f }, 2, 0.5f, 0f, 45f), "a drop: refused");
+            // Slanting up a 60 degree face: the way climbs at 41 degrees, but the face is steeper than the limit.
+            float face = Mathf.Tan(60f * Mathf.Deg2Rad), slant = face * Mathf.Cos(60f * Mathf.Deg2Rad) * 0.5f;
+            Assert.IsFalse(AnimalFooting.WayClear(0f, new[] { slant, slant * 2f }, 2, 0.5f, face * Mathf.Sin(60f * Mathf.Deg2Rad), 45f), "slanting up a face: refused");
+            Assert.IsTrue(AnimalFooting.WayClear(0f, new[] { -slant, -slant * 2f }, 2, 0.5f, face * Mathf.Sin(60f * Mathf.Deg2Rad), 45f), "slanting down off it: walked");
+            Assert.IsTrue(AnimalFooting.WayClear(0f, new[] { 0.1f, 0.2f }, 2, 0.5f, 0.6f, 45f), "along a hillside: walked");
+            Assert.IsTrue(AnimalFooting.StepClear(0f, 0.04f, 0.05f, 45f), "a frame's step up a 39 degree hill");
+            Assert.IsFalse(AnimalFooting.StepClear(0f, 0.12f, 0.05f, 45f), "a frame's step up a face");
             // Nor is one put down where it could not walk away: a boulder's top, a cliff's face.
             Assert.IsTrue(AnimalFooting.StandsOn(0f, new[] { 0.3f, -0.4f, 0.1f, 0f }, 4, 1f, 45f), "a hillside");
             Assert.IsFalse(AnimalFooting.StandsOn(0f, new[] { 0.8f, 1.3f, -1.3f, 0.2f }, 4, 1f, 45f), "a boulder's top");
