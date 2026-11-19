@@ -430,5 +430,22 @@ namespace Clube.Core.Tests
             Assert.That(big.Max(Mathf.Abs), Is.InRange(0.5f, 1f));
             Assert.That(small.Max(Mathf.Abs), Is.InRange(0.5f, 1f));
         }
+
+        [Test]
+        public void Footing_RefusesClimbsSteeperThanTheSpeciesTakes()
+        {
+            // GL800: every species takes up to 45 degrees by default.
+            Assert.IsTrue(AnimalSpeciesTable.All.All(s => Mathf.Approximately(s.MaxClimbDegrees, 45f)));
+            float Rise(float degrees) => Mathf.Tan(degrees * Mathf.Deg2Rad) * 0.5f;
+            float[] Slope(float degrees) => new[] { Rise(degrees), Rise(degrees) * 2f };
+            Assert.IsTrue(AnimalFooting.WayClear(0f, Slope(30f), 2, 0.5f, 45f), "30 degrees up: walked");
+            Assert.IsTrue(AnimalFooting.WayClear(0f, Slope(44f), 2, 0.5f, 45f), "44 degrees up: walked");
+            Assert.IsFalse(AnimalFooting.WayClear(0f, Slope(52f), 2, 0.5f, 45f), "52 degrees up: refused");
+            Assert.IsFalse(AnimalFooting.WayClear(0f, Slope(80f), 2, 0.5f, 45f), "a cliff face: refused");
+            Assert.IsTrue(AnimalFooting.WayClear(0f, Slope(52f), 2, 0.5f, 60f), "a climber's limit takes it");
+            Assert.IsFalse(AnimalFooting.WayClear(0f, new[] { 0.05f, 1.2f }, 2, 0.5f, 45f), "a wall after a level step: refused");
+            Assert.IsTrue(AnimalFooting.WayClear(0f, new[] { -0.3f, -0.6f }, 2, 0.5f, 45f), "a short way down: walked");
+            Assert.IsFalse(AnimalFooting.WayClear(0f, new[] { -0.5f, -3f }, 2, 0.5f, 45f), "a drop: refused");
+        }
     }
 }

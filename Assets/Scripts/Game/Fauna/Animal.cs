@@ -7,7 +7,8 @@ namespace Clube.Game
     /// <summary>
     /// One animal in the world (GL604, GL606, GL607): the body of an <see cref="AnimalBrain"/>. Each frame it tells the
     /// brain the hour, where its herd and the player are, then walks where the brain heads, keeping its feet on the ground
-    /// and refusing water and drops (<see cref="AnimalHerds.TryGround"/>), and poses its model: legs swinging with the
+    /// and refusing water, drops and climbs steeper than its species takes (GL800, <see cref="AnimalFooting"/>,
+    /// <see cref="AnimalHerds.TryGround"/>), and poses its model: legs swinging with the
     /// distance walked, head down to graze, lying to rest. A tool's strike (<see cref="IToolTarget"/>) hurts it by the
     /// tool's power; it hops and bolts, or dies: then it lies on its side as a carcass, a container
     /// (<see cref="StorageChest"/>, opened with E) of its species' rolled drops, gone a while after it is emptied.
@@ -18,6 +19,10 @@ namespace Clube.Game
         private const float ProbeSeconds = 0.15f;
 
         private const float HopSeconds = 0.3f;
+
+        // GL800: metres between the looks at the ground ahead, and room for them (shared: animals move one at a time).
+        private const float LookStep = 0.5f;
+        private static readonly float[] AheadHeights = new float[6];
 
         private AnimalHerds owner;
         private AnimalHerds.Herd herd;
@@ -137,9 +142,7 @@ namespace Clube.Game
                 {
                     probeTimer = ProbeSeconds;
                     float ahead = Mathf.Max(0.5f, Species.Length * 0.6f) + Brain.Speed * ProbeSeconds;
-                    Vector2 probe = at + heading * ahead;
-                    wayClear = owner.TryGround(probe.x, probe.y, local.y, out float aheadHeight, out bool wet)
-                               && !wet && Mathf.Abs(aheadHeight - local.y) <= 0.3f + ahead * 0.6f;
+                    wayClear = WayClear(at, heading, ahead, local.y);
                     if (!wayClear)
                     {
                         Brain.Blocked();
@@ -164,6 +167,24 @@ namespace Clube.Game
         }
 
         // Legs by the distance walked, the head by what it is doing, the body down when it rests.
+        // GL800: the ground ahead looked at in steps of about half a metre: dry, and no climb steeper than the species takes.
+        private bool WayClear(Vector2 at, Vector2 heading, float ahead, float height)
+        {
+            int count = Mathf.Clamp(Mathf.CeilToInt(ahead / LookStep), 2, AheadHeights.Length);
+            float spacing = ahead / count;
+            float near = height;
+            for (int i = 0; i < count; i++)
+            {
+                Vector2 p = at + heading * (spacing * (i + 1));
+                if (!owner.TryGround(p.x, p.y, near, out float ground, out bool wet) || wet)
+                {
+                    return false;
+                }
+                AheadHeights[i] = near = ground;
+            }
+            return AnimalFooting.WayClear(height, AheadHeights, count, spacing, Species.MaxClimbDegrees);
+        }
+
         private void Animate(float dt, float speed)
         {
             bool fleeing = Brain.State == AnimalState.Flee;
