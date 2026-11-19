@@ -6,11 +6,11 @@ using UnityEngine.SceneManagement;
 namespace Clube.Game
 {
     /// <summary>
-    /// A black screen with the loading line while a game scene loads (GL742, GL743), so the last frame of the menu or the
+    /// The loading curtain (GL780: "Loading NN%" on <see cref="LoadCurtainView"/>) while a game scene loads (GL742, GL743), so the last frame of the menu or the
     /// tutorial doesn't sit frozen; the scene's <see cref="LoadCurtain"/> takes over once it is in. GL762: the bounded map's
     /// water, which would otherwise stall the scene's first frame for seconds, is worked out here first, a slice a frame.
     /// </summary>
-    public class GameLoadScreen : MonoBehaviour, IGuiDrawer
+    public class GameLoadScreen : MonoBehaviour
     {
         // Milliseconds of each frame for working out the water: nothing else is going on.
         private const float PrepareMilliseconds = 50f;
@@ -68,29 +68,18 @@ namespace Clube.Game
             preparing?.Dispose();
         }
 
-        private void OnEnable()
+        // Draws on the load curtain every frame; its scene's LoadCurtain carries on from here (GL780).
+        private void Update()
         {
-            GuiHost.Add(this);
-        }
-
-        private void OnDisable()
-        {
-            GuiHost.Remove(this);
-        }
-
-        int IGuiDrawer.GuiDepth => -300;
-
-        void IGuiDrawer.DrawGui()
-        {
-            Color was = GUI.color;
-            GUI.color = Color.black;
-            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
-            GUI.color = Color.white;
-            // An async load stops at 0.9 until the scene is switched in.
-            LoadingMessage.Draw(preparing != null
-                ? LoadingMessage.Charting(preparing.Progress)
-                : LoadingMessage.Ground(loading != null ? loading.progress / 0.9f * 0.1f : 0f));
-            GUI.color = was;
+            if (preparing != null)
+            {
+                LoadCurtainView.Show(LoadProgress.Charting(preparing.Progress), LoadingMessage.Charting);
+            }
+            else
+            {
+                // An async load stops at 0.9 until the scene is switched in.
+                LoadCurtainView.Show(LoadProgress.SceneLoad(loading != null ? loading.progress / 0.9f : 0f), LoadingMessage.Destination + "…");
+            }
         }
     }
 }
