@@ -245,9 +245,10 @@ namespace Clube.Game
             }
             if (player.isActiveAndEnabled)
             {
-                player.SetDownOver(StartPosition);
+                // GL787: a loaded game's saved position wins over the map's start.
+                player.SetDownAtStart(StartPosition);
             }
-            else
+            else if (!player.PlacedFromSave)
             {
                 // Whatever enables the player spawns it at its own x and z.
                 player.transform.position = StartPosition;

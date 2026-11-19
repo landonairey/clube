@@ -5,9 +5,9 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// The main menu's load page (GL208): the saved games, newest first, with the newest selected. Click one to
-    /// select it, then Load (or Enter); a second click on the selected one loads it too. Delete removes the selected
-    /// save after asking once (GL230). Back (or Esc) returns.
+    /// The main menu's load page (GL208): the saved games, newest first, none selected (GL786). A click selects one
+    /// (<see cref="SaveListSelection"/>); only Load (or Enter, or a double-click) loads it, and Load and Delete stay off
+    /// until a save is selected. Delete removes the selected save after asking once (GL230). Back (or Esc) returns.
     /// </summary>
     public sealed class LoadGamePage
     {
@@ -19,7 +19,7 @@ namespace Clube.Game
         }
 
         private readonly List<SaveEntry> saves;
-        private int selected;
+        private readonly SaveListSelection selection;
         private Vector2 scroll;
 
         // True while Delete asks whether it's meant (GL230).
@@ -29,11 +29,11 @@ namespace Clube.Game
         public LoadGamePage(List<SaveEntry> saves)
         {
             this.saves = saves;
-            selected = 0;
+            selection = new SaveListSelection(saves.Count);
         }
 
-        /// <summary>The save picked, or null with none listed.</summary>
-        public SaveEntry Selected => selected >= 0 && selected < saves.Count ? saves[selected] : null;
+        /// <summary>The save picked, or null with none selected.</summary>
+        public SaveEntry Selected => selection.HasSelection ? saves[selection.Selected] : null;
 
         /// <summary>Draws the page in an area; returns what the player chose this frame.</summary>
         public Choice Draw(Rect area, MenuStyles styles)
@@ -51,16 +51,16 @@ namespace Clube.Game
             for (int i = 0; i < saves.Count; i++)
             {
                 SaveEntry save = saves[i];
-                bool isSelected = i == selected;
+                bool isSelected = i == selection.Selected;
                 string text = $"{(isSelected ? "●" : "○")}  <b>{Escape(save.Name)}</b>\n      <size=12>{Describe(save)}</size>";
-                // A click flips the toggle: on another row it selects that one, on the selected row it loads.
+                // Any click flips the toggle: it selects the row, and only a double-click on it loads (GL786).
                 if (GUILayout.Toggle(isSelected, text, styles.ModeButton, GUILayout.MinHeight(52f)) != isSelected)
                 {
-                    if (isSelected && !confirmingDelete)
+                    bool load = selection.Click(i, Time.realtimeSinceStartup);
+                    if (load && !confirmingDelete)
                     {
                         choice = Choice.Load;
                     }
-                    selected = i;
                     confirmingDelete = false;
                 }
                 GUILayout.Space(4f);
@@ -103,12 +103,12 @@ namespace Clube.Game
                         }
                         break;
                     case KeyCode.UpArrow:
-                        selected = Mathf.Max(0, selected - 1);
+                        selection.Move(-1);
                         confirmingDelete = false;
                         current.Use();
                         break;
                     case KeyCode.DownArrow:
-                        selected = Mathf.Min(saves.Count - 1, selected + 1);
+                        selection.Move(1);
                         confirmingDelete = false;
                         current.Use();
                         break;
@@ -159,8 +159,8 @@ namespace Clube.Game
                 confirmingDelete = false;
                 if (SaveSlots.Delete(Selected.Path, out string why))
                 {
-                    saves.RemoveAt(selected);
-                    selected = Mathf.Clamp(selected, 0, saves.Count - 1);
+                    saves.RemoveAt(selection.Selected);
+                    selection.RemoveSelected();
                 }
                 else
                 {

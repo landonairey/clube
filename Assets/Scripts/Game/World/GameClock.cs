@@ -47,7 +47,12 @@ namespace Clube.Game
 
         private void Update()
         {
-            Days += Time.deltaTime * timeScale / dayLengthSeconds;
+            // GL785: no game time passes while the scene loads or the arrival plays.
+            if (ClockHold.IsHeld)
+            {
+                return;
+            }
+            Days +=Time.deltaTime * timeScale / dayLengthSeconds;
         }
     }
 }

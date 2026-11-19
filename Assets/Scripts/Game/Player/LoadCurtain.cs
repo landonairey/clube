@@ -26,6 +26,8 @@ namespace Clube.Game
         private void Awake()
         {
             spawn = GetComponent<PlayerSpawn>();
+            // GL785: the scene's first wait is always covered, so the game clock holds from the very first frame.
+            ClockHold.Hold(this);
         }
 
         private void Update()
@@ -35,6 +37,7 @@ namespace Clube.Game
                 placedOnce = true;
                 waitingSince = -1f;
                 IsUp = false;
+                ClockHold.Release(this);
                 shown = 0f;
                 LoadCurtainView.Hide();
                 return;
@@ -45,6 +48,7 @@ namespace Clube.Game
                 shown = 0f;
             }
             IsUp = !placedOnce || Time.unscaledTime - waitingSince >= delay;
+            ClockHold.Set(this, IsUp);
             if (IsUp)
             {
                 // Never goes back: a stage that restarts its own count must not pull the bar down.
@@ -56,6 +60,7 @@ namespace Clube.Game
         private void OnDisable()
         {
             IsUp = false;
+            ClockHold.Release(this);
         }
 
         // The first wait of a scene is the whole load; a later one (a fall) is only the ground.
