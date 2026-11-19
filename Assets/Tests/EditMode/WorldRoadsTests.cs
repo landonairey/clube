@@ -425,6 +425,47 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void IsOnRoad_AnswersAsLookingAtEverySegmentDoes_AndFollowsTheRoadsWhenTheyChange()
+        {
+            WorldPlan plan = Plan(("Town", new Vector2(100f, 100f)), ("Town", new Vector2(800f, 450f)));
+            PlannedRoad road = Road(plan, RoadClass.PavedCartPath, 0, 1, -1, new Vector2(100f, 100f), new Vector2(300f, 420f), new Vector2(620f, 130f), new Vector2(800f, 450f));
+            bool LookedAtAll(Vector2 point, float margin)
+            {
+                float reach = plan.Rules.Road(road.Class).Width * 0.5f + margin;
+                for (int i = 1; i < road.Points.Count; i++)
+                {
+                    Vector2 a = road.Points[i - 1], way = road.Points[i] - a;
+                    float along = Mathf.Clamp01(Vector2.Dot(point - a, way) / way.sqrMagnitude);
+                    if (Vector2.Distance(point, a + way * along) <= reach)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            var random = new System.Random(5);
+            int on = 0;
+            for (int i = 0; i < 4000; i++)
+            {
+                // Close to the road about half the time, so both answers are asked for.
+                int leg = random.Next(1, road.Points.Count);
+                Vector2 along = Vector2.Lerp(road.Points[leg - 1], road.Points[leg], (float)random.NextDouble());
+                Vector2 point = along + new Vector2((float)random.NextDouble() - 0.5f, (float)random.NextDouble() - 0.5f) * 24f;
+                float margin = (float)random.NextDouble() * 6f;
+                bool expected = LookedAtAll(point, margin);
+                on += expected ? 1 : 0;
+                Assert.AreEqual(expected, plan.IsOnRoad(point, margin), $"at {point}, margin {margin}");
+            }
+            Assert.That(on, Is.InRange(400, 3600), "both answers were asked for");
+
+            var moved = new Vector2(100f, 560f);
+            Assert.IsFalse(plan.IsOnRoad(moved));
+            road.Points = new List<Vector2> { new Vector2(100f, 500f), new Vector2(100f, 590f) };
+            Assert.IsTrue(plan.IsOnRoad(moved), "the roads were refined after the first question");
+        }
+
+        [Test]
         public void LevellingInSmallSteps_EndsAsOneCallDoes()
         {
             VoxelMaterial grass = VoxelMaterial.Create(1, "Grass"), wood = VoxelMaterial.Create(2, "Wood", VoxelMaterialCategory.Plant);
