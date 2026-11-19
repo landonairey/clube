@@ -82,7 +82,8 @@ Core/
     Managed/     ChunkMesher and its strategies, the managed material pass: labs, step-through (A11)
     Jobs/        ChunkMeshJob: the Burst mesh build the world runs; CarvedVoxels: walls round chiselled voxels (GL92)
     Far/         FarTerrainGrid (one clipmap level), FarTerrainMeshJob (its mesh): the far terrain (P7a)
-    Water/       WaterMesher: marching cubes over a chunk's water samples (managed, per wet chunk, GL315)
+    Water/       WaterMeshJob: marching cubes over a chunk's water samples in Burst (GL775); WaterMeshInput copies the chunk and
+                 the 26 round it in blocks; WaterMesher is the managed reference it's tested against (GL315)
                  WaterSheetMesh: a far sheet's vertex streams, and two triangles per map cell (the detailed far tiles)
                  CoarseWaterMesher: far water as a quadtree of level sheets per region, cells at shores and rivers (GL626)
     Recording/   MeshingRecorder (A11)
@@ -113,9 +114,12 @@ Core/
                  TerrainLodRing + TerrainLodBuilder (coarse terrain levels, P7c), DistantTreeBuilder (GL162)
   Rendering/     WorldView, ChunkView, ChunkRenderer(+Pool), ChunkCollider, ChunkMeshBuilder, GrassScatter (GL67),
                  FarTerrainView + ChunkCoverageMask (P7a), TerrainLodView (P7c), DistantTreeView + DistantTreeMeshes (GL162)
-                 BushScatter + BushMeshes (GL236; reed clumps on the same grid, ReedMeshes, GL723), GrassyGround (flora spots on the built meshes, one material or several) and InstanceBatches
+                 BushScatter + BushMeshes (GL236; reed clumps on the same grid, ReedMeshes, GL723), GrassyGround (flora spots on the built meshes, one material or several; the managed reference) and InstanceBatches
                  (the grass draws its batches from one GPU buffer each, GL416),
-                 shared by the grass and the bushes
+                 shared by the grass and the bushes. GL775: flora is found in Burst jobs that read the chunk meshes through
+                 Mesh.MeshDataArray: GroundMesh + GroundSpotSearch (the spots), GrassScatterJob (a chunk's tufts, with
+                 TreeCoverGrid, GrassGrowthRules, DahliaRules), GroundSpotsJob (bushes and reeds), a batch of chunks at a
+                 time through GrassScatterBatch and GroundSpotBatch
 ```
 
 All of it is namespace `Clube.Core`; folders are for people, not the compiler.
@@ -573,6 +577,10 @@ same frame.
 - A `MeshCollider` keeps its old shape when its mesh's data is replaced (checked:
   Unity doesn't re-cook it), so a stale-but-valid collider stays until the new
   bake lands.
+- Flora and chunk water (GL775) schedule a batch of up to 16 chunks' jobs (8 for water) and wait for them in the same
+  frame: the main thread only gathers inputs (a chunk's tree roots and gold nodes; a wet chunk's and its neighbours'
+  samples, copied in blocks) and fills in the results. Flora reads the renderers' meshes through
+  `Mesh.AcquireReadOnlyMeshData`, released before the frame goes on, so no mesh changes under a job.
 - Native buffers that live across frames are `Allocator.Persistent`; the
   pipeline frees them when results are taken, cancelled, or on `Dispose`.
   Scene teardown only disposes the pipeline (`WorldStreamer.Dispose`), never
@@ -1096,13 +1104,11 @@ The Windows player is IL2CPP (GL772). `clube.exe -playthrough` plays a build fro
     query each time). Cache per chunk column, or collect per column once.
 12. **Lab census in a job.** `MaterialCensus.Count` (ore readout, X-ray) reads every
     sample through `Chunk.GetDensity`; read the storage's bytes in a Burst job.
-13. **Water in jobs.** `WaterMesher` (marching cubes over a chunk's water) and
-    `LiveWater` (the flow) are managed and run on the main thread; a lake loading
-    meshes wet chunks within `WaterView.buildBudgetMs` (1.5 ms, nearest first, drawn columns
-    only), and a big spill steps within `flowBudgetMs` (2.5 ms; about 2 µs a sample in the
+13. **Water flow in jobs.** Chunk water is meshed in Burst jobs since GL775 (`WaterMeshJob`, 8 chunks a batch within
+    `WaterView.buildBudgetMs`, 1.5 ms, nearest first, drawn columns only). `LiveWater` (the flow) is still managed and
+    runs on the main thread: a big spill steps within `flowBudgetMs` (2.5 ms; about 2 µs a sample in the
     Editor, so ~1,200 samples a step) and moves more slowly. A big spill
-    keeps thousands of samples awake. Mesh water in a Burst job beside the
-    terrain's, and step the flow per chunk. *Measure:* `WaterView` frame time while
+    keeps thousands of samples awake. Step the flow per chunk in a job. *Measure:* `WaterView` frame time while
     a lake loads and while a dug channel drains. *Done when:* `LiveWaterTests`
     pass and neither costs over 1 ms a frame.
 
