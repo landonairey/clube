@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -20,6 +21,12 @@ namespace Clube.Core
         /// </summary>
         public static void SpotsNear(TreeField field, Vector2 around, float from, float to, List<Vector2> spots)
         {
+            SlicedWork.RunToEnd(SpotsNearSteps(field, around, from, to, spots));
+        }
+
+        /// <summary><see cref="SpotsNear"/> a row of cells at a time, for <see cref="SlicedWork"/> (GL771).</summary>
+        public static IEnumerator SpotsNearSteps(TreeField field, Vector2 around, float from, float to, List<Vector2> spots)
+        {
             spots.Clear();
             float size = field.CellSize;
             int span = Mathf.CeilToInt(to / size) + 1;
@@ -37,6 +44,7 @@ namespace Clube.Core
                         }
                     }
                 }
+                yield return null;
             }
             spots.Sort((a, b) => (a - around).sqrMagnitude.CompareTo((b - around).sqrMagnitude));
         }

@@ -614,6 +614,7 @@ it are never held, so there is always ground under the player.
   exactly those chunks (`WorldView.RequestChunks`), and they go ahead of everything else. Lumpy background work (road and
   settlement pieces, digs laid out, distant tree tiles) keeps to an average with `FrameAllowance`: the frames after a long
   piece do none, except that a road or settlement piece within 64 m is never made to wait.
+- **Big edits over frames** (GL771): a road or settlement piece is a `SlicedWork` over `WriteSteps`, one at a time, and counts as written only when done, so a save or a reload never loses half of one. Trees are still cut before the ground is levelled (`GroundLeveling.LevelSteps`). A piece within 64 m gets 6 ms a frame, because it holds the ground the player is walking towards; others share `FrameBudget`. Waiting pieces list their missing chunks in turn, every eighth frame each. The look for pieces to write (`CollectSteps`) also runs over frames, and the old list goes on being written until the new one is ready. `GroundSettling` takes a share of its queue each step, `WaterLanes.ForSteps` finds a boat's lane over frames, and `WorldStreamer.UnloadSome` unloads columns 2 ms a frame while playing.
 - *Measure walking:* `clube.exe -walkbench` or *Clube → Debug → Measure walking on the map* (`MapWalkBenchmark`) walks a road
   and reports frame rates, what the main thread spent them on, and how much of the ground near the player is ready.
 - **Keeping the load screen drawing** (GL762): `SlicedWork` runs an iterator a few milliseconds a frame. It stays on the

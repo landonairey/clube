@@ -87,6 +87,10 @@ namespace Clube.Core
         /// </summary>
         public IEnumerator PrepareSteps()
         {
+            if (spotsInReach == null)
+            {
+                yield return FindTreeSpots();
+            }
             while (!ClaimTrees(SpotsPerStep))
             {
                 yield return null;
@@ -102,17 +106,17 @@ namespace Clube.Core
                     }
                     bool tunnel = duty.Work == WorkRate.DigTunnel;
                     DigSite first = Laying(resident.Shop, tunnel);
-                    while (first != null && first.LayNext())
+                    if (first != null)
                     {
-                        yield return null;
+                        yield return first.LaySteps();
                     }
                     if (tunnel && first != null && first.Count == 0)
                     {
                         // No slope for a tunnel: the shop works pits instead (SiteOf).
                         DigSite pits = Laying(resident.Shop, false);
-                        while (pits != null && pits.LayNext())
+                        if (pits != null)
                         {
-                            yield return null;
+                            yield return pits.LaySteps();
                         }
                     }
                 }
@@ -122,18 +126,25 @@ namespace Clube.Core
             IsPrepared = true;
         }
 
+        // The tree spots within the felling duty's range, a row of the tree field at a time (GL771).
+        private IEnumerator FindTreeSpots()
+        {
+            var spots = new List<Vector2>();
+            Duty fell = WorkDuty(WorkRate.Fell);
+            if (trees != null && fell != null)
+            {
+                Rect bounds = site.Bounds;
+                yield return TreeFinder.SpotsNearSteps(trees, bounds.center, 0f, Mathf.Max(bounds.width, bounds.height) * 0.5f + fell.Range, spots);
+            }
+            spotsInReach = spots;
+        }
+
         // Looks at some more of the tree spots in reach; true once they have all been looked at.
         private bool ClaimTrees(int most)
         {
             if (spotsInReach == null)
             {
-                spotsInReach = new List<Vector2>();
-                Duty fell = WorkDuty(WorkRate.Fell);
-                if (trees != null && fell != null)
-                {
-                    Rect bounds = site.Bounds;
-                    TreeFinder.SpotsNear(trees, bounds.center, 0f, Mathf.Max(bounds.width, bounds.height) * 0.5f + fell.Range, spotsInReach);
-                }
+                SlicedWork.RunToEnd(FindTreeSpots());
             }
             Rect town = site.Bounds;
             int end = spotsInReach.Count - spotsLookedAt > most ? spotsLookedAt + most : spotsInReach.Count;

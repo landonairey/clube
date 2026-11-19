@@ -97,6 +97,45 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void DigSite_LaidInSteps_IsTheRunLaidAtOnce_EvenWhenADigIsAskedForHalfWay()
+        {
+            SettlementSite site = Site();
+            Rect town = site.Bounds;
+            System.Func<float, float, float> ground = (x, z) => x > town.xMax + 20f ? 40f + (x - town.xMax - 20f) : 40f;
+            DigSite Tunnels() => new DigSite(DigSite.SeedOf(3, 1), true, town, 60f, Grid, ground, spot => true, (p, m) => true);
+            DigSite atOnce = Tunnels();
+            int wanted = atOnce.Count;
+
+            DigSite stepped = Tunnels();
+            int steps = 0;
+            using (var work = new SlicedWork(stepped.LaySteps()))
+            {
+                // Part-way through a try, someone on screen asks for the first dig.
+                for (int i = 0; i < 3; i++)
+                {
+                    work.Run(0f);
+                }
+                Assert.That(stepped.TryGet(0, out Dig early), Is.True);
+                Assert.That(atOnce.TryGet(0, out Dig expectedFirst) && early.Top == expectedFirst.Top, Is.True);
+                while (!work.Run(0f))
+                {
+                    steps++;
+                }
+            }
+
+            Assert.That(wanted, Is.GreaterThan(0));
+            Assert.That(steps, Is.GreaterThan(wanted), "the search is spread over many steps");
+            Assert.That(stepped.Count, Is.EqualTo(wanted));
+            for (int i = 0; i < wanted; i++)
+            {
+                stepped.TryGet(i, out Dig mine);
+                atOnce.TryGet(i, out Dig theirs);
+                Assert.That(mine.Top, Is.EqualTo(theirs.Top), $"dig {i}");
+                Assert.That(mine.GroundVoxels, Is.EqualTo(theirs.GroundVoxels), $"dig {i}");
+            }
+        }
+
+        [Test]
         public void SettlementWorks_DigsAtTheRate_ForTheHoursWorked()
         {
             SettlementSite site = Site();

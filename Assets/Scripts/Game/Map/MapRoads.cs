@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using Clube.Core;
 using Unity.Profiling;
@@ -24,6 +25,21 @@ namespace Clube.Game
         private const float IdleLookSeconds = 0.2f;
         private float nextLookTime;
         private readonly FrameAllowance allowance = new FrameAllowance();
+        // The piece being written over several frames (GL771): one at a time, as each cuts down the trees in its way first.
+        private const float LeastWriteMilliseconds = 0.5f;
+        private const float CollectMilliseconds = 1.5f;
+        private const int AskEveryFrames = 8;
+        // A piece the player is about to walk on holds the ground there: it gets this long a frame (GL771).
+        private const float CloseWriteMilliseconds = 6f;
+        private bool writingClose;
+        // The look over the roads for pieces to write, and what it has found so far (GL771).
+        private readonly List<(int Road, int Piece, float Distance)> nextPending = new List<(int, int, float)>();
+        private readonly List<(int Road, int Tunnel, int Piece, float Distance)> nextBoring = new List<(int, int, int, float)>();
+        private SlicedWork collecting;
+        private SlicedWork writing;
+        private RoadWriter writingRoad;
+        private int writingPiece;
+        private float writingMilliseconds;
         // Metres from the viewer within which a piece is written whatever the allowance says (GL770).
         private const float CloseMetres = 64f;
         // Metres from the viewer within which a piece's missing chunks are fetched ahead of the rest (GL770).
@@ -88,7 +104,6 @@ namespace Clube.Game
         private int version = -1;
         private Vector2 collectedAt;
         private float collectedTime = float.MinValue;
-        private bool moreToWorkOut;
 
         // GL653: the ground a road is still to be written into is not shown until it is. A road not worked out holds
         // the box round its line, widened by what its bed may reach either side.
@@ -297,11 +312,20 @@ namespace Clube.Game
             Vector3 local = session.WorldView.transform.InverseTransformPoint(view.transform.position);
             var viewer = new Vector2(local.x, local.z);
             float started = Time.realtimeSinceStartup;
-            if (moreToWorkOut || (viewer - collectedAt).sqrMagnitude > 6f * 6f || Time.unscaledTime - collectedTime > 1f)
+            if (collecting == null && ((viewer - collectedAt).sqrMagnitude > 6f * 6f || Time.unscaledTime - collectedTime > 1f))
+            {
+                collecting = new SlicedWork(CollectSteps(viewer));
+            }
+            if (collecting != null)
             {
                 using (CollectMarker.Auto())
+                using (FrameCost.Of("Roads: look for pieces"))
                 {
-                    Collect(viewer);
+                    if (collecting.Run(session.WorldView.Hurry ? float.PositiveInfinity : CollectMilliseconds))
+                    {
+                        collecting.Dispose();
+                        collecting = null;
+                    }
                 }
             }
             // GL770: one piece can take several frames' budget: the frames after it pay that back.
@@ -309,7 +333,7 @@ namespace Clube.Game
             bool inSight = session.WorldView.IsLoadingInSight;
             // A piece close by holds the ground the player is about to walk on: it doesn't wait its turn.
             bool close = pending.Count > 0 && pending[0].Distance < CloseMetres * CloseMetres;
-            if (inSight || mayWrite || close)
+            if (inSight || mayWrite || close || writing != null)
             {
                 using (WriteMarker.Auto())
                 {
@@ -346,6 +370,10 @@ namespace Clube.Game
                 }
                 bounds[i] = Rect.MinMaxRect(min.x, min.y, max.x, max.y);
             }
+            writing?.Dispose();
+            writing = null;
+            collecting?.Dispose();
+            collecting = null;
             pending.Clear();
             hold.Clear();
             heights = new KeptHeights(session.Map.Height);
@@ -369,6 +397,7 @@ namespace Clube.Game
         // Works out a road in detail: its line with heights, its bridges, its bed and its writer.
         private Built WorkOut(int index)
         {
+            using FrameCost.Scope cost = FrameCost.Of("Roads: work out");
             if (built[index] != null)
             {
                 return built[index];
@@ -451,16 +480,15 @@ namespace Clube.Game
         }
 
         // Finds what there is to do round the viewer: pieces to write (nearest first), bridges and signposts to stand.
-        private void Collect(Vector2 viewer)
+        // GL771: a road at a time over several frames: looking over them all was over 16 ms about once a second. What was
+        // found before goes on being written until the new list is ready.
+        private IEnumerator CollectSteps(Vector2 viewer)
         {
             collectedAt = viewer;
             collectedTime = Time.unscaledTime;
-            nextLookTime = 0f;
-            moreToWorkOut = false;
-            pending.Clear();
-            boring.Clear();
+            nextPending.Clear();
+            nextBoring.Clear();
             World world = session.WorldView.World;
-            bool workedOutOne = false;
             float buildRange = Range();
             for (int i = 0; i < bounds.Length; i++)
             {
@@ -469,17 +497,13 @@ namespace Clube.Game
                 {
                     continue;
                 }
-                if (built[i] == null)
-                {
-                    // A road's heights are a few tens of milliseconds: one new road a frame.
-                    if (workedOutOne)
-                    {
-                        moreToWorkOut = true;
-                        continue;
-                    }
-                    workedOutOne = true;
-                }
+                // A road's heights are a few tens of milliseconds: a step of their own.
+                bool isNew = built[i] == null;
                 Built road = WorkOut(i);
+                if (isNew)
+                {
+                    yield return null;
+                }
                 if (road == null)
                 {
                     continue;
@@ -488,34 +512,85 @@ namespace Clube.Game
                 road.Writer.Unwritten(viewer, buildRange, found);
                 foreach (int piece in found)
                 {
-                    pending.Add((i, piece, (road.Writer.Middle(piece) - viewer).sqrMagnitude));
+                    nextPending.Add((i, piece, (road.Writer.Middle(piece) - viewer).sqrMagnitude));
                 }
                 BuildBridges(i, road, viewer, world);
                 CollectTunnels(i, road, viewer, world);
+                yield return null;
             }
-            pending.Sort((a, b) => a.Distance.CompareTo(b.Distance));
-            boring.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            nextPending.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            nextBoring.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            pending.Clear();
+            pending.AddRange(nextPending);
+            boring.Clear();
+            boring.AddRange(nextBoring);
+            nextLookTime = 0f;
+            yield return null;
             BuildSignposts(viewer, world);
+        }
+
+        // GL771: each piece lists the chunks it is missing every few frames, in turn: listing them for 32 pieces every frame was over
+        // 10 ms, and the streamer remembers what it was asked for. Otherwise the check stops at the first one missing.
+        private static bool AsksForChunks(float distanceSquared, int check)
+        {
+            return distanceSquared < RequestMetres * RequestMetres && (check + Time.frameCount) % AskEveryFrames == 0;
+        }
+
+        // Runs the piece in hand for this long (at least one step); true once no piece is left in hand.
+        private bool RunWriting(float milliseconds)
+        {
+            if (writing == null)
+            {
+                return true;
+            }
+            float before = Time.realtimeSinceStartup;
+            bool done;
+            using (FrameCost.Of("Roads: write piece"))
+            {
+                done = writing.Run(milliseconds);
+            }
+            writingMilliseconds += (Time.realtimeSinceStartup - before) * 1000f;
+            if (!done)
+            {
+                return false;
+            }
+            writing.Dispose();
+            writing = null;
+            writingClose = false;
+            hold.Remove(session.WorldView.World.Grid, HoldOf(writingRoad, writingPiece));
+            PiecesWritten++;
+            nextLookTime = 0f;
+            LongestMilliseconds = Mathf.Max(LongestMilliseconds, writingMilliseconds);
+            TotalMilliseconds += writingMilliseconds;
+            return true;
         }
 
         private void Write()
         {
+            WorldConfig config = session.WorldView.Config;
+            World world = session.WorldView.World;
+            // While the area loads in bulk the ground is waiting to be shown: more of the frame goes to writing it.
+            bool inSight = session.WorldView.IsLoadingInSight;
+            float writeBudgetMilliseconds = inSight
+                ? Mathf.Max(this.writeBudgetMilliseconds, session.WorldView.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds)
+                : writingClose || (pending.Count > 0 && pending[0].Distance < CloseMetres * CloseMetres) ? Mathf.Max(this.writeBudgetMilliseconds, CloseWriteMilliseconds)
+                : Mathf.Max(LeastWriteMilliseconds, FrameBudget.Limit(this.writeBudgetMilliseconds));
+            float started = Time.realtimeSinceStartup;
+            // GL771: a piece through a wood is written over several frames, and the next waits for it.
+            if (!RunWriting(writeBudgetMilliseconds) || (Time.realtimeSinceStartup - started) * 1000f >= writeBudgetMilliseconds)
+            {
+                return;
+            }
             if (pending.Count == 0 && boring.Count == 0)
             {
                 return;
             }
             // GL759: nothing was ready at the last look, and chunks take a while to load: no need to ask again every frame.
-            if (!session.WorldView.IsLoadingInSight && Time.unscaledTime < nextLookTime)
+            if (!inSight && Time.unscaledTime < nextLookTime)
             {
                 return;
             }
             nextLookTime = Time.unscaledTime + IdleLookSeconds;
-            WorldConfig config = session.WorldView.Config;
-            World world = session.WorldView.World;
-            // While the area loads in bulk the ground is waiting to be shown: more of the frame goes to writing it.
-            float writeBudgetMilliseconds = session.WorldView.IsLoadingInSight
-                ? Mathf.Max(this.writeBudgetMilliseconds, session.WorldView.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds) : this.writeBudgetMilliseconds;
-            float started = Time.realtimeSinceStartup;
             int checks = 0;
             for (int i = 0; i < pending.Count && checks < ChecksPerFrame; i++)
             {
@@ -528,24 +603,22 @@ namespace Clube.Game
                 }
                 checks++;
                 missing.Clear();
-                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece, missing))
+                if (!writer.Loaded(world, config.WorldHeightInChunks, next.Piece, AsksForChunks(next.Distance, checks) ? missing : null))
                 {
-                    if (next.Distance < RequestMetres * RequestMetres)
+                    if (missing.Count > 0)
                     {
                         session.WorldView.RequestChunks(missing);
                     }
                     continue;
                 }
-                float before = Time.realtimeSinceStartup;
-                writer.Write(world, config.Materials, Natural, config.IsoLevel, next.Piece);
-                hold.Remove(world.Grid, HoldOf(writer, next.Piece));
+                writing = new SlicedWork(writer.WriteSteps(world, config.Materials, Natural, config.IsoLevel, next.Piece));
+                writingRoad = writer;
+                writingPiece = next.Piece;
+                writingClose = next.Distance < CloseMetres * CloseMetres;
+                writingMilliseconds = 0f;
                 pending.RemoveAt(i--);
-                PiecesWritten++;
-                nextLookTime = 0f;
-                float took = (Time.realtimeSinceStartup - before) * 1000f;
-                LongestMilliseconds = Mathf.Max(LongestMilliseconds, took);
-                TotalMilliseconds += took;
-                if ((Time.realtimeSinceStartup - started) * 1000f >= writeBudgetMilliseconds)
+                float left = writeBudgetMilliseconds - (Time.realtimeSinceStartup - started) * 1000f;
+                if (!RunWriting(left) || (Time.realtimeSinceStartup - started) * 1000f >= writeBudgetMilliseconds)
                 {
                     return;
                 }
@@ -558,16 +631,19 @@ namespace Clube.Game
                 TunnelWriter bore = built[next.Road].Tunnels[next.Tunnel];
                 checks++;
                 missing.Clear();
-                if (!bore.Loaded(world, config.WorldHeightInChunks, next.Piece, missing))
+                if (!bore.Loaded(world, config.WorldHeightInChunks, next.Piece, AsksForChunks(next.Distance, checks) ? missing : null))
                 {
-                    if (next.Distance < RequestMetres * RequestMetres)
+                    if (missing.Count > 0)
                     {
                         session.WorldView.RequestChunks(missing);
                     }
                     continue;
                 }
                 float before = Time.realtimeSinceStartup;
-                bore.Write(world, config.Materials, lining, config.IsoLevel, next.Piece);
+                using (FrameCost.Of("Roads: bore tunnel"))
+                {
+                    bore.Write(world, config.Materials, lining, config.IsoLevel, next.Piece);
+                }
                 boring.RemoveAt(i--);
                 TunnelPiecesBored++;
                 nextLookTime = 0f;
@@ -592,7 +668,7 @@ namespace Clube.Game
                 foreach (int piece in found)
                 {
                     Vector3 middle = bore.Middle(piece);
-                    boring.Add((index, t, piece, (new Vector2(middle.x, middle.z) - viewer).sqrMagnitude));
+                    nextBoring.Add((index, t, piece, (new Vector2(middle.x, middle.z) - viewer).sqrMagnitude));
                 }
                 for (int end = 0; end < 2 && bore.Pieces > 0 && material != null; end++)
                 {

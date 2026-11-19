@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -12,6 +13,9 @@ namespace Clube.Core
     /// </summary>
     public static class SquareVoxels
     {
+        // Samples written or looked at in one step of sliced work (GL771).
+        private const int SamplesPerStep = 128;
+
         private static readonly List<Vector3Int> Around = BuildAround();
 
         private static readonly Vector3Int[] Faces =
@@ -50,6 +54,12 @@ namespace Clube.Core
         /// </summary>
         public static void Build(World world, IReadOnlyDictionary<Vector3Int, byte> blocks, float iso)
         {
+            SlicedWork.RunToEnd(BuildSteps(world, blocks, iso));
+        }
+
+        /// <summary><see cref="Build"/> in small steps for <see cref="SlicedWork"/> (GL771): a slice of a large building took 40 ms.</summary>
+        public static IEnumerator BuildSteps(World world, IReadOnlyDictionary<Vector3Int, byte> blocks, float iso)
+        {
             // Solid first: raising a sample's density fills in carved voxels round it (World.UncarveAround), so the
             // carving has to come after.
             // Neighbouring blocks share corners: each sample is written once, with the material of the last block listed.
@@ -61,10 +71,16 @@ namespace Clube.Core
                     samples[block.Key + Corner(corner)] = block.Value;
                 }
             }
+            yield return null;
+            int done = 0;
             foreach (KeyValuePair<Vector3Int, byte> sample in samples)
             {
                 world.SetDensity(sample.Key, 1f);
                 world.SetMaterial(sample.Key, sample.Value);
+                if (++done % SamplesPerStep == 0)
+                {
+                    yield return null;
+                }
             }
             var carve = new HashSet<Vector3Int>();
             foreach (Vector3Int voxel in blocks.Keys)
@@ -77,12 +93,20 @@ namespace Clube.Core
                         carve.Add(next);
                     }
                 }
+                if (++done % SamplesPerStep == 0)
+                {
+                    yield return null;
+                }
             }
             foreach (Vector3Int voxel in carve)
             {
                 if (!world.IsCarved(voxel))
                 {
                     world.SetCarved(voxel, true);
+                }
+                if (++done % SamplesPerStep == 0)
+                {
+                    yield return null;
                 }
             }
         }
@@ -94,8 +118,19 @@ namespace Clube.Core
         /// </summary>
         public static void Shape(World world, IReadOnlyDictionary<Vector3Int, float> samples, byte material)
         {
+            SlicedWork.RunToEnd(ShapeSteps(world, samples, material));
+        }
+
+        /// <summary><see cref="Shape"/> in small steps for <see cref="SlicedWork"/> (GL771).</summary>
+        public static IEnumerator ShapeSteps(World world, IReadOnlyDictionary<Vector3Int, float> samples, byte material)
+        {
+            int done = 0;
             foreach (KeyValuePair<Vector3Int, float> sample in samples)
             {
+                if (++done % SamplesPerStep == 0)
+                {
+                    yield return null;
+                }
                 float? density = world.GetDensity(sample.Key);
                 if (!density.HasValue)
                 {

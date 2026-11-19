@@ -365,25 +365,15 @@ namespace Clube.Core
         /// <summary>True when (x, z) lies on a road of the plan, or within a margin of its edge (a fence leaves a gap there).</summary>
         public bool IsOnRoad(Vector2 point, float margin = 0f)
         {
-            foreach (PlannedRoad road in Roads)
+            // Made again when the roads change: they are refined after they are planned.
+            if (roadIndex == null || !roadIndex.IsFor(Roads))
             {
-                float reach = Rules.Road(road.Class).Width * 0.5f + margin;
-                for (int i = 1; i < road.Points.Count; i++)
-                {
-                    Vector2 a = road.Points[i - 1], b = road.Points[i];
-                    if (Mathf.Min(a.x, b.x) - reach > point.x || Mathf.Max(a.x, b.x) + reach < point.x
-                        || Mathf.Min(a.y, b.y) - reach > point.y || Mathf.Max(a.y, b.y) + reach < point.y)
-                    {
-                        continue;
-                    }
-                    if (SettlementSite.Distance(point, a, b) <= reach)
-                    {
-                        return true;
-                    }
-                }
+                roadIndex = new RoadSegmentIndex(Roads, Rules);
             }
-            return false;
+            return roadIndex.IsOn(point, margin);
         }
+
+        private RoadSegmentIndex roadIndex;
 
         /// <summary>The settlement nearest a position (x, z) within a distance, or null.</summary>
         public PlannedSettlement Nearest(Vector2 position, float within = float.MaxValue)

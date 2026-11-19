@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
@@ -17,6 +18,9 @@ namespace Clube.Core
         private const int MostCells = 3_000_000;
         private const float ShoreCost = 2.5f;
 
+        // Cells a sliced search takes from its queue in one step.
+        private const int CellsPerStep = 128;
+
         /// <summary>
         /// The way along <paramref name="planned"/> on water that <paramref name="floats"/>, as points
         /// <paramref name="step"/> metres apart or more, smoothed; null when no water lies near the route's start.
@@ -25,10 +29,27 @@ namespace Clube.Core
         /// </summary>
         public static List<Vector2> Find(IReadOnlyList<Vector2> planned, Func<float, float, bool> floats, float step, float corridor, out bool whole)
         {
-            whole = false;
+            var found = new LaneFound();
+            SlicedWork.RunToEnd(FindSteps(planned, floats, step, corridor, found));
+            whole = found.Whole;
+            return found.Points;
+        }
+
+        /// <summary>What a search for a lane found: its points (null for none), and whether it reaches the far end.</summary>
+        public sealed class LaneFound
+        {
+            public List<Vector2> Points;
+            public bool Whole;
+        }
+
+        /// <summary><see cref="Find"/> in small steps for <see cref="SlicedWork"/> (GL771): a long route's search took 70 ms.</summary>
+        public static IEnumerator FindSteps(IReadOnlyList<Vector2> planned, Func<float, float, bool> floats, float step, float corridor, LaneFound found)
+        {
+            found.Points = null;
+            found.Whole = false;
             if (planned == null || planned.Count < 2)
             {
-                return null;
+                yield break;
             }
             Vector2 low = planned[0], high = planned[0];
             foreach (Vector2 point in planned)
@@ -44,20 +65,24 @@ namespace Clube.Core
                 step *= 1.5f;
             }
             var grid = new Grid(low, step, Mathf.CeilToInt((high.x - low.x) / step) + 1, Mathf.CeilToInt((high.y - low.y) / step) + 1, floats);
-            grid.Open(planned, corridor);
+            yield return null;
+            yield return grid.Open(planned, corridor);
             int start = grid.NearestWet(planned[0], corridor);
             int goal = grid.NearestWet(planned[planned.Count - 1], corridor);
             if (start < 0)
             {
-                return null;
+                yield break;
             }
-            List<int> cells = grid.Search(start, goal, goal >= 0 ? grid.Centre(goal) : planned[planned.Count - 1], out whole);
-            var lane = new List<Vector2>(cells.Count);
-            foreach (int cell in cells)
+            yield return null;
+            var search = new CellsFound();
+            yield return grid.Search(start, goal, goal >= 0 ? grid.Centre(goal) : planned[planned.Count - 1], search);
+            found.Whole = search.Reached;
+            var lane = new List<Vector2>(search.Path.Count);
+            foreach (int cell in search.Path)
             {
                 lane.Add(grid.Centre(cell));
             }
-            return Smooth(Thin(lane), floats);
+            found.Points = Smooth(Thin(lane), floats);
         }
 
         /// <summary>
@@ -114,6 +139,15 @@ namespace Clube.Core
         /// </summary>
         public static List<Vector2> For(WaterRoute route, VesselClass vessel, WaterMap water, out bool whole)
         {
+            var found = new LaneFound();
+            SlicedWork.RunToEnd(ForSteps(route, vessel, water, found));
+            whole = found.Whole;
+            return found.Points;
+        }
+
+        /// <summary><see cref="For"/> in small steps for <see cref="SlicedWork"/> (GL771).</summary>
+        public static IEnumerator ForSteps(WaterRoute route, VesselClass vessel, WaterMap water, LaneFound found)
+        {
             bool river = route.Kind == WaterRouteKind.River;
             float step = river ? Mathf.Max(2f, water.CellSize) : 8f;
             var back = new List<Vector2>(route.Points);
@@ -121,7 +155,8 @@ namespace Clube.Core
             List<Vector2> best = null;
             float bestLength = -1f;
             bool strictBest = false;
-            whole = false;
+            bool whole = false;
+            var attemptFound = new LaneFound();
             for (int attempt = 0; attempt < 4 && !whole; attempt++)
             {
                 bool strict = attempt < 2, wide = attempt % 2 == 1;
@@ -134,7 +169,9 @@ namespace Clube.Core
                 float corridor = (river ? 70f : 100f) * (wide ? 2.2f : 1f);
                 for (int way = 0; way < 2 && !whole; way++)
                 {
-                    List<Vector2> lane = Find(way == 0 ? route.Points : back, floats, step, corridor, out whole);
+                    yield return FindSteps(way == 0 ? route.Points : back, floats, step, corridor, attemptFound);
+                    List<Vector2> lane = attemptFound.Points;
+                    whole = attemptFound.Whole;
                     if (lane == null)
                     {
                         continue;
@@ -156,7 +193,8 @@ namespace Clube.Core
             {
                 OntoWater(best, water);
             }
-            return best;
+            found.Points = best;
+            found.Whole = whole;
         }
 
         // Moves each point of a river lane that lies a cell off the water onto the wet cell beside it.
@@ -283,6 +321,13 @@ namespace Clube.Core
             return points;
         }
 
+        // What a search over the grid found: the cells of the way, and whether it reached the goal.
+        private sealed class CellsFound
+        {
+            public List<int> Path;
+            public bool Reached;
+        }
+
         // The corridor as a grid of cells: which are open to the search, which are wet (asked once each), and the search.
         private sealed class Grid
         {
@@ -310,7 +355,7 @@ namespace Clube.Core
             }
 
             // Opens every cell within the corridor of the planned line.
-            public void Open(IReadOnlyList<Vector2> planned, float corridor)
+            public IEnumerator Open(IReadOnlyList<Vector2> planned, float corridor)
             {
                 int reach = Mathf.CeilToInt(corridor / step);
                 for (int i = 1; i < planned.Count; i++)
@@ -319,17 +364,23 @@ namespace Clube.Core
                     int stamps = Mathf.Max(1, Mathf.CeilToInt(length / (corridor * 0.5f)));
                     for (int s = 0; s <= stamps; s++)
                     {
-                        Vector2 at = (Vector2.Lerp(planned[i - 1], planned[i], s / (float)stamps) - origin) / step;
-                        int cx = Mathf.FloorToInt(at.x), cz = Mathf.FloorToInt(at.y);
-                        for (int z = Mathf.Max(0, cz - reach); z <= Mathf.Min(depth - 1, cz + reach); z++)
+                        Stamp((Vector2.Lerp(planned[i - 1], planned[i], s / (float)stamps) - origin) / step, reach);
+                        yield return null;
+                    }
+                }
+            }
+
+            // Opens the cells within a reach of a point on the grid.
+            private void Stamp(Vector2 at, int reach)
+            {
+                int cx = Mathf.FloorToInt(at.x), cz = Mathf.FloorToInt(at.y);
+                for (int z = Mathf.Max(0, cz - reach); z <= Mathf.Min(depth - 1, cz + reach); z++)
+                {
+                    for (int x = Mathf.Max(0, cx - reach); x <= Mathf.Min(width - 1, cx + reach); x++)
+                    {
+                        if ((x - cx) * (x - cx) + (z - cz) * (z - cz) <= reach * reach)
                         {
-                            for (int x = Mathf.Max(0, cx - reach); x <= Mathf.Min(width - 1, cx + reach); x++)
-                            {
-                                if ((x - cx) * (x - cx) + (z - cz) * (z - cz) <= reach * reach)
-                                {
-                                    open[x + z * width] = true;
-                                }
-                            }
+                            open[x + z * width] = true;
                         }
                     }
                 }
@@ -370,7 +421,7 @@ namespace Clube.Core
 
             // The cheapest way over wet cells from start to goal, a cell by the bank costing more than one in mid-water;
             // when the goal is not reached, the way to the reached cell nearest it.
-            public List<int> Search(int start, int goal, Vector2 towards, out bool reached)
+            public IEnumerator Search(int start, int goal, Vector2 towards, CellsFound found)
             {
                 var cost = new Dictionary<int, float> { { start, 0f } };
                 var from = new Dictionary<int, int>();
@@ -378,9 +429,14 @@ namespace Clube.Core
                 queue.Push(start, Vector2.Distance(Centre(start), towards));
                 int nearest = start;
                 float nearestDistance = Vector2.Distance(Centre(start), towards);
-                reached = false;
+                found.Reached = false;
+                int looked = 0;
                 while (queue.Count > 0)
                 {
+                    if (++looked % CellsPerStep == 0)
+                    {
+                        yield return null;
+                    }
                     int cell = queue.Pop(out float key);
                     float sofar = cost[cell];
                     float left = Vector2.Distance(Centre(cell), towards);
@@ -395,48 +451,54 @@ namespace Clube.Core
                     }
                     if (cell == goal)
                     {
-                        reached = true;
+                        found.Reached = true;
                         nearest = cell;
                         break;
                     }
-                    int x = cell % width, z = cell / width;
-                    for (int dz = -1; dz <= 1; dz++)
-                    {
-                        for (int dx = -1; dx <= 1; dx++)
-                        {
-                            int nx = x + dx, nz = z + dz;
-                            if ((dx == 0 && dz == 0) || nx < 0 || nz < 0 || nx >= width || nz >= depth)
-                            {
-                                continue;
-                            }
-                            int next = nx + nz * width;
-                            // No cutting a corner between two dry cells.
-                            if (!Wet(next) || (dx != 0 && dz != 0 && (!Wet(x + dx + z * width) || !Wet(x + nz * width))))
-                            {
-                                continue;
-                            }
-                            float stepCost = step * (dx != 0 && dz != 0 ? 1.4142f : 1f) * (1f + ShoreCost * Dryness(nx, nz));
-                            float total = sofar + stepCost;
-                            if (!cost.TryGetValue(next, out float known) || total < known - 1e-4f)
-                            {
-                                cost[next] = total;
-                                from[next] = cell;
-                                queue.Push(next, total + Vector2.Distance(Centre(next), towards));
-                            }
-                        }
-                    }
+                    Expand(cell, sofar, towards, cost, from, queue);
                 }
                 var path = new List<int>();
-                for (int cell = nearest; ; cell = from[cell])
+                for (int at = nearest; ; at = from[at])
                 {
-                    path.Add(cell);
-                    if (!from.ContainsKey(cell))
+                    path.Add(at);
+                    if (!from.ContainsKey(at))
                     {
                         break;
                     }
                 }
                 path.Reverse();
-                return path;
+                found.Path = path;
+            }
+
+            // Offers the search each wet cell beside this one.
+            private void Expand(int cell, float sofar, Vector2 towards, Dictionary<int, float> cost, Dictionary<int, int> from, Heap queue)
+            {
+                int x = cell % width, z = cell / width;
+                for (int dz = -1; dz <= 1; dz++)
+                {
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        int nx = x + dx, nz = z + dz;
+                        if ((dx == 0 && dz == 0) || nx < 0 || nz < 0 || nx >= width || nz >= depth)
+                        {
+                            continue;
+                        }
+                        int next = nx + nz * width;
+                        // No cutting a corner between two dry cells.
+                        if (!Wet(next) || (dx != 0 && dz != 0 && (!Wet(x + dx + z * width) || !Wet(x + nz * width))))
+                        {
+                            continue;
+                        }
+                        float stepCost = step * (dx != 0 && dz != 0 ? 1.4142f : 1f) * (1f + ShoreCost * Dryness(nx, nz));
+                        float total = sofar + stepCost;
+                        if (!cost.TryGetValue(next, out float known) || total < known - 1e-4f)
+                        {
+                            cost[next] = total;
+                            from[next] = cell;
+                            queue.Push(next, total + Vector2.Distance(Centre(next), towards));
+                        }
+                    }
+                }
             }
 
             // The share of a cell's eight neighbours that are not water.

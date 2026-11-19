@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -154,12 +155,19 @@ namespace Clube.Core
         /// <param name="natural">The ground as generated at (x, z).</param>
         public void Write(World world, MaterialRegistry materials, Func<float, float, float> natural, float iso, int piece)
         {
+            SlicedWork.RunToEnd(WriteSteps(world, materials, natural, iso, piece));
+        }
+
+        /// <summary>
+        /// <see cref="Write"/> in small steps for <see cref="SlicedWork"/> (GL771): a piece through a wood took most of a second.
+        /// It counts as written only once it is done.
+        /// </summary>
+        public IEnumerator WriteSteps(World world, MaterialRegistry materials, Func<float, float, float> natural, float iso, int piece)
+        {
             if (written[piece])
             {
-                return;
+                yield break;
             }
-            written[piece] = true;
-            Written++;
             Rect box = Bounds(piece, out _, out _);
             RoadBed bed = Bed;
             List<Vector2Int> stretches = bed.StretchesNear(box, bed.Reach);
@@ -184,7 +192,7 @@ namespace Clube.Core
                     return mix && rockMix != null ? rockMix : rock;
                 };
             }
-            GroundLeveling.Level(world, materials, new GroundLeveling.Area
+            yield return GroundLeveling.LevelSteps(world, materials, new GroundLeveling.Area
             {
                 Centre = box.center,
                 Half = box.size * 0.5f,
@@ -198,6 +206,8 @@ namespace Clube.Core
                 Paved = (x, z) => bed.IsRoad(new Vector2(x, z), stretches),
                 Surface = bed.FollowsGround ? (Func<float, float, float, float>)null : (x, z, ground) => bed.Surface(new Vector2(x, z), ground, stretches),
             }, iso);
+            written[piece] = true;
+            Written++;
         }
 
         /// <summary>Which pieces are written, as the piece count and hex digits (four pieces each), for the save.</summary>

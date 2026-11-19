@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -409,12 +410,20 @@ namespace Clube.Core
         /// <param name="natural">The ground as generated at (x, z).</param>
         public void Write(World world, MaterialRegistry registry, Materials materials, Func<float, float, float> natural, float iso, int index)
         {
+            SlicedWork.RunToEnd(WriteSteps(world, registry, materials, natural, iso, index));
+        }
+
+        /// <summary>
+        /// <see cref="Write"/> in small steps for <see cref="SlicedWork"/> (GL771). The piece counts as written, and what stands
+        /// on it as ready, only once it is done.
+        /// </summary>
+        public IEnumerator WriteSteps(World world, MaterialRegistry registry, Materials materials, Func<float, float, float> natural, float iso, int index)
+        {
             if (written[index])
             {
-                return;
+                yield break;
             }
             Piece piece = pieces[index];
-            Mark(index);
             SettlementSite site = Site;
             switch (piece.Kind)
             {
@@ -422,7 +431,7 @@ namespace Clube.Core
                 {
                     SettlementTerrace terrace = site.Terraces[piece.Index];
                     float ramp = site.Rules.Ramp;
-                    GroundLeveling.Level(world, registry, new GroundLeveling.Area
+                    yield return GroundLeveling.LevelSteps(world, registry, new GroundLeveling.Area
                     {
                         Centre = piece.Box.center,
                         Half = piece.Box.size * 0.5f,
@@ -444,12 +453,12 @@ namespace Clube.Core
                     break;
                 }
                 case Kind.Lane:
-                    lanes[piece.Index].Write(world, registry, site.HeightAt, iso, piece.Part);
+                    yield return lanes[piece.Index].WriteSteps(world, registry, site.HeightAt, iso, piece.Part);
                     break;
                 case Kind.Wall:
                     if (materials.Stone != null)
                     {
-                        SquareVoxels.Build(world, SettlementWalls.Blocks(site, stretches[piece.Index], world.Grid.VoxelSize, materials.Stone.Id, wetAt), iso);
+                        yield return SquareVoxels.BuildSteps(world, SettlementWalls.Blocks(site, stretches[piece.Index], world.Grid.VoxelSize, materials.Stone.Id, wetAt), iso);
                     }
                     break;
                 default:
@@ -459,14 +468,15 @@ namespace Clube.Core
                         break;
                     }
                     bool turnAbout = piece.Index % 2 == 1;
-                    SquareVoxels.Build(world, SettlementStructures.Blocks(site.Buildings[piece.Index], world.Grid.VoxelSize, materials.Stone.Id,
+                    yield return SquareVoxels.BuildSteps(world, SettlementStructures.Blocks(site.Buildings[piece.Index], world.Grid.VoxelSize, materials.Stone.Id,
                         (turnAbout ? materials.Trim : materials.Boards).Id, (turnAbout ? materials.Boards : materials.Trim).Id, piece.Part, BuildingSlices), iso);
                     // GL711: the roof's top drawn as a slant over its square steps.
-                    SquareVoxels.Shape(world, SettlementStructures.RoofSkin(site.Buildings[piece.Index], world.Grid.VoxelSize, piece.Part, BuildingSlices),
+                    yield return SquareVoxels.ShapeSteps(world, SettlementStructures.RoofSkin(site.Buildings[piece.Index], world.Grid.VoxelSize, piece.Part, BuildingSlices),
                         (turnAbout ? materials.Trim : materials.Boards).Id);
                     break;
                 }
             }
+            Mark(index);
         }
 
         // Every sample of a tile with any density, from a height up to the tile's top, becomes stone (GL734, as GL557's tutorial map).

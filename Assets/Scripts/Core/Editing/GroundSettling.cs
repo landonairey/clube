@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 
 namespace Clube.Core
@@ -35,11 +36,17 @@ namespace Clube.Core
             Vector3Int.up, Vector3Int.down, Vector3Int.right, Vector3Int.left, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
         };
 
+        // How many samples a step with a time limit looks at (GL771): it finds its own number between these, and always
+        // takes at least this share of what is waiting.
+        private const int LeastLooks = 256, MostLooks = 16384, StepsToCatchUp = 16;
+
         private readonly GroundHold[] holds = new GroundHold[256];
         private readonly float iso;
         private readonly ISet<Vector3Int> pinned;
-        private HashSet<Vector3Int> awake = new HashSet<Vector3Int>();
-        private HashSet<Vector3Int> next = new HashSet<Vector3Int>();
+        private readonly HashSet<Vector3Int> awake = new HashSet<Vector3Int>();
+        // The awake samples in the order they woke: the next to be looked at first.
+        private readonly Queue<Vector3Int> waking = new Queue<Vector3Int>();
+        private int lookLimit = 1024;
         private readonly List<Vector3Int> batch = new List<Vector3Int>();
         private readonly HashSet<Vector3Int> falling = new HashSet<Vector3Int>();
         private readonly HashSet<Vector3Int> letGo = new HashSet<Vector3Int>();
@@ -95,8 +102,8 @@ namespace Clube.Core
             {
                 for (int dx = -1; dx <= 1; dx++)
                 {
-                    awake.Add(sample + new Vector3Int(dx, 1, dz));
-                    awake.Add(sample + new Vector3Int(dx, 0, dz));
+                    WakeOne(sample + new Vector3Int(dx, 1, dz));
+                    WakeOne(sample + new Vector3Int(dx, 0, dz));
                 }
             }
         }
@@ -107,16 +114,30 @@ namespace Clube.Core
         /// </summary>
         public int Step(int maxMoves = 2000)
         {
+            return Step(maxMoves, float.PositiveInfinity);
+        }
+
+        /// <summary>
+        /// A step that looks at only as many samples as about <paramref name="maxMilliseconds"/> allow (GL771): the rest stay
+        /// awake for the next steps, so a big collapse takes longer to come down and no frame pays for all of it. However
+        /// slow the steps, each takes a share of what is waiting, so the waiting samples can't pile up.
+        /// </summary>
+        public int Step(int maxMoves, float maxMilliseconds)
+        {
             if (awake.Count == 0)
             {
                 return 0;
             }
+            bool limited = !float.IsInfinity(maxMilliseconds);
+            long began = Stopwatch.GetTimestamp();
+            int looks = limited ? Mathf.Min(awake.Count, Mathf.Max(lookLimit, awake.Count / StepsToCatchUp)) : awake.Count;
             batch.Clear();
-            batch.AddRange(awake);
-            HashSet<Vector3Int> stepping = awake;
-            awake = next;
-            awake.Clear();
-            next = stepping;
+            for (int i = 0; i < looks; i++)
+            {
+                Vector3Int sample = waking.Dequeue();
+                awake.Remove(sample);
+                batch.Add(sample);
+            }
             batch.Sort((a, b) => a.y.CompareTo(b.y));
             turn++;
             FindLetGo();
@@ -125,7 +146,7 @@ namespace Clube.Core
             {
                 if (moves >= maxMoves)
                 {
-                    awake.Add(sample);
+                    WakeOne(sample);
                     continue;
                 }
                 if (TryFall(sample))
@@ -133,7 +154,21 @@ namespace Clube.Core
                     moves++;
                 }
             }
+            if (limited)
+            {
+                float took = (float)((Stopwatch.GetTimestamp() - began) * 1000.0 / Stopwatch.Frequency);
+                lookLimit = took > maxMilliseconds ? Mathf.Max(LeastLooks, lookLimit / 2)
+                    : took < maxMilliseconds * 0.5f ? Mathf.Min(MostLooks, lookLimit * 2) : lookLimit;
+            }
             return moves;
+        }
+
+        private void WakeOne(Vector3Int sample)
+        {
+            if (awake.Add(sample))
+            {
+                waking.Enqueue(sample);
+            }
         }
 
         private bool TryFall(Vector3Int sample)
@@ -281,7 +316,7 @@ namespace Clube.Core
                     continue;
                 }
                 letGo.Add(sample);
-                awake.Add(sample);
+                WakeOne(sample);
             }
         }
 

@@ -30,6 +30,7 @@ namespace Clube.Debug
         private const float CarriedHeight = 2.5f;
         private const int MarkersShown = 70, LongFrameMarkers = 16, LoopStagesShown = 12;
         private const double SlowSystemMilliseconds = 8.0;
+        private const double OverFrameMilliseconds = 16.0;
         // Chunks round the player whose ground is checked, and how often.
         private const int UnderfootColumns = 4, NearColumns = 12, GroundLookFrames = 30;
 
@@ -61,9 +62,13 @@ namespace Clube.Debug
         private readonly PlayerLoopTimes loopTimes = new PlayerLoopTimes();
         private static readonly string[] PhaseNames = { "poll", "area", "apply meshes", "add chunks", "start generating", "start meshing", "colliders" };
         private readonly double[] phaseTotals = new double[PhaseNames.Length];
+        private readonly double[] phaseWorst = new double[PhaseNames.Length];
         private readonly ProcessLoad load = new ProcessLoad();
         private readonly Dictionary<Vector2Int, int> groundLayers = new Dictionary<Vector2Int, int>();
         private readonly Dictionary<string, (double total, double worst, int slow)> systems = new Dictionary<string, (double, double, int)>();
+        // Systems that alone took more than a frame's 16 ms while walking (GL771), past the first stretch.
+        private readonly Dictionary<string, (int frames, double worst)> overFrame = new Dictionary<string, (int, double)>();
+        private bool walkingNow;
         private readonly List<float> batches = new List<float>();
         private readonly List<float> setPasses = new List<float>();
         private readonly List<float> triangles = new List<float>();
@@ -160,9 +165,12 @@ namespace Clube.Debug
             while (done < walkSeconds)
             {
                 window++;
+                // The first stretch is still the load settling.
+                walkingNow = window > 1;
                 yield return Stretch($"walk {window}", WindowSeconds, true);
                 done += WindowSeconds;
             }
+            walkingNow = false;
             yield return Stretch("stand where the walk ended", StandSeconds, false);
             Summary();
             Finish(text.ToString());
@@ -342,6 +350,11 @@ namespace Clube.Debug
             phaseTotals[4] += phases.StartGeneration;
             phaseTotals[5] += phases.StartMeshing;
             phaseTotals[6] += phases.Colliders;
+            double[] thisFrame = { phases.Poll, phases.Area, phases.ApplyMeshes, phases.AddChunks, phases.StartGeneration, phases.StartMeshing, phases.Colliders };
+            for (int i = 0; i < thisFrame.Length; i++)
+            {
+                phaseWorst[i] = System.Math.Max(phaseWorst[i], thisFrame[i]);
+            }
             batches.Add(batchesRecorder.Valid ? batchesRecorder.LastValue : 0f);
             setPasses.Add(setPassRecorder.Valid ? setPassRecorder.LastValue : 0f);
             triangles.Add(trianglesRecorder.Valid ? trianglesRecorder.LastValue / 1000f : 0f);
@@ -356,6 +369,11 @@ namespace Clube.Debug
                 double milliseconds = cost.TakeMilliseconds();
                 systems.TryGetValue(cost.Name, out (double total, double worst, int slow) seen);
                 systems[cost.Name] = (seen.total + milliseconds, System.Math.Max(seen.worst, milliseconds), seen.slow + (milliseconds > SlowSystemMilliseconds ? 1 : 0));
+                if (walkingNow && milliseconds > OverFrameMilliseconds)
+                {
+                    overFrame.TryGetValue(cost.Name, out (int frames, double worst) over);
+                    overFrame[cost.Name] = (over.frames + 1, System.Math.Max(over.worst, milliseconds));
+                }
             }
         }
 
@@ -387,7 +405,7 @@ namespace Clube.Debug
             text.AppendLine($"  player loop (ms a frame): {loopTimes.Top(LoopStagesShown, frames.Count)}");
             text.AppendLine($"  systems (ms a frame; worst frame; frames over {SlowSystemMilliseconds:0} ms): {SystemsReport()}");
             int phaseFrames = Mathf.Max(1, frames.Count);
-            text.AppendLine("  streaming phases (ms a frame): " + string.Join(", ", PhaseNames.Select((phase, i) => $"{phase} {phaseTotals[i] / phaseFrames:0.00}")));
+            text.AppendLine("  streaming phases (ms a frame): " + string.Join(", ", PhaseNames.Select((phase, i) => $"{phase} {phaseTotals[i] / phaseFrames:0.00} (worst {phaseWorst[i]:0})")));
             string top = markers.Top(MarkersShown, frames.Count);
             if (top.Length > 0)
             {
@@ -410,6 +428,8 @@ namespace Clube.Debug
             text.AppendLine($"Walking overall: {walkFrames.Count / seconds:0.0} FPS average, 1% low {1000f / low:0.0} FPS; "
                             + $"median frame {sorted[sorted.Count / 2]:0.0} ms, worst {sorted[sorted.Count - 1]:0.0} ms; "
                             + $"{100f * walkFrames.Count(f => f <= 16.7f) / walkFrames.Count:0}% of frames within 16.7 ms");
+            text.AppendLine($"Over {OverFrameMilliseconds:0} ms in a frame while walking, past the first stretch (frames, worst ms): "
+                            + (overFrame.Count == 0 ? "nothing" : string.Join("; ", overFrame.OrderByDescending(o => o.Value.worst).Select(o => $"{o.Key} {o.Value.frames}, {o.Value.worst:0}"))));
         }
 
         private void Clear()
@@ -420,6 +440,7 @@ namespace Clube.Debug
             }
             systems.Clear();
             System.Array.Clear(phaseTotals, 0, phaseTotals.Length);
+            System.Array.Clear(phaseWorst, 0, phaseWorst.Length);
             load.Clear();
             collectionsAtStart = System.GC.CollectionCount(0);
             heapAtStart = System.GC.GetTotalMemory(false);

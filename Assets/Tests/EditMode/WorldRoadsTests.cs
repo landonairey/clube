@@ -425,6 +425,146 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void IsOnRoad_AnswersAsLookingAtEverySegmentDoes_AndFollowsTheRoadsWhenTheyChange()
+        {
+            WorldPlan plan = Plan(("Town", new Vector2(100f, 100f)), ("Town", new Vector2(800f, 450f)));
+            PlannedRoad road = Road(plan, RoadClass.PavedCartPath, 0, 1, -1, new Vector2(100f, 100f), new Vector2(300f, 420f), new Vector2(620f, 130f), new Vector2(800f, 450f));
+            bool LookedAtAll(Vector2 point, float margin)
+            {
+                float reach = plan.Rules.Road(road.Class).Width * 0.5f + margin;
+                for (int i = 1; i < road.Points.Count; i++)
+                {
+                    Vector2 a = road.Points[i - 1], way = road.Points[i] - a;
+                    float along = Mathf.Clamp01(Vector2.Dot(point - a, way) / way.sqrMagnitude);
+                    if (Vector2.Distance(point, a + way * along) <= reach)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            var random = new System.Random(5);
+            int on = 0;
+            for (int i = 0; i < 4000; i++)
+            {
+                // Close to the road about half the time, so both answers are asked for.
+                int leg = random.Next(1, road.Points.Count);
+                Vector2 along = Vector2.Lerp(road.Points[leg - 1], road.Points[leg], (float)random.NextDouble());
+                Vector2 point = along + new Vector2((float)random.NextDouble() - 0.5f, (float)random.NextDouble() - 0.5f) * 24f;
+                float margin = (float)random.NextDouble() * 6f;
+                bool expected = LookedAtAll(point, margin);
+                on += expected ? 1 : 0;
+                Assert.AreEqual(expected, plan.IsOnRoad(point, margin), $"at {point}, margin {margin}");
+            }
+            Assert.That(on, Is.InRange(400, 3600), "both answers were asked for");
+
+            var moved = new Vector2(100f, 560f);
+            Assert.IsFalse(plan.IsOnRoad(moved));
+            road.Points = new List<Vector2> { new Vector2(100f, 500f), new Vector2(100f, 590f) };
+            Assert.IsTrue(plan.IsOnRoad(moved), "the roads were refined after the first question");
+        }
+
+        [Test]
+        public void LevellingInSmallSteps_EndsAsOneCallDoes()
+        {
+            VoxelMaterial grass = VoxelMaterial.Create(1, "Grass"), wood = VoxelMaterial.Create(2, "Wood", VoxelMaterialCategory.Plant);
+            made.Add(grass);
+            made.Add(wood);
+            MaterialRegistry registry = MaterialRegistry.Create(grass, wood);
+            made.Add(registry);
+            World Wooded()
+            {
+                var world = new World(new Vector3Int(16, 16, 16), 0.5f, samples => new ByteVoxelStorage(samples));
+                var generator = new FlatGenerator(4.2f);
+                for (int z = 0; z <= 2; z++)
+                {
+                    for (int x = 0; x <= 3; x++)
+                    {
+                        world.Load(new Vector3Int(x, 0, z), generator);
+                        world.Load(new Vector3Int(x, 1, z), generator);
+                    }
+                }
+                // A trunk on the road with a long branch out past the cut's reach, and a tree of its own further off.
+                void Wood(float x, float y, float z)
+                {
+                    Vector3Int sample = world.Grid.WorldToNearestSample(new Vector3(x, y, z));
+                    world.SetDensity(sample, 1f);
+                    world.SetMaterial(sample, wood.Id);
+                }
+                for (float y = 4.5f; y <= 8f; y += 0.5f)
+                {
+                    Wood(10f, y, 10f);
+                    Wood(22f, y, 10f);
+                }
+                for (float x = 10.5f; x <= 17f; x += 0.5f)
+                {
+                    Wood(x, 8f, 10f);
+                }
+                return world;
+            }
+            GroundLeveling.Area Road() => new GroundLeveling.Area
+            {
+                Centre = new Vector2(10f, 10f), Half = new Vector2(1f, 1f), FollowGround = true, Natural = (x, z) => 4.2f, Headroom = 3f, TreeReach = 2f,
+            };
+
+            World atOnce = Wooded();
+            GroundLeveling.Level(atOnce, registry, Road(), 0.5f);
+            World stepped = Wooded();
+            int steps = 0;
+            using (var work = new SlicedWork(GroundLeveling.LevelSteps(stepped, registry, Road(), 0.5f)))
+            {
+                while (!work.Run(0f))
+                {
+                    steps++;
+                }
+            }
+
+            Assert.Greater(steps, 5, "the cut and the levelling are spread over many steps");
+            for (int z = 0; z < 48; z++)
+            {
+                for (int y = 0; y < 32; y++)
+                {
+                    for (int x = 0; x < 64; x++)
+                    {
+                        var sample = new Vector3Int(x, y, z);
+                        Assert.AreEqual(atOnce.GetDensity(sample), stepped.GetDensity(sample), $"density at {sample}");
+                        Assert.AreEqual(atOnce.GetMaterial(sample), stepped.GetMaterial(sample), $"material at {sample}");
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void APieceWrittenInSteps_CountsAsWrittenOnlyOnceItIsDone()
+        {
+            VoxelMaterial grass = VoxelMaterial.Create(1, "Grass");
+            made.Add(grass);
+            MaterialRegistry registry = MaterialRegistry.Create(grass);
+            made.Add(registry);
+            var world = new World(new Vector3Int(16, 16, 16), 0.5f, samples => new ByteVoxelStorage(samples));
+            var generator = new FlatGenerator(4.2f);
+            for (int z = 0; z <= 1; z++)
+            {
+                for (int x = 0; x <= 2; x++)
+                {
+                    world.Load(new Vector3Int(x, 0, z), generator);
+                }
+            }
+            var line = new RoadLine(new[] { new Vector2(4f, 8f), new Vector2(40f, 8f) }, (x, z) => 4.2f);
+            var writer = new RoadWriter(new RoadBed(line, new WorldPlanRules().Road(RoadClass.Footpath), null, 3));
+
+            using var work = new SlicedWork(writer.WriteSteps(world, registry, (x, z) => 4.2f, 0.5f, 4));
+            work.Run(0f);
+            Assert.IsFalse(writer.IsWritten(4), "still being written");
+            while (!work.Run(0f))
+            {
+            }
+            Assert.IsTrue(writer.IsWritten(4));
+            Assert.AreEqual(1, writer.Written);
+        }
+
+        [Test]
         public void Writer_SurfacesTheRoad_PieceByPiece_AndRemembersWhatItWrote()
         {
             VoxelMaterial grass = VoxelMaterial.Create(1, "Grass"), dead = VoxelMaterial.Create(2, "Dead Grass");

@@ -143,7 +143,12 @@ namespace Clube.Core
         // per chunk: at long render distances the chunks run to hundreds of thousands, and the area
         // is redone every time the focus crosses a chunk border.
         private readonly List<Vector2Int> wantedColumns = new List<Vector2Int>();
-        private readonly List<Vector2Int> columnScratch = new List<Vector2Int>();
+        // The columns left behind, still to be unloaded (GL771).
+        private const double PlayingUnloadMilliseconds = 2.0;
+        private const double EditRebuildMilliseconds = 8.0;
+        private readonly List<Vector2Int> unloading = new List<Vector2Int>();
+        private int unloadingNext;
+        private int unloadingLayer;
 
         // The world's dirty chunks, collected each frame (World.CollectDirty).
         private readonly List<Vector3Int> dirtyScratch = new List<Vector3Int>();
@@ -362,6 +367,7 @@ namespace Clube.Core
             {
                 UnloadUnwanted(centre);
             }
+            UnloadSome(centre);
             float chunkWidth = world.Grid.ChunkWorldSize.x;
             renderers.SetOverlayFocus(centre, settings.OverlayRadius > 0f ? Mathf.CeilToInt(settings.OverlayRadius / chunkWidth) : -1);
             UpdateDrawRadius(centre.y);
@@ -429,8 +435,15 @@ namespace Clube.Core
             }
 
             ChunkMeshSettings current = meshSettings();
+            // GL771: what doesn't fit in the time stays dirty for the next frame.
+            long began = System.Diagnostics.Stopwatch.GetTimestamp();
+            long most = (long)(EditRebuildMilliseconds * 0.001 * System.Diagnostics.Stopwatch.Frequency);
             foreach (Vector3Int coord in scratch)
             {
+                if (IsPlaying && System.Diagnostics.Stopwatch.GetTimestamp() - began > most)
+                {
+                    break;
+                }
                 Chunk chunk = world.Chunks[coord];
 
                 // A mesh already on its way shows the chunk before the edit; take it out of the way first.
@@ -589,21 +602,42 @@ namespace Clube.Core
         private void UnloadUnwanted(Vector3Int centre)
         {
             int keep = (settings.RenderDistance + 1) * (settings.RenderDistance + 1);
-            columnScratch.Clear();
+            unloading.Clear();
+            unloadingNext = 0;
+            unloadingLayer = 0;
             foreach (Vector2Int column in world.LoadedColumns.Keys)
             {
                 int dx = column.x - centre.x;
                 int dz = column.y - centre.z;
                 if (dx * dx + dz * dz > keep)
                 {
-                    columnScratch.Add(column);
+                    unloading.Add(column);
                 }
             }
-            foreach (Vector2Int column in columnScratch)
+        }
+
+        // GL771: the columns left behind go a few milliseconds a frame while playing: a whole edge of the loaded circle at
+        // once was up to 50 ms each time the player crossed into a new column. A column come back into range stays.
+        private void UnloadSome(Vector3Int centre)
+        {
+            if (unloadingNext >= unloading.Count)
             {
-                for (int y = 0; y < settings.HeightInChunks && world.LoadedLayersIn(column) > 0; y++)
+                return;
+            }
+            int keep = (settings.RenderDistance + 1) * (settings.RenderDistance + 1);
+            double until = IsPlaying ? frameClock.Elapsed.TotalMilliseconds + PlayingUnloadMilliseconds : double.PositiveInfinity;
+            for (; unloadingNext < unloading.Count; unloadingNext++, unloadingLayer = 0)
+            {
+                Vector2Int column = unloading[unloadingNext];
+                int dx = column.x - centre.x;
+                int dz = column.y - centre.z;
+                if (dx * dx + dz * dz <= keep)
                 {
-                    var coord = new Vector3Int(column.x, y, column.y);
+                    continue;
+                }
+                for (; unloadingLayer < settings.HeightInChunks && world.LoadedLayersIn(column) > 0; unloadingLayer++)
+                {
+                    var coord = new Vector3Int(column.x, unloadingLayer, column.y);
                     if (!world.IsLoaded(coord))
                     {
                         continue;
@@ -613,8 +647,15 @@ namespace Clube.Core
                     meshedOnce.Remove(coord);
                     world.Unload(coord);
                     ChunkUnloaded?.Invoke(coord);
+                    if (!Before(until))
+                    {
+                        unloadingLayer++;
+                        return;
+                    }
                 }
             }
+            unloading.Clear();
+            unloadingNext = 0;
         }
 
         // A chunk that finished generating after the focus moved away from it is dropped.

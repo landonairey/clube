@@ -40,11 +40,24 @@ namespace Clube.Game
         [SerializeField, Range(0, 200)]
         private int mostPeople = 64;
 
+        private const int ArrivalsPerFrame = 2;
+
+        // Someone waiting to come into the world.
+        private struct Arrival
+        {
+            public int Settlement;
+            public SettlementSite Site;
+            public SettlementWalks Walks;
+            public Resident Resident;
+            public List<Villager> People;
+        }
+
         private readonly List<Duty> duties = Duty.Defaults();
         private readonly List<Occupation> occupations = Occupation.Defaults();
         private readonly Dictionary<int, List<Villager>> living = new Dictionary<int, List<Villager>>();
         private readonly Dictionary<ToolDefinition, Mesh> toolMeshes = new Dictionary<ToolDefinition, Mesh>();
         private readonly List<int> leaving = new List<int>();
+        private readonly Queue<Arrival> arriving = new Queue<Arrival>();
         private readonly List<WorkRate> rates = WorkRate.Defaults();
         private readonly Dictionary<int, SettlementWorks> works = new Dictionary<int, SettlementWorks>();
         private DutyHours dutyHours;
@@ -233,6 +246,7 @@ namespace Clube.Game
             {
                 StartOver();
             }
+            Arrive();
             Camera view = Camera.main;
             if (view == null || Time.unscaledTime < nextLook)
             {
@@ -314,6 +328,7 @@ namespace Clube.Game
             root = new GameObject("People").transform;
             root.SetParent(View.transform, false);
             living.Clear();
+            arriving.Clear();
             works.Clear();
             Living = 0;
             Thieves = FindAnyObjectByType<ThievesCamps>();
@@ -357,6 +372,7 @@ namespace Clube.Game
         // Puts a settlement's residents in the world, as many as the cap leaves room for.
         private void Settle(int index, SettlementSite site)
         {
+            using FrameCost.Scope cost = FrameCost.Of("People: settle");
             List<Resident> residents = SettlementRoster.Build(site, occupations, session.Plan.Seed);
             var people = new List<Villager>();
             living[index] = people;
@@ -367,20 +383,35 @@ namespace Clube.Game
             var walks = new SettlementWalks(site);
             foreach (Resident resident in residents)
             {
-                if (Living >= mostPeople)
+                arriving.Enqueue(new Arrival { Settlement = index, Site = site, Walks = walks, Resident = resident, People = people });
+            }
+        }
+
+        // GL771: a settlement's people come into the world a few a frame: all at once, their first look round took 80 ms.
+        private void Arrive()
+        {
+            int arrived = 0;
+            bool hurry = View.Hurry;
+            while (arriving.Count > 0 && (hurry || arrived < ArrivalsPerFrame))
+            {
+                Arrival next = arriving.Dequeue();
+                // Its settlement was left behind while it waited, or the map is full.
+                if (!living.TryGetValue(next.Settlement, out List<Villager> people) || !ReferenceEquals(people, next.People) || Living >= mostPeople)
                 {
-                    break;
+                    continue;
                 }
-                var body = new GameObject($"{site.Settlement.Name}: {resident.Occupation.Name} {resident.Index + 1}");
+                Resident resident = next.Resident;
+                var body = new GameObject($"{next.Site.Settlement.Name}: {resident.Occupation.Name} {resident.Index + 1}");
                 body.transform.SetParent(root, false);
                 Villager villager = body.AddComponent<Villager>();
-                villager.Setup(this, site, walks, resident, material, people);
+                villager.Setup(this, next.Site, next.Walks, resident, material, people);
                 if (resident.Occupation.Outlaw)
                 {
                     body.AddComponent<Bandit>().Setup(villager, Thieves);
                 }
                 people.Add(villager);
                 Living++;
+                arrived++;
             }
         }
     }
