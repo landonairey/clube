@@ -131,8 +131,9 @@ namespace Clube.Game
                 countText.text = count;
             }
 
-            HudCanvas.SetShown(purityText.gameObject, has);
-            if (has)
+            bool purity = has && ItemSlotGui.ShowsPurity(stack);
+            HudCanvas.SetShown(purityText.gameObject, purity);
+            if (purity)
             {
                 purityText.text = ItemSlotGui.PurityLabel(stack, out Color colour);
                 purityText.color = colour;

@@ -319,6 +319,16 @@ namespace Clube.Game
                     text += i < read ? $"\n{share} {parts[i].Material.DisplayName}" : "\n? ?";
                 }
             }
+            else if (stack.Item is ToolDefinition made && made.MaxHits > 0)
+            {
+                // A tool's quality is its durability (GL795): what's left of a new one's hits.
+                text += $"\n{ToolDurability.Word} {QualityText.Percent((float)Mathf.Max(0, stack.MaxHits - stack.Wear) / made.MaxHits)}";
+            }
+            else if (stack.Item.QualityAsGrade)
+            {
+                // Sticks read as a grade (GL795).
+                text += $"\nQuality {GradeText(stack.Quality)}";
+            }
             else
             {
                 // Always, 100% included (GL158).

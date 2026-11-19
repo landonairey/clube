@@ -50,7 +50,8 @@ namespace Clube.Game
             {
                 purity = Materials.Quality(stack.Contents, stack.Item);
             }
-            if (ReadsAsGrades(stack))
+            // Sticks always read as a grade (GL795).
+            if (ReadsAsGrades(stack) || stack.Item.QualityAsGrade)
             {
                 // A grade, in its colour, until Prospecting reads numbers (GL457).
                 Grade grade = ProspectReading.GradeOf(purity);
@@ -59,6 +60,12 @@ namespace Clube.Game
             }
             colour = PurityColour;
             return QualityText.Percent(purity);
+        }
+
+        /// <summary>True when a slot shows the stack's quality in its corner: everything but tools, whose durability is the bar (GL795).</summary>
+        internal static bool ShowsPurity(ItemStack stack)
+        {
+            return !stack.IsEmpty && !(stack.Item is ToolDefinition);
         }
 
         /// <summary>The count in a stack's lower right corner: a part item's amount (GL136), a stack's count, else null.</summary>
@@ -75,7 +82,8 @@ namespace Clube.Game
         internal static bool WearBar(ItemStack stack, out float left, out float best)
         {
             left = best = 1f;
-            if (stack.IsEmpty || stack.MaxHits <= 0 || !(stack.Wear > 0 || stack.Quality < 0.995f))
+            // Only below 100% durability (GL795): a full tool shows just its icon.
+            if (!ToolDurability.ShowsBar(stack))
             {
                 return false;
             }
@@ -119,7 +127,10 @@ namespace Clube.Game
                 {
                     GameUi.OutlinedLabel(Inset(rect, 3f), countText, countStyle);
                 }
-                DrawPurity(rect, stack);
+                if (ShowsPurity(stack))
+                {
+                    DrawPurity(rect, stack);
+                }
                 if (stack.Item is BucketDefinition bucket)
                 {
                     // The water in a bucket (GL319): a blue bar, and the units in the corner.
