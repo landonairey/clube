@@ -93,7 +93,7 @@ namespace Clube.Core
 
         /// <summary>
         /// Looks again at the next slice of parked columns: those <paramref name="isHeld"/> no longer holds send their chunks
-        /// back to wait; chunks unloaded or cleaned meanwhile are forgotten.
+        /// back to wait; those unloaded meanwhile are forgotten.
         /// </summary>
         public void LookAtParked(World world, Func<Vector2Int, bool> isHeld)
         {
@@ -106,21 +106,20 @@ namespace Clube.Core
                 }
                 Vector2Int column = parkedColumns[nextParked];
                 List<Vector3Int> chunks = parkedByColumn[column];
+                // A parked chunk is never meshed, and a column unloads whole: while the column is held and loaded, its
+                // chunks needn't be looked at one by one.
                 bool released = !isHeld(column);
-                for (int i = chunks.Count - 1; i >= 0; i--)
+                if (released || world.LoadedLayersIn(column) == 0)
                 {
-                    Vector3Int coord = chunks[i];
-                    bool dirty = IsDirty(world, coord);
-                    if (released || !dirty)
+                    foreach (Vector3Int coord in chunks)
                     {
                         parked.Remove(coord);
-                        chunks[i] = chunks[chunks.Count - 1];
-                        chunks.RemoveAt(chunks.Count - 1);
-                        if (dirty)
+                        if (released && IsDirty(world, coord))
                         {
                             waiting.Add(coord);
                         }
                     }
+                    chunks.Clear();
                 }
                 if (chunks.Count == 0)
                 {

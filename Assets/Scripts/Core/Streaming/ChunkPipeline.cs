@@ -52,6 +52,10 @@ namespace Clube.Core
 
         private readonly List<Vector3Int> scratch = new List<Vector3Int>();
         private readonly List<Vector2Int> columnScratch = new List<Vector2Int>();
+
+        // Fill buffers handed back by finished chunks, for the next ones (GL774), and the most kept.
+        private const int MostSpareBuffers = 256;
+        private readonly Stack<ChunkFillOutput> spareOutputs = new Stack<ChunkFillOutput>();
         private int frame;
 
         /// <param name="format">The density format the world's storage holds (<see cref="World.PreferredFormat"/>).</param>
@@ -287,17 +291,10 @@ namespace Clube.Core
                         return true;
                     }
                     using var columnMarker = StreamingMarkers.ScheduleFill.Auto();
-                    StreamingMarkers.OutputAlloc.Begin();
-                    task.Output = ChunkFillOutput.Allocate(task.Grid.Length, fillSettings.Format, Allocator.Persistent);
-                    StreamingMarkers.OutputAlloc.End();
-                    StreamingMarkers.Select.Begin();
-                    JobHandle picked = stamps.ScheduleSelect(coord.y, Allocator.Persistent, out task.TreeList, out task.OreList);
-                    StreamingMarkers.Select.End();
+                    task.Output = RentOutput(task.Grid.Length);
                     task.Column = column;
                     column.Users++;
-                    task.Handle = ChunkGenerator.ScheduleFromColumns(
-                        column.Heights, column.Range, task.Grid, fillSettings, task.OreList.AsDeferredJobArray(), task.TreeList.AsDeferredJobArray(),
-                        task.Output, JobHandle.CombineDependencies(column.Job, picked));
+                    task.Handle = stamps.ScheduleFill(coord.y, column.Heights, column.Range, task.Grid, fillSettings, task.Output, column.Job);
                     generating.Add(coord, task);
                     return true;
                 }
@@ -327,7 +324,7 @@ namespace Clube.Core
             }
 
             using var scheduleMarker = StreamingMarkers.ScheduleFill.Auto();
-            task.Output = ChunkFillOutput.Allocate(task.Grid.Length, fillSettings.Format, Allocator.Persistent);
+            task.Output = RentOutput(task.Grid.Length);
             if (generator is HeightfieldGenerator heightfield)
             {
                 task.Column = column ?? ColumnFor(new Vector2Int(coord.x, coord.z), task.Grid.BorderedColumns, heightfield);
@@ -373,7 +370,7 @@ namespace Clube.Core
                 GenerationTask task = generated.Dequeue();
                 if (task.Cancelled)
                 {
-                    task.Dispose();
+                    Recycle(task);
                     continue;
                 }
                 generatedCoords.Remove(task.Coord);
@@ -382,7 +379,7 @@ namespace Clube.Core
                 chunk = task.Air ? AirChunk(task.Grid)
                     : task.Solid ? RockChunk(task.Grid)
                     : ChunkGenerator.FromOutput(task.Grid, task.Output, createStorage);
-                task.Dispose();
+                Recycle(task);
                 return true;
             }
             coord = default;
@@ -606,6 +603,10 @@ namespace Clube.Core
             }
             generated.Clear();
             generatedCoords.Clear();
+            while (spareOutputs.Count > 0)
+            {
+                spareOutputs.Pop().Dispose();
+            }
 
             foreach (MeshTask task in meshing.Values)
             {
@@ -708,6 +709,28 @@ namespace Clube.Core
             return Chunk.Uniform(sampleCount, 0f, air.Material, createStorage);
         }
 
+        // A fill job's buffers: one handed back by a finished chunk when there is one. The job writes every sample, so
+        // nothing need be cleared.
+        private ChunkFillOutput RentOutput(int length)
+        {
+            if (spareOutputs.Count > 0 && spareOutputs.Peek().Materials.Length == length)
+            {
+                return spareOutputs.Pop();
+            }
+            return ChunkFillOutput.Allocate(length, fillSettings.Format, Allocator.Persistent);
+        }
+
+        // Hands a taken or cancelled chunk's buffers back for the next ones (GL774: allocating them was a part of each start).
+        private void Recycle(GenerationTask task)
+        {
+            if (task.Output.IsCreated && spareOutputs.Count < MostSpareBuffers && task.Output.Materials.Length == task.Grid.Length)
+            {
+                spareOutputs.Push(task.Output);
+                task.Output = default;
+            }
+            task.Dispose();
+        }
+
         // A chunk known without a job, all air or all base rock, ready to be taken.
         private void QueueKnown(GenerationTask task, bool air)
         {
@@ -801,9 +824,6 @@ namespace Clube.Core
             public ChunkFillOutput Output;
             public NativeArray<OreNodeData> Ores;
             public NativeArray<TreePart> Trees;
-            // Picked from the column's by a job (GL774), in place of Ores and Trees.
-            public NativeList<OreNodeData> OreList;
-            public NativeList<TreePart> TreeList;
             public ColumnHeights Column;
 
             /// <summary>Known to be all air without a job: nothing allocated.</summary>
@@ -835,14 +855,6 @@ namespace Clube.Core
                 if (Trees.IsCreated)
                 {
                     Trees.Dispose();
-                }
-                if (OreList.IsCreated)
-                {
-                    OreList.Dispose();
-                }
-                if (TreeList.IsCreated)
-                {
-                    TreeList.Dispose();
                 }
             }
         }

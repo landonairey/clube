@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace Clube.Core
 {
     /// <summary>
     /// The tree parts, stamped rocks and ore nodes that reach a heightfield chunk column, gathered once for the whole column
-    /// (GL774) instead of once per chunk. A chunk's own share is picked by <see cref="ScheduleSelect"/>, a Burst job that
-    /// runs ahead of its fill job, so starting a chunk asks no field anything on the main thread; which layers anything
+    /// (GL774) instead of once per chunk. A chunk's own share is picked at the start of its fill job (<see cref="ScheduleFill"/>,
+    /// Burst), so starting a chunk asks no field anything on the main thread; which layers anything
     /// reaches is known at once (<see cref="TreesReach"/>, <see cref="OresReach"/>), for the chunks made without a job and
     /// for proving a column uniform (GL773).
     /// </summary>
@@ -34,6 +35,8 @@ namespace Clube.Core
 
         private NativeArray<Stamp> stamps;
         private NativeArray<Ore> ores;
+        private NativeArray<TreePart> noParts = new NativeArray<TreePart>(0, Allocator.Persistent);
+        private NativeArray<OreNodeData> noNodes = new NativeArray<OreNodeData>(0, Allocator.Persistent);
         private readonly float[] layerBottom = new float[Layers];
         private readonly float[] layerTop = new float[Layers];
         private readonly bool hasOres;
@@ -171,13 +174,13 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Schedules picking the layer's parts and nodes into two new lists (the caller's to dispose, once the job and
-        /// anything reading them are done); read them in later jobs with <c>AsDeferredJobArray</c>.
+        /// Schedules picking the layer's parts and nodes into the two lists, emptied first (nothing else may use them until
+        /// the job and anything reading them are done); read them in later jobs with <c>AsDeferredJobArray</c>.
         /// </summary>
-        public JobHandle ScheduleSelect(int layer, Allocator allocator, out NativeList<TreePart> parts, out NativeList<OreNodeData> nodes)
+        public JobHandle ScheduleSelect(int layer, NativeList<TreePart> parts, NativeList<OreNodeData> nodes)
         {
-            parts = new NativeList<TreePart>(allocator);
-            nodes = new NativeList<OreNodeData>(allocator);
+            parts.Clear();
+            nodes.Clear();
             return new SelectJob
             {
                 Stamps = stamps,
@@ -189,11 +192,64 @@ namespace Clube.Core
             }.Schedule();
         }
 
+        /// <summary>
+        /// Schedules filling the layer's chunk from its column's heights, as <see cref="ChunkGenerator.ScheduleFromColumns"/>
+        /// does, with its share of the parts and nodes picked first in the same job: one job a chunk, nothing to hand back.
+        /// The output stays the caller's.
+        /// </summary>
+        public JobHandle ScheduleFill(
+            int layer, NativeArray<float> heights, NativeArray<float2> heightRange, ChunkSampleGrid grid, ChunkFillSettings settings,
+            ChunkFillOutput output, JobHandle dependsOn)
+        {
+            return new PickAndFillJob
+            {
+                Stamps = stamps,
+                Ores = ores,
+                Bottom = layerBottom[layer],
+                Top = layerTop[layer],
+                Fill = new HeightfieldFillJob
+                {
+                    Heights = heights,
+                    HeightRange = heightRange,
+                    Grid = grid,
+                    Settings = settings,
+                    // Stand-ins until the job puts the chunk's own in: a job refuses unassigned arrays.
+                    Ores = noNodes,
+                    Trees = noParts,
+                    Output = output,
+                },
+            }.Schedule(dependsOn);
+        }
+
         /// <summary>Frees the arrays; every job reading them must be complete.</summary>
         public void Dispose()
         {
             stamps.Dispose();
             ores.Dispose();
+            noParts.Dispose();
+            noNodes.Dispose();
+        }
+
+        // The chunk's share of the column, in the column's order: what passes the chunk's own height test.
+        private static void Select(
+            in NativeArray<Stamp> stamps, in NativeArray<Ore> ores, float bottom, float top, ref NativeList<TreePart> parts, ref NativeList<OreNodeData> nodes)
+        {
+            for (int i = 0; i < stamps.Length; i++)
+            {
+                Stamp stamp = stamps[i];
+                if (stamp.Bottom <= top && stamp.Top >= bottom && stamp.GateBottom <= top && stamp.GateTop >= bottom)
+                {
+                    parts.Add(stamp.Part);
+                }
+            }
+            for (int i = 0; i < ores.Length; i++)
+            {
+                Ore ore = ores[i];
+                if (ore.Bottom <= top && ore.Top >= bottom)
+                {
+                    nodes.Add(ore.Node);
+                }
+            }
         }
 
         // A box with the chunk's footprint, from bottom to top.
@@ -258,7 +314,7 @@ namespace Clube.Core
             public float Bottom, Top;
         }
 
-        // A chunk's share of its column, in the column's order: what passes the chunk's own height test.
+        // A chunk's share of its column, into lists the caller reads.
         [BurstCompile]
         private struct SelectJob : IJob
         {
@@ -270,22 +326,28 @@ namespace Clube.Core
 
             public void Execute()
             {
-                for (int i = 0; i < Stamps.Length; i++)
-                {
-                    Stamp stamp = Stamps[i];
-                    if (stamp.Bottom <= Top && stamp.Top >= Bottom && stamp.GateBottom <= Top && stamp.GateTop >= Bottom)
-                    {
-                        Parts.Add(stamp.Part);
-                    }
-                }
-                for (int i = 0; i < Ores.Length; i++)
-                {
-                    Ore ore = Ores[i];
-                    if (ore.Bottom <= Top && ore.Top >= Bottom)
-                    {
-                        Nodes.Add(ore.Node);
-                    }
-                }
+                Select(Stamps, Ores, Bottom, Top, ref Parts, ref Nodes);
+            }
+        }
+
+        // A chunk's share of its column, then its fill (HeightfieldFillJob) with that share.
+        [BurstCompile]
+        private struct PickAndFillJob : IJob
+        {
+            [ReadOnly] public NativeArray<Stamp> Stamps;
+            [ReadOnly] public NativeArray<Ore> Ores;
+            public float Bottom, Top;
+            public HeightfieldFillJob Fill;
+
+            public void Execute()
+            {
+                var parts = new NativeList<TreePart>(Allocator.Temp);
+                var nodes = new NativeList<OreNodeData>(Allocator.Temp);
+                Select(Stamps, Ores, Bottom, Top, ref parts, ref nodes);
+                HeightfieldFillJob fill = Fill;
+                fill.Trees = parts.AsArray();
+                fill.Ores = nodes.AsArray();
+                fill.Execute();
             }
         }
     }

@@ -1095,7 +1095,7 @@ namespace Clube.Core
             stats.Vertices -= chunkRenderer.LastBuildStats.VertexCount;
             stats.Triangles -= chunkRenderer.LastBuildStats.TriangleCount;
             chunkRenderer.ApplyMesh(result);
-            collidersDirty = true;
+            NoteMeshChanged(coord);
             stats.Vertices += chunkRenderer.LastBuildStats.VertexCount;
             stats.Triangles += chunkRenderer.LastBuildStats.TriangleCount;
             if (settings.DetailDistance > 0 && world.IsEdited(coord))
@@ -1119,9 +1119,19 @@ namespace Clube.Core
                 stats.Triangles -= chunkRenderer.LastBuildStats.TriangleCount;
                 chunkRenderer.ClearMesh();
                 chunkRenderer.Collider?.Clear();
-                collidersDirty = true;
+                NoteMeshChanged(coord);
             }
             ChunkMeshed?.Invoke(coord, chunkRenderer);
+        }
+
+        // GL774: only a mesh within reach of the last look's focus can need a bake before the focus moves (which looks again):
+        // while the far area streams in, meshes land every frame, and each used to set off a look over the columns round the focus.
+        private void NoteMeshChanged(Vector3Int coord)
+        {
+            if (HorizontalDistance(coord, collidersFocus) <= settings.ColliderRadius + 2f * world.Grid.ChunkWorldSize.x)
+            {
+                collidersDirty = true;
+            }
         }
 
         // Cooks colliders for chunks near the focus and drops those well outside, then takes finished bakes.
@@ -1143,7 +1153,11 @@ namespace Clube.Core
                 {
                     AssignShape(coord, chunkRenderer, version);
                 }
-                collidersDirty = true;
+                else
+                {
+                    // A stale bake: the chunk may need another.
+                    collidersDirty = true;
+                }
             }
 
             // Shapes only exist near the focus, so far ones are dropped only when the focus moves to
@@ -1185,10 +1199,12 @@ namespace Clube.Core
             {
                 for (int dx = -reach; dx <= reach; dx++)
                 {
-                    // Only the layers with a renderer: asking every layer of every column was 23,000 lookups a look.
-                    foreach (int layer in renderers.LayersIn(new Vector2Int(centre.x + dx, centre.z + dz)))
+                    // Only the layers with a renderer: asking every layer of every column was 23,000 lookups a look. By
+                    // index: a foreach over the read-only list boxed an enumerator for every column.
+                    IReadOnlyList<int> rendered = renderers.LayersIn(new Vector2Int(centre.x + dx, centre.z + dz));
+                    for (int i = 0; i < rendered.Count; i++)
                     {
-                        var coord = new Vector3Int(centre.x + dx, layer, centre.z + dz);
+                        var coord = new Vector3Int(centre.x + dx, rendered[i], centre.z + dz);
                         if (!renderers.TryGet(coord, out ChunkRenderer chunkRenderer) || chunkRenderer.Collider == null)
                         {
                             continue;

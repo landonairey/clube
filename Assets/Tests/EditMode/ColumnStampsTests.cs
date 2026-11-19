@@ -82,7 +82,9 @@ namespace Clube.Core.Tests
                                     }
                                     covered++;
                                     Assert.That(stamps.OresReach(y), Is.EqualTo(expectedNodes.Length > 0), where);
-                                    stamps.ScheduleSelect(y, Allocator.TempJob, out NativeList<TreePart> parts, out NativeList<OreNodeData> nodes).Complete();
+                                    var parts = new NativeList<TreePart>(Allocator.TempJob);
+                                    var nodes = new NativeList<OreNodeData>(Allocator.TempJob);
+                                    stamps.ScheduleSelect(y, parts, nodes).Complete();
                                     try
                                     {
                                         Assert.That(parts.Length, Is.EqualTo(expectedParts.Length), where + " parts");
