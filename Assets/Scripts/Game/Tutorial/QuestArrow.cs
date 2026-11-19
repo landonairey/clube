@@ -9,8 +9,17 @@ namespace Clube.Game
     /// </summary>
     public class QuestArrow : MonoBehaviour
     {
-        private const float Bob = 0.15f;
         private float height;
+        // Half the bob's travel in metres (in the parent's frame), and its speed in radians a second.
+        private float bob = 0.15f;
+        private float bobSpeed = 3f;
+
+        /// <summary>Sets how far the arrow bobs, top to bottom in metres, and how long one bob up and down takes, in seconds.</summary>
+        public void SetBob(float travel, float cycleSeconds)
+        {
+            bob = travel * 0.5f;
+            bobSpeed = 2f * Mathf.PI / Mathf.Max(0.01f, cycleSeconds);
+        }
 
         /// <summary>Builds an arrow over a figure, <paramref name="height"/> metres up; it starts hidden.</summary>
         public static QuestArrow Build(Transform over, float height, Material material)
@@ -32,7 +41,7 @@ namespace Clube.Game
 
         private void Update()
         {
-            transform.localPosition = Vector3.up * (height + Mathf.Sin(Time.time * 3f) * Bob);
+            transform.localPosition = Vector3.up * (height + Mathf.Sin(Time.time * bobSpeed) * bob);
             transform.Rotate(0f, 90f * Time.deltaTime, 0f, Space.World);
         }
     }

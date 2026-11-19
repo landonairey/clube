@@ -65,6 +65,12 @@ namespace Clube.Game
 
         private System.Func<Vector2, bool> openAt;
 
+        /// <summary>The transparent vertex-colour material the band under the fence is drawn with (also the GL783 hologram's).</summary>
+        public Material BandMaterial => material;
+
+        /// <summary>How far the fence's top rail stands over the ground, in metres.</summary>
+        public float FenceHeight => height;
+
         /// <summary>
         /// Says where the fence is left open (x, z in the world's local metres): where a road crosses a border, so no
         /// post or rail stands in it (GL613). Null for a fence all the way round. The fence is built again.
