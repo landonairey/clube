@@ -14,7 +14,7 @@ namespace Clube.Game
     /// Sort tidies the backpack (GL174, <see cref="Inventory.Sort"/>).
     /// </summary>
     [RequireComponent(typeof(PlayerInventory))]
-    public class InventoryScreen : MonoBehaviour
+    public class InventoryScreen : MonoBehaviour, IGuiDrawer
     {
         private const float Padding = 12f;
 
@@ -56,12 +56,14 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             toggleAction?.action.Enable();
             interactAction?.action.Enable();
         }
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             if (IsOpen)
             {
                 SetOpen(false);
@@ -135,7 +137,9 @@ namespace Clube.Game
             }
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (!IsOpen)

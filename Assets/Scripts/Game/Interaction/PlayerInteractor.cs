@@ -11,7 +11,7 @@ namespace Clube.Game
     /// alone (<see cref="PlayerToolUser"/>).
     /// </summary>
     [RequireComponent(typeof(PlayerController))]
-    public class PlayerInteractor : MonoBehaviour
+    public class PlayerInteractor : MonoBehaviour, IGuiDrawer
     {
         [Tooltip("Uses what's targeted (E).")]
         [SerializeField]
@@ -50,11 +50,13 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             interactAction?.action.Enable();
         }
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             Target = null;
         }
 
@@ -119,7 +121,9 @@ namespace Clube.Game
             return target is INoticeOnly || (target is IClosableInteractable closable && !closable.IsAvailable);
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (Target == null || !player.enabled || player.IsCursorFree)

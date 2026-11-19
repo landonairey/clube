@@ -13,7 +13,7 @@ namespace Clube.Game
     /// the Mining level that tells it apart (GL77, GL91). A short notice says when a new entry is written.
     /// </summary>
     [RequireComponent(typeof(PlayerJournal))]
-    public class JournalScreen : MonoBehaviour
+    public class JournalScreen : MonoBehaviour, IGuiDrawer
     {
         private const int OresPerPage = 3;
         private const float NoticeSeconds = 4f;
@@ -32,11 +32,13 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             journal.Journal.Discovered += OnDiscovered;
         }
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             journal.Journal.Discovered -= OnDiscovered;
         }
 
@@ -46,7 +48,9 @@ namespace Clube.Game
             noticeUntil = Time.time + NoticeSeconds;
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             bool logOpen = fieldLog != null && fieldLog.IsOpen;

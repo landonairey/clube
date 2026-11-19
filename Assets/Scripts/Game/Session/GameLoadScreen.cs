@@ -10,7 +10,7 @@ namespace Clube.Game
     /// tutorial doesn't sit frozen; the scene's <see cref="LoadCurtain"/> takes over once it is in. GL762: the bounded map's
     /// water, which would otherwise stall the scene's first frame for seconds, is worked out here first, a slice a frame.
     /// </summary>
-    public class GameLoadScreen : MonoBehaviour
+    public class GameLoadScreen : MonoBehaviour, IGuiDrawer
     {
         // Milliseconds of each frame for working out the water: nothing else is going on.
         private const float PrepareMilliseconds = 50f;
@@ -68,9 +68,20 @@ namespace Clube.Game
             preparing?.Dispose();
         }
 
-        private void OnGUI()
+        private void OnEnable()
         {
-            GUI.depth = -300;
+            GuiHost.Add(this);
+        }
+
+        private void OnDisable()
+        {
+            GuiHost.Remove(this);
+        }
+
+        int IGuiDrawer.GuiDepth => -300;
+
+        void IGuiDrawer.DrawGui()
+        {
             Color was = GUI.color;
             GUI.color = Color.black;
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);

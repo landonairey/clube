@@ -14,7 +14,7 @@ namespace Clube.Game
     /// The wheel zooms on the pointer and a drag pans. The lab layer adds a resource of the survey and, under the
     /// pointer, why a site and its shops were picked (ST7). In a scene with no map session the key does nothing.
     /// </summary>
-    public class WorldMapScreen : MonoBehaviour
+    public class WorldMapScreen : MonoBehaviour, IGuiDrawer
     {
         private const float MaxZoom = 12f;
 
@@ -83,11 +83,13 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             toggleAction?.action.Enable();
         }
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             Close();
         }
 
@@ -283,7 +285,9 @@ namespace Clube.Game
             centre.y = Mathf.Clamp(centre.y, half, 1f - half);
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => GameUi.MapScreenDepth;
+
+        void IGuiDrawer.DrawGui()
         {
             MapSession session = MapSession.Current;
             if (!IsOpen || session == null || !session.IsReady)
@@ -293,7 +297,6 @@ namespace Clube.Game
             EnsurePicture(session);
             GameUi.Apply();
             EnsureStyles();
-            GUI.depth = GameUi.MapScreenDepth;
             Rect area = session.Layout.Bounds;
 
             float side = Mathf.Min(Screen.height * 0.9f, Screen.width * 0.9f);

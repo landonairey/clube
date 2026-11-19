@@ -9,7 +9,7 @@ namespace Clube.Game
     /// there for <see cref="HorseHire.Fare"/> coins (greyed while the purse is short). Frees the cursor while open; E,
     /// Escape, Close or walking away shuts it. Added to the player at runtime by the first stand used.
     /// </summary>
-    public class HorseHirePanel : MonoBehaviour
+    public class HorseHirePanel : MonoBehaviour, IGuiDrawer
     {
         private const float Padding = 12f;
         private const float Row = 34f;
@@ -32,6 +32,7 @@ namespace Clube.Game
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             Close();
         }
 
@@ -83,7 +84,14 @@ namespace Clube.Game
             return (new Vector2(local.x, local.z) - post).sqrMagnitude <= CloseDistance * CloseDistance;
         }
 
-        private void OnGUI()
+        private void OnEnable()
+        {
+            GuiHost.Add(this);
+        }
+
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (hire == null)

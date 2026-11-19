@@ -18,7 +18,7 @@ namespace Clube.Game
     /// ground (<see cref="PlayerDigTool"/>).
     /// </summary>
     [RequireComponent(typeof(PlayerController))]
-    public class BoulderBashing : MonoBehaviour
+    public class BoulderBashing : MonoBehaviour, IGuiDrawer
     {
         /// <summary>Raw ore and what crushing one item of it gives.</summary>
         [Serializable]
@@ -143,6 +143,7 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             placeAction?.action.Enable();
         }
 
@@ -295,7 +296,14 @@ namespace Clube.Game
             return !HoldsSomethingToBash(out _, out _) && Refining.CanRefine(stack, worldView.Config.Materials);
         }
 
-        private void OnGUI()
+        private void OnDisable()
+        {
+            GuiHost.Remove(this);
+        }
+
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (!refining || inventory == null || hotbar == null || hotbar.SelectedSlot < 0)

@@ -14,7 +14,7 @@ namespace Clube.Game
     /// (the labs' P for the fly camera). Help (F1) hides and shows it.
     /// </summary>
     [RequireComponent(typeof(PlayerController))]
-    public class KeybindSheet : MonoBehaviour
+    public class KeybindSheet : MonoBehaviour, IGuiDrawer
     {
         private const string BindingGroup = "Keyboard&Mouse";
 
@@ -124,6 +124,7 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             helpAction?.action.Enable();
         }
 
@@ -161,7 +162,14 @@ namespace Clube.Game
             }
         }
 
-        private void OnGUI()
+        private void OnDisable()
+        {
+            GuiHost.Remove(this);
+        }
+
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (!player.enabled || player.IsCursorFree)

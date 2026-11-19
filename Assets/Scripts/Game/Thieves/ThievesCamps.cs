@@ -40,7 +40,7 @@ namespace Clube.Game
     /// pouch by the first hut once the camp stands, holding everything the band has taken), the carts and shops a thief
     /// can reach, the player's bag and purse, and the line on screen that says what was taken. Nothing here is saved.
     /// </summary>
-    public class ThievesCamps : MonoBehaviour
+    public class ThievesCamps : MonoBehaviour, IGuiDrawer
     {
         [SerializeField]
         private MapSession session;
@@ -428,7 +428,19 @@ namespace Clube.Game
             camp.Pouch.Hold(camp.Hoard, material, goesWhenEmpty: false);
         }
 
-        private void OnGUI()
+        private void OnEnable()
+        {
+            GuiHost.Add(this);
+        }
+
+        private void OnDisable()
+        {
+            GuiHost.Remove(this);
+        }
+
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             if (string.IsNullOrEmpty(notice) || Time.unscaledTime > noticeUntil)
             {

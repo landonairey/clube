@@ -13,7 +13,7 @@ namespace Clube.Game
     /// journal last shown.
     /// </summary>
     [RequireComponent(typeof(PlayerJournal))]
-    public class FieldLogScreen : MonoBehaviour
+    public class FieldLogScreen : MonoBehaviour, IGuiDrawer
     {
         /// <summary>The journals in the log, in tab order.</summary>
         public enum Page
@@ -86,12 +86,14 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             toggleAction?.action.Enable();
             toolsAction?.action.Enable();
         }
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             Close();
         }
 
@@ -179,7 +181,9 @@ namespace Clube.Game
             }
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (!IsOpen)

@@ -8,7 +8,7 @@ namespace Clube.Game
     /// than <see cref="delay"/> seconds (falling out of the world, being dug out of a hillside) shows nothing.
     /// </summary>
     [RequireComponent(typeof(PlayerSpawn))]
-    public class LoadCurtain : MonoBehaviour
+    public class LoadCurtain : MonoBehaviour, IGuiDrawer
     {
         [Tooltip("Seconds a wait must last before the curtain is drawn; the first wait of the scene is covered at once.")]
         [SerializeField, Min(0f)]
@@ -47,10 +47,18 @@ namespace Clube.Game
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             IsUp = false;
         }
 
-        private void OnGUI()
+        private void OnEnable()
+        {
+            GuiHost.Add(this);
+        }
+
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             if (!IsUp || Event.current.type != EventType.Repaint)
             {

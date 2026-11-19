@@ -9,7 +9,7 @@ namespace Clube.Game
     /// (<see cref="RestBlur"/>), the popup counts the hours, one each second, and the game clock runs with them, so the sun,
     /// the clouds and the weather move on; then the popup closes and the view clears. Opened by <see cref="SleepingRoll"/>.
     /// </summary>
-    public class RestScreen : MonoBehaviour
+    public class RestScreen : MonoBehaviour, IGuiDrawer
     {
         private const float Width = 380f;
         private const float Height = 210f;
@@ -114,11 +114,13 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             closeAction?.action.Enable();
         }
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             Close();
             Blur(0f);
         }
@@ -167,7 +169,9 @@ namespace Clube.Game
             }
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (!IsOpen)

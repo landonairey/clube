@@ -13,7 +13,7 @@ namespace Clube.Game
     /// it trails a little. Hidden while a
     /// placeable is held or a screen is open. At dawn a note says tools are quicker (the early bird's bonus).
     /// </summary>
-    public class HeldToolView : MonoBehaviour
+    public class HeldToolView : MonoBehaviour, IGuiDrawer
     {
         // A swing's keyframes: time 0-1, then the offset from rest (position, metres in the camera's frame) and the turn
         // (degrees, x then y then z) at that time.
@@ -141,6 +141,7 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             if (toolUser != null)
             {
                 toolUser.Struck += OnStruck;
@@ -157,6 +158,7 @@ namespace Clube.Game
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             if (toolUser != null)
             {
                 toolUser.Struck -= OnStruck;
@@ -382,7 +384,9 @@ namespace Clube.Game
             return worldView != null ? worldView.Config.Materials : null;
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (toolUser == null || player == null || !player.enabled || player.IsInMenu || !toolUser.EarlyBird)

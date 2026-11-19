@@ -11,7 +11,7 @@ namespace Clube.Game
     /// Flat Rock material, which <see cref="StumpWorktops"/> opens as a station.
     /// </summary>
     [RequireComponent(typeof(PlayerToolUser))]
-    public class FlatRockCarver : MonoBehaviour
+    public class FlatRockCarver : MonoBehaviour, IGuiDrawer
     {
         // How far around a hit, in samples, a top is looked for.
         private const int Margin = 4;
@@ -42,11 +42,13 @@ namespace Clube.Game
 
         private void OnEnable()
         {
+            GuiHost.Add(this);
             tools.Chiselled += OnChiselled;
         }
 
         private void OnDisable()
         {
+            GuiHost.Remove(this);
             tools.Chiselled -= OnChiselled;
         }
 
@@ -82,7 +84,9 @@ namespace Clube.Game
             return false;
         }
 
-        private void OnGUI()
+        int IGuiDrawer.GuiDepth => 0;
+
+        void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
             if (notice == null || Time.time >= noticeUntil)

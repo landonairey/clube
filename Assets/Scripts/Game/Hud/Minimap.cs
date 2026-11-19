@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.Rendering.Universal;
 
 namespace Clube.Game
@@ -37,6 +38,9 @@ namespace Clube.Game
         private Camera mapCamera;
         private RenderTexture texture;
         private Texture2D arrow;
+        private RectTransform frame;
+        private RawImage arrowImage;
+        private Image markerEdge, markerFill;
         private float nextDraw;
         private bool drawnThisFrame;
 
@@ -82,6 +86,10 @@ namespace Clube.Game
 
         private void OnDestroy()
         {
+            if (frame != null)
+            {
+                Destroy(frame.gameObject);
+            }
             if (mapCamera != null)
             {
                 Destroy(mapCamera.gameObject);
@@ -99,6 +107,7 @@ namespace Clube.Game
 
         private void LateUpdate()
         {
+            Refresh();
             if (mapCamera == null)
             {
                 return;
@@ -120,36 +129,53 @@ namespace Clube.Game
             drawnThisFrame = true;
         }
 
-        private void OnGUI()
+        // The map on the HUD canvas (GL777): built once, then only moved: the arrow turns and the quest marker slides.
+        private void Refresh()
         {
-            GameUi.Apply();
-            if (texture == null || player == null || !player.enabled || Event.current.type != EventType.Repaint)
+            bool visible = texture != null && player != null && player.enabled;
+            if (frame == null)
+            {
+                BuildView();
+            }
+            HudCanvas.SetShown(frame.gameObject, visible);
+            if (!visible)
             {
                 return;
             }
-            var frame = new Rect(Margin, Margin, size, size);
-            Color previous = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, 0.7f);
-            GUI.DrawTexture(new Rect(frame.x - 3f, frame.y - 3f, frame.width + 6f, frame.height + 6f), Texture2D.whiteTexture);
-            GUI.color = previous;
-            GUI.DrawTexture(frame, texture, ScaleMode.StretchToFill, false);
+            arrowImage.rectTransform.localRotation = Quaternion.Euler(0f, 0f, -transform.eulerAngles.y);
+            ShowMarker();
+            HudLayout.ReportMinimap(Margin + size + 3f);
+        }
 
+        private void BuildView()
+        {
+            // The dark border is the frame's own image; the map and the rest sit 3 pixels in.
+            frame = HudCanvas.Fill(HudCanvas.Root, "Minimap", new Color(0f, 0f, 0f, 0.7f)).rectTransform;
+            HudCanvas.Place(frame, Margin - 3f, Margin - 3f, size + 6f, size + 6f);
+            RawImage map = HudCanvas.Picture(frame, "Map");
+            map.texture = texture;
+            HudCanvas.Place(map.rectTransform, 3f, 3f, size, size);
             // The player: an arrow at the middle, turned to where they face.
             arrow ??= PaintArrow();
-            float yaw = transform.eulerAngles.y;
-            Matrix4x4 matrix = GUI.matrix;
-            GUIUtility.RotateAroundPivot(yaw, frame.center);
-            GUI.DrawTexture(new Rect(frame.center.x - 9f, frame.center.y - 11f, 18f, 22f), arrow);
-            GUI.matrix = matrix;
-            GUI.Label(new Rect(frame.center.x - 10f, frame.y + 2f, 20f, 22f), "N");
-            DrawMarker(frame);
-            HudLayout.ReportMinimap(frame.yMax + 3f);
+            arrowImage = HudCanvas.Picture(frame, "Arrow");
+            arrowImage.texture = arrow;
+            arrowImage.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            arrowImage.rectTransform.anchoredPosition = new Vector2(3f + size * 0.5f, -(3f + size * 0.5f));
+            arrowImage.rectTransform.sizeDelta = new Vector2(18f, 22f);
+            Text north = HudCanvas.Label(frame, "North", GameUi.Font(13), FontStyle.Normal, TextAnchor.UpperLeft, new Color(0.9f, 0.9f, 0.9f));
+            HudCanvas.Place(north.rectTransform, 3f + size * 0.5f - 10f, 3f + 2f, 20f, 22f);
+            markerEdge = HudCanvas.Fill(frame, "MarkerEdge", new Color(0.1f, 0.1f, 0.1f));
+            markerFill = HudCanvas.Fill(markerEdge.transform, "Marker", new Color(1f, 0.85f, 0.15f));
+            HudCanvas.Place(markerFill.rectTransform, 2f, 2f, 10f, 10f);
+            markerEdge.rectTransform.sizeDelta = new Vector2(14f, 14f);
         }
 
         // The quest marker: a yellow square where it is, held at the map's edge when it's further than the map shows.
-        private void DrawMarker(Rect frame)
+        private void ShowMarker()
         {
-            if (Marker == null || !Marker.gameObject.activeInHierarchy)
+            bool on = Marker != null && Marker.gameObject.activeInHierarchy;
+            HudCanvas.SetShown(markerEdge.gameObject, on);
+            if (!on)
             {
                 return;
             }
@@ -162,13 +188,8 @@ namespace Clube.Game
             {
                 onMap *= limit / far;
             }
-            Vector2 at = frame.center + onMap;
-            Color previous = GUI.color;
-            GUI.color = new Color(0.1f, 0.1f, 0.1f);
-            GUI.DrawTexture(new Rect(at.x - 7f, at.y - 7f, 14f, 14f), Texture2D.whiteTexture);
-            GUI.color = new Color(1f, 0.85f, 0.15f);
-            GUI.DrawTexture(new Rect(at.x - 5f, at.y - 5f, 10f, 10f), Texture2D.whiteTexture);
-            GUI.color = previous;
+            Vector2 at = new Vector2(3f + size * 0.5f + onMap.x, 3f + size * 0.5f + onMap.y);
+            HudCanvas.Place(markerEdge.rectTransform, at.x - 7f, at.y - 7f, 14f, 14f);
         }
 
         // A white arrow with a dark edge, pointing up.
