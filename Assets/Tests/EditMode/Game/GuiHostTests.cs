@@ -39,8 +39,8 @@ namespace Clube.Game.Tests
         public void RepaintDrawsBackToFront()
         {
             var log = new List<string>();
-            var front = new Recorder("front", 0, log);
-            var back = new Recorder("back", -100, log);
+            var front = new Recorder("front", -100, log);
+            var back = new Recorder("back", 0, log);
             GuiHost.Add(front);
             GuiHost.Add(back);
             try
@@ -59,8 +59,8 @@ namespace Clube.Game.Tests
         public void InputGoesToTheFrontFirst()
         {
             var log = new List<string>();
-            var front = new Recorder("front", 0, log);
-            var back = new Recorder("back", -100, log);
+            var front = new Recorder("front", -100, log);
+            var back = new Recorder("back", 0, log);
             GuiHost.Add(back);
             GuiHost.Add(front);
             try
