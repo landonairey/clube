@@ -80,7 +80,8 @@ Core/
                  TreeCover (how thick the grown trees stand round a place)
   Meshing/       MarchingCubes + tables, ChunkMeshSettings, variants (A6)
     Managed/     ChunkMesher and its strategies, the managed material pass: labs, step-through (A11)
-    Jobs/        ChunkMeshJob: the Burst mesh build the world runs; CarvedVoxels: walls round chiselled voxels (GL92)
+    Jobs/        ChunkMeshJob: the Burst mesh build the world runs; CarvedVoxels: walls round chiselled voxels (GL92);
+                 MeshMerge + MeshMergeJob: many meshes copied into one (chunk regions, GL776)
     Far/         FarTerrainGrid (one clipmap level), FarTerrainMeshJob (its mesh): the far terrain (P7a)
     Water/       WaterMeshJob: marching cubes over a chunk's water samples in Burst (GL775); WaterMeshInput copies the chunk and
                  the 26 round it in blocks; WaterMesher is the managed reference it's tested against (GL315)
@@ -112,7 +113,8 @@ Core/
   Audio/         SoundSynth (sound effects made in code, GL271)
   Streaming/     ChunkPipeline (jobs), WorldStreamer (policy), StreamingArea, FarTerrainBuilder (far terrain levels),
                  TerrainLodRing + TerrainLodBuilder (coarse terrain levels, P7c), DistantTreeBuilder (GL162)
-  Rendering/     WorldView, ChunkView, ChunkRenderer(+Pool), ChunkCollider, ChunkMeshBuilder, GrassScatter (GL67),
+  Rendering/     WorldView, ChunkView, ChunkRenderer(+Pool), MeshRegionSet (chunks drawn by region, GL776), ChunkCollider,
+                 ChunkMeshBuilder, GrassScatter (GL67),
                  FarTerrainView + ChunkCoverageMask (P7a), TerrainLodView (P7c), DistantTreeView + DistantTreeMeshes (GL162)
                  BushScatter + BushMeshes (GL236; reed clumps on the same grid, ReedMeshes, GL723), GrassyGround (flora spots on the built meshes, one material or several; the managed reference) and InstanceBatches
                  (the grass draws its batches from one GPU buffer each, GL416),
@@ -501,7 +503,7 @@ flowchart TB
     WV --> W
     WS["WorldStreamer — policy<br/>what to load, mesh, bake; budgets"] --> CP
     WS --> W["World — data"]
-    WS --> RP["ChunkRendererPool — GameObjects"]
+    WS --> RP["ChunkRendererPool — chunk objects, region renderers"]
     CP["ChunkPipeline — mechanism<br/>generation, mesh and bake jobs"] -. jobs .-> Workers((worker threads))
 ```
 
@@ -523,7 +525,7 @@ there, so walls show the underground while the chunk's data stays as generated.
    loaded layers of each column (`LoadedColumns`), and the load cursor passes a full column in one step.
    At render distance 64 that is 13,000 columns against 514,000 chunks, every crossing.
 3. **Apply meshes** (up to half the frame budget): hand finished mesh data to
-   renderers; a chunk's first surface takes a renderer from the pool.
+   chunk objects; a chunk's first surface takes one from the pool (drawn through its region, GL776).
 4. **Add chunks** (rest of the budget): copy finished generation results into
    new chunks and add them to the world.
 5. **Start generation**, nearest first, up to the in-flight limit (two jobs per
@@ -565,7 +567,38 @@ it) — look there first when a frame runs long.
 `WorldView.LateUpdate` → `WorldStreamer.RebuildEdited`: every chunk edited this
 frame is meshed **now** (its job scheduled and waited for: a fraction of a millisecond) and, near the
 focus, its collider cooked now, so digging shows and can be walked on in the
-same frame.
+same frame. Then the changed regions are merged (below).
+
+### Drawing by region (GL776)
+
+A chunk has a `ChunkRenderer` object (its mesh, its collider, what the lab tools and the flora read) but **no renderer**:
+the pool draws each block of 4 x 4 x 4 chunks (16 m, `ChunkRendererPool.DefaultRegionSpan`) as one merged mesh with one
+`MeshRenderer` (`MeshRegionSet`), so each pass costs a draw call per region instead of per chunk, and the engine culls a
+few hundred renderers instead of 30,000. The region renderer is a plain `MeshRenderer` with the chunk materials, so the
+shader passes (forward, shadows, depth prepass, DepthNormals for SSAO) are the same as before.
+
+- **Merging**: `MeshMerge` (Meshing) queues the regions to merge and copies them in Burst jobs (`MeshMergeJob`, one per
+  region, run together and waited for): each chunk's vertices one after another, moved by its offset in the region, and
+  its indices raised; 32-bit indices only past 65,535 vertices. It reads the chunk meshes through
+  `Mesh.AcquireReadOnlyMeshData`; every source must share one vertex layout (a region halfway through a change of
+  material display waits until it does).
+- **When**: a chunk's new mesh, cleared mesh, unload or `SurfaceHidden` marks its region changed; the old merged mesh
+  keeps drawing until the new one is made. `WorldStreamer.RebuildEdited` ends with `BuildRegions`: regions within 24 m of
+  the focus always (edits show the same frame), then the nearest drawn ones and those within two regions past the detail
+  distance (ready when the player walks up) to 300,000 vertices a frame (3 million while the drawn area loads). Regions
+  past that wait, undrawn and unmerged.
+- **The detail distance switches whole regions** (P18): a region whose nearest column is within the draw radius is drawn
+  whole (`RegionDraw.Whole`), so the edge with the coarse terrain is a 16 m staircase and the coverage mask follows it
+  exactly (`IsColumnDrawn` answers per region there). Past it a region is drawn **partly**, merged from its edited columns
+  only, as before GL776 an edited column drew at any distance (roads and settlements are edits: drawing their whole
+  regions far away cost the GPU 2.7 → 17 ms); a region without edits isn't drawn. Which regions hold edits is cached
+  (`World.ColumnEdited` keeps it current). A move of the focus column re-checks every region (a few thousand); only a
+  region changing between whole and partly is merged again, at once, whatever the budget.
+- **Overlays** (the build grid) are on regions whose nearest column is within the overlay radius.
+- **The coarse terrain** draws each level's chunks through its own `MeshRegionSet` (4 x 4 x 4 coarse chunks), merged in
+  the frame a level swaps its square; a coarse region is switched off only when none of its chunks draws anything.
+- **Cost**: the chunk meshes stay uploaded as well as the merged ones (about twice the chunk vertex memory on the GPU),
+  and a region near the player is re-copied whole (up to ~60,000 vertices) for each edit.
 
 ### Threading rules
 
@@ -745,14 +778,14 @@ flowchart LR
 
 The world loads chunks out to the render distance (for edits, colliders and the player), but draws
 them only within the **detail distance** (`WorldView.DetailDistance`, 24 chunks = 96 m in the labs,
-a player setting): past it each chunk keeps its renderer, switched off (`forceRenderingOff`), and the
+a player setting): past it each chunk stays loaded but its region isn't drawn (GL776: whole 16 m regions switch), and the
 coarse terrain and the distant trees draw the ground and the trees there. At render distance 64 over
 a 400 m area that is 5,600 of 35,000 chunk renderers, and about a sixth of the 57 million vertices.
 
 - **Who decides**: `WorldStreamer.IsColumnDrawn` (within the detail distance of the focus column,
-  or holding an edited chunk: `World.HasEditsIn`, so a dug pit still shows from far away). The
-  renderer pool applies it to every renderer it shows (`ChunkRendererPool.SetDrawRule`); when the
-  focus column moves only the columns that cross the edge are switched (`UpdateDrawCentre`). The
+  or holding an edited chunk: `World.HasEditsIn`, so a dug pit still shows from far away; GL776: whole regions within it, edited columns past it). The
+  renderer pool applies it to every region (`ChunkRendererPool.SetDrawRule`); when the
+  focus column moves every region is checked again (`UpdateDrawCentre`). The
   radius shrinks with the focus's height over the world's top (`DrawRadius`, GL323): within the detail
   distance in three dimensions, so from far above no chunk draws and the coarse terrain stands in.
 - **The coverage mask follows it**: a column counts as covered only while drawn, and the mask refills
@@ -1132,7 +1165,7 @@ The Windows player is IL2CPP (GL772). `clube.exe -playthrough` plays a build fro
     draw them procedurally as the grass does (`InstanceBatches.DrawFromBuffer`), culling whole tiles.
     *Measure:* `clube.exe -roambench` (`roambench.txt`, "distant trees"). *Done when:* under 0.3 ms.
 
-17. **Fewer chunk renderers.** Walking the demo draws 3,000-4,500 draw calls from about 4,000 renderers (1,500 world
+17. **Fewer chunk renderers.** *(World chunks and coarse terrain drawn by region since GL776; water and flames still a renderer each.)* Walking the demo draws 3,000-4,500 draw calls from about 4,000 renderers (1,500 world
     chunks, 300 per coarse level, water, flames); rendering takes 2.7-3.7 ms of main thread and scripts' LateUpdate
     4.5-5.8 ms (GL560). Merge neighbouring chunks' meshes into one renderer (or draw them through the GPU Resident
     Drawer, which needs the chunk shaders to support DOTS instancing). Also find the 1-1.4 s hitch about 650 m into
