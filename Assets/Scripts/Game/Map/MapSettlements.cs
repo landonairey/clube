@@ -28,6 +28,13 @@ namespace Clube.Game
         private static readonly ProfilerMarker WriterMarker = new ProfilerMarker("MapSettlements.MakeWriter");
 
         private readonly FrameAllowance allowance = new FrameAllowance();
+        // The piece being written over several frames (GL771): one at a time, as what stands on it waits for it.
+        private const float LeastWriteMilliseconds = 0.5f;
+        private SlicedWork writing;
+        private SettlementWriter writingSettlement;
+        private int writingPiece;
+        private int writingKind;
+        private float writingMilliseconds;
         // Metres from the viewer within which a piece is written whatever the allowance says (GL770).
         private const float CloseMetres = 64f;
         // Metres from the viewer within which a piece's missing chunks are fetched ahead of the rest (GL770).
@@ -274,7 +281,7 @@ namespace Clube.Game
             bool inSight = session.WorldView.IsLoadingInSight;
             // A piece close by holds the ground the player is about to walk on: it doesn't wait its turn.
             bool close = pending.Count > 0 && pending[0].Distance < CloseMetres;
-            if (inSight || mayWrite || close)
+            if (inSight || mayWrite || close || writing != null)
             {
                 using (WriteMarker.Auto())
                 {
@@ -304,6 +311,8 @@ namespace Clube.Game
             {
                 reach[i] = ReachOf(session.Plan.Settlements[i]);
             }
+            writing?.Dispose();
+            writing = null;
             hold.Clear();
             pending.Clear();
             heights = new KeptHeights(session.Map.Height);
@@ -562,9 +571,35 @@ namespace Clube.Game
             fitDue = true;
         }
 
+        // Runs the piece in hand for this long (at least one step); true once no piece is left in hand.
+        private bool RunWriting(float milliseconds)
+        {
+            float before = Time.realtimeSinceStartup;
+            bool done;
+            using (FrameCost.Of("Settlements: write piece"))
+            {
+                done = writing.Run(milliseconds);
+            }
+            writingMilliseconds += (Time.realtimeSinceStartup - before) * 1000f;
+            if (!done)
+            {
+                return false;
+            }
+            writing.Dispose();
+            writing = null;
+            hold.Remove(session.WorldView.World.Grid, HoldOf(writingSettlement, writingPiece));
+            PiecesWritten++;
+            LongestMilliseconds = Mathf.Max(LongestMilliseconds, writingMilliseconds);
+            TotalMilliseconds += writingMilliseconds;
+            kindCount[writingKind]++;
+            kindMilliseconds[writingKind] += writingMilliseconds;
+            kindLongest[writingKind] = Mathf.Max(kindLongest[writingKind], writingMilliseconds);
+            return true;
+        }
+
         private void Write()
         {
-            if (near.Count == 0)
+            if (near.Count == 0 && writing == null)
             {
                 return;
             }
@@ -581,10 +616,20 @@ namespace Clube.Game
             };
             // While the area loads in bulk the ground is waiting to be shown: more of the frame goes to writing it.
             float budget = view.IsLoadingInSight ? Mathf.Max(writeBudgetMilliseconds, view.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds) : writeBudgetMilliseconds;
+            budget = view.IsLoadingInSight ? budget : Mathf.Max(LeastWriteMilliseconds, FrameBudget.Limit(budget));
             float started = Time.realtimeSinceStartup;
             bool wrote = false;
+            // GL771: a large piece is written over several frames, and the next waits for it.
+            if (writing != null)
+            {
+                if (!RunWriting(budget))
+                {
+                    return;
+                }
+                wrote = true;
+            }
             int checks = 0;
-            for (int i = 0; i < pending.Count && checks < ChecksPerFrame; i++)
+            for (int i = 0; i < pending.Count && checks < ChecksPerFrame && (Time.realtimeSinceStartup - started) * 1000f < budget; i++)
             {
                 (int Settlement, int Piece, float Distance) next = pending[i];
                 SettlementWriter writer = built[next.Settlement].Writer;
@@ -603,26 +648,17 @@ namespace Clube.Game
                     }
                     continue;
                 }
-                float before = Time.realtimeSinceStartup;
-                int kind = writer.KindOf(next.Piece);
-                using (FrameCost.Of("Settlements: write piece"))
-                {
-                    writer.Write(world, registry, materials, heights.At, config.IsoLevel, next.Piece);
-                }
-                hold.Remove(world.Grid, HoldOf(writer, next.Piece));
+                writing = new SlicedWork(writer.WriteSteps(world, registry, materials, heights.At, config.IsoLevel, next.Piece));
+                writingSettlement = writer;
+                writingPiece = next.Piece;
+                writingKind = writer.KindOf(next.Piece);
+                writingMilliseconds = 0f;
                 pending.RemoveAt(i--);
-                wrote = true;
-                PiecesWritten++;
-                float took = (Time.realtimeSinceStartup - before) * 1000f;
-                LongestMilliseconds = Mathf.Max(LongestMilliseconds, took);
-                TotalMilliseconds += took;
-                kindCount[kind]++;
-                kindMilliseconds[kind] += took;
-                kindLongest[kind] = Mathf.Max(kindLongest[kind], took);
-                if ((Time.realtimeSinceStartup - started) * 1000f >= budget)
+                if (!RunWriting(budget - (Time.realtimeSinceStartup - started) * 1000f))
                 {
                     break;
                 }
+                wrote = true;
             }
             if (wrote)
             {

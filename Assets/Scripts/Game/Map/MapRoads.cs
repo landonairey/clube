@@ -24,6 +24,12 @@ namespace Clube.Game
         private const float IdleLookSeconds = 0.2f;
         private float nextLookTime;
         private readonly FrameAllowance allowance = new FrameAllowance();
+        // The piece being written over several frames (GL771): one at a time, as each cuts down the trees in its way first.
+        private const float LeastWriteMilliseconds = 0.5f;
+        private SlicedWork writing;
+        private RoadWriter writingRoad;
+        private int writingPiece;
+        private float writingMilliseconds;
         // Metres from the viewer within which a piece is written whatever the allowance says (GL770).
         private const float CloseMetres = 64f;
         // Metres from the viewer within which a piece's missing chunks are fetched ahead of the rest (GL770).
@@ -309,7 +315,7 @@ namespace Clube.Game
             bool inSight = session.WorldView.IsLoadingInSight;
             // A piece close by holds the ground the player is about to walk on: it doesn't wait its turn.
             bool close = pending.Count > 0 && pending[0].Distance < CloseMetres * CloseMetres;
-            if (inSight || mayWrite || close)
+            if (inSight || mayWrite || close || writing != null)
             {
                 using (WriteMarker.Auto())
                 {
@@ -346,6 +352,8 @@ namespace Clube.Game
                 }
                 bounds[i] = Rect.MinMaxRect(min.x, min.y, max.x, max.y);
             }
+            writing?.Dispose();
+            writing = null;
             pending.Clear();
             hold.Clear();
             heights = new KeptHeights(session.Map.Height);
@@ -499,24 +507,59 @@ namespace Clube.Game
             BuildSignposts(viewer, world);
         }
 
+        // Runs the piece in hand for this long (at least one step); true once no piece is left in hand.
+        private bool RunWriting(float milliseconds)
+        {
+            if (writing == null)
+            {
+                return true;
+            }
+            float before = Time.realtimeSinceStartup;
+            bool done;
+            using (FrameCost.Of("Roads: write piece"))
+            {
+                done = writing.Run(milliseconds);
+            }
+            writingMilliseconds += (Time.realtimeSinceStartup - before) * 1000f;
+            if (!done)
+            {
+                return false;
+            }
+            writing.Dispose();
+            writing = null;
+            hold.Remove(session.WorldView.World.Grid, HoldOf(writingRoad, writingPiece));
+            PiecesWritten++;
+            nextLookTime = 0f;
+            LongestMilliseconds = Mathf.Max(LongestMilliseconds, writingMilliseconds);
+            TotalMilliseconds += writingMilliseconds;
+            return true;
+        }
+
         private void Write()
         {
+            WorldConfig config = session.WorldView.Config;
+            World world = session.WorldView.World;
+            // While the area loads in bulk the ground is waiting to be shown: more of the frame goes to writing it.
+            bool inSight = session.WorldView.IsLoadingInSight;
+            float writeBudgetMilliseconds = inSight
+                ? Mathf.Max(this.writeBudgetMilliseconds, session.WorldView.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds)
+                : Mathf.Max(LeastWriteMilliseconds, FrameBudget.Limit(this.writeBudgetMilliseconds));
+            float started = Time.realtimeSinceStartup;
+            // GL771: a piece through a wood is written over several frames, and the next waits for it.
+            if (!RunWriting(writeBudgetMilliseconds) || (Time.realtimeSinceStartup - started) * 1000f >= writeBudgetMilliseconds)
+            {
+                return;
+            }
             if (pending.Count == 0 && boring.Count == 0)
             {
                 return;
             }
             // GL759: nothing was ready at the last look, and chunks take a while to load: no need to ask again every frame.
-            if (!session.WorldView.IsLoadingInSight && Time.unscaledTime < nextLookTime)
+            if (!inSight && Time.unscaledTime < nextLookTime)
             {
                 return;
             }
             nextLookTime = Time.unscaledTime + IdleLookSeconds;
-            WorldConfig config = session.WorldView.Config;
-            World world = session.WorldView.World;
-            // While the area loads in bulk the ground is waiting to be shown: more of the frame goes to writing it.
-            float writeBudgetMilliseconds = session.WorldView.IsLoadingInSight
-                ? Mathf.Max(this.writeBudgetMilliseconds, session.WorldView.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds) : this.writeBudgetMilliseconds;
-            float started = Time.realtimeSinceStartup;
             int checks = 0;
             for (int i = 0; i < pending.Count && checks < ChecksPerFrame; i++)
             {
@@ -537,19 +580,13 @@ namespace Clube.Game
                     }
                     continue;
                 }
-                float before = Time.realtimeSinceStartup;
-                using (FrameCost.Of("Roads: write piece"))
-                {
-                    writer.Write(world, config.Materials, Natural, config.IsoLevel, next.Piece);
-                }
-                hold.Remove(world.Grid, HoldOf(writer, next.Piece));
+                writing = new SlicedWork(writer.WriteSteps(world, config.Materials, Natural, config.IsoLevel, next.Piece));
+                writingRoad = writer;
+                writingPiece = next.Piece;
+                writingMilliseconds = 0f;
                 pending.RemoveAt(i--);
-                PiecesWritten++;
-                nextLookTime = 0f;
-                float took = (Time.realtimeSinceStartup - before) * 1000f;
-                LongestMilliseconds = Mathf.Max(LongestMilliseconds, took);
-                TotalMilliseconds += took;
-                if ((Time.realtimeSinceStartup - started) * 1000f >= writeBudgetMilliseconds)
+                float left = writeBudgetMilliseconds - (Time.realtimeSinceStartup - started) * 1000f;
+                if (!RunWriting(left) || (Time.realtimeSinceStartup - started) * 1000f >= writeBudgetMilliseconds)
                 {
                     return;
                 }
