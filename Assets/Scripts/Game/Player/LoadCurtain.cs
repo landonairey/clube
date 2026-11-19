@@ -3,23 +3,22 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// Covers the view while the player waits for ground (GL653): from the scene's start, through the map's survey, until
-    /// <see cref="PlayerSpawn"/> has set the player down, with how far the ground round the spawn has got. A wait shorter
-    /// than <see cref="delay"/> seconds (falling out of the world, being dug out of a hillside) shows nothing.
+    /// Covers the view while the player waits for ground (GL653, GL780): from the scene's start, through the map's survey, until
+    /// <see cref="PlayerSpawn"/> has set the player down, on <see cref="LoadCurtainView"/> with one rising "Loading NN%"
+    /// (<see cref="LoadProgress"/>). A wait shorter than <see cref="delay"/> seconds (falling out of the world, being dug out of a
+    /// hillside) shows nothing. <see cref="PlayerSpawn"/> adds it to its player, so every game scene has one.
     /// </summary>
     [RequireComponent(typeof(PlayerSpawn))]
-    public class LoadCurtain : MonoBehaviour, IGuiDrawer
+    public class LoadCurtain : MonoBehaviour
     {
         [Tooltip("Seconds a wait must last before the curtain is drawn; the first wait of the scene is covered at once.")]
         [SerializeField, Min(0f)]
         private float delay = 0.4f;
 
-        [SerializeField]
-        private Color colour = new Color(0.05f, 0.06f, 0.07f, 1f);
-
         private PlayerSpawn spawn;
         private bool placedOnce;
         private float waitingSince = -1f;
+        private float shown;
 
         /// <summary>True while the curtain covers the view.</summary>
         public bool IsUp { get; private set; }
@@ -36,41 +35,39 @@ namespace Clube.Game
                 placedOnce = true;
                 waitingSince = -1f;
                 IsUp = false;
+                shown = 0f;
+                LoadCurtainView.Hide();
                 return;
             }
             if (waitingSince < 0f)
             {
                 waitingSince = Time.unscaledTime;
+                shown = 0f;
             }
             IsUp = !placedOnce || Time.unscaledTime - waitingSince >= delay;
+            if (IsUp)
+            {
+                // Never goes back: a stage that restarts its own count must not pull the bar down.
+                shown = Mathf.Max(shown, Fraction());
+                LoadCurtainView.Show(shown, placedOnce ? LoadingMessage.Destination + "…" : LoadingMessage.InScene());
+            }
         }
 
         private void OnDisable()
         {
-            GuiHost.Remove(this);
             IsUp = false;
         }
 
-        private void OnEnable()
+        // The first wait of a scene is the whole load; a later one (a fall) is only the ground.
+        private float Fraction()
         {
-            GuiHost.Add(this);
-        }
-
-        int IGuiDrawer.GuiDepth => 0;
-
-        void IGuiDrawer.DrawGui()
-        {
-            if (!IsUp || Event.current.type != EventType.Repaint)
+            if (placedOnce)
             {
-                return;
+                return spawn.Progress;
             }
-            Color was = GUI.color;
-            GUI.color = colour;
-            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
-            GUI.color = Color.white;
-            GUI.color = Color.white;
-            LoadingMessage.Draw(LoadingMessage.InScene(spawn.Progress));
-            GUI.color = was;
+            MapSession session = MapSession.Current;
+            bool hasSurvey = session != null;
+            return LoadProgress.InScene(hasSurvey, hasSurvey && session.IsReady, hasSurvey ? session.BuildProgress : 0f, spawn.Progress);
         }
     }
 }

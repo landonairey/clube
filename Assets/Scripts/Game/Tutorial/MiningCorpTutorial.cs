@@ -949,16 +949,15 @@ namespace Clube.Game
             if (fade > 0f)
             {
                 Color before = GUI.color;
-                GUI.color = new Color(0f, 0f, 0f, fade);
-                GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+                // The load curtain (GL780) is already black, and its "Loading NN%" would be covered.
+                if (!LoadCurtainView.IsUp)
+                {
+                    GUI.color = new Color(0f, 0f, 0f, fade);
+                    GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+                }
                 GUI.color = new Color(1f, 1f, 1f, fade);
                 var middle = new Rect(Screen.width * 0.15f, Screen.height * 0.3f, Screen.width * 0.7f, Screen.height * 0.4f);
                 GUI.Label(middle, StoryText(), storyStyle);
-                // GL762: this card covers the load curtain, so the loading line is drawn on it too.
-                if (step == Step.Arriving)
-                {
-                    LoadingMessage.Draw(LoadingMessage.InScene(spawn != null ? spawn.Progress : 0f));
-                }
                 GUI.color = before;
             }
         }
