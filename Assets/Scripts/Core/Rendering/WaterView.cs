@@ -102,7 +102,12 @@ namespace Clube.Core
         private readonly System.Diagnostics.Stopwatch frameTimer = new System.Diagnostics.Stopwatch();
         private readonly List<Vector3Int> changed = new List<Vector3Int>();
         private readonly WaterSheetMesh sheet = new WaterSheetMesh();
-        private readonly WaterMesher mesher = new WaterMesher();
+        // Chunk water is meshed in Burst jobs, a batch at a time on the worker threads (GL775, WaterMeshJob).
+        private const int BuildBatch = 8;
+        private readonly WaterMeshInput[] meshInputs = new WaterMeshInput[BuildBatch];
+        private readonly WaterMeshOutput[] meshOutputs = new WaterMeshOutput[BuildBatch];
+        private readonly Vector3Int[] batchCoords = new Vector3Int[BuildBatch];
+        private readonly bool[] batchGathered = new bool[BuildBatch];
         private float nextFlowStep;
         // Every water mesh hangs under this, so Show switches one object.
         private GameObject holder;
@@ -291,6 +296,11 @@ namespace Clube.Core
                 Live.Dispose();
             }
             Clear();
+            for (int i = 0; i < BuildBatch; i++)
+            {
+                meshInputs[i]?.Dispose();
+                meshOutputs[i]?.Dispose();
+            }
         }
 
         private void Clear()
@@ -615,22 +625,33 @@ namespace Clube.Core
             float limit = awaiting.Count > 0 ? Mathf.Max(buildBudgetMs, catchUpBudgetMs) : buildBudgetMs;
             limit = worldView.Hurry ? limit : FrameBudget.Limit(limit);
             int built = 0;
-            foreach ((int _, Vector3Int next) in buildOrder)
+            int next = 0;
+            while (next < buildOrder.Count)
             {
                 if (built > 0 && budget.Elapsed.TotalMilliseconds >= limit)
                 {
                     break;
                 }
-                dirtyChunks.Remove(next);
-                if (!IsDrawn(next))
+                // The nearest few at a time, meshed together on the worker threads.
+                int queued = 0;
+                while (next < buildOrder.Count && queued < BuildBatch)
                 {
-                    DropChunkMesh(next);
-                    Settle(next);
-                    continue;
+                    Vector3Int coord = buildOrder[next++].Coord;
+                    dirtyChunks.Remove(coord);
+                    if (!IsDrawn(coord))
+                    {
+                        DropChunkMesh(coord);
+                        Settle(coord);
+                        continue;
+                    }
+                    batchCoords[queued++] = coord;
                 }
-                BuildChunk(world, next);
-                Settle(next);
-                built++;
+                BuildChunks(world, queued);
+                for (int i = 0; i < queued; i++)
+                {
+                    Settle(batchCoords[i]);
+                }
+                built += queued;
             }
         }
 
@@ -668,31 +689,109 @@ namespace Clube.Core
             }
         }
 
-        private void BuildChunk(World world, Vector3Int coord)
+        // Meshes the first count chunks of batchCoords: the main thread copies each one's samples and those round it in
+        // blocks, the jobs build the surfaces side by side, then each chunk's mesh is filled (its object kept when it had one).
+        private void BuildChunks(World world, int count)
         {
-            if (chunkMeshes.TryGetValue(coord, out GameObject old))
+            if (count == 0)
             {
-                DestroyMeshObject(old);
-                chunkMeshes.Remove(coord);
+                return;
             }
-            if (!world.IsLoaded(coord) || !mesher.Build(world, coord, worldView.Config.IsoLevel, water))
+            Vector3Int size = world.Grid.ChunkSize;
+            WaterMap map = water.IsCreated ? water : WaterMap.None;
+            var handles = new NativeArray<JobHandle>(count, Allocator.Temp);
+            for (int i = 0; i < count; i++)
             {
+                Vector3Int coord = batchCoords[i];
+                WaterMeshInput input = meshInputs[i] ??= new WaterMeshInput();
+                WaterMeshOutput output = meshOutputs[i] ??= new WaterMeshOutput();
+                batchGathered[i] = world.IsLoaded(coord) && input.Gather(world, coord);
+                if (!batchGathered[i])
+                {
+                    continue;
+                }
+                handles[i] = new WaterMeshJob
+                {
+                    Size = new int3(size.x, size.y, size.z),
+                    VoxelSize = world.Grid.VoxelSize,
+                    Origin = world.Grid.ChunkOrigin(coord),
+                    GroundIso = worldView.Config.IsoLevel,
+                    DensityBytes = input.DensityBytes,
+                    DensityFloats = input.DensityFloats,
+                    WaterSamples = input.Water,
+                    Modes = input.Modes,
+                    Uniform = input.Uniform,
+                    HasWater = input.HasWater,
+                    Map = map,
+                    Vertices = output.Vertices,
+                    Normals = output.Normals,
+                    Flows = output.Flows,
+                    Looks = output.Looks,
+                    Ripples = output.Ripples,
+                    Banks = output.Banks,
+                    Triangles = output.Triangles,
+                }.Schedule();
+            }
+            JobHandle.CompleteAll(handles);
+            handles.Dispose();
+            for (int i = 0; i < count; i++)
+            {
+                ApplyChunkMesh(world, batchCoords[i], batchGathered[i] ? meshOutputs[i] : null);
+            }
+        }
+
+        private void ApplyChunkMesh(World world, Vector3Int coord, WaterMeshOutput output)
+        {
+            chunkMeshes.TryGetValue(coord, out GameObject go);
+            if (output == null || output.Triangles.Length == 0)
+            {
+                if (go != null)
+                {
+                    DestroyMeshObject(go);
+                    chunkMeshes.Remove(coord);
+                }
                 meshless.Add(coord);
                 return;
             }
             meshless.Remove(coord);
-            var mesh = new Mesh { name = "Water", indexFormat = mesher.Vertices.Count > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16 };
-            mesh.SetVertices(mesher.Vertices);
-            mesh.SetUVs(0, mesher.Flows);
-            mesh.SetUVs(1, mesher.Looks);
-            mesh.SetUVs(2, mesher.Ripples);
-            mesh.SetUVs(3, mesher.Banks);
-            mesh.SetTriangles(mesher.Triangles, 0);
-            mesh.RecalculateNormals();
-            GameObject go = MakeMeshObject("Water chunk", mesh, material);
-            go.transform.position = world.Grid.ChunkOrigin(coord);
-            chunkMeshes[coord] = go;
-            TriangleCount += mesher.Triangles.Count / 3;
+            Mesh mesh = go != null ? go.GetComponent<MeshFilter>().sharedMesh : null;
+            if (mesh != null)
+            {
+                TriangleCount -= (int)mesh.GetIndexCount(0) / 3;
+                mesh.Clear();
+            }
+            else
+            {
+                mesh = new Mesh { name = "Water" };
+            }
+            mesh.indexFormat = output.Vertices.Length > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16;
+            mesh.SetVertices(output.Vertices.AsArray());
+            mesh.SetNormals(output.Normals.AsArray());
+            mesh.SetUVs(0, output.Flows.AsArray());
+            mesh.SetUVs(1, output.Looks.AsArray());
+            mesh.SetUVs(2, output.Ripples.AsArray());
+            mesh.SetUVs(3, output.Banks.AsArray());
+            mesh.SetIndices(output.Triangles.AsArray(), MeshTopology.Triangles, 0);
+            if (go == null)
+            {
+                go = MakeMeshObject("Water chunk", mesh, material);
+                go.transform.position = world.Grid.ChunkOrigin(coord);
+                chunkMeshes[coord] = go;
+            }
+            else
+            {
+                go.GetComponent<MeshFilter>().sharedMesh = mesh;
+                ExpandBounds(mesh);
+            }
+            TriangleCount += output.Triangles.Length / 3;
+        }
+
+        // Room for the ripples above and below the water.
+        private static void ExpandBounds(Mesh mesh)
+        {
+            Bounds bounds = mesh.bounds;
+            bounds.Expand(new Vector3(0f, 0.3f, 0f));
+            mesh.bounds = bounds;
         }
 
         // Far water, coarse (GL626): the whole map's water in a few big meshes, built once (CoarseWaterMesher). They
@@ -824,10 +923,7 @@ namespace Clube.Core
 
         private GameObject MakeMeshObject(string name, Mesh mesh, Material look)
         {
-            // Room for the ripples above and below the water.
-            Bounds bounds = mesh.bounds;
-            bounds.Expand(new Vector3(0f, 0.3f, 0f));
-            mesh.bounds = bounds;
+            ExpandBounds(mesh);
             var go = new GameObject(name);
             if (holder == null)
             {
