@@ -54,7 +54,7 @@ namespace Clube.Game
                 bool isSelected = i == selection.Selected;
                 string text = $"{(isSelected ? "●" : "○")}  <b>{Escape(save.Name)}</b>\n      <size=12>{Describe(save)}</size>";
                 // Any click flips the toggle: it selects the row, and only a double-click on it loads (GL786).
-                if (GUILayout.Toggle(isSelected, text, styles.ModeButton, GUILayout.MinHeight(52f)) != isSelected)
+                if (GUILayout.Toggle(isSelected, text, styles.ModeButton, GUILayout.MinHeight(68f)) != isSelected)
                 {
                     bool load = selection.Click(i, Time.realtimeSinceStartup);
                     if (load && !confirmingDelete)
@@ -121,20 +121,20 @@ namespace Clube.Game
         private Choice DrawButtons(MenuStyles styles, Choice choice)
         {
             GUILayout.BeginHorizontal();
-            if (GameUi.LayoutButton("Back", styles.Button, GUILayout.Height(46f)))
+            if (GameUi.LayoutButton("Back", styles.Button, GUILayout.MinHeight(46f)))
             {
                 choice = Choice.Back;
             }
             GUILayout.Space(12f);
             bool wasEnabled = GUI.enabled;
             GUI.enabled = Selected != null;
-            if (GameUi.LayoutButton("Delete", styles.Button, GUILayout.Height(46f)))
+            if (GameUi.LayoutButton("Delete", styles.Button, GUILayout.MinHeight(46f)))
             {
                 confirmingDelete = true;
                 problem = null;
             }
             GUILayout.Space(12f);
-            if (GameUi.LayoutButton("Load", styles.Button, GUILayout.Height(46f)))
+            if (GameUi.LayoutButton("Load", styles.Button, GUILayout.MinHeight(46f)))
             {
                 choice = Choice.Load;
             }
@@ -149,12 +149,12 @@ namespace Clube.Game
             GUILayout.Label($"Delete \"{Escape(Selected.Name)}\"? This can't be undone.", styles.Caption);
             GUILayout.Space(6f);
             GUILayout.BeginHorizontal();
-            if (GameUi.LayoutButton("Cancel", styles.Button, GUILayout.Height(46f)))
+            if (GameUi.LayoutButton("Cancel", styles.Button, GUILayout.MinHeight(46f)))
             {
                 confirmingDelete = false;
             }
             GUILayout.Space(12f);
-            if (GameUi.LayoutButton("Delete", styles.Button, GUILayout.Height(46f)))
+            if (GameUi.LayoutButton("Delete", styles.Button, GUILayout.MinHeight(46f)))
             {
                 confirmingDelete = false;
                 if (SaveSlots.Delete(Selected.Path, out string why))

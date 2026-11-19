@@ -24,6 +24,7 @@ namespace Clube.Debug
         private WorldView worldView;
         private Clube.Game.PlayerVolumeLedger ledger;
         private Clube.Game.DayNightCycle dayNight;
+        private Clube.Game.MapSession mapSession;
         private GUIStyle style;
 
         private int windowFrames;
@@ -86,6 +87,7 @@ namespace Clube.Debug
 
             string text =
                 $"<b>{framesPerSecond:0} FPS</b>  ({frameTime})\n" +
+                $"Seed       {SeedText()}\n" +
                 $"Position   ({position.x:0.0}, {position.y:0.0}, {position.z:0.0})\n" +
                 $"Voxel      ({voxel.x}, {voxel.y}, {voxel.z})\n" +
                 $"Chunk      ({chunk.x}, {chunk.y}, {chunk.z}), voxel ({local.x}, {local.y}, {local.z}) in it";
@@ -115,6 +117,16 @@ namespace Clube.Debug
         }
 
         /// <summary>An hour of the day, 0-24, as hh:mm.</summary>
+        // GL789: the bounded map's seed (new or loaded); "–" in the fixed-area scenes, which have no map session.
+        private string SeedText()
+        {
+            if (mapSession == null)
+            {
+                mapSession = FindFirstObjectByType<Clube.Game.MapSession>();
+            }
+            return mapSession != null && mapSession.Plan != null ? mapSession.Plan.Seed.ToString() : "–";
+        }
+
         public static string ClockText(float hour)
         {
             int minutes = Mathf.FloorToInt(Mathf.Repeat(hour, 24f) * 60f);

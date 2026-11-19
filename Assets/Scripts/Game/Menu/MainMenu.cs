@@ -15,6 +15,9 @@ namespace Clube.Game
     {
         private const float ColumnWidth = 300f;
 
+        // GL788: the save list is 2.5 times the other pages, so a long save name reads in full.
+        private const float LoadPageWidth = 1150f;
+
         [Tooltip("The World mode's config: its seed is the new-game page's starting seed.")]
         [SerializeField]
         private WorldConfig worldConfig;
@@ -32,7 +35,7 @@ namespace Clube.Game
         private MenuDiorama diorama;
 
         [SerializeField]
-        private string title = "clube";
+        private string title = "Fossa Terra";
 
         [SerializeField]
         private string subtitle = "Extract, Refine, Craft, Build your World";
@@ -80,7 +83,7 @@ namespace Clube.Game
             styles ??= new MenuStyles();
             DrawBackground();
 
-            float width = Mathf.Min(Screen.width - 32f, settingsOpen ? 640f : newGame != null || loadGame != null ? 460f : 520f);
+            float width = Mathf.Min(Screen.width - 32f, settingsOpen ? 640f : newGame != null ? 460f : loadGame != null ? LoadPageWidth : 520f);
             // Beside the diorama (GL480): the column on the left, the cut-open parcel on the right.
             float left = HasDiorama ? Mathf.Max(28f, Screen.width * 0.07f) : (Screen.width - width) * 0.5f;
             var column = new Rect(left, 16f, width, Screen.height - 48f);
@@ -118,26 +121,26 @@ namespace Clube.Game
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
             GUILayout.BeginVertical(GUILayout.Width(Mathf.Min(ColumnWidth, column.width)));
-            if (GameUi.LayoutButton("New", styles.Button, GUILayout.Height(48f)))
+            if (GameUi.LayoutButton("New", styles.Button, GUILayout.MinHeight(48f)))
             {
                 OpenNewGame();
             }
             GUILayout.Space(10f);
             bool wasEnabled = GUI.enabled;
             GUI.enabled = saves.Count > 0;
-            if (GameUi.LayoutButton("Load", styles.Button, GUILayout.Height(48f)))
+            if (GameUi.LayoutButton("Load", styles.Button, GUILayout.MinHeight(48f)))
             {
                 OpenLoadGame();
             }
             GUI.enabled = wasEnabled;
             GUILayout.Label(SavesCaption(), styles.Caption);
             GUILayout.Space(10f);
-            if (GameUi.LayoutButton("Settings", styles.Button, GUILayout.Height(48f)))
+            if (GameUi.LayoutButton("Settings", styles.Button, GUILayout.MinHeight(48f)))
             {
                 settingsOpen = true;
             }
             GUILayout.Space(10f);
-            if (GameUi.LayoutButton("Exit", styles.Button, GUILayout.Height(48f)))
+            if (GameUi.LayoutButton("Exit", styles.Button, GUILayout.MinHeight(48f)))
             {
                 GameScenes.Quit();
             }
@@ -177,17 +180,17 @@ namespace Clube.Game
             GUILayout.BeginArea(Inside(panel));
             GUILayout.Label("Settings", styles.Heading);
             GUILayout.Space(14f);
-            if (GameUi.LayoutButton("Video", styles.Button, GUILayout.Height(48f)))
+            if (GameUi.LayoutButton("Video", styles.Button, GUILayout.MinHeight(48f)))
             {
                 graphics = new GraphicsSettingsPage();
             }
             GUILayout.Space(10f);
-            if (GameUi.LayoutButton("Audio", styles.Button, GUILayout.Height(48f)))
+            if (GameUi.LayoutButton("Audio", styles.Button, GUILayout.MinHeight(48f)))
             {
                 audioPage = new AudioSettingsPage();
             }
             GUILayout.Space(10f);
-            if (GameUi.LayoutButton("Back", styles.Button, GUILayout.Height(48f)))
+            if (GameUi.LayoutButton("Back", styles.Button, GUILayout.MinHeight(48f)))
             {
                 settingsOpen = false;
             }
@@ -196,7 +199,7 @@ namespace Clube.Game
 
         private void DrawNewGame(Rect column)
         {
-            Rect panel = Page(column, 780f);
+            Rect panel = Page(column, 860f);
             switch (newGame.Draw(Inside(panel), styles))
             {
                 case NewGamePage.Choice.Back:

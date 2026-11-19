@@ -1,3 +1,4 @@
+using Clube.Core;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -16,7 +17,9 @@ namespace Clube.Debug.Editor
     /// <remarks>
     /// Just before building it writes the build's version into <c>Resources/BuildInfo.txt</c> from git
     /// (GL201): the tag on the commit if it has one, else the project version with the commit count and
-    /// short hash, e.g. "v0.1.0 · build 412 (a514430)". The file is gitignored and removed again after the
+    /// short hash, e.g. "v0.2.1312 (e84d3c5)" (GL790: <c>v0.&lt;demo&gt;.&lt;build&gt;</c>; the demo number is
+    /// <c>PlayerSettings.bundleVersion</c> = "0.&lt;demo&gt;", raised by hand when a new demo goes to playtesters; the build is
+    /// the commit count). The file is gitignored and removed again after the
     /// build, so the Editor shows its own "Editor" version.
     /// </remarks>
     public static class DemoBuild
@@ -116,19 +119,10 @@ namespace Clube.Debug.Editor
         /// <summary>The version text for this commit, from git; the project version alone when git isn't there.</summary>
         public static string Version()
         {
-            string projectVersion = "v" + PlayerSettings.bundleVersion;
             string hash = Git("rev-parse --short HEAD");
-            if (hash == null)
-            {
-                return projectVersion;
-            }
-            string tag = Git("describe --tags --exact-match HEAD");
-            if (tag != null)
-            {
-                return $"{tag} ({hash})";
-            }
-            string count = Git("rev-list --count HEAD");
-            return $"{projectVersion} · build {count} ({hash})";
+            string tag = hash != null ? Git("describe --tags --exact-match HEAD") : null;
+            string count = hash != null ? Git("rev-list --count HEAD") : null;
+            return BuildVersion.Format(PlayerSettings.bundleVersion, count, hash, tag);
         }
 
         // One git command's output, trimmed; null when it fails.
