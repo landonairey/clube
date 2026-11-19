@@ -32,6 +32,8 @@ namespace Clube.Game
         private float noticeUntil;
         private RectTransform panel;
         private Text[] labels;
+        private Text[] xpLabels;
+        private string[] shownXp;
         private Image[] fills;
         private int[] shownLevels;
         private float[] shownProgress;
@@ -106,6 +108,13 @@ namespace Clube.Game
                     shownLevels[i] = level;
                     labels[i].text = $"{skill} {level}";
                 }
+                // XP into the level over what it needs (GL793): "120/300 XP", "max" at the top.
+                string xpText = SkillSet.ProgressText(xp);
+                if (xpText != shownXp[i])
+                {
+                    shownXp[i] = xpText;
+                    xpLabels[i].text = xpText == "max" ? xpText : xpText + " XP";
+                }
                 if (progress != shownProgress[i])
                 {
                     shownProgress[i] = progress;
@@ -124,6 +133,8 @@ namespace Clube.Game
         {
             panel = HudCanvas.Fill(HudCanvas.Root, "Skills", PanelColour).rectTransform;
             labels = new Text[Shown.Length];
+            xpLabels = new Text[Shown.Length];
+            shownXp = new string[Shown.Length];
             fills = new Image[Shown.Length];
             shownLevels = new int[Shown.Length];
             shownProgress = new float[Shown.Length];
@@ -137,6 +148,8 @@ namespace Clube.Game
                 Image back = HudCanvas.Fill(panel, "Bar", PanelColour);
                 HudCanvas.Place(back.rectTransform, 6f + LabelWidth, 4f + i * RowHeight + 9f, Width - LabelWidth, 18f);
                 fills[i] = HudCanvas.Fill(back.transform, "Fill", new Color(0.45f, 0.85f, 0.4f));
+                xpLabels[i] = HudCanvas.Label(back.transform, "Xp", GameUi.Font(12), FontStyle.Bold, TextAnchor.MiddleCenter, Color.white, outlined: true);
+                HudCanvas.Place(xpLabels[i].rectTransform, 0f, 0f, Width - LabelWidth, 18f);
             }
             noticeText = HudCanvas.Label(HudCanvas.Root, "SkillNotice", GameUi.Font(18), FontStyle.Bold, TextAnchor.MiddleCenter, new Color(1f, 0.9f, 0.45f));
             HudCanvas.Resized += Layout;

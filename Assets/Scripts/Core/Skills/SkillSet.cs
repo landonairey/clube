@@ -77,6 +77,29 @@ namespace Clube.Core
             return FirstLevelCost * (Mathf.Pow(LevelCostGrowth, level) - 1f) / (LevelCostGrowth - 1f);
         }
 
+        /// <summary>
+        /// Experience into the current level over what that level needs (GL793): "120/300" (rounded down, so it never reads
+        /// full before the level comes), or "max" at <see cref="MaxLevel"/>.
+        /// </summary>
+        public static string ProgressText(float experience)
+        {
+            int level = LevelFor(experience);
+            if (level >= MaxLevel)
+            {
+                return "max";
+            }
+            float from = ExperienceFor(level);
+            float needed = ExperienceFor(level + 1) - from;
+            int into = Mathf.Clamp(Mathf.FloorToInt(experience - from + 1e-3f), 0, Mathf.RoundToInt(needed));
+            return $"{into}/{Mathf.RoundToInt(needed)}";
+        }
+
+        /// <inheritdoc cref="ProgressText(float)"/>
+        public string ProgressText(SkillType skill)
+        {
+            return ProgressText(Experience(skill));
+        }
+
         public float Experience(SkillType skill)
         {
             return skill == SkillType.None ? 0f : experience[(int)skill];
@@ -84,7 +107,12 @@ namespace Clube.Core
 
         public int Level(SkillType skill)
         {
-            float xp = Experience(skill);
+            return LevelFor(Experience(skill));
+        }
+
+        /// <summary>The level a total of experience reaches.</summary>
+        public static int LevelFor(float xp)
+        {
             int level = 0;
             while (level < MaxLevel && xp + 1e-4f >= ExperienceFor(level + 1))
             {
