@@ -133,7 +133,9 @@ namespace Clube.Game
         private void Awake()
         {
             IsPlaying = true;
-            player = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
+            // GL785: no game time passes until the player is up and has control.
+            ClockHold.Hold(this);
+            player =FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
             spawn = player != null ? player.GetComponent<PlayerSpawn>() : null;
             worldView = FindFirstObjectByType<WorldView>();
             head = player != null ? player.Head : null;
@@ -142,6 +144,7 @@ namespace Clube.Game
         private void OnDestroy()
         {
             IsPlaying = false;
+            ClockHold.Release(this);
             cart?.Destroy();
         }
 
@@ -483,6 +486,7 @@ namespace Clube.Game
             // Enabling it reads the heading and pitch back from the transforms set above, and locks the cursor again.
             player.enabled = true;
             IsPlaying = false;
+            ClockHold.Release(this);
             if (skipped || cart == null)
             {
                 Destroy(gameObject);
