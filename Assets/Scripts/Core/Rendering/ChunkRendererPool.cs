@@ -5,15 +5,24 @@ using UnityEngine;
 namespace Clube.Core
 {
     /// <summary>
-    /// Makes, reuses and keeps track of the GameObjects that draw a world's chunks (M1, P2):
-    /// one <see cref="ChunkRenderer"/> per loaded chunk that has a surface. Chunks that are all
-    /// air or all solid never get one, which is most of a world. Unity objects only; what to
-    /// show comes from the <see cref="WorldStreamer"/>.
+    /// Makes, reuses and keeps track of a world's chunk objects (M1, P2): one <see cref="ChunkRenderer"/> per loaded chunk
+    /// that has a surface, holding its mesh and collider. Chunks that are all air or all solid never get one, which is most
+    /// of a world. The chunks are drawn by region (GL776): <see cref="MeshRegionSet"/> merges the meshes of each block of
+    /// <see cref="RegionSpan"/> chunks into one renderer, so the engine draws and culls a few hundred renderers instead of
+    /// tens of thousands. Unity objects only; what to show comes from the <see cref="WorldStreamer"/>.
     /// </summary>
-    public sealed class ChunkRendererPool
+    public sealed class ChunkRendererPool : IDisposable
     {
+        /// <summary>Chunks per region along each axis: 16 m at 4 m chunks.</summary>
+        public static readonly Vector3Int DefaultRegionSpan = new Vector3Int(4, 4, 4);
+
+        // A changed region this close to the focus (metres, horizontally) is merged in the same frame, whatever the budget:
+        // digging, felling and building show at once.
+        private const float AlwaysMergeWithin = 24f;
+
         private readonly Transform parent;
         private readonly bool withColliders;
+        private readonly Vector3Int regionSpan;
         private readonly Dictionary<Vector3Int, ChunkRenderer> active = new Dictionary<Vector3Int, ChunkRenderer>();
         private readonly Stack<ChunkRenderer> idle = new Stack<ChunkRenderer>();
 
@@ -23,28 +32,61 @@ namespace Clube.Core
         private readonly Stack<List<int>> spareLayerLists = new Stack<List<int>>();
         private Material[] materials;
         private Material[] farMaterials;
+        private MeshRegionSet regions;
+        private WorldGrid grid;
+        private bool hidden;
 
         // Materials after the first are overlays (the build grid, M22): a second pass over every
-        // triangle, so only chunks within the overlay radius of the focus draw them.
-        private readonly HashSet<Vector3Int> withOverlays = new HashSet<Vector3Int>();
+        // triangle, so only regions within the overlay radius of the focus draw them.
         private Vector3Int overlayCentre;
         private int overlayRadius = -1;
 
-        // Which columns (x, z) draw their chunks (P18); null draws every one. Chunks outside stay
-        // loaded and keep their renderer, switched off.
+        // Which columns (x, z) draw their chunks (P18); null draws every one. Asked about one column of each region (the
+        // streamer's rule gives every column of a region the same answer). Chunks outside stay loaded, not drawn.
         private Func<Vector2Int, bool> isColumnDrawn;
 
-        /// <param name="parent">Renderers sit under it, at their chunk's origin in its space.</param>
-        /// <param name="withColliders">Give every renderer a <see cref="ChunkCollider"/> (M6).</param>
-        public ChunkRendererPool(Transform parent, bool withColliders, Material[] materials)
+        /// <param name="parent">Chunk objects and region renderers sit under it, at their origin in its space.</param>
+        /// <param name="withColliders">Give every chunk a <see cref="ChunkCollider"/> (M6).</param>
+        /// <param name="regionSpan">Chunks per drawn region along each axis; <see cref="DefaultRegionSpan"/> when left out.</param>
+        public ChunkRendererPool(Transform parent, bool withColliders, Material[] materials, Vector3Int? regionSpan = null)
         {
             this.parent = parent;
             this.withColliders = withColliders;
+            this.regionSpan = Vector3Int.Max(regionSpan ?? DefaultRegionSpan, Vector3Int.one);
             SetMaterialArrays(materials);
         }
 
         /// <summary>Every chunk shown, by coordinate.</summary>
         public IReadOnlyDictionary<Vector3Int, ChunkRenderer> Active => active;
+
+        /// <summary>Chunks per drawn region along each axis (GL776).</summary>
+        public Vector3Int RegionSpan => regionSpan;
+
+        /// <summary>Regions holding at least one chunk's surface.</summary>
+        public int RegionCount => regions?.RegionCount ?? 0;
+
+        /// <summary>Region renderers drawing now.</summary>
+        public int DrawnRegionCount => regions?.DrawnCount ?? 0;
+
+        /// <summary>Regions changed since they were last merged.</summary>
+        public int DirtyRegionCount => regions?.DirtyCount ?? 0;
+
+        /// <summary>The materials chunks near the focus draw with (the surface first, then overlays).</summary>
+        public Material[] Materials => materials;
+
+        /// <summary>Stops drawing every chunk (a lab's X-ray), keeping everything loaded.</summary>
+        public bool Hidden
+        {
+            get => hidden;
+            set
+            {
+                hidden = value;
+                if (regions != null)
+                {
+                    regions.Hidden = value;
+                }
+            }
+        }
 
         public bool TryGet(Vector3Int coord, out ChunkRenderer chunkRenderer)
         {
@@ -57,14 +99,25 @@ namespace Clube.Core
             return layersByColumn.TryGetValue(column, out List<int> layers) ? layers : (IReadOnlyList<int>)Array.Empty<int>();
         }
 
-        /// <summary>A renderer showing the chunk at its origin: an idle one if there is one, otherwise a new one.</summary>
+        /// <summary>The first column (x, z) of the region holding a column: every column of a region is drawn alike.</summary>
+        public Vector2Int RegionColumn(Vector2Int column)
+        {
+            return new Vector2Int(FloorDiv(column.x, regionSpan.x) * regionSpan.x, FloorDiv(column.y, regionSpan.z) * regionSpan.z);
+        }
+
+        /// <summary>Whether a chunk at the coordinate would be drawn now (the draw rule for its region; false while hidden).</summary>
+        public bool IsDrawn(Vector3Int coord)
+        {
+            return !hidden && (isColumnDrawn == null || isColumnDrawn(RegionColumn(new Vector2Int(coord.x, coord.z))));
+        }
+
+        /// <summary>A chunk object for the chunk at its origin: an idle one if there is one, otherwise a new one.</summary>
         public ChunkRenderer Take(World world, Vector3Int coord, Chunk chunk, Func<ChunkMeshSettings> meshSettings)
         {
+            EnsureRegions(world.Grid);
             ChunkRenderer chunkRenderer = idle.Count > 0 ? idle.Pop() : Create();
             chunkRenderer.transform.localPosition = world.Grid.ChunkOrigin(coord);
             chunkRenderer.Show(world, coord, chunk, meshSettings);
-            ShowOverlays(coord, chunkRenderer, IsWithinOverlayRadius(coord), force: true);
-            ApplyDrawn(coord, chunkRenderer);
             active.Add(coord, chunkRenderer);
             var column = new Vector2Int(coord.x, coord.z);
             if (!layersByColumn.TryGetValue(column, out List<int> layers))
@@ -76,7 +129,7 @@ namespace Clube.Core
             return chunkRenderer;
         }
 
-        /// <summary>Stops showing a chunk; its renderer waits for another.</summary>
+        /// <summary>Stops showing a chunk; its object waits for another.</summary>
         public void Release(Vector3Int coord)
         {
             if (!active.TryGetValue(coord, out ChunkRenderer chunkRenderer))
@@ -94,29 +147,31 @@ namespace Clube.Core
                     spareLayerLists.Push(layers);
                 }
             }
-            withOverlays.Remove(coord);
-            chunkRenderer.Renderer.forceRenderingOff = false;
+            regions?.Remove(coord);
             chunkRenderer.Hide();
             idle.Push(chunkRenderer);
         }
 
-        /// <summary>The materials every renderer draws with (the terrain material first, M15); applies to idle ones too.</summary>
+        /// <summary>
+        /// Merges the regions whose chunks changed (GL776): those near the focus always, then the nearest of those drawn or
+        /// within <paramref name="buildWithin"/> (metres) until about <paramref name="vertexBudget"/> vertices are copied.
+        /// Call once a frame, after the frame's meshes are applied. Returns the regions merged.
+        /// </summary>
+        public int BuildRegions(Vector3 focus, float buildWithin, int vertexBudget)
+        {
+            return regions?.Build(focus, AlwaysMergeWithin, buildWithin, vertexBudget) ?? 0;
+        }
+
+        /// <summary>The materials chunks draw with (the terrain material first, M15).</summary>
         public void SetMaterials(Material[] newMaterials)
         {
             SetMaterialArrays(newMaterials);
-            foreach (KeyValuePair<Vector3Int, ChunkRenderer> entry in active)
-            {
-                entry.Value.Renderer.sharedMaterials = withOverlays.Contains(entry.Key) ? materials : farMaterials;
-            }
-            foreach (ChunkRenderer chunkRenderer in idle)
-            {
-                chunkRenderer.Renderer.sharedMaterials = farMaterials;
-            }
+            regions?.RefreshMaterials();
         }
 
         /// <summary>
-        /// Overlays (every material after the first) only on chunks within <paramref name="radius"/>
-        /// chunks of <paramref name="centre"/>, horizontally; a negative radius puts them on every chunk.
+        /// Overlays (every material after the first) only on regions within <paramref name="radius"/>
+        /// chunks of <paramref name="centre"/>, horizontally; a negative radius puts them on every region.
         /// Cheap when nothing changed, so call it every frame.
         /// </summary>
         public void SetOverlayFocus(Vector3Int centre, int radius)
@@ -127,15 +182,12 @@ namespace Clube.Core
             }
             overlayCentre = centre;
             overlayRadius = radius;
-            foreach (KeyValuePair<Vector3Int, ChunkRenderer> entry in active)
-            {
-                ShowOverlays(entry.Key, entry.Value, IsWithinOverlayRadius(entry.Key));
-            }
+            regions?.RefreshMaterials();
         }
 
         /// <summary>
-        /// Which columns (x, z) draw their chunks (P18): the others' renderers are switched off, not
-        /// released. Null draws every one. Applies to every renderer shown now and to those shown later.
+        /// Which columns (x, z) draw their chunks (P18): the others are loaded but not drawn. Null draws every one. Asked
+        /// about each region's first column. Applies to every region now and to those made later.
         /// </summary>
         public void SetDrawRule(Func<Vector2Int, bool> rule)
         {
@@ -143,64 +195,87 @@ namespace Clube.Core
             RefreshDrawn();
         }
 
-        /// <summary>Applies the draw rule to every renderer, e.g. after it changed everywhere.</summary>
+        /// <summary>Applies the draw rule to every region, e.g. after it changed everywhere.</summary>
         public void RefreshDrawn()
         {
-            foreach (KeyValuePair<Vector3Int, ChunkRenderer> entry in active)
-            {
-                ApplyDrawn(entry.Key, entry.Value);
-            }
+            regions?.RefreshShown();
         }
 
-        /// <summary>Applies the draw rule to the column's renderers, layers 0 to <paramref name="height"/> - 1.</summary>
+        /// <summary>Applies the draw rule to the regions holding the column's layers 0 to <paramref name="height"/> - 1.</summary>
         public void RefreshColumn(Vector2Int column, int height)
         {
-            foreach (int y in LayersIn(column))
+            if (regions == null)
             {
-                var coord = new Vector3Int(column.x, y, column.y);
-                if (y < height && active.TryGetValue(coord, out ChunkRenderer chunkRenderer))
-                {
-                    ApplyDrawn(coord, chunkRenderer);
-                }
+                return;
+            }
+            Vector2Int first = RegionColumn(column);
+            int regionX = first.x / regionSpan.x;
+            int regionZ = first.y / regionSpan.z;
+            for (int y = 0; y * regionSpan.y < height; y++)
+            {
+                regions.RefreshShown(new Vector3Int(regionX, y, regionZ));
             }
         }
 
-        private void ApplyDrawn(Vector3Int coord, ChunkRenderer chunkRenderer)
+        /// <summary>Destroys the region renderers (the chunk objects are left to their parent).</summary>
+        public void Dispose()
         {
-            bool hidden = isColumnDrawn != null && !isColumnDrawn(new Vector2Int(coord.x, coord.z));
-            if (chunkRenderer.Renderer.forceRenderingOff != hidden)
+            regions?.Dispose();
+        }
+
+        private void EnsureRegions(WorldGrid worldGrid)
+        {
+            if (regions != null && grid.ChunkWorldSize == worldGrid.ChunkWorldSize)
             {
-                chunkRenderer.Renderer.forceRenderingOff = hidden;
+                return;
+            }
+            regions?.Dispose();
+            grid = worldGrid;
+            regions = new MeshRegionSet(parent, "Chunk region", regionSpan, grid.ChunkWorldSize, grid.ChunkOrigin);
+            regions.SetShownRule(IsRegionShown);
+            regions.SetMaterialRule(MaterialsFor);
+            regions.Hidden = hidden;
+        }
+
+        private bool IsRegionShown(Vector3Int region)
+        {
+            return isColumnDrawn == null || isColumnDrawn(new Vector2Int(region.x * regionSpan.x, region.z * regionSpan.z));
+        }
+
+        private Material[] MaterialsFor(Vector3Int region)
+        {
+            return IsWithinOverlayRadius(region) ? materials : farMaterials;
+        }
+
+        // The chunk's surface goes into its region, or leaves it when it has none or is hidden.
+        private void OnSurfaceChanged(ChunkRenderer chunkRenderer)
+        {
+            if (regions == null || !active.TryGetValue(chunkRenderer.Coord, out ChunkRenderer current) || current != chunkRenderer)
+            {
+                return;
+            }
+            if (chunkRenderer.SurfaceHidden)
+            {
+                regions.Remove(chunkRenderer.Coord);
+            }
+            else
+            {
+                regions.Set(chunkRenderer.Coord, chunkRenderer.Mesh);
             }
         }
 
-        private bool IsWithinOverlayRadius(Vector3Int coord)
+        // Whether the region's nearest column lies within the overlay radius of its centre.
+        private bool IsWithinOverlayRadius(Vector3Int region)
         {
             if (overlayRadius < 0)
             {
                 return true;
             }
-            int dx = coord.x - overlayCentre.x;
-            int dz = coord.z - overlayCentre.z;
+            int x0 = region.x * regionSpan.x;
+            int z0 = region.z * regionSpan.z;
+            int dx = Mathf.Max(x0 - overlayCentre.x, 0, overlayCentre.x - (x0 + regionSpan.x - 1));
+            int dz = Mathf.Max(z0 - overlayCentre.z, 0, overlayCentre.z - (z0 + regionSpan.z - 1));
             return dx * dx + dz * dz <= overlayRadius * overlayRadius;
-        }
-
-        // A renderer taken from the pool may still carry its last chunk's materials, hence force.
-        private void ShowOverlays(Vector3Int coord, ChunkRenderer chunkRenderer, bool show, bool force = false)
-        {
-            if (!force && show == withOverlays.Contains(coord))
-            {
-                return;
-            }
-            if (show)
-            {
-                withOverlays.Add(coord);
-            }
-            else
-            {
-                withOverlays.Remove(coord);
-            }
-            chunkRenderer.Renderer.sharedMaterials = show ? materials : farMaterials;
         }
 
         private void SetMaterialArrays(Material[] newMaterials)
@@ -211,14 +286,21 @@ namespace Clube.Core
 
         private ChunkRenderer Create()
         {
-            var chunkObject = new GameObject("Chunk", typeof(MeshFilter), typeof(MeshRenderer), typeof(ChunkRenderer));
+            var chunkObject = new GameObject("Chunk", typeof(ChunkRenderer));
             chunkObject.transform.SetParent(parent, false);
-            chunkObject.GetComponent<MeshRenderer>().sharedMaterials = farMaterials;
             if (withColliders)
             {
                 chunkObject.AddComponent<ChunkCollider>();
             }
-            return chunkObject.GetComponent<ChunkRenderer>();
+            var chunkRenderer = chunkObject.GetComponent<ChunkRenderer>();
+            chunkRenderer.SetUp(() => materials != null && materials.Length > 0 ? materials[0] : null);
+            chunkRenderer.SurfaceChanged += OnSurfaceChanged;
+            return chunkRenderer;
+        }
+
+        private static int FloorDiv(int value, int divisor)
+        {
+            return value >= 0 ? value / divisor : -((-value + divisor - 1) / divisor);
         }
     }
 }

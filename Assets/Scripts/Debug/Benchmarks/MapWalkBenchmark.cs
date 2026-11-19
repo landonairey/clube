@@ -402,7 +402,7 @@ namespace Clube.Debug
             text.AppendLine($"  ground ready at its worst: {underfootGround * 100f:0}% within {UnderfootColumns * 4} m, {nearGround * 100f:0}% within {NearColumns * 4} m, {drawnGround * 100f:0}% within {world.DetailDistance * 4} m"
                             + (underfootGround < 1f ? $" (underfoot: {underfootWhy})" : ""));
             underfootGround = nearGround = drawnGround = 1f;
-            text.AppendLine($"  pending {world.PendingCount}, proven uniform {world.World.CountProvenLayers()}, chunks held {world.World.LoadedCount}, loading {world.IsLoading}, in sight {world.IsLoadingInSight}, renderers {world.Stats.Renderers}; phases (last frame): {world.Stats.Phases}");
+            text.AppendLine($"  pending {world.PendingCount}, proven uniform {world.World.CountProvenLayers()}, chunks held {world.World.LoadedCount}, loading {world.IsLoading}, in sight {world.IsLoadingInSight}, chunk meshes {world.Stats.Renderers}, regions {world.Stats.Regions} ({world.Stats.RegionsDrawn} drawn, {world.Stats.RegionsWaiting} waiting); phases (last frame): {world.Stats.Phases}");
             text.AppendLine($"  player loop (ms a frame): {loopTimes.Top(LoopStagesShown, frames.Count)}");
             text.AppendLine($"  systems (ms a frame; worst frame; frames over {SlowSystemMilliseconds:0} ms): {SystemsReport()}");
             int phaseFrames = Mathf.Max(1, frames.Count);

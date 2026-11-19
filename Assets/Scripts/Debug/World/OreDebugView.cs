@@ -188,14 +188,6 @@ namespace Clube.Debug
             }
 
             SetTerrainHidden(xRay);
-            // New chunks load visible; keep them hidden while in X-ray.
-            if (terrainHidden)
-            {
-                foreach (ChunkRenderer chunkRenderer in worldView.Renderers.Values)
-                {
-                    chunkRenderer.Renderer.enabled = false;
-                }
-            }
         }
 
         private void OnChunkLoaded(Vector3Int coord)
@@ -470,10 +462,8 @@ namespace Clube.Debug
                 return;
             }
             terrainHidden = hidden;
-            foreach (ChunkRenderer chunkRenderer in GetComponentsInChildren<ChunkRenderer>(true))
-            {
-                chunkRenderer.Renderer.enabled = !hidden;
-            }
+            // Chunks loaded later are drawn by the same regions, so they stay hidden too (GL776).
+            worldView.ChunksHidden = hidden;
         }
 
         private void Set(ref bool field, bool value)
