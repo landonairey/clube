@@ -106,17 +106,17 @@ namespace Clube.Core
                     }
                     bool tunnel = duty.Work == WorkRate.DigTunnel;
                     DigSite first = Laying(resident.Shop, tunnel);
-                    while (first != null && first.LayNext())
+                    if (first != null)
                     {
-                        yield return null;
+                        yield return first.LaySteps();
                     }
                     if (tunnel && first != null && first.Count == 0)
                     {
                         // No slope for a tunnel: the shop works pits instead (SiteOf).
                         DigSite pits = Laying(resident.Shop, false);
-                        while (pits != null && pits.LayNext())
+                        if (pits != null)
                         {
-                            yield return null;
+                            yield return pits.LaySteps();
                         }
                     }
                 }

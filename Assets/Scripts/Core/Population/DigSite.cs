@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -54,8 +55,11 @@ namespace Clube.Core
         private readonly Func<Vector2, bool> isDry;
         private readonly Func<Vector2, float, bool> mayWork;
         private readonly List<Dig> digs = new List<Dig>();
+        private const int VoxelsPerStep = 256;
+
         private bool done;
         private int attempts;
+        private IEnumerator laying;
 
         /// <param name="seed">The same for every worker of the shop.</param>
         /// <param name="tunnel">Tunnels rather than pits.</param>
@@ -100,30 +104,31 @@ namespace Clube.Core
             return dig != null;
         }
 
-        /// <summary>One more try at laying the run (GL762: a piece of work small enough for a frame); false once it is all laid.</summary>
+        /// <summary>One more try at laying the run, all at once; false once it is all laid.</summary>
         public bool LayNext()
         {
-            if (done)
+            IEnumerator attempt = laying ?? (laying = LayAttempt());
+            while (attempt.MoveNext())
             {
-                return false;
-            }
-            if (attempts >= MostDigs * 3)
-            {
-                done = true;
-                return false;
-            }
-            Dig next = Lay(attempts++);
-            if (next != null)
-            {
-                digs.Add(next);
-                done |= digs.Count >= MostDigs;
-            }
-            else if (!tunnel)
-            {
-                // No flat dry spot round the settlement: none will be found for a later pit either.
-                done = true;
             }
             return !done;
+        }
+
+        /// <summary>
+        /// The whole run in small steps for <see cref="SlicedWork"/> (GL771): looking for a tunnel's mouth took 90 ms. A dig
+        /// asked for meanwhile finishes the try in hand first, so the run comes out the same.
+        /// </summary>
+        public IEnumerator LaySteps()
+        {
+            while (!done)
+            {
+                IEnumerator attempt = laying ?? (laying = LayAttempt());
+                while (attempt.MoveNext())
+                {
+                    yield return null;
+                }
+                yield return null;
+            }
         }
 
         /// <summary>Every dig of the run, worked out.</summary>
@@ -137,9 +142,16 @@ namespace Clube.Core
         }
 
         // Lays the dig of a try: a flat dry spot round the settlement, then for a tunnel the nearest slope to it.
-        private Dig Lay(int attempt)
+        // One try at the next dig of the run. A single iterator, so that a dig asked for at once can finish it.
+        private IEnumerator LayAttempt()
         {
-            var random = new System.Random(seed + attempt * 104729);
+            if (done || attempts >= MostDigs * 3)
+            {
+                done = true;
+                laying = null;
+                yield break;
+            }
+            var random = new System.Random(seed + attempts++ * 104729);
             float edge = Mathf.Max(town.width, town.height) * 0.5f + 8f;
             Vector2 spot = town.center;
             bool found = false;
@@ -150,63 +162,84 @@ namespace Clube.Core
                 float here = ground(spot.x, spot.y);
                 found = mayWork(spot, 6f) && isDry(spot)
                     && Mathf.Abs(ground(spot.x + 2f, spot.y) - here) < 1f && Mathf.Abs(ground(spot.x, spot.y + 2f) - here) < 1f;
+                yield return null;
             }
-            if (!found)
+            Dig next = null;
+            if (found)
             {
-                return null;
+                var dig = new Dig();
+                bool sited = !tunnel;
+                // A tunnel starts at the nearest slope that rises steeply enough, ring by ring round the spot.
+                for (float distance = 0f; !sited && distance <= range; distance += 3f)
+                {
+                    sited = FindMouthAt(spot, distance, out Vector2 mouth, out Vector2 into);
+                    if (sited)
+                    {
+                        spot = mouth;
+                        dig.Along = into;
+                        dig.Bore = true;
+                    }
+                    yield return null;
+                }
+                if (sited)
+                {
+                    dig.Top = grid.WorldToNearestSample(new Vector3(spot.x, ground(spot.x, spot.y), spot.y));
+                    dig.Middle = grid.SampleToWorld(dig.Top);
+                    dig.Plan = dig.Bore ? DigPlan.Tunnel(dig.Top, dig.Along, BoreWidth, BoreHeight, BoreLength) : DigPlan.Pit(dig.Top, PitRadius, PitDepth);
+                    yield return null;
+                    IReadOnlyList<Vector3Int> voxels = dig.Plan.Voxels;
+                    dig.Ground = new bool[voxels.Count];
+                    // GL771: the voxels of a column share its ground: asked per voxel, one tunnel took over 40 ms.
+                    var columns = new Dictionary<Vector2Int, float>();
+                    for (int i = 0; i < voxels.Count; i++)
+                    {
+                        Vector3 at = grid.SampleToWorld(voxels[i]);
+                        var column = new Vector2Int(voxels[i].x, voxels[i].z);
+                        if (!columns.TryGetValue(column, out float top))
+                        {
+                            top = ground(at.x, at.z);
+                            columns.Add(column, top);
+                        }
+                        dig.Ground[i] = at.y < top;
+                        if (dig.Ground[i])
+                        {
+                            dig.GroundVoxels++;
+                        }
+                        if (i % VoxelsPerStep == VoxelsPerStep - 1)
+                        {
+                            yield return null;
+                        }
+                    }
+                    next = dig;
+                }
             }
-            var dig = new Dig();
-            if (tunnel)
+            if (next != null)
             {
-                if (!FindMouth(spot, out Vector2 mouth, out dig.Along))
-                {
-                    return null;
-                }
-                spot = mouth;
-                dig.Bore = true;
+                digs.Add(next);
+                done |= digs.Count >= MostDigs;
             }
-            dig.Top = grid.WorldToNearestSample(new Vector3(spot.x, ground(spot.x, spot.y), spot.y));
-            dig.Middle = grid.SampleToWorld(dig.Top);
-            dig.Plan = dig.Bore ? DigPlan.Tunnel(dig.Top, dig.Along, BoreWidth, BoreHeight, BoreLength) : DigPlan.Pit(dig.Top, PitRadius, PitDepth);
-            IReadOnlyList<Vector3Int> voxels = dig.Plan.Voxels;
-            dig.Ground = new bool[voxels.Count];
-            // GL771: the voxels of a column share its ground: asked per voxel, one tunnel took over 40 ms.
-            var columns = new Dictionary<Vector2Int, float>();
-            for (int i = 0; i < voxels.Count; i++)
+            else if (!tunnel)
             {
-                Vector3 at = grid.SampleToWorld(voxels[i]);
-                var column = new Vector2Int(voxels[i].x, voxels[i].z);
-                if (!columns.TryGetValue(column, out float top))
-                {
-                    top = ground(at.x, at.z);
-                    columns.Add(column, top);
-                }
-                dig.Ground[i] = at.y < top;
-                if (dig.Ground[i])
-                {
-                    dig.GroundVoxels++;
-                }
+                // No flat dry spot round the settlement: none will be found for a later pit either.
+                done = true;
             }
-            return dig;
+            laying = null;
         }
 
-        // The nearest place round a spot where the ground rises enough over a few metres to drive a bore into.
-        private bool FindMouth(Vector2 spot, out Vector2 mouth, out Vector2 into)
+        // A place on the ring this far from the spot where a slope rises steeply enough for a tunnel's mouth.
+        private bool FindMouthAt(Vector2 spot, float distance, out Vector2 mouth, out Vector2 into)
         {
-            for (float distance = 0f; distance <= range; distance += 3f)
+            for (int a = 0; a < 16; a++)
             {
-                for (int a = 0; a < 16; a++)
+                float angle = a * Mathf.PI / 8f;
+                var direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                Vector2 at = spot + direction * distance;
+                if (mayWork(at, 6f) && isDry(at)
+                    && ground(at.x + direction.x * MouthRun, at.y + direction.y * MouthRun) - ground(at.x, at.y) >= MouthRise)
                 {
-                    float angle = a * Mathf.PI / 8f;
-                    var direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-                    Vector2 at = spot + direction * distance;
-                    if (mayWork(at, 6f) && isDry(at)
-                        && ground(at.x + direction.x * MouthRun, at.y + direction.y * MouthRun) - ground(at.x, at.y) >= MouthRise)
-                    {
-                        mouth = at;
-                        into = direction;
-                        return true;
-                    }
+                    mouth = at;
+                    into = direction;
+                    return true;
                 }
             }
             mouth = spot;
