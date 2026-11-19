@@ -36,15 +36,17 @@ namespace Clube.Core
             Vector3Int.up, Vector3Int.down, Vector3Int.right, Vector3Int.left, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
         };
 
-        // A step with a time limit looks at this many samples at most, and at the clock this often (GL771).
-        private const int MostLooksInALimitedStep = 4096;
-        private const int SamplesBetweenClockLooks = 16;
+        // How many samples a step with a time limit looks at (GL771): it finds its own number between these, and always
+        // takes at least this share of what is waiting.
+        private const int LeastLooks = 256, MostLooks = 16384, StepsToCatchUp = 16;
 
         private readonly GroundHold[] holds = new GroundHold[256];
         private readonly float iso;
         private readonly ISet<Vector3Int> pinned;
-        private HashSet<Vector3Int> awake = new HashSet<Vector3Int>();
-        private HashSet<Vector3Int> next = new HashSet<Vector3Int>();
+        private readonly HashSet<Vector3Int> awake = new HashSet<Vector3Int>();
+        // The awake samples in the order they woke: the next to be looked at first.
+        private readonly Queue<Vector3Int> waking = new Queue<Vector3Int>();
+        private int lookLimit = 1024;
         private readonly List<Vector3Int> batch = new List<Vector3Int>();
         private readonly HashSet<Vector3Int> falling = new HashSet<Vector3Int>();
         private readonly HashSet<Vector3Int> letGo = new HashSet<Vector3Int>();
@@ -100,8 +102,8 @@ namespace Clube.Core
             {
                 for (int dx = -1; dx <= 1; dx++)
                 {
-                    awake.Add(sample + new Vector3Int(dx, 1, dz));
-                    awake.Add(sample + new Vector3Int(dx, 0, dz));
+                    WakeOne(sample + new Vector3Int(dx, 1, dz));
+                    WakeOne(sample + new Vector3Int(dx, 0, dz));
                 }
             }
         }
@@ -116,8 +118,9 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// A step that stops after about <paramref name="maxMilliseconds"/> (GL771): what it didn't reach stays awake for the
-        /// next step, so a big collapse takes longer to come down and no frame pays for all of it.
+        /// A step that looks at only as many samples as about <paramref name="maxMilliseconds"/> allow (GL771): the rest stay
+        /// awake for the next steps, so a big collapse takes longer to come down and no frame pays for all of it. However
+        /// slow the steps, each takes a share of what is waiting, so the waiting samples can't pile up.
         /// </summary>
         public int Step(int maxMoves, float maxMilliseconds)
         {
@@ -126,34 +129,24 @@ namespace Clube.Core
                 return 0;
             }
             bool limited = !float.IsInfinity(maxMilliseconds);
-            long deadline = limited ? Stopwatch.GetTimestamp() + (long)(maxMilliseconds * 0.001 * Stopwatch.Frequency) : long.MaxValue;
+            long began = Stopwatch.GetTimestamp();
+            int looks = limited ? Mathf.Min(awake.Count, Mathf.Max(lookLimit, awake.Count / StepsToCatchUp)) : awake.Count;
             batch.Clear();
-            next.Clear();
-            foreach (Vector3Int sample in awake)
+            for (int i = 0; i < looks; i++)
             {
-                if (limited && batch.Count >= MostLooksInALimitedStep)
-                {
-                    next.Add(sample);
-                }
-                else
-                {
-                    batch.Add(sample);
-                }
+                Vector3Int sample = waking.Dequeue();
+                awake.Remove(sample);
+                batch.Add(sample);
             }
-            // What this step doesn't look at is awake for the next; what it wakes joins them.
-            (awake, next) = (next, awake);
             batch.Sort((a, b) => a.y.CompareTo(b.y));
             turn++;
-            FindLetGo(deadline);
+            FindLetGo();
             int moves = 0;
-            bool outOfTime = false;
-            for (int i = 0; i < batch.Count; i++)
+            foreach (Vector3Int sample in batch)
             {
-                Vector3Int sample = batch[i];
-                outOfTime |= limited && i % SamplesBetweenClockLooks == SamplesBetweenClockLooks - 1 && Stopwatch.GetTimestamp() > deadline;
-                if (moves >= maxMoves || outOfTime)
+                if (moves >= maxMoves)
                 {
-                    awake.Add(sample);
+                    WakeOne(sample);
                     continue;
                 }
                 if (TryFall(sample))
@@ -161,7 +154,21 @@ namespace Clube.Core
                     moves++;
                 }
             }
+            if (limited)
+            {
+                float took = (float)((Stopwatch.GetTimestamp() - began) * 1000.0 / Stopwatch.Frequency);
+                lookLimit = took > maxMilliseconds ? Mathf.Max(LeastLooks, lookLimit / 2)
+                    : took < maxMilliseconds * 0.5f ? Mathf.Min(MostLooks, lookLimit * 2) : lookLimit;
+            }
             return moves;
+        }
+
+        private void WakeOne(Vector3Int sample)
+        {
+            if (awake.Add(sample))
+            {
+                waking.Enqueue(sample);
+            }
         }
 
         private bool TryFall(Vector3Int sample)
@@ -214,24 +221,13 @@ namespace Clube.Core
         // is gathered, stopping at ground that stands (a solid column under it), which is 100% stable. Stability spreads
         // out from there, highest first: resting on a sample keeps its stability, reaching out sideways or hanging under
         // one costs the material's loss. Whatever ends at 0% (cut off from standing ground, or hanging too far out) lets go.
-        private void FindLetGo(long deadline)
+        private void FindLetGo()
         {
             letGo.Clear();
             regionSeen.Clear();
             standing.Clear();
-            for (int i = 0; i < batch.Count; i++)
+            foreach (Vector3Int sample in batch)
             {
-                // Out of time: the samples not measured wait for the next step, and don't fall on a guess.
-                if (i > 0 && deadline != long.MaxValue && i % SamplesBetweenClockLooks == 0 && Stopwatch.GetTimestamp() > deadline)
-                {
-                    for (int rest = i; rest < batch.Count; rest++)
-                    {
-                        awake.Add(batch[rest]);
-                    }
-                    batch.RemoveRange(i, batch.Count - i);
-                    return;
-                }
-                Vector3Int sample = batch[i];
                 if (regionSeen.Contains(sample) || falling.Contains(sample) || !IsHangingCandidate(sample))
                 {
                     continue;
@@ -320,7 +316,7 @@ namespace Clube.Core
                     continue;
                 }
                 letGo.Add(sample);
-                awake.Add(sample);
+                WakeOne(sample);
             }
         }
 
