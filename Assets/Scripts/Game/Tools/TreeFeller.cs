@@ -193,14 +193,7 @@ namespace Clube.Game
         // The materials the world's chunks are drawn with, so the limb looks the same as the tree it came off.
         private Material[] Materials()
         {
-            foreach (ChunkRenderer chunkRenderer in worldView.Renderers.Values)
-            {
-                if (chunkRenderer != null && chunkRenderer.Renderer != null)
-                {
-                    return chunkRenderer.Renderer.sharedMaterials;
-                }
-            }
-            return new Material[0];
+            return worldView.ChunkMaterials;
         }
 
         // To the right of where the player looks, snapped to the nearest of +x, -x, +z, -z, in the world's own frame.

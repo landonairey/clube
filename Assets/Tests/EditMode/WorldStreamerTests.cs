@@ -26,7 +26,8 @@ namespace Clube.Core.Tests
             world = new World(new Vector3Int(Size, Size, Size), 1f, samples => new ByteVoxelStorage(samples));
             ITerrainGenerator generator = new FractalPerlin2DGenerator(3, 9f, 3f, 0.08f, octaves: 3);
             var pipeline = new ChunkPipeline(world.Grid, generator, null, null, world.PreferredFormat, world.StorageFactory);
-            pool = new ChunkRendererPool(root.transform, true, new Material[0]);
+            // Regions two chunks wide (GL776), so a small world has several.
+            pool = new ChunkRendererPool(root.transform, true, new Material[0], new Vector3Int(2, 2, 2));
             streamer = new WorldStreamer(world, pipeline, pool, () => new ChunkMeshSettings(0.5f, 1f), new StreamingSettings
             {
                 RenderDistance = 2,
@@ -43,6 +44,7 @@ namespace Clube.Core.Tests
         {
             streamer.UnloadAll();
             streamer.Dispose();
+            pool.Dispose();
             Object.DestroyImmediate(root);
         }
 
@@ -221,7 +223,7 @@ namespace Clube.Core.Tests
             bool found = false;
             foreach (var entry in pool.Active)
             {
-                if (entry.Value.Renderer.forceRenderingOff)
+                if (!pool.IsDrawn(entry.Key))
                 {
                     far = entry.Key;
                     found = true;
@@ -237,14 +239,14 @@ namespace Clube.Core.Tests
             {
                 if (pool.TryGet(new Vector3Int(far.x, y, far.z), out ChunkRenderer chunkRenderer))
                 {
-                    Assert.That(chunkRenderer.Renderer.forceRenderingOff, Is.False, $"layer {y} of the edited column draws");
+                    Assert.That(pool.IsDrawn(chunkRenderer.Coord), $"layer {y} of the edited column draws");
                 }
             }
 
             streamer.DetailDistance = 0;
             foreach (var entry in pool.Active)
             {
-                Assert.That(entry.Value.Renderer.forceRenderingOff, Is.False, "no detail distance: every chunk draws");
+                Assert.That(pool.IsDrawn(entry.Key), "no detail distance: every chunk draws");
             }
         }
 
@@ -255,10 +257,12 @@ namespace Clube.Core.Tests
             int hidden = 0;
             foreach (var entry in pool.Active)
             {
-                int dx = entry.Key.x - centre.x;
-                int dz = entry.Key.z - centre.z;
-                bool within = dx * dx + dz * dz <= distance * distance || world.HasEditsIn(new Vector2Int(entry.Key.x, entry.Key.z));
-                Assert.That(entry.Value.Renderer.forceRenderingOff, Is.EqualTo(!within), $"{entry.Key} drawn only within the detail distance");
+                // GL776: whole regions draw, those whose nearest column is within the distance.
+                Vector2Int first = pool.RegionColumn(new Vector2Int(entry.Key.x, entry.Key.z));
+                int dx = Mathf.Clamp(centre.x, first.x, first.x + pool.RegionSpan.x - 1) - centre.x;
+                int dz = Mathf.Clamp(centre.z, first.y, first.y + pool.RegionSpan.z - 1) - centre.z;
+                bool within = dx * dx + dz * dz <= distance * distance;
+                Assert.That(pool.IsDrawn(entry.Key), Is.EqualTo(within), $"{entry.Key} drawn only in regions reaching within the detail distance");
                 drawn += within ? 1 : 0;
                 hidden += within ? 0 : 1;
             }

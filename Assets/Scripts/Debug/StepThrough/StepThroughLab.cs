@@ -74,8 +74,8 @@ namespace Clube.Debug
 
         private LabChunkTarget target;
 
-        // The target's renderer while it's hidden, so it can be shown again when the target changes.
-        private Renderer hiddenRenderer;
+        // The target while its surface is hidden, so it can be shown again when the target changes.
+        private IRenderedChunk hiddenChunk;
         private StepThroughVisuals visuals;
         private Material ownedMarkerMaterial;
         private Material ownedSampleMaterial;
@@ -305,9 +305,9 @@ namespace Clube.Debug
                 return;
             }
 
-            hiddenRenderer = chunk.Renderer;
-            hiddenRenderer.enabled = false;
-            EnsureVisuals(hiddenRenderer.sharedMaterial);
+            hiddenChunk = chunk;
+            chunk.SurfaceHidden = true;
+            EnsureVisuals(chunk.SurfaceMaterial);
             visuals.Visible = true;
             Record(play);
             awaitingFirstRecording = false;
@@ -315,10 +315,10 @@ namespace Clube.Debug
 
         private void ShowRealMesh()
         {
-            if (hiddenRenderer != null)
+            if (hiddenChunk != null)
             {
-                hiddenRenderer.enabled = true;
-                hiddenRenderer = null;
+                hiddenChunk.SurfaceHidden = false;
+                hiddenChunk = null;
             }
         }
 

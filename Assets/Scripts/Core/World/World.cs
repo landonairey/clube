@@ -135,6 +135,12 @@ namespace Clube.Core
             return edited.Contains(coord);
         }
 
+        /// <summary>Changes whenever a column gains its first edit, or the edits are cleared: answers of <see cref="HasEditsIn"/> kept until it changes stay right.</summary>
+        public int EditedColumnsVersion { get; private set; }
+
+        /// <summary>Raised when a column (x, z) gains its first edit, after <see cref="EditedColumnsVersion"/> changed.</summary>
+        public event Action<Vector2Int> ColumnEdited;
+
         /// <summary>True once any edit has touched a chunk of the column (x, z).</summary>
         public bool HasEditsIn(Vector2Int column)
         {
@@ -145,7 +151,11 @@ namespace Clube.Core
         {
             if (edited.Add(coord))
             {
-                editedColumns.Add(new Vector2Int(coord.x, coord.z));
+                if (editedColumns.Add(new Vector2Int(coord.x, coord.z)))
+                {
+                    EditedColumnsVersion++;
+                    ColumnEdited?.Invoke(new Vector2Int(coord.x, coord.z));
+                }
                 DropProofOfEdited(coord);
             }
         }
@@ -357,6 +367,7 @@ namespace Clube.Core
             editedUnloaded.Clear();
             edited.Clear();
             editedColumns.Clear();
+            EditedColumnsVersion++;
         }
 
         /// <summary>The density at a global sample, or null when no loaded chunk holds it.</summary>

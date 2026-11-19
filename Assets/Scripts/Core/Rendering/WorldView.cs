@@ -228,6 +228,22 @@ namespace Clube.Core
             ? renderers.Active
             : (IReadOnlyDictionary<Vector3Int, ChunkRenderer>)new Dictionary<Vector3Int, ChunkRenderer>();
 
+        /// <summary>The materials chunks near the focus draw with: the surface, then any overlays (empty before Play mode).</summary>
+        public Material[] ChunkMaterials => renderers?.Materials ?? new Material[0];
+
+        /// <summary>Stops drawing every chunk, keeping them loaded (a lab's X-ray view).</summary>
+        public bool ChunksHidden
+        {
+            get => renderers != null && renderers.Hidden;
+            set
+            {
+                if (renderers != null)
+                {
+                    renderers.Hidden = value;
+                }
+            }
+        }
+
         /// <summary>Where ore is placed (3D), for lab views; null when the terrain has no ores.</summary>
         public OreField Ores => ores;
 

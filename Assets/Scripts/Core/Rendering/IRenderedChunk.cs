@@ -22,8 +22,11 @@ namespace Clube.Core
         /// <summary>The chunk's mesh, as last built.</summary>
         Mesh Mesh { get; }
 
-        /// <summary>Draws <see cref="Mesh"/>; step-through hides it while it plays.</summary>
-        Renderer Renderer { get; }
+        /// <summary>Stops drawing <see cref="Mesh"/>; step-through hides it while it plays.</summary>
+        bool SurfaceHidden { get; set; }
+
+        /// <summary>The material <see cref="Mesh"/> is drawn with.</summary>
+        Material SurfaceMaterial { get; }
 
         /// <summary>Counts and timings from the last mesh build (K4).</summary>
         ChunkMeshStats LastBuildStats { get; }

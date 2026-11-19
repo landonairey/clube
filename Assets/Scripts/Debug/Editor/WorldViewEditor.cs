@@ -39,6 +39,7 @@ namespace Clube.Debug.Editor
                 EditorGUILayout.HelpBox(
                     $"Loaded {view.World.LoadedCount} chunks · waiting {stats.Pending} · edited {view.World.EditedCount}\n" +
                     $"Jobs: generating {stats.Generating} · meshing {stats.Meshing} · colliders {stats.Baking} · {stats.Renderers} with surface\n" +
+                    $"Regions {stats.Regions} · drawn {stats.RegionsDrawn} · waiting to merge {stats.RegionsWaiting}\n" +
                     $"Streaming {stats.FrameMilliseconds:0.00} ms: {stats.Phases}" +
                     (view.Problem != null ? $"\nGenerate skipped: {view.Problem}" : ""),
                     view.Problem != null ? MessageType.Warning : MessageType.None);

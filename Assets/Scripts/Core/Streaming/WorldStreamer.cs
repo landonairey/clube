@@ -82,7 +82,13 @@ namespace Clube.Core
         public int Generating;
         public int Meshing;
         public int Baking;
+        /// <summary>Chunks with a surface, each with its own mesh (not a renderer since GL776).</summary>
         public int Renderers;
+
+        /// <summary>Regions the chunks are drawn by (GL776): those holding a surface, those drawing now, and those waiting to be merged again.</summary>
+        public int Regions;
+        public int RegionsDrawn;
+        public int RegionsWaiting;
         public int Vertices;
         public int Triangles;
 
@@ -212,8 +218,9 @@ namespace Clube.Core
             this.meshSettings = meshSettings;
             this.settings = settings;
             DrawVersion = ++drawVersions;
-            renderers.SetDrawRule(IsColumnDrawn);
+            renderers.SetDrawRule(IsRegionWithin, RegionHasEdits, world.HasEditsIn);
             world.ChunkMaterialised += NoteMaterialised;
+            world.ColumnEdited += NoteColumnEdited;
             world.ProvenLayersChanged += RaiseProvenLayersChanged;
         }
 
@@ -240,6 +247,9 @@ namespace Clube.Core
                 current.Meshing = pipeline.MeshingCount;
                 current.Baking = pipeline.BakingCount;
                 current.Renderers = renderers.Active.Count;
+                current.Regions = renderers.RegionCount;
+                current.RegionsDrawn = renderers.DrawnRegionCount;
+                current.RegionsWaiting = renderers.DirtyRegionCount;
                 return current;
             }
         }
@@ -432,9 +442,29 @@ namespace Clube.Core
         /// <summary>
         /// Rebuilds every edited chunk's mesh now, and its collider if it has one, so an edit
         /// shows (and can be walked on) in the frame it was made. Call from LateUpdate, after
-        /// the frame's edits.
+        /// the frame's edits. Then merges the drawn regions whose chunks changed this frame or before (GL776).
         /// </summary>
         public void RebuildEdited(Vector3 focus)
+        {
+            RebuildEditedChunks(focus);
+            BuildRegions(focus);
+        }
+
+        // Regions round the focus are merged whatever the budget; then the nearest drawn ones, and those just past the
+        // detail distance (so they're ready when the focus walks up), to a budget: bulk loading gets ten times as much.
+        private const int RegionVertexBudget = 300000;
+        private const int LoadingRegionVertexBudget = 3000000;
+
+        private void BuildRegions(Vector3 focus)
+        {
+            float chunkWidth = world.Grid.ChunkWorldSize.x;
+            float buildWithin = settings.DetailDistance > 0
+                ? (Mathf.Max(DrawRadius, 0) + 2 * Mathf.Max(renderers.RegionSpan.x, renderers.RegionSpan.z) + 1) * chunkWidth
+                : float.PositiveInfinity;
+            renderers.BuildRegions(focus, buildWithin, IsLoadingDrawnArea ? LoadingRegionVertexBudget : RegionVertexBudget);
+        }
+
+        private void RebuildEditedChunks(Vector3 focus)
         {
             TakeMaterialised();
             scratch.Clear();
@@ -585,6 +615,7 @@ namespace Clube.Core
         public void Dispose()
         {
             world.ChunkMaterialised -= NoteMaterialised;
+            world.ColumnEdited -= NoteColumnEdited;
             world.ProvenLayersChanged -= RaiseProvenLayersChanged;
             pipeline.Dispose();
         }
@@ -1225,13 +1256,67 @@ namespace Clube.Core
         public int DrawVersion { get; private set; }
 
         /// <summary>
-        /// True when the world draws the column's chunks (x, z): every column with no detail distance,
-        /// otherwise those within it of the focus column, and any column holding an edited chunk.
+        /// True when the world draws the column's chunks (x, z): every column with no detail distance, otherwise those of
+        /// the regions (<see cref="ChunkRendererPool.RegionSpan"/> columns square, GL776) that reach within it of the focus
+        /// column (whole regions, since each draws as one renderer), and any column holding an edited chunk.
         /// </summary>
         public bool IsColumnDrawn(Vector2Int column)
         {
-            int distance = settings.DetailDistance;
-            return distance <= 0 || !hasDrawCentre || IsWithin(column, drawCentre, DrawRadius) || world.HasEditsIn(column);
+            return IsRegionWithin(column) || world.HasEditsIn(column);
+        }
+
+        // Whether the nearest column of the column's region lies within the draw radius of the focus column; every region
+        // with no detail distance.
+        private bool IsRegionWithin(Vector2Int column)
+        {
+            if (settings.DetailDistance <= 0 || !hasDrawCentre)
+            {
+                return true;
+            }
+            Vector2Int first = renderers.RegionColumn(column);
+            Vector3Int span = renderers.RegionSpan;
+            var nearest = new Vector2Int(
+                Mathf.Clamp(drawCentre.x, first.x, first.x + span.x - 1),
+                Mathf.Clamp(drawCentre.y, first.y, first.y + span.z - 1));
+            return IsWithin(nearest, drawCentre, DrawRadius);
+        }
+
+        // Regions (by first column) known to hold edits or not, until a column gains its first edit.
+        private readonly Dictionary<Vector2Int, bool> regionEdits = new Dictionary<Vector2Int, bool>();
+        private int regionEditsVersion = -1;
+
+        // Keeps the cache current through new edits (roads and settlements write new columns all the time): only a clear
+        // of the world's edits, or an edit missed, empties it.
+        private void NoteColumnEdited(Vector2Int column)
+        {
+            if (regionEditsVersion == world.EditedColumnsVersion - 1)
+            {
+                regionEdits[renderers.RegionColumn(column)] = true;
+                regionEditsVersion = world.EditedColumnsVersion;
+            }
+        }
+
+        private bool RegionHasEdits(Vector2Int first)
+        {
+            if (regionEditsVersion != world.EditedColumnsVersion)
+            {
+                regionEdits.Clear();
+                regionEditsVersion = world.EditedColumnsVersion;
+            }
+            if (regionEdits.TryGetValue(first, out bool edited))
+            {
+                return edited;
+            }
+            Vector3Int span = renderers.RegionSpan;
+            for (int z = 0; z < span.z && !edited; z++)
+            {
+                for (int x = 0; x < span.x && !edited; x++)
+                {
+                    edited = world.HasEditsIn(new Vector2Int(first.x + x, first.y + z));
+                }
+            }
+            regionEdits.Add(first, edited);
+            return edited;
         }
 
         private static bool IsWithin(Vector2Int column, Vector2Int centre, int distance)
@@ -1271,43 +1356,21 @@ namespace Clube.Core
                 renderers.RefreshDrawn();
             }
         }
-        // The focus column moved: switch the renderers of the columns that crossed the detail distance.
+        // The focus column moved: switch the regions that crossed the detail distance (a look at every region: a few thousand).
         private void UpdateDrawCentre(Vector2Int column)
         {
             if (hasDrawCentre && column == drawCentre)
             {
                 return;
             }
-            Vector2Int old = drawCentre;
-            bool hadCentre = hasDrawCentre;
             drawCentre = column;
             hasDrawCentre = true;
-            int distance = DrawRadius;
             if (settings.DetailDistance <= 0)
             {
                 return;
             }
             DrawVersion = ++drawVersions;
-
-            // Only columns near the edge of the old or the new circle can change; a long jump redoes them all.
-            int minX = Mathf.Min(old.x, column.x) - distance - 1, maxX = Mathf.Max(old.x, column.x) + distance + 1;
-            int minZ = Mathf.Min(old.y, column.y) - distance - 1, maxZ = Mathf.Max(old.y, column.y) + distance + 1;
-            if (!hadCentre || (long)(maxX - minX + 1) * (maxZ - minZ + 1) > 4L * (2 * distance + 3) * (2 * distance + 3))
-            {
-                renderers.RefreshDrawn();
-                return;
-            }
-            for (int z = minZ; z <= maxZ; z++)
-            {
-                for (int x = minX; x <= maxX; x++)
-                {
-                    var candidate = new Vector2Int(x, z);
-                    if (IsWithin(candidate, old, distance) != IsWithin(candidate, column, distance) && !world.HasEditsIn(candidate))
-                    {
-                        renderers.RefreshColumn(candidate, settings.HeightInChunks);
-                    }
-                }
-            }
+            renderers.RefreshDrawn();
         }
 
         private void SetRenderDistance(int distance)

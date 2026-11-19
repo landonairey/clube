@@ -65,8 +65,10 @@ namespace Clube.Core
         private Material copiedFrom;
         private int nextCopyFrame;
         private ClipState[] lastClips;
-        private readonly Dictionary<(int, Vector3Int), MeshRenderer> shown = new Dictionary<(int, Vector3Int), MeshRenderer>();
-        private readonly Stack<MeshRenderer> pool = new Stack<MeshRenderer>();
+        // Each level's chunks, drawn merged by region (GL776): a renderer per block of RegionSpan chunks, not one per chunk.
+        private static readonly Vector3Int RegionSpan = new Vector3Int(4, 4, 4);
+        private MeshRegionSet[] levelRegions;
+        private Material[][] levelMaterialArrays;
         // Each shown chunk's ground in world metres (x, z), to switch off the chunks the clipping leaves nothing of.
         private readonly Dictionary<(int, Vector3Int), Rect> shownAreas = new Dictionary<(int, Vector3Int), Rect>();
         private bool hiddenDirty;
@@ -74,7 +76,7 @@ namespace Clube.Core
 
         /// <summary>
         /// Shown chunks switched off because the clipping would leave none of them (GL560): they lie wholly where the finer
-        /// level or the world's own chunks draw. Their renderers cost a draw call each in every pass, for nothing.
+        /// level or the world's own chunks draw. A region (GL776) none of whose chunks draws anything is switched off.
         /// </summary>
         public int HiddenCount { get; private set; }
 
@@ -225,6 +227,11 @@ namespace Clube.Core
             {
                 UpdateHidden();
             }
+            // A level swaps its whole square at once, so every changed region is merged now, whatever it costs.
+            foreach (MeshRegionSet regions in levelRegions)
+            {
+                regions.Build(Vector3.zero, float.PositiveInfinity, float.PositiveInfinity, int.MaxValue);
+            }
             // The world hides its chunks past the detail distance only once this draws the ground there (P18).
             worldView.CoarseTerrainReady = builder.TryGetShown(0, out _);
             LastUpdateMilliseconds = (System.Diagnostics.Stopwatch.GetTimestamp() - started) * 1000f / System.Diagnostics.Stopwatch.Frequency;
@@ -233,29 +240,20 @@ namespace Clube.Core
         void TerrainLodBuilder.ISink.Show(int level, Vector3Int coord, Mesh mesh)
         {
             int i = level - builder.FirstLevel;
-            MeshRenderer chunk = pool.Count > 0 ? pool.Pop() : CreateRenderer();
-            chunk.transform.SetParent(levelRoots[i], false);
-            chunk.transform.localPosition = builder.GridOf(i).ChunkOrigin(coord);
-            chunk.GetComponent<MeshFilter>().sharedMesh = mesh;
-            chunk.sharedMaterial = levelMaterials[i];
-            chunk.enabled = true;
-            chunk.gameObject.SetActive(true);
-            shown[(level, coord)] = chunk;
-            Vector3 low = chunk.transform.TransformPoint(mesh.bounds.min);
-            Vector3 high = chunk.transform.TransformPoint(mesh.bounds.max);
+            levelRegions[i].Set(coord, mesh);
+            Transform root = levelRoots[i];
+            Vector3 origin = builder.GridOf(i).ChunkOrigin(coord);
+            Vector3 low = root.TransformPoint(origin + mesh.bounds.min);
+            Vector3 high = root.TransformPoint(origin + mesh.bounds.max);
             shownAreas[(level, coord)] = Rect.MinMaxRect(low.x, low.z, high.x, high.z);
             hiddenDirty = true;
         }
 
         void TerrainLodBuilder.ISink.Hide(int level, Vector3Int coord)
         {
-            if (shown.TryGetValue((level, coord), out MeshRenderer chunk))
+            if (shownAreas.Remove((level, coord)))
             {
-                shown.Remove((level, coord));
-                shownAreas.Remove((level, coord));
-                chunk.GetComponent<MeshFilter>().sharedMesh = null;
-                chunk.gameObject.SetActive(false);
-                pool.Push(chunk);
+                levelRegions[level - builder.FirstLevel].Remove(coord);
             }
         }
 
@@ -310,6 +308,8 @@ namespace Clube.Core
             levelRoots = new Transform[builder.LevelCount];
             lastClips = new ClipState[builder.LevelCount];
             levelMaterials = new Material[builder.LevelCount];
+            levelMaterialArrays = new Material[builder.LevelCount][];
+            levelRegions = new MeshRegionSet[builder.LevelCount];
             copiedFrom = null;
             for (int i = 0; i < builder.LevelCount; i++)
             {
@@ -319,6 +319,11 @@ namespace Clube.Core
                 root.localPosition = new Vector3(0f, -sink * builder.GridOf(i).VoxelSize, 0f);
                 levelRoots[i] = root;
                 levelMaterials[i] = new Material(worldView.SurfaceMaterial) { name = $"Coarse terrain level {builder.FirstLevel + i}" };
+                levelMaterialArrays[i] = new[] { levelMaterials[i] };
+                WorldGrid grid = builder.GridOf(i);
+                levelRegions[i] = new MeshRegionSet(root, "Coarse region", RegionSpan, grid.ChunkWorldSize, grid.ChunkOrigin, SetUpRenderer);
+                Material[] own = levelMaterialArrays[i];
+                levelRegions[i].SetMaterialRule(_ => own);
             }
         }
 
@@ -394,14 +399,12 @@ namespace Clube.Core
             WorldConfig config = worldView.Config;
             float chunkWidth = config.ChunkSize.x * config.VoxelSize;
             int hidden = 0;
-            foreach (KeyValuePair<(int, Vector3Int), MeshRenderer> entry in shown)
+            foreach (KeyValuePair<(int, Vector3Int), Rect> entry in shownAreas)
             {
                 int i = entry.Key.Item1 - builder.FirstLevel;
-                bool hide = shownAreas.TryGetValue(entry.Key, out Rect area) && DrawsNothing(lastClips[i], area, origin, chunkWidth);
-                if (entry.Value.enabled == hide)
-                {
-                    entry.Value.enabled = !hide;
-                }
+                bool hide = DrawsNothing(lastClips[i], entry.Value, origin, chunkWidth);
+                // A region is switched off once none of its chunks draws anything.
+                levelRegions[i].SetVisible(entry.Key.Item2, !hide);
                 hidden += hide ? 1 : 0;
             }
             HiddenCount = hidden;
@@ -450,15 +453,12 @@ namespace Clube.Core
             }
         }
 
-        private MeshRenderer CreateRenderer()
+        private static void SetUpRenderer(MeshRenderer meshRenderer)
         {
-            var chunk = new GameObject("Coarse chunk", typeof(MeshFilter), typeof(MeshRenderer));
-            MeshRenderer meshRenderer = chunk.GetComponent<MeshRenderer>();
             meshRenderer.shadowCastingMode = ShadowCastingMode.Off;
             meshRenderer.receiveShadows = true;
             meshRenderer.lightProbeUsage = LightProbeUsage.Off;
             meshRenderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
-            return meshRenderer;
         }
 
         private void DropBuilder()
@@ -470,23 +470,15 @@ namespace Clube.Core
             builder?.Dispose();
             builder = null;
             builtFor = null;
-            foreach (MeshRenderer chunk in shown.Values)
+            if (levelRegions != null)
             {
-                if (chunk != null)
+                foreach (MeshRegionSet regions in levelRegions)
                 {
-                    Destroy(chunk.gameObject);
+                    regions?.Dispose();
                 }
+                levelRegions = null;
             }
-            shown.Clear();
             shownAreas.Clear();
-            while (pool.Count > 0)
-            {
-                MeshRenderer chunk = pool.Pop();
-                if (chunk != null)
-                {
-                    Destroy(chunk.gameObject);
-                }
-            }
             if (levelRoots != null)
             {
                 foreach (Transform root in levelRoots)

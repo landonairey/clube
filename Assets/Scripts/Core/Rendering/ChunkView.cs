@@ -59,6 +59,14 @@ namespace Clube.Core
 
         public Renderer Renderer => GetComponent<MeshRenderer>();
 
+        public bool SurfaceHidden
+        {
+            get => !Renderer.enabled;
+            set => Renderer.enabled = !value;
+        }
+
+        public Material SurfaceMaterial => Renderer.sharedMaterial;
+
         /// <summary>Writes a sample through <see cref="Chunk.SetDensity"/> (A7).</summary>
         public void SetDensity(Vector3Int sample, float density)
         {
