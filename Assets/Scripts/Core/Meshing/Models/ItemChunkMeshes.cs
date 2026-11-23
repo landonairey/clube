@@ -62,6 +62,9 @@ namespace Clube.Core
                 case ItemIconShape.Stick:
                     Stick(model, tint);
                     break;
+                case ItemIconShape.Charcoal:
+                    Charcoal(model, tint);
+                    break;
                 case ItemIconShape.Pearl:
                     Pearl(model, new Vector3(0f, 0.42f, 0f), 0.42f, tint);
                     break;
@@ -154,6 +157,19 @@ namespace Clube.Core
                 model.Prism(new Vector3(0.03f, end + 0.02f * outward, 0.01f), new Vector3(0.03f, end + 0.026f * outward, 0.01f), 0.045f, 0.04f, 6, Shade(wood, 0.62f));
             }
             model.Surface = Vector2.zero;
+        }
+
+        // Charred branch ends in a loose pile: stubby six-sided pieces lying every way, so it reads as burnt wood and not as a stone.
+        private static void Charcoal(LowPolyMeshBuilder model, Color color)
+        {
+            model.Prism(new Vector3(-0.42f, 0.14f, -0.06f), new Vector3(0.3f, 0.2f, 0.02f), 0.15f, 0.13f, 6, color);
+            model.Prism(new Vector3(-0.3f, 0.1f, 0.3f), new Vector3(0.34f, 0.12f, 0.4f), 0.11f, 0.1f, 6, Shade(color, 1.18f));
+            model.Prism(new Vector3(-0.2f, 0.34f, 0.04f), new Vector3(0.28f, 0.42f, -0.12f), 0.12f, 0.11f, 5, Shade(color, 0.86f));
+            model.Prism(new Vector3(0.18f, 0.12f, -0.34f), new Vector3(0.36f, 0.5f, -0.2f), 0.1f, 0.08f, 6, Shade(color, 1.1f));
+            model.Prism(new Vector3(-0.1f, 0.5f, 0.2f), new Vector3(0.1f, 0.6f, 0.0f), 0.08f, 0.07f, 5, Shade(color, 0.95f));
+            // A broken-off crumb or two.
+            model.Diamond(new Vector3(0.42f, 0.06f, 0.2f), new Vector3(0.09f, 0.06f, 0.08f), Shade(color, 1.05f));
+            model.Diamond(new Vector3(-0.5f, 0.05f, 0.32f), new Vector3(0.07f, 0.05f, 0.07f), Shade(color, 0.9f));
         }
 
         // A sprig: a twig with leaves off both sides and one at its tip.

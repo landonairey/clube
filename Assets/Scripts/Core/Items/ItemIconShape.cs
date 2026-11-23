@@ -54,5 +54,8 @@ namespace Clube.Core
 
         /// <summary>A pearl (GL808): a 24-sided ball with a rainbow sheen over its tint.</summary>
         Pearl = 15,
+
+        /// <summary>Charred branch ends in a pile (GL818): burnt wood, not a stone.</summary>
+        Charcoal = 16,
     }
 }

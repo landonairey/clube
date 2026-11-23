@@ -108,6 +108,54 @@ namespace Clube.Core
         [SerializeField]
         private bool takesIngotForms;
 
+        [Tooltip("An input other items may replace (GL813-GL816): birch wood, where pine and maple wood do as well. The station derives one variant for each item in Swap For.")]
+        [SerializeField]
+        private ItemDefinition swapInput;
+
+        [SerializeField]
+        private List<ItemDefinition> swapFor = new List<ItemDefinition>();
+
+        /// <summary>
+        /// The recipes that take another item where this one takes <c>swapInput</c> (GL813-GL816): everything else the
+        /// same, named after the item they take. Empty for a recipe with no swaps.
+        /// </summary>
+        public List<Recipe> SwapVariants()
+        {
+            var variants = new List<Recipe>();
+            if (swapInput == null)
+            {
+                return variants;
+            }
+            foreach (ItemDefinition other in swapFor)
+            {
+                if (other == null || other == swapInput)
+                {
+                    continue;
+                }
+                Recipe variant = Instantiate(this);
+                variant.swapInput = null;
+                variant.swapFor = new List<ItemDefinition>();
+                for (int i = 0; i < variant.inputs.Count; i++)
+                {
+                    if (variant.inputs[i].Item == swapInput)
+                    {
+                        variant.inputs[i] = new ItemAmount(other, variant.inputs[i].Count);
+                    }
+                }
+                variant.name = $"{name} ({other.DisplayName})";
+                variants.Add(variant);
+            }
+            return variants;
+        }
+
+        /// <summary>Lets <c>other</c> replace <c>input</c> in this recipe (GL813), for recipes made in code (tests).</summary>
+        public Recipe WithSwap(ItemDefinition input, ItemDefinition other)
+        {
+            swapInput = input;
+            swapFor.Add(other);
+            return this;
+        }
+
         /// <summary>True for an alloy that also takes the ingot form of its inputs (GL700).</summary>
         public bool TakesIngotForms => takesIngotForms;
 
