@@ -16,6 +16,9 @@ namespace Clube.Game
         /// <summary>True for a canvas bag (GL611), which more of the same stack can be poured into.</summary>
         public bool IsBag { get; private set; }
 
+        /// <summary>How many identical sacks this one stands for (GL837: a pile of over 10 merges into one); 1 for a single sack.</summary>
+        public int Sacks { get; set; } = 1;
+
         public Rigidbody Body { get; private set; }
 
         /// <summary>Where it last lay still: where it's put back if it ever falls out of the world.</summary>
@@ -30,7 +33,7 @@ namespace Clube.Game
 
         private DroppedItems owner;
 
-        public string Prompt => Stack.Count > 1 ? $"Pick up {Stack.Item.DisplayName} x{Stack.Count}" : Stack.Count == 0 ? $"Pick up {Stack.Item.DisplayName} x{Stack.Part:0.##}" : $"Pick up {Stack.Item.DisplayName}";
+        public string Prompt => Sacks > 1 ? $"Pick up {Sacks} sacks of {Stack.Item.DisplayName}" : Stack.Count > 1 ? $"Pick up {Stack.Item.DisplayName} x{Stack.Count}" : Stack.Count == 0 ? $"Pick up {Stack.Item.DisplayName} x{Stack.Part:0.##}" : $"Pick up {Stack.Item.DisplayName}";
 
         public void Set(DroppedItems owner, ItemStack stack, bool isBag, Rigidbody body)
         {

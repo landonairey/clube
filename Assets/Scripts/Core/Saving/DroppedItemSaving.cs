@@ -11,6 +11,15 @@ namespace Clube.Core
         public StackSave Stack;
         public Vector3 Position;
         public Quaternion Rotation;
+
+        /// <summary>In a canvas bag (GL838); false for an item lying as its own model.</summary>
+        public bool IsBag;
+
+        /// <summary>True when the line said whether it was bagged (saves from before GL838 didn't).</summary>
+        public bool BagKnown;
+
+        /// <summary>How many sacks this one stands for (GL837); 0 or 1 for a single one.</summary>
+        public int Sacks;
     }
 
     /// <summary>
@@ -57,6 +66,7 @@ namespace Clube.Core
                         text.Append(i > 0 ? "," : string.Empty).Append(part.Material.ToString(Plain)).Append(':').Append(part.Fraction.ToString("R", Plain));
                     }
                 }
+                text.Append(Field).Append(item.IsBag ? 'b' : 'm').Append(Field).Append(Mathf.Max(1, item.Sacks).ToString(Plain));
             }
             return text.ToString();
         }
@@ -113,6 +123,9 @@ namespace Clube.Core
                 Stack = new StackSave { Item = f[0], Count = count, Part = n[0], Wear = wear, Quality = n[1], Contents = contents },
                 Position = new Vector3(n[2], n[3], n[4]),
                 Rotation = new Quaternion(n[5], n[6], n[7], n[8]),
+                BagKnown = f.Length > 13 && (f[13] == "b" || f[13] == "m"),
+                IsBag = f.Length > 13 && f[13] == "b",
+                Sacks = f.Length > 14 && int.TryParse(f[14], NumberStyles.Integer, Plain, out int sacks) ? Mathf.Max(1, sacks) : 1,
             };
             return true;
         }

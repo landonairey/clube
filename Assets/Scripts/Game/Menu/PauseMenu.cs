@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Clube.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -39,6 +40,12 @@ namespace Clube.Game
         // The save name being typed, while Save and Exit asks for one (GL207); null otherwise.
         private string saveName;
         private bool focusName;
+
+        // The saves already there, listed under the name field so one can be picked to save over (GL839).
+        private List<SaveEntry> existingSaves = new List<SaveEntry>();
+        private Vector2 savesScroll;
+        private const int ListedRows = 4;
+        private const float ListRowHeight = 30f;
 
         // The graphics popup while it's open (GL209); null otherwise.
         private GraphicsSettingsPage graphics;
@@ -295,7 +302,9 @@ namespace Clube.Game
             Event current = Event.current;
             bool enter = current.type == EventType.KeyDown && (current.keyCode == KeyCode.Return || current.keyCode == KeyCode.KeypadEnter);
 
-            float height = 96f + 22f + 50f + 40f + ButtonHeight + 28f + (problem != null ? 60f : 0f);
+            int rows = Mathf.Min(existingSaves.Count, ListedRows);
+            float listHeight = rows > 0 ? 26f + rows * ListRowHeight + 8f : 0f;
+            float height = 96f + 22f + 50f + 40f + ButtonHeight + 28f + listHeight + (problem != null ? 60f : 0f);
             BeginPopup(NamingWidth, height);
             GUILayout.Label("Save game", titleStyle);
             GUILayout.Space(6f);
@@ -310,6 +319,19 @@ namespace Clube.Game
             string name = SaveNames.Clean(saveName);
             GUILayout.Label(name.Length == 0 ? "Empty: saved as " + host.DefaultSaveName
                 : SaveSlots.Exists(name) ? "Replaces the save with this name." : " ", hintStyle);
+            if (rows > 0)
+            {
+                GUILayout.Label("Or save over an existing save:", labelStyle);
+                savesScroll = GUILayout.BeginScrollView(savesScroll, GUILayout.Height(rows * ListRowHeight + 4f));
+                foreach (SaveEntry entry in existingSaves)
+                {
+                    if (GameUi.LayoutButton(entry.Name, buttonStyle, GUILayout.Height(ListRowHeight - 2f)))
+                    {
+                        saveName = entry.Name;
+                    }
+                }
+                GUILayout.EndScrollView();
+            }
             GUILayout.Space(4f);
             GUILayout.BeginHorizontal();
             if (GameUi.LayoutButton("Cancel", buttonStyle, GUILayout.MinHeight(ButtonHeight)))
@@ -353,6 +375,8 @@ namespace Clube.Game
                 return;
             }
             saveName = host.DefaultSaveName;
+            existingSaves = SaveSlots.List();
+            savesScroll = Vector2.zero;
             focusName = true;
             problem = null;
         }
