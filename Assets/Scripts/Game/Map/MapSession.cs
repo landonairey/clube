@@ -197,7 +197,8 @@ namespace Clube.Game
             LastBuildSeconds = (float)watch.Elapsed.TotalSeconds;
             Version++;
 
-            Vector2 at = MapStart.Pick(Plan, Survey);
+            // GL803: beside an outpost in a biome where birch grows, for the early crafting.
+            Vector2 at = MapStart.Pick(Plan, Survey, MapStart.BirchBiome(worldView.Trees != null ? worldView.Trees.Settings : null));
             // GL744: the player starts on a parcel that can be theirs, beside the home settlement rather than on its locked land.
             PlayerParcels parcels = player != null ? player.GetComponent<PlayerParcels>() : null;
             if (parcels != null)
@@ -230,7 +231,10 @@ namespace Clube.Game
             }
             float size = parcels.SizeInChunks * worldView.World.Grid.ChunkWorldSize.x;
             var corner = new Vector2(Mathf.Floor(at.x / size) * size, Mathf.Floor(at.y / size) * size);
-            worldView.Trees.EnsureTrees(new Rect(corner, new Vector2(size, size)), StartParcelTrees);
+            var parcel = new Rect(corner, new Vector2(size, size));
+            worldView.Trees.EnsureTrees(parcel, StartParcelTrees);
+            // GL803: two of them birch (kind 0), so the first tools can be made.
+            worldView.Trees.EnsureKind(parcel, 0, MapStart.StartBirches);
         }
 
         private void PlacePlayer()

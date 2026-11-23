@@ -64,6 +64,37 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void TreeField_EnsureKind_GivesTheStartingParcelTwoBirches_OnSeveralSeeds()
+        {
+            // GL803: a parcel of only pines (or maples) still gets two birch trees.
+            VoxelMaterial wood = VoxelMaterial.Create(11, "Wood", VoxelMaterialCategory.Plant);
+            VoxelMaterial leaves = VoxelMaterial.Create(12, "Leaves", VoxelMaterialCategory.Plant);
+            VoxelMaterial maple = VoxelMaterial.Create(13, "Maple", VoxelMaterialCategory.Plant);
+            try
+            {
+                var settings = new TreeGeneration { Chance = 1f, CellSize = 10f, Wood = wood, Leaves = leaves, MapleWood = maple, MapleShare = 1f };
+                for (int seed = 1; seed <= 5; seed++)
+                {
+                    var field = new TreeField(settings, seed, new FlatGenerator(20f));
+                    var parcel = new Rect(320f, -64f, 32f, 32f);
+                    field.EnsureTrees(parcel, 3);
+                    Assert.AreEqual(0, field.CountKind(parcel, 0), "every tree is maple before");
+                    field.EnsureKind(parcel, 0, MapStart.StartBirches);
+                    Assert.AreEqual(MapStart.StartBirches, field.CountKind(parcel, 0), $"seed {seed}");
+                    Assert.GreaterOrEqual(RootedIn(field, parcel), 3, "no tree lost");
+                    field.EnsureKind(parcel, 0, MapStart.StartBirches);
+                    Assert.AreEqual(MapStart.StartBirches, field.CountKind(parcel, 0), "already there: none changed");
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(wood);
+                Object.DestroyImmediate(leaves);
+                Object.DestroyImmediate(maple);
+            }
+        }
+
+        [Test]
         public void TreeField_KnowsWhereTreesStand_AndHowTallTheyAre()
         {
             // GL765, GL766: the parcel's arrow hangs over the trees, and the cart stops clear of them.

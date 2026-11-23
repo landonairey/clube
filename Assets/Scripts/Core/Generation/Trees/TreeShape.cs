@@ -110,6 +110,26 @@ namespace Clube.Core
             return VoxelHash.Uniform(seed, cell.x, SpeciesSalt, cell.y) < share ? 1 : 0;
         }
 
+        /// <summary>
+        /// GL803: the share of trees at (x, z) that are birch (kind 0), by the same rules as <see cref="KindOf"/>: what the
+        /// species rows leave at the land's temperature, less the biome's maples.
+        /// </summary>
+        public static float BirchShareAt(float x, float z, TreeGeneration settings)
+        {
+            float temperature = settings.Climate != null ? settings.Climate.TemperatureAt(x, z) : float.NaN;
+            float rows = 0f;
+            foreach (TreeSpecies row in settings.MoreSpecies)
+            {
+                rows += row != null ? row.ShareAt(temperature) : 0f;
+            }
+            float maple = settings.MapleShare;
+            if (maple > 0f && settings.Climate != null)
+            {
+                maple = settings.Climate.MapleShareAt(x, z, maple);
+            }
+            return Mathf.Clamp01(1f - rows) * (1f - maple);
+        }
+
         /// <summary>The cell's tree's height in metres, the same rolls <see cref="Build"/> makes (its first, scaled by its age).</summary>
         public static float HeightOf(int seed, Vector2Int cell, TreeGeneration settings)
         {
@@ -120,11 +140,11 @@ namespace Clube.Core
 
         /// <summary>Adds the parts of the tree rooted at <paramref name="root"/> (on the ground) to <paramref name="parts"/>.</summary>
         /// <param name="cell">The tree's cell: with the seed, it picks every number.</param>
-        public static void Build(int seed, Vector2Int cell, float3 root, TreeGeneration settings, List<TreePart> parts)
+        public static void Build(int seed, Vector2Int cell, float3 root, TreeGeneration settings, List<TreePart> parts, int kindOverride = -1)
         {
             var dice = new Dice(seed, cell);
             // Its kind (GL150, GL721), by its own roll so the shape's numbers stay as they were.
-            TreeKind kind = settings.Kind(KindOf(seed, cell, settings));
+            TreeKind kind = settings.Kind(kindOverride >= 0 ? kindOverride : KindOf(seed, cell, settings));
             byte wood = kind.Wood.Id;
             byte leaves = kind.Leaves.Id;
             byte stump = kind.Stump.Id;
@@ -212,10 +232,10 @@ namespace Clube.Core
         /// </summary>
         /// <param name="groundAt">The ground's height at (x, z), so the trunk rests on it.</param>
         public static void BuildFallen(
-            int seed, Vector2Int cell, float3 root, TreeGeneration settings, System.Func<float, float, float> groundAt, List<TreePart> parts)
+            int seed, Vector2Int cell, float3 root, TreeGeneration settings, System.Func<float, float, float> groundAt, List<TreePart> parts, int kindOverride = -1)
         {
             var dice = new Dice(seed, cell);
-            TreeKind kind = settings.Kind(KindOf(seed, cell, settings));
+            TreeKind kind = settings.Kind(kindOverride >= 0 ? kindOverride : KindOf(seed, cell, settings));
             byte wood = kind.Wood.Id;
             byte stump = kind.Stump.Id;
             float size = TreeForests.SizeOf(seed, cell, settings);
