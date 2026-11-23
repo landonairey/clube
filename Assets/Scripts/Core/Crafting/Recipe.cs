@@ -115,44 +115,91 @@ namespace Clube.Core
         [SerializeField]
         private List<ItemDefinition> swapFor = new List<ItemDefinition>();
 
+        [Tooltip("A second input other items may replace (GL833: boards of any wood and wool from any animal in one recipe). The station derives a variant for every combination.")]
+        [SerializeField]
+        private ItemDefinition swapInput2;
+
+        [SerializeField]
+        private List<ItemDefinition> swapFor2 = new List<ItemDefinition>();
+
         /// <summary>
-        /// The recipes that take another item where this one takes <c>swapInput</c> (GL813-GL816): everything else the
-        /// same, named after the item they take. Empty for a recipe with no swaps.
+        /// The recipes that take another item where this one takes <c>swapInput</c> or <c>swapInput2</c> (GL813-GL816,
+        /// GL833): everything else the same, named after the items they take, one for every combination. Empty for a
+        /// recipe with no swaps.
         /// </summary>
         public List<Recipe> SwapVariants()
         {
             var variants = new List<Recipe>();
-            if (swapInput == null)
+            if (swapInput == null && swapInput2 == null)
             {
                 return variants;
             }
-            foreach (ItemDefinition other in swapFor)
+            List<ItemDefinition> first = WithAlternatives(swapInput, swapFor);
+            List<ItemDefinition> second = WithAlternatives(swapInput2, swapFor2);
+            foreach (ItemDefinition one in first)
             {
-                if (other == null || other == swapInput)
+                foreach (ItemDefinition two in second)
                 {
-                    continue;
-                }
-                Recipe variant = Instantiate(this);
-                variant.swapInput = null;
-                variant.swapFor = new List<ItemDefinition>();
-                for (int i = 0; i < variant.inputs.Count; i++)
-                {
-                    if (variant.inputs[i].Item == swapInput)
+                    if (one == swapInput && two == swapInput2)
                     {
-                        variant.inputs[i] = new ItemAmount(other, variant.inputs[i].Count);
+                        continue;
                     }
+                    Recipe variant = Instantiate(this);
+                    variant.swapInput = null;
+                    variant.swapFor = new List<ItemDefinition>();
+                    variant.swapInput2 = null;
+                    variant.swapFor2 = new List<ItemDefinition>();
+                    string label = "";
+                    for (int i = 0; i < variant.inputs.Count; i++)
+                    {
+                        ItemDefinition item = variant.inputs[i].Item;
+                        ItemDefinition replacement = item == null ? null : item == swapInput ? one : item == swapInput2 ? two : null;
+                        if (replacement != null && replacement != item)
+                        {
+                            variant.inputs[i] = new ItemAmount(replacement, variant.inputs[i].Count);
+                            label += (label.Length > 0 ? ", " : "") + replacement.DisplayName;
+                        }
+                    }
+                    variant.name = $"{name} ({label})";
+                    variants.Add(variant);
                 }
-                variant.name = $"{name} ({other.DisplayName})";
-                variants.Add(variant);
             }
             return variants;
         }
 
-        /// <summary>Lets <c>other</c> replace <c>input</c> in this recipe (GL813), for recipes made in code (tests).</summary>
+        // The input first, then the items that may replace it; just null (no swap) for a recipe with none.
+        private static List<ItemDefinition> WithAlternatives(ItemDefinition input, List<ItemDefinition> others)
+        {
+            var all = new List<ItemDefinition> { input };
+            if (input != null)
+            {
+                foreach (ItemDefinition other in others)
+                {
+                    if (other != null && other != input && !all.Contains(other))
+                    {
+                        all.Add(other);
+                    }
+                }
+            }
+            return all;
+        }
+
+        /// <summary>
+        /// Lets <c>other</c> replace <c>input</c> in this recipe (GL813), for recipes made in code (tests). A second,
+        /// different input takes the second swap (GL833).
+        /// </summary>
         public Recipe WithSwap(ItemDefinition input, ItemDefinition other)
         {
-            swapInput = input;
-            swapFor.Add(other);
+            if (swapInput == null || swapInput == input)
+            {
+                swapInput = input;
+                swapFor.Add(other);
+            }
+            else
+            {
+                swapInput2 = input;
+                swapFor2.Add(other);
+            }
             return this;
         }
 

@@ -345,7 +345,7 @@ namespace Clube.Debug.Editor
             return mesh;
         }
 
-        private static void Save(string name, Mesh mesh)
+        internal static void Save(string name, Mesh mesh)
         {
             string path = $"{Folder}/{name}.asset";
             var existing = AssetDatabase.LoadAssetAtPath<Mesh>(path);
@@ -362,7 +362,7 @@ namespace Clube.Debug.Editor
         }
 
         /// <summary>Collects flat-shaded quads per submesh.</summary>
-        private sealed class ModelBuilder
+        internal sealed class ModelBuilder
         {
             private readonly List<Vector3> vertices = new List<Vector3>();
             private readonly List<Vector3> normals = new List<Vector3>();

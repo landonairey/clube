@@ -47,6 +47,26 @@ namespace Clube.Core.Tests
             Object.DestroyImmediate(shovel);
         }
 
+        [Test]
+        public void SwapVariants_TwoSwappedInputsMakeEveryCombination()
+        {
+            ItemDefinition oak = ItemDefinition.Create("oak-boards", "Oak boards");
+            ItemDefinition maple = ItemDefinition.Create("maple-boards", "Maple boards");
+            ItemDefinition sheep = ItemDefinition.Create("sheep-wool", "Sheep wool");
+            ItemDefinition goat = ItemDefinition.Create("goat-wool", "Goat wool");
+            ItemDefinition yak = ItemDefinition.Create("yak-wool", "Yak wool");
+            Recipe wheel = Recipe.Create(StationKind.Worktop, new ItemAmount(ingot, 1), RecipeWork.Time, 4f,
+                new ItemAmount(oak, 10), new ItemAmount(ore, 5), new ItemAmount(sheep, 5))
+                .WithSwap(oak, maple).WithSwap(sheep, goat).WithSwap(sheep, yak);
+            var station = new CraftingStation(StationKind.Worktop, new[] { wheel });
+            // 2 boards x 3 wools, the plain recipe among them.
+            Assert.AreEqual(6, station.Recipes.Count);
+            Assert.IsTrue(station.Recipes[5].Takes(maple) && station.Recipes[5].Takes(yak) && station.Recipes[5].Takes(ore));
+            Assert.AreEqual(10, station.Recipes[5].Inputs[0].Count);
+            Assert.AreEqual(5, station.Recipes[5].Inputs[2].Count);
+            Object.DestroyImmediate(wheel);
+        }
+
         private CraftingStation Furnace()
         {
             return new CraftingStation(StationKind.Furnace, new[] { smelt, hammer });

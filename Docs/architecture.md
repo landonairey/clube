@@ -418,7 +418,7 @@ flowchart LR
   `SettlementStructures.Voxels` builds any row as square blocks; `RoofSkin` gives the samples within a voxel of the
   roof's plane their plane density, written after the blocks by `SquareVoxels.Shape`, so the roof's top is one slant
   over steps that stay square inside. Work-yard fixtures (`YardFixture`) are Game meshes (`YardFixtureMeshes`, stood by
-  `MapSettlements.FitYard`); `BuildingDesign.StationFor` stations a shop's yard workers at them (GL713, GL714). Streets
+  `MapSettlements.FitYard`; a kind with a `YardStationPrefab` row shows the player's own station instead, GL833); `BuildingDesign.StationFor` stations a shop's yard workers at them (GL713, GL714). Streets
   wander and climbs bend (GL712), straight only where lanes join.
   Landmarks, walls, lights (GL715-GL717): a type's `Landmarks` (landmark `BuildingDesign` rows, never picked by
   `Choose`: the capital's castle and guard tower, a city's guard tower) take the first places after its shops; landmark
@@ -1105,7 +1105,7 @@ Allocations (GL778): `-walkbench` prints "allocation by system" (KB a frame by `
   `SettlementStructures.Voxels` builds any row as square blocks; `RoofSkin` gives the samples within a voxel of the
   roof's plane their plane density, written after the blocks by `SquareVoxels.Shape`, so the roof's top is one slant
   over steps that stay square inside. Work-yard fixtures (`YardFixture`) are Game meshes (`YardFixtureMeshes`, stood by
-  `MapSettlements.FitYard`); `BuildingDesign.StationFor` stations a shop's yard workers at them (GL713, GL714). Streets
+  `MapSettlements.FitYard`; a kind with a `YardStationPrefab` row shows the player's own station instead, GL833); `BuildingDesign.StationFor` stations a shop's yard workers at them (GL713, GL714). Streets
   wander and climbs bend (GL712), straight only where lanes join.
 - *HUD and IMGUI (GL777):* the always-on HUD (hotbar, coins, skills, quest boxes, minimap) is on one uGUI canvas, `HudCanvas`, with parts built once and updated on change; a new always-on HUD part goes there, not into an `OnGUI`. Screens and short-lived notices implement `IGuiDrawer` and register with `GuiHost` in `OnEnable`/`OnDisable` (no component has its own `OnGUI`, except `MainMenu`); `GuiHost` is created before the first scene loads (creating it mid-load crashed the IL2CPP player). IMGUI draws over a canvas, so screens cover the HUD.
 

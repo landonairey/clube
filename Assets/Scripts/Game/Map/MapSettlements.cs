@@ -94,6 +94,10 @@ namespace Clube.Game
         [SerializeField]
         private GameObject sleepingRollPrefab;
 
+        [Tooltip("GL833: the player's own anvil, furnace, campfire, workbench and spinning wheel, which the work yards show in place of low-poly stand-ins.")]
+        [SerializeField]
+        private List<YardStationPrefab> yardStations = new List<YardStationPrefab>();
+
         [SerializeField]
         private ShopHours hours = ShopHours.Default;
 
@@ -756,14 +760,17 @@ namespace Clube.Game
                     continue;
                 }
                 made.Fitted[b] = true;
-                FitYard(building, $"{settlement.Name}: yard {b}");
+                bool isShop = building.Kind == SettlementBuildingKind.Shop && building.Shop != null;
+                int seed = session.Plan.Seed + index * 977 + b * 31;
+                ShopSpecialty specialty = isShop ? ShopOf(settlement, building.Shop, seed) : null;
+                // GL833: a shop's working stations open to the player with its keeper's goodwill.
+                Disposition keeperLikes = isShop ? Dispositions.Of(index, settlement.Shops.IndexOf(building.Shop)) : null;
+                FitYard(building, $"{settlement.Name}: yard {b}", keeperLikes, specialty?.KeeperName);
                 FitLights(made.Site, b, settlement.Name);
-                if (building.Kind != SettlementBuildingKind.Shop || building.Shop == null)
+                if (!isShop)
                 {
                     continue;
                 }
-                int seed = session.Plan.Seed + index * 977 + b * 31;
-                ShopSpecialty specialty = ShopOf(settlement, building.Shop, seed);
                 var shop = new GameObject($"{settlement.Name}: {specialty.ShopName}").transform;
                 shop.SetParent(root, false);
                 shop.localPosition = new Vector3(building.Centre.x, building.Pad + TownLayout.FloorHeight, building.Centre.y);
@@ -780,7 +787,7 @@ namespace Clube.Game
         }
 
         // GL713/GL714: a building's work yard: its fixtures (anvils, tool racks, spinning wheels) and a tarp over it.
-        private void FitYard(SettlementBuilding building, string name)
+        private void FitYard(SettlementBuilding building, string name, Disposition keeperLikes, string keeper)
         {
             BuildingDesign design = building.Design;
             if (design == null || (design.Fixtures.Count == 0 && !design.Tarp))
@@ -793,6 +800,13 @@ namespace Clube.Game
             yard.localRotation = Quaternion.Euler(0f, building.Yaw, 0f);
             foreach (YardFixture fixture in design.Fixtures)
             {
+                // GL833: the player's real station where there is one for the kind, else the low-poly stand-in.
+                GameObject station = YardStations.PrefabFor(yardStations, fixture.Kind);
+                if (station != null)
+                {
+                    YardStations.Stand(station, yard, fixture.Kind, new Vector3(fixture.Local.x, 0f, fixture.Local.y), fixture.Yaw, keeperLikes, keeper);
+                    continue;
+                }
                 Mesh mesh = YardFixtureMeshes.For(fixture.Kind);
                 if (mesh != null)
                 {
