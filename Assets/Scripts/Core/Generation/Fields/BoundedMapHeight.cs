@@ -16,7 +16,8 @@ namespace Clube.Core
     /// </remarks>
     public struct BoundedMapHeight : IHeightField
     {
-        private const float SlopeStep = 0.5f;
+        // GL804: the erosion's own steering step (see ErosionFilter.SteeringStep), so this matches ErodedLandscapeHeight.
+        private const float SlopeStep = ErosionFilter.SteeringStep;
         private const float FadeIn = 0.35f;
 
         private LandscapeHeight land;

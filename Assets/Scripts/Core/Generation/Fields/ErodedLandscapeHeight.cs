@@ -11,8 +11,8 @@ namespace Clube.Core
     /// </summary>
     public struct ErodedLandscapeHeight : IHeightField
     {
-        // How far off the slope's extra samples are, in metres: well under the smallest ridge of the land below.
-        private const float SlopeStep = 0.5f;
+        // How far off the slope's extra samples are, in metres (GL804: ErosionFilter.SteeringStep).
+        private const float SlopeStep = ErosionFilter.SteeringStep;
 
         // Share of the mountains' height over the plains that the gullies take to reach full depth.
         private const float FadeIn = 0.35f;
