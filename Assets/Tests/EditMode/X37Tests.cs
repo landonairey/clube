@@ -118,6 +118,27 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void DroppingOnAStationInputStack_CombinesAtAnyQuality()
+        {
+            ItemDefinition sticks = ItemDefinition.Create("stick", "Stick", 64);
+            try
+            {
+                var bag = new Inventory(2);
+                var input = new Inventory(3);
+                bag.Add(sticks, 4, null, 0, 0.6f);
+                input.Add(sticks, 4, null, 0, 1f);
+                Assert.AreEqual(4, bag.MoveToSlot(0, input, 0, int.MaxValue));
+                Assert.AreEqual(8, input[0].Count, "The 60% sticks join the 100% stack in the slot (GL845).");
+                Assert.AreEqual(0.8f, input[0].Quality, 1e-4f);
+                Assert.IsTrue(input[1].IsEmpty);
+            }
+            finally
+            {
+                Object.DestroyImmediate(sticks);
+            }
+        }
+
+        [Test]
         public void APartItem_IsUsedUpWhenOneIsTakenByAmount()
         {
             PlaceableDefinition anvil = PlaceableDefinition.Create("anvil", "Anvil");

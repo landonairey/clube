@@ -563,6 +563,14 @@ namespace Clube.Game
             }
             if (inputRow.Contains(drop.Position))
             {
+                // Let go on a stack of the same item, whatever its quality, it combines with that stack (GL845), as a drag
+                // between your own slots does; anywhere else on the row it loads as before.
+                int target = InventoryGridGui.GridSlotNear(inputRow.position, station.Input, drop.Position, InventoryGridGui.RowGap * 0.5f);
+                if (target >= 0 && Inventory.Combines(station.Input[target], stack.Item))
+                {
+                    items.MoveToSlot(drop.Slot, station.Input, target, drop.Count);
+                    return;
+                }
                 items.MoveTo(drop.Slot, station.Input, drop.Count);
             }
             else if (station.BurnsFuel && stack.Item.IsFuel && fuelRow.Contains(drop.Position))
