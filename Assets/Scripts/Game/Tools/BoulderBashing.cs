@@ -127,6 +127,9 @@ namespace Clube.Game
         /// <summary>Raised on each crush of ore (GL459), with where on the boulder and what was crushed: for the sound, the swing and the fragments.</summary>
         public event Action<Vector3, VoxelMaterial> OreCrushed;
 
+        /// <summary>The skill and level that let the player crush ore on a boulder (GL148), for the skills notebook (GL827).</summary>
+        public (SkillType Skill, int Level) CrushRequirement => (crushSkill, crushLevel);
+
         /// <summary>A pass of picking over a stack while refining (GL493).</summary>
         public event Action RefinePassed;
 

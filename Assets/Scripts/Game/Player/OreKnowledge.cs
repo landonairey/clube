@@ -236,7 +236,11 @@ namespace Clube.Game
                     SetHidden(group, false);
                 }
             }
-            Identify();
+            Identify(inventory != null ? inventory.Inventory : null);
+            foreach (StorageChest chest in FindObjectsByType<StorageChest>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                Identify(chest.Storage);
+            }
         }
 
         private void SetHidden(HiddenOres group, bool hide)
@@ -259,15 +263,14 @@ namespace Clube.Game
             }
         }
 
-        // Every "? ore" stack whose ore can now be told apart becomes that ore: a per-ore copy by what it
+        // In the pack and in every chest (GL826): every "? ore" stack whose ore can now be told apart becomes that ore: a per-ore copy by what it
         // stands for (GL90), the generic one (stacks from before) by what its contents hold most of.
-        private void Identify()
+        private void Identify(Inventory items)
         {
-            if (inventory == null || inventory.Inventory == null || unknownOre == null)
+            if (items == null || unknownOre == null)
             {
                 return;
             }
-            Inventory items = inventory.Inventory;
             for (int slot = 0; slot < items.SlotCount; slot++)
             {
                 ItemStack stack = items[slot];
