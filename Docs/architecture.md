@@ -61,7 +61,7 @@ Core/
                  MapShape, MapLandBuilder, MapLimit, MapHorizon, BiomeDefinition,
                  BiomeField, BiomeMap, ResourceSurvey, SurveyResource + ResourceReach (GL595)
     Heightmaps/  Heightmap import, HeightmapGenerator, HeightmapExport (K29)
-    Noise/       PerlinNoise (struct), VoxelHash, ErosionFilter + ErosionSettings (gullies as a filter on a heightfield, P12a)
+    Noise/       PerlinNoise (struct), VoxelHash, ErosionFilter + ErosionSettings (gullies as a filter on a heightfield, P12a; the bounded map steers them by a slope over 4 m, `BoundedMapHeight.SlopeStep`, GL804: over 0.5 m the shaping's creases became metre-high steps)
     Rocks/       BoulderField (large faceted boulders, stamped as TreePart.Boulder parts with the trees, GL342)
     Fields/      the Burst shapes: IHeightField / IVolumeField structs
     Fill/        generation jobs and the shared ChunkFillKernel; SlopeRidges (ridges down slopes in the density, GL293)
@@ -346,7 +346,7 @@ flowchart LR
   ones being what lets a cart path cross a steep face; a cart path's slope read from ground evened out as its bed will
   be; a bridge pays for its climb as well as its water; ground where `MapLayout.WalksFreely` is false is closed; heights
   for a whole corridor from one job, `WorldRoads.HeightsOf`; a state is a grid point and the way it was come to by, so
-  `RoadClassDefinition.TurnCost` makes
+  `RoadClassDefinition.TurnCost` makes; GL805: a road's water steps may not cross an earlier road's bridge stretches, `BridgeDecks`, and a joining road ends where it first meets the road it joins on dry ground, `EndAtFirstMeeting`;
   switchbacks long-legged; slope by `StretchCost`; then eased and corner-cut) and `SignpostPlanner` (a graph of the roads;
   `WorldPlan.Signposts`). A road class is one `RoadClassDefinition` row: slope limit as a share of the walkable angle
   (`WorldPlanRules.SetWalkableSlope`), width, surface material, grading, bridge width. `RoadLine` (points, distances,
@@ -460,7 +460,7 @@ flowchart LR
   flat mesh at sea level from its edge to 40 km, in cells growing from 256 m, wherever `MapShape.IsSeaSide`.
   `Water.shader` darkens and closes the water by its depth from the camera depth texture (GL673), so the ground under
   and past it is hidden; it needs the depth texture on (PC_RPAsset has it). Its still-water waves are bent and patchy by world
-  position alone (`WaveWarp`, `WavePatch`, GL758), so every sheet and chunk agrees where they meet.
+  position alone (`WaveWarp`, `WavePatch`, GL758), so every sheet and chunk agrees where they meet. The far sheets shade by a smooth per-pixel normal from world-space noise waves (`FarWaveSlope`, GL807) instead of their facets.
 
 **Adding a generator:** write an `IHeightField` (or `IVolumeField`) struct in
 `Fields/`; a generator class in `Generators/` deriving from
