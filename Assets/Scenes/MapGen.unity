@@ -6240,8 +6240,6 @@ MonoBehaviour:
     Prefab: {fileID: 5762353483625990904, guid: 2ad44317c98e3ee4db6993561dbc9b54, type: 3}
   - Kind: campfire
     Prefab: {fileID: 5762353483625990904, guid: c859784cae52d43499c37a1bf6a1e621, type: 3}
-  - Kind: workbench
-    Prefab: {fileID: 5762353483625990904, guid: 3e40ac4be8479954da25669e0f71c38d, type: 3}
   - Kind: spinning-wheel
     Prefab: {fileID: 1349733099842882072, guid: 56c83752f1b9fe64ab0739e0b49d75ca, type: 3}
   hours:

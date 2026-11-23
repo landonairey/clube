@@ -23,7 +23,9 @@ namespace Clube.Debug.Editor
         private const string SourceRecipe = "Assets/Config/Recipes/Build workbench.asset";
         private const string BenchPrefab = "Assets/Prefabs/Stations/Workbench.prefab";
         private const string WoodMaterial = "Assets/Materials/Stations/Wood.mat";
-        private const string WoolMaterial = "Assets/Materials/Stations/Bedroll.mat";
+        private const string ClothMaterial = "Assets/Materials/Stations/Cloth.mat";
+        private const string WoolMaterial = "Assets/Materials/Stations/Wool.mat";
+        private static readonly Color WoolColour = new Color(0.88f, 0.85f, 0.76f);
         private const string Items = "Assets/Config/Items/";
 
         private const int Boards = 10, Ingots = 5, Wool = 5;
@@ -34,6 +36,7 @@ namespace Clube.Debug.Editor
         {
             Directory.CreateDirectory("Assets/Models");
             LowPolyModels.Save(ModelName, MakeMesh());
+            MakeWoolMaterial();
             AssetDatabase.SaveAssets();
             ItemDefinition item = MakeItem(MakePrefab());
             Recipe recipe = MakeRecipe(item);
@@ -104,6 +107,18 @@ namespace Clube.Debug.Editor
             model.Box(0, new Vector3(-0.05f, 0.05f, 0.14f), new Vector3(0.55f, 0.04f, 0.14f), Quaternion.Euler(0f, 0f, 4f));
             model.Box(0, new Vector3(centre.x + 0.1f, 0.45f, 0.14f), new Vector3(0.025f, 0.8f, 0.025f), Quaternion.Euler(0f, 0f, 6f));
             return model.Build(ModelName);
+        }
+
+        // Undyed wool: the cloth material in a cream colour.
+        private static void MakeWoolMaterial()
+        {
+            if (!File.Exists(WoolMaterial))
+            {
+                AssetDatabase.CopyAsset(ClothMaterial, WoolMaterial);
+            }
+            var material = AssetDatabase.LoadAssetAtPath<Material>(WoolMaterial);
+            material.SetColor("_BaseColor", WoolColour);
+            EditorUtility.SetDirty(material);
         }
 
         private static GameObject MakePrefab()
