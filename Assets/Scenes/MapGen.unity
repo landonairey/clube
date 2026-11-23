@@ -6233,6 +6233,17 @@ MonoBehaviour:
   prices: {fileID: 11400000, guid: 44577251d34951d40bd1ac9b329bc569, type: 2}
   catalog: {fileID: 11400000, guid: 529535e765d597b47b63cf6a57402d86, type: 2}
   sleepingRollPrefab: {fileID: 7854643536770524401, guid: 285133e8568374f40bed56df93428099, type: 3}
+  yardStations:
+  - Kind: anvil
+    Prefab: {fileID: 7924627653153371950, guid: f4f48a5ed3c219846ad797edb3c8e8f9, type: 3}
+  - Kind: furnace
+    Prefab: {fileID: 5762353483625990904, guid: 2ad44317c98e3ee4db6993561dbc9b54, type: 3}
+  - Kind: campfire
+    Prefab: {fileID: 5762353483625990904, guid: c859784cae52d43499c37a1bf6a1e621, type: 3}
+  - Kind: workbench
+    Prefab: {fileID: 5762353483625990904, guid: 3e40ac4be8479954da25669e0f71c38d, type: 3}
+  - Kind: spinning-wheel
+    Prefab: {fileID: 1349733099842882072, guid: 56c83752f1b9fe64ab0739e0b49d75ca, type: 3}
   hours:
     Open: 9
     Close: 17
@@ -7398,6 +7409,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 0ce319f9af19832499bb1b6d96511e3b, type: 2}
   - {fileID: 11400000, guid: 2f2e8808d61f59549a0331d7d86525b1, type: 2}
   - {fileID: 11400000, guid: 08594d0fdd8ba66419aaffeb6ae837d5, type: 2}
+  - {fileID: 11400000, guid: 7e1df8bcb8715c04bbf01821f8b05e0e, type: 2}
 --- !u!114 &1697135589
 MonoBehaviour:
   m_ObjectHideFlags: 0

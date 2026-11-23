@@ -179,7 +179,7 @@ namespace Clube.Core
                 {
                     Id = "smelter", Name = "Smelting yard", ShopFront = true, Stories = 1, PitchMin = 0.4f, PitchMax = 0.6f,
                     Specialties = new[] { "smelting", "crushing" }, YardWalls = true,
-                    Fixtures = { At("furnace", -1.8f, front + 1.1f, duty: "stoke"), At("anvil", 1.4f, front + 1.1f, duty: "hammer"), At("ore-pile", 2.6f, front + 0.5f, 0f, false) },
+                    Fixtures = { At("furnace", -1.8f, front + 1.1f, duty: "stoke"), At("campfire", -0.1f, front + 0.9f, 0f, false), At("anvil", 1.4f, front + 1.1f, duty: "hammer"), At("ore-pile", 2.6f, front + 0.5f, 0f, false) },
                 },
                 new BuildingDesign
                 {
