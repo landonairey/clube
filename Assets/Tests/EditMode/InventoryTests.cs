@@ -406,5 +406,33 @@ namespace Clube.Core.Tests
             Assert.IsTrue(inventory[0].IsEmpty);
             Assert.AreEqual(-1, inventory.Split(1, 5), "Nothing to split off a whole stack.");
         }
+
+        // GL824: leaves from any tree, bush or pile are one item; only what isn't a source of it (dirt) stays apart.
+        [Test]
+        public void LeavesFromEverySource_StackAsOne()
+        {
+            ItemDefinition leafItem = ItemDefinition.Create("leaves", "Leaves", 1024);
+            VoxelMaterial leaves = VoxelMaterial.Create(12, "Leaves", VoxelMaterialCategory.Plant).WithBreaking(0.1f, leafItem);
+            VoxelMaterial pine = VoxelMaterial.Create(30, "Pine needles", VoxelMaterialCategory.Plant).WithBreaking(0.1f, leafItem);
+            VoxelMaterial fallen = VoxelMaterial.Create(26, "Fallen leaves", VoxelMaterialCategory.Plant).WithBreaking(0.1f, leafItem);
+            VoxelMaterial dirt = VoxelMaterial.Create(1, "Dirt").WithSoft();
+            leafItem.WithContentsAs(leaves);
+
+            var fromPine = new ItemStack(leafItem, 3, Composition.From(new Content(pine, 1f)));
+            var fromPile = new ItemStack(leafItem, 2, Composition.From(new Content(fallen, 0.5f), new Content(pine, 0.5f)));
+            Assert.That(fromPine.Contents.Parts.Count, Is.EqualTo(1));
+            Assert.That(fromPine.Contents.Parts[0].Material, Is.SameAs(leaves));
+            Assert.That(Composition.Same(fromPine.Contents, fromPile.Contents), "no telling them apart");
+
+            var dirty = new ItemStack(leafItem, 1, Composition.From(new Content(pine, 0.8f), new Content(dirt, 0.2f)));
+            Assert.That(dirty.Contents.FractionOf(leaves), Is.EqualTo(0.8f).Within(1e-4f));
+            Assert.That(dirty.Contents.FractionOf(dirt), Is.EqualTo(0.2f).Within(1e-4f));
+
+            Object.DestroyImmediate(leafItem);
+            Object.DestroyImmediate(leaves);
+            Object.DestroyImmediate(pine);
+            Object.DestroyImmediate(fallen);
+            Object.DestroyImmediate(dirt);
+        }
     }
 }

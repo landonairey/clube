@@ -119,6 +119,40 @@ namespace Clube.Core
             return 0f;
         }
 
+        /// <summary>
+        /// The contents with every material that drops <paramref name="item"/> counted as its
+        /// <see cref="ItemDefinition.ContentsAs"/> (GL824: pine needles, maple leaves and fallen leaves are all Leaves); other
+        /// materials (dirt picked up with them) stay. The same contents when the item has none to fold into, or nothing changes.
+        /// </summary>
+        public static Composition FoldSources(Composition contents, ItemDefinition item)
+        {
+            VoxelMaterial into = item != null ? item.ContentsAs : null;
+            if (contents == null || into == null)
+            {
+                return contents;
+            }
+            bool changes = false;
+            foreach (Content part in contents.parts)
+            {
+                if (part.Material != into && part.Material != null && part.Material.FinalDrop == item)
+                {
+                    changes = true;
+                    break;
+                }
+            }
+            if (!changes)
+            {
+                return contents;
+            }
+            var folded = new Content[contents.parts.Length];
+            for (int i = 0; i < folded.Length; i++)
+            {
+                Content part = contents.parts[i];
+                folded[i] = part.Material != null && part.Material.FinalDrop == item ? new Content(into, part.Fraction) : part;
+            }
+            return From(folded);
+        }
+
         /// <summary>True when both hold the same shares (within a rounding error), or are both null.</summary>
         public static bool Same(Composition a, Composition b)
         {

@@ -30,7 +30,8 @@ namespace Clube.Core
             Item = count > 0 || part >= MinLoosePart ? item : null;
             Count = Item != null && count > 0 ? count : 0;
             Part = Item != null && part > PartEpsilon ? System.Math.Min(part, 1f - PartEpsilon) : 0f;
-            Contents = Item != null ? contents : null;
+            // GL824: one leaves item whatever tree, bush or pile it came from; old saves fold the same way as they load.
+            Contents = Item != null ? Composition.FoldSources(contents, Item) : null;
             Wear = Item != null ? System.Math.Max(0, wear) : 0;
             // Up to MaxQuality: maple sticks make tools better than the ordinary (GL151).
             flaw = Item != null ? 1f - System.Math.Max(0f, System.Math.Min(MaxQuality, quality)) : 0f;
