@@ -130,6 +130,9 @@ namespace Clube.Core
         private int gradeReach;
         private RoadBuildCosts costs = new RoadBuildCosts();
         private bool bridgesSea;
+        // GL805: the water stretches of the roads refined so far, which a later road's bridge may not cross.
+        private readonly BridgeDecks decks = new BridgeDecks();
+        private readonly HashSet<PlannedRoad> noted = new HashSet<PlannedRoad>();
         // Water every 2 m and closed ground every 8 m, each looked up once.
         private readonly byte[] water;
         private readonly byte[] closed;
@@ -227,6 +230,13 @@ namespace Clube.Core
             }
             RoadClassDefinition definition = plan.Rules.Road(road.Class);
             costs = plan.Rules.BuildCosts ?? new RoadBuildCosts();
+            foreach (PlannedRoad other in plan.Roads)
+            {
+                if (other != road && other.Refined)
+                {
+                    NoteDecks(other);
+                }
+            }
             var planned = new List<Vector2>(road.Points);
             Vector2 end = EndOf(plan, road, planned[planned.Count - 1]);
 
@@ -274,35 +284,152 @@ namespace Clube.Core
             {
                 Refined++;
             }
+            if (road.To < 0 && road.Joins >= 0 && road.Joins < plan.Roads.Count && road.Joins != road.Index)
+            {
+                // GL805: it ends where it first meets the road it joins, not after running on beside it (and over its river).
+                result = EndAtFirstMeeting(result, plan.Roads[road.Joins].Points, MeetReach, DryAround);
+            }
             road.Points = result;
             road.Refined = true;
+            NoteDecks(road);
             Measure(road, definition);
             done?.Invoke(whole);
         }
 
+        // GL805: notes a refined road's water stretches once.
+        private void NoteDecks(PlannedRoad road)
+        {
+            if (waterAt != null && noted.Add(road))
+            {
+                decks.Note(road.Points, waterAt);
+            }
+        }
+
+        /// <summary>GL805: metres from the road it joins at which a joining road's line counts as having met it.</summary>
+        public const float MeetReach = 1.5f;
+
+        /// <summary>
+        /// GL805: a joining road's line cut short where it first comes within <paramref name="reach"/> of the road it joins,
+        /// after having been farther off (its start may lie beside it), its last point set on that road. A road refined on
+        /// its own can reach the other one early and run on beside it to its planned end, crossing it and its bridges.
+        /// </summary>
+        /// <param name="dry">
+        /// GL806: true where a road may end (on dry ground, not on the other road's bridge); null for anywhere. A meeting
+        /// over water is passed by.
+        /// </param>
+        public static List<Vector2> EndAtFirstMeeting(List<Vector2> points, IReadOnlyList<Vector2> joined, float reach, Func<Vector2, bool> dry = null)
+        {
+            if (points == null || points.Count < 3 || joined == null || joined.Count < 2)
+            {
+                return points;
+            }
+            bool away = false;
+            for (int i = 1; i < points.Count - 1; i++)
+            {
+                Vector2 nearest = NearestOn(joined, points[i], out float distance);
+                if (distance > reach)
+                {
+                    away = true;
+                    continue;
+                }
+                if (away && (dry == null || (dry(nearest) && dry(points[i]))))
+                {
+                    var cut = points.GetRange(0, i);
+                    cut.Add(nearest);
+                    return cut;
+                }
+            }
+            return points;
+        }
+
+        private static Vector2 NearestOn(IReadOnlyList<Vector2> line, Vector2 point, out float distance)
+        {
+            Vector2 best = line[0];
+            float bestSquared = float.MaxValue;
+            for (int i = 0; i < line.Count - 1; i++)
+            {
+                Vector2 a = line[i], ab = line[i + 1] - line[i];
+                float t = ab.sqrMagnitude > 1e-6f ? Mathf.Clamp01(Vector2.Dot(point - a, ab) / ab.sqrMagnitude) : 0f;
+                Vector2 p = a + ab * t;
+                float squared = (p - point).sqrMagnitude;
+                if (squared < bestSquared)
+                {
+                    bestSquared = squared;
+                    best = p;
+                }
+            }
+            distance = Mathf.Sqrt(bestSquared);
+            return best;
+        }
+
         // Where a road ends: at its settlement, or on the (new) line of the road it joined.
-        private static Vector2 EndOf(WorldPlan plan, PlannedRoad road, Vector2 planned)
+        // GL806: the nearest point on it that is dry ground: a road ending on the joined road's bridge climbed onto the
+        // deck's height there and stopped in the air (or ended in the river), a ramp that juts up and suddenly stops.
+        private Vector2 EndOf(WorldPlan plan, PlannedRoad road, Vector2 planned)
         {
             if (road.To >= 0 || road.Joins < 0 || road.Joins >= plan.Roads.Count)
             {
                 return planned;
             }
             List<Vector2> joined = plan.Roads[road.Joins].Points;
-            Vector2 best = planned;
-            float bestDistance = float.MaxValue;
-            for (int i = 0; i < joined.Count - 1; i++)
+            Vector2 best = planned, bestDry = planned;
+            float bestDistance = float.MaxValue, bestDryDistance = float.MaxValue;
+            void Consider(Vector2 p)
             {
-                Vector2 a = joined[i], ab = joined[i + 1] - joined[i];
-                float t = ab.sqrMagnitude > 1e-6f ? Mathf.Clamp01(Vector2.Dot(planned - a, ab) / ab.sqrMagnitude) : 0f;
-                Vector2 p = a + ab * t;
                 float distance = (p - planned).sqrMagnitude;
                 if (distance < bestDistance)
                 {
                     bestDistance = distance;
                     best = p;
                 }
+                if (distance < bestDryDistance && DryAround(p))
+                {
+                    bestDryDistance = distance;
+                    bestDry = p;
+                }
             }
-            return best;
+            for (int i = 0; i < joined.Count - 1; i++)
+            {
+                Vector2 a = joined[i], ab = joined[i + 1] - joined[i];
+                float t = ab.sqrMagnitude > 1e-6f ? Mathf.Clamp01(Vector2.Dot(planned - a, ab) / ab.sqrMagnitude) : 0f;
+                Consider(a + ab * t);
+                Consider(a);
+            }
+            if (joined.Count > 0)
+            {
+                Consider(joined[joined.Count - 1]);
+            }
+            // Within a short walk of the nearest point, the dry one; otherwise (a road along a lake) where it was.
+            return bestDryDistance < float.MaxValue && Mathf.Sqrt(bestDryDistance) - Mathf.Sqrt(bestDistance) <= DryEndReach ? bestDry : best;
+        }
+
+        /// <summary>GL806: metres farther than the nearest point of the road it joins a road may end, to end on dry ground.</summary>
+        public const float DryEndReach = 60f;
+
+        // Metres round a road's end kept clear of water: a bridge's deck reaches this far onto each bank.
+        private const float DryMargin = RouteBridges.BankReach + 1.5f;
+
+        // GL806: dry ground at the point and round it, where a road may end.
+        private bool DryAround(Vector2 p)
+        {
+            if (waterAt == null)
+            {
+                return true;
+            }
+            if (waterAt(p.x, p.y) != RoadWater.Dry)
+            {
+                return false;
+            }
+            for (int k = 0; k < 8; k++)
+            {
+                float angle = k * Mathf.PI * 0.25f;
+                Vector2 q = p + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * DryMargin;
+                if (waterAt(q.x, q.y) != RoadWater.Dry)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private int NodeAt(Vector2 point)
@@ -705,6 +832,11 @@ namespace Clube.Core
             }
             if (wet > 0)
             {
+                if (!toGoal && decks.Crosses(a, b))
+                {
+                    // GL805: across an earlier road's bridge.
+                    return -1f;
+                }
                 // A bridge: dearer by the metre of water, and by half a cell's worth for starting one at all. Its deck
                 // climbs from bank to bank like any stretch, so a stream running down a hillside is no cheap way up it.
                 float wetMetres = metres * wet / looks;
