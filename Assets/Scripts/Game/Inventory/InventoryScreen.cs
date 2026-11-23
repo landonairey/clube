@@ -34,6 +34,7 @@ namespace Clube.Game
         private FieldLogScreen fieldLog;
         private PlayerInteractor interactor;
         private RestScreen rest;
+        private WorldMapScreen map;
         private readonly InventoryDrag drag = new InventoryDrag();
         private Rect trashSlot;
 
@@ -52,6 +53,7 @@ namespace Clube.Game
             fieldLog = GetComponent<FieldLogScreen>();
             interactor = GetComponent<PlayerInteractor>();
             rest = GetComponent<RestScreen>();
+            map = GetComponent<WorldMapScreen>();
         }
 
         private void OnEnable()
@@ -86,6 +88,13 @@ namespace Clube.Game
             if (fieldLog != null && fieldLog.IsOpen && interactPressed)
             {
                 fieldLog.Close();
+                SetOpen(true);
+                return;
+            }
+            // E in the map closes it and opens the inventory (GL844).
+            if (map != null && map.IsOpen && interactPressed)
+            {
+                map.Close();
                 SetOpen(true);
                 return;
             }
