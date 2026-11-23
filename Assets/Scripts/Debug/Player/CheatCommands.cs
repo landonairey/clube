@@ -12,7 +12,7 @@ namespace Clube.Debug
     /// </summary>
     public static class CheatCommands
     {
-        public const string Help = "coins <amount> · give <item> [count] · level <skill|all> <n> · xp <skill> <amount> · time <hour> [days on] · meteor · help";
+        public const string Help = "coins <amount> · give <item> [count] · level <skill|all> <n> · xp <skill> <amount> · time <hour> [day] · meteor · help";
 
         /// <summary>Runs one command line; returns what happened, for the panel to show.</summary>
         public static string Run(string line, PlayerInventory inventory, PlayerWallet wallet, ItemCatalog catalog, PlayerSkills skills = null)
@@ -70,7 +70,7 @@ namespace Clube.Debug
             }
         }
 
-        // "time 21", "time 21 14" (GL248): the hour of the day, and how many days on, for the sun and the moon's phases.
+        // "time 21", "time 21 5" (GL248, GL836): the hour of the day, and the day number (earlier days too), for the sun and the moon's phases.
         private static string SetClock(string[] words)
         {
             var cycle = UnityEngine.Object.FindFirstObjectByType<DayNightCycle>();
@@ -80,14 +80,14 @@ namespace Clube.Debug
             }
             if (words.Length < 2 || !float.TryParse(words[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float hour) || hour < 0f || hour >= 24f)
             {
-                return "Usage: time <hour 0-24> [days on]";
+                return "Usage: time <hour 0-24> [day]";
             }
-            double later = 0d;
-            if (words.Length > 2 && !double.TryParse(words[2], NumberStyles.Float, CultureInfo.InvariantCulture, out later))
+            int dayNumber = 0;
+            if (words.Length > 2 && (!int.TryParse(words[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out dayNumber) || dayNumber < 1))
             {
-                return "Usage: time <hour 0-24> [days on]";
+                return "Usage: time <hour 0-24> [day]";
             }
-            cycle.SetTime(hour, later);
+            cycle.SetTime(hour, dayNumber);
             return $"{hour:0.#}:00, moon {cycle.MoonPhase * 100f:0}% through its month";
         }
 

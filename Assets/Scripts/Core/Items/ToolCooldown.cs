@@ -20,7 +20,7 @@ namespace Clube.Core
         public const float DawnShare = 0.75f;
 
         /// <summary>When dawn starts and ends, hours of the day.</summary>
-        public const float DawnFrom = 2.5f;
+        public const float DawnFrom = 4f; // the 04:00 sunrise (GL835: it started at 02:30)
         public const float DawnTo = 9f;
 
         /// <summary>True at dawn, when the early bird's bonus holds.</summary>
