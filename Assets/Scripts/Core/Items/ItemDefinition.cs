@@ -65,6 +65,10 @@ namespace Clube.Core
         [SerializeField]
         private bool qualityAsGrade;
 
+        [Tooltip("GL824: every material that drops this item counts as this one in its contents (leaves from a bush, a birch, a maple, a pine or a fallen pile are all just Leaves), so stacks never split by source. Empty to keep each source.")]
+        [SerializeField]
+        private VoxelMaterial contentsAs;
+
         [Tooltip("A bun's ingot (GL700): what hammering it makes. A furnace alloying with the bun takes the ingot in its place, and makes the lesser of the two forms. Empty for everything that has no ingot form (coal).")]
         [SerializeField]
         private ItemDefinition ingotForm;
@@ -200,6 +204,16 @@ namespace Clube.Core
         public ItemDefinition WithUpgrade(StationUpgrade value)
         {
             upgrade = value;
+            return this;
+        }
+
+        /// <summary>The one material its sources count as in its contents (GL824), or null to keep each source apart.</summary>
+        public VoxelMaterial ContentsAs => contentsAs;
+
+        /// <summary>Sets <see cref="ContentsAs"/>, for items made in code (tests).</summary>
+        public ItemDefinition WithContentsAs(VoxelMaterial material)
+        {
+            contentsAs = material;
             return this;
         }
 
