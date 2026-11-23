@@ -19,6 +19,28 @@ namespace Clube.Core
         private const float Merlon = 1f;
         private const float Parapet = 0.75f;
 
+        /// <summary>
+        /// GL801: whether (x, z) lies within a closed wall ring (<see cref="SettlementSite.Wall"/>), by the even-odd rule;
+        /// false for a ring of fewer than three corners.
+        /// </summary>
+        public static bool Inside(IReadOnlyList<Vector2> ring, Vector2 point)
+        {
+            if (ring == null || ring.Count < 3)
+            {
+                return false;
+            }
+            bool inside = false;
+            for (int i = 0, j = ring.Count - 1; i < ring.Count; j = i++)
+            {
+                Vector2 a = ring[i], b = ring[j];
+                if ((a.y > point.y) != (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x)
+                {
+                    inside = !inside;
+                }
+            }
+            return inside;
+        }
+
         /// <summary>A stretch of the wall: its ends (x, z), and whether it starts at one of the ring's corners (it then holds that corner's tower).</summary>
         public readonly struct Stretch
         {
