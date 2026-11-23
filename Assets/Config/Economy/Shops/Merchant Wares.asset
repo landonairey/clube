@@ -59,7 +59,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 011ed6e4efc6c064b983444f38ccf7a8, type: 2}
   sellMarkup: 2
   trains: 
-  coinsPerExperience: 2
+  coinsPerExperience: 1
   displayed:
   - {fileID: 11400000, guid: 781da9aaba956e543b3c7da3e7b05bee, type: 2}
   - {fileID: 11400000, guid: 4d73f7764f9054f489c276538d90d6d6, type: 2}
