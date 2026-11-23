@@ -50,6 +50,11 @@ namespace Clube.Game
                 frame.Box(new Vector3(arm * 0.5f, armY, 0f), new Vector3(arm, 0.1f, 0.1f), Quaternion.identity, postWood * 0.92f);
                 frame.Box(new Vector3(0.3f, armY - 0.3f, 0f), new Vector3(0.7f, 0.07f, 0.07f), Quaternion.Euler(0f, 0f, 42f), postWood * 0.88f);
                 hang = new Vector3(0.25f + width * 0.5f, armY - 0.05f, 0f);
+                // GL811: the long arm is a ledge to stand on.
+                var ledge = new GameObject("Arm ledge").AddComponent<BoxCollider>();
+                ledge.transform.SetParent(root.transform, false);
+                ledge.center = new Vector3(arm * 0.5f, armY, 0f);
+                ledge.size = new Vector3(arm, 0.14f, 0.14f);
             }
             else
             {
@@ -105,6 +110,17 @@ namespace Clube.Game
             float faceZ = BoardThickness * 0.5f + 0.014f;
             Signpost.Text(pivot, name, new Vector3(0f, boardY, -faceZ), 0f, textMaterial, LetterSize);
             Signpost.Text(pivot, name, new Vector3(0f, boardY, faceZ), 180f, textMaterial, LetterSize);
+            // GL811: a solid board a tool can strike, and a roomier trigger the player knocks it with by walking in.
+            var solid = pivot.gameObject.AddComponent<BoxCollider>();
+            solid.center = new Vector3(0f, boardY, 0f);
+            solid.size = new Vector3(width, BoardHeight, BoardThickness + 0.04f);
+            var nudge = pivot.gameObject.AddComponent<BoxCollider>();
+            nudge.isTrigger = true;
+            nudge.center = new Vector3(0f, boardY, 0f);
+            nudge.size = new Vector3(width + 0.1f, BoardHeight + 0.1f, 0.5f);
+            // A kinematic body so the swinging colliders are cheap to move and the walk-in trigger fires.
+            var body = pivot.gameObject.AddComponent<Rigidbody>();
+            body.isKinematic = true;
             pivot.gameObject.AddComponent<SignboardSway>().Seed = F() * 100f;
             return root;
         }
@@ -113,9 +129,18 @@ namespace Clube.Game
     /// <summary>
     /// GL717: "make the board sway in the wind and have the chains move with the connection to the board". Swings its
     /// object about its own x (the line of the chains' hooks): a slow swing with gusts, a few degrees either way.
+    /// GL811: "when you run into the swinging sign board you can knock it back. Also swinging a tool or punching it with
+    /// your bare hands knocks the hanging board": a knock adds to a damped spring that rings on top of the wind, whether
+    /// the player walks into the board's trigger or strikes its collider as a tool target.
     /// </summary>
-    public sealed class SignboardSway : MonoBehaviour
+    public sealed class SignboardSway : MonoBehaviour, IToolTarget
     {
+        private const float SpringRate = 14f;
+        private const float Damping = 1.3f;
+        private const float WalkKnock = 110f;
+        private const float StrikeKnock = 190f;
+        private const float WidestKick = 70f;
+
         /// <summary>Puts this board's swing out of step with its neighbours'.</summary>
         public float Seed;
 
@@ -123,11 +148,43 @@ namespace Clube.Game
         [SerializeField]
         private float swing = 9f;
 
+        private float kick;
+        private float kickSpeed;
+
+        /// <inheritdoc/>
+        public bool CanBeStruck => true;
+
+        /// <inheritdoc/>
+        public void Strike(ToolDefinition tool, Vector3 from)
+        {
+            Knock(from, StrikeKnock);
+        }
+
+        /// <summary>Swings the board away from <paramref name="from"/> with a speed in degrees per second.</summary>
+        public void Knock(Vector3 from, float degreesPerSecond)
+        {
+            // Positive angles swing the board's bottom towards -z of its parent: away from a hit made on the +z side.
+            float side = transform.parent.InverseTransformPoint(from).z > 0f ? 1f : -1f;
+            kickSpeed += side * degreesPerSecond;
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            if (other.GetComponentInParent<PlayerController>() != null)
+            {
+                Knock(other.transform.position, WalkKnock);
+            }
+        }
+
         private void Update()
         {
             float t = Time.time + Seed;
             float gust = 0.45f + 0.55f * Mathf.PerlinNoise(t * 0.15f, Seed);
-            float angle = swing * gust * (Mathf.Sin(t * 1.7f) * 0.8f + Mathf.Sin(t * 3.1f + 1.3f) * 0.2f);
+            float wind = swing * gust * (Mathf.Sin(t * 1.7f) * 0.8f + Mathf.Sin(t * 3.1f + 1.3f) * 0.2f);
+            float dt = Mathf.Min(Time.deltaTime, 0.05f);
+            kickSpeed += (-SpringRate * kick - Damping * kickSpeed) * dt;
+            kick = Mathf.Clamp(kick + kickSpeed * dt, -WidestKick, WidestKick);
+            float angle = wind + kick;
             transform.localRotation = Quaternion.Euler(angle, 0f, angle * 0.15f);
         }
     }

@@ -19,6 +19,7 @@ namespace Clube.Game
         private const float TopBoard = 2.3f;
         private const float BoardStep = 0.25f;
         private const float LetterSize = 0.0165f;
+        private const float BracketRun = 0.1f;
 
         private static readonly Color Ink = new Color(0.13f, 0.08f, 0.04f);
         private static readonly Color BoardWood = new Color(0.72f, 0.58f, 0.4f);
@@ -54,7 +55,8 @@ namespace Clube.Game
             {
                 SignArm arm = arms[i];
                 string words = $"{arm.Name}  {Distance(arm.Metres)}";
-                float length = Mathf.Clamp(0.5f + TextWidth(words) * 1.05f, 0.9f, 3.2f);
+                // GL810: a bracketed board is longer, its words start past the straps.
+                float length = Mathf.Clamp(0.5f + TextWidth(words) * 1.05f, 0.9f, 3.2f) + (bracketed ? BracketRun : 0f);
                 float height = TopBoard - i * BoardStep;
                 Vector3 at = top * (height / PostHeight);
                 var way = new Vector3(arm.Direction.x, 0f, arm.Direction.y);
@@ -74,15 +76,15 @@ namespace Clube.Game
                     mesh.Box(new Vector3(0f, 0f, 0f), new Vector3(0.2f, BoardHeight * 0.45f, 0.2f), Quaternion.identity, iron);
                     for (int f = -1; f <= 1; f += 2)
                     {
-                        mesh.Box(new Vector3(f * faceX, 0f, 0.2f), new Vector3(0.008f, BoardHeight * 0.45f, 0.26f), Quaternion.identity, iron);
-                        mesh.Box(new Vector3(f * (faceX + 0.006f), 0f, 0.27f), new Vector3(0.012f, 0.03f, 0.03f), Quaternion.identity, new Color(iron.r * 0.8f, iron.g * 0.8f, iron.b * 0.8f, 1f));
+                        mesh.Box(new Vector3(f * faceX, 0f, 0.11f), new Vector3(0.008f, BoardHeight * 0.45f, 0.2f), Quaternion.identity, iron);
+                        mesh.Box(new Vector3(f * (faceX + 0.006f), 0f, 0.17f), new Vector3(0.012f, 0.03f, 0.03f), Quaternion.identity, new Color(iron.r * 0.8f, iron.g * 0.8f, iron.b * 0.8f, 1f));
                     }
                     if (i > 0 && Vector2.Dot(arms[i - 1].Direction, arm.Direction) > 0.9f)
                     {
                         // Joined to the board above by a strap down both faces.
                         for (int f = -1; f <= 1; f += 2)
                         {
-                            mesh.Box(new Vector3(f * faceX, BoardStep * 0.5f, 0.42f), new Vector3(0.008f, BoardStep + BoardHeight * 0.6f, 0.05f), Quaternion.identity, iron);
+                            mesh.Box(new Vector3(f * faceX, BoardStep * 0.5f, 0.13f), new Vector3(0.008f, BoardStep + BoardHeight * 0.6f, 0.05f), Quaternion.identity, iron);
                         }
                     }
                 }
@@ -103,10 +105,14 @@ namespace Clube.Game
                 holder.SetParent(root.transform, false);
                 holder.localPosition = at;
                 holder.localRotation = turn;
-                float centre = (length - point) * 0.5f + 0.04f;
+                float centre = (length - point + (bracketed ? BracketRun : 0f)) * 0.5f + 0.04f;
                 float face = BoardThickness * 0.5f + 0.004f;
                 Text(holder, words, new Vector3(-face, 0f, centre), 90f, textMaterial);
                 Text(holder, words, new Vector3(face, 0f, centre), -90f, textMaterial);
+                // GL811: the board is a ledge to jump onto, a little wider than its thin planks so a foot finds it.
+                var ledge = holder.gameObject.AddComponent<BoxCollider>();
+                ledge.center = new Vector3(0f, 0f, (length - point - back) * 0.5f);
+                ledge.size = new Vector3(0.14f, BoardHeight, length - point + back);
             }
 
             root.AddComponent<MeshFilter>().sharedMesh = mesh.Make("Signpost");
