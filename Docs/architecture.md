@@ -810,6 +810,9 @@ leaf cluster (to 520 m), a crown of up to five blobs (to 1100 m), one blob beyon
   (`HeightfieldGenerator.SchedulePointHeights`), and `TreeField.IsFlatEnough` keeps the trees
   the voxel world would grow (`DistantTreeTests` checks they match cell for cell). Height and kind
   are `TreeShape.HeightOf` and `IsMaple`, the same rolls `TreeShape.Build` makes.
+- **Edits** (GL821): the generator knows nothing of cuts, so a tree whose root stands on a column holding an edit
+  (`World.HasEditsIn`) isn't drawn; `World.ColumnEdited` marks the tile holding a newly edited column stale, and its
+  draw is built again. Far off, where the kept chunks aren't loaded, a cut tree no longer comes back whole.
 - **Drawing**: a tile's matrices are made once, when it arrives; each frame copies only the tiles
   in the main camera's view into the draw arrays of every level whose band (with its fade) the tile reaches
   into, then one `RenderMeshInstanced` call per 1,023 trees. Neighbouring levels cross-fade over 60 m: the shader keeps a
