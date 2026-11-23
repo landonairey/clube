@@ -227,6 +227,49 @@ namespace Clube.Core.Tests
             Assert.That(world.GetMaterial(new Vector3Int(13, 3, 12)), Is.EqualTo(Wood), "The trunk lies along the ground, its top 7 m out.");
         }
 
+        // GL820: a clump of leaves joined to the crown only at a corner has nothing to hold it up once the tree goes.
+        [Test]
+        public void CuttingTheTrunk_TakesLeavesJoinedOnlyAtACorner()
+        {
+            Set(7, 16, 13, Leaves);
+            Set(8, 16, 13, Leaves);
+            FelledLimb limb = Chop(new Vector3Int(6, 4, 12));
+            Assert.That(Contains(limb, 7, 16, 13) && Contains(limb, 8, 16, 13));
+        }
+
+        // GL822: the far end of a long reach of leaves (about 48 samples through leaves from the wood) falls too.
+        [Test]
+        public void CuttingTheTrunk_TakesTheFarthestLeaves()
+        {
+            Set(6, 16, 12, Leaves);
+            Set(6, 17, 12, Leaves);
+            for (int x = 6; x <= 23; x++)
+            {
+                Set(x, 18, 12, Leaves);
+            }
+            for (int z = 12; z <= 20; z++)
+            {
+                Set(23, 18, z, Leaves);
+            }
+            for (int x = 0; x <= 23; x++)
+            {
+                Set(x, 18, 20, Leaves);
+            }
+            FelledLimb limb = Chop(new Vector3Int(6, 4, 12));
+            Assert.That(Contains(limb, 0, 18, 20), "the far end");
+            Assert.That(Contains(limb, 23, 18, 16), "the middle");
+        }
+
+        // GL820: leaves resting on the ground beside the tree stay.
+        [Test]
+        public void LeavesOnTheGround_Stay()
+        {
+            Set(9, 3, 12, Leaves);
+            Set(9, 4, 12, Leaves);
+            FelledLimb limb = Chop(new Vector3Int(6, 4, 12));
+            Assert.That(Contains(limb, 9, 3, 12) || Contains(limb, 9, 4, 12), Is.False);
+        }
+
         [Test]
         public void AFallingLimb_PassesThroughAnotherTree()
         {

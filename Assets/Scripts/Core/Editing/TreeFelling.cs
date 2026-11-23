@@ -163,7 +163,17 @@ namespace Clube.Core
         public const int MaxWood = 200000;
 
         /// <summary>How far through leaves, in samples, a felled limb takes them: past it they stay.</summary>
-        public const int MaxLeafReach = 20;
+        /// <remarks>
+        /// GL820/GL822: 20 (5 m) left the far leaves of a tall crown standing, and each leaf just past the reach also counted
+        /// as "ground that stays", so the leaves beside it stayed too: floating clumps. A crown is never 128 samples deep.
+        /// </remarks>
+        public const int MaxLeafReach = 128;
+
+        /// <summary>Samples past the limb a sweep looks for leaves with nothing holding them up (GL820).</summary>
+        public const int OrphanMargin = 6;
+
+        /// <summary>Most leaves one leftover clump may hold and still count as hanging in the air.</summary>
+        public const int MaxOrphanClump = 40000;
 
         /// <summary>Share of a column's leaves that lands: the rest crush away, so a fallen crown lies flat.</summary>
         public const float LeafPacking = 0.1f;
@@ -224,6 +234,11 @@ namespace Clube.Core
             }
             limb.WoodCount = fallingWood.Count;
             foreach (Vector3Int leaf in HangingLeaves(world, fallingWood, trees, iso))
+            {
+                limb.Solid.Add(new FelledSample(leaf, world.GetMaterial(leaf) ?? 0, world.GetDensity(leaf) ?? 1f, false));
+                included.Add(leaf);
+            }
+            foreach (Vector3Int leaf in OrphanLeaves(world, included, trees, iso))
             {
                 limb.Solid.Add(new FelledSample(leaf, world.GetMaterial(leaf) ?? 0, world.GetDensity(leaf) ?? 1f, false));
                 included.Add(leaf);
@@ -361,6 +376,99 @@ namespace Clube.Core
                 }
             }
             return hanging;
+        }
+
+        // GL820: leaves near the limb that nothing holds up once it is gone: clumps (touching one another through any face,
+        // edge or corner) with no solid beside them but the limb's own samples, e.g. a pine's tier joined to the rest only
+        // diagonally. A clump beside ground, standing wood or land that isn't loaded stays.
+        private static List<Vector3Int> OrphanLeaves(World world, HashSet<Vector3Int> included, TreeMaterials trees, float iso)
+        {
+            var orphans = new List<Vector3Int>();
+            if (included.Count == 0)
+            {
+                return orphans;
+            }
+            Vector3Int min = Vector3Int.one * int.MaxValue;
+            Vector3Int max = Vector3Int.one * int.MinValue;
+            foreach (Vector3Int sample in included)
+            {
+                min = Vector3Int.Min(min, sample);
+                max = Vector3Int.Max(max, sample);
+            }
+            min -= Vector3Int.one * OrphanMargin;
+            max += Vector3Int.one * OrphanMargin;
+            long volume = (long)(max.x - min.x + 1) * (max.y - min.y + 1) * (max.z - min.z + 1);
+            if (volume > 8000000L)
+            {
+                return orphans;
+            }
+            var seen = new HashSet<Vector3Int>();
+            var clump = new List<Vector3Int>();
+            var stack = new Stack<Vector3Int>();
+            for (int z = min.z; z <= max.z; z++)
+            {
+                for (int y = min.y; y <= max.y; y++)
+                {
+                    for (int x = min.x; x <= max.x; x++)
+                    {
+                        var start = new Vector3Int(x, y, z);
+                        if (included.Contains(start) || seen.Contains(start) || !IsLeaves(world, start, trees, iso))
+                        {
+                            continue;
+                        }
+                        bool held = false;
+                        clump.Clear();
+                        seen.Add(start);
+                        stack.Push(start);
+                        while (stack.Count > 0)
+                        {
+                            Vector3Int sample = stack.Pop();
+                            clump.Add(sample);
+                            for (int dz = -1; dz <= 1; dz++)
+                            {
+                                for (int dy = -1; dy <= 1; dy++)
+                                {
+                                    for (int dx = -1; dx <= 1; dx++)
+                                    {
+                                        Vector3Int next = sample + new Vector3Int(dx, dy, dz);
+                                        if (next == sample || included.Contains(next))
+                                        {
+                                            continue;
+                                        }
+                                        float? density = world.GetDensity(next);
+                                        if (!density.HasValue)
+                                        {
+                                            held = true;
+                                        }
+                                        else if (density.Value >= iso)
+                                        {
+                                            if (!IsLeaves(world, next, trees, iso))
+                                            {
+                                                held = true;
+                                            }
+                                            else if (seen.Add(next))
+                                            {
+                                                stack.Push(next);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (clump.Count > MaxOrphanClump)
+                            {
+                                held = true;
+                                break;
+                            }
+                        }
+                        stack.Clear();
+                        if (!held)
+                        {
+                            orphans.AddRange(clump);
+                        }
+                    }
+                }
+            }
+            return orphans;
         }
 
         // The not-solid tree samples beside the limb, so its mesh keeps the tree's smooth surface and none of it is left
