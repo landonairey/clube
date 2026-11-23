@@ -12,13 +12,14 @@ namespace Clube.Core.Tests
     {
         private static readonly List<Vector2> Route = new List<Vector2> { new Vector2(0f, 0f), new Vector2(1000f, 0f) };
 
-        // A lane that zigzags 40 m either side of the route: much longer than it.
+        // A lane that zigzags 40 m either side of the route over its first half and runs straight after: much longer than
+        // the route, and not evenly so.
         private static List<Vector2> Zigzag(float from, float to)
         {
             var lane = new List<Vector2>();
             for (float x = from; x <= to + 0.01f; x += 20f)
             {
-                lane.Add(new Vector2(x, ((int)(x / 20f) % 2 == 0) ? 40f : -40f));
+                lane.Add(new Vector2(x, x >= 500f ? 0f : ((int)(x / 20f) % 2 == 0) ? 40f : -40f));
             }
             return lane;
         }
@@ -33,7 +34,7 @@ namespace Clube.Core.Tests
         {
             List<Vector2> lane = Zigzag(0f, 1000f);
             var timetable = new LaneTimetable(lane, Route);
-            Assert.Greater(WaterLanes.Length(lane), 4000f, "The test lane must be far longer than the route.");
+            Assert.Greater(WaterLanes.Length(lane), 2500f,"The test lane must be far longer than the route.");
             for (float d = 0f; d <= 1000f; d += 50f)
             {
                 Vector2 boat = Along(lane, timetable.LaneDistance(d));
