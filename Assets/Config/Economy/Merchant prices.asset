@@ -385,6 +385,14 @@ MonoBehaviour:
     Coins: 1
     Units: 10
     ByVolume: 1
+  - Item: {fileID: 11400000, guid: a1b2c3d4e5f60718293a4b5c6d7e8f01, type: 2}
+    Coins: 40
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: b2c3d4e5f60718293a4b5c6d7e8f0112, type: 2}
+    Coins: 400
+    Units: 1
+    ByVolume: 0
   soldEverywhere:
   - {fileID: 11400000, guid: 2c26c5c4f4a60ca449a71671d88094ad, type: 2}
   - {fileID: 11400000, guid: ce1c9585acf5fc14f848a8b43eddc45d, type: 2}
