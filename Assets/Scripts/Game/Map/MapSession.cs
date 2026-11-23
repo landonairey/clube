@@ -39,6 +39,8 @@ namespace Clube.Game
         private int waitedFrames;
         private SlicedWork building;
         private BoundedMapGenerator buildingFor;
+        // Set by Rebuild: the next build surveys afresh, even with a handed-over plan waiting (GL802).
+        private bool forceRebuild;
 
         /// <summary>Raised when a map has been surveyed and planned (at start, and after each regenerate).</summary>
         public event Action Rebuilt;
@@ -111,6 +113,7 @@ namespace Clube.Game
         public void Rebuild()
         {
             built = null;
+            forceRebuild = true;
             StopBuilding();
         }
 
@@ -172,9 +175,6 @@ namespace Clube.Game
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
             TerrainSettings terrain = Terrain;
-            ResourceSurvey survey = null;
-            yield return new SlicedWork.Part(
-                ResourceSurvey.BuildSteps(terrain, generator, worldView.Ores, worldView.Trees, surveyCellSize, done => survey = done), 0f, SurveyShare);
             // GL634: the road classes' slope limits are shares of the slope the player can walk, the controller's own limit.
             var rules = new WorldPlanRules();
             CharacterController walker = player != null ? player.GetComponentInChildren<CharacterController>(true) : null;
@@ -186,9 +186,27 @@ namespace Clube.Game
             {
                 rules.SetWalkableSlope(walker.slopeLimit);
             }
-            WorldPlan plan = WorldPlanner.Build(survey, terrain.Seed, rules);
-            // The plan is from the survey's 40 m cells: its roads are put on the real ground, and signposts on them (GL631, GL632).
-            yield return new SlicedWork.Part(WorldRoads.FinishSteps(plan, generator), SurveyShare, 1f);
+            string key = $"{BoundedMapGenerator.MapKey(terrain)}|{surveyCellSize}|{(walker != null ? walker.slopeLimit : 0f)}";
+            // GL802: leaving the tutorial, the game scene takes the survey and plan the tutorial made of this same map.
+            ResourceSurvey survey = null;
+            WorldPlan plan = null;
+            bool handedOver = !forceRebuild && MapPlanHandover.TryTake(key, out survey, out plan);
+            forceRebuild = false;
+            if (!handedOver)
+            {
+                ResourceSurvey surveyed = null;
+                yield return new SlicedWork.Part(
+                    ResourceSurvey.BuildSteps(terrain, generator, worldView.Ores, worldView.Trees, surveyCellSize, done => surveyed = done), 0f, SurveyShare);
+                survey = surveyed;
+                plan = WorldPlanner.Build(survey, terrain.Seed, rules);
+                // The plan is from the survey's 40 m cells: its roads are put on the real ground, and signposts on them (GL631, GL632).
+                yield return new SlicedWork.Part(WorldRoads.FinishSteps(plan, generator), SurveyShare, 1f);
+            }
+            if (GameSession.IsActive && GameSession.Tutorial)
+            {
+                // GL802: the tutorial is played on this map: its game scene will want the same survey and plan.
+                MapPlanHandover.Hold(key, survey, plan);
+            }
             Survey = survey;
             Plan = plan;
             Map = generator;
