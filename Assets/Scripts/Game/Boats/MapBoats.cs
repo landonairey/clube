@@ -110,6 +110,12 @@ namespace Clube.Game
         /// <summary>Where a run's vessel is on the map now (x, z), by its planned route: good from any distance.</summary>
         public Vector2 PositionOf(int run)
         {
+            // GL847: a vessel in the world is marked where it really floats, so the marker and the boat never part.
+            if (run >= 0 && run < boats.Length && boats[run] != null)
+            {
+                Vector3 local = boats[run].transform.localPosition;
+                return new Vector2(local.x, local.z);
+            }
             WaterRoute route = session.Plan.WaterRoutes[runs[run].Route];
             return WaterLanes.Along(route.Points, PlaceOf(run).Fraction * route.Length);
         }
@@ -251,6 +257,11 @@ namespace Clube.Game
                 way.OffMapStart = offMapStarts[key] + before;
             }
             way.Lane = points.Count >= 2 ? new RoadLine(points, (x, z) => 0f, 1000f) : null;
+            // GL847: a lane with no dock approach or way off the map is timed by the route it follows, not by its own length.
+            if (way.Lane != null && way.FromDock == null && way.ToDock == null && way.OffMap == null)
+            {
+                way.Timetable = new LaneTimetable(way.Lane.Points, session.Plan.WaterRoutes[run.Route].Points);
+            }
             return way.Lane != null;
         }
 
@@ -274,6 +285,7 @@ namespace Clube.Game
             public float FromLength, ToLength;
             public OffMapPath OffMap;
             public float OffMapStart;
+            public LaneTimetable Timetable;
         }
 
         private long LaneKey(int routeIndex, VesselClass vessel)
@@ -373,7 +385,8 @@ namespace Clube.Game
                     bool sea = run.Class.Kind == WaterRouteKind.Sea;
                     float berth = sea ? run.Index % 4 * (run.Class.Length + 4f) : 0f;
                     float keep = Mathf.Min(run.Class.Length * 0.6f + 1f + berth, lane.Length * 0.5f);
-                    float along = Mathf.Clamp(state.Fraction * lane.Length, way.FromDock != null ? 0f : keep, way.ToDock != null ? lane.Length : lane.Length - keep);
+                    float timed = way.Timetable != null ? way.Timetable.LaneDistance(state.Fraction * route.Length) : state.Fraction * lane.Length;
+                    float along = Mathf.Clamp(timed,way.FromDock != null ? 0f : keep, way.ToDock != null ? lane.Length : lane.Length - keep);
                     Vector2 at = lane.Flat(along);
                     Vector2 ahead = lane.Direction(along);
                     Vector2 aside = at + new Vector2(ahead.y, -ahead.x) * ((run.Index % 3 - 1) * (run.Class.Beam + 2f));
@@ -414,11 +427,38 @@ namespace Clube.Game
             body.transform.SetParent(root, false);
             Boat boat = body.AddComponent<Boat>();
             boat.Build(run.Class, run.Name, material, cratePrefab, FigurePreset.Sailor, run.Index * 7919 + 3);
-            boat.Surface = SeaLevel;
+            // GL847: a river boat starts on its river's surface, never the sea's level, which can lie under the river's banks:
+            // where the first place it floats has no surface found, it keeps the last one it had.
+            boat.Surface = run.Class.Kind == WaterRouteKind.River ? RiverSurface(run) : SeaLevel;
             WorldPlan plan = session.Plan;
             string from = plan.Settlements[run.From].Name, to = run.To >= 0 ? plan.Settlements[run.To].Name : "the open sea";
             boat.Describe($"The {run.Name}, {run.Class.Name.ToLowerInvariant()}: " + (string.IsNullOrEmpty(run.Cargo) ? "goods" : run.Cargo) + $" between {from} and {to}");
             return boat;
+        }
+
+        // GL847: the surface of the river a run's vessel sails, near where its timetable has it: at its place on the route,
+        // or else at the nearest point of its lane that has water found under it.
+        private float RiverSurface(BoatRun run)
+        {
+            Vector2 at = PositionOf(run.Index);
+            if (WaterLanes.TrySurfaceAt(session.Map.Water, at, out float surface))
+            {
+                return surface;
+            }
+            float found = SeaLevel, nearest = float.MaxValue;
+            if (TryLane(run.Route, run.Class, out RoadLine lane))
+            {
+                foreach (Vector2 point in lane.Points)
+                {
+                    float distance = (point - at).sqrMagnitude;
+                    if (distance < nearest && WaterLanes.TrySurfaceAt(session.Map.Water, point, out surface))
+                    {
+                        nearest = distance;
+                        found = surface;
+                    }
+                }
+            }
+            return found;
         }
 
         // GL729: goods taken from a vessel wrong the shop they are bound for.
