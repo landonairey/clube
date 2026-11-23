@@ -237,7 +237,7 @@ namespace Clube.Game
                 }
             }
             Identify(inventory != null ? inventory.Inventory : null);
-            foreach (StorageChest chest in FindObjectsByType<StorageChest>(FindObjectsInactive.Include))
+            foreach (StorageChest chest in FindObjectsByType<StorageChest>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 Identify(chest.Storage);
             }
