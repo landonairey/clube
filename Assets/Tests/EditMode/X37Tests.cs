@@ -76,5 +76,62 @@ namespace Clube.Core.Tests
                 Object.DestroyImmediate(hammer);
             }
         }
+
+        [Test]
+        public void ToolsAndThingsToBuild_ComeOutWhole_TheYieldGoingIntoTheirQuality()
+        {
+            ItemDefinition stone = ItemDefinition.Create("stone", "Stone");
+            ItemDefinition ingot = ItemDefinition.Create("iron-ingot", "Iron ingot");
+            ToolDefinition hammer = ToolDefinition.Create("stone-hammer", "Stone hammer", 1, 1f);
+            PlaceableDefinition anvil = PlaceableDefinition.Create("anvil", "Anvil");
+            Recipe hammerRecipe = Recipe.Create(StationKind.Worktop, new ItemAmount(hammer, 1), RecipeWork.Strikes, 1f, new ItemAmount(stone, 1));
+            Recipe anvilRecipe = Recipe.Create(StationKind.Worktop, new ItemAmount(anvil, 1), RecipeWork.Strikes, 1f, new ItemAmount(ingot, 1));
+            var stump = new CraftingStation(StationKind.Worktop, new[] { hammerRecipe, anvilRecipe }) { Quality = 0.8f };
+            try
+            {
+                stump.Input.Add(stone, 1);
+                stump.Chosen = hammerRecipe;
+                Assert.IsTrue(stump.Strike());
+                Assert.AreEqual(hammer, stump.Output[0].Item);
+                Assert.AreEqual(1, stump.Output[0].Count, "One whole hammer (GL842)...");
+                Assert.AreEqual(0f, stump.Output[0].Part, 1e-4f);
+                Assert.AreEqual(0.8f, stump.Output[0].Quality, 1e-4f, "...at the station's 80%.");
+                stump.Output.TakeAll(0);
+
+                stump.Quality = 1f;
+                stump.Input.Add(ingot, 1, null, 0, 0.7f);
+                stump.Chosen = anvilRecipe;
+                Assert.AreEqual(0.7f, stump.ResultQuality(anvilRecipe), 1e-4f);
+                Assert.IsTrue(stump.Strike());
+                Assert.AreEqual(1, stump.Output[0].Count, "One whole anvil (GL843)...");
+                Assert.AreEqual(0.7f, stump.Output[0].Quality, 1e-4f, "...as good as its ingot.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(hammerRecipe);
+                Object.DestroyImmediate(anvilRecipe);
+                Object.DestroyImmediate(stone);
+                Object.DestroyImmediate(ingot);
+                Object.DestroyImmediate(hammer);
+                Object.DestroyImmediate(anvil);
+            }
+        }
+
+        [Test]
+        public void APartItem_IsUsedUpWhenOneIsTakenByAmount()
+        {
+            PlaceableDefinition anvil = PlaceableDefinition.Create("anvil", "Anvil");
+            try
+            {
+                var bag = new Inventory(1);
+                bag.Replace(0, new ItemStack(anvil, 0, null, 0, 1f, 0.85f));
+                bag.RemoveAmount(0, System.Math.Min(1f, bag[0].Amount));
+                Assert.IsTrue(bag[0].IsEmpty, "An old 0.85 anvil built on the ground leaves the inventory (GL843).");
+            }
+            finally
+            {
+                Object.DestroyImmediate(anvil);
+            }
+        }
     }
 }

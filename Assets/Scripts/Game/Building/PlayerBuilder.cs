@@ -119,7 +119,8 @@ namespace Clube.Game
             {
                 chest.MadeOf(held.Quality);
             }
-            inventory.Inventory.RemoveAt(hotbar.SelectedSlot, 1);
+            // One item by amount, so a part item (an anvil made as 0.85 of one before GL843) is used up too and doesn't stay.
+            inventory.Inventory.RemoveAmount(hotbar.SelectedSlot, System.Math.Min(1f, held.Amount));
             CanPlace = false;
             Placed?.Invoke(placedObject);
             return true;

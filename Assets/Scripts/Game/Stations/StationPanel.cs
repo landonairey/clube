@@ -699,6 +699,11 @@ namespace Clube.Game
             // A smelt's count is what pure mineral gives (GL192), so its yield is the ore's share times the efficiency.
             // The fuel burning counts too, with its factor shown when it isn't 1 (GL502).
             string fuel = next.Extracts != null && station.BurnsFuel && station.FuelFactor < 0.995f ? $" (fuel {station.FuelFactor * 100f:0}%)" : "";
+            // Something made whole comes out whole, the yield going into its quality (GL842).
+            if (!CraftingStation.BlendsInOutput(next.Output.Item))
+            {
+                return $"Station {yield * 100f:0}%: makes {next.Output.Count} at {station.ResultQuality(next) * 100f:0}% quality";
+            }
             return $"Yield {yield * 100f:0}%{fuel}: {next.Output.Count * yield:0.##} of {next.Output.Count} a run";
         }
 
