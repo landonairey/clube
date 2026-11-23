@@ -61,7 +61,7 @@ Core/
                  MapShape, MapLandBuilder, MapLimit, MapHorizon, BiomeDefinition,
                  BiomeField, BiomeMap, ResourceSurvey, SurveyResource + ResourceReach (GL595)
     Heightmaps/  Heightmap import, HeightmapGenerator, HeightmapExport (K29)
-    Noise/       PerlinNoise (struct), VoxelHash, ErosionFilter + ErosionSettings (gullies as a filter on a heightfield, P12a; the bounded map steers them by a slope over 4 m, `BoundedMapHeight.SlopeStep`, GL804: over 0.5 m the shaping's creases became metre-high steps)
+    Noise/       PerlinNoise (struct), VoxelHash, ErosionFilter + ErosionSettings (gullies as a filter on a heightfield, P12a; both eroded heights steer them by a slope over 4 m, `ErosionFilter.SteeringStep`, GL804: over 0.5 m the shaping's creases became metre-high steps)
     Rocks/       BoulderField (large faceted boulders, stamped as TreePart.Boulder parts with the trees, GL342)
     Fields/      the Burst shapes: IHeightField / IVolumeField structs
     Fill/        generation jobs and the shared ChunkFillKernel; SlopeRidges (ridges down slopes in the density, GL293)

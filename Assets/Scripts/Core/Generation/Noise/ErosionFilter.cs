@@ -177,6 +177,15 @@ namespace Clube.Core
         private const float CellScale = 0.7f;
         private const float Gain = 0.5f;
         private const float Lacunarity = 2f;
+        /// <summary>
+        /// GL804: metres the land's slope that steers the gullies should be taken over (the step between the height and
+        /// its two extra samples). The gullies follow the slope's direction so closely that over half a metre each crease
+        /// in the land (where a range or the coast's rise levels off and the slope's direction turns at once) became a
+        /// step a metre high: spiky stone lines across the land and rings round lakes. Over a few metres the turn is
+        /// spread out and the ground stays smooth.
+        /// </summary>
+        public const float SteeringStep = 4f;
+
         // GL804: how sharply the steering turns over where a gully's side changes sign (1 / the sine's width of the turn).
         private const float SteerSharpness = 4f;
 

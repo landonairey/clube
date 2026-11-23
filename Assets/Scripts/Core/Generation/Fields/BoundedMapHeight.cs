@@ -16,11 +16,8 @@ namespace Clube.Core
     /// </remarks>
     public struct BoundedMapHeight : IHeightField
     {
-        // GL804: metres the slope that steers the erosion's gullies is taken over. The map's shaping has creases (where a
-        // range or the coast's rise levels off) where the slope's direction turns at once; the gullies follow the slope's
-        // direction so closely that over half a metre each crease became a step a metre high: spiky lines across the land
-        // and rings round lakes. Over a few metres the turn is spread out and the ground stays smooth.
-        public const float SlopeStep = 4f;
+        // GL804: the erosion's own steering step (see ErosionFilter.SteeringStep), so this matches ErodedLandscapeHeight.
+        private const float SlopeStep = ErosionFilter.SteeringStep;
         private const float FadeIn = 0.35f;
 
         private LandscapeHeight land;
