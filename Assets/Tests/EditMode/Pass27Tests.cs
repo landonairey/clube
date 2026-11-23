@@ -123,6 +123,8 @@ namespace Clube.Core.Tests
             Assert.IsTrue(ToolCooldown.IsDawn(7f), "Dawn runs to 09:00.");
             Assert.IsFalse(ToolCooldown.IsDawn(9.1f));
             Assert.IsFalse(ToolCooldown.IsDawn(2f));
+            Assert.IsFalse(ToolCooldown.IsDawn(3.9f), "GL835: not before the 04:00 sunrise.");
+            Assert.IsTrue(ToolCooldown.IsDawn(4f));
         }
 
         [Test]
