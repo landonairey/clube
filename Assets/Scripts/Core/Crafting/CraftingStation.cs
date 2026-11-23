@@ -93,7 +93,9 @@ namespace Clube.Core
         /// <summary>
         /// The recipe the player picked (ML1), when several share inputs (sticks and stone make a
         /// spear, a hatchet or a hammer): only it starts. Null: the first recipe whose inputs are
-        /// loaded starts, as before. Setting one this station doesn't make clears it.
+        /// loaded starts, as before. Setting one this station doesn't make clears it. Picking a different recipe from the
+        /// one under way drops that work, progress and strikes (GL841): the next strike starts the new one. Clearing the
+        /// pick (the panel reopening) leaves the work alone.
         /// </summary>
         public Recipe Chosen
         {
@@ -101,6 +103,11 @@ namespace Clube.Core
             set
             {
                 chosen = value != null && recipes.Contains(value) ? value : null;
+                if (chosen != null && Active != null && Active != chosen)
+                {
+                    Active = null;
+                    done = 0f;
+                }
                 Changed?.Invoke();
             }
         }
@@ -535,8 +542,8 @@ namespace Clube.Core
             }
             Composition madeOf = item is PlaceableDefinition { DropsMix: false } ? InputContents(recipe) : null;
             return waiting.Item == recipe.Output.Item
-                && Inventory.Stacks(waiting, recipe.Output.Item, madeOf, OutputQuality(recipe))
-                && waiting.Space >= (int)Math.Ceiling(recipe.Output.Count * YieldOf(recipe) - 1e-4f);
+                && Inventory.Stacks(waiting, recipe.Output.Item, madeOf, ResultQuality(recipe))
+                && waiting.Space >= recipe.Output.Count;
         }
 
         /// <summary>
@@ -562,10 +569,22 @@ namespace Clube.Core
             return 0.5f + 0.05f * Math.Min(10, Math.Max(0, level));
         }
 
-        // What a finished run gives (GL136): its count at the current yield, as a decimal amount.
+        // What a finished run gives (GL136): materials, its count at the current yield as a decimal amount; anything made
+        // whole (a stone hammer, an anvil, GL842, GL843), its full count, the yield going into its quality instead.
         private float TakeYield(Recipe recipe)
         {
-            return recipe.Output.Count * YieldOf(recipe);
+            return BlendsInOutput(recipe.Output.Item) ? recipe.Output.Count * YieldOf(recipe) : recipe.Output.Count;
+        }
+
+        /// <summary>
+        /// How good a run's result comes out (GL842, GL843): <see cref="OutputQuality"/>, and for something made whole (a tool,
+        /// a thing to build) the station's yield on top, since it can't come out as part of one: a stone hammer made on an
+        /// 80% stump is one 80% hammer, not 0.8 of a hammer; an anvil is as good as its ingot (and the smith) let it be.
+        /// </summary>
+        public float ResultQuality(Recipe recipe)
+        {
+            float quality = OutputQuality(recipe);
+            return BlendsInOutput(recipe.Output.Item) ? quality : quality * YieldOf(recipe);
         }
 
         // The extracted mineral's share of what's loaded for the recipe, by count (GL128); an input with no
@@ -651,7 +670,7 @@ namespace Clube.Core
                 // Something built (a furnace) keeps what it was made of, so a mix of 76% clay makes one
                 // that works at 76% (GL100, MaterialRegistry.Quality).
                 Composition madeOf = finished.Output.Item is PlaceableDefinition { DropsMix: false } ? InputContents(finished) : null;
-                float quality = OutputQuality(finished);
+                float quality = ResultQuality(finished);
                 float made = TakeYield(finished);
                 foreach (ItemAmount input in finished.Inputs)
                 {

@@ -46,13 +46,21 @@ namespace Clube.Core
         /// <summary>
         /// True when items with these contents and quality go onto the stack by themselves (GL131), as when digging or
         /// chopping: the same item, and either gathered material (its mix blends in, whatever its quality) or the same
-        /// quality.
+        /// quality. Pure material stacks by itself only with pure material (GL698, GL840): a pure stack isn't topped up by
+        /// lower grade, and pure items clicked into the bag don't sink into a lower grade stack there.
         /// </summary>
         public static bool Stacks(ItemStack stack, ItemDefinition item, Composition contents, float quality)
         {
             return !stack.IsEmpty && stack.Item == item
                 && (stack.Contents != null || contents != null || Math.Abs(stack.Quality - quality) < SameQuality)
-                && !(IsPure(stack) && quality < stack.Quality - SameQuality);
+                && !(IsPure(stack) && quality < stack.Quality - SameQuality)
+                && !(IsPure(contents, quality) && !IsPure(stack));
+        }
+
+        // True for gathered material, by its contents and quality, that is all itself (GL840).
+        private static bool IsPure(Composition contents, float quality)
+        {
+            return contents != null && quality >= 1f - SameQuality;
         }
 
         /// <summary>
@@ -61,7 +69,7 @@ namespace Clube.Core
         /// </summary>
         public static bool IsPure(ItemStack stack)
         {
-            return !stack.IsEmpty && stack.Contents != null && stack.Quality >= 1f - SameQuality;
+            return !stack.IsEmpty && IsPure(stack.Contents, stack.Quality);
         }
 
         /// <summary>

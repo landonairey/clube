@@ -563,6 +563,14 @@ namespace Clube.Game
             }
             if (inputRow.Contains(drop.Position))
             {
+                // Let go on a stack of the same item, whatever its quality, it combines with that stack (GL845), as a drag
+                // between your own slots does; anywhere else on the row it loads as before.
+                int target = InventoryGridGui.GridSlotNear(inputRow.position, station.Input, drop.Position, InventoryGridGui.RowGap * 0.5f);
+                if (target >= 0 && Inventory.Combines(station.Input[target], stack.Item))
+                {
+                    items.MoveToSlot(drop.Slot, station.Input, target, drop.Count);
+                    return;
+                }
                 items.MoveTo(drop.Slot, station.Input, drop.Count);
             }
             else if (station.BurnsFuel && stack.Item.IsFuel && fuelRow.Contains(drop.Position))
@@ -699,6 +707,11 @@ namespace Clube.Game
             // A smelt's count is what pure mineral gives (GL192), so its yield is the ore's share times the efficiency.
             // The fuel burning counts too, with its factor shown when it isn't 1 (GL502).
             string fuel = next.Extracts != null && station.BurnsFuel && station.FuelFactor < 0.995f ? $" (fuel {station.FuelFactor * 100f:0}%)" : "";
+            // Something made whole comes out whole, the yield going into its quality (GL842).
+            if (!CraftingStation.BlendsInOutput(next.Output.Item))
+            {
+                return $"Station {yield * 100f:0}%: makes {next.Output.Count} at {station.ResultQuality(next) * 100f:0}% quality";
+            }
             return $"Yield {yield * 100f:0}%{fuel}: {next.Output.Count * yield:0.##} of {next.Output.Count} a run";
         }
 
