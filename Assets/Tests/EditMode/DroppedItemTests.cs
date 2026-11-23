@@ -97,5 +97,55 @@ namespace Clube.Core.Tests
             Assert.AreEqual(0, DroppedItemSaving.Read(null).Count);
             Assert.AreEqual(0, DroppedItemSaving.Read(string.Empty).Count);
         }
+
+        [Test]
+        public void DroppedItems_KeepWhetherBaggedAndHowManySacks()
+        {
+            var items = new List<DroppedSave>
+            {
+                new DroppedSave { Stack = new StackSave { Item = "hand-axe", Count = 1 }, IsBag = true, Sacks = 107, Rotation = Quaternion.identity },
+                new DroppedSave { Stack = new StackSave { Item = "hand-axe", Count = 1 }, IsBag = false, Rotation = Quaternion.identity },
+            };
+            List<DroppedSave> read = DroppedItemSaving.Read(DroppedItemSaving.Write(items));
+            Assert.IsTrue(read[0].BagKnown && read[0].IsBag);
+            Assert.AreEqual(107, read[0].Sacks);
+            Assert.IsTrue(read[1].BagKnown && !read[1].IsBag);
+            Assert.AreEqual(1, read[1].Sacks);
+            // A line from before the bag was kept: unknown.
+            string old = DroppedItemSaving.Write(new[] { items[1] });
+            old = old.Substring(0, old.IndexOf("|m|", System.StringComparison.Ordinal) + 0);
+            Assert.IsFalse(DroppedItemSaving.Read(old)[0].BagKnown);
+        }
+
+        [Test]
+        public void SackPiles_MergeOnlyMoreThanTenIdenticalSacksClose()
+        {
+            ItemDefinition axe = ToolDefinition.Create("hand-axe", "Hand axe", 1, 1f);
+            ItemDefinition stone = ItemDefinition.Create("stone", "Stone");
+            var stacks = new List<ItemStack>();
+            var at = new List<Vector3>();
+            var sacks = new List<int>();
+            for (int i = 0; i < 11; i++)
+            {
+                stacks.Add(new ItemStack(axe, 1));
+                at.Add(new Vector3(i * 0.2f, 0f, 0f));
+                sacks.Add(1);
+            }
+            stacks.Add(new ItemStack(stone, 5));
+            at.Add(Vector3.zero);
+            sacks.Add(1);
+            stacks.Add(new ItemStack(axe, 1));
+            at.Add(new Vector3(50f, 0f, 0f));
+            sacks.Add(1);
+            List<List<int>> plan = SackPiles.Plan(stacks, at, sacks);
+            Assert.AreEqual(1, plan.Count);
+            Assert.AreEqual(11, plan[0].Count);
+
+            // Ten are not over the threshold.
+            stacks.RemoveRange(10, 3);
+            at.RemoveRange(10, 3);
+            sacks.RemoveRange(10, 3);
+            Assert.AreEqual(0, SackPiles.Plan(stacks, at, sacks).Count);
+        }
     }
 }

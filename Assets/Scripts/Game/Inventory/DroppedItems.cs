@@ -31,6 +31,10 @@ namespace Clube.Game
         private CharacterController body;
         private WorldView worldView;
         private float nextGroundCheck;
+        private float nextMerge;
+
+        // Seconds between looks for piles of sacks to merge (GL837).
+        private const float MergeSeconds = 2f;
 
         /// <summary>The items lying in the world now.</summary>
         public IReadOnlyList<DroppedItem> Items => items;
@@ -38,6 +42,10 @@ namespace Clube.Game
         private void Awake()
         {
             body = GetComponent<CharacterController>();
+            if (GetComponent<SackSplitPanel>() == null)
+            {
+                gameObject.AddComponent<SackSplitPanel>();
+            }
             HeldToolView held = GetComponent<HeldToolView>();
             material = held != null ? held.Material : null;
         }
@@ -107,6 +115,71 @@ namespace Clube.Game
             {
                 Destroy(item.gameObject);
             }
+        }
+
+        /// <summary>
+        /// Merges every pile of more than <see cref="SackPiles.Threshold"/> identical resting sacks close together into one
+        /// that stands for them all (GL837), so a hundred sacks are not a hundred rigid bodies.
+        /// </summary>
+        private void MergePiles()
+        {
+            var bags = new List<DroppedItem>();
+            var stacks = new List<ItemStack>();
+            var at = new List<Vector3>();
+            var counts = new List<int>();
+            foreach (DroppedItem item in items)
+            {
+                if (item != null && item.IsBag && (item.Frozen || item.Body.IsSleeping()))
+                {
+                    bags.Add(item);
+                    stacks.Add(item.Stack);
+                    at.Add(item.transform.position);
+                    counts.Add(item.Sacks);
+                }
+            }
+            if (bags.Count <= SackPiles.Threshold)
+            {
+                return;
+            }
+            foreach (List<int> group in SackPiles.Plan(stacks, at, counts))
+            {
+                DroppedItem keep = bags[group[0]];
+                int total = keep.Sacks;
+                for (int i = 1; i < group.Count; i++)
+                {
+                    total += bags[group[i]].Sacks;
+                    Remove(bags[group[i]]);
+                }
+                keep.Sacks = total;
+            }
+        }
+
+        /// <summary>
+        /// Takes up to <paramref name="sacks"/> of a merged pile into the inventory (GL837); what does not fit stays in the pile.
+        /// Returns how many sacks went in.
+        /// </summary>
+        public int TakeSacks(DroppedItem pile, int sacks, PlayerInventory into)
+        {
+            if (pile == null || into == null)
+            {
+                return 0;
+            }
+            ItemStack one = pile.Stack;
+            int taken = 0;
+            while (taken < Mathf.Min(sacks, pile.Sacks) && into.Inventory.Add(one.Item, one.Count, one.Contents, one.Wear, one.Quality, one.Part) <= 0)
+            {
+                taken++;
+            }
+            if (taken > 0)
+            {
+                into.Notify(one.Item, taken * one.Amount);
+            }
+            pile.Sacks -= taken;
+            if (pile.Sacks < 1)
+            {
+                Remove(pile);
+            }
+            return taken;
         }
 
         private Mesh MeshFor(ItemDefinition item, bool isBag)
@@ -236,6 +309,7 @@ namespace Clube.Game
                         // One that is falling as the game is saved comes back where it last lay.
                         Position = item.Frozen || item.Body.IsSleeping() ? item.transform.position : item.RestPosition,
                         Rotation = item.transform.rotation,
+                        IsBag = item.IsBag,
                     });
                 }
             }
@@ -270,7 +344,11 @@ namespace Clube.Game
                 if (!stack.IsEmpty)
                 {
                     // Held still until the ground under it has loaded.
-                    Spawn(stack, stack.Item.DropsAs != DropForm.Model, saved.Position, saved.Rotation, frozen: true);
+                    DroppedItem made = Spawn(stack, saved.BagKnown ? saved.IsBag : stack.Item.DropsAs != DropForm.Model, saved.Position, saved.Rotation, frozen: true);
+                    if (made != null && made.IsBag)
+                    {
+                        made.Sacks = Mathf.Max(1, saved.Sacks);
+                    }
                 }
             }
         }
