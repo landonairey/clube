@@ -251,6 +251,13 @@ namespace Clube.Core
             float length = height * dice.Range(0.6f, 0.8f);
             float start = radius * 1.6f;
             int segments = math.max(2, (int)math.ceil(length / 2f));
+
+            // GL823: a trunk lies straight, like the logs over rivers, not draped over every bump. It points down the land's
+            // average slope (where the ground has one), along a line fitted to the ground under it, and cuts through any
+            // ground that stands higher.
+            direction = DownSlope(root, direction, start, length, groundAt);
+            FitLine(root, direction, start, length, groundAt, out float lineStart, out float rise);
+
             float3 previous = float3.zero;
             float previousRadius = 0f;
             for (int i = 0; i <= segments; i++)
@@ -258,8 +265,8 @@ namespace Clube.Core
                 float along = start + length * i / segments;
                 float x = root.x + direction.x * along, z = root.z + direction.z * along;
                 float thickness = math.max(settings.MinBranchRadius, radius * math.lerp(0.95f, 0.45f, (float)i / segments));
-                // Resting on the ground, sunk in a little so no gap shows on a slope.
-                var point = new float3(x, groundAt(x, z) + thickness * 0.7f, z);
+                // Sunk in a little, so it rests on the ground's average with no gap on a rise.
+                var point = new float3(x, lineStart + rise * (along - start) + thickness * 0.7f, z);
                 if (i > 0)
                 {
                     parts.Add(TreePart.Segment(previous, point, previousRadius, thickness, wood));
@@ -267,6 +274,62 @@ namespace Clube.Core
                 previous = point;
                 previousRadius = thickness;
             }
+        }
+
+        /// <summary>Below this rise per metre of the land's average slope, a fallen trunk keeps its cardinal direction (GL823).</summary>
+        public const float FlatSlope = 0.04f;
+
+        /// <summary>
+        /// The way a fallen trunk lies (GL823): the horizontal direction the land under it falls, from the average slope of
+        /// ground samples over the area it covers; <paramref name="fallback"/> where the land is nearly flat.
+        /// </summary>
+        public static float3 DownSlope(float3 root, float3 fallback, float start, float length, System.Func<float, float, float> groundAt)
+        {
+            // The mean of finite differences over a 5 x 5 grid of the square the trunk can lie in.
+            float reach = math.max(1f, start + length);
+            float gx = 0f, gz = 0f;
+            for (int i = -2; i <= 2; i++)
+            {
+                for (int j = -2; j <= 2; j++)
+                {
+                    float x = root.x + reach * 0.5f * i, z = root.z + reach * 0.5f * j;
+                    gx += (groundAt(x + reach * 0.5f, z) - groundAt(x - reach * 0.5f, z)) / reach;
+                    gz += (groundAt(x, z + reach * 0.5f) - groundAt(x, z - reach * 0.5f)) / reach;
+                }
+            }
+            gx /= 25f;
+            gz /= 25f;
+            if (math.sqrt(gx * gx + gz * gz) < FlatSlope)
+            {
+                return fallback;
+            }
+            // Downhill is against the gradient.
+            return math.normalize(new float3(-gx, 0f, -gz));
+        }
+
+        /// <summary>
+        /// The least-squares line through the ground under a trunk lying from <paramref name="start"/> to
+        /// <paramref name="start"/> + <paramref name="length"/> metres along <paramref name="direction"/> from the root:
+        /// its height at <paramref name="start"/> and its rise per metre.
+        /// </summary>
+        public static void FitLine(
+            float3 root, float3 direction, float start, float length, System.Func<float, float, float> groundAt, out float heightAtStart, out float rise)
+        {
+            const int Samples = 12;
+            float sumT = 0f, sumH = 0f, sumTT = 0f, sumTH = 0f;
+            for (int i = 0; i <= Samples; i++)
+            {
+                float t = length * i / Samples;
+                float h = groundAt(root.x + direction.x * (start + t), root.z + direction.z * (start + t));
+                sumT += t;
+                sumH += h;
+                sumTT += t * t;
+                sumTH += t * h;
+            }
+            int count = Samples + 1;
+            float denominator = count * sumTT - sumT * sumT;
+            rise = denominator > 1e-5f ? (count * sumTH - sumT * sumH) / denominator : 0f;
+            heightAtStart = (sumH - rise * sumT) / count;
         }
 
         // A conifer (GL721): a straight trunk tapering to the top, bare for its lowest quarter, then whorls of short branches
