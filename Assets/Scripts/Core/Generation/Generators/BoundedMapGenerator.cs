@@ -106,6 +106,9 @@ namespace Clube.Core
             return CanyonReach.For(key + "|canyons " + map.Cliffs.CanyonKey(), map.Cliffs.ToCanyons(settings.Seed, map.Climate.RegionSize), water);
         }
 
+        /// <summary>GL802: a key naming the map these settings make (the same key, the same ground and water).</summary>
+        public static string MapKey(TerrainSettings settings) => WaterKey(settings);
+
         private static string WaterKey(TerrainSettings settings)
         {
             return $"bounded|{settings.Seed}|{settings.SurfaceLevel}|{settings.Amplitude}|{settings.FeatureSize}|"

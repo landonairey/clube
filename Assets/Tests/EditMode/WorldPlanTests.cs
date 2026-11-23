@@ -445,6 +445,36 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void TheStartPrefersAnOutpostWhereItSuits()
+        {
+            // GL803: the start is beside an outpost in a birch biome; here "suits" picks each outpost in turn.
+            var outposts = plan.Settlements.Where(s => s.Type.Id == MapStart.StartType && !s.Type.Hostile && !s.IsQuarry).ToList();
+            if (outposts.Count < 2)
+            {
+                Assert.Inconclusive("This map has fewer than two outposts.");
+            }
+            // The shared plan is put back: Home gives a shop-less outpost its Merchant shop.
+            var shopCounts = outposts.ToDictionary(o => o, o => o.Shops.Count);
+            try
+            {
+                foreach (PlannedSettlement wanted in outposts)
+                {
+                    PlannedSettlement home = MapStart.Home(plan, at => at == wanted.Position);
+                    Assert.That(home, Is.SameAs(wanted));
+                    Assert.That(home.Has("merchant"), "it has (or is given) a Merchant shop");
+                }
+                Assert.That(MapStart.Home(plan, at => false).Type.Id, Is.EqualTo(MapStart.StartType), "nowhere suits: still an outpost");
+            }
+            finally
+            {
+                foreach (var pair in shopCounts)
+                {
+                    pair.Key.Shops.RemoveRange(pair.Value, pair.Key.Shops.Count - pair.Value);
+                }
+            }
+        }
+
+        [Test]
         public void WithNoSettlementsTheStartIsFlatDryLand()
         {
             Vector2 start = MapStart.Pick(new WorldPlan(), survey);

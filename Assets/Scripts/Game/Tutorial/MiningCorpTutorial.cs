@@ -141,6 +141,10 @@ namespace Clube.Game
         private Transform yard;
         private Vector3 origin;
         private Rect yardArea;
+        // GL801: the quarry settlement's town wall ring (x, z, map space): the tutorial's bounds; empty when it has none.
+        private Vector2[] wall = System.Array.Empty<Vector2>();
+        // GL801: set once the player has been brought back from outside the wall; the next time they are thrown out.
+        private bool warnedOutOfBounds;
         private float leashCheckAt;
 
         /// <summary>True while the tutorial runs.</summary>
@@ -342,12 +346,14 @@ namespace Clube.Game
             values["quotaDay"] = quota.Day.ToString();
             values["oreDiscussed"] = oreDiscussed ? "1" : "0";
             values["oreMined"] = oreMined ? "1" : "0";
+            values["wallWarned"] = warnedOutOfBounds ? "1" : "0";
         }
 
         public void RestoreValues(System.Collections.Generic.IReadOnlyDictionary<string, string> values)
         {
             oreDiscussed = values.TryGetValue("oreDiscussed", out string said) && said == "1";
             oreMined = values.TryGetValue("oreMined", out string mined) && mined == "1";
+            warnedOutOfBounds = values.TryGetValue("wallWarned", out string warned) && warned == "1";
             if (values.TryGetValue("quotaStone", out string saved) && int.TryParse(saved, out int count))
             {
                 values.TryGetValue("quotaDay", out string savedDay);
@@ -414,6 +420,7 @@ namespace Clube.Game
             }
             origin = site.Quarry.Origin;
             yardArea = site.Quarry.Area;
+            wall = site.Wall.ToArray();
             var anchor = new GameObject($"Mining Corp yard ({quarry.Name})").transform;
             anchor.SetParent(worldView.transform, false);
             anchor.localPosition = origin;
@@ -431,12 +438,26 @@ namespace Clube.Game
             }
             leashCheckAt = Time.time + 0.5f;
             Vector3 local = worldView.transform.InverseTransformPoint(player.transform.position);
-            float beyond = SettlementSite.Beyond(yardArea, new Vector2(local.x, local.z));
-            if (beyond > YardLeash)
+            if (!IsOutOfBounds(new Vector2(local.x, local.z)))
             {
-                spawn.SetDownOver(OnMap(CompanyWarehouse.Spawn) + Vector3.up);
-                note = "Crew lead: \"Off the company's ground already? Back to work, and stay in the pit.\"";
+                return;
             }
+            // GL801: the first time over the wall they are brought back and warned; the second time is the third way out.
+            if (warnedOutOfBounds)
+            {
+                outcome = "You walked off the Mining Corp's ground twice,\nand they won't have you back.\n\nYou are left on the only land your family still owns.";
+                ThrowOut($"Crew lead: \"I warned you, {Name}. Over the wall again? Then stay out!\"");
+                return;
+            }
+            warnedOutOfBounds = true;
+            spawn.SetDownOver(OnMap(CompanyWarehouse.Spawn) + Vector3.up);
+            note = "Crew lead: \"Over the wall already? Back to the pit, and don't do that again: next time you're out for good.\"";
+        }
+
+        // GL801: past the quarry settlement's town wall; with no wall, more than the leash past the pit's floor.
+        private bool IsOutOfBounds(Vector2 point)
+        {
+            return wall.Length >= 3 ? !SettlementWalls.Inside(wall, point) : SettlementSite.Beyond(yardArea, point) > YardLeash;
         }
 
         // Metres past the quarry pit's floor the player may go before being brought back (its banks and a little more).

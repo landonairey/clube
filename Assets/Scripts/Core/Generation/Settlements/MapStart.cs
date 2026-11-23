@@ -24,23 +24,66 @@ namespace Clube.Core
         private const float RoadClearance = 6f;
         private const float ParcelMostRelief = 8f;
 
+        /// <summary>GL803: the least share of birch among the trees for a place to count as a birch biome.</summary>
+        public const float BirchBiomeShare = 0.25f;
+
+        /// <summary>GL803: birch trees the family's parcel is given, whatever the seed grew there.</summary>
+        public const int StartBirches = 2;
+
+        /// <summary>GL803: true where at least <see cref="BirchBiomeShare"/> of the trees grow as birch; for <see cref="Home"/>'s <c>suits</c>.</summary>
+        public static Func<Vector2, bool> BirchBiome(TreeGeneration trees)
+        {
+            if (trees == null)
+            {
+                return null;
+            }
+            return at => TreeShape.BirchShareAt(at.x, at.y, trees) >= BirchBiomeShare;
+        }
+
         /// <summary>
         /// The settlement the start stands beside (GL656): an outpost with a Merchant shop, the one nearest the capital on the
         /// capital's own road network if any is. With no such outpost, the outpost nearest the capital (on its network first) is
         /// given a Merchant shop. With no outpost at all, the capital, else the largest friendly settlement.
         /// </summary>
-        public static PlannedSettlement Home(WorldPlan plan)
+        /// <param name="suits">
+        /// GL803: where the start would rather be (an outpost in a biome with birch trees); outposts there are picked first,
+        /// by the same rules. May be null.
+        /// </param>
+        public static PlannedSettlement Home(WorldPlan plan, Func<Vector2, bool> suits = null)
         {
             if (plan == null)
             {
                 return null;
             }
+            PlannedSettlement outpost = (suits != null ? Outpost(plan, suits) : null) ?? Outpost(plan, null);
+            if (outpost != null)
+            {
+                return outpost;
+            }
+            PlannedSettlement home = plan.Capital;
+            if (home == null)
+            {
+                foreach (PlannedSettlement settlement in plan.Settlements)
+                {
+                    if (!settlement.Type.Hostile && (home == null || settlement.Type.Parcels > home.Type.Parcels))
+                    {
+                        home = settlement;
+                    }
+                }
+            }
+            return home;
+        }
+
+        // The outpost the start stands beside, among those where suits holds (all, when null); null when there is none.
+        private static PlannedSettlement Outpost(WorldPlan plan, Func<Vector2, bool> suits)
+        {
             PlannedSettlement capital = plan.Capital;
             PlannedSettlement best = null, bestWithShop = null;
             foreach (PlannedSettlement settlement in plan.Settlements)
             {
                 // GL734: the tutorial's quarry is where the job was, not the family's land.
-                if (settlement.Type.Id != StartType || settlement.Type.Hostile || settlement.IsQuarry)
+                if (settlement.Type.Id != StartType || settlement.Type.Hostile || settlement.IsQuarry
+                    || (suits != null && !suits(settlement.Position)))
                 {
                     continue;
                 }
@@ -66,18 +109,7 @@ namespace Clube.Core
                 }
                 return best;
             }
-            PlannedSettlement home = capital;
-            if (home == null)
-            {
-                foreach (PlannedSettlement settlement in plan.Settlements)
-                {
-                    if (!settlement.Type.Hostile && (home == null || settlement.Type.Parcels > home.Type.Parcels))
-                    {
-                        home = settlement;
-                    }
-                }
-            }
-            return home;
+            return null;
         }
 
         private static bool OnCapitalNetwork(PlannedSettlement settlement, PlannedSettlement capital)
@@ -105,9 +137,10 @@ namespace Clube.Core
         /// The start's place on the map (x, z), beside <see cref="Home"/> (which may give an outpost its Merchant shop, so call it
         /// before the settlements are built); always on a survey cell that is mostly dry when the map has one.
         /// </summary>
-        public static Vector2 Pick(WorldPlan plan, ResourceSurvey survey)
+        /// <param name="suits">GL803: where the start would rather be (<see cref="Home"/>); may be null.</param>
+        public static Vector2 Pick(WorldPlan plan, ResourceSurvey survey, Func<Vector2, bool> suits = null)
         {
-            PlannedSettlement home = Home(plan);
+            PlannedSettlement home = Home(plan, suits);
             Vector2 centre = survey.Area.center;
             if (home != null)
             {

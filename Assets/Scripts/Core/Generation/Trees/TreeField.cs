@@ -53,6 +53,9 @@ namespace Clube.Core
         // Cells given a tree to make up an area's count, each with the area its tree must root in; null until worked out.
         private Dictionary<Vector2Int, Rect> forced;
 
+        // GL803: cells whose tree is made a given kind (and standing), whatever its own roll gave.
+        private readonly Dictionary<Vector2Int, int> forcedKinds = new Dictionary<Vector2Int, int>();
+
         public TreeField(TreeGeneration settings, int seed, ITerrainGenerator generator, StartArea start = null)
         {
             this.settings = settings;
@@ -183,6 +186,101 @@ namespace Clube.Core
         {
             StockStartArea();
             Stock(area, minTrees);
+        }
+
+        /// <summary>The kind of the tree a cell grows (<see cref="TreeShape.KindOf"/>: 0 birch), as made here.</summary>
+        public int KindIn(Vector2Int cell)
+        {
+            return forcedKinds.TryGetValue(cell, out int kind) ? kind : TreeShape.KindOf(seed, cell, settings);
+        }
+
+        /// <summary>Standing trees of a kind rooted in an area.</summary>
+        public int CountKind(Rect area, int kind)
+        {
+            StockStartArea();
+            int count = 0;
+            ForCellsIn(area, cell =>
+            {
+                Tree tree = TreeIn(cell);
+                if (tree.Parts != null && area.Contains(new Vector2(tree.Root.x, tree.Root.z)) && IsStanding(cell) && KindIn(cell) == kind)
+                {
+                    count++;
+                }
+            });
+            return count;
+        }
+
+        /// <summary>
+        /// GL803: makes sure an area has at least this many standing trees of a kind (the starting parcel's two birches): trees
+        /// of other kinds rooted in it are made that kind first, then more are grown in its empty cells. Call before the area's
+        /// chunks generate.
+        /// </summary>
+        public void EnsureKind(Rect area, int kind, int minTrees)
+        {
+            StockStartArea();
+            int count = CountKind(area, kind);
+            var others = new List<Vector2Int>();
+            var empty = new List<Vector2Int>();
+            ForCellsIn(area, cell =>
+            {
+                Tree tree = TreeIn(cell);
+                bool rooted = tree.Parts != null && area.Contains(new Vector2(tree.Root.x, tree.Root.z));
+                if (!rooted)
+                {
+                    empty.Add(cell);
+                }
+                else if (!IsStanding(cell) || KindIn(cell) != kind)
+                {
+                    others.Add(cell);
+                }
+            });
+            foreach (Vector2Int cell in others)
+            {
+                if (count >= minTrees)
+                {
+                    return;
+                }
+                forcedKinds[cell] = kind;
+                cells.Remove(cell);
+                count++;
+            }
+            foreach (Vector2Int cell in empty)
+            {
+                if (count >= minTrees)
+                {
+                    return;
+                }
+                forced[cell] = area;
+                forcedKinds[cell] = kind;
+                cells.Remove(cell);
+                if (TreeIn(cell).Parts != null)
+                {
+                    count++;
+                }
+                else
+                {
+                    forced.Remove(cell);
+                    forcedKinds.Remove(cell);
+                    cells.Remove(cell);
+                }
+            }
+        }
+
+        private bool IsStanding(Vector2Int cell)
+        {
+            return forcedKinds.ContainsKey(cell) || !TreeForests.IsFallen(seed, cell, settings);
+        }
+
+        private void ForCellsIn(Rect area, System.Action<Vector2Int> visit)
+        {
+            float size = CellSize;
+            for (int z = Mathf.FloorToInt(area.yMin / size); z <= Mathf.FloorToInt((area.yMax - 0.01f) / size); z++)
+            {
+                for (int x = Mathf.FloorToInt(area.xMin / size); x <= Mathf.FloorToInt((area.xMax - 0.01f) / size); x++)
+                {
+                    visit(new Vector2Int(x, z));
+                }
+            }
         }
 
         private void Stock(Rect area, int minTrees)
@@ -335,7 +433,11 @@ namespace Clube.Core
         private Tree Build(Vector2Int cell, Vector3 root)
         {
             scratch.Clear();
-            if (TreeForests.IsFallen(seed, cell, settings))
+            if (forcedKinds.TryGetValue(cell, out int kind))
+            {
+                TreeShape.Build(seed, cell, root, settings, scratch, kind);
+            }
+            else if (TreeForests.IsFallen(seed, cell, settings))
             {
                 fallenGround = fallenGround ?? GroundAt;
                 TreeShape.BuildFallen(seed, cell, root, settings, fallenGround, scratch);

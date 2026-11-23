@@ -640,5 +640,16 @@ namespace Clube.Core.Tests
                 }
             }
         }
+
+        [Test]
+        public void WallInsideFollowsTheRing()
+        {
+            var ring = new List<Vector2> { new Vector2(0, 0), new Vector2(10, 0), new Vector2(10, 6), new Vector2(0, 6), new Vector2(0, 0) };
+            Assert.IsTrue(SettlementWalls.Inside(ring, new Vector2(5, 3)));
+            Assert.IsTrue(SettlementWalls.Inside(ring, new Vector2(9.9f, 0.1f)));
+            Assert.IsFalse(SettlementWalls.Inside(ring, new Vector2(10.5f, 3)));
+            Assert.IsFalse(SettlementWalls.Inside(ring, new Vector2(5, -1)));
+            Assert.IsFalse(SettlementWalls.Inside(new List<Vector2>(), new Vector2(5, 3)));
+        }
     }
 }
