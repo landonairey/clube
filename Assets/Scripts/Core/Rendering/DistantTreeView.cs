@@ -96,6 +96,12 @@ namespace Clube.Core
         private (ITerrainGenerator, TreeGeneration, int) builtShapes;
         private readonly MaterialPropertyBlock[] levelProperties = new MaterialPropertyBlock[Levels];
         private int syncedVersion = -1;
+
+        // GL821: a tree on an edited column (cut down, or its ground dug) is not drawn from the generator, which knows
+        // nothing of edits: far off, where the column is not loaded, the cut tree came back whole. Tiles holding a
+        // column that gained its first edit are built again without those trees.
+        private World editWorld;
+        private readonly HashSet<Vector2Int> staleTiles = new HashSet<Vector2Int>();
         private int drawnFrame = -1;
         // What the last collect saw: the camera's pose and the tiles. While they're unchanged its lists are drawn again.
         private Vector3 collectedAt;
@@ -177,6 +183,7 @@ namespace Clube.Core
 
         private void OnDisable()
         {
+            WatchEdits(null);
             DropBuilder();
             coverage?.Dispose();
             coverage = null;
@@ -184,6 +191,7 @@ namespace Clube.Core
 
         private void OnDestroy()
         {
+            WatchEdits(null);
             DropBuilder();
             coverage?.Dispose();
             coverage = null;
@@ -230,6 +238,8 @@ namespace Clube.Core
                 builtFor = worldView.Generator;
                 builtRange = range;
             }
+            WatchEdits(worldView.World);
+            DropStaleTiles();
             EnsureMeshes();
             runtimeMaterial ??= new Material(material) { name = material.name + " (runtime)", enableInstancing = true };
 
@@ -253,6 +263,75 @@ namespace Clube.Core
             }
             Draw();
             LastUpdateMilliseconds = (System.Diagnostics.Stopwatch.GetTimestamp() - started) * 1000f / System.Diagnostics.Stopwatch.Frequency;
+        }
+
+        private void WatchEdits(World world)
+        {
+            if (editWorld == world)
+            {
+                return;
+            }
+            if (editWorld != null)
+            {
+                editWorld.ColumnEdited -= OnColumnEdited;
+            }
+            editWorld = world;
+            staleTiles.Clear();
+            if (editWorld != null)
+            {
+                editWorld.ColumnEdited += OnColumnEdited;
+            }
+        }
+
+        private void OnColumnEdited(Vector2Int column)
+        {
+            if (builder == null || editWorld == null)
+            {
+                return;
+            }
+            Vector3 centre = editWorld.Grid.ChunkOrigin(new Vector3Int(column.x, 0, column.y)) + editWorld.Grid.ChunkWorldSize * 0.5f;
+            staleTiles.Add(new Vector2Int(
+                Mathf.FloorToInt(centre.x / DistantTreeBuilder.TileSize), Mathf.FloorToInt(centre.z / DistantTreeBuilder.TileSize)));
+        }
+
+        // Forgets the draws of tiles holding a newly edited column, so SyncTiles builds them again without its edited trees.
+        private void DropStaleTiles()
+        {
+            if (staleTiles.Count == 0)
+            {
+                return;
+            }
+            goneTiles.Clear();
+            foreach (DistantTreeBuilder.Tile tile in tileDraws.Keys)
+            {
+                if (staleTiles.Contains(tile.Coord))
+                {
+                    goneTiles.Add(tile);
+                }
+            }
+            staleTiles.Clear();
+            if (goneTiles.Count == 0)
+            {
+                return;
+            }
+            foreach (DistantTreeBuilder.Tile tile in goneTiles)
+            {
+                tileDraws.Remove(tile);
+            }
+            goneTiles.Clear();
+            syncedVersion = -1;
+            collectedVersion = -1;
+        }
+
+        // True when the tree's ground column holds an edit: the voxel world owns that column's trees.
+        private bool OnEditedColumn(DistantTree tree)
+        {
+            if (editWorld == null)
+            {
+                return false;
+            }
+            Vector3Int chunk = editWorld.Grid.WorldToChunk(tree.Root);
+            return editWorld.HasEditsIn(new Vector2Int(chunk.x, chunk.z));
         }
 
         // Matrices for the tiles that arrived, and none for the tiles that went.
@@ -302,18 +381,26 @@ namespace Clube.Core
         {
             Matrix4x4 toWorld = worldView.transform.localToWorldMatrix;
             var sizes = new int[Kinds * Variants];
+            var kept = new List<DistantTree>(tile.Trees.Count);
             foreach (DistantTree tree in tile.Trees)
+            {
+                if (!OnEditedColumn(tree))
+                {
+                    kept.Add(tree);
+                }
+            }
+            foreach (DistantTree tree in kept)
             {
                 sizes[KindOf(tree) * Variants + VariantOf(tree)]++;
             }
-            var draw = new TileDraw { Trees = new Matrix4x4[Kinds * Variants][], Count = tile.Trees.Count };
+            var draw = new TileDraw { Trees = new Matrix4x4[Kinds * Variants][], Count = kept.Count };
             for (int i = 0; i < sizes.Length; i++)
             {
                 draw.Trees[i] = new Matrix4x4[sizes[i]];
             }
             var filled = new int[Kinds * Variants];
             Vector3 min = Vector3.positiveInfinity, max = Vector3.negativeInfinity;
-            foreach (DistantTree tree in tile.Trees)
+            foreach (DistantTree tree in kept)
             {
                 int list = KindOf(tree) * Variants + VariantOf(tree);
                 // A very tall tree's crown is narrower than its variant scaled up (GL720, TreeShape.CrownHeight).
@@ -328,7 +415,7 @@ namespace Clube.Core
                 min = Vector3.Min(min, root - reach - Vector3.up * (tree.Height * 0.3f));
                 max = Vector3.Max(max, root + reach + Vector3.up * (tree.Height * 1.2f));
             }
-            draw.Bounds = tile.Trees.Count > 0 ? new Bounds((min + max) * 0.5f, max - min) : default;
+            draw.Bounds = kept.Count > 0 ? new Bounds((min + max) * 0.5f, max - min) : default;
             return draw;
         }
 
