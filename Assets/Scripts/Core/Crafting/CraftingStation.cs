@@ -93,7 +93,9 @@ namespace Clube.Core
         /// <summary>
         /// The recipe the player picked (ML1), when several share inputs (sticks and stone make a
         /// spear, a hatchet or a hammer): only it starts. Null: the first recipe whose inputs are
-        /// loaded starts, as before. Setting one this station doesn't make clears it.
+        /// loaded starts, as before. Setting one this station doesn't make clears it. Picking a different recipe from the
+        /// one under way drops that work, progress and strikes (GL841): the next strike starts the new one. Clearing the
+        /// pick (the panel reopening) leaves the work alone.
         /// </summary>
         public Recipe Chosen
         {
@@ -101,6 +103,11 @@ namespace Clube.Core
             set
             {
                 chosen = value != null && recipes.Contains(value) ? value : null;
+                if (chosen != null && Active != null && Active != chosen)
+                {
+                    Active = null;
+                    done = 0f;
+                }
                 Changed?.Invoke();
             }
         }

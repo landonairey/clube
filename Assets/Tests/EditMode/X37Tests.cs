@@ -38,5 +38,43 @@ namespace Clube.Core.Tests
                 Object.DestroyImmediate(item);
             }
         }
+
+        [Test]
+        public void SwitchingRecipe_DropsTheWorkUnderWay()
+        {
+            ItemDefinition stone = ItemDefinition.Create("stone", "Stone");
+            ItemDefinition spear = ItemDefinition.Create("spear", "Spear");
+            ItemDefinition hammer = ItemDefinition.Create("hammer", "Hammer");
+            Recipe spearRecipe = Recipe.Create(StationKind.Worktop, new ItemAmount(spear, 1), RecipeWork.Strikes, 4f, new ItemAmount(stone, 1));
+            Recipe hammerRecipe = Recipe.Create(StationKind.Worktop, new ItemAmount(hammer, 1), RecipeWork.Strikes, 6f, new ItemAmount(stone, 1));
+            var station = new CraftingStation(StationKind.Worktop, new[] { spearRecipe, hammerRecipe });
+            try
+            {
+                station.Input.Add(stone, 1);
+                station.Chosen = spearRecipe;
+                Assert.IsTrue(station.Strike());
+                Assert.AreSame(spearRecipe, station.Active);
+                Assert.AreEqual(3, station.StrikesLeft);
+
+                station.Chosen = null;
+                Assert.AreSame(spearRecipe, station.Active, "Clearing the pick (reopening the panel) keeps the work.");
+
+                station.Chosen = hammerRecipe;
+                Assert.IsNull(station.Active, "Another recipe picked: the spear's work is dropped (GL841).");
+                Assert.AreEqual(0f, station.Progress);
+                Assert.IsTrue(station.Strike());
+                Assert.AreSame(hammerRecipe, station.Active, "The next strike starts the new recipe.");
+                Assert.AreEqual(5, station.StrikesLeft, "Its strike counter starts from the top.");
+                Assert.AreEqual(1, station.Input.Count(stone), "The inputs were never used.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(spearRecipe);
+                Object.DestroyImmediate(hammerRecipe);
+                Object.DestroyImmediate(stone);
+                Object.DestroyImmediate(spear);
+                Object.DestroyImmediate(hammer);
+            }
+        }
     }
 }
