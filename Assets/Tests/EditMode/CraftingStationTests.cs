@@ -31,6 +31,22 @@ namespace Clube.Core.Tests
             Object.DestroyImmediate(ingot);
         }
 
+        [Test]
+        public void SwapVariants_TakeAnyWoodWhereTheRecipeTakesBirch()
+        {
+            ItemDefinition birch = ItemDefinition.Create("wood", "Birch wood");
+            ItemDefinition pine = ItemDefinition.Create("pine-wood", "Pine wood");
+            ItemDefinition maple = ItemDefinition.Create("maple-wood", "Maple wood");
+            Recipe shovel = Recipe.Create(StationKind.Anvil, new ItemAmount(ingot, 1), RecipeWork.Strikes, 4f,
+                new ItemAmount(ore, 1), new ItemAmount(birch, 2)).WithSwap(birch, pine).WithSwap(birch, maple);
+            var station = new CraftingStation(StationKind.Anvil, new[] { shovel });
+            Assert.AreEqual(3, station.Recipes.Count);
+            Assert.IsTrue(station.Recipes[1].Takes(pine) && !station.Recipes[1].Takes(birch) && station.Recipes[1].Takes(ore));
+            Assert.IsTrue(station.Recipes[2].Takes(maple));
+            Assert.AreEqual(2, station.Recipes[1].Inputs[1].Count);
+            Object.DestroyImmediate(shovel);
+        }
+
         private CraftingStation Furnace()
         {
             return new CraftingStation(StationKind.Furnace, new[] { smelt, hammer });

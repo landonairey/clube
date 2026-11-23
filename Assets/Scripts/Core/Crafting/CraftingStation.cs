@@ -49,6 +49,7 @@ namespace Clube.Core
             foreach (Recipe recipe in new List<Recipe>(this.recipes))
             {
                 this.recipes.AddRange(recipe.IngotVariants());
+                this.recipes.AddRange(recipe.SwapVariants());
             }
             if (upgradable)
             {
