@@ -348,3 +348,11 @@ MonoBehaviour:
     volume: 0.6
     pitchJitter: 0.08
     playAll: 0
+  bubbles:
+    clips:
+    - {fileID: 8300000, guid: 063f32477cbe9914aa8d15aaf67fe57c, type: 3}
+    - {fileID: 8300000, guid: e95c2c6c9cb028a4b8cc5564684929b8, type: 3}
+    - {fileID: 8300000, guid: b0608d173611bfa448928aabff47823c, type: 3}
+    volume: 0.7
+    pitchJitter: 0.1
+    playAll: 0

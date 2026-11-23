@@ -134,6 +134,10 @@ namespace Clube.Game
         [SerializeField]
         private SoundSet emerge = new SoundSet();
 
+        [Tooltip("GL808: bubbles rising from a clam as its pearl is taken.")]
+        [SerializeField]
+        private SoundSet bubbles = new SoundSet();
+
         /// <summary>Whether any sound effect plays (the lab panel's Sound section).</summary>
         public bool EffectsOn
         {
@@ -209,6 +213,8 @@ namespace Clube.Game
         public SoundSet Wade => wade;
 
         public SoundSet Emerge => emerge;
+
+        public SoundSet Bubbles => bubbles;
 
         public SoundSet ParcelBought => parcelBought;
 

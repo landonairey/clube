@@ -7,7 +7,7 @@ namespace Clube.Game
     /// <summary>
     /// Keeps clams lying on the lake and ocean beds round the player (GL735): the cells of <see cref="ClamScatter"/> near
     /// the player that hold a clam and whose spot is under water get one, found from the ground down (<see cref="GroundProbe"/>
-    /// and <see cref="WaterQuery"/>); clams far off are put away, and an opened clam's cell stays empty for the session.
+    /// and <see cref="WaterQuery"/>); clams far off are put away, a clam taken from leaves its cell empty for the session, and one closed again keeps what it holds (GL808).
     /// Made at run time by <see cref="ClamBedsStarter"/>, which also puts a <see cref="ClamPanel"/> on the player.
     /// </summary>
     public class ClamBeds : MonoBehaviour
@@ -19,6 +19,7 @@ namespace Clube.Game
         private PlayerController player;
         private readonly Dictionary<Vector2Int, Clam> clams = new Dictionary<Vector2Int, Clam>();
         private readonly HashSet<Vector2Int> gone = new HashSet<Vector2Int>();
+        private readonly Dictionary<Vector2Int, ClamFind> kept = new Dictionary<Vector2Int, ClamFind>();
         private readonly HashSet<Vector2Int> dry = new HashSet<Vector2Int>();
         private readonly List<Vector2Int> drop = new List<Vector2Int>();
         private float next;
@@ -31,11 +32,24 @@ namespace Clube.Game
             player = who;
         }
 
-        /// <summary>An opened clam's cell never holds another.</summary>
+        /// <summary>A clam taken from (GL808: it vanished): its cell never holds another.</summary>
         public void Opened(Vector2Int cell)
         {
             gone.Add(cell);
+            kept.Remove(cell);
             clams.Remove(cell);
+        }
+
+        /// <summary>GL808: a clam closed with something left inside keeps it, even when it is put away and made again.</summary>
+        public void Keep(Vector2Int cell, ClamFind find)
+        {
+            kept[cell] = find;
+        }
+
+        /// <summary>What a clam closed earlier still holds; false for one never opened.</summary>
+        public bool TryKept(Vector2Int cell, out ClamFind find)
+        {
+            return kept.TryGetValue(cell, out find);
         }
 
         private void Update()

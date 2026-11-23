@@ -322,6 +322,27 @@ namespace Clube.Core
             return Normalize(samples, 0.7f);
         }
 
+        /// <summary>
+        /// Bubbles rising from a clam (GL808): a quick run of round "blup"s, each a soft tone whose pitch rises as the bubble
+        /// shrinks free, bigger and lower first, then smaller and higher, over a faint gurgle.
+        /// </summary>
+        public static float[] Bubbles(int seed)
+        {
+            var random = new Random(seed);
+            float[] samples = new float[Samples(1.1f)];
+            AddNoise(samples, random, 0f, 0.02f, 0.25f, 0.08f, Low(500f));
+            const int count = 14;
+            for (int b = 0; b < count; b++)
+            {
+                float share = (float)b / count;
+                float when = 0.75f * share * Range(random, 0.85f, 1.15f);
+                float pitch = Range(random, 280f, 420f) * (1f + 1.6f * share);
+                AddTone(samples, when, pitch, pitch * Range(random, 1.4f, 1.9f), 0.002f, Range(random, 0.014f, 0.026f),
+                    (1f - 0.5f * share) * Range(random, 0.55f, 1f));
+            }
+            return Normalize(samples, 0.7f);
+        }
+
         // Water droplets: tiny bright "plips", each a short rising tone, scattered over a span and thinning out.
         private static void AddDrops(float[] samples, Random random, float at, float span, int count, float level)
         {

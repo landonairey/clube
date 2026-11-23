@@ -51,5 +51,8 @@ namespace Clube.Core
 
         /// <summary>No model: the icon stays the picture already on the asset (hand-painted).</summary>
         Painted = 14,
+
+        /// <summary>A pearl (GL808): a 24-sided ball with a rainbow sheen over its tint.</summary>
+        Pearl = 15,
     }
 }

@@ -62,6 +62,9 @@ namespace Clube.Core
                 case ItemIconShape.Stick:
                     Stick(model, tint);
                     break;
+                case ItemIconShape.Pearl:
+                    Pearl(model, new Vector3(0f, 0.42f, 0f), 0.42f, tint);
+                    break;
                 default:
                     return null;
             }
@@ -281,6 +284,36 @@ namespace Clube.Core
             model.Quad(F(-1, -1), F(1, -1), T(1, -1), T(-1, -1), middle, Shade(color, 0.9f));
             model.Quad(F(1, -1), F(1, 1), T(1, 1), T(1, -1), middle, Shade(color, 0.95f));
             model.Quad(F(-1, -1), F(-1, 1), T(-1, 1), T(-1, -1), middle, Shade(color, 0.88f));
+        }
+
+        /// <summary>Sides round a pearl (GL808: "a 24-sided polygon shape").</summary>
+        public const int PearlSides = 24;
+
+        /// <summary>
+        /// A pearl (GL808): a ball of <see cref="PearlSides"/> sides round and half as many rings, each facet its tint with a
+        /// faint wash of a rainbow hue that turns round the ball and down it, the upper facets lighter, so it shimmers
+        /// without a special shader. Also the pearl inside an open clam (<see cref="ClamMeshes"/>).
+        /// </summary>
+        public static void Pearl(LowPolyMeshBuilder model, Vector3 centre, float radius, Color tint)
+        {
+            int rings = PearlSides / 2;
+            for (int r = 0; r < rings; r++)
+            {
+                float p0 = Mathf.PI * r / rings, p1 = Mathf.PI * (r + 1) / rings;
+                for (int s = 0; s < PearlSides; s++)
+                {
+                    float a0 = Mathf.PI * 2f * s / PearlSides, a1 = Mathf.PI * 2f * (s + 1) / PearlSides;
+                    Vector3 P(float polar, float around) =>
+                        centre + radius * new Vector3(Mathf.Sin(polar) * Mathf.Cos(around), Mathf.Cos(polar), Mathf.Sin(polar) * Mathf.Sin(around));
+                    // Two turns of the rainbow round the ball, drifting down it: neighbours differ a little, never a stripe.
+                    float hue = Mathf.Repeat((s + 0.5f) * 2f / PearlSides + (r + 0.5f) * 0.11f, 1f);
+                    Color sheen = Color.HSVToRGB(hue, 0.55f, 1f);
+                    float up = Mathf.Cos((p0 + p1) * 0.5f);
+                    Color color = Color.Lerp(tint, sheen, 0.2f + 0.08f * Hash(31, r * PearlSides + s));
+                    color = Shade(color, 1f + 0.12f * up);
+                    model.Quad(P(p0, a0), P(p0, a1), P(p1, a1), P(p1, a0), centre, color);
+                }
+            }
         }
 
         private static Color Shade(Color color, float by)
