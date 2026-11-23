@@ -430,6 +430,10 @@ namespace Clube.Game
             }
             for (int i = 0; boats != null && i < boats.Runs.Count; i++)
             {
+                if (!boats.Sails(i))
+                {
+                    continue;
+                }
                 Vector2 at = ToScreen(area, boats.PositionOf(i));
                 if (!view.Contains(at))
                 {
@@ -446,7 +450,7 @@ namespace Clube.Game
             for (int i = 0; boats != null && i < boats.Runs.Count; i++)
             {
                 Vector2 at = ToScreen(area, boats.PositionOf(i));
-                if (boats.Runs[i].Cargo != null && view.Contains(at))
+                if (boats.Runs[i].Cargo != null && boats.Sails(i) && view.Contains(at))
                 {
                     GameUi.OutlinedLabel(new Rect(at.x - 120f, at.y + 6f, 240f, GameUi.Font(11) * 2f), boats.Runs[i].Name, smallNameStyle);
                 }

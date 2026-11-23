@@ -1015,7 +1015,10 @@ settlements of `Generation/`); the bodies are Game (`Game/People/`, `Game/Travel
   cell because streams are one cell wide), a cell by the bank costing more, then smoothed; where the water does not
   join end to end the vessel plies the longest stretch. `MapBoats` keeps a `Boat` (hull from `BoatMeshes`, hands,
   crates as real storage loaded by `CargoLoad`, which carts share) for each vessel near the viewer, at most
-  `mostBoats`; far ones are only `MapBoats.PositionOf(run)`, which the world map draws as dots.
+  `mostBoats`; far ones are only `MapBoats.PositionOf(run)`, which the world map draws as dots. GL847: every lane is
+  also worked out in the background (`StartNextLane`), and `PositionOf` is where the vessel really is: the boat itself
+  when in the world, else its place on its lane (timed by the route through `LaneTimetable`, since a river lane is often
+  only a stretch of its route), else the planned route; the show range is measured from the same place.
 - **Trade off the map (GL725).** `RoadPlanner` lays a trade road (`PlannedRoad.LeavesMap`, `ExitSide`) from the
   settlement on the roads farthest towards each land side that is neither sea nor void to the edge of the free ground,
   unless the way is too steep (`WorldPlanRules.ExitRoads`, `ExitRoadSteepShare`; a mountain-ridge edge usually gets
