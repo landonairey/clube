@@ -60,6 +60,7 @@ namespace Clube.Debug.Editor
                 Write("Splash", v, SoundSynth.Splash(370 + v));
                 Write("Wade", v, SoundSynth.Wade(380 + v));
                 Write("Emerge", v, SoundSynth.Emerge(390 + v));
+                Write("Bubbles", v, SoundSynth.Bubbles(808 + v));
                 Write("Thud", v, SoundSynth.Thud(310 + v));
                 Write("Rustle", v, SoundSynth.Rustle(320 + v));
             }
@@ -120,6 +121,7 @@ namespace Clube.Debug.Editor
                 SetClips(so, "splash", Clips("Splash"));
                 SetClips(so, "wade", Clips("Wade"));
                 SetClips(so, "emerge", Clips("Emerge"));
+                SetClips(so, "bubbles", Clips("Bubbles"));
 
                 // A hit sound for every tool, by its kind.
                 var tools = new List<ToolDefinition>();

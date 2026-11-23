@@ -47,6 +47,12 @@ namespace Clube.Game
         /// <summary>True while the player is in water (past <see cref="inDepth"/>, until under <see cref="outDepth"/>).</summary>
         public bool InWater => inWater;
 
+        /// <summary>The player's sounds (GL808: the clam's bubbles play from them).</summary>
+        public PlayerSounds Sounds => sounds;
+
+        /// <summary>The soft round particle material of the droplets (GL808: also the clam's bubbles); may be null.</summary>
+        public Material DropletMaterial => dropletMaterial;
+
         private void Awake()
         {
             player = GetComponent<PlayerController>();
