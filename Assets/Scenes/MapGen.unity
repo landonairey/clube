@@ -6688,6 +6688,7 @@ GameObject:
   - component: {fileID: 1697135619}
   - component: {fileID: 1697135618}
   - component: {fileID: 1697135617}
+  - component: {fileID: 1697135620}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -7987,6 +7988,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78d1be2aafcf26041820add94d061f1a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlayerSaveState
+--- !u!114 &1697135620
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1697135560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d451fa4af20a23c439ec46c7aad7b6b5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.XpPopups
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

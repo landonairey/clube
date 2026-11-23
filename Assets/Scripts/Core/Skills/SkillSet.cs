@@ -53,6 +53,9 @@ namespace Clube.Core
         /// <summary>Raised after any experience is gained.</summary>
         public event Action Changed;
 
+        /// <summary>Raised when experience is earned, with the skill and how much (GL846: "12 XP" floats up by the cursor).</summary>
+        public event Action<SkillType, float> Gained;
+
         /// <summary>
         /// Experience the first level costs (GL184; 30 since GL289; 300 since GL629, "so it takes 10x as long"). With
         /// <see cref="LevelCostGrowth"/> this is the whole curve: every level of every skill scales with it, whatever the
@@ -144,6 +147,7 @@ namespace Clube.Core
             {
                 LevelReached?.Invoke(skill, level);
             }
+            Gained?.Invoke(skill, amount);
             Changed?.Invoke();
         }
 
