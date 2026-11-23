@@ -177,6 +177,8 @@ namespace Clube.Core
         private const float CellScale = 0.7f;
         private const float Gain = 0.5f;
         private const float Lacunarity = 2f;
+        // GL804: how sharply the steering turns over where a gully's side changes sign (1 / the sine's width of the turn).
+        private const float SteerSharpness = 4f;
 
         private uint seed;
         private float scale;
@@ -263,7 +265,9 @@ namespace Clube.Core
                 float2 side = -stripes.zw * frequency;
                 float sloping = math.abs(stripes.y);
                 // Straight gullies: the steering slope counts a gully's side as evenly steep.
-                gullySlope += math.sign(stripes.y) * side * s * gullyWeight;
+                // GL804: a smooth sign. math.sign flipped the next octaves' gullies round at once along each crest and
+                // trough of this one, leaving a step a metre high in the ground along a line (spiky stone lines, rings).
+                gullySlope += math.clamp(stripes.y * SteerSharpness, -1f, 1f) * side * s * gullyWeight;
 
                 float gully = stripes.x;
                 float faded = math.lerp(fadeTarget, gully * gullyWeight, mask);
