@@ -29,6 +29,10 @@ Shader "Clube/Water"
         _SwellFrom ("Swell starts at depth (m)", Float) = 3
         _WaveWarp ("Wave bend (m)", Float) = 7
         _WavePatch ("Wave patchiness", Range(0, 1)) = 0.7
+        _FarWaves ("Far water waves", Range(0, 1)) = 1
+        _FarWaveLength ("Far wave length (m)", Float) = 26
+        _FarWaveSlope ("Far wave steepness", Range(0, 0.5)) = 0.2
+        _FarGlint ("Far sun glint", Range(0, 3)) = 1.2
         [HideInInspector] _ClipCovered ("Clip drawn chunk columns (far sheets)", Float) = 0
         [HideInInspector] _CoverageMask ("Chunk coverage", 2D) = "black" {}
         [HideInInspector] _Coverage ("Coverage origin, column width, size", Vector) = (0, 0, 1, 0)
@@ -79,6 +83,10 @@ Shader "Clube/Water"
                 float _SwellFrom;
                 float _WaveWarp;
                 half _WavePatch;
+                half _FarWaves;
+                float _FarWaveLength;
+                half _FarWaveSlope;
+                half _FarGlint;
             CBUFFER_END
             TEXTURE2D(_CoverageMask);
 
@@ -214,6 +222,64 @@ Shader "Clube/Water"
                 return slope * WaveStrength(p, warp) * (1.0 - 0.8 * smoothstep(500.0, 2200.0, away));
             }
 
+            // GL807: a hash of a whole-numbered point, 0 to 1, from integers (no sin), so it holds kilometres out.
+            float HashCell(float2 cell)
+            {
+                uint2 q = (uint2)(int2)cell * uint2(1597334677u, 3812015801u);
+                uint n = (q.x ^ q.y) * 1597334677u;
+                return n * (1.0 / 4294967295.0);
+            }
+
+            // GL807: value noise (0 to 1) and its gradient, eased with a quintic so the gradient has no creases.
+            float3 NoiseWithSlope(float2 p)
+            {
+                float2 i = floor(p);
+                float2 f = p - i;
+                float2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+                float2 du = 30.0 * f * f * (f * (f - 2.0) + 1.0);
+                float a = HashCell(i), b = HashCell(i + float2(1, 0)), c = HashCell(i + float2(0, 1)), d = HashCell(i + float2(1, 1));
+                float k1 = b - a, k2 = c - a, k4 = a - b - c + d;
+                return float3(a + k1 * u.x + k2 * u.y + k4 * u.x * u.y, du * float2(k1 + k4 * u.y, k2 + k4 * u.x));
+            }
+
+            // GL807 ("fix the far view ocean water ... wavy checkerboard pattern ... waves that shimmer light ... minimizes
+            // visible repeating patterns"): the slope of the far water's waves, per pixel in the world's own place, so
+            // the sheets' triangles never show. Five octaves of noise, each turned by an angle that never lines up with
+            // the last or the world's axes and drifting its own way, two samples drifting apart per octave so the water
+            // churns instead of sliding; bent by the same warp as the ripples. An octave narrower than a few pixels
+            // (footprint: metres a pixel spans) fades out, so the distance never shimmers into bands.
+            float2 FarWaveSlope(float2 p, float footprint)
+            {
+                float t = _Time.y;
+                float2 q = p + WaveWarp(p) * 1.5;
+                float frequency = 1.0 / max(_FarWaveLength, 1.0);
+                // Height in metres an octave's noise spans: steepness over frequency, as the noise's slope averages ~0.6.
+                float height = _FarWaveSlope / (frequency * 0.6 * 5.0);
+                float2 slope = 0.0;
+                float2x2 turn = float2x2(0.7374, -0.6755, 0.6755, 0.7374); // 42.5 degrees
+                float2x2 m = float2x2(1, 0, 0, 1);
+                [unroll]
+                for (int octave = 0; octave < 5; octave++)
+                {
+                    float keep = 1.0 - smoothstep(0.12, 0.3, footprint * frequency);
+                    if (keep > 0.0)
+                    {
+                        float angle = octave * 2.39996;
+                        float2 drift = float2(cos(angle), sin(angle)) * (0.045 + 0.02 * octave);
+                        float2 r = mul(m, q) * frequency;
+                        float3 one = NoiseWithSlope(r + drift * t);
+                        float3 two = NoiseWithSlope(r * 1.07 + float2(17.3, 5.9) - drift.yx * t * 0.8);
+                        float2 gradient = (one.yz + two.yz * 1.07) * 0.5;
+                        // Back from the turned octave's frame to the world's (m is a rotation: its inverse is its transpose).
+                        slope += mul(transpose(m), gradient) * frequency * height * keep;
+                    }
+                    m = mul(turn, m);
+                    frequency *= 1.93;
+                    height *= 0.55;
+                }
+                return slope;
+            }
+
             Varyings Vertex(Attributes input)
             {
                 Varyings output;
@@ -270,9 +336,25 @@ Shader "Clube/Water"
                 float thickness = max(0.0, sceneEye - waterEye);
                 float deep = 1.0 - exp(-thickness / max(_Murk, 0.01));
                 float open = smoothstep(_SwellFrom, _SwellFrom * 4.0, thickness) * (kind < 2.5 ? 1.0 : 0.0);
-                if (open > 0.0)
+                float away = length(GetWorldSpaceViewDir(input.positionWS));
+
+                // GL807: the far sheets' water, past the chunks the world draws, shades smoothly by its waves instead of
+                // facet by facet: the sheets' even grid of flat triangles read as a wavy checkerboard from afar.
+                float far = _Detail.w > 0.5 && kind < 2.5 ? smoothstep(24.0, 90.0, away) * _FarWaves : 0.0;
+                float2 farSlope = 0.0;
+                float footprint = 1.0;
+                if (far > 0.0)
                 {
-                    float2 slope = SwellSlope(input.positionWS.xz, length(GetWorldSpaceViewDir(input.positionWS))) * (_Swell * open);
+                    float2 spans = fwidth(input.positionWS.xz);
+                    footprint = max(max(spans.x, spans.y), 1e-3);
+                    farSlope = FarWaveSlope(input.positionWS.xz, footprint);
+                    float3 farNormal = normalize(float3(-farSlope.x, 1.0, -farSlope.y));
+                    normalWS = normalize(lerp(normalWS, farNormal, far));
+                }
+
+                if (open > 0.0 && far < 1.0)
+                {
+                    float2 slope = SwellSlope(input.positionWS.xz, away) * (_Swell * open * (1.0 - far));
                     normalWS = normalize(normalWS + float3(-slope.x, 0.0, -slope.y));
                 }
 
@@ -290,6 +372,15 @@ Shader "Clube/Water"
                 else
                 {
                     shimmer = Shimmer(input.flow, centre, kind, random);
+                }
+                if (far > 0.0)
+                {
+                    // GL807: lighter on the wave faces turned to the light, darker on the backs; no facet's own random.
+                    float2 place = input.positionWS.xz;
+                    float face = saturate(0.4 + dot(farSlope, float2(0.6, 0.8)) / max(_FarWaveSlope, 0.01) * 1.3);
+                    half3 farColor = lerp(_Deep.rgb, _Light.rgb, face);
+                    farColor *= lerp(1.0, lerp(0.88, 1.12, WavePatch(place, WaveWarp(place))), _WavePatch);
+                    shimmer = lerp(shimmer, farColor, far);
                 }
 
                 // Deep water darkens towards the abyss colour; the swell's faces turned to the light catch a little of it.
@@ -310,9 +401,24 @@ Shader "Clube/Water"
                 half3 viewDir = normalize(GetWorldSpaceViewDir(input.positionWS));
                 // A soft glint, from the facet's tilt alone, so it moves with the ripples instead of flickering.
                 half glint = pow(saturate(dot(reflect(-mainLight.direction, normalWS), viewDir)), 24.0) * (0.12 + 0.08 * _Glimmer);
+                half3 sky = 0.0;
+                if (far > 0.0)
+                {
+                    // GL807: far off the sun sparkles on the wave faces: a tight glint near, where the waves are seen,
+                    // a broader, dimmer one farther, where a pixel spans many waves and their glints merge into a path.
+                    float rough = saturate(footprint / 6.0);
+                    float sharpness = lerp(260.0, 36.0, rough);
+                    half sparkle = pow(saturate(dot(reflect(-mainLight.direction, normalWS), viewDir)), sharpness);
+                    half farGlint = sparkle * _FarGlint * lerp(1.6, 0.35, rough);
+                    glint = lerp(glint, farGlint, far);
+                    // And the sky in the water, more at a glancing look.
+                    half fresnel = pow(1.0 - saturate(dot(normalWS, viewDir)), 5.0);
+                    // The sky's own light from overhead: the ambient probe sideways is the ground's colour, and browned the sea.
+                    sky = SampleSH(half3(0, 1, 0)) * _Light.rgb * fresnel * 0.9 * far;
+                }
                 half3 ambient = SampleSH(half3(0, 1, 0));
                 direct += AdditionalDiffuse(input.positionWS, normalWS, input.positionCS);
-                half3 color = shimmer * (direct + ambient) + mainLight.color * glint;
+                half3 color = shimmer * (direct + ambient) + mainLight.color * glint + sky;
                 color = MixFog(color, input.fog);
                 // Deep water hides the floor (GL673): nearly opaque a few metres down.
                 half alpha = lerp(_Alpha, 0.985, deep);
