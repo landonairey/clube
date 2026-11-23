@@ -55,6 +55,9 @@ namespace Clube.Core
             // Two short chains up to the lintel.
             model.Box(new Vector3(-0.95f, 0.5f, 0f), new Vector3(0.03f, 0.12f, 0.03f), Quaternion.identity, Iron);
             model.Box(new Vector3(0.95f, 0.5f, 0f), new Vector3(0.03f, 0.12f, 0.03f), Quaternion.identity, Iron);
+            // GL812: the board hangs clear of the wall, from two iron arms that reach back to it (z -0.3 is the wall).
+            model.Box(new Vector3(-0.95f, 0.58f, -0.15f), new Vector3(0.04f, 0.04f, 0.36f), Quaternion.identity, Iron);
+            model.Box(new Vector3(0.95f, 0.58f, -0.15f), new Vector3(0.04f, 0.04f, 0.36f), Quaternion.identity, Iron);
             return model.Make("Sign board");
         }
 

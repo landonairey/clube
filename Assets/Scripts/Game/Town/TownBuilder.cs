@@ -153,6 +153,9 @@ namespace Clube.Game
             return keeper;
         }
 
+        // The widest a shop sign's words may be, in metres (the board's inner panel is 2.24 m).
+        private const float SignWordsWidth = 2.1f;
+
         /// <summary>
         /// A shop's fittings under its root (at the middle of its floor, its front out of +z): the sign under the lintel, the
         /// keeper's sleeping roll and the wares on the counter. The town's shops and a planned settlement's (GL613) share it.
@@ -163,8 +166,16 @@ namespace Clube.Game
             SleepingRoll bed = null;
             float d = TownLayout.ShopDepth * 0.5f;
             // The sign hangs under the lintel over the open front.
-            GameObject sign = Local("Sign", root, TownMeshes.SignBoard(shop.Colour), material, new Vector3(0f, TownLayout.ShopHeight - 0.45f, d + 0.06f));
-            Text(sign.transform, shop.ShopName, new Vector3(0f, 0.2f, 0.045f), textMaterial, 0.04f);
+            // GL812: the smooth terrain mesh of the shop bulges a voxel past its front and its roof overhangs it, which cut
+            // the words off; the board hangs 0.3 m out from the wall and a little lower, on arms, and its words are sized to fit.
+            GameObject sign = Local("Sign", root, TownMeshes.SignBoard(shop.Colour), material, new Vector3(0f, TownLayout.ShopHeight - 0.65f, d + 0.3f));
+            float wordsSize = 0.04f;
+            float wordsWidth = Signpost.TextWidth(shop.ShopName, wordsSize);
+            if (wordsWidth > SignWordsWidth)
+            {
+                wordsSize *= SignWordsWidth / wordsWidth;
+            }
+            Text(sign.transform, shop.ShopName, new Vector3(0f, 0.2f, 0.045f), textMaterial, wordsSize);
             // The game's own sleeping roll, lying along the back wall on the floor (GL417).
             if (sleepingRollPrefab != null)
             {
