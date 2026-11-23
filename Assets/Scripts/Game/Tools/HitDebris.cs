@@ -18,6 +18,9 @@ namespace Clube.Game
         private static readonly int TintId = Shader.PropertyToID("_Tint");
         private static readonly Color LeafGreen = new Color(0.26f, 0.42f, 0.15f);
 
+        // Sparks glow orange-yellow, brighter than 1 so the lit held-item shader can't dim them to grey in daylight (GL828).
+        private static readonly Color SparkGlow = new Color(3f, 1.9f, 0.55f);
+
         [Tooltip("The Clube/Held Item material (tinted per crumb).")]
         [SerializeField]
         private Material material;
@@ -211,9 +214,9 @@ namespace Clube.Game
         {
             crumb.Velocity = velocity;
             crumb.Spin = Random.insideUnitSphere * 540f;
-            crumb.Size = spark ? Random.Range(0.012f, 0.02f) : Random.Range(0.025f, shape == 1 ? 0.05f : 0.065f);
+            crumb.Size = spark ? Random.Range(0.03f, 0.05f) : Random.Range(0.025f, shape == 1 ? 0.05f : 0.065f);
             crumb.Age = 0f;
-            crumb.Life = spark ? Random.Range(0.25f, 0.45f) : Random.Range(1f, 1.7f);
+            crumb.Life = spark ? Random.Range(0.3f, 0.55f) : Random.Range(1f, 1.7f);
             crumb.Alive = true;
             crumb.Spark = spark;
             crumb.Floor = FloorUnder(start) + crumb.Size * 0.4f;
@@ -223,7 +226,8 @@ namespace Clube.Game
             if (spark)
             {
                 crumb.Renderer.sharedMaterial = sparkMaterial;
-                crumb.Renderer.SetPropertyBlock(null);
+                tint.SetColor(TintId, SparkGlow);
+                crumb.Renderer.SetPropertyBlock(tint);
             }
             else
             {

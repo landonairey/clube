@@ -7276,6 +7276,10 @@ MonoBehaviour:
     Level: 7
     Materials:
     - {fileID: 11400000, guid: 028349ab45517db4984a7ae07bcf9347, type: 2}
+  - Name: hematite
+    Level: 4
+    Materials:
+    - {fileID: 11400000, guid: 11e29b19add5cd0da55692fe04588706, type: 2}
   shownAs: {fileID: 11400000, guid: 13a50bdd52deb134aad74a031294b507, type: 2}
   skill: 3
   unknownOre: {fileID: 11400000, guid: d2d5efa38b9222c4e8f56dd1ec3f4fcf, type: 2}

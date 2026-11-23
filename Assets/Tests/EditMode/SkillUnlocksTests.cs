@@ -61,6 +61,16 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Collect_AddsAbilities_OnlyForTheirSkill()
+        {
+            var abilities = new[] { (SkillType.Mining, 2, "you can crush ore by bashing it on a boulder") };
+            List<SkillUnlock> mining = SkillUnlocks.Collect(SkillType.Mining, null, null, SkillType.Mining, abilities);
+            Assert.AreEqual(1, mining.Count);
+            Assert.AreEqual(2, mining[0].Level);
+            Assert.AreEqual(0, SkillUnlocks.Collect(SkillType.Smelting, null, null, SkillType.Mining, abilities).Count);
+        }
+
+        [Test]
         public void Prospecting_LevelOne_SeesTheSecondItemInAMix()
         {
             StringAssert.Contains("second item in a material mix", ProspectReading.UnlockAt(1));

@@ -23,6 +23,7 @@ namespace Clube.Game
         private PlayerSkills skills;
         private PlayerJournal journal;
         private OreKnowledge knowledge;
+        private BoulderBashing bashing;
         private int spread;
 
         /// <summary>The chapters as last written.</summary>
@@ -33,6 +34,7 @@ namespace Clube.Game
             skills = GetComponent<PlayerSkills>();
             journal = GetComponent<PlayerJournal>();
             knowledge = GetComponent<OreKnowledge>();
+            bashing = GetComponent<BoulderBashing>();
         }
 
         /// <summary>Writes the chapters from the player's levels now; the field log calls it when the tab opens.</summary>
@@ -48,9 +50,14 @@ namespace Clube.Game
                     ores.Add((group.Name, group.Level));
                 }
             }
+            var abilities = new List<(SkillType, int, string)>();
+            if (bashing != null)
+            {
+                abilities.Add((bashing.CrushRequirement.Skill, bashing.CrushRequirement.Level, "you can crush ore by bashing it on a boulder"));
+            }
             foreach (SkillType skill in Chapters)
             {
-                List<SkillUnlock> all = SkillUnlocks.Collect(skill, recipes, ores, knowledge != null ? knowledge.Skill : SkillType.None);
+                List<SkillUnlock> all = SkillUnlocks.Collect(skill, recipes, ores, knowledge != null ? knowledge.Skill : SkillType.None, abilities);
                 chapters.Add(SkillUnlocks.Build(skill, skills.Skills.Level(skill), all));
             }
         }

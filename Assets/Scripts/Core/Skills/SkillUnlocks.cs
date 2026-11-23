@@ -61,9 +61,9 @@ namespace Clube.Core
     {
         /// <summary>
         /// Every unlock of a skill: the recipes that need a level of it (named by what they make), the hidden ore groups it
-        /// reveals, and, for Prospecting, what each level lets the player read of a mix (<see cref="ProspectReading.UnlockAt"/>).
+        /// reveals, abilities a level gives (GL827: crushing ore on a boulder), and, for Prospecting, what each level lets the player read of a mix (<see cref="ProspectReading.UnlockAt"/>).
         /// </summary>
-        public static List<SkillUnlock> Collect(SkillType skill, IEnumerable<Recipe> recipes, IEnumerable<(string Name, int Level)> revealedOres, SkillType oreSkill)
+        public static List<SkillUnlock> Collect(SkillType skill, IEnumerable<Recipe> recipes, IEnumerable<(string Name, int Level)> revealedOres, SkillType oreSkill, IEnumerable<(SkillType Skill, int Level, string Text)> abilities = null)
         {
             var all = new List<SkillUnlock>();
             if (recipes != null)
@@ -81,6 +81,16 @@ namespace Clube.Core
                 foreach ((string name, int level) in revealedOres)
                 {
                     all.Add(new SkillUnlock(level, $"you can tell {name} apart"));
+                }
+            }
+            if (abilities != null)
+            {
+                foreach ((SkillType owner, int level, string text) in abilities)
+                {
+                    if (owner == skill)
+                    {
+                        all.Add(new SkillUnlock(level, text));
+                    }
                 }
             }
             if (skill == SkillType.Prospecting)
