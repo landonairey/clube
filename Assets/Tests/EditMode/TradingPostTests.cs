@@ -50,7 +50,7 @@ namespace Clube.Core.Tests
             var disposition = new Disposition();
             Assert.AreEqual(10, disposition.Value);
             Assert.AreEqual(0, disposition.Record(9f));
-            Assert.AreEqual(1, disposition.Record(1.5f), "10c of trade is the first point (GL769)");
+            Assert.AreEqual(1, disposition.Record(Disposition.CoinsForPoint(10) - 9f + 0.5f), "10c of trade is the first point (GL769)");
             Assert.AreEqual(11, disposition.Value);
             Assert.AreEqual(0.5f, disposition.Carried, 1e-3f);
         }
