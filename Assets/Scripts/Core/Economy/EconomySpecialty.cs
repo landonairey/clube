@@ -163,7 +163,7 @@ namespace Clube.Core
                 {
                     Id = "lumber-supplies", Trains = new[] { SkillType.Woodcutting },
                     Name = "Lumber Mill", Chain = SupplyChains.Lumber, Kind = ShopKind.Lumber, CraftLevel = 0,
-                    Needs = new[] { "wood" }, Buys = Goods(Woods, Boards), Sells = Goods(Woods, Boards, Hatchets),
+                    Needs = new[] { "wood" }, Buys = Goods(Woods, Boards, Hatchets), Sells = Goods(Woods, Boards, Hatchets),
                 },
                 new EconomySpecialty
                 {

@@ -56,10 +56,20 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Disposition_CoinsForPoint_FollowsTheUsersEquation()
+        {
+            for (int value = 10; value < Disposition.Max; value += 9)
+            {
+                Assert.AreEqual(5.619f * Mathf.Exp(0.057575f * value), Disposition.CoinsForPoint(value), 1e-3f, $"at {value}");
+            }
+            Assert.AreEqual(47.3f, Disposition.CoinsForPoint(37), 0.1f);
+        }
+
+        [Test]
         public void Disposition_PointsCostMoreAsItRises_TenThenAHundredThenAThousand()
         {
-            Assert.AreEqual(10f, Disposition.CoinsForPoint(Disposition.Start), 1e-3f);
-            Assert.AreEqual(100f, Disposition.CoinsForPoint(50), 1e-2f);
+            Assert.AreEqual(10f, Disposition.CoinsForPoint(Disposition.Start), 0.05f);
+            Assert.AreEqual(100f, Disposition.CoinsForPoint(50), 0.2f);
             Assert.AreEqual(1000f, Disposition.CoinsForPoint(90), 0.5f);
             Assert.AreEqual(Disposition.CoinsForPoint(Disposition.Start), Disposition.CoinsForPoint(0), "no cheaper below the start");
             for (int value = 1; value < Disposition.Max; value++)

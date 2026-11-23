@@ -56,7 +56,7 @@ namespace Clube.Core
 
         [Tooltip("Coins per point of experience a lesson gives: the next level costs the experience it needs times this.")]
         [SerializeField, Min(0f)]
-        private float coinsPerExperience = 2f;
+        private float coinsPerExperience = 1f; // GL832: halved from 2
 
         [Tooltip("Items laid out on the counter (GL403); the first few of what it sells when empty.")]
         [SerializeField]

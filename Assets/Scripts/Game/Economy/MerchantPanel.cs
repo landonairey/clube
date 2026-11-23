@@ -152,7 +152,7 @@ namespace Clube.Game
             float width = InventoryGridGui.RowWidth + Padding * 2f;
             float offerRows = OffersHeight() + TrainingHeight();
             Disposition disposition = Current.Disposition;
-            float height = Padding * 2f + 32f + 30f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + SellRowHeight + 6f + offerRows + (group.Count > 0 ? SellRowHeight + 6f : 0f)
+            float height = Padding * 2f + 32f + 34f + 30f + InventoryGridGui.PlayerHeight(inventory) + 12f + SellRowHeight + 6f + SellRowHeight + 6f + offerRows + (group.Count > 0 ? SellRowHeight + 6f : 0f)
                 + (disposition != null ? 30f : 0f);
             ITraderDeal deal = Current.Deal != null && Current.Deal.IsOffered(wallet.Wallet) ? Current.Deal : null;
             height += deal != null ? RowHeight + 6f : 0f;
@@ -161,8 +161,9 @@ namespace Clube.Game
             float x = panel.x + Padding;
             float y = panel.y + Padding;
             GUI.Label(new Rect(x, y, width - Padding * 2f, 28f), $"{Current.DisplayName}   (E to close)");
-            GUI.Label(new Rect(panel.xMax - Padding - 160f, y, 160f, 28f), $"Your coins: {Wallet.Format(wallet.Wallet.Coins)}");
             y += 32f;
+            DrawCoinBar(new Rect(x, y, width - Padding * 2f, 30f));
+            y += 34f;
             if (disposition != null)
             {
                 GUI.Label(new Rect(x, y, width - Padding * 2f, 28f), DispositionText(disposition));
@@ -301,6 +302,20 @@ namespace Clube.Game
             Current.Disposition?.Record(coins);
         }
 
+        // GL831: both purses on one bold line under the title, so what you hold and what the keeper can pay is always in view.
+        private void DrawCoinBar(Rect bar)
+        {
+            var style = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold, fontSize = 16, alignment = TextAnchor.MiddleLeft };
+            style.normal.textColor = new Color(1f, 0.88f, 0.4f);
+            float half = bar.width * 0.5f;
+            GUI.Label(new Rect(bar.x, bar.y, half, bar.height), $"You have: {Wallet.Format(wallet.Wallet.Coins)}", style);
+            if (Current.Purse != null)
+            {
+                style.alignment = TextAnchor.MiddleRight;
+                GUI.Label(new Rect(bar.x + half, bar.y, half, bar.height), $"{Current.DisplayName} has: {Wallet.Format(Current.Purse.Coins)}", style);
+            }
+        }
+
         // How the trader feels about the player (GL471) and what it does to their prices.
         private static string DispositionText(Disposition disposition)
         {
@@ -310,7 +325,7 @@ namespace Clube.Game
             }
             int points = Disposition.Max - disposition.Value;
             float toNext = Disposition.CoinsForPoint(disposition.Value) - disposition.Carried;
-            return $"Disposition {disposition.Value}/{Disposition.Max}: prices {points}% against you; {Wallet.Format(toNext)} more trade raises it.";
+            return $"Disposition {disposition.Value}/{Disposition.Max}: prices {points}% against you; {Wallet.Format(toNext)} more trade raises it (a level costs {Wallet.Format(Disposition.CoinsForPoint(disposition.Value))}).";
         }
 
         // Coins to two places at most: "50c", "0.1c", "0.001c".

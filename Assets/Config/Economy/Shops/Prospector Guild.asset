@@ -42,6 +42,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: da484e758e746c7499d8857c26737e70, type: 2}
   sellMarkup: 1.5
   trains: 06000000
-  coinsPerExperience: 2
+  coinsPerExperience: 1
   displayed: []
   colour: {r: 0.22, g: 0.32, b: 0.6, a: 1}

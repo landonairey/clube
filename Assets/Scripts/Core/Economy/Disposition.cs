@@ -30,26 +30,12 @@ namespace Clube.Core
         public const float CoinsAtHigh = 1000f;
 
         /// <summary>
-        /// Coins of trade that raise the disposition from <paramref name="value"/> to the next point (GL769). The cost grows by
-        /// a steady factor per point between the three anchors (10, 50 and 90: ten times for each 40 points), stays at the
-        /// first anchor's below 10, and keeps growing at the last rate past 90.
+        /// Coins of trade that raise the disposition from <paramref name="value"/> to the next point (GL769, GL830): the user's
+        /// fit <c>5.619 * exp(0.057575 * value)</c> (about 10c at 10, 100c at 50, 1000c at 90), never below the cost at the start.
         /// </summary>
         public static float CoinsForPoint(int value)
         {
-            float exponent;
-            if (value <= 10)
-            {
-                exponent = 1f;
-            }
-            else if (value <= 50)
-            {
-                exponent = 1f + (value - 10) / 40f;
-            }
-            else
-            {
-                exponent = 2f + (value - 50) / 40f;
-            }
-            return Mathf.Pow(10f, exponent);
+            return 5.619f * Mathf.Exp(0.057575f * Mathf.Max(Start, value));
         }
 
         /// <summary>Coins of trade it takes to go from disposition <paramref name="from"/> up to <paramref name="to"/>.</summary>
