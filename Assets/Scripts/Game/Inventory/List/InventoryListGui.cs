@@ -114,7 +114,7 @@ namespace Clube.Game
         /// <summary>True when the slot is listed: included, and of the filtered type.</summary>
         public bool Shows(Inventory items, int slot)
         {
-            return (Include == null || Include(slot)) && (typeFilter == null || (!items[slot].IsEmpty && items[slot].Item.Type == typeFilter.Value));
+            return (Include == null || Include(slot)) && (typeFilter == null || (!items[slot].IsEmpty && items[slot].Item.TypeOf(items[slot]) == typeFilter.Value));
         }
 
         /// <summary>Forgets the selection, a press, a drag and the type filter (a screen opening or closing).</summary>
@@ -484,7 +484,7 @@ namespace Clube.Game
                 name += "  <color=#f2c040>(equipped)</color>";
             }
             GUI.Label(new Rect(x, rect.y, right - ColumnWidth * 3f - TypeWidth - x, rect.height), name, nameStyle);
-            GUI.Label(new Rect(right - ColumnWidth * 3f - TypeWidth + 6f, rect.y, TypeWidth - 8f, rect.height), row.Item.Type.ToString(), nameStyle);
+            GUI.Label(new Rect(right - ColumnWidth * 3f - TypeWidth + 6f, rect.y, TypeWidth - 8f, rect.height), row.Item.TypeOf(stack).ToString(), nameStyle);
 
             columnStyle.normal.textColor = Color.white;
             GUI.Label(new Rect(right - ColumnWidth * 3f, rect.y, ColumnWidth - 12f, rect.height), ListColumns.Coins(row.Value), columnStyle);

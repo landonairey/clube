@@ -314,7 +314,7 @@ namespace Clube.Game
         public static string Describe(ItemStack stack)
         {
             string text = stack.Count > 1 ? $"{stack.Item.DisplayName} ×{stack.Count}" : stack.Item.DisplayName;
-            text += $"\nType: {stack.Item.Type}";
+            text += $"\nType: {stack.Item.TypeOf(stack)}";
             // Volume only for what has one (GL122): mined material, or a product with a set unit volume (a bun);
             // not tools or sticks.
             bool hasVolume = !(stack.Item is ToolDefinition) && !(stack.Item is PlaceableDefinition)

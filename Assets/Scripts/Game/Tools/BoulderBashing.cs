@@ -241,14 +241,12 @@ namespace Clube.Game
             pickedOut.Clear();
             RefinePassed?.Invoke();
             ItemStack refined = Refining.Pass(held, materials, refineVolume, pickedOut, UnityEngine.Random.value, UnityEngine.Random.value, out bool failed);
-            // Any refining trains Prospecting (GL697); anything but crushed ore (GL388) trains Crafting too.
+            // Only a pass that picks something out trains Prospecting, and nothing else (batch 2, item 3).
             bool prospecting = held.Item.PurityAs != null;
-            skills?.Skills.Award(SkillType.Prospecting, refineProspectingExperience);
-            if (!prospecting)
+            if (!failed && pickedOut.Count > 0)
             {
-                skills?.Skills.Award(SkillType.Crafting, refineExperience);
+                skills?.Skills.Award(SkillType.Prospecting, refineProspectingExperience);
             }
-            skills?.Skills.Award(SkillType.Blacksmithing, refineSmithingExperience);
             if (failed)
             {
                 // The purer the stack, the more passes find nothing to pick out (GL386).

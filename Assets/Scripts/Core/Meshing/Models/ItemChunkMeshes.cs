@@ -63,6 +63,9 @@ namespace Clube.Core
                 case ItemIconShape.Stick:
                     Stick(model, tint);
                     break;
+                case ItemIconShape.Coil:
+                    Coil(model, tint);
+                    break;
                 case ItemIconShape.Charcoal:
                     Charcoal(model, tint);
                     break;
@@ -277,6 +280,31 @@ namespace Clube.Core
                         Shade(wool, curl % 2 == 0 ? 1.07f : 0.84f), 7, 4);
                 }
             }
+        }
+
+        // A coil of rope: three rings of cord stacked and wound a little smaller going up, a twist-coloured shade on
+        // alternate segments so the strands read, and a loose end trailing off the side.
+        private static void Coil(LowPolyMeshBuilder model, Color rope)
+        {
+            const int Segments = 16;
+            const float Cord = 0.1f;
+            for (int ring = 0; ring < 3; ring++)
+            {
+                float radius = 0.5f - ring * 0.04f;
+                float y = Cord + ring * Cord * 1.75f;
+                for (int i = 0; i < Segments; i++)
+                {
+                    float a = Mathf.PI * 2f * i / Segments;
+                    float b = Mathf.PI * 2f * (i + 1.15f) / Segments;
+                    var from = new Vector3(Mathf.Cos(a) * radius, y, Mathf.Sin(a) * radius);
+                    var to = new Vector3(Mathf.Cos(b) * radius, y, Mathf.Sin(b) * radius);
+                    model.Prism(from, to, Cord, Cord, 5, Shade(rope, (i + ring) % 2 == 0 ? 1.1f : 0.82f));
+                }
+            }
+            // The loose end: down the outside of the coil, then out along the ground.
+            var top = new Vector3(0.5f, 0.3f, 0f);
+            model.Prism(top, new Vector3(0.62f, 0.12f, 0.06f), Cord * 0.9f, Cord * 0.9f, 5, Shade(rope, 0.95f));
+            model.Prism(new Vector3(0.62f, 0.12f, 0.06f), new Vector3(0.82f, Cord * 0.9f, 0.22f), Cord * 0.9f, Cord * 0.7f, 5, Shade(rope, 1.05f));
         }
 
         // A stick with a kink in it and a twig stub.

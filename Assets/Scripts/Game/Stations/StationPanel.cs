@@ -646,6 +646,20 @@ namespace Clube.Game
             }
             else if (station.BurnsFuel && stack.Item.IsFuel && fuelRow.Contains(drop.Position))
             {
+                // Same as the input row: dropped on a fuel stack of the same item, any quality, it combines with that stack.
+                int fuelAt = -1;
+                for (int i = 0; i < station.Fuel.SlotCount && fuelAt < 0; i++)
+                {
+                    if (Inventory.Combines(station.Fuel[i], stack.Item))
+                    {
+                        fuelAt = i;
+                    }
+                }
+                if (fuelAt >= 0)
+                {
+                    items.MoveToSlot(drop.Slot, station.Fuel, fuelAt, drop.Count);
+                    return;
+                }
                 items.MoveTo(drop.Slot, station.Fuel, drop.Count);
             }
             else if (station.Upgrades != null && upgradeSlot.Contains(drop.Position) && station.Upgrades.Accepts(0, stack.Item))

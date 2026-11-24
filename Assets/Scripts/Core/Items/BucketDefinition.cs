@@ -40,6 +40,12 @@ namespace Clube.Core
             return Mathf.Max(1, Mathf.RoundToInt(capacity * stack.Quality));
         }
 
+        /// <summary>A bucket holding water is a Liquid (batch 2, item 14); an empty one is a Tool.</summary>
+        public override ItemType TypeOf(ItemStack stack)
+        {
+            return WaterIn(stack) > 0 ? ItemType.Liquid : base.TypeOf(stack);
+        }
+
         public float ScoopRadius => scoopRadius;
 
         public int PourAmount => pourAmount;

@@ -133,7 +133,13 @@ namespace Clube.Game
                 Destroy(camp.gameObject);
                 camp = null;
             }
-            if (Arrived && camp == null)
+            bool here = Arrived && clock != null && AdventurerVisit.IsHere(clock.Day, clock.Hour, DayNightCycle.SunsetHour, DayNightCycle.SunriseHour);
+            if (!here && camp != null)
+            {
+                Destroy(camp.gameObject);
+                camp = null;
+            }
+            if (here && camp == null)
             {
                 Build();
             }

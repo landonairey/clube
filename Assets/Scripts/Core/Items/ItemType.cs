@@ -24,5 +24,7 @@ namespace Clube.Core
         Jewelry,
         /// <summary>Smelted metal: buns and ingots.</summary>
         Smelt,
+        /// <summary>Eaten or drunk for an effect: food, coffee.</summary>
+        Consumable,
     }
 }

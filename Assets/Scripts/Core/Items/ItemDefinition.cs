@@ -145,6 +145,12 @@ namespace Clube.Core
         /// <summary>What kind of thing it is (Earth, Organism, Tool...).</summary>
         public ItemType Type => itemType;
 
+        /// <summary>The type of this stack: the item's own, except where what it holds changes it (a bucket with water is a Liquid).</summary>
+        public virtual ItemType TypeOf(ItemStack stack)
+        {
+            return itemType;
+        }
+
         public Texture2D Icon => icon;
 
         /// <summary>What the icon is a picture of (GL612); <see cref="ItemIconShapes.Resolve"/> settles Auto.</summary>
