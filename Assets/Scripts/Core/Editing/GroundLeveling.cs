@@ -322,12 +322,19 @@ namespace Clube.Core
         }
 
         // How far outside the flat rectangle (x, z) is, in metres (the larger of the two axes); 0 or less inside it.
+        // GL849: how far a point is outside the area (0 or less inside). A column on the very edge counts as inside: tiles
+        // share their edges, and when one fell on a row of samples, rounding put that row a hair outside both tiles, so
+        // neither levelled it and the natural ground stood across the quarry pit in thin walls.
         private static float Beyond(Area area, float x, float z)
         {
             float dx = Mathf.Abs(x - area.Centre.x) - area.Half.x;
             float dz = Mathf.Abs(z - area.Centre.y) - area.Half.y;
-            return Mathf.Max(dx, dz);
+            float beyond = Mathf.Max(dx, dz);
+            return beyond <= EdgeSlack ? Mathf.Min(beyond, 0f) : beyond;
         }
+
+        // Metres outside its edge a column still counts as on it: far over float rounding, far under a sample (0.25 m).
+        private const float EdgeSlack = 0.001f;
 
         private static bool IsPlant(World world, MaterialRegistry materials, Vector3Int sample)
         {
