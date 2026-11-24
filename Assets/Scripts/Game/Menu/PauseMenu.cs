@@ -393,8 +393,10 @@ namespace Clube.Game
 
         private void Exit()
         {
-            Time.timeScale = 1f;
-            IsOpen = false;
+            // GL850: closed the whole way, not only IsOpen: IsPaused is static and outlives the scene, so it was still true in
+            // the next game, where M (WorldMapScreen) did nothing until Esc opened and closed this popup once. This also turns the
+            // input actions back on and restarts time.
+            SetOpen(false);
             GameScenes.LoadMainMenu();
         }
 

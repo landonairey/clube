@@ -230,9 +230,8 @@ namespace Clube.Game
             if (tools != null)
             {
                 tools.Collected += OnCollected;
-                // GL555: digging only 09:00-17:00 once the job is on; GL565: the early bird's bonus runs from sunrise to the first two work hours, every day (GL834: not only 09-11, which a bed could sleep through).
+                // GL555: digging only 09:00-17:00 once the job is on; the early bird's bonus is the one 04:30-09:30 window every day (GL851).
                 tools.Lockout = DiggingLockout;
-                tools.SetEarlyBirdWindow(ToolCooldown.DawnFrom, CompanyWork.WorkStartHour + 2f);
             }
             step = Step.Arriving;
         }
