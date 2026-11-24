@@ -52,7 +52,7 @@ namespace Clube.Core
         /// <summary>No model: the icon stays the picture already on the asset (hand-painted).</summary>
         Painted = 14,
 
-        /// <summary>A pearl (GL808): a 24-sided ball with a rainbow sheen over its tint.</summary>
+        /// <summary>A pearl (GL808, GL853): a truncated icosahedron (a football) with a rainbow sheen over its tint.</summary>
         Pearl = 15,
 
         /// <summary>Charred branch ends in a pile (GL818): burnt wood, not a stone.</summary>
