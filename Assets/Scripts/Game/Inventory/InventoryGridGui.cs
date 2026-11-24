@@ -259,6 +259,15 @@ namespace Clube.Game
         private static ItemStack hovered;
         private static GUIStyle tooltipStyle;
 
+        /// <summary>Marks a stack as under the mouse, for the next <see cref="DrawTooltip"/>: list rows and the hands' HUD slots (list inventory prototype).</summary>
+        public static void Hover(ItemStack stack)
+        {
+            if (Event.current != null && Event.current.type == EventType.Repaint && !stack.IsEmpty)
+            {
+                hovered = stack;
+            }
+        }
+
         /// <summary>
         /// Describes the stack under the mouse beside it (GL32, GL33): its count and volume, what
         /// it's made of, how long it burns. Call after drawing a screen's slots.

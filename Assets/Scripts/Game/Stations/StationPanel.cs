@@ -44,6 +44,9 @@ namespace Clube.Game
         private GUIStyle countStyle;
         private Vector2 listScroll;
         private readonly InventoryDrag drag = new InventoryDrag();
+        // The list inventory (prototype): your items as a list to the right of the station.
+        private readonly InventoryListGui itemList = new InventoryListGui();
+        private const float ListWidth = 900f;
         // The station's own rows drag too (GL792): input, output, fuel and the fitted slot, each its own drag.
         private readonly InventoryDrag inputDrag = new InventoryDrag();
         private readonly InventoryDrag outputDrag = new InventoryDrag();
@@ -178,6 +181,14 @@ namespace Clube.Game
             float rightHeight = 34f + 34f + slot + 8f + 60f + fuelRow;
             // The trash slot (GL224) sits in a row under your items.
             float height = Padding * 2f + 32f + rightHeight + 12f + 30f + InventoryGridGui.PlayerHeight(inventory) + InventoryGridGui.RowGap + slot;
+            bool listed = inventory.UsesList;
+            if (listed)
+            {
+                // The station on the left, your items' list on the right: no grid under the station.
+                height = Padding * 2f + 32f + rightHeight + 12f;
+                height = Mathf.Max(height, Mathf.Min(Screen.height - 280f, 900f));
+                width += ListWidth + Padding;
+            }
             var panel = new Rect((Screen.width - width) * 0.5f, Mathf.Max(0f, (Screen.height - height) * 0.5f), width, height);
             panelRect = panel;
             carriedDrag = null;
@@ -194,6 +205,12 @@ namespace Clube.Game
             var right = new Rect(x + listWidth + 16f, y, inner - listWidth - 16f, rightHeight);
             DrawActive(right, station, items, out Rect inputSlots, out Rect fuelSlots, out Rect upgradeSlot);
             y += rightHeight + 12f;
+
+            if (listed)
+            {
+                DrawItemList(panel, station, items, inputSlots, fuelSlots, upgradeSlot);
+                return;
+            }
 
             GUI.Label(new Rect(x, y, inner, 28f), "Your items: click to load (Shift half, Ctrl one), drag onto a slot, right-click to split");
             y += 30f;
@@ -223,6 +240,51 @@ namespace Clube.Game
             if (drag.IsDragging)
             {
                 drag.DrawCarried(items);
+            }
+            else if (carriedDrag != null)
+            {
+                carriedDrag.DrawCarried(carriedRow);
+            }
+            else
+            {
+                InventoryGridGui.DrawTooltip();
+            }
+        }
+
+        // The list inventory's half of the screen (prototype): a click loads a stack into the station as the grid's click
+        // did, a drag onto the station's slots loads it there, onto the trash destroys it, and off the screen drops it.
+        private void DrawItemList(Rect panel, CraftingStation station, Inventory items, Rect inputSlots, Rect fuelSlots, Rect upgradeSlot)
+        {
+            float x = panel.xMax - Padding - ListWidth;
+            float y = panel.y + Padding;
+            GUI.Label(new Rect(x, y, ListWidth, 28f), "Your items: click to load (Shift half, Ctrl one), drag onto a slot");
+            y += 32f;
+            const float trashHeight = 52f;
+            var listArea = new Rect(x, y, ListWidth, panel.yMax - Padding - trashHeight - 8f - y);
+            var trash = new Rect(x, listArea.yMax + 8f, ListWidth, trashHeight);
+            itemList.Equipped = inventory.IsHandSlot;
+            ListResult picked = itemList.Draw(listArea, items);
+            bool over = itemList.IsDragging && trash.Contains(Event.current.mousePosition);
+            ItemSlotGui.Fill(trash, over ? new Color(0.6f, 0.15f, 0.1f, 0.6f) : new Color(0f, 0f, 0f, 0.35f));
+            GUI.Label(trash, "Trash: drop a stack here to destroy it", new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter });
+            if (picked.Kind == InventoryDragKind.Clicked)
+            {
+                LoadClicked(station, items, picked.Slot, picked.Count);
+            }
+            else if (picked.Kind == InventoryDragKind.DroppedOutside && !InventoryGridGui.Trash(items, picked.AsDrag, trash))
+            {
+                if (!panel.Contains(picked.Position))
+                {
+                    inventory.DropFromSlot(picked.Slot, picked.Count);
+                }
+                else
+                {
+                    DropOnStation(station, items, picked.AsDrag, inputSlots, fuelSlots, upgradeSlot);
+                }
+            }
+            if (itemList.IsDragging)
+            {
+                itemList.DrawCarried(items);
             }
             else if (carriedDrag != null)
             {

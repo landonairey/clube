@@ -28,6 +28,9 @@ namespace Clube.Game
         private int openedFrame;
         private readonly InventoryDrag drag = new InventoryDrag();
         private readonly InventoryDrag chestDrag = new InventoryDrag();
+        // The list inventory (prototype): the chest's list on the left, yours on the right.
+        private readonly InventoryListGui chestList = new InventoryListGui();
+        private readonly InventoryListGui itemList = new InventoryListGui();
 
         /// <summary>The chest open, or null when closed.</summary>
         public StorageChest Current { get; private set; }
@@ -119,6 +122,11 @@ namespace Clube.Game
             }
             Inventory chest = Current.Storage;
             Inventory items = inventory.Inventory;
+            if (inventory.UsesList)
+            {
+                DrawLists(chest, items);
+                return;
+            }
             float width = InventoryGridGui.RowWidth + Padding * 2f;
             float height = Padding * 2f + 32f + InventoryGridGui.GridHeight(chest) + 16f + 30f + InventoryGridGui.PlayerHeight(inventory);
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
@@ -193,6 +201,78 @@ namespace Clube.Game
             else
             {
                 InventoryGridGui.DrawTooltip();
+            }
+        }
+
+        // The list inventory's chest screen (prototype): two lists side by side. A click on a row moves it across (a
+        // collection's row moves every stack of it), as does a drag onto the other list; off the screen drops it.
+        private void DrawLists(Inventory chest, Inventory items)
+        {
+            float half = Mathf.Min(900f, (Screen.width - 60f - Padding * 3f) * 0.5f);
+            float width = half * 2f + Padding * 3f;
+            float height = Mathf.Min(Screen.height - 280f, 1000f);
+            var panel = new Rect((Screen.width - width) * 0.5f, Mathf.Max(10f, (Screen.height - height) * 0.5f - 60f), width, height);
+            InventoryGridGui.Panel(panel);
+            float y = panel.y + Padding;
+            var left = new Rect(panel.x + Padding, y + 36f, half, panel.height - Padding * 2f - 36f);
+            var right = new Rect(left.xMax + Padding, left.y, half, left.height);
+            GUI.Label(new Rect(left.x, y, half - 240f, 28f), $"{Current.DisplayName}   (E to close)");
+            if (GameUi.Button(new Rect(left.xMax - 110f, y - 2f, 110f, 28f), "Take all"))
+            {
+                for (int slot = 0; slot < chest.SlotCount; slot++)
+                {
+                    chest.MoveTo(slot, items);
+                }
+            }
+            GUI.Label(new Rect(right.x, y, half, 28f), "Your items: click to store (Shift half, Ctrl one)");
+
+            itemList.Equipped = inventory.IsHandSlot;
+            ListResult fromChest = chestList.Draw(left, chest);
+            ListResult fromItems = itemList.Draw(right, items);
+            Move(fromChest, chest, items, right, panel, true);
+            Move(fromItems, items, chest, left, panel, false);
+            if (chestList.IsDragging)
+            {
+                chestList.DrawCarried(chest);
+            }
+            else if (itemList.IsDragging)
+            {
+                itemList.DrawCarried(items);
+            }
+            else
+            {
+                InventoryGridGui.DrawTooltip();
+            }
+        }
+
+        private void Move(ListResult result, Inventory from, Inventory to, Rect toArea, Rect panel, bool fromChest)
+        {
+            bool across = result.Kind == InventoryDragKind.Clicked
+                || (result.Kind == InventoryDragKind.DroppedOutside && toArea.Contains(result.Position));
+            if (across)
+            {
+                if (result.Row.IsCollection && result.Kind == InventoryDragKind.Clicked)
+                {
+                    foreach (int slot in result.Row.Slots)
+                    {
+                        from.MoveTo(slot, to);
+                    }
+                }
+                else
+                {
+                    from.MoveTo(result.Slot, to, result.Count);
+                }
+            }
+            else if (result.Kind == InventoryDragKind.DroppedOutside && !panel.Contains(result.Position))
+            {
+                if (fromChest)
+                {
+                    inventory.DropFrom(from, result.Slot, result.Count);
+                }
+                else
+                {
+                    inventory.DropFromSlot(result.Slot, result.Count);
+                }
             }
         }
     }

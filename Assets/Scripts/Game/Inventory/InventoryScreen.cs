@@ -36,6 +36,9 @@ namespace Clube.Game
         private RestScreen rest;
         private WorldMapScreen map;
         private readonly InventoryDrag drag = new InventoryDrag();
+        private readonly InventoryListGui list = new InventoryListGui();
+        private EquipmentPanelGui equipment;
+        private Hotbar hotbar;
         private Rect trashSlot;
 
         public bool IsOpen { get; private set; }
@@ -54,6 +57,7 @@ namespace Clube.Game
             interactor = GetComponent<PlayerInteractor>();
             rest = GetComponent<RestScreen>();
             map = GetComponent<WorldMapScreen>();
+            hotbar = GetComponent<Hotbar>();
         }
 
         private void OnEnable()
@@ -136,6 +140,15 @@ namespace Clube.Game
             }
         }
 
+        /// <summary>Opens the screen, as E does with nothing aimed at.</summary>
+        public void Open()
+        {
+            if (!IsOpen)
+            {
+                SetOpen(true);
+            }
+        }
+
         /// <summary>Closes the screen (Esc, GL204).</summary>
         public void Close()
         {
@@ -149,6 +162,11 @@ namespace Clube.Game
         {
             IsOpen = open;
             drag.Reset();
+            list.Reset();
+            if (!open)
+            {
+                equipment?.Hide();
+            }
             if (player != null)
             {
                 player.IsInMenu = open;
@@ -162,6 +180,11 @@ namespace Clube.Game
             GameUi.Apply();
             if (!IsOpen)
             {
+                return;
+            }
+            if (inventory.UsesList && hotbar != null)
+            {
+                DrawListScreen();
                 return;
             }
 
@@ -189,6 +212,140 @@ namespace Clube.Game
             else
             {
                 InventoryGridGui.DrawTooltip();
+            }
+        }
+
+        private void OnDestroy()
+        {
+            equipment?.Destroy();
+        }
+
+        // The list inventory's screen (prototype): equipment on the left, every item in a sortable list in the middle, and
+        // what the clicked item is on the right. A right click on an item puts it in the right hand; drags move items between
+        // the list and the hands, onto the trash, or off the screen to the ground.
+        private void DrawListScreen()
+        {
+            Inventory items = inventory.Inventory;
+            float width = Mathf.Min(Screen.width - 40f, 2200f);
+            float height = Mathf.Clamp(Screen.height - 280f, EquipmentPanelGui.PreferredHeight + Padding * 2f, 1150f);
+            var panel = new Rect((Screen.width - width) * 0.5f, Mathf.Max(10f, (Screen.height - height) * 0.5f - 60f), width, height);
+            InventoryGridGui.Panel(panel);
+
+            float equipmentWidth = Mathf.Clamp(width * 0.34f, 560f, 740f), detailsWidth = Mathf.Clamp(width * 0.18f, 280f, 400f);
+            var equipmentArea = new Rect(panel.x + Padding, panel.y + Padding, equipmentWidth, panel.height - Padding * 2f);
+            float listX = equipmentArea.xMax + Padding;
+            var detailsArea = new Rect(panel.xMax - Padding - detailsWidth, panel.y + Padding, detailsWidth, panel.height - Padding * 2f);
+            float listWidth = detailsArea.x - Padding - listX;
+            GUI.Label(new Rect(listX, panel.y + Padding, listWidth, 30f), "Inventory (E to close): click for details, right-click to hold in your right hand, drag to a hand, onto a stack to combine, or off the screen to drop");
+            const float trashHeight = 56f;
+            var listArea = new Rect(listX, panel.y + Padding + 36f, listWidth, panel.height - Padding * 2f - 36f - trashHeight - 8f);
+            var trash = new Rect(listX, listArea.yMax + 8f, listWidth, trashHeight);
+
+            equipment ??= new EquipmentPanelGui();
+            list.Equipped = inventory.IsHandSlot;
+            list.HoverTooltips = false;
+            ListResult picked = list.Draw(listArea, items);
+            InventoryDragResult fromHand = equipment.Draw(equipmentArea, inventory, hotbar);
+            bool dragging = list.IsDragging || equipment.IsDragging;
+            DrawTrashBar(trash, dragging);
+
+            switch (picked.Kind)
+            {
+                case InventoryDragKind.RightClicked:
+                    hotbar.EquipRight(picked.Slot);
+                    break;
+                case InventoryDragKind.DroppedOutside:
+                    int hand = equipment.HandSlotAt(inventory, picked.Position);
+                    if (hand >= 0)
+                    {
+                        items.Move(picked.Slot, hand, picked.Count);
+                    }
+                    else if (trash.Contains(picked.Position))
+                    {
+                        InventoryGridGui.Trash(items, picked.AsDrag, trash);
+                    }
+                    else if (!panel.Contains(picked.Position))
+                    {
+                        inventory.DropFromSlot(picked.Slot, picked.Count);
+                    }
+                    break;
+            }
+            if (fromHand.Kind == InventoryDragKind.DroppedOutside)
+            {
+                if (listArea.Contains(fromHand.Position))
+                {
+                    items.MoveInto(fromHand.Slot, 0, inventory.BagSlots);
+                }
+                else if (trash.Contains(fromHand.Position))
+                {
+                    InventoryGridGui.Trash(items, fromHand, trash);
+                }
+                else if (!panel.Contains(fromHand.Position))
+                {
+                    inventory.DropFromSlot(fromHand.Slot, fromHand.Count);
+                }
+            }
+
+            DrawDetails(detailsArea, items);
+            if (list.IsDragging)
+            {
+                list.DrawCarried(items);
+            }
+            else if (!equipment.IsDragging)
+            {
+                InventoryGridGui.DrawTooltip();
+            }
+        }
+
+        private static void DrawTrashBar(Rect trash, bool dragging)
+        {
+            bool over = dragging && trash.Contains(Event.current.mousePosition);
+            ItemSlotGui.Fill(trash, over ? new Color(0.6f, 0.15f, 0.1f, 0.6f) : new Color(0f, 0f, 0f, 0.35f));
+            ItemSlotGui.Outline(trash, new Color(1f, 1f, 1f, over ? 0.6f : 0.2f), 1f);
+            GUI.Label(trash, "Trash: drop a stack here to destroy it", new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter });
+        }
+
+        // What the clicked row is (the list's "more information"): a stack's full description and buttons to hold it, or a
+        // collection's averages.
+        private void DrawDetails(Rect area, Inventory items)
+        {
+            ItemSlotGui.Fill(area, new Color(0f, 0f, 0f, 0.3f));
+            ListRow row = list.Selected;
+            var inner = new Rect(area.x + 12f, area.y + 12f, area.width - 24f, area.height - 24f);
+            if (row == null || items[row.Slot].IsEmpty)
+            {
+                GUI.Label(inner, "Click an item to see more about it.");
+                return;
+            }
+            ItemStack stack = items[row.Slot];
+            ItemSlotGui.Draw(new Rect(inner.x, inner.y, 112f, 112f), stack, false);
+            var style = new GUIStyle(GUI.skin.label) { wordWrap = true, richText = true, alignment = TextAnchor.UpperLeft };
+            float y = inner.y + 124f;
+            string text = row.IsCollection
+                ? $"<b>{row.Item.DisplayName}</b> collection: {row.Slots.Count} stacks\nTotal {ListColumns.Amount(row.Amount)}\nAverage value {ListColumns.Coins(row.Value)} each\nAverage quality {ListColumns.QualityLabel(row, items, out _)}\n\nOpen it with its arrow to see each one."
+                : InventoryGridGui.Describe(stack);
+            float textHeight = style.CalcHeight(new GUIContent(text), inner.width);
+            GUI.Label(new Rect(inner.x, y, inner.width, textHeight), text, style);
+            y += textHeight + 12f;
+            if (row.IsCollection)
+            {
+                return;
+            }
+            if (!inventory.IsHandSlot(row.Slot))
+            {
+                if (GameUi.Button(new Rect(inner.x, y, inner.width, 36f), "Hold in right hand"))
+                {
+                    hotbar.EquipRight(row.Slot);
+                }
+                y += 42f;
+                if (GameUi.Button(new Rect(inner.x, y, inner.width, 36f), "Hold in left hand"))
+                {
+                    items.Move(row.Slot, hotbar.LeftSlot);
+                }
+            }
+            else if (GameUi.Button(new Rect(inner.x, y, inner.width, 36f), "Put back in the bag"))
+            {
+                items.MoveInto(row.Slot, 0, inventory.BagSlots);
             }
         }
 

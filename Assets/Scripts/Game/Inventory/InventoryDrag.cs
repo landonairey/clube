@@ -15,6 +15,9 @@ namespace Clube.Game
 
         /// <summary>A stack dragged off the player's slots and let go: the screen decides where it lands (trash, a station slot).</summary>
         DroppedOutside,
+
+        /// <summary>A right click on a row of a list inventory (prototype): the screen decides (equip it, pull it across).</summary>
+        RightClicked,
     }
 
     /// <summary>One mouse result: what happened, to which slot, how many items it carried, and where the mouse was.</summary>

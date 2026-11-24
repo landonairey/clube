@@ -35,6 +35,14 @@ namespace Clube.Game
         [SerializeField, Min(0)]
         private int backpackSlots = 18;
 
+        [Tooltip("The list inventory (prototype): no hotbar; two hands of 5 slots each, scrolled through with the wheel (Ctrl: left hand), and a bag shown as a list. Off: the classic grid.")]
+        [SerializeField]
+        private bool listLayout = true;
+
+        [Tooltip("List inventory: slots in the bag, behind the hands. The list shows them all, so the number only caps how many different stacks fit.")]
+        [SerializeField, Min(10)]
+        private int bagSlots = 120;
+
         [Tooltip("What the player starts with, in order: the first lands in hotbar slot 1.")]
         [SerializeField]
         private List<StartingItem> startingItems = new List<StartingItem>();
@@ -45,6 +53,10 @@ namespace Clube.Game
 
         private Inventory classic;
         private Inventory toolSlotItems;
+        private Inventory listItems;
+
+        /// <summary>List inventory: slots each hand holds, picked with the wheel.</summary>
+        public const int HandSlots = 5;
 
         /// <summary>Raised for what a collected stack put in, with the amount that went in (parts included).</summary>
         public event Action<ItemDefinition, float> Added;
@@ -53,7 +65,26 @@ namespace Clube.Game
         public event Action<ItemDefinition> Rejected;
 
         /// <summary>The slots in use: the tool slot and item slots, or the classic hotbar and backpack.</summary>
-        public Inventory Inventory => toolSlotLayout ? toolSlotItems : classic;
+        public Inventory Inventory => toolSlotLayout ? toolSlotItems : listLayout ? listItems : classic;
+
+        /// <summary>True while the list inventory (prototype) is the one in use: hands and a bag, no hotbar.</summary>
+        public bool UsesList
+        {
+            get => listLayout && !toolSlotLayout;
+            set => listLayout = value;
+        }
+
+        /// <summary>List inventory: slots in the bag; the hands' slots come after them, so what's gathered fills the bag first.</summary>
+        public int BagSlots => bagSlots;
+
+        /// <summary>List inventory: the inventory slot of the right hand's <paramref name="index"/>th slot (0-4).</summary>
+        public int RightHandSlot(int index) => bagSlots + index;
+
+        /// <summary>List inventory: the inventory slot of the left hand's <paramref name="index"/>th slot (0-4).</summary>
+        public int LeftHandSlot(int index) => bagSlots + HandSlots + index;
+
+        /// <summary>List inventory: true for a hand's slot, which the list shows highlighted as equipped.</summary>
+        public bool IsHandSlot(int slot) => UsesList && slot >= bagSlots && slot < bagSlots + HandSlots * 2;
 
         /// <summary>True while the tool-slot inventory is the one in use; the lab panel switches it.</summary>
         public bool UsesToolSlot
@@ -63,7 +94,7 @@ namespace Clube.Game
         }
 
         /// <summary>Slots along the bottom of the screen: every slot of the tool-slot inventory, or the classic hotbar.</summary>
-        public int HotbarSlots => toolSlotLayout ? toolSlotItems.SlotCount : Mathf.Min(hotbarSlots, classic.SlotCount);
+        public int HotbarSlots => toolSlotLayout ? toolSlotItems.SlotCount : listLayout ? HandSlots : Mathf.Min(hotbarSlots, classic.SlotCount);
 
         private void Awake()
         {
@@ -72,12 +103,24 @@ namespace Clube.Game
             {
                 Accepts = (slot, item) => slot != ToolSlot || item is ToolDefinition,
             };
+            listItems = new Inventory(bagSlots + HandSlots * 2);
+            int hand = 0;
             foreach (StartingItem start in startingItems)
             {
                 if (start.Item != null)
                 {
                     classic.Add(start.Item, Mathf.Max(1, start.Count));
                     toolSlotItems.Add(start.Item, Mathf.Max(1, start.Count));
+                    // The list inventory starts its tools in the right hand, as the hotbar had them in its first slots.
+                    if (start.Item is ToolDefinition && hand < HandSlots)
+                    {
+                        listItems.Set(RightHandSlot(hand++), new ItemStack(start.Item, 1));
+                        listItems.Add(start.Item, Mathf.Max(1, start.Count) - 1);
+                    }
+                    else
+                    {
+                        listItems.Add(start.Item, Mathf.Max(1, start.Count));
+                    }
                 }
             }
         }
