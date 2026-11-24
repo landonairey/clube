@@ -286,11 +286,12 @@ namespace Clube.Core
         // alternate segments so the strands read, and a loose end trailing off the side.
         private static void Coil(LowPolyMeshBuilder model, Color rope)
         {
-            const int Segments = 16;
+            // 12 segments a ring keeps the coil under the 800 triangles every icon model stays within (ItemIconTests).
+            const int Segments = 12;
             const float Cord = 0.1f;
             for (int ring = 0; ring < 3; ring++)
             {
-                float radius = 0.5f - ring * 0.04f;
+                float radius = 0.42f - ring * 0.035f;
                 float y = Cord + ring * Cord * 1.75f;
                 for (int i = 0; i < Segments; i++)
                 {
@@ -302,9 +303,10 @@ namespace Clube.Core
                 }
             }
             // The loose end: down the outside of the coil, then out along the ground.
-            var top = new Vector3(0.5f, 0.3f, 0f);
-            model.Prism(top, new Vector3(0.62f, 0.12f, 0.06f), Cord * 0.9f, Cord * 0.9f, 5, Shade(rope, 0.95f));
-            model.Prism(new Vector3(0.62f, 0.12f, 0.06f), new Vector3(0.82f, Cord * 0.9f, 0.22f), Cord * 0.9f, Cord * 0.7f, 5, Shade(rope, 1.05f));
+            // Kept within about a unit across, the size every icon model is framed at (ItemIconTests).
+            var top = new Vector3(0.42f, 0.3f, 0f);
+            model.Prism(top, new Vector3(0.52f, 0.12f, 0.05f), Cord * 0.9f, Cord * 0.9f, 5, Shade(rope, 0.95f));
+            model.Prism(new Vector3(0.52f, 0.12f, 0.05f), new Vector3(0.68f, Cord * 0.9f, 0.18f), Cord * 0.9f, Cord * 0.7f, 5, Shade(rope, 1.05f));
         }
 
         // A stick with a kink in it and a twig stub.
