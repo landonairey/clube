@@ -7,8 +7,9 @@ namespace Clube.Game
     /// <summary>
     /// The list inventory's HUD (prototype), in place of the hotbar: two slots in the lower right, what the left and right
     /// hands hold ("Left hand / Empty" when nothing), with the coins under them (<see cref="PlayerWallet"/> sits in
-    /// <see cref="CoinsRect"/>). While the wheel steps a hand, that hand's other four slots show stacked above its slot, and
-    /// fade away a moment after the wheel stops.
+    /// <see cref="CoinsRect"/>). While the wheel steps a hand, all five of that hand's slots show in a column above it, in a
+    /// fixed order, with an outline on the one picked; the hand's own slot takes the picked one once the column has faded, and
+    /// the column fades away a moment after the wheel stops.
     /// </summary>
     public sealed class HandSlotsView
     {
@@ -26,7 +27,9 @@ namespace Clube.Game
         private readonly Text leftLabel, rightLabel, leftEmpty, rightEmpty;
         private readonly RectTransform stackRoot;
         private readonly CanvasGroup stackFade;
-        private readonly ItemSlotView[] stack = new ItemSlotView[PlayerInventory.HandSlots - 1];
+        private readonly ItemSlotView[] stack = new ItemSlotView[PlayerInventory.HandSlots];
+        // What each hand's HUD slot shows: held at the last settled pick while the wheel steps that hand.
+        private int shownRight = -1, shownLeft = -1;
         private bool stackLeft;
 
         public HandSlotsView()
@@ -78,32 +81,43 @@ namespace Clube.Game
             {
                 return;
             }
-            ItemStack l = hotbar.LeftStack, r = hotbar.SelectedStack;
-            left.Set(l, false);
-            right.Set(r, true);
-            HudCanvas.SetShown(leftEmpty.gameObject, l.IsEmpty);
-            HudCanvas.SetShown(rightEmpty.gameObject, r.IsEmpty);
-
             float since = Time.unscaledTime - hotbar.LastStepTime;
             float alpha = since < ShowSeconds ? 1f : 1f - Mathf.Clamp01((since - ShowSeconds) / FadeSeconds);
-            stackFade.alpha = alpha;
-            HudCanvas.SetShown(stackRoot.gameObject, alpha > 0f);
-            if (alpha <= 0f)
-            {
-                return;
-            }
             if (stackLeft != hotbar.LastStepLeft)
             {
                 stackLeft = hotbar.LastStepLeft;
                 Layout();
             }
-            // The slots after the selected one, upwards, so the next wheel step's slot sits just above the hand.
+            // The stepped hand's own slot keeps what it showed until the column is gone; the other hand's follows at once.
+            bool columnShown = alpha > 0f;
+            if (!columnShown || stackLeft || shownRight < 0)
+            {
+                shownRight = hotbar.Selected;
+            }
+            if (!columnShown || !stackLeft || shownLeft < 0)
+            {
+                shownLeft = hotbar.LeftSelected;
+            }
+            ItemStack l = inventory.Inventory[inventory.LeftHandSlot(shownLeft)];
+            ItemStack r = inventory.Inventory[inventory.RightHandSlot(shownRight)];
+            left.Set(l, false);
+            right.Set(r, true);
+            HudCanvas.SetShown(leftEmpty.gameObject, l.IsEmpty);
+            HudCanvas.SetShown(rightEmpty.gameObject, r.IsEmpty);
+
+            stackFade.alpha = alpha;
+            HudCanvas.SetShown(stackRoot.gameObject, columnShown);
+            if (!columnShown)
+            {
+                return;
+            }
+            // All five slots in order, the first at the top, so the outline moves down as the wheel steps down.
             int selected = stackLeft ? hotbar.LeftSelected : hotbar.Selected;
             for (int i = 0; i < stack.Length; i++)
             {
-                int index = (selected + 1 + i) % PlayerInventory.HandSlots;
+                int index = PlayerInventory.HandSlots - 1 - i;
                 int slot = stackLeft ? inventory.LeftHandSlot(index) : inventory.RightHandSlot(index);
-                stack[i].Set(inventory.Inventory[slot], false);
+                stack[i].Set(inventory.Inventory[slot], index == selected);
             }
         }
 

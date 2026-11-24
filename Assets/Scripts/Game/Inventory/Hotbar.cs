@@ -67,14 +67,32 @@ namespace Clube.Game
         /// <summary>List inventory: true when the last step was the left hand's.</summary>
         public bool LastStepLeft { get; private set; }
 
-        /// <summary>List inventory: puts a slot's stack in the right hand's selected slot (a right click in the list), swapping out what was there.</summary>
+        /// <summary>
+        /// List inventory: puts a slot's stack in a right hand slot (a right click in the list): the first empty one, or
+        /// when all five are full, the selected one, swapping out what was there.
+        /// </summary>
         public void EquipRight(int slot)
         {
-            int hand = SelectedSlot;
-            if (inventory.UsesList && slot != hand && slot >= 0 && slot < inventory.Inventory.SlotCount && !inventory.Inventory[slot].IsEmpty)
+            Inventory items = inventory.Inventory;
+            if (!inventory.UsesList || slot < 0 || slot >= items.SlotCount || items[slot].IsEmpty || IsRightHand(slot))
             {
-                inventory.Inventory.Move(slot, hand);
+                return;
             }
+            int hand = SelectedSlot;
+            for (int i = 0; i < PlayerInventory.HandSlots; i++)
+            {
+                if (items[inventory.RightHandSlot(i)].IsEmpty)
+                {
+                    hand = inventory.RightHandSlot(i);
+                    break;
+                }
+            }
+            items.Move(slot, hand);
+        }
+
+        private bool IsRightHand(int slot)
+        {
+            return slot >= inventory.RightHandSlot(0) && slot < inventory.RightHandSlot(PlayerInventory.HandSlots);
         }
 
         /// <summary>List inventory: selects a left hand slot (0-4).</summary>

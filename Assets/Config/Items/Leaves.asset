@@ -12,16 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b52a02d234816184ab26033bd6eb47c4, type: 3}
   m_Name: Leaves
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
+  itemType: 2
   id: leaves
   displayName: Leaves
   icon: {fileID: 2800000, guid: b05652bb0bce1f54ca6cf34cd2cdade3, type: 3}
   iconShape: 6
   iconTint: {r: 1, g: 1, b: 1, a: 1}
+  iconTextureZoom: 1
+  iconVividness: 0
   maxStack: 1024
   unitVolume: 1
   burnSeconds: 2
   fuelQuality: 0.5
   purityAs: {fileID: 0}
   hidesContents: 0
-  dropForm: 0
+  qualityAsGrade: 0
   contentsAs: {fileID: 11400000, guid: c3a9464decc6a0d4386f7028c5aa4060, type: 2}
+  ingotForm: {fileID: 0}
+  upgrade:
+    Station: 4
+    StrikePower: 1
+  dropForm: 0

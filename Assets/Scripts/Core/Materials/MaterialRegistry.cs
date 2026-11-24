@@ -160,6 +160,29 @@ namespace Clube.Core
             return null;
         }
 
+        /// <summary>
+        /// What a pure stack of the item is made of, as if gathered: all of the material it is placed back as, or else the
+        /// first material that gives it. For stacks with no record of where they came from (bought), so they read and stack
+        /// like gathered ones. Null for items no material gives (tools, buns).
+        /// </summary>
+        public Composition PureContents(ItemDefinition item)
+        {
+            VoxelMaterial source = PlacedFrom(item);
+            if (source == null || !IsSourceOf(source, item))
+            {
+                source = null;
+                foreach (VoxelMaterial material in materials)
+                {
+                    if (material != null && IsSourceOf(material, item))
+                    {
+                        source = material;
+                        break;
+                    }
+                }
+            }
+            return source != null ? Composition.From(new Content(source, 1f)) : null;
+        }
+
         /// <summary>True when mining some material gives this item (stone, clay, an ore): it has a purity (GL115).</summary>
         public bool IsMaterialItem(ItemDefinition item)
         {

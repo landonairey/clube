@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b52a02d234816184ab26033bd6eb47c4, type: 3}
   m_Name: Steel bun
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
+  itemType: 8
   id: steel-bun
   displayName: Steel bun
   icon: {fileID: 2800000, guid: ef05ddd187fb6ae46bed2778bd36e191, type: 3}
@@ -25,5 +26,10 @@ MonoBehaviour:
   fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
-  dropForm: 0
+  qualityAsGrade: 0
+  contentsAs: {fileID: 0}
   ingotForm: {fileID: 11400000, guid: 9b95ddb7870a07cd6171db16b357ea54, type: 2}
+  upgrade:
+    Station: 4
+    StrikePower: 1
+  dropForm: 0

@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 434cb56f54d6739459d80c3ea884e0e1, type: 3}
   m_Name: Spinning wheel
   m_EditorClassIdentifier: Clube.Core::Clube.Core.PlaceableDefinition
+  itemType: 3
   id: spinning-wheel
   displayName: Spinning wheel
   icon: {fileID: 2800000, guid: ee832f73ff91c6b4f8f5b635db1d6d19, type: 3}

@@ -10,6 +10,10 @@ namespace Clube.Core
     [CreateAssetMenu(fileName = "Item", menuName = "Clube/Item")]
     public class ItemDefinition : ScriptableObject
     {
+        [Tooltip("What kind of thing it is, as its description says (list inventory prototype): Earth, Liquid, Organism, Tool, Weapon, Armor, Clothing, Jewelry or Smelt.")]
+        [SerializeField]
+        private ItemType itemType;
+
         [Tooltip("Stable id used in saves and recipes, e.g. \"copper-ore\". Never change it once used.")]
         [SerializeField]
         private string id = "item";
@@ -137,6 +141,9 @@ namespace Clube.Core
         public string Id => id;
 
         public string DisplayName => displayName;
+
+        /// <summary>What kind of thing it is (Earth, Organism, Tool...).</summary>
+        public ItemType Type => itemType;
 
         public Texture2D Icon => icon;
 
