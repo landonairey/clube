@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Clube.Core
@@ -302,34 +303,119 @@ namespace Clube.Core
             model.Quad(F(-1, -1), F(-1, 1), T(-1, 1), T(-1, -1), middle, Shade(color, 0.88f));
         }
 
-        /// <summary>Sides round a pearl (GL808: "a 24-sided polygon shape").</summary>
-        public const int PearlSides = 24;
+        /// <summary>Pentagons of a pearl (GL853: a truncated icosahedron, a football).</summary>
+        public const int PearlPentagons = 12;
+
+        /// <summary>Hexagons of a pearl.</summary>
+        public const int PearlHexagons = 20;
+
+        // The truncated icosahedron's faces as corner lists on the unit sphere, pentagons first. Made once.
+        private static Vector3[][] pearlFaces;
 
         /// <summary>
-        /// A pearl (GL808): a ball of <see cref="PearlSides"/> sides round and half as many rings, each facet its tint with a
-        /// faint wash of a rainbow hue that turns round the ball and down it, the upper facets lighter, so it shimmers
-        /// without a special shader. Also the pearl inside an open clam (<see cref="ClamMeshes"/>).
+        /// A pearl (GL853, in place of GL808's 24-sided ball the user called a disco ball): a truncated icosahedron, 12
+        /// pentagons and 20 hexagons, each face its tint with a faint wash of a rainbow hue that turns round the ball and
+        /// down it, the upper faces lighter, so it shimmers without a special shader. The pentagons take a little less of
+        /// the sheen and a little shade, so the football pattern reads. A black pearl's dark tint stays dark. Also the
+        /// pearl inside an open clam (<see cref="ClamMeshes"/>).
         /// </summary>
         public static void Pearl(LowPolyMeshBuilder model, Vector3 centre, float radius, Color tint)
         {
-            int rings = PearlSides / 2;
-            for (int r = 0; r < rings; r++)
+            Vector3[][] faces = PearlFaces();
+            for (int f = 0; f < faces.Length; f++)
             {
-                float p0 = Mathf.PI * r / rings, p1 = Mathf.PI * (r + 1) / rings;
-                for (int s = 0; s < PearlSides; s++)
+                Vector3[] corners = faces[f];
+                Vector3 middle = Vector3.zero;
+                foreach (Vector3 c in corners)
                 {
-                    float a0 = Mathf.PI * 2f * s / PearlSides, a1 = Mathf.PI * 2f * (s + 1) / PearlSides;
-                    Vector3 P(float polar, float around) =>
-                        centre + radius * new Vector3(Mathf.Sin(polar) * Mathf.Cos(around), Mathf.Cos(polar), Mathf.Sin(polar) * Mathf.Sin(around));
-                    // Two turns of the rainbow round the ball, drifting down it: neighbours differ a little, never a stripe.
-                    float hue = Mathf.Repeat((s + 0.5f) * 2f / PearlSides + (r + 0.5f) * 0.11f, 1f);
-                    Color sheen = Color.HSVToRGB(hue, 0.55f, 1f);
-                    float up = Mathf.Cos((p0 + p1) * 0.5f);
-                    Color color = Color.Lerp(tint, sheen, 0.2f + 0.08f * Hash(31, r * PearlSides + s));
-                    color = Shade(color, 1f + 0.12f * up);
-                    model.Quad(P(p0, a0), P(p0, a1), P(p1, a1), P(p1, a0), centre, color);
+                    middle += c;
+                }
+                middle = (middle / corners.Length).normalized;
+                bool pentagon = corners.Length == 5;
+                // Two turns of the rainbow round the ball, drifting down it: neighbours differ a little, never a stripe.
+                float around = Mathf.Atan2(middle.z, middle.x) / (Mathf.PI * 2f) + 0.5f;
+                float hue = Mathf.Repeat(around * 2f + (1f - middle.y) * 0.33f, 1f);
+                Color sheen = Color.HSVToRGB(hue, 0.55f, 1f);
+                float wash = (pentagon ? 0.14f : 0.22f) + 0.08f * Hash(31, f);
+                Color color = Color.Lerp(tint, sheen, wash);
+                color = Shade(color, (pentagon ? 0.9f : 1f) + 0.12f * middle.y);
+                for (int i = 1; i + 1 < corners.Length; i++)
+                {
+                    model.Triangle(centre + radius * corners[0], centre + radius * corners[i], centre + radius * corners[i + 1], centre, color);
                 }
             }
+        }
+
+        /// <summary>
+        /// The truncated icosahedron: each edge of an icosahedron cut at a third and two thirds; each icosahedron corner
+        /// becomes a pentagon and each triangle a hexagon. Corners on the unit sphere, in order round each face.
+        /// </summary>
+        private static Vector3[][] PearlFaces()
+        {
+            if (pearlFaces != null)
+            {
+                return pearlFaces;
+            }
+            float phi = (1f + Mathf.Sqrt(5f)) * 0.5f;
+            var ico = new List<Vector3>();
+            foreach (float a in new[] { -1f, 1f })
+            {
+                foreach (float b in new[] { -phi, phi })
+                {
+                    ico.Add(new Vector3(0f, a, b));
+                    ico.Add(new Vector3(a, b, 0f));
+                    ico.Add(new Vector3(b, 0f, a));
+                }
+            }
+            bool Edge(int i, int j) => Mathf.Abs((ico[i] - ico[j]).magnitude - 2f) < 1e-3f;
+            Vector3 Cut(int from, int to, float t) => ico[from] + (ico[to] - ico[from]) * t;
+            var faces = new List<Vector3[]>();
+            // Pentagons: the cuts a third of the way along each of a corner's five edges, sorted round the corner.
+            for (int v = 0; v < ico.Count; v++)
+            {
+                Vector3 axis = ico[v].normalized;
+                Vector3 right = Vector3.Cross(axis, Mathf.Abs(axis.y) < 0.9f ? Vector3.up : Vector3.right).normalized;
+                Vector3 forward = Vector3.Cross(axis, right);
+                float Angle(Vector3 p) => Mathf.Atan2(Vector3.Dot(p, forward), Vector3.Dot(p, right));
+                var ring = new List<Vector3>();
+                for (int n = 0; n < ico.Count; n++)
+                {
+                    if (n != v && Edge(v, n))
+                    {
+                        ring.Add(Cut(v, n, 1f / 3f));
+                    }
+                }
+                ring.Sort((p, q) => Angle(p).CompareTo(Angle(q)));
+                faces.Add(ring.ToArray());
+            }
+            // Hexagons: each triangle's six cuts, in order round it.
+            for (int a = 0; a < ico.Count; a++)
+            {
+                for (int b = a + 1; b < ico.Count; b++)
+                {
+                    for (int c = b + 1; c < ico.Count; c++)
+                    {
+                        if (Edge(a, b) && Edge(b, c) && Edge(a, c))
+                        {
+                            faces.Add(new[]
+                            {
+                                Cut(a, b, 1f / 3f), Cut(a, b, 2f / 3f), Cut(b, c, 1f / 3f),
+                                Cut(b, c, 2f / 3f), Cut(c, a, 1f / 3f), Cut(c, a, 2f / 3f),
+                            });
+                        }
+                    }
+                }
+            }
+            float scale = 1f / faces[0][0].magnitude;
+            foreach (Vector3[] face in faces)
+            {
+                for (int i = 0; i < face.Length; i++)
+                {
+                    face[i] *= scale;
+                }
+            }
+            pearlFaces = faces.ToArray();
+            return pearlFaces;
         }
 
         private static Color Shade(Color color, float by)

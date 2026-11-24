@@ -22,26 +22,31 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void PearlIconIsATwentyFourSidedBallWithASheen()
+        public void PearlIconIsATruncatedIcosahedronWithASheen()
         {
             Assert.IsTrue(ItemChunkMeshes.Has(ItemIconShape.Pearl));
             Mesh mesh = ItemChunkMeshes.Build(ItemIconShape.Pearl, new Color(0.96f, 0.93f, 0.88f));
             try
             {
-                // 24 sides round by 12 rings of quads; the facets at the poles are triangles.
-                int sides = ItemChunkMeshes.PearlSides, rings = sides / 2;
-                Assert.AreEqual(24, sides);
-                Assert.AreEqual(sides * rings * 2 - sides * 2, mesh.triangles.Length / 3);
-                // The equator's silhouette has 24 corners.
-                var around = new HashSet<int>();
+                // GL853: 12 pentagons (3 triangles each) and 20 hexagons (4 each).
+                Assert.AreEqual(12, ItemChunkMeshes.PearlPentagons);
+                Assert.AreEqual(20, ItemChunkMeshes.PearlHexagons);
+                Assert.AreEqual(12 * 3 + 20 * 4, mesh.triangles.Length / 3);
+                // 60 corners, all on the ball's surface (radius 0.42 round (0, 0.42, 0)).
+                var corners = new HashSet<Vector3Int>();
+                var centre = new Vector3(0f, 0.42f, 0f);
                 foreach (Vector3 v in mesh.vertices)
                 {
-                    if (Mathf.Abs(v.y - 0.42f) < 1e-3f)
-                    {
-                        around.Add(Mathf.RoundToInt(Mathf.Atan2(v.z, v.x) * Mathf.Rad2Deg));
-                    }
+                    Assert.AreEqual(0.42f, (v - centre).magnitude, 1e-3f);
+                    corners.Add(Vector3Int.RoundToInt(v * 1000f));
                 }
-                Assert.AreEqual(sides, around.Count);
+                Assert.AreEqual(60, corners.Count);
+                // Every face points outward.
+                Vector3[] normals = mesh.normals, vertices = mesh.vertices;
+                for (int i = 0; i < vertices.Length; i++)
+                {
+                    Assert.Greater(Vector3.Dot(normals[i], vertices[i] - centre), 0f);
+                }
                 // Iridescence: the facets are not all one colour, and some lean red and some blue.
                 bool redder = false, bluer = false;
                 foreach (Color c in mesh.colors)
