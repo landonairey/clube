@@ -107,22 +107,22 @@ namespace Clube.Game
 
             // One screen at a time: not over a station's or a merchant's panel.
             bool otherOpen =(stationPanel != null && stationPanel.IsOpen) || (merchantPanel != null && merchantPanel.IsOpen)
-                || (fieldLog != null && fieldLog.IsOpen) || (chestPanel != null && chestPanel.IsOpen) || (rest != null && rest.IsOpen);
+                || (fieldLog != null && fieldLog.IsOpen) || (chestPanel != null && chestPanel.IsOpen) || (rest != null && rest.IsOpen)
+                // Any other screen that holds the player in a menu, like an open clam (GL852).
+                || (!IsOpen && player != null && player.IsInMenu);
             if (toggleAction != null && toggleAction.action.WasPressedThisFrame() && !otherOpen)
             {
                 SetOpen(!IsOpen);
             }
-            else if (interactAction != null && interactAction.action.WasPressedThisFrame() && !otherOpen)
+            else if (interactAction != null && interactAction.action.WasPressedThisFrame())
             {
-                // E closes it, or opens it when nothing usable is aimed at (GL298) and it isn't the E that just closed
-                // another screen.
-                if (IsOpen)
+                // E closes it, or opens it when nothing usable is aimed at (GL298), no other screen is open and it isn't
+                // the E that just closed another screen (GL852).
+                bool aimingAtUsable = interactor != null && interactor.Target != null && !PlayerInteractor.IsNotice(interactor.Target);
+                InventoryKeys.Result result = InventoryKeys.OnInteract(IsOpen, otherOpen, player != null && player.MenuClosedThisFrame, aimingAtUsable);
+                if (result != InventoryKeys.Result.Nothing)
                 {
-                    SetOpen(false);
-                }
-                else if ((interactor == null || interactor.Target == null || PlayerInteractor.IsNotice(interactor.Target)) && (player == null || !player.MenuClosedThisFrame))
-                {
-                    SetOpen(true);
+                    SetOpen(result == InventoryKeys.Result.Open);
                 }
             }
         }
