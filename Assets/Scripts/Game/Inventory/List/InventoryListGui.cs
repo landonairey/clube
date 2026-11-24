@@ -259,6 +259,12 @@ namespace Clube.Game
                     {
                         if (target != null && target.Slot == from && target.IsCollection == collection)
                         {
+                            // A second click on the selected row lets it go (closing the inventory's details).
+                            if (Selected == target)
+                            {
+                                ClearSelection();
+                                return new ListResult(InventoryDragKind.Clicked, target, count, current.mousePosition);
+                            }
                             selectedSlot = target.Slot;
                             selectedItem = target.Item;
                             selectedCollection = target.IsCollection;

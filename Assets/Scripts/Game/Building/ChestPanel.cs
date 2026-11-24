@@ -212,7 +212,7 @@ namespace Clube.Game
             float width = half * 2f + Padding * 3f;
             float height = Mathf.Min(Screen.height - 280f, 1000f);
             var panel = new Rect((Screen.width - width) * 0.5f, Mathf.Max(10f, (Screen.height - height) * 0.5f - 60f), width, height);
-            InventoryGridGui.Panel(panel);
+            InventoryGridGui.SolidPanel(panel);
             float y = panel.y + Padding;
             var left = new Rect(panel.x + Padding, y + 36f, half, panel.height - Padding * 2f - 36f);
             var right = new Rect(left.xMax + Padding, left.y, half, left.height);

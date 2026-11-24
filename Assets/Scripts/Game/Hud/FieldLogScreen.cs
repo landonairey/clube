@@ -112,9 +112,22 @@ namespace Clube.Game
                 || (stationPanel != null && stationPanel.IsOpen)
                 || (merchantPanel != null && merchantPanel.IsOpen)
                 || (chestPanel != null && chestPanel.IsOpen);
-            if (otherOpen || openedFrame == Time.frameCount)
+            if (openedFrame == Time.frameCount)
             {
                 // Not on the frame the inventory switched to the log, or the same Q would close it again.
+                return;
+            }
+            // Q or J over the inventory, the map, a station, a chest or a trader closes it and opens the log (prototype).
+            bool journalKey = toggleAction != null && toggleAction.action.WasPressedThisFrame();
+            bool toolsKey = toolsAction != null && toolsAction.action.WasPressedThisFrame();
+            if ((journalKey || toolsKey) && ScreenSwitch.AnyOpen(gameObject, this))
+            {
+                ScreenSwitch.CloseOthers(gameObject, this);
+                Open(toolsKey ? Page.Tools : Current);
+                return;
+            }
+            if (otherOpen)
+            {
                 return;
             }
             if (toggleAction != null && toggleAction.action.WasPressedThisFrame())

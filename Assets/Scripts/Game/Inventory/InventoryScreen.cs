@@ -229,13 +229,15 @@ namespace Clube.Game
             float width = Mathf.Min(Screen.width - 40f, 2200f);
             float height = Mathf.Clamp(Screen.height - 280f, EquipmentPanelGui.PreferredHeight + Padding * 2f, 1150f);
             var panel = new Rect((Screen.width - width) * 0.5f, Mathf.Max(10f, (Screen.height - height) * 0.5f - 60f), width, height);
-            InventoryGridGui.Panel(panel);
+            InventoryGridGui.SolidPanel(panel);
 
             float equipmentWidth = Mathf.Clamp(width * 0.34f, 560f, 740f), detailsWidth = Mathf.Clamp(width * 0.18f, 280f, 400f);
             var equipmentArea = new Rect(panel.x + Padding, panel.y + Padding, equipmentWidth, panel.height - Padding * 2f);
             float listX = equipmentArea.xMax + Padding;
             var detailsArea = new Rect(panel.xMax - Padding - detailsWidth, panel.y + Padding, detailsWidth, panel.height - Padding * 2f);
-            float listWidth = detailsArea.x - Padding - listX;
+            // The details window shows only once an item is clicked (closed with its button, or a second click).
+            bool showDetails = list.Selected != null;
+            float listWidth = (showDetails ? detailsArea.x - Padding : panel.xMax - Padding) - listX;
             GUI.Label(new Rect(listX, panel.y + Padding, listWidth, 30f), "Inventory (E to close): click for details, right-click to hold in your right hand, drag to a hand, onto a stack to combine, or off the screen to drop");
             const float trashHeight = 56f;
             var listArea = new Rect(listX, panel.y + Padding + 36f, listWidth, panel.height - Padding * 2f - 36f - trashHeight - 8f);
@@ -286,7 +288,10 @@ namespace Clube.Game
                 }
             }
 
-            DrawDetails(detailsArea, items);
+            if (showDetails)
+            {
+                DrawDetails(detailsArea, items);
+            }
             if (list.IsDragging)
             {
                 list.DrawCarried(items);
@@ -310,13 +315,15 @@ namespace Clube.Game
         private void DrawDetails(Rect area, Inventory items)
         {
             ItemSlotGui.Fill(area, new Color(0f, 0f, 0f, 0.3f));
+            ItemSlotGui.Outline(area, new Color(1f, 1f, 1f, 0.2f), 1f);
             ListRow row = list.Selected;
-            var inner = new Rect(area.x + 12f, area.y + 12f, area.width - 24f, area.height - 24f);
-            if (row == null || items[row.Slot].IsEmpty)
+            // Closes the window, as a second click on the item does.
+            if (GameUi.Button(new Rect(area.xMax - 44f, area.y + 6f, 38f, 34f), "X") || row == null || items[row.Slot].IsEmpty)
             {
-                GUI.Label(inner, "Click an item to see more about it.");
+                list.ClearSelection();
                 return;
             }
+            var inner = new Rect(area.x + 12f, area.y + 12f, area.width - 24f, area.height - 24f);
             ItemStack stack = items[row.Slot];
             ItemSlotGui.Draw(new Rect(inner.x, inner.y, 112f, 112f), stack, false);
             var style = new GUIStyle(GUI.skin.label) { wordWrap = true, richText = true, alignment = TextAnchor.UpperLeft };

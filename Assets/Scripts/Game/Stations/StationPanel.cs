@@ -193,7 +193,14 @@ namespace Clube.Game
             panelRect = panel;
             carriedDrag = null;
             carriedRow = null;
-            InventoryGridGui.Panel(panel);
+            if (listed)
+            {
+                InventoryGridGui.SolidPanel(panel);
+            }
+            else
+            {
+                InventoryGridGui.Panel(panel);
+            }
             float x = panel.x + Padding;
             float y = panel.y + Padding;
             // How well it was built and what that works on (GL135): a furnace's heat and yield.

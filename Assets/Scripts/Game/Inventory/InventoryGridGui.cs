@@ -53,6 +53,15 @@ namespace Clube.Game
             return true;
         }
 
+        /// <summary>A screen's background with nothing showing through (list inventory prototype): the HUD behind it stays hidden.</summary>
+        public static void SolidPanel(Rect area)
+        {
+            Color previous = GUI.color;
+            GUI.color = new Color(PanelColor.r, PanelColor.g, PanelColor.b, 1f);
+            GUI.DrawTexture(area, Texture2D.whiteTexture);
+            GUI.color = previous;
+        }
+
         /// <summary>A screen's background: nearly opaque, so the world doesn't show through the slots.</summary>
         public static void Panel(Rect area)
         {
