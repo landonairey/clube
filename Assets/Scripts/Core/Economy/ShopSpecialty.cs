@@ -50,6 +50,10 @@ namespace Clube.Core
         [SerializeField, Min(1f)]
         private float sellMarkup = 1.5f;
 
+        [Tooltip("GL855: also sells the price list's Sold Everywhere items (stone, birch wood). Only the Merchant does: there is always one in a settlement.")]
+        [SerializeField]
+        private bool sellsBasics;
+
         [Tooltip("The skills the keeper teaches for coins (GL402).")]
         [SerializeField]
         private List<SkillType> trains = new List<SkillType>();
@@ -73,6 +77,16 @@ namespace Clube.Core
         public string KeeperName => keeperName;
 
         public bool BuysEverything => buysEverything;
+
+        /// <summary>GL855: whether the shop also sells <see cref="PriceList.SoldEverywhere"/> items (the Merchant only).</summary>
+        public bool SellsBasics => sellsBasics;
+
+        /// <summary>Makes the shop sell the always-stocked basics (the Merchant); returns it.</summary>
+        public ShopSpecialty WithBasics()
+        {
+            sellsBasics = true;
+            return this;
+        }
 
         public IReadOnlyList<ItemDefinition> Buys => buys;
 
@@ -140,7 +154,11 @@ namespace Clube.Core
             {
                 AddOffer(offers, item, master);
             }
-            // GL797: every shop also sells the price list's early materials, whatever its trade.
+            // GL797, GL855: the Merchant also sells the price list's early materials, so a stuck player can always buy them.
+            if (!sellsBasics)
+            {
+                return offers;
+            }
             foreach (ItemDefinition item in master.SoldEverywhere)
             {
                 if (!sells.Contains(item))

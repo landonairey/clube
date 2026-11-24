@@ -82,7 +82,8 @@ namespace Clube.Core
         public ShopSpecialty ToShop(ItemCatalog catalog, IEnumerable<ItemDefinition> variety = null)
         {
             IEnumerable<ItemDefinition> sells = SellsVariety && variety != null ? variety : SellsIn(catalog);
-            return ShopSpecialty.Create(Kind, Name, BuysIn(catalog), sells, buysEverything: BuysEverything, trains: Trains);
+            ShopSpecialty shop = ShopSpecialty.Create(Kind, Name, BuysIn(catalog), sells, buysEverything: BuysEverything, trains: Trains);
+            return Chain == SupplyChains.Merchant ? shop.WithBasics() : shop; // GL855
         }
 
         /// <summary>
