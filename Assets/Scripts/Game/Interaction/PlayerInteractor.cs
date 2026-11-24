@@ -24,6 +24,7 @@ namespace Clube.Game
         private readonly RaycastHit[] hits = new RaycastHit[8];
         private PlayerController player;
         private StumpWorktops stumps;
+        private BoulderWorksites boulders;
         private PlayerParcels parcels;
         private GUIStyle promptStyle;
 
@@ -88,7 +89,9 @@ namespace Clube.Game
                     // The ground samples of a campfire or furnace are the station too (GL391).
                     TerrainStructure structure = TerrainStructure.FindAt(hit.collider.GetComponentInParent<WorldView>(), hit.point);
                     Target = structure != null ? structure.GetComponent<IInteractable>() : null;
-                    Target ??= stumps?.Find(hit) ?? parcels?.Find(hit);
+                    // A boulder: claimed, its screen; not yet, the claim notice (prototype, items 8 and 9).
+                    boulders ??= GetComponent<BoulderWorksites>();
+                    Target ??= stumps?.Find(hit) ?? (boulders != null ? boulders.Find() : null) ?? parcels?.Find(hit);
                 }
             }
 

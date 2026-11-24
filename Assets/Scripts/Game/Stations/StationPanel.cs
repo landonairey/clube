@@ -61,6 +61,9 @@ namespace Clube.Game
 
         public bool IsOpen => Current != null;
 
+        /// <summary>The key that closes a station's screen (E), shared with the boulder's (<see cref="BoulderPanel"/>).</summary>
+        public InputActionReference CloseAction => closeAction;
+
         private void Awake()
         {
             inventory = GetComponent<PlayerInventory>();

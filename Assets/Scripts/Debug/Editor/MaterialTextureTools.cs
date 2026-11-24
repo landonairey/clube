@@ -135,6 +135,11 @@ namespace Clube.Debug.Editor
                 // Granite: interlocking grains of dull pink feldspar, pale quartz and black mica (GL755), where cassiterite is plain
                 // stone with round dark specks; no brighter than stone (GL756).
                 { "granite", (new Color(0.48f, 0.43f, 0.41f), new Color(0.55f, 0.54f, 0.52f), new Color(0.33f, 0.31f, 0.31f), Wear.Grains) },
+                // Claimed worksites (prototype, backlog 2026-11-24 item 8): a stump's twine bands, a boulder's cracks and its lighter
+                // worked top. Added last, so no seed moves.
+                { "stump twine", (new Color(0.88f, 0.8f, 0.56f), new Color(0.95f, 0.88f, 0.66f), null, Wear.Whole) },
+                { "boulder crack", (new Color(0.12f, 0.12f, 0.13f), new Color(0.22f, 0.22f, 0.23f), null, Wear.Cracked) },
+                { "worked stone", (new Color(0.68f, 0.67f, 0.65f), new Color(0.78f, 0.77f, 0.75f), null, Wear.Whole) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]

@@ -141,11 +141,32 @@ namespace Clube.Game
 
         private bool knapOnRelease;
 
+        /// <summary>The world boulders are found in.</summary>
+        public WorldView World => worldView;
+
+        private BoulderWorksites worksites;
+        private WorksiteClaimer claimer;
+
         private void Awake()
         {
             player = GetComponent<PlayerController>();
             inventory = GetComponent<PlayerInventory>();
             skills = GetComponent<PlayerSkills>();
+            // Claiming and the boulder's screen (prototype, items 8 and 9) come with bashing, so every scene's player has them.
+            // (TryGetComponent: in the Editor GetComponent hands back a fake null that ?? takes for a component.)
+            if (!TryGetComponent(out worksites))
+            {
+                worksites = gameObject.AddComponent<BoulderWorksites>();
+            }
+            if (!TryGetComponent(out claimer))
+            {
+                claimer = gameObject.AddComponent<WorksiteClaimer>();
+            }
+            claimer.Init(placeAction);
+            if (!TryGetComponent(out BoulderPanel _))
+            {
+                gameObject.AddComponent<BoulderPanel>();
+            }
         }
 
         private void OnEnable()
@@ -162,7 +183,8 @@ namespace Clube.Game
                 refineProgress = 0f;
                 return;
             }
-            bool pressed = placeAction.action.WasPressedThisFrame();
+            // The right click that claimed a stump or boulder does nothing else (prototype, item 8).
+            bool pressed = placeAction.action.WasPressedThisFrame() && !claimer.ClaimedThisFrame;
             if (pressed && HoldsSomethingToBash(out _, out Crush crush) && AimsAtBoulder())
             {
                 // A stone becomes a hand axe at once; ore is crushed while Place is held (GL221).
@@ -469,10 +491,53 @@ namespace Clube.Game
             return TryGetAimedBoulder(out _);
         }
 
-        // Boulder material, or the flat rock (GL454).
+        // Boulder material, a claimed boulder's marks (prototype, item 8), or the flat rock (GL454).
         private bool IsWorkSurface(VoxelMaterial material)
         {
-            return material != null && (boulderMaterials.Contains(material) || material == flatRock);
+            return material != null && (boulderMaterials.Contains(material) || IsClaimMark(material) || material == flatRock);
+        }
+
+        // A claimed boulder's cracks or worked top: only ever on a boulder, so never a loose stone.
+        private bool IsClaimMark(VoxelMaterial material)
+        {
+            return material != null && (material.DisplayName == BoulderWorksites.CrackName || material.DisplayName == BoulderWorksites.WorkedName);
+        }
+
+        /// <summary>Whether a material id is boulder rock, its claim marks included, for finding a boulder's piece (not the flat rock).</summary>
+        public bool IsBoulderRock(byte id)
+        {
+            VoxelMaterial material = worldView != null && worldView.IsReady ? worldView.Config.Materials.Get(id) : null;
+            return material != null && (boulderMaterials.Contains(material) || IsClaimMark(material));
+        }
+
+        /// <summary>Whether a stack can be refined here (the boulder's screen, item 9): a mixed stack, a stone with a mix in it too.</summary>
+        public bool CanRefine(ItemStack stack)
+        {
+            return !stack.IsEmpty && worldView != null && worldView.IsReady && Refining.CanRefine(stack, worldView.Config.Materials);
+        }
+
+        /// <summary>Whether a stack can be knapped into a hand axe here (the boulder's screen, item 9): a stone, mixed or clean.</summary>
+        public bool CanKnap(ItemStack stack)
+        {
+            return !stack.IsEmpty && stack.Item == stone && stack.Count > 0 && handAxe != null && !HandAxeDisabled;
+        }
+
+        /// <summary>One refining pass on a slot's stack, from the boulder's screen (item 9). False when nothing happened.</summary>
+        public bool RefineAt(int slot)
+        {
+            return slot >= 0 && slot < inventory.Inventory.SlotCount && CanRefine(inventory.Inventory[slot]) && RefinePass(slot);
+        }
+
+        /// <summary>Knaps one stone of a slot into a hand axe, from the boulder's screen (item 9). False when it can't.</summary>
+        public bool KnapAt(int slot)
+        {
+            return slot >= 0 && slot < inventory.Inventory.SlotCount && CanKnap(inventory.Inventory[slot]) && KnapStone(slot);
+        }
+
+        /// <summary>A stack's quality as the player can read it (a grade word below exact Prospecting).</summary>
+        public string QualityOf(ItemStack stack)
+        {
+            return ProspectReading.QualityAt(stack.Quality, ProspectingLevel);
         }
 
         // The crosshair on the flat rock (GL454), where crushing and refining go two batches a cycle.
@@ -492,7 +557,52 @@ namespace Clube.Game
         /// </summary>
         public bool TryGetAimedBoulder(out Vector3Int boulder)
         {
+            // A boulder is claimed before it can be worked (prototype, item 8); the flat rock needs no claim.
+            return TryGetAimedRock(out boulder, out bool isFlatRock) && (isFlatRock || worksites == null || worksites.IsClaimed(boulder));
+        }
+
+        /// <summary>
+        /// The boulder or flat rock sample under the crosshair within reach, claimed or not; <paramref name="isFlatRock"/>
+        /// says which.
+        /// </summary>
+        public bool TryGetAimedRock(out Vector3Int boulder, out bool isFlatRock)
+        {
+            isFlatRock = false;
+            if (aimFrame == Time.frameCount)
+            {
+                boulder = aimSample;
+                isFlatRock = aimFlat;
+                return aimFound;
+            }
+            aimFrame = Time.frameCount;
+            aimFound = FindAimedRock(out aimSample);
+            boulder = aimSample;
+            if (aimFound)
+            {
+                byte? id = worldView.World.GetMaterial(aimSample);
+                aimFlat = flatRock != null && id.HasValue && worldView.Config.Materials.Get(id.Value) == flatRock;
+            }
+            else
+            {
+                aimFlat = false;
+            }
+            isFlatRock = aimFlat;
+            return aimFound;
+        }
+
+        // The aim, worked out once a frame: several components ask each frame.
+        private int aimFrame = -1;
+        private bool aimFound;
+        private bool aimFlat;
+        private Vector3Int aimSample;
+
+        private bool FindAimedRock(out Vector3Int boulder)
+        {
             boulder = default;
+            if (worldView == null || !worldView.IsReady)
+            {
+                return false;
+            }
             Transform head = player.Head != null ? player.Head : transform;
             if (!worldView.Raycast(new Ray(head.position, head.forward), out WorldHit hit)
                 || (worldView.transform.TransformPoint(hit.Point) - head.position).sqrMagnitude > reach * reach)
@@ -522,7 +632,8 @@ namespace Clube.Game
                     found = sample;
                 }
             }
-            if (!found.HasValue || ToolStrike.IsSmallPiece(world, found.Value, world.GetMaterial(found.Value).Value, loosePieceSize, iso))
+            if (!found.HasValue || (!IsClaimMark(materials.Get(world.GetMaterial(found.Value).Value))
+                && ToolStrike.IsSmallPiece(world, found.Value, world.GetMaterial(found.Value).Value, loosePieceSize, iso)))
             {
                 return false;
             }

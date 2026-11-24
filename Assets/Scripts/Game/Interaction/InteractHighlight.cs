@@ -103,7 +103,8 @@ namespace Clube.Game
                 DrawMeshes(component);
                 return;
             }
-            if (target == null && bashing != null && bashing.TryGetAimedBoulder(out Vector3Int boulder))
+            // A boulder, claimed (its screen) or not (the claim notice), outlines too (prototype, item 8).
+            if (bashing != null && bashing.TryGetAimedRock(out Vector3Int boulder, out _))
             {
                 DrawBoulder(boulder);
                 return;

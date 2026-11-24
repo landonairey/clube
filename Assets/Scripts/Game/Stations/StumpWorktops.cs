@@ -23,6 +23,9 @@ namespace Clube.Game
             public List<Recipe> Recipes = new List<Recipe>();
         }
 
+        /// <summary>The material of a claimed stump's twine bands (prototype, item 8), found in the registry by name.</summary>
+        public const string TwineName = "Stump twine";
+
         // The largest stump looked at, in samples; a safety stop for the search.
         private const int MaxSamples = 4096;
 
@@ -37,6 +40,7 @@ namespace Clube.Game
         private List<Kind> kinds = new List<Kind>();
 
         private readonly Dictionary<Vector3Int, StationObject> stations = new Dictionary<Vector3Int, StationObject>();
+        private readonly Dictionary<Vector3Int, UnclaimedWorksite> unclaimed = new Dictionary<Vector3Int, UnclaimedWorksite>();
         private readonly HashSet<Vector3Int> seen = new HashSet<Vector3Int>();
         private readonly Stack<Vector3Int> pending = new Stack<Vector3Int>();
 
@@ -94,6 +98,19 @@ namespace Clube.Game
             }
 
             Vector3Int key = LowestSample(world, registry, view.Config.IsoLevel, start);
+            // A stump is claimed before it can be used (prototype, backlog 2026-11-24 item 8): its twine bands say so.
+            VoxelMaterial twine = registry.Find(TwineName);
+            if (twine != null && KindOf(world.GetMaterial(key)) == null && !WorksiteClaim.IsClaimed(world, seen, twine.Id, twine.Id))
+            {
+                if (!unclaimed.TryGetValue(key, out UnclaimedWorksite notice))
+                {
+                    float iso = view.Config.IsoLevel;
+                    // The piece last found is this stump's: it is the one under the crosshair when the claim is made.
+                    notice = new UnclaimedWorksite("stump", () => WorksiteClaim.ClaimStump(world, new List<Vector3Int>(seen), iso, twine.Id));
+                    unclaimed[key] = notice;
+                }
+                return notice;
+            }
             if (!stations.TryGetValue(key, out StationObject station) || station == null)
             {
                 Kind kind = KindOf(world.GetMaterial(key));
