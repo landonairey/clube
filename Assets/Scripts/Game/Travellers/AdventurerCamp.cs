@@ -10,7 +10,8 @@ namespace Clube.Game
     /// <see cref="Adventurer"/> stands by a campfire on the highest ground within <see cref="searchRadius"/> of the parcel
     /// the player started on (<see cref="PeakSearch"/> over the generated surface). The fire's flames dance all the time
     /// and its light shines out at night, so the peak can be picked out from below. Saves whether they've come, their
-    /// purse and their disposition.
+    /// purse and their disposition. On the bounded map the parcel is <see cref="MapSession.StartPosition"/> (GL860): the
+    /// scene's player stands elsewhere until the map is built.
     /// </summary>
     public class AdventurerCamp : MonoBehaviour, ISavedValues
     {
@@ -61,6 +62,8 @@ namespace Clube.Game
         private FlameCluster flame;
         private Light glow;
         private World searchedIn;
+        private MapSession session;
+        private int searchedVersion = -1;
         private Vector2 peak;
         private float peakHeight;
 
@@ -103,9 +106,27 @@ namespace Clube.Game
             {
                 Arrived = true;
             }
-            if (searchedIn != worldView.World)
+            // GL860: on the bounded map, wait for the map and search round the family parcel it starts the player on. The
+            // camp was searched round where the scene's player stood before the map was built, so its fire was out of sight.
+            session ??= MapSession.Current;
+            if (session != null && !session.IsReady)
             {
+                return;
+            }
+            if (searchedIn != worldView.World || (session != null && searchedVersion != session.Version))
+            {
+                if (session != null)
+                {
+                    Vector3 start = worldView.transform.InverseTransformPoint(session.StartPosition);
+                    spawnPoint = new Vector2(start.x, start.z);
+                    searchedVersion = session.Version;
+                }
                 FindPeak();
+                if (camp != null)
+                {
+                    Destroy(camp.gameObject);
+                    camp = null;
+                }
             }
             if (camp != null && worldView.World != placedIn)
             {
