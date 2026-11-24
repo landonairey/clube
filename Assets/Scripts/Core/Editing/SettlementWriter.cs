@@ -438,6 +438,10 @@ namespace Clube.Core
                         Natural = natural,
                         Headroom = Headroom,
                         KeepTop = true,
+                        // GL862: a tree standing on the tile goes whole (no part of it reaches past the room it takes), but
+                        // the cut stops there, inside the chunks the tile waited for (Loaded): in a wood whose crowns all
+                        // touch it ran on through the wood until it gave out.
+                        TreeReach = treeRoom.Spread,
                         Surface = (x, z, ground) => site.HeightAt(x, z, ground),
                         // A planned road's ground is the road's; a tile only works on its own terrace and bank.
                         Inside = (x, z) => site.RoadBeyond(x, z) > 0f && (wetAt == null || !wetAt(x, z)) && SettlementSite.Beyond(terrace.Area, new Vector2(x, z)) < ramp,
