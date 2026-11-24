@@ -108,6 +108,10 @@ namespace Clube.Core
         [SerializeField]
         private bool takesIngotForms;
 
+        [Tooltip("The swap variants are separate entries in a station's list (GL858: the torch's coal for charcoal differs in kind from one wood for another). Off: one entry, the station picks the variant the player's items fill.")]
+        [SerializeField]
+        private bool swapsListedApart;
+
         [Tooltip("An input other items may replace (GL813-GL816): birch wood, where pine and maple wood do as well. The station derives one variant for each item in Swap For.")]
         [SerializeField]
         private ItemDefinition swapInput;
@@ -121,6 +125,9 @@ namespace Clube.Core
 
         [SerializeField]
         private List<ItemDefinition> swapFor2 = new List<ItemDefinition>();
+
+        /// <summary>The recipe this one was derived from by swapping an input (GL858), null for any other. Lists show the parent only.</summary>
+        public Recipe SwapParent { get; private set; }
 
         /// <summary>
         /// The recipes that take another item where this one takes <c>swapInput</c> or <c>swapInput2</c> (GL813-GL816,
@@ -145,6 +152,8 @@ namespace Clube.Core
                         continue;
                     }
                     Recipe variant = Instantiate(this);
+                    variant.SwapParent = swapsListedApart ? null : this;
+                    variant.swapsListedApart = false;
                     variant.swapInput = null;
                     variant.swapFor = new List<ItemDefinition>();
                     variant.swapInput2 = null;

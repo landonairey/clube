@@ -15,6 +15,15 @@ namespace Clube.Core
             Close,
         }
 
+        /// <summary>
+        /// True when a press of M closes the inventory and opens the map (GL861): only with the inventory open and a map
+        /// to show; the map then opens on the same frame the inventory closed, so that M can't toggle it straight back.
+        /// </summary>
+        public static bool MapReplacesInventory(bool inventoryOpen, bool mapAvailable)
+        {
+            return inventoryOpen && mapAvailable;
+        }
+
         /// <param name="inventoryOpen">The inventory screen is open.</param>
         /// <param name="otherScreenOpen">Another player screen (station, merchant, chest, clam...) is open.</param>
         /// <param name="screenClosedThisFrame">A screen closed this frame, by this same key press perhaps.</param>

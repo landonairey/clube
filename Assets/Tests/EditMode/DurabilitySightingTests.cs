@@ -79,11 +79,13 @@ namespace Clube.Core.Tests
         [Test]
         public void SkillProgressReadsXpIntoTheLevelOverItsCost()
         {
-            Assert.AreEqual("0/300", SkillSet.ProgressText(0f));
-            Assert.AreEqual("120/300", SkillSet.ProgressText(120f));
+            Assert.AreEqual("0.0/300", SkillSet.ProgressText(0f));
+            Assert.AreEqual("120.0/300", SkillSet.ProgressText(120f));
+            Assert.AreEqual("120.5/300", SkillSet.ProgressText(120.5f));
+            Assert.AreEqual("299.9/300", SkillSet.ProgressText(299.99f));
             // Level 1 is reached at 300; level 2 costs 480 more.
-            Assert.AreEqual("0/480", SkillSet.ProgressText(300f));
-            Assert.AreEqual("100/480", SkillSet.ProgressText(400f));
+            Assert.AreEqual("0.0/480", SkillSet.ProgressText(300f));
+            Assert.AreEqual("100.0/480", SkillSet.ProgressText(400f));
             Assert.AreEqual("max", SkillSet.ProgressText(SkillSet.ExperienceFor(SkillSet.MaxLevel)));
         }
     }

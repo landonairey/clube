@@ -91,6 +91,58 @@ namespace Clube.Core
         public IReadOnlyList<Recipe> Recipes => recipes;
 
         /// <summary>
+        /// What lists show (GL858): every recipe except the swap variants, so an item made from any of several woods
+        /// is one entry. <see cref="VariantFor"/> picks the wood to use.
+        /// </summary>
+        public List<Recipe> ListedRecipes()
+        {
+            var listed = new List<Recipe>();
+            foreach (Recipe recipe in recipes)
+            {
+                if (recipe.SwapParent == null)
+                {
+                    listed.Add(recipe);
+                }
+            }
+            return listed;
+        }
+
+        /// <summary>
+        /// The one of <paramref name="listed"/> and its swap variants that <paramref name="items"/> (plus what is
+        /// already loaded) fill best (GL858): a complete set wins, else the most inputs held, ties to the plain recipe.
+        /// </summary>
+        public Recipe VariantFor(Recipe listed, Inventory items)
+        {
+            if (listed == null || items == null)
+            {
+                return listed;
+            }
+            Recipe best = listed;
+            int bestScore = -1;
+            foreach (Recipe recipe in recipes)
+            {
+                if (recipe != listed && recipe.SwapParent != listed)
+                {
+                    continue;
+                }
+                int score = 0;
+                foreach (ItemAmount input in recipe.Inputs)
+                {
+                    if (input.Item != null)
+                    {
+                        score += Math.Min(input.Count, items.Count(input.Item) + Input.Count(input.Item));
+                    }
+                }
+                if (score > bestScore)
+                {
+                    best = recipe;
+                    bestScore = score;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>
         /// The recipe the player picked (ML1), when several share inputs (sticks and stone make a
         /// spear, a hatchet or a hammer): only it starts. Null: the first recipe whose inputs are
         /// loaded starts, as before. Setting one this station doesn't make clears it. Picking a different recipe from the

@@ -30,6 +30,7 @@ MonoBehaviour:
   qualityFactor: 1
   extracts: {fileID: 0}
   typicalGrade: 0.2
+  swapsListedApart: 1
   swapInput: {fileID: 11400000, guid: 3d69f87512eb09842b9ec73744ff5790, type: 2}
   swapFor:
   - {fileID: 11400000, guid: 981cc1854cc996a08ab08041a7d5f449, type: 2}
