@@ -254,7 +254,15 @@ namespace Clube.Game
             switch (picked.Kind)
             {
                 case InventoryDragKind.RightClicked:
-                    hotbar.EquipRight(picked.Slot);
+                    // Right click equips; on something already in a hand it goes back in the bag.
+                    if (inventory.IsHandSlot(picked.Slot) && !picked.Row.IsCollection)
+                    {
+                        items.MoveInto(picked.Slot, 0, inventory.BagSlots);
+                    }
+                    else
+                    {
+                        hotbar.EquipRight(picked.Slot);
+                    }
                     break;
                 case InventoryDragKind.DroppedOutside:
                     int hand = equipment.HandSlotAt(inventory, picked.Position);

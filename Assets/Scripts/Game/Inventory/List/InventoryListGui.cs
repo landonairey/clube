@@ -53,7 +53,6 @@ namespace Clube.Game
 
         private static readonly Color RowEven = new Color(1f, 1f, 1f, 0.03f);
         private static readonly Color RowOdd = new Color(1f, 1f, 1f, 0.07f);
-        private static readonly Color EquippedColour = new Color(0.95f, 0.75f, 0.25f, 0.22f);
         private static readonly Color SelectedColour = new Color(0.45f, 0.7f, 1f, 0.3f);
         private static readonly Color HeaderColour = new Color(0f, 0f, 0f, 0.35f);
 
@@ -71,11 +70,17 @@ namespace Clube.Game
         private ItemDefinition selectedItem;
         private bool selectedCollection;
         private GUIStyle nameStyle, columnStyle, headerStyle, arrowStyle;
+        // The Type column's filter: only items of this type are listed; null lists every type. Its menu drops from the header.
+        private ItemType? typeFilter;
+        private bool typeMenuOpen;
+        private Rect typeHeader;
+        private static readonly ItemType[] Types = (ItemType[])Enum.GetValues(typeof(ItemType));
+        private const float MenuRowHeight = 34f;
 
         /// <summary>Which slots are listed; null for all.</summary>
         public Func<int, bool> Include { get; set; }
 
-        /// <summary>Which slots show as equipped (highlighted); null for none.</summary>
+        /// <summary>Which slots show as equipped (tagged "(equipped)"); null for none.</summary>
         public Func<int, bool> Equipped { get; set; }
 
         /// <summary>The Val column for a slot; null reads the merchant's price (<see cref="ListColumns.ValueOf"/>).</summary>
@@ -103,9 +108,20 @@ namespace Clube.Game
             }
         }
 
-        /// <summary>Forgets the selection, a press and a drag (a screen opening or closing).</summary>
+        /// <summary>The type the list is filtered to, null for all (chosen from the Type column's menu).</summary>
+        public ItemType? TypeFilter => typeFilter;
+
+        /// <summary>True when the slot is listed: included, and of the filtered type.</summary>
+        public bool Shows(Inventory items, int slot)
+        {
+            return (Include == null || Include(slot)) && (typeFilter == null || (!items[slot].IsEmpty && items[slot].Item.Type == typeFilter.Value));
+        }
+
+        /// <summary>Forgets the selection, a press, a drag and the type filter (a screen opening or closing).</summary>
         public void Reset()
         {
+            typeFilter = null;
+            typeMenuOpen = false;
             pressedSlot = -1;
             dragging = false;
             ClearSelection();
@@ -141,7 +157,8 @@ namespace Clube.Game
             }
             DrawHeader(header, width, items);
 
-            ListResult result = HandleMouse(list, width, items);
+            bool menuTook = HandleTypeMenu(items);
+            ListResult result = menuTook ? new ListResult(InventoryDragKind.None, null, 0, current.mousePosition) : HandleMouse(list, width, items);
             int hoverIndex = list.Contains(current.mousePosition) && current.mousePosition.x < list.x + width ? RowAt(list, current.mousePosition) : -1;
 
             scroll = GUI.BeginScrollView(list, scroll, new Rect(0f, 0f, width, Mathf.Max(contentHeight, list.height)), false, false);
@@ -157,7 +174,8 @@ namespace Clube.Game
             }
             GUI.EndScrollView();
 
-            if (hoverIndex >= 0 && hoverIndex < rows.Count && HoverTooltips && !IsDragging)
+            DrawTypeMenu();
+            if (hoverIndex >= 0 && hoverIndex < rows.Count && HoverTooltips && !IsDragging && !typeMenuOpen)
             {
                 InventoryGridGui.Hover(items[rows[hoverIndex].Slot]);
             }
@@ -185,7 +203,7 @@ namespace Clube.Game
         private void Rebuild(Inventory items)
         {
             Func<int, float> value = Value ?? (slot => ListColumns.ValueOf(items[slot]));
-            rows = InventoryListing.Build(items, Include, value, slot => ListColumns.QualityOf(items[slot]), expanded, sort, descending, Equipped);
+            rows = InventoryListing.Build(items, slot => Shows(items, slot), value, slot => ListColumns.QualityOf(items[slot]), expanded, sort, descending, Equipped);
         }
 
         private int RowAt(Rect list, Vector2 point)
@@ -301,6 +319,62 @@ namespace Clube.Game
             return none;
         }
 
+
+        // The Type menu's place: under the Type header, one row for every type and one for all of them.
+        private Rect TypeMenuRect()
+        {
+            float width = Mathf.Max(typeHeader.width, 170f);
+            return new Rect(typeHeader.xMax - width, typeHeader.yMax, width, MenuRowHeight * (Types.Length + 1));
+        }
+
+        // A press on the open menu picks a type (or all of them) and is used up; a press anywhere else closes it.
+        private bool HandleTypeMenu(Inventory items)
+        {
+            Event current = Event.current;
+            if (!typeMenuOpen || current.type != EventType.MouseDown)
+            {
+                return typeMenuOpen && (current.type == EventType.MouseUp || current.type == EventType.MouseDrag) && TypeMenuRect().Contains(current.mousePosition);
+            }
+            Rect menu = TypeMenuRect();
+            typeMenuOpen = false;
+            if (!menu.Contains(current.mousePosition))
+            {
+                return false;
+            }
+            int index = Mathf.FloorToInt((current.mousePosition.y - menu.y) / MenuRowHeight);
+            typeFilter = index <= 0 ? (ItemType?)null : Types[Mathf.Min(index - 1, Types.Length - 1)];
+            ClearSelection();
+            Rebuild(items);
+            current.Use();
+            return true;
+        }
+
+        private void DrawTypeMenu()
+        {
+            if (!typeMenuOpen)
+            {
+                return;
+            }
+            Rect menu = TypeMenuRect();
+            ItemSlotGui.Fill(menu, new Color(0.08f, 0.08f, 0.1f, 1f));
+            ItemSlotGui.Outline(menu, new Color(1f, 1f, 1f, 0.35f), 1f);
+            Vector2 mouse = Event.current.mousePosition;
+            headerStyle.alignment = TextAnchor.MiddleLeft;
+            for (int i = 0; i <= Types.Length; i++)
+            {
+                var row = new Rect(menu.x, menu.y + i * MenuRowHeight, menu.width, MenuRowHeight);
+                bool chosen = i == 0 ? typeFilter == null : typeFilter == Types[i - 1];
+                if (chosen)
+                {
+                    ItemSlotGui.Fill(row, SelectedColour);
+                }
+                else if (row.Contains(mouse))
+                {
+                    ItemSlotGui.Fill(row, new Color(1f, 1f, 1f, 0.1f));
+                }
+                GUI.Label(new Rect(row.x + 12f, row.y, row.width - 16f, row.height), i == 0 ? "All types" : Types[i - 1].ToString(), headerStyle);
+            }
+        }
         private ListRow Find(int slot, bool collection)
         {
             foreach (ListRow row in rows)
@@ -326,11 +400,26 @@ namespace Clube.Game
         {
             ItemSlotGui.Fill(header, HeaderColour);
             float right = header.x + width;
-            SortButton(new Rect(header.x + ArrowWidth, header.y, width - ArrowWidth - ColumnWidth * 3f, header.height), "Name", ListSort.Name, TextAnchor.MiddleLeft, items);
+            float typeWidth = TypeWidth;
+            SortButton(new Rect(header.x + ArrowWidth, header.y, width - ArrowWidth - ColumnWidth * 3f - typeWidth, header.height), "Name", ListSort.Name, TextAnchor.MiddleLeft, items);
+            // The Type header opens its filter menu, and says which type is shown.
+            typeHeader = new Rect(right - ColumnWidth * 3f - typeWidth, header.y, typeWidth, header.height);
+            headerStyle.alignment = TextAnchor.MiddleLeft;
+            if (typeFilter != null)
+            {
+                ItemSlotGui.Fill(typeHeader, new Color(1f, 0.85f, 0.3f, 0.2f));
+            }
+            GUI.Label(new Rect(typeHeader.x + 6f, typeHeader.y, typeHeader.width - 8f, typeHeader.height), (typeFilter != null ? typeFilter.Value.ToString() : "Type") + " ▾", headerStyle);
+            if (GUI.Button(typeHeader, GUIContent.none, GUIStyle.none))
+            {
+                typeMenuOpen = !typeMenuOpen;
+            }
             SortButton(new Rect(right - ColumnWidth * 3f, header.y, ColumnWidth, header.height), "Val", ListSort.Value, TextAnchor.MiddleRight, items);
             SortButton(new Rect(right - ColumnWidth * 2f, header.y, ColumnWidth, header.height), "Qual", ListSort.Quality, TextAnchor.MiddleRight, items);
             SortButton(new Rect(right - ColumnWidth, header.y, ColumnWidth, header.height), "Qty", ListSort.Quantity, TextAnchor.MiddleRight, items);
         }
+
+        private float TypeWidth => ColumnWidth * 1.15f;
 
         // A column's header sorts by it; again turns the order round. Names start A to Z, numbers high to low.
         private void SortButton(Rect rect, string label, ListSort by, TextAnchor anchor, Inventory items)
@@ -361,10 +450,6 @@ namespace Clube.Game
                 return;
             }
             ItemSlotGui.Fill(rect, index % 2 == 0 ? RowEven : RowOdd);
-            if (row.Equipped)
-            {
-                ItemSlotGui.Fill(rect, EquippedColour);
-            }
             bool selected = selectedCollection ? row.IsCollection && row.Item == selectedItem : !row.IsCollection && row.Slot == selectedSlot && row.Item == selectedItem;
             if (selected || (pressedSlot == row.Slot && pressedCollection == row.IsCollection))
             {
@@ -398,7 +483,8 @@ namespace Clube.Game
             {
                 name += "  <color=#f2c040>(equipped)</color>";
             }
-            GUI.Label(new Rect(x, rect.y, right - ColumnWidth * 3f - x, rect.height), name, nameStyle);
+            GUI.Label(new Rect(x, rect.y, right - ColumnWidth * 3f - TypeWidth - x, rect.height), name, nameStyle);
+            GUI.Label(new Rect(right - ColumnWidth * 3f - TypeWidth + 6f, rect.y, TypeWidth - 8f, rect.height), row.Item.Type.ToString(), nameStyle);
 
             columnStyle.normal.textColor = Color.white;
             GUI.Label(new Rect(right - ColumnWidth * 3f, rect.y, ColumnWidth - 12f, rect.height), ListColumns.Coins(row.Value), columnStyle);

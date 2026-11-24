@@ -66,6 +66,8 @@ namespace Clube.Game
             }
             drag.Reset();
             chestDrag.Reset();
+            chestList.Reset();
+            itemList.Reset();
             openedFrame = Time.frameCount;
             if (player != null)
             {
@@ -224,7 +226,18 @@ namespace Clube.Game
                     chest.MoveTo(slot, items);
                 }
             }
-            GUI.Label(new Rect(right.x, y, half, 28f), "Your items: click to store (Shift half, Ctrl one)");
+            GUI.Label(new Rect(right.x, y, half - 130f, 28f), "Your items: click to store (Shift half, Ctrl one)");
+            // Everything listed goes in (only the filtered type when the Type column filters); what's in your hands stays.
+            if (GameUi.Button(new Rect(right.xMax - 120f, y - 2f, 120f, 28f), "Place all"))
+            {
+                for (int slot = 0; slot < items.SlotCount; slot++)
+                {
+                    if (!items[slot].IsEmpty && !inventory.IsHandSlot(slot) && itemList.Shows(items, slot))
+                    {
+                        items.MoveTo(slot, chest);
+                    }
+                }
+            }
 
             itemList.Equipped = inventory.IsHandSlot;
             ListResult fromChest = chestList.Draw(left, chest);

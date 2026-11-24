@@ -8,8 +8,8 @@ namespace Clube.Game
     /// The list inventory's HUD (prototype), in place of the hotbar: two slots in the lower right, what the left and right
     /// hands hold ("Left hand / Empty" when nothing), with the coins under them (<see cref="PlayerWallet"/> sits in
     /// <see cref="CoinsRect"/>). While the wheel steps a hand, all five of that hand's slots show in a column above it, in a
-    /// fixed order, with an outline on the one picked; the hand's own slot takes the picked one once the column has faded, and
-    /// the column fades away a moment after the wheel stops.
+    /// fixed order, with an outline on the one picked; the hand's own slot shows the picked one at once, and the
+    /// column fades away a moment after the wheel stops.
     /// </summary>
     public sealed class HandSlotsView
     {
@@ -28,8 +28,6 @@ namespace Clube.Game
         private readonly RectTransform stackRoot;
         private readonly CanvasGroup stackFade;
         private readonly ItemSlotView[] stack = new ItemSlotView[PlayerInventory.HandSlots];
-        // What each hand's HUD slot shows: held at the last settled pick while the wheel steps that hand.
-        private int shownRight = -1, shownLeft = -1;
         private bool stackLeft;
 
         public HandSlotsView()
@@ -88,18 +86,9 @@ namespace Clube.Game
                 stackLeft = hotbar.LastStepLeft;
                 Layout();
             }
-            // The stepped hand's own slot keeps what it showed until the column is gone; the other hand's follows at once.
+            // Each hand's slot shows what it holds at once, the outlined slot of the column while the wheel steps it.
             bool columnShown = alpha > 0f;
-            if (!columnShown || stackLeft || shownRight < 0)
-            {
-                shownRight = hotbar.Selected;
-            }
-            if (!columnShown || !stackLeft || shownLeft < 0)
-            {
-                shownLeft = hotbar.LeftSelected;
-            }
-            ItemStack l = inventory.Inventory[inventory.LeftHandSlot(shownLeft)];
-            ItemStack r = inventory.Inventory[inventory.RightHandSlot(shownRight)];
+            ItemStack l = hotbar.LeftStack, r = hotbar.SelectedStack;
             left.Set(l, false);
             right.Set(r, true);
             HudCanvas.SetShown(leftEmpty.gameObject, l.IsEmpty);
