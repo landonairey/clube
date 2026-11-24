@@ -147,5 +147,44 @@ namespace Clube.Core.Tests
             sacks.RemoveRange(10, 3);
             Assert.AreEqual(0, SackPiles.Plan(stacks, at, sacks).Count);
         }
+
+        [Test]
+        public void SackPiles_FiftySacksDroppedOneByOne_EndAsOneStack()
+        {
+            // GL857: fifty axes crafted with a full inventory, each dropped in its own sack, the heap spreading as it grows
+            // (sacks tumble off each other, the player turns): the last lie 4.2 m from the first, past Radius, yet one pile. Merged the way
+            // DroppedItems does it, after every drop.
+            ItemDefinition axe = ToolDefinition.Create("hand-axe", "Hand axe", 1, 1f);
+            var stacks = new List<ItemStack>();
+            var at = new List<Vector3>();
+            var sacks = new List<int>();
+            for (int drop = 0; drop < 50; drop++)
+            {
+                float turn = drop * 2.4f;
+                float reach = 0.15f * Mathf.Sqrt(drop) * 4f;
+                stacks.Add(new ItemStack(axe, 1));
+                at.Add(new Vector3(Mathf.Cos(turn) * reach, 0f, Mathf.Sin(turn) * reach));
+                sacks.Add(1);
+                List<List<int>> plan = SackPiles.Plan(stacks, at, sacks);
+                var gone = new List<int>();
+                foreach (List<int> group in plan)
+                {
+                    for (int i = 1; i < group.Count; i++)
+                    {
+                        sacks[group[0]] += sacks[group[i]];
+                        gone.Add(group[i]);
+                    }
+                }
+                gone.Sort();
+                for (int i = gone.Count - 1; i >= 0; i--)
+                {
+                    stacks.RemoveAt(gone[i]);
+                    at.RemoveAt(gone[i]);
+                    sacks.RemoveAt(gone[i]);
+                }
+            }
+            Assert.AreEqual(1, stacks.Count);
+            Assert.AreEqual(50, sacks[0]);
+        }
     }
 }

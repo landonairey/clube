@@ -246,6 +246,12 @@ namespace Clube.Game
                     }
                 }
             }
+            // GL857: the merge was written for GL837 but never called, so no pile ever merged.
+            if (Time.time >= nextMerge)
+            {
+                nextMerge = Time.time + MergeSeconds;
+                MergePiles();
+            }
         }
 
         // True when any part of the item, at its centre or its top, is inside solid terrain (GL685).
