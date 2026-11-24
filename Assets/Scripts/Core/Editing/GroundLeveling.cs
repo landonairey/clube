@@ -396,19 +396,17 @@ namespace Clube.Core
             // A road through a wood (TreeReach): the cut stops a little way out, or touching crowns would take the wood with them.
             int reach = area.TreeReach > 0f ? Mathf.CeilToInt(area.TreeReach / grid.VoxelSize) : int.MaxValue / 4;
             var within = new RectInt(low.x - reach, low.z - reach, high.x - low.x + 2 * reach, high.z - low.z + 2 * reach);
-            var cutOff = area.TreeReach > 0f ? new List<Vector3Int>() : null;
+            // GL862: also what a cut stopped short of when it reached its most samples (a wood whose crowns all touch).
+            var cutOff = new List<Vector3Int>();
             var flood = new PlantFlood(world, materials, front, seen, floorY, iso, MaxTreeSamples * 20, area.TreeReach > 0f ? within : (RectInt?)null, cutOff);
             while (!flood.Step(SamplesPerStep))
             {
                 yield return null;
             }
-            if (cutOff != null)
+            var severed = new SeveredParts(world, materials, cutOff, iso);
+            while (!severed.Step(SamplesPerStep))
             {
-                var severed = new SeveredParts(world, materials, cutOff, iso);
-                while (!severed.Step(SamplesPerStep))
-                {
-                    yield return null;
-                }
+                yield return null;
             }
         }
 
@@ -563,18 +561,27 @@ namespace Clube.Core
             }
         }
 
-        // Empties every solid plant sample joined to the ones in front, never below floorY.
+        // Empties every solid plant sample joined to the ones in front, never below floorY, up to `most`; then what that left
+        // hanging (GL862).
         private static void FloodClear(World world, MaterialRegistry materials, Stack<Vector3Int> front, HashSet<Vector3Int> seen, int floorY, float iso, int most)
         {
-            new PlantFlood(world, materials, front, seen, floorY, iso, most, null, null).Step(int.MaxValue);
+            var cutOff = new List<Vector3Int>();
+            new PlantFlood(world, materials, front, seen, floorY, iso, most, null, cutOff).Step(int.MaxValue);
+            new SeveredParts(world, materials, cutOff, iso).Step(int.MaxValue);
         }
 
         // The flood of a cut, a few samples at a time.
+        // GL862: it spreads breadth first, and a sample it has taken up is always cleared. It used to run depth first off a
+        // stack and stop the moment it had taken up `most` samples: in a wood whose crowns all touch (round the capital on
+        // seed 391376) the stack had run along lines of samples, and stopping left every sample still on it standing between
+        // the cleared lines, so the crowns stood in one-sample sheets. Now a flood that reaches `most` spreads no further
+        // sideways, clears what it has (a compact cut round where it started, whole columns), and hands the plant samples
+        // past it to `cutOff`, as it does those past `within`, for SeveredParts to clear what no longer stands.
         private sealed class PlantFlood
         {
             private readonly World world;
             private readonly MaterialRegistry materials;
-            private readonly Stack<Vector3Int> front;
+            private readonly Queue<Vector3Int> front;
             private readonly HashSet<Vector3Int> seen;
             private readonly int floorY;
             private readonly float iso;
@@ -582,11 +589,11 @@ namespace Clube.Core
             private readonly RectInt? within;
             private readonly List<Vector3Int> cutOff;
 
-            public PlantFlood(World world, MaterialRegistry materials, Stack<Vector3Int> front, HashSet<Vector3Int> seen, int floorY, float iso, int most, RectInt? within, List<Vector3Int> cutOff)
+            public PlantFlood(World world, MaterialRegistry materials, IEnumerable<Vector3Int> start, HashSet<Vector3Int> seen, int floorY, float iso, int most, RectInt? within, List<Vector3Int> cutOff)
             {
                 this.world = world;
                 this.materials = materials;
-                this.front = front;
+                front = new Queue<Vector3Int>(start);
                 this.seen = seen;
                 this.floorY = floorY;
                 this.iso = iso;
@@ -598,13 +605,13 @@ namespace Clube.Core
             // Empties up to this many samples; true once the flood has run out.
             public bool Step(int samples)
             {
-                while (front.Count > 0 && seen.Count < most)
+                while (front.Count > 0)
                 {
                     if (samples-- <= 0)
                     {
                         return false;
                     }
-                    Vector3Int sample = front.Pop();
+                    Vector3Int sample = front.Dequeue();
                     world.SetDensity(sample, 0f);
                     foreach (Vector3Int step in Around)
                     {
@@ -616,8 +623,15 @@ namespace Clube.Core
                         }
                         if (next.y >= floorY && !seen.Contains(next) && Read(world, next, out _) >= iso && IsPlant(world, materials, next))
                         {
+                            // Past `most` only up and down: a column it entered goes whole, so the cut stops at upright
+                            // walls and what is left keeps its full depth (a slanted edge left one-sample slivers).
+                            if (seen.Count >= most && step.y == 0)
+                            {
+                                cutOff?.Add(next);
+                                continue;
+                            }
                             seen.Add(next);
-                            front.Push(next);
+                            front.Enqueue(next);
                         }
                     }
                 }
