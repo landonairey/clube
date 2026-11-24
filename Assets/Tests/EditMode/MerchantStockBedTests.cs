@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Clube.Core;
 using NUnit.Framework;
 using UnityEditor;
@@ -19,7 +20,7 @@ namespace Clube.Core.Tests
             var wood = ScriptableObject.CreateInstance<ItemDefinition>();
             PriceList list = PriceList.Create(new ItemPrice(own, 4), new ItemPrice(stone, 1, 10), new ItemPrice(wood, 5));
             list.SetSoldEverywhere(stone, wood);
-            ShopSpecialty shop = ShopSpecialty.Create(ShopKind.Blacksmith, "Smith", new ItemDefinition[0], new[] { own, wood }, 1.5f);
+            ShopSpecialty shop = ShopSpecialty.Create(ShopKind.Blacksmith, "Smith", new ItemDefinition[0], new[] { own, wood }, 1.5f).WithBasics();
             List<ItemPrice> offers = shop.Offers(list);
             Assert.AreEqual(3, offers.Count);
             Assert.AreEqual(1, offers.FindAll(o => o.Item == wood).Count);
@@ -30,7 +31,7 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void EveryGameShop_SellsStoneAndBirchWood_AtSanePrices()
+        public void OnlyTheMerchant_SellsStoneAndBirchWood_AtSanePrices()
         {
             var prices = AssetDatabase.LoadAssetAtPath<PriceList>(Economy + "Merchant prices.asset");
             var stone = AssetDatabase.LoadAssetAtPath<ItemDefinition>("Assets/Config/Items/Stone.asset");
@@ -49,14 +50,42 @@ namespace Clube.Core.Tests
                 shops.Add(specialty.ToShop(catalog));
             }
             Assert.Greater(shops.Count, 5);
+            int merchants = 0;
             foreach (ShopSpecialty shop in shops)
             {
                 List<ItemPrice> offers = shop.Offers(prices);
+                bool isMerchant = shop.Kind == ShopKind.Wares && shop.BuysEverything;
+                Assert.AreEqual(isMerchant, shop.SellsBasics, shop.ShopName);
+                merchants += isMerchant ? 1 : 0;
                 foreach (ItemDefinition item in new[] { stone, birch })
                 {
                     ItemPrice offer = offers.Find(o => o.Item == item);
-                    Assert.IsNotNull(offer.Item, $"{shop.ShopName} doesn't sell {item.DisplayName}");
-                    Assert.That(offer.Coins, Is.InRange(1, 20), $"{shop.ShopName}: {item.DisplayName} costs {offer.Coins}");
+                    if (isMerchant)
+                    {
+                        Assert.IsNotNull(offer.Item, $"{shop.ShopName} doesn't sell {item.DisplayName}");
+                        Assert.That(offer.Coins, Is.InRange(1, 20), $"{shop.ShopName}: {item.DisplayName} costs {offer.Coins}");
+                    }
+                    else if (!shop.Sells.Contains(item))
+                    {
+                        Assert.IsNull(offer.Item, $"{shop.ShopName} (not a Merchant) sells {item.DisplayName} (GL855)");
+                    }
+                }
+            }
+            Assert.Greater(merchants, 0);
+        }
+
+        [Test]
+        public void LeatheryAndMiningShop_AddNothingToTheirOwnStock()
+        {
+            var prices = AssetDatabase.LoadAssetAtPath<PriceList>(Economy + "Merchant prices.asset");
+            var catalog = AssetDatabase.LoadAssetAtPath<ItemCatalog>("Assets/Config/Items/ItemCatalog.asset");
+            var mining = AssetDatabase.LoadAssetAtPath<ShopSpecialty>(Economy + "Shops/Mining Shop.asset");
+            ShopSpecialty leathery = EconomySpecialty.Defaults().Find(s => s.Id == "leathery").ToShop(catalog);
+            foreach (ShopSpecialty shop in new[] { mining, leathery })
+            {
+                foreach (ItemPrice offer in shop.Offers(prices))
+                {
+                    Assert.IsTrue(shop.Sells.Contains(offer.Item), $"{shop.ShopName} sells {offer.Item.DisplayName}, which is not in its own stock");
                 }
             }
         }

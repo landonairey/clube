@@ -31,11 +31,12 @@ namespace Clube.Core
 
         /// <summary>
         /// Coins of trade that raise the disposition from <paramref name="value"/> to the next point (GL769, GL830): the user's
-        /// fit <c>5.619 * exp(0.057575 * value)</c> (about 10c at 10, 100c at 50, 1000c at 90), never below the cost at the start.
+        /// fit <c>round(5.619 * exp(0.057575 * value))</c>, in whole coins (6c at 0, 10c at 10, 100c at 50, 1000c at 90). GL854: no
+        /// clamp at the start, so a keeper at 0 costs 6c a point, not 10c.
         /// </summary>
         public static float CoinsForPoint(int value)
         {
-            return 5.619f * Mathf.Exp(0.057575f * Mathf.Max(Start, value));
+            return Mathf.Round(5.619f * Mathf.Exp(0.057575f * Mathf.Clamp(value, 0, Max)));
         }
 
         /// <summary>Coins of trade it takes to go from disposition <paramref name="from"/> up to <paramref name="to"/>.</summary>

@@ -108,7 +108,7 @@ namespace Clube.Game
             }
             // Into a holding wallet first, so a trader with a purse (GL426) pays only what they have.
             if (Current.Purse != null && Current.Prices.TryGetLot(item, out int coins, out int lot)
-                && !CanPay(Mathf.Min(count, inventory.Inventory.Count(item)) / lot * coins * inventory.Inventory.QualityOf(item) * Current.Prices.Share))
+                && !CanPay(Current.Prices.Paid(Mathf.Min(count, inventory.Inventory.Count(item)) / lot * coins * inventory.Inventory.QualityOf(item), Mathf.Min(count, inventory.Inventory.Count(item)) / (float)lot)))
             {
                 return 0;
             }

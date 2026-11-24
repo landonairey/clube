@@ -58,11 +58,11 @@ namespace Clube.Core.Tests
         [Test]
         public void Disposition_CoinsForPoint_FollowsTheUsersEquation()
         {
-            for (int value = 10; value < Disposition.Max; value += 9)
+            for (int value = 0; value < Disposition.Max; value += 9)
             {
-                Assert.AreEqual(5.619f * Mathf.Exp(0.057575f * value), Disposition.CoinsForPoint(value), 1e-3f, $"at {value}");
+                Assert.AreEqual(Mathf.Round(5.619f * Mathf.Exp(0.057575f * value)), Disposition.CoinsForPoint(value), 1e-3f, $"at {value}");
             }
-            Assert.AreEqual(47.3f, Disposition.CoinsForPoint(37), 0.1f);
+            Assert.AreEqual(47f, Disposition.CoinsForPoint(37));
         }
 
         [Test]
@@ -71,7 +71,7 @@ namespace Clube.Core.Tests
             Assert.AreEqual(10f, Disposition.CoinsForPoint(Disposition.Start), 0.05f);
             Assert.AreEqual(100f, Disposition.CoinsForPoint(50), 0.2f);
             Assert.AreEqual(1000f, Disposition.CoinsForPoint(90), 0.5f);
-            Assert.AreEqual(Disposition.CoinsForPoint(Disposition.Start), Disposition.CoinsForPoint(0), "no cheaper below the start");
+            Assert.AreEqual(6f, Disposition.CoinsForPoint(0), "GL854: 6c at 0, not clamped to the start");
             for (int value = 1; value < Disposition.Max; value++)
             {
                 Assert.GreaterOrEqual(Disposition.CoinsForPoint(value), Disposition.CoinsForPoint(value - 1), $"at {value}");
@@ -106,6 +106,35 @@ namespace Clube.Core.Tests
             var warm = new Disposition(75);
             Assert.AreEqual(63, warm.SellingPrice(50)); // 62.5 rounds up
             Assert.AreEqual(0.75f, warm.PayShare, 1e-5f);
+        }
+
+        [Test]
+        public void Disposition_AtZero_CostsSixCoinsAPoint_AndASalePaysOverZero()
+        {
+            Assert.AreEqual(6f, Disposition.CoinsForPoint(0), "round(5.619 * exp(0)) (GL854)");
+            var keeper = new Disposition(0);
+            Assert.AreEqual(0f, keeper.PayShare);
+            var item = ScriptableObject.CreateInstance<ItemDefinition>();
+            PriceList paid = PriceList.Create(new ItemPrice(item, 1)).Scaled(keeper.PayShare);
+            var inventory = new Inventory(4);
+            inventory.Add(item, 1);
+            var wallet = new Wallet();
+            Assert.AreEqual(1, paid.Sell(item, 1, inventory, wallet));
+            Assert.Greater(wallet.Coins, 0f, "a sale at disposition 0 pays something");
+        }
+
+        [Test]
+        public void Disposition_RisesFromZeroToOne_BySellingSixCoinsOfGoods()
+        {
+            var keeper = new Disposition(0);
+            var item = ScriptableObject.CreateInstance<ItemDefinition>();
+            PriceList paid = PriceList.Create(new ItemPrice(item, 1)).Scaled(keeper.PayShare);
+            var inventory = new Inventory(4);
+            inventory.Add(item, 6);
+            var wallet = new Wallet();
+            paid.Sell(item, 6, inventory, wallet);
+            Assert.AreEqual(1, keeper.Record(wallet.Coins), "6c of goods at 0 raises it a point");
+            Assert.AreEqual(1, keeper.Value);
         }
 
         [Test]

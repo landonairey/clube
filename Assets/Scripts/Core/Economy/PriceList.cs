@@ -154,7 +154,7 @@ namespace Clube.Core
                 // Anything else sells at its quality's share (GL130): a 70% ingot for 70% of the price.
                 value *= Math.Max(0f, stack.Quality);
             }
-            return (int)Math.Round(value * Share, MidpointRounding.AwayFromZero);
+            return (int)Math.Round(Paid(value, Math.Min(count, stack.Count) / (float)lot), MidpointRounding.AwayFromZero);
         }
 
         /// <summary>
@@ -177,7 +177,8 @@ namespace Clube.Core
             {
                 return 0f;
             }
-            float value = Math.Min(amount, stack.Amount) * coins / lot;
+            float lots = Math.Min(amount, stack.Amount) / lot;
+            float value = lots * coins;
             if (stack.Item is TorchDefinition torch)
             {
                 // A lit torch sells as an unlit one, for what's left of its burning (GL287).
@@ -193,7 +194,17 @@ namespace Clube.Core
                 // Anything else sells at its quality's share (GL130): a 70% ingot for 70% of the price.
                 value *= Math.Max(0f, stack.Quality);
             }
-            return value * Share;
+            return Paid(value, lots);
+        }
+
+        /// <summary>
+        /// GL854: what is paid for goods worth <paramref name="fair"/> coins at full price, <paramref name="lots"/> lots of them:
+        /// the share of it, but never under 1 coin a lot (or the whole fair price when that is less), so even a keeper at
+        /// disposition 0 pays something and a sale always counts as trade.
+        /// </summary>
+        public float Paid(float fair, float lots)
+        {
+            return Math.Max(fair * Share, Math.Min(fair, lots));
         }
 
         /// <summary>The most that can be sold of <paramref name="available"/> items: whole lots only (GL38).</summary>
@@ -221,7 +232,7 @@ namespace Clube.Core
             {
                 return 0;
             }
-            to.Earn(sold / lot * coins * quality * Share);
+            to.Earn(Paid(sold / lot * coins * quality, sold / (float)lot));
             return sold;
         }
     }
