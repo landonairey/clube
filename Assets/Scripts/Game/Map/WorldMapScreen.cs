@@ -59,6 +59,12 @@ namespace Clube.Game
 
         public bool IsOpen { get; private set; }
 
+        /// <summary>The map key (M); the inventory reads it to hand over to the map (GL861).</summary>
+        public InputAction ToggleAction => toggleAction != null ? toggleAction.action : null;
+
+        /// <summary>True when <see cref="Open"/> would show the map: there is a ready map session.</summary>
+        public bool CanOpen => MapSession.Current != null && MapSession.Current.IsReady;
+
         /// <summary>Whether the lab layer (resources and reasons) is drawn.</summary>
         public bool LabLayer
         {

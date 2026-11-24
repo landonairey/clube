@@ -243,7 +243,7 @@ namespace Clube.Game
         {
             if (sortedRecipes == null || sortedFor != station || sortedCount != station.Recipes.Count)
             {
-                sortedRecipes = new System.Collections.Generic.List<Recipe>(System.Linq.Enumerable.OrderBy(station.Recipes, r => r.UnlockLevel));
+                sortedRecipes = new System.Collections.Generic.List<Recipe>(System.Linq.Enumerable.OrderBy(station.ListedRecipes(), r => r.UnlockLevel));
                 sortedFor = station;
                 sortedCount = station.Recipes.Count;
             }
@@ -286,10 +286,12 @@ namespace Clube.Game
                 }
                 else
                 {
-                    bool chosen = station.Chosen == recipe;
+                    bool chosen = station.Chosen == recipe || (station.Chosen != null && station.Chosen.SwapParent == recipe);
                     if (GameUi.Button(row, (chosen ? "▶ " : "   ") + name, recipeStyle))
                     {
-                        station.Chosen = chosen ? null : recipe;
+                        // One entry for every wood (GL858): the variant the player's items can fill is the one made.
+                        Recipe variant = chosen ? null : station.VariantFor(recipe, items);
+                        station.Chosen = variant;
                         if (!chosen)
                         {
                             // What the last recipe made goes to the inventory, so it can't block the new one (GL444).
@@ -297,7 +299,7 @@ namespace Clube.Game
                             {
                                 station.Output.MoveTo(0, items, keepApart: true);
                             }
-                            station.LoadFor(recipe, items);
+                            station.LoadFor(variant, items);
                         }
                     }
                 }
@@ -454,7 +456,7 @@ namespace Clube.Game
                 return "?";
             }
             string name = $"{recipe.Output.Count} {recipe.Output.Item.DisplayName}";
-            foreach (Recipe other in station.Recipes)
+            foreach (Recipe other in station.ListedRecipes())
             {
                 if (other != recipe && other.Output.Item == recipe.Output.Item && other.IsInSightFor(station.Learner))
                 {

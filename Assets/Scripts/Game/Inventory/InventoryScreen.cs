@@ -98,6 +98,15 @@ namespace Clube.Game
                 SetOpen(true);
                 return;
             }
+            // M in the inventory closes it and opens the map (GL861). The map opens this frame, so its own M check
+            // (opened this frame, or a screen closed this frame) can't toggle it back.
+            if (map != null && map.ToggleAction != null && map.ToggleAction.WasPressedThisFrame()
+                && InventoryKeys.MapReplacesInventory(IsOpen, map.CanOpen))
+            {
+                SetOpen(false);
+                map.Open();
+                return;
+            }
             if (IsOpen && fieldLog != null && !fieldLog.Blocked && fieldLog.ToggleAction != null && fieldLog.ToggleAction.WasPressedThisFrame())
             {
                 SetOpen(false);

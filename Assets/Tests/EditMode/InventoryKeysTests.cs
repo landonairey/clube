@@ -18,6 +18,14 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void MSwitchesFromTheOpenInventoryToTheMapOnlyWhenThereIsOne()
+        {
+            Assert.IsTrue(InventoryKeys.MapReplacesInventory(true, true));
+            Assert.IsFalse(InventoryKeys.MapReplacesInventory(true, false));
+            Assert.IsFalse(InventoryKeys.MapReplacesInventory(false, true));
+        }
+
+        [Test]
         public void EUsesWhatIsAimedAtInstead()
         {
             Assert.AreEqual(InventoryKeys.Result.Nothing, InventoryKeys.OnInteract(false, false, false, true));

@@ -48,6 +48,34 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void ListedRecipes_ShowOneEntryWhoseVariantFollowsTheWoodHeld_AndCraftsWithEither()
+        {
+            ItemDefinition birch = ItemDefinition.Create("wood", "Birch wood");
+            ItemDefinition pine = ItemDefinition.Create("pine-wood", "Pine wood");
+            Recipe shovel = Recipe.Create(StationKind.Anvil, new ItemAmount(ingot, 1), RecipeWork.Strikes, 2f,
+                new ItemAmount(ore, 1), new ItemAmount(birch, 2)).WithSwap(birch, pine);
+            var station = new CraftingStation(StationKind.Anvil, new[] { shovel });
+            Assert.AreEqual(2, station.Recipes.Count);
+            CollectionAssert.AreEqual(new[] { shovel }, station.ListedRecipes(), "One entry for both woods.");
+
+            var withPine = new Inventory(4);
+            withPine.Add(ore, 1);
+            withPine.Add(pine, 2);
+            Recipe chosen = station.VariantFor(shovel, withPine);
+            Assert.IsTrue(chosen.Takes(pine) && !chosen.Takes(birch));
+            station.Chosen = chosen;
+            station.LoadFor(chosen, withPine);
+            for (int strikes = 0; strikes < 50 && station.Strike(); strikes++) { }
+            Assert.AreEqual(1, station.Output.Count(ingot), "Made with pine wood.");
+
+            var withBirch = new Inventory(4);
+            withBirch.Add(ore, 1);
+            withBirch.Add(birch, 2);
+            Assert.AreSame(shovel, station.VariantFor(shovel, withBirch), "Birch is the plain recipe.");
+            Object.DestroyImmediate(shovel);
+        }
+
+        [Test]
         public void SwapVariants_TwoSwappedInputsMakeEveryCombination()
         {
             ItemDefinition oak = ItemDefinition.Create("oak-boards", "Oak boards");

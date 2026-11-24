@@ -93,8 +93,9 @@ namespace Clube.Core
             }
             float from = ExperienceFor(level);
             float needed = ExperienceFor(level + 1) - from;
-            int into = Mathf.Clamp(Mathf.FloorToInt(experience - from + 1e-3f), 0, Mathf.RoundToInt(needed));
-            return $"{into}/{Mathf.RoundToInt(needed)}";
+            // One decimal place for the XP so far (GL856), cut rather than rounded so it never reads as the full amount early.
+            float into = Mathf.Clamp(Mathf.Floor((experience - from) * 10f + 1e-2f) / 10f, 0f, needed);
+            return $"{into.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}/{Mathf.RoundToInt(needed)}";
         }
 
         /// <inheritdoc cref="ProgressText(float)"/>
