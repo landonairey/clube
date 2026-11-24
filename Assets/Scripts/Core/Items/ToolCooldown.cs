@@ -4,8 +4,8 @@ namespace Clube.Core
 {
     /// <summary>
     /// How long the player waits between uses of a tool (GL270): a second, a quarter less with bare hands, and a quarter
-    /// less again at dawn (the early bird's bonus, <see cref="DawnFrom"/> to <see cref="DawnTo"/>, from before the 04:00 sunrise to 09:00, the trout's hours too).
-    /// Every use waits it out, a click as much as a held button.
+    /// less again at dawn (the early bird's bonus: every day from <see cref="DawnFrom"/> to <see cref="DawnTo"/>, 04:30 to
+    /// 09:30 by the in-game clock, in every scene; GL851). Every use waits it out, a click as much as a held button.
     /// </summary>
     /// <remarks>Plain math.</remarks>
     public static class ToolCooldown
@@ -19,21 +19,15 @@ namespace Clube.Core
         /// <summary>At dawn every wait is this share: a quarter quicker.</summary>
         public const float DawnShare = 0.75f;
 
-        /// <summary>When dawn starts and ends, hours of the day.</summary>
-        public const float DawnFrom = 4f; // the 04:00 sunrise (GL835: it started at 02:30)
-        public const float DawnTo = 9f;
+        /// <summary>When dawn starts and ends, hours of the day (GL851: one window; GL835's 04:00 and the tutorial's own are gone).</summary>
+        public const float DawnFrom = 4.5f;
+        public const float DawnTo = 9.5f;
 
         /// <summary>True at dawn, when the early bird's bonus holds.</summary>
         public static bool IsDawn(float hour)
         {
-            return IsDawn(hour, DawnFrom, DawnTo);
-        }
-
-        /// <summary>True when the hour falls in a bonus window (the tutorial's is its first work hours, GL565).</summary>
-        public static bool IsDawn(float hour, float from, float to)
-        {
             float h = Mathf.Repeat(hour, 24f);
-            return h >= from && h < to;
+            return h >= DawnFrom && h < DawnTo;
         }
 
         /// <summary>
@@ -42,13 +36,7 @@ namespace Clube.Core
         /// </summary>
         public static float SecondsFor(bool hands, float hour, float boost = 1f)
         {
-            return SecondsFor(hands, hour, boost, DawnFrom, DawnTo);
-        }
-
-        /// <summary>The same with its own bonus window.</summary>
-        public static float SecondsFor(bool hands, float hour, float boost, float dawnFrom, float dawnTo)
-        {
-            return Seconds * (hands ? HandShare : 1f) * (IsDawn(hour, dawnFrom, dawnTo) ? DawnShare : 1f) * Mathf.Clamp(boost, 0.1f, 1f);
+            return Seconds * (hands ? HandShare : 1f) * (IsDawn(hour) ? DawnShare : 1f) * Mathf.Clamp(boost, 0.1f, 1f);
         }
     }
 }

@@ -118,13 +118,15 @@ namespace Clube.Core.Tests
         {
             Assert.AreEqual(1f, ToolCooldown.SecondsFor(false, 12f), 1e-5f);
             Assert.AreEqual(0.75f, ToolCooldown.SecondsFor(true, 12f), 1e-5f, "Hands are a quarter quicker.");
-            Assert.AreEqual(0.75f, ToolCooldown.SecondsFor(false, 4f), 1e-5f, "The early bird's bonus at dawn.");
-            Assert.AreEqual(0.5625f, ToolCooldown.SecondsFor(true, 4f), 1e-5f, "Both together.");
-            Assert.IsTrue(ToolCooldown.IsDawn(7f), "Dawn runs to 09:00.");
-            Assert.IsFalse(ToolCooldown.IsDawn(9.1f));
+            Assert.AreEqual(0.75f, ToolCooldown.SecondsFor(false, 5f), 1e-5f, "The early bird's bonus at dawn.");
+            Assert.AreEqual(0.5625f, ToolCooldown.SecondsFor(true, 5f), 1e-5f, "Both together.");
+            Assert.IsTrue(ToolCooldown.IsDawn(7f), "Dawn runs to 09:30.");
+            Assert.IsFalse(ToolCooldown.IsDawn(9.5f), "09:30 is off.");
+            Assert.IsTrue(ToolCooldown.IsDawn(9.49f));
             Assert.IsFalse(ToolCooldown.IsDawn(2f));
-            Assert.IsFalse(ToolCooldown.IsDawn(3.9f), "GL835: not before the 04:00 sunrise.");
-            Assert.IsTrue(ToolCooldown.IsDawn(4f));
+            Assert.IsFalse(ToolCooldown.IsDawn(4.49f), "GL851: 04:29 is off.");
+            Assert.IsTrue(ToolCooldown.IsDawn(4.5f), "GL851: 04:30 is on.");
+            Assert.IsTrue(ToolCooldown.IsDawn(24f + 5f), "every day");
         }
 
         [Test]

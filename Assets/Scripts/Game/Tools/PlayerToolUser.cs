@@ -551,30 +551,18 @@ namespace Clube.Game
         /// </summary>
         public float CooldownFor(ToolDefinition tool)
         {
-            return ToolCooldown.SecondsFor(tool == hand, Hour, consumables != null ? consumables.CooldownShare : 1f, dawnFrom, dawnTo);
+            return ToolCooldown.SecondsFor(tool == hand, Hour, consumables != null ? consumables.CooldownShare : 1f);
         }
 
         /// <summary>True at dawn, when tools are quicker (the early bird's bonus, GL270).</summary>
-        public bool EarlyBird => ToolCooldown.IsDawn(Hour, dawnFrom, dawnTo);
+        public bool EarlyBird => ToolCooldown.IsDawn(Hour);
 
         /// <summary>Hour the early bird's bonus ends.</summary>
-        public float EarlyBirdEnds => dawnTo;
-
-        /// <summary>
-        /// Moves the early bird's window (GL565): the tutorial's workers can't dig before 09:00, so its bonus is the first
-        /// work hours instead of the small hours, and holds every day.
-        /// </summary>
-        public void SetEarlyBirdWindow(float from, float to)
-        {
-            dawnFrom = from;
-            dawnTo = to;
-        }
+        public float EarlyBirdEnds => ToolCooldown.DawnTo;
 
         /// <summary>Asked before every swing (GL555): a hint while digging is not allowed (the tutorial's work hours), or null.</summary>
         public System.Func<string> Lockout { get; set; }
 
-        private float dawnFrom = ToolCooldown.DawnFrom;
-        private float dawnTo = ToolCooldown.DawnTo;
         private string lockHint;
         private float lockHintUntil;
 
@@ -588,7 +576,7 @@ namespace Clube.Game
             }
         }
 
-        // The hour of the day, from the world's sky; noon without one.
+        // The hour of the day on the world's clock; noon without one.
         private float Hour
         {
             get
@@ -597,7 +585,8 @@ namespace Clube.Game
                 {
                     dayNight = worldView.GetComponent<DayNightCycle>();
                 }
-                return dayNight != null ? dayNight.Hour : 12f;
+                // GL851: the clock's hour, not the sky's: a frozen sky (Graphics settings) must not stop the early bird's bonus.
+                return dayNight != null ? dayNight.ClockHour : 12f;
             }
         }
 

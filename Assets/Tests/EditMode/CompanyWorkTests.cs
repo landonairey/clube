@@ -25,14 +25,6 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void EarlyBirdWindowCanBeMovedToTheWorkHours()
-        {
-            Assert.AreEqual(0.75f, ToolCooldown.SecondsFor(false, 10f, 1f, 9f, 11f), 1e-5f);
-            Assert.AreEqual(1f, ToolCooldown.SecondsFor(false, 12f, 1f, 9f, 11f), 1e-5f);
-            Assert.AreEqual(1f, ToolCooldown.SecondsFor(false, 4f, 1f, 9f, 11f), 1e-5f, "the small hours no longer count");
-        }
-
-        [Test]
         public void DiggingIsAllowedOnlyFromNineToFive()
         {
             Assert.IsFalse(CompanyWork.IsWorkHour(8.99f));
