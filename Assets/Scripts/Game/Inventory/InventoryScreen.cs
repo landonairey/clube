@@ -333,7 +333,7 @@ namespace Clube.Game
             }
             var inner = new Rect(area.x + 12f, area.y + 12f, area.width - 24f, area.height - 24f);
             ItemStack stack = items[row.Slot];
-            ItemSlotGui.Draw(new Rect(inner.x, inner.y, 112f, 112f), stack, false);
+            ItemSlotGui.Draw(new Rect(inner.x, inner.y, 112f, 112f), row.IsCollection ? CollectionStack(row, items) : stack, false);
             var style = new GUIStyle(GUI.skin.label) { wordWrap = true, richText = true, alignment = TextAnchor.UpperLeft };
             float y = inner.y + 124f;
             string text = row.IsCollection
@@ -362,6 +362,28 @@ namespace Clube.Game
             {
                 items.MoveInto(row.Slot, 0, inventory.BagSlots);
             }
+        }
+
+        // One stack standing for a whole collection: its total amount, with wear and quality averaged by amount, so the
+        // details slot matches the summary beside it.
+        private static ItemStack CollectionStack(ListRow row, Inventory items)
+        {
+            float total = 0f, wear = 0f, quality = 0f;
+            ItemStack first = items[row.Slot];
+            foreach (int slot in row.Slots)
+            {
+                ItemStack part = items[slot];
+                total += part.Amount;
+                wear += part.Wear * part.Amount;
+                quality += part.Quality * part.Amount;
+            }
+            if (total <= 0f)
+            {
+                return first;
+            }
+            int whole = Mathf.FloorToInt(total + ItemStack.PartEpsilon);
+            float rest = total - whole;
+            return new ItemStack(row.Item, whole, first.Contents, Mathf.RoundToInt(wear / total), quality / total, rest > ItemStack.PartEpsilon ? rest : 0f);
         }
 
         // Sort (GL174) tidies the backpack, or every item slot past the tool slot; the hotbar stays as the player

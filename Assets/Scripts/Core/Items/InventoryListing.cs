@@ -164,7 +164,24 @@ namespace Clube.Core
             {
                 by = string.Compare(a.Item.DisplayName, b.Item.DisplayName, StringComparison.OrdinalIgnoreCase);
             }
-            return by != 0 ? by : a.Slot.CompareTo(b.Slot);
+            if (by != 0)
+            {
+                return by;
+            }
+            // Equipping moves a stack into a hand slot, so the slot number can't settle ties without the order jumping.
+            // Break them on what the row holds instead; only rows identical in every column fall back to equipped, then slot.
+            if (a.Item == b.Item)
+            {
+                by = a.Quality.CompareTo(b.Quality);
+                by = by != 0 ? by : a.Value.CompareTo(b.Value);
+                by = by != 0 ? by : a.Amount.CompareTo(b.Amount);
+                by = by != 0 ? by : (b.Equipped ? 1 : 0).CompareTo(a.Equipped ? 1 : 0);
+                if (by != 0)
+                {
+                    return by;
+                }
+            }
+            return a.Slot.CompareTo(b.Slot);
         }
     }
 }

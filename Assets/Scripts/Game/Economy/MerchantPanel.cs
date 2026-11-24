@@ -799,10 +799,7 @@ namespace Clube.Game
             ListResult picked = playerList.Draw(playerArea, items);
             if (picked.Kind == InventoryDragKind.Clicked && picked.Row != null)
             {
-                foreach (int slot in picked.Row.IsCollection ? picked.Row.Slots : new[] { picked.Row.Slot })
-                {
-                    cart.Add(MerchantCart.Side.Sell, slot, items[slot].Item, items[slot].Amount);
-                }
+                cart.Add(MerchantCart.Side.Sell, picked.Row.Slots, picked.Row.Item, picked.Row.Amount);
                 playerList.ClearSelection();
             }
 
@@ -813,10 +810,12 @@ namespace Clube.Game
             ListResult bought = stockList.Draw(stockArea, stock);
             if ((bought.Kind == InventoryDragKind.Clicked || bought.Kind == InventoryDragKind.RightClicked) && bought.Row != null)
             {
-                foreach (int slot in bought.Row.IsCollection ? bought.Row.Slots : new[] { bought.Row.Slot })
+                float first = 0f;
+                foreach (int slot in bought.Row.Slots)
                 {
-                    cart.Add(MerchantCart.Side.Buy, slot, stock[slot].Item, BuyFirst(slot));
+                    first += BuyFirst(slot);
                 }
+                cart.Add(MerchantCart.Side.Buy, bought.Row.Slots, bought.Row.Item, first);
                 stockList.ClearSelection();
             }
             DrawTraining(right.x, stockArea.yMax + 8f, half);
@@ -842,25 +841,25 @@ namespace Clube.Game
             return !stack.IsEmpty && prices.TryGetLot(stack.Item, out _, out _) ? prices.PriceOf(stack, amount) : 0f;
         }
 
-        ItemStack MerchantCart.ISource.StackOf(MerchantCart.Line line)
+        ItemStack MerchantCart.ISource.StackOf(MerchantCart.Side side, int slot)
         {
-            Inventory from = line.Side == MerchantCart.Side.Sell ? inventory.Inventory : stock;
-            return from != null && line.Slot >= 0 && line.Slot < from.SlotCount ? from[line.Slot] : ItemStack.Empty;
+            Inventory from = side == MerchantCart.Side.Sell ? inventory.Inventory : stock;
+            return from != null && slot >= 0 && slot < from.SlotCount ? from[slot] : ItemStack.Empty;
         }
 
-        float MerchantCart.ISource.CoinsFor(MerchantCart.Line line, float amount)
+        float MerchantCart.ISource.CoinsFor(MerchantCart.Side side, int slot, float amount)
         {
-            ItemStack stack = ((MerchantCart.ISource)this).StackOf(line);
+            ItemStack stack = ((MerchantCart.ISource)this).StackOf(side, slot);
             if (stack.IsEmpty)
             {
                 return 0f;
             }
-            if (line.Side == MerchantCart.Side.Sell)
+            if (side == MerchantCart.Side.Sell)
             {
                 return SalePrice(Current.Prices, stack, amount);
             }
             // An offer at its lot's price shared out; a shelf stack back at what they paid for it.
-            return line.Slot < Current.Offers.Count ? amount * OfferEach(line.Slot) : Current.Prices.PriceOf(stack, amount);
+            return slot < Current.Offers.Count ? amount * OfferEach(slot) : Current.Prices.PriceOf(stack, amount);
         }
 
         // The whole cart as one trade: refused when the side that comes out behind can't pay the net. What's sold goes
@@ -883,15 +882,22 @@ namespace Clube.Game
             float got = 0f, paid = 0f;
             foreach (MerchantCart.Line line in lines)
             {
-                ItemStack stack = line.Side == MerchantCart.Side.Sell ? items[line.Slot] : ItemStack.Empty;
-                if (stack.IsEmpty || !Current.Prices.TryGetLot(stack.Item, out _, out _))
+                if (line.Side != MerchantCart.Side.Sell)
                 {
                     continue;
                 }
-                float sold = line.Amount >= stack.Amount - ItemStack.PartEpsilon ? TakeWhole(items, line.Slot) : items.RemoveAmount(line.Slot, line.Amount);
-                Shelve(stack, sold);
-                got += Current.Prices.PriceOf(stack, sold);
-                Sold?.Invoke(Mathf.Max(1, Mathf.FloorToInt(sold)));
+                foreach (var part in MerchantCart.Allocate(line, source))
+                {
+                    ItemStack stack = items[part.Key];
+                    if (stack.IsEmpty || !Current.Prices.TryGetLot(stack.Item, out _, out _))
+                    {
+                        continue;
+                    }
+                    float sold = part.Value >= stack.Amount - ItemStack.PartEpsilon ? TakeWhole(items, part.Key) : items.RemoveAmount(part.Key, part.Value);
+                    Shelve(stack, sold);
+                    got += Current.Prices.PriceOf(stack, sold);
+                    Sold?.Invoke(Mathf.Max(1, Mathf.FloorToInt(sold)));
+                }
             }
             bool full = false;
             foreach (MerchantCart.Line line in lines)
@@ -900,27 +906,31 @@ namespace Clube.Game
                 {
                     continue;
                 }
-                ItemStack stack = source.StackOf(line);
-                if (stack.IsEmpty)
+                foreach (var part in MerchantCart.Allocate(line, source))
                 {
-                    continue;
-                }
-                bool offer = line.Slot < Current.Offers.Count;
-                float amount = Mathf.Min(line.Amount, stack.Amount);
-                float added = AddToItems(items, stack, amount);
-                full |= added < amount - ItemStack.PartEpsilon;
-                if (added <= ItemStack.PartEpsilon)
-                {
-                    continue;
-                }
-                paid += source.CoinsFor(line, added);
-                if (offer)
-                {
-                    BoughtToday()[line.Slot] += added;
-                }
-                else
-                {
-                    shelf.RemoveAmount(line.Slot - Current.Offers.Count, added);
+                    int slot = part.Key;
+                    ItemStack stack = source.StackOf(MerchantCart.Side.Buy, slot);
+                    if (stack.IsEmpty)
+                    {
+                        continue;
+                    }
+                    bool offer = slot < Current.Offers.Count;
+                    float amount = Mathf.Min(part.Value, stack.Amount);
+                    float added = AddToItems(items, stack, amount);
+                    full |= added < amount - ItemStack.PartEpsilon;
+                    if (added <= ItemStack.PartEpsilon)
+                    {
+                        continue;
+                    }
+                    paid += source.CoinsFor(MerchantCart.Side.Buy, slot, added);
+                    if (offer)
+                    {
+                        BoughtToday()[slot] += added;
+                    }
+                    else
+                    {
+                        shelf.RemoveAmount(slot - Current.Offers.Count, added);
+                    }
                 }
             }
             float settle = got - paid;
