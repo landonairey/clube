@@ -448,7 +448,7 @@ namespace Clube.Core
                     // GL734: the quarry pit is stone, floor and faces.
                     if (site.Quarry != null && site.Quarry.Terrace == piece.Index && materials.Stone != null)
                     {
-                        StoneOver(world, piece, site.Quarry.Floor - QuarryYard.StoneDepth, materials.Stone.Id);
+                        StoneOver(world, registry, piece, site.Quarry.Floor - QuarryYard.StoneDepth, materials.Stone.Id);
                     }
                     break;
                 }
@@ -479,8 +479,9 @@ namespace Clube.Core
             Mark(index);
         }
 
-        // Every sample of a tile with any density, from a height up to the tile's top, becomes stone (GL734, as GL557's tutorial map).
-        private static void StoneOver(World world, Piece piece, float bottom, byte stone)
+        // Every sample of a tile with any density, from a height up to the tile's top, becomes stone (GL734, as GL557's tutorial
+        // map); not a tree's wood or leaves (GL849: a tree on the bank leaning over the pit was drawn as stone).
+        private static void StoneOver(World world, MaterialRegistry registry, Piece piece, float bottom, byte stone)
         {
             WorldGrid grid = world.Grid;
             Vector3Int min = grid.WorldToNearestSample(new Vector3(piece.Box.xMin, bottom, piece.Box.yMin));
@@ -492,7 +493,8 @@ namespace Clube.Core
                     for (int y = min.y; y <= max.y; y++)
                     {
                         var sample = new Vector3Int(x, y, z);
-                        if (world.TryGetOwner(sample, out Chunk chunk, out Vector3Int local) && chunk.GetDensity(local) > 0)
+                        if (world.TryGetOwner(sample, out Chunk chunk, out Vector3Int local) && chunk.GetDensity(local) > 0
+                            && !(registry != null && registry.Get(chunk.GetMaterial(local)) is VoxelMaterial was && was.Kind == MaterialKind.Plant))
                         {
                             world.SetMaterial(sample, stone);
                         }
