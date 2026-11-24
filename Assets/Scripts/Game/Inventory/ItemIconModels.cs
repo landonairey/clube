@@ -72,7 +72,8 @@ namespace Clube.Game
         private const float ToolKeep = 0.62f;
 
         /// <summary>The model of an item's icon; empty (<see cref="ItemIconModel.IsEmpty"/>) when it has none.</summary>
-        public static ItemIconModel For(ItemDefinition item, MaterialRegistry materials)
+        /// <param name="white">Item 11: build a made thing white, for an item named by its material whose icon is tinted as it's drawn.</param>
+        public static ItemIconModel For(ItemDefinition item, MaterialRegistry materials, bool white = false)
         {
             ItemIconShape shape = ItemIconShapes.Resolve(item, materials);
             if (shape == ItemIconShape.Painted)
@@ -91,7 +92,7 @@ namespace Clube.Game
                 return new ItemIconModel(ItemChunkMeshes.Build(shape, Color.white), null, material.Albedo, tint, TurnOf(shape), ViewOf(shape),
                     item.IconTextureZoom, item.IconVividness);
             }
-            return new ItemIconModel(ItemChunkMeshes.Build(shape, item.IconTint), null, null, Color.white, TurnOf(shape), ViewOf(shape));
+            return new ItemIconModel(ItemChunkMeshes.Build(shape, white ? Color.white : item.IconTint), null, null, Color.white, TurnOf(shape), ViewOf(shape));
         }
 
         private static ItemIconModel OwnModel(ItemDefinition item)

@@ -10,22 +10,30 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: eb68c50b39e0a91499017be61cd90094, type: 3}
-  m_Name: Whittle pine sticks
+  m_Name: Boil salt water
   m_EditorClassIdentifier: Clube.Core::Clube.Core.Recipe
-  station: 2
+  station: 0
   inputs:
-  - Item: {fileID: 11400000, guid: 19b75261872b4e44281a898de0be8aa8, type: 2}
+  - Item: {fileID: 11400000, guid: 080c9f9ca7eb63146b7e32971db15b48, type: 2}
     Count: 1
   output:
-    Item: {fileID: 11400000, guid: 4f717f7cc0f3ec743b5f84c88baea32c, type: 2}
-    Count: 4
-  work: 1
-  amount: 2
-  experienceSkill: 1
-  experience: 2
+    Item: {fileID: 11400000, guid: 4843d7b7f1c8d204baec0cd100bc7a91, type: 2}
+    Count: 1
+  work: 0
+  amount: 15
+  experienceSkill: 0
+  experience: 0
   unlockSkill: 0
   unlockLevel: 0
-  qualityFactor: 1.2
+  qualityFactor: 1
   extracts: {fileID: 0}
   typicalGrade: 0.2
   takesIngotForms: 0
+  swapsListedApart: 0
+  swapInput: {fileID: 0}
+  swapFor: []
+  swapQualityFactors: []
+  swapOutputs: []
+  keepsWear: 1
+  swapInput2: {fileID: 0}
+  swapFor2: []

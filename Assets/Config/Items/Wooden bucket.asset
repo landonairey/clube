@@ -28,6 +28,7 @@ MonoBehaviour:
   hidesContents: 0
   qualityAsGrade: 0
   contentsAs: {fileID: 0}
+  namedByMaterial: 0
   ingotForm: {fileID: 0}
   upgrade:
     Station: 4
@@ -37,3 +38,5 @@ MonoBehaviour:
   scoopRadius: 0.6
   pourAmount: 5
   pourRate: 30
+  holdsSaltWater: 0
+  otherForm: {fileID: 11400000, guid: 080c9f9ca7eb63146b7e32971db15b48, type: 2}

@@ -270,7 +270,7 @@ namespace Clube.Game
             handsView?.Destroy();
             handsView = null;
             view ??= new HotbarView();
-            string name = !SelectedStack.IsEmpty ? SelectedStack.Item.DisplayName
+            string name = !SelectedStack.IsEmpty ? SelectedStack.Name
                 : inventory.UsesToolSlot && Selected == PlayerInventory.ToolSlot ? "Tool slot (empty: bare hands)" : null;
             view.Refresh(inventory, CellCount, Selected, name, visible);
         }

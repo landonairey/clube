@@ -5934,7 +5934,18 @@ MonoBehaviour:
     smallHeight: {x: 0.45, y: 0.65}
     mediumHeight: {x: 0.9, y: 1.4}
     largeHeight: {x: 1.8, y: 2.6}
+    groupScale: 14
+    grouping: 0.8
     leaves: {x: 3, y: 6, z: 12}
+  reeds:
+    shoreReach: 2.5
+    maxDepth: 0.7
+    bedChance: 0.9
+    thinChance: 0.04
+    bedScale: 30
+    bedCover: 0.45
+    height: {x: 1.5, y: 2.4}
+    reeds: {x: 3, y: 6}
   scatterMilliseconds: 0.5
 --- !u!114 &1350119476
 MonoBehaviour:
@@ -6079,6 +6090,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.FallingGround
   stepSeconds: 0.06
   maxMovesPerStep: 1500
+  stepMilliseconds: 4
 --- !u!114 &1350119483
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6156,7 +6168,6 @@ MonoBehaviour:
   roadPostRange: 220
   roadPosts: 0
   roadPostSpacing: 12
-  settlementPostHeight: 12
   show: 1
 --- !u!114 &1350119487
 MonoBehaviour:
@@ -6267,6 +6278,574 @@ MonoBehaviour:
     MaxSwing: 16
     PeoplePerHouse: 2
     Margin: 24
+    StreetWander: 0.6
+    StreetWave: 16
+    ClimbLead: 3
+    FrontStagger: 0.75
+    Buildings:
+    - Id: hut
+      Name: Hut
+      Width: 5
+      Depth: 4.5
+      Stories: 1
+      StoryHeight: 2.5
+      PitchMin: 0.8
+      PitchMax: 1.1
+      ShopFront: 0
+      Types:
+      - camp
+      - thieves-camp
+      - outpost
+      - village
+      Specialties: []
+      Weight: 1
+      Tarp: 0
+      YardWalls: 0
+      YardDepth: 2.6
+      Fixtures: []
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: cottage
+      Name: Cottage
+      Width: 6
+      Depth: 4.5
+      Stories: 1
+      StoryHeight: 2.75
+      PitchMin: 0.6
+      PitchMax: 1
+      ShopFront: 0
+      Types:
+      - outpost
+      - village
+      - town
+      Specialties: []
+      Weight: 2
+      Tarp: 0
+      YardWalls: 0
+      YardDepth: 2.6
+      Fixtures: []
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: longhouse
+      Name: Longhouse
+      Width: 7.5
+      Depth: 5
+      Stories: 1
+      StoryHeight: 2.75
+      PitchMin: 0.5
+      PitchMax: 0.75
+      ShopFront: 0
+      Types:
+      - village
+      - town
+      Specialties: []
+      Weight: 1
+      Tarp: 0
+      YardWalls: 0
+      YardDepth: 2.6
+      Fixtures: []
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: two-story-house
+      Name: Two-story house
+      Width: 6
+      Depth: 5
+      Stories: 2
+      StoryHeight: 2.75
+      PitchMin: 0.6
+      PitchMax: 1
+      ShopFront: 0
+      Types:
+      - village
+      - town
+      - city
+      - capital
+      Specialties: []
+      Weight: 2
+      Tarp: 0
+      YardWalls: 0
+      YardDepth: 2.6
+      Fixtures: []
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: townhouse
+      Name: Townhouse
+      Width: 5.5
+      Depth: 5.5
+      Stories: 3
+      StoryHeight: 2.5
+      PitchMin: 0.9
+      PitchMax: 1.2
+      ShopFront: 0
+      Types:
+      - town
+      - city
+      - capital
+      Specialties: []
+      Weight: 1.5
+      Tarp: 0
+      YardWalls: 0
+      YardDepth: 2.6
+      Fixtures: []
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: tavern
+      Name: Tavern
+      Width: 7.5
+      Depth: 6
+      Stories: 2
+      StoryHeight: 2.75
+      PitchMin: 0.55
+      PitchMax: 0.8
+      ShopFront: 0
+      Types:
+      - village
+      - town
+      - city
+      - capital
+      Specialties: []
+      Weight: 0.5
+      Tarp: 0
+      YardWalls: 0
+      YardDepth: 2.6
+      Fixtures: []
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: stable
+      Name: Stable
+      Width: 7.5
+      Depth: 5
+      Stories: 1
+      StoryHeight: 2.5
+      PitchMin: 0.4
+      PitchMax: 0.6
+      ShopFront: 0
+      Types:
+      - outpost
+      - village
+      - town
+      - city
+      Specialties: []
+      Weight: 0.5
+      Tarp: 0
+      YardWalls: 0
+      YardDepth: 2.6
+      Fixtures:
+      - Kind: trough
+        Local: {x: 0, y: 3.45}
+        Yaw: 0
+        Worked: 0
+        Duties: []
+        Stand: {x: 0, y: 4.25}
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: mill
+      Name: Mill
+      Width: 6
+      Depth: 6
+      Stories: 2
+      StoryHeight: 3
+      PitchMin: 0.8
+      PitchMax: 1.1
+      ShopFront: 0
+      Types:
+      - village
+      - town
+      - city
+      Specialties: []
+      Weight: 0.4
+      Tarp: 0
+      YardWalls: 0
+      YardDepth: 2.6
+      Fixtures: []
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: smithy
+      Name: Blacksmith workshop
+      Width: 6
+      Depth: 4.5
+      Stories: 1
+      StoryHeight: 2.75
+      PitchMin: 0.45
+      PitchMax: 0.7
+      ShopFront: 1
+      Types: []
+      Specialties:
+      - blacksmith
+      - goldsmith
+      - jeweler
+      Weight: 1
+      Tarp: 0
+      YardWalls: 1
+      YardDepth: 2.8
+      Fixtures:
+      - Kind: anvil
+        Local: {x: -1.6, y: 3.35}
+        Yaw: 0
+        Worked: 1
+        Duties:
+        - hammer
+        Stand: {x: -1.6, y: 4.15}
+      - Kind: anvil
+        Local: {x: 1.6, y: 3.35}
+        Yaw: 0
+        Worked: 1
+        Duties:
+        - hammer
+        Stand: {x: 1.6, y: 4.15}
+      - Kind: tool-rack
+        Local: {x: -2.7, y: 2.65}
+        Yaw: 90
+        Worked: 0
+        Duties: []
+        Stand: {x: -2.7, y: 3.45}
+      - Kind: tool-rack
+        Local: {x: 2.7, y: 2.65}
+        Yaw: -90
+        Worked: 0
+        Duties: []
+        Stand: {x: 2.7, y: 3.45}
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: smelter
+      Name: Smelting yard
+      Width: 6
+      Depth: 4.5
+      Stories: 1
+      StoryHeight: 2.75
+      PitchMin: 0.4
+      PitchMax: 0.6
+      ShopFront: 1
+      Types: []
+      Specialties:
+      - smelting
+      - crushing
+      Weight: 1
+      Tarp: 0
+      YardWalls: 1
+      YardDepth: 2.6
+      Fixtures:
+      - Kind: furnace
+        Local: {x: -1.8, y: 3.35}
+        Yaw: 0
+        Worked: 1
+        Duties:
+        - stoke
+        Stand: {x: -1.8, y: 4.15}
+      - Kind: campfire
+        Local: {x: -0.1, y: 3.15}
+        Yaw: 0
+        Worked: 0
+        Duties: []
+        Stand: {x: -0.1, y: 3.95}
+      - Kind: anvil
+        Local: {x: 1.4, y: 3.35}
+        Yaw: 0
+        Worked: 1
+        Duties:
+        - hammer
+        Stand: {x: 1.4, y: 4.15}
+      - Kind: ore-pile
+        Local: {x: 2.6, y: 2.75}
+        Yaw: 0
+        Worked: 0
+        Duties: []
+        Stand: {x: 2.6, y: 3.55}
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: fabric-workshop
+      Name: Fabric workshop
+      Width: 6
+      Depth: 4.5
+      Stories: 2
+      StoryHeight: 2.75
+      PitchMin: 0.6
+      PitchMax: 0.9
+      ShopFront: 1
+      Types: []
+      Specialties:
+      - fabrics
+      - clothing
+      Weight: 1
+      Tarp: 1
+      YardWalls: 0
+      YardDepth: 2.8
+      Fixtures:
+      - Kind: spinning-wheel
+        Local: {x: -2, y: 3.35}
+        Yaw: 0
+        Worked: 1
+        Duties:
+        - spin
+        Stand: {x: -2, y: 4.15}
+      - Kind: spinning-wheel
+        Local: {x: 0, y: 3.35}
+        Yaw: 0
+        Worked: 1
+        Duties:
+        - spin
+        Stand: {x: 0, y: 4.15}
+      - Kind: loom
+        Local: {x: 2, y: 3.35}
+        Yaw: 0
+        Worked: 1
+        Duties:
+        - spin
+        Stand: {x: 2, y: 4.15}
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: tannery
+      Name: Tannery
+      Width: 6
+      Depth: 4.5
+      Stories: 1
+      StoryHeight: 2.75
+      PitchMin: 0.5
+      PitchMax: 0.7
+      ShopFront: 1
+      Types: []
+      Specialties:
+      - tannery
+      - leathery
+      Weight: 1
+      Tarp: 1
+      YardWalls: 0
+      YardDepth: 2.6
+      Fixtures:
+      - Kind: hide-frame
+        Local: {x: -1.6, y: 3.35}
+        Yaw: 0
+        Worked: 1
+        Duties:
+        - tan
+        Stand: {x: -1.6, y: 4.15}
+      - Kind: tub
+        Local: {x: 1.6, y: 3.35}
+        Yaw: 0
+        Worked: 1
+        Duties:
+        - tan
+        Stand: {x: 1.6, y: 4.15}
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: wood-workshop
+      Name: Wood workshop
+      Width: 6
+      Depth: 4.5
+      Stories: 1
+      StoryHeight: 2.75
+      PitchMin: 0.5
+      PitchMax: 0.8
+      ShopFront: 1
+      Types: []
+      Specialties:
+      - lumber-supplies
+      - carpentry
+      - tool-componentry
+      Weight: 1
+      Tarp: 1
+      YardWalls: 0
+      YardDepth: 2.6
+      Fixtures:
+      - Kind: sawhorse
+        Local: {x: -1.6, y: 3.35}
+        Yaw: 0
+        Worked: 1
+        Duties: []
+        Stand: {x: -1.6, y: 4.15}
+      - Kind: workbench
+        Local: {x: 1.6, y: 3.35}
+        Yaw: 0
+        Worked: 1
+        Duties: []
+        Stand: {x: 1.6, y: 4.15}
+      - Kind: log-pile
+        Local: {x: 2.7, y: 2.65}
+        Yaw: 90
+        Worked: 0
+        Duties: []
+        Stand: {x: 2.7, y: 3.45}
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: mason-yard
+      Name: Mason's yard
+      Width: 6
+      Depth: 4.5
+      Stories: 1
+      StoryHeight: 2.75
+      PitchMin: 0.4
+      PitchMax: 0.6
+      ShopFront: 1
+      Types: []
+      Specialties:
+      - masonry
+      - stone-quarry
+      - limestone-quarry
+      - aggregate-supplies
+      - mining
+      - sand-pit
+      - clay-pit
+      Weight: 1
+      Tarp: 0
+      YardWalls: 1
+      YardDepth: 2.6
+      Fixtures:
+      - Kind: workbench
+        Local: {x: 0, y: 3.35}
+        Yaw: 0
+        Worked: 1
+        Duties: []
+        Stand: {x: 0, y: 4.15}
+      - Kind: ore-pile
+        Local: {x: -2.4, y: 2.75}
+        Yaw: 0
+        Worked: 0
+        Duties: []
+        Stand: {x: -2.4, y: 3.55}
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: two-story-shop
+      Name: Shop with rooms over
+      Width: 6
+      Depth: 4.5
+      Stories: 2
+      StoryHeight: 2.75
+      PitchMin: 0.6
+      PitchMax: 1
+      ShopFront: 1
+      Types:
+      - village
+      - town
+      - city
+      - capital
+      Specialties: []
+      Weight: 1
+      Tarp: 0
+      YardWalls: 0
+      YardDepth: 2.6
+      Fixtures: []
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: shop
+      Name: Shop
+      Width: 6
+      Depth: 4.5
+      Stories: 1
+      StoryHeight: 2.75
+      PitchMin: 0.5
+      PitchMax: 0.9
+      ShopFront: 1
+      Types: []
+      Specialties: []
+      Weight: 1
+      Tarp: 0
+      YardWalls: 0
+      YardDepth: 2.6
+      Fixtures: []
+      Masonry: 0
+      Battlements: 0
+      Turrets: 0
+      Landmark: 0
+    - Id: castle
+      Name: Castle
+      Width: 8
+      Depth: 8
+      Stories: 3
+      StoryHeight: 3.5
+      PitchMin: 0.5
+      PitchMax: 0.9
+      ShopFront: 0
+      Types:
+      - capital
+      Specialties: []
+      Weight: 0
+      Tarp: 0
+      YardWalls: 0
+      YardDepth: 2.6
+      Fixtures: []
+      Masonry: 1
+      Battlements: 1
+      Turrets: 2
+      Landmark: 1
+    - Id: guard-tower
+      Name: Guard tower
+      Width: 4.5
+      Depth: 4.5
+      Stories: 3
+      StoryHeight: 4
+      PitchMin: 0.5
+      PitchMax: 0.9
+      ShopFront: 0
+      Types:
+      - city
+      - capital
+      Specialties: []
+      Weight: 0
+      Tarp: 0
+      YardWalls: 0
+      YardDepth: 2.6
+      Fixtures: []
+      Masonry: 1
+      Battlements: 1
+      Turrets: 0
+      Landmark: 1
+    WallSetback: 4
+    WallHeight: 4.5
+    WallThickness: 1
+    GateWidth: 5
+    WallTower: 3.5
+    WallTowerRise: 2.5
+    QuarryGap: 6
+    QuarryDepth: 4
+    LightKinds:
+    - Id: torch
+      Name: Torch
+      Size: 0.4
+      FlameHeight: 1.75
+      Range: 12
+      Intensity: 4
+    - Id: bonfire
+      Name: Bonfire
+      Size: 2
+      FlameHeight: 0.7
+      Range: 18
+      Intensity: 8
+    - Id: lantern
+      Name: Oil lantern
+      Size: 0.5
+      FlameHeight: 2.3
+      Range: 13
+      Intensity: 4.5
   build: 1
 --- !u!114 &1350119491
 MonoBehaviour:
@@ -6416,6 +6995,70 @@ MonoBehaviour:
   clock: {fileID: 1350119469}
   drying: {fileID: 1350119468}
   editorMode: 4
+--- !u!114 &1350119500
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc03f9eec55be0345bd532822678cb2d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.MapRoadTint
+  session: {fileID: 1350119487}
+  texelSize: 2
+--- !u!114 &1350119501
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c56641066a8c2684bb2185a6084bb0a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.MapStandIns
+  session: {fileID: 1350119487}
+  settlements: {fileID: 1350119490}
+  view: {fileID: 1350119502}
+  budgetMilliseconds: 4
+--- !u!114 &1350119502
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3167c180eb3433f46ba660c70ae01ca1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.DistantBuildingView
+  worldView: {fileID: 0}
+  material: {fileID: 2100000, guid: 2eb68e12a9f01d7409481a21bf11c5bf, type: 2}
+  show: 1
+  range: 6000
+  mergeFrom: 900
+  fadeWidth: 60
+  walls: {r: 0.55, g: 0.42, b: 0.3, a: 1}
+  stoneWalls: {r: 0.58, g: 0.57, b: 0.54, a: 1}
+  roofs: {r: 0.42, g: 0.26, b: 0.2, a: 1}
+--- !u!114 &1350119503
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350119454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45fa52e414211194c944b07b1a3627ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.AirHaze
+  halfDistance: 7000
 --- !u!1 &1429470163
 GameObject:
   m_ObjectHideFlags: 0
@@ -6915,6 +7558,8 @@ MonoBehaviour:
   itemSlots: 3
   hotbarSlots: 9
   backpackSlots: 18
+  listLayout: 1
+  bagSlots: 120
   startingItems: []
   tools: {fileID: 1697135569}
 --- !u!114 &1697135573
@@ -7139,8 +7784,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2fff207b048f70b40bffdcec6a35579b, type: 2}
   - {fileID: 11400000, guid: 4b6b35cb8a9260e42b8d0c25a6bc295b, type: 2}
   - {fileID: 11400000, guid: 3f9e228f10fb98e44a8816bc33a794c1, type: 2}
-  - {fileID: 11400000, guid: ce272991d7e38a645a6a4134ffda0a02, type: 2}
-  - {fileID: 11400000, guid: da26a46a7696a7043a748dc7ee6a36c0, type: 2}
   - {fileID: 11400000, guid: e45a586bfc9bf8948954718730748a0a, type: 2}
   - {fileID: 11400000, guid: fba474c782c476f4f993a45cd39a1374, type: 2}
   - {fileID: 11400000, guid: 5ec8e0ac578bb0e4db7dae5132312b4d, type: 2}
@@ -7154,7 +7797,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2f2e8808d61f59549a0331d7d86525b1, type: 2}
   - {fileID: 11400000, guid: 08594d0fdd8ba66419aaffeb6ae837d5, type: 2}
   - {fileID: 11400000, guid: ab98c97052db20042ae1ed986472066f, type: 2}
-  - {fileID: 11400000, guid: 842c5ed4148bf74499b40ca377984edd, type: 2}
   kinds:
   - Material: {fileID: 11400000, guid: a7a179311785ad14bab47c68162a300f, type: 2}
     Name: Flat Rock
@@ -7347,8 +7989,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2fff207b048f70b40bffdcec6a35579b, type: 2}
   - {fileID: 11400000, guid: 4b6b35cb8a9260e42b8d0c25a6bc295b, type: 2}
   - {fileID: 11400000, guid: 3f9e228f10fb98e44a8816bc33a794c1, type: 2}
-  - {fileID: 11400000, guid: ce272991d7e38a645a6a4134ffda0a02, type: 2}
-  - {fileID: 11400000, guid: da26a46a7696a7043a748dc7ee6a36c0, type: 2}
   - {fileID: 11400000, guid: e45a586bfc9bf8948954718730748a0a, type: 2}
   - {fileID: 11400000, guid: fba474c782c476f4f993a45cd39a1374, type: 2}
   - {fileID: 11400000, guid: 50ce999b3654ec14a8e74e6522c03fba, type: 2}
@@ -7373,8 +8013,10 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 11400000, guid: 6fadc24742a123946b249fca8b1a81a3, type: 2}
   - {fileID: 11400000, guid: eccc62bfc479f654bae3f198c751dae2, type: 2}
+  - {fileID: 11400000, guid: 15e1e0d7fd2f9744a909baba442ab06a, type: 2}
   - {fileID: 11400000, guid: 8010ff67b533dd24d8e25d72182905cf, type: 2}
   - {fileID: 11400000, guid: 8072c269a6427d146a7e5d0577b45068, type: 2}
+  - {fileID: 11400000, guid: 72e48c9429941544c8207d1632f448f8, type: 2}
   - {fileID: 11400000, guid: 047abb6ed16abca459fb3bcdb4f41160, type: 2}
   - {fileID: 11400000, guid: 3b915b6e75ae6fe4883f76455350ed82, type: 2}
   - {fileID: 11400000, guid: 976f635456435f6429c0041567c411d1, type: 2}
@@ -7452,6 +8094,12 @@ MonoBehaviour:
   stone: {fileID: 11400000, guid: 2c26c5c4f4a60ca449a71671d88094ad, type: 2}
   handAxe: {fileID: 11400000, guid: a56a1ea3071fb444faf3aa4d3fba77a8, type: 2}
   handAxeExperience: 5
+  handAxeDurabilityByGrade:
+  - 0.6
+  - 0.7
+  - 0.8
+  - 0.9
+  - 1
   crushes:
   - Raw: {fileID: 11400000, guid: abc86bcbe8361da41bd3f644418bc0a3, type: 2}
     Crushed: {fileID: 11400000, guid: ed8c8b48636509843aaf87e527e02009, type: 2}
@@ -7474,6 +8122,7 @@ MonoBehaviour:
   secondsPerVolume: 0.25
   refineVolume: 1
   refineExperience: 0.1
+  refineProspectingExperience: 0.1
   refineSmithingExperience: 0.02
 --- !u!114 &1697135593
 MonoBehaviour:
@@ -7718,7 +8367,7 @@ MonoBehaviour:
   material: {fileID: 2100000, guid: 4d599372257648141b207c3dbd8d5b8f, type: 2}
   gravity: 12
   sparkMaterial: {fileID: 2100000, guid: d578650619eba4e498c80599e6a05b45, type: 2}
-  rockSparkChance: 0.7
+  hardRockSparkChance: 0.9
   boulderSparkChance: 0.85
 --- !u!114 &1697135604
 MonoBehaviour:
@@ -7923,7 +8572,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.LoadCurtain
   delay: 0.4
-  colour: {r: 0.05, g: 0.06, b: 0.07, a: 1}
 --- !u!114 &1697135617
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7987,67 +8635,3 @@ SceneRoots:
   - {fileID: 555367919}
   - {fileID: 870862399}
   - {fileID: 1566741226}
---- !u!114 &1350119500
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1350119454}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bc03f9eec55be0345bd532822678cb2d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Game::Clube.Game.MapRoadTint
-  session: {fileID: 1350119487}
-  texelSize: 2
---- !u!114 &1350119501
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1350119454}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c56641066a8c2684bb2185a6084bb0a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Game::Clube.Game.MapStandIns
-  session: {fileID: 1350119487}
-  settlements: {fileID: 1350119490}
-  view: {fileID: 1350119502}
-  budgetMilliseconds: 4
---- !u!114 &1350119502
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1350119454}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3167c180eb3433f46ba660c70ae01ca1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Core::Clube.Core.DistantBuildingView
-  worldView: {fileID: 0}
-  material: {fileID: 2100000, guid: 2eb68e12a9f01d7409481a21bf11c5bf, type: 2}
-  show: 1
-  range: 6000
-  mergeFrom: 900
-  fadeWidth: 60
-  walls: {r: 0.55, g: 0.42, b: 0.3, a: 1}
-  stoneWalls: {r: 0.58, g: 0.57, b: 0.54, a: 1}
-  roofs: {r: 0.42, g: 0.26, b: 0.2, a: 1}
---- !u!114 &1350119503
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1350119454}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 45fa52e414211194c944b07b1a3627ae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Clube.Core::Clube.Core.AirHaze
-  halfDistance: 7000

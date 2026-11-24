@@ -108,6 +108,37 @@ namespace Clube.Core
         }
 
         /// <summary>
+        /// A listed recipe and its swap variants (item 11): the plain stick recipe, then its maple and pine ones. Just the
+        /// recipe when it has none.
+        /// </summary>
+        public List<Recipe> Choices(Recipe listed)
+        {
+            var choices = new List<Recipe>();
+            if (listed == null)
+            {
+                return choices;
+            }
+            choices.Add(listed);
+            foreach (Recipe recipe in recipes)
+            {
+                if (recipe.SwapParent == listed)
+                {
+                    choices.Add(recipe);
+                }
+            }
+            return choices;
+        }
+
+        /// <summary>
+        /// What a run of the recipe would make with what's loaded now (item 11): its output item, carrying the material of
+        /// the wood loaded when it's named by its material (a Maple Stick). One item, for names and icons.
+        /// </summary>
+        public ItemStack ResultPreview(Recipe recipe)
+        {
+            return recipe == null || recipe.Output.Item == null ? ItemStack.Empty : new ItemStack(recipe.Output.Item, 1, MadeOf(recipe));
+        }
+
+        /// <summary>
         /// The one of <paramref name="listed"/> and its swap variants that <paramref name="items"/> (plus what is
         /// already loaded) fill best (GL858): a complete set wins, else the most inputs held, ties to the plain recipe.
         /// </summary>
@@ -590,9 +621,9 @@ namespace Clube.Core
             {
                 // Materials blend whatever their quality (GL385: each smelt's purity differs, and buns of 0.94 then 0.95
                 // jammed the furnace at 1.75).
-                return Inventory.Combines(waiting, item) && item.MaxStack - waiting.Amount + 1e-4f >= recipe.Output.Count * YieldOf(recipe);
+                return Inventory.Combines(waiting, item, MadeOf(recipe)) && item.MaxStack - waiting.Amount + 1e-4f >= recipe.Output.Count * YieldOf(recipe);
             }
-            Composition madeOf = item is PlaceableDefinition { DropsMix: false } ? InputContents(recipe) : null;
+            Composition madeOf = MadeOf(recipe);
             return waiting.Item == recipe.Output.Item
                 && Inventory.Stacks(waiting, recipe.Output.Item, madeOf, ResultQuality(recipe))
                 && waiting.Space >= recipe.Output.Count;
@@ -635,6 +666,11 @@ namespace Clube.Core
         /// </summary>
         public float ResultQuality(Recipe recipe)
         {
+            if (recipe.KeepsWear)
+            {
+                // The same thing changed, not made (item 14: a bucket of salt water boiled fresh): as good as it was.
+                return InputQuality(recipe);
+            }
             float quality = OutputQuality(recipe);
             return BlendsInOutput(recipe.Output.Item) ? quality : quality * YieldOf(recipe);
         }
@@ -721,18 +757,53 @@ namespace Clube.Core
                 done = 0f;
                 // Something built (a furnace) keeps what it was made of, so a mix of 76% clay makes one
                 // that works at 76% (GL100, MaterialRegistry.Quality).
-                Composition madeOf = finished.Output.Item is PlaceableDefinition { DropsMix: false } ? InputContents(finished) : null;
+                Composition madeOf = MadeOf(finished);
                 float quality = ResultQuality(finished);
                 float made = TakeYield(finished);
+                int wear = finished.KeepsWear ? InputWear(finished) : 0;
                 foreach (ItemAmount input in finished.Inputs)
                 {
                     Input.Remove(input.Item, input.Count);
                 }
                 int whole = (int)Math.Floor(made + 1e-4f);
-                Output.Add(finished.Output.Item, whole, madeOf, 0, quality, made - whole, anyQuality: BlendsInOutput(finished.Output.Item));
+                Output.Add(finished.Output.Item, whole, madeOf, wear, quality, made - whole, anyQuality: BlendsInOutput(finished.Output.Item));
                 Completed?.Invoke(finished);
             }
             Changed?.Invoke();
+        }
+
+        /// <summary>
+        /// What a run's result is made of: something built (a furnace) keeps what it was made of, so a mix of 76% clay makes
+        /// one that works at 76% (GL100); an item named by its material (item 11) takes its inputs' main material, so birch
+        /// wood whittles into birch sticks. Null for anything else.
+        /// </summary>
+        private Composition MadeOf(Recipe recipe)
+        {
+            ItemDefinition item = recipe.Output.Item;
+            if (item is PlaceableDefinition { DropsMix: false })
+            {
+                return InputContents(recipe);
+            }
+            if (item != null && item.NamedByMaterial)
+            {
+                VoxelMaterial material = Composition.MainMaterial(InputContents(recipe));
+                return material != null ? Composition.From(new Content(material, 1f)) : null;
+            }
+            return null;
+        }
+
+        // The wear of the first loaded stack of the recipe's first input (item 14: the water in a bucket of salt water).
+        private int InputWear(Recipe recipe)
+        {
+            ItemDefinition first = recipe.Inputs.Count > 0 ? recipe.Inputs[0].Item : null;
+            for (int i = 0; i < Input.SlotCount; i++)
+            {
+                if (Input[i].Item == first)
+                {
+                    return Input[i].Wear;
+                }
+            }
+            return 0;
         }
 
         // How well a recipe's result is made (GL118): its inputs' quality, weighted by how many of each it takes,

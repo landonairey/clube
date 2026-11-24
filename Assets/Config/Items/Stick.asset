@@ -28,6 +28,7 @@ MonoBehaviour:
   hidesContents: 0
   qualityAsGrade: 1
   contentsAs: {fileID: 0}
+  namedByMaterial: 1
   ingotForm: {fileID: 0}
   upgrade:
     Station: 4

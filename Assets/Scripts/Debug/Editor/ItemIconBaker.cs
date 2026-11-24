@@ -67,7 +67,7 @@ namespace Clube.Debug.Editor
                     {
                         continue;
                     }
-                    ItemIconModel model = ItemIconModels.For(item, materials);
+                    ItemIconModel model = ItemIconModels.For(item, materials, item.NamedByMaterial);
                     if (model.IsEmpty)
                     {
                         painted++;

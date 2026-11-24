@@ -333,6 +333,11 @@ namespace Clube.Game
                 if (recipe.IsInSightFor(station.Learner))
                 {
                     shown++;
+                    // The chosen recipe's row of woods (item 11) takes a row of its own.
+                    if (IsChosen(station, recipe) && station.Choices(recipe).Count > 1)
+                    {
+                        shown++;
+                    }
                 }
             }
             const float rowHeight = 30f;
@@ -355,26 +360,57 @@ namespace Clube.Game
                 }
                 else
                 {
-                    bool chosen = station.Chosen == recipe || (station.Chosen != null && station.Chosen.SwapParent == recipe);
+                    bool chosen = IsChosen(station, recipe);
                     if (GameUi.Button(row, (chosen ? "▶ " : "   ") + name, recipeStyle))
                     {
                         // One entry for every wood (GL858): the variant the player's items can fill is the one made.
                         Recipe variant = chosen ? null : station.VariantFor(recipe, items);
-                        station.Chosen = variant;
-                        if (!chosen)
+                        Choose(station, variant, items);
+                    }
+                    var choices = chosen ? station.Choices(recipe) : null;
+                    if (choices != null && choices.Count > 1)
+                    {
+                        // Item 11: the woods (or wools) it can be made from, one button each; the one in use marked.
+                        y += rowHeight;
+                        float indent = 18f;
+                        float width = (view.width - indent) / choices.Count;
+                        for (int i = 0; i < choices.Count; i++)
                         {
-                            // What the last recipe made goes to the inventory, so it can't block the new one (GL444).
-                            if (!station.Output[0].IsEmpty)
+                            Recipe choice = choices[i];
+                            var cell = new Rect(indent + i * width, y, width - 2f, rowHeight - 4f);
+                            string label = (station.Chosen == choice ? "● " : "") + choice.VariantLabel;
+                            if (GameUi.Button(cell, label) && station.Chosen != choice)
                             {
-                                station.Output.MoveTo(0, items, keepApart: true);
+                                Choose(station, choice, items);
                             }
-                            station.LoadFor(variant, items);
                         }
                     }
                 }
                 y += rowHeight;
             }
             GUI.EndScrollView();
+        }
+
+        // True when the listed recipe, or one of its swap variants, is the one picked.
+        private static bool IsChosen(CraftingStation station, Recipe listed)
+        {
+            return station.Chosen != null && (station.Chosen == listed || station.Chosen.SwapParent == listed);
+        }
+
+        // Picks a recipe (null: any may start) and, for a new pick, clears the output and loads one batch from the player's items.
+        private static void Choose(CraftingStation station, Recipe recipe, Inventory items)
+        {
+            bool changed = station.Chosen != recipe;
+            station.Chosen = recipe;
+            if (recipe != null && changed)
+            {
+                // What the last recipe made goes to the inventory, so it can't block the new one (GL444).
+                if (!station.Output[0].IsEmpty)
+                {
+                    station.Output.MoveTo(0, items, keepApart: true);
+                }
+                station.LoadFor(recipe, items);
+            }
         }
 
         // The right half (GL448): the recipe being made, its inputs, the work and the output, then the fuel. Missing
@@ -390,7 +426,7 @@ namespace Clube.Game
             float x = area.x;
             float y = area.y;
             Recipe shown = station.Chosen ?? station.Upcoming;
-            string title = shown == null ? "Pick a recipe on the left" : shown.Output.Item != null ? shown.Output.Item.DisplayName : "?";
+            string title = shown == null ? "Pick a recipe on the left" : shown.Output.Item != null ? ResultName(station, shown) : "?";
             GUI.Label(new Rect(x, y, area.width, 32f), title, titleStyle);
             y += 34f;
             // What it takes and, for the loaded ore, what it yields (GL127, GL128).
@@ -417,7 +453,7 @@ namespace Clube.Game
             Recipe upcoming = station.Upcoming;
             if (upcoming != null && station.Output[0].IsEmpty)
             {
-                ItemSlotGui.Ghost(new Rect(outputAt.x, outputAt.y, slot, slot), upcoming.Output.Item, upcoming.Output.Count);
+                ItemSlotGui.Ghost(new Rect(outputAt.x, outputAt.y, slot, slot), upcoming.Output.Item, upcoming.Output.Count, station.ResultPreview(upcoming).IconTint);
             }
             y += slot + 8f;
             // Why it can't start: ingredients missing (GL449), or a different result in the output slot (GL61).
@@ -525,6 +561,15 @@ namespace Clube.Game
                 return "?";
             }
             string name = $"{recipe.Output.Count} {recipe.Output.Item.DisplayName}";
+            foreach (Recipe choice in station.Choices(recipe))
+            {
+                if (choice.Output.Item != recipe.Output.Item)
+                {
+                    // Item 11: each wood saws into its own boards, so the entry names what they share: "4 Boards".
+                    string kind = LastWord(recipe.Output.Item.DisplayName);
+                    return $"{recipe.Output.Count} {char.ToUpperInvariant(kind[0])}{kind.Substring(1)}";
+                }
+            }
             foreach (Recipe other in station.ListedRecipes())
             {
                 if (other != recipe && other.Output.Item == recipe.Output.Item && other.IsInSightFor(station.Learner))
@@ -534,6 +579,24 @@ namespace Clube.Game
                 }
             }
             return name;
+        }
+
+        private static string LastWord(string text)
+        {
+            string trimmed = text.TrimEnd();
+            int space = trimmed.LastIndexOf(' ');
+            return space >= 0 ? trimmed.Substring(space + 1) : trimmed;
+        }
+
+        // What the recipe makes, by name (item 11): "Maple Stick" with maple wood loaded or the maple variant picked.
+        private static string ResultName(CraftingStation station, Recipe recipe)
+        {
+            ItemStack preview = station.ResultPreview(recipe);
+            if (preview.NamedMaterial == null && recipe.Output.Item.NamedByMaterial && recipe.VariantLabel.Length > 0)
+            {
+                return $"{recipe.VariantLabel} {recipe.Output.Item.DisplayName}";
+            }
+            return preview.Name;
         }
 
         // A padlock, drawn once (GL450).
@@ -637,7 +700,7 @@ namespace Clube.Game
                 // Let go on a stack of the same item, whatever its quality, it combines with that stack (GL845), as a drag
                 // between your own slots does; anywhere else on the row it loads as before.
                 int target = InventoryGridGui.GridSlotNear(inputRow.position, station.Input, drop.Position, InventoryGridGui.RowGap * 0.5f);
-                if (target >= 0 && Inventory.Combines(station.Input[target], stack.Item))
+                if (target >= 0 && Inventory.Combines(station.Input[target], stack.Item, stack.Contents))
                 {
                     items.MoveToSlot(drop.Slot, station.Input, target, drop.Count);
                     return;
@@ -650,7 +713,7 @@ namespace Clube.Game
                 int fuelAt = -1;
                 for (int i = 0; i < station.Fuel.SlotCount && fuelAt < 0; i++)
                 {
-                    if (Inventory.Combines(station.Fuel[i], stack.Item))
+                    if (Inventory.Combines(station.Fuel[i], stack.Item, stack.Contents))
                     {
                         fuelAt = i;
                     }

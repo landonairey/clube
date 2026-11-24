@@ -73,6 +73,10 @@ namespace Clube.Core
         [SerializeField]
         private VoxelMaterial contentsAs;
 
+        [Tooltip("Item 11: takes the material of what it's made from (sticks of birch, maple or pine wood). Stacks only with the same material, reads \"Birch Stick\" and is drawn in the material's crafted tint; still one collection in the list inventory. Its icon is baked white for the tint.")]
+        [SerializeField]
+        private bool namedByMaterial;
+
         [Tooltip("A bun's ingot (GL700): what hammering it makes. A furnace alloying with the bun takes the ingot in its place, and makes the lesser of the two forms. Empty for everything that has no ingot form (coal).")]
         [SerializeField]
         private ItemDefinition ingotForm;
@@ -227,6 +231,16 @@ namespace Clube.Core
         public ItemDefinition WithContentsAs(VoxelMaterial material)
         {
             contentsAs = material;
+            return this;
+        }
+
+        /// <summary>True for an item that takes the material it's made from as its own (item 11: a Birch Stick).</summary>
+        public bool NamedByMaterial => namedByMaterial;
+
+        /// <summary>Sets <see cref="NamedByMaterial"/>, for items made in code (tests).</summary>
+        public ItemDefinition WithNamedByMaterial()
+        {
+            namedByMaterial = true;
             return this;
         }
 

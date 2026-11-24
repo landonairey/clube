@@ -469,7 +469,7 @@ namespace Clube.Game
             var icon = new Rect(x, rect.y + 5f, rect.height - 10f, rect.height - 10f);
             if (stack.Item.Icon != null)
             {
-                GUI.DrawTexture(icon, stack.Item.Icon, ScaleMode.ScaleToFit);
+                ItemSlotGui.DrawIcon(icon, row.IsCollection ? new ItemStack(stack.Item, 1) : stack);
             }
             if (ItemSlotGui.WearBar(stack, out float left, out _) && !row.IsCollection)
             {
@@ -478,7 +478,7 @@ namespace Clube.Game
             }
             x = icon.xMax + 10f;
             float right = rect.x + rect.width;
-            string name = row.IsCollection ? $"{row.Item.DisplayName}  ({row.Slots.Count})" : row.Item.DisplayName;
+            string name = row.IsCollection ? $"{row.Item.DisplayName}  ({row.Slots.Count})" : stack.Name;
             if (row.Equipped && !row.IsCollection)
             {
                 name += "  <color=#f2c040>(equipped)</color>";

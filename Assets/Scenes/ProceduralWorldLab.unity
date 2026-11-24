@@ -5916,7 +5916,18 @@ MonoBehaviour:
     smallHeight: {x: 0.45, y: 0.65}
     mediumHeight: {x: 0.9, y: 1.4}
     largeHeight: {x: 1.8, y: 2.6}
+    groupScale: 14
+    grouping: 0.8
     leaves: {x: 3, y: 6, z: 12}
+  reeds:
+    shoreReach: 2.5
+    maxDepth: 0.7
+    bedChance: 0.9
+    thinChance: 0.04
+    bedScale: 30
+    bedCover: 0.45
+    height: {x: 1.5, y: 2.4}
+    reeds: {x: 3, y: 6}
   scatterMilliseconds: 0.5
 --- !u!114 &1350119476
 MonoBehaviour:
@@ -6061,6 +6072,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Clube.Game::Clube.Game.FallingGround
   stepSeconds: 0.06
   maxMovesPerStep: 1500
+  stepMilliseconds: 4
 --- !u!114 &1350119483
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6638,6 +6650,8 @@ MonoBehaviour:
   itemSlots: 3
   hotbarSlots: 9
   backpackSlots: 18
+  listLayout: 1
+  bagSlots: 120
   startingItems: []
   tools: {fileID: 1697135569}
 --- !u!114 &1697135573
@@ -6862,8 +6876,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2fff207b048f70b40bffdcec6a35579b, type: 2}
   - {fileID: 11400000, guid: 4b6b35cb8a9260e42b8d0c25a6bc295b, type: 2}
   - {fileID: 11400000, guid: 3f9e228f10fb98e44a8816bc33a794c1, type: 2}
-  - {fileID: 11400000, guid: ce272991d7e38a645a6a4134ffda0a02, type: 2}
-  - {fileID: 11400000, guid: da26a46a7696a7043a748dc7ee6a36c0, type: 2}
   - {fileID: 11400000, guid: e45a586bfc9bf8948954718730748a0a, type: 2}
   - {fileID: 11400000, guid: fba474c782c476f4f993a45cd39a1374, type: 2}
   - {fileID: 11400000, guid: 5ec8e0ac578bb0e4db7dae5132312b4d, type: 2}
@@ -6877,7 +6889,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2f2e8808d61f59549a0331d7d86525b1, type: 2}
   - {fileID: 11400000, guid: 08594d0fdd8ba66419aaffeb6ae837d5, type: 2}
   - {fileID: 11400000, guid: ab98c97052db20042ae1ed986472066f, type: 2}
-  - {fileID: 11400000, guid: 842c5ed4148bf74499b40ca377984edd, type: 2}
   kinds:
   - Material: {fileID: 11400000, guid: a7a179311785ad14bab47c68162a300f, type: 2}
     Name: Flat Rock
@@ -7070,8 +7081,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2fff207b048f70b40bffdcec6a35579b, type: 2}
   - {fileID: 11400000, guid: 4b6b35cb8a9260e42b8d0c25a6bc295b, type: 2}
   - {fileID: 11400000, guid: 3f9e228f10fb98e44a8816bc33a794c1, type: 2}
-  - {fileID: 11400000, guid: ce272991d7e38a645a6a4134ffda0a02, type: 2}
-  - {fileID: 11400000, guid: da26a46a7696a7043a748dc7ee6a36c0, type: 2}
   - {fileID: 11400000, guid: e45a586bfc9bf8948954718730748a0a, type: 2}
   - {fileID: 11400000, guid: fba474c782c476f4f993a45cd39a1374, type: 2}
   - {fileID: 11400000, guid: 50ce999b3654ec14a8e74e6522c03fba, type: 2}
@@ -7096,8 +7105,10 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 11400000, guid: 6fadc24742a123946b249fca8b1a81a3, type: 2}
   - {fileID: 11400000, guid: eccc62bfc479f654bae3f198c751dae2, type: 2}
+  - {fileID: 11400000, guid: 15e1e0d7fd2f9744a909baba442ab06a, type: 2}
   - {fileID: 11400000, guid: 8010ff67b533dd24d8e25d72182905cf, type: 2}
   - {fileID: 11400000, guid: 8072c269a6427d146a7e5d0577b45068, type: 2}
+  - {fileID: 11400000, guid: 72e48c9429941544c8207d1632f448f8, type: 2}
   - {fileID: 11400000, guid: 047abb6ed16abca459fb3bcdb4f41160, type: 2}
   - {fileID: 11400000, guid: 3b915b6e75ae6fe4883f76455350ed82, type: 2}
   - {fileID: 11400000, guid: 976f635456435f6429c0041567c411d1, type: 2}
@@ -7175,6 +7186,12 @@ MonoBehaviour:
   stone: {fileID: 11400000, guid: 2c26c5c4f4a60ca449a71671d88094ad, type: 2}
   handAxe: {fileID: 11400000, guid: a56a1ea3071fb444faf3aa4d3fba77a8, type: 2}
   handAxeExperience: 5
+  handAxeDurabilityByGrade:
+  - 0.6
+  - 0.7
+  - 0.8
+  - 0.9
+  - 1
   crushes:
   - Raw: {fileID: 11400000, guid: abc86bcbe8361da41bd3f644418bc0a3, type: 2}
     Crushed: {fileID: 11400000, guid: ed8c8b48636509843aaf87e527e02009, type: 2}
@@ -7197,6 +7214,7 @@ MonoBehaviour:
   secondsPerVolume: 0.25
   refineVolume: 1
   refineExperience: 0.1
+  refineProspectingExperience: 0.1
   refineSmithingExperience: 0.02
 --- !u!114 &1697135593
 MonoBehaviour:
@@ -7441,7 +7459,7 @@ MonoBehaviour:
   material: {fileID: 2100000, guid: 4d599372257648141b207c3dbd8d5b8f, type: 2}
   gravity: 12
   sparkMaterial: {fileID: 2100000, guid: d578650619eba4e498c80599e6a05b45, type: 2}
-  rockSparkChance: 0.7
+  hardRockSparkChance: 0.9
   boulderSparkChance: 0.85
 --- !u!114 &1697135604
 MonoBehaviour:
