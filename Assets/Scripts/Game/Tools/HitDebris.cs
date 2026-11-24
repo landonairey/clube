@@ -18,8 +18,9 @@ namespace Clube.Game
         private static readonly int TintId = Shader.PropertyToID("_Tint");
         private static readonly Color LeafGreen = new Color(0.26f, 0.42f, 0.15f);
 
-        // Sparks glow orange-yellow, brighter than 1 so the lit held-item shader can't dim them to grey in daylight (GL828).
-        private static readonly Color SparkGlow = new Color(3f, 1.9f, 0.55f);
+        // Sparks glow orange (GL828, GL859): the spark mesh takes the shader's self-lit flame path, which brightens 1.8 times;
+        // kept this low, the result stays orange instead of washing out to white.
+        private static readonly Color SparkGlow = new Color(1.6f, 0.72f, 0.16f);
 
         [Tooltip("The Clube/Held Item material (tinted per crumb).")]
         [SerializeField]
@@ -33,9 +34,9 @@ namespace Clube.Game
         [SerializeField]
         private Material sparkMaterial;
 
-        [Tooltip("Chance a hit on rock or ore throws sparks (GL460, GL498; renamed so old scene values no longer override it).")]
+        [Tooltip("Chance a hit on rock or ore throws sparks (GL460, GL498, GL859; renamed again so old scene values no longer override it).")]
         [SerializeField, Range(0f, 1f)]
-        private float rockSparkChance = 0.7f;
+        private float hardRockSparkChance = 0.9f;
 
         [Tooltip("Chance a crush on the boulder throws a few sparks (GL459).")]
         [SerializeField, Range(0f, 1f)]
@@ -56,7 +57,7 @@ namespace Clube.Game
         }
 
         private readonly List<Crumb> crumbs = new List<Crumb>();
-        private readonly Mesh[] shapes = new Mesh[3];
+        private readonly Mesh[] shapes = new Mesh[4];
         private MaterialPropertyBlock tint;
         private PlayerToolUser tools;
         private BoulderBashing bashing;
@@ -73,6 +74,9 @@ namespace Clube.Game
             shapes[0] = Chunk("Chip", new Vector3(1f, 0.8f, 0.9f), 1);
             shapes[1] = Chunk("Clod", new Vector3(1f, 0.9f, 1f), 2);
             shapes[2] = Chunk("Flake", new Vector3(1.2f, 0.25f, 1f), 3);
+            // GL859: a spark is a thin streak that glows by itself (vertex alpha 0 takes the shader's flame path), drawn along its
+            // flight: the lit 4 cm lumps they were before could not be seen at all.
+            shapes[3] = Chunk("Spark", new Vector3(0.18f, 0.18f, 1.6f), 4, 0f);
         }
 
         private void OnEnable()
@@ -143,7 +147,7 @@ namespace Clube.Game
             }
             int shape = hit.Kind == MaterialKind.Rock ? 0 : hit.Kind == MaterialKind.Soil ? 1 : 2;
             // Sparks now and then off rock (GL460).
-            Burst(at, Earthy(hit.DebugColor), shape, Mathf.Clamp(8 + took * 3, 8, 22), outward, hit.Kind == MaterialKind.Rock ? rockSparkChance : 0f);
+            Burst(at, Earthy(hit.DebugColor), shape, Mathf.Clamp(8 + took * 3, 8, 22), outward, hit.Kind == MaterialKind.Rock ? hardRockSparkChance : 0f);
         }
 
         // Ore crushed on a boulder (GL459): fragments of the ore fly off the boulder, with sparks now and then.
@@ -199,7 +203,7 @@ namespace Clube.Game
             }
             if (sparkChance > 0f && Random.value < sparkChance && sparkMaterial != null)
             {
-                int sparkCount = Random.Range(6, 12);
+                int sparkCount = Random.Range(9, 15);
                 for (int i = 0; i < sparkCount; i++)
                 {
                     Vector3 across = Random.insideUnitSphere;
@@ -214,15 +218,15 @@ namespace Clube.Game
         {
             crumb.Velocity = velocity;
             crumb.Spin = Random.insideUnitSphere * 540f;
-            crumb.Size = spark ? Random.Range(0.03f, 0.05f) : Random.Range(0.025f, shape == 1 ? 0.05f : 0.065f);
+            crumb.Size = spark ? Random.Range(0.11f, 0.17f) : Random.Range(0.025f, shape == 1 ? 0.05f : 0.065f);
             crumb.Age = 0f;
-            crumb.Life = spark ? Random.Range(0.3f, 0.55f) : Random.Range(1f, 1.7f);
+            crumb.Life = spark ? Random.Range(0.45f, 0.8f) : Random.Range(1f, 1.7f);
             crumb.Alive = true;
             crumb.Spark = spark;
             crumb.Floor = FloorUnder(start) + crumb.Size * 0.4f;
-            crumb.Object.transform.SetPositionAndRotation(start, Random.rotation);
+            crumb.Object.transform.SetPositionAndRotation(start, spark ? Quaternion.LookRotation(velocity) : Random.rotation);
             crumb.Object.transform.localScale = Vector3.one * crumb.Size;
-            crumb.Object.GetComponent<MeshFilter>().sharedMesh = shapes[shape];
+            crumb.Object.GetComponent<MeshFilter>().sharedMesh = shapes[spark ? 3 : shape];
             if (spark)
             {
                 crumb.Renderer.sharedMaterial = sparkMaterial;
@@ -300,7 +304,7 @@ namespace Clube.Game
                     }
                 }
                 t.position = position;
-                t.rotation = Quaternion.Euler(crumb.Spin * step) * t.rotation;
+                t.rotation = crumb.Spark && crumb.Velocity.sqrMagnitude > 1e-4f ? Quaternion.LookRotation(crumb.Velocity) : Quaternion.Euler(crumb.Spin * step) * t.rotation;
                 // Shrinks away over its last third.
                 float left = Mathf.Clamp01((crumb.Life - crumb.Age) / (crumb.Life * 0.33f));
                 t.localScale = Vector3.one * crumb.Size * left;
@@ -331,8 +335,8 @@ namespace Clube.Game
         }
 
         // An irregular low-poly lump about a unit across: an octahedron with its corners pushed in and out. Also the
-        // leaves and splinters of a felling (FellingBurst).
-        internal static Mesh Chunk(string name, Vector3 scale, int seed)
+        // leaves and splinters of a felling (FellingBurst). Vertex alpha 0 makes it glow by itself in Clube/Held Item (sparks, GL859).
+        internal static Mesh Chunk(string name, Vector3 scale, int seed, float alpha = 1f)
         {
             var random = new System.Random(seed);
             Vector3[] corners =
@@ -363,7 +367,7 @@ namespace Clube.Game
                 for (int k = 0; k < 3; k++)
                 {
                     normals[f + k] = normal;
-                    colors[f + k] = Color.white;
+                    colors[f + k] = new Color(1f, 1f, 1f, alpha);
                     triangles[f + k] = f + k;
                 }
             }
