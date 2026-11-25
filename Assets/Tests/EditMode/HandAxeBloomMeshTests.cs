@@ -68,6 +68,7 @@ namespace Clube.Core.Tests
             Assert.That(mesh, Is.Not.Null);
             Color[] colours = mesh.colors;
             Bounds bounds = mesh.bounds;
+            Assert.That(mesh.triangles.Length / 3, Is.LessThanOrEqualTo(800), "low-poly, as every item model");
             Object.DestroyImmediate(mesh);
             Assert.That(bounds.size.x, Is.InRange(0.6f, 1.2f), "about a unit across, like the other item models");
             Assert.That(bounds.min.y, Is.GreaterThan(-0.15f), "stands on the ground");

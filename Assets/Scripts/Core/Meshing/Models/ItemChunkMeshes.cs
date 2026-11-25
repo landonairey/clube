@@ -234,7 +234,7 @@ namespace Clube.Core
             model.Surface = Vector2.zero;
         }
 
-        // GL876: the bloom's body, fused lumps (centre, radii, seed); the first is the main mass the pores are set in.
+        // GL876: the bloom's body, fused lumps (centre, radii, seed).
         private static readonly (Vector3 Centre, Vector3 Radii, int Seed)[] BloomLumps =
         {
             (new Vector3(0f, 0.3f, 0f), new Vector3(0.4f, 0.29f, 0.36f), 11),
@@ -242,44 +242,68 @@ namespace Clube.Core
             (new Vector3(-0.25f, 0.25f, -0.09f), new Vector3(0.25f, 0.22f, 0.24f), 13),
             (new Vector3(0.04f, 0.47f, -0.17f), new Vector3(0.2f, 0.16f, 0.19f), 14),
             (new Vector3(-0.12f, 0.2f, 0.26f), new Vector3(0.22f, 0.17f, 0.18f), 15),
-            (new Vector3(0.28f, 0.17f, -0.22f), new Vector3(0.17f, 0.14f, 0.16f), 16),
         };
 
-        private const int BloomPores = 96;
+        // The share of the lumps' facets sunk into pores, and of the rest crusted with slag.
+        private const float BloomPoreShare = 0.3f;
+        private const float BloomSlagShare = 0.1f;
 
         /// <summary>
-        /// An iron bloom (GL876), as a bloomery leaves it: a lumpy mass of a few fused lumps, dull and dark, pitted all over
-        /// with near-black pores (the sponge the slag ran out of) and crusted here and there with rusty brown slag.
+        /// An iron bloom (GL876), as a bloomery leaves it: a lumpy mass of a few fused lumps, dull and dark, spongy with
+        /// pores (the holes the slag ran out of: facets sunk into a near-black pit) and crusted here and there with rusty
+        /// brown slag.
         /// </summary>
         private static void Bloom(LowPolyMeshBuilder model, Color iron)
         {
-            Color body = Color.Lerp(Shade(iron, 0.42f), new Color(0.2f, 0.13f, 0.09f, iron.a), 0.25f);
-            Color pore = Shade(iron, 0.08f);
-            Color slag = Color.Lerp(body, new Color(0.42f, 0.24f, 0.13f, iron.a), 0.6f);
+            Color body = Color.Lerp(Shade(iron, 0.5f), new Color(0.2f, 0.13f, 0.09f, iron.a), 0.25f);
+            Color pore = Shade(iron, 0.1f);
+            Color slag = Color.Lerp(body, new Color(0.42f, 0.24f, 0.13f, iron.a), 0.65f);
             model.Surface = new Vector2(LowPolyMeshBuilder.MetalSurface, 0.05f);
             foreach ((Vector3 centre, Vector3 radii, int seed) in BloomLumps)
             {
-                Lump(model, centre, radii, seed * 41f, Shade(body, 0.92f + 0.16f * Hash(seed, 3)), seed);
+                Quaternion spin = Quaternion.Euler(seed * 37f % 23f, seed * 41f, seed * 53f % 19f);
+                var points = new Vector3[Corners.Length];
+                for (int i = 0; i < points.Length; i++)
+                {
+                    Vector3 p = spin * (Corners[i].normalized * (0.8f + 0.36f * Hash(seed, i)));
+                    p.y = Mathf.Max(p.y, -0.62f);
+                    points[i] = centre + Vector3.Scale(p, radii);
+                }
+                for (int f = 0; f < Faces.Length; f += 3)
+                {
+                    // Each facet split in four, its edges' middles pushed out a little to round it, so the pores are small.
+                    Vector3 a = points[Faces[f]], b = points[Faces[f + 1]], c = points[Faces[f + 2]];
+                    Vector3 ab = Rounded(a, b, centre), bc = Rounded(b, c, centre), ca = Rounded(c, a, centre);
+                    BloomFacet(model, a, ab, ca, centre, seed, f * 4, body, pore, slag);
+                    BloomFacet(model, ab, b, bc, centre, seed, f * 4 + 1, body, pore, slag);
+                    BloomFacet(model, ca, bc, c, centre, seed, f * 4 + 2, body, pore, slag);
+                    BloomFacet(model, ab, bc, ca, centre, seed, f * 4 + 3, body, pore, slag);
+                }
             }
             model.Surface = Vector2.zero;
-            // Pores and slag over the lumps: spread evenly round a sphere (a Fibonacci spiral), each set on the lump
-            // it lands nearest the outside of, just proud of it.
-            for (int i = 0; i < BloomPores; i++)
+        }
+
+        private static Vector3 Rounded(Vector3 a, Vector3 b, Vector3 centre)
+        {
+            return centre + ((a + b) * 0.5f - centre) * 1.07f;
+        }
+
+        // One small facet of the bloom: plain iron, a crust of slag, or a pore (sunk to a pit towards the lump's
+        // centre, its three walls dark, one catching a little light so it reads as a hole).
+        private static void BloomFacet(LowPolyMeshBuilder model, Vector3 a, Vector3 b, Vector3 c, Vector3 centre, int seed, int index,
+            Color body, Color pore, Color slag)
+        {
+            float roll = Hash(seed + 31, index);
+            if (roll >= BloomPoreShare)
             {
-                float y = 1f - 2f * (i + 0.5f) / BloomPores;
-                float around = i * 2.399963f + Hash(21, i);
-                float ring = Mathf.Sqrt(1f - y * y);
-                var direction = new Vector3(Mathf.Cos(around) * ring, y, Mathf.Sin(around) * ring);
-                if (direction.y < -0.45f)
-                {
-                    continue; // the underside it sits on
-                }
-                (Vector3 centre, Vector3 radii, int _) = BloomLumps[i % BloomLumps.Length];
-                Vector3 at = centre + Vector3.Scale(direction, radii) * 0.97f;
-                bool isSlag = Hash(23, i) < 0.14f;
-                float size = isSlag ? 0.045f + 0.035f * Hash(25, i) : 0.035f + 0.04f * Hash(27, i);
-                Lump(model, at, new Vector3(size, size * 0.8f, size), i * 29f, isSlag ? slag : pore, 40 + i);
+                Color facet = roll < BloomPoreShare + BloomSlagShare ? slag : body;
+                model.Triangle(a, b, c, centre, Shade(facet, 0.88f + 0.2f * Hash(seed + 7, index)));
+                return;
             }
+            Vector3 pit = Vector3.Lerp((a + b + c) / 3f, centre, 0.32f);
+            model.Triangle(a, b, pit, centre, pore);
+            model.Triangle(b, c, pit, centre, Shade(pore, 1.4f));
+            model.Triangle(c, a, pit, centre, Shade(pore, 2.2f));
         }
 
         // A fired brick.
