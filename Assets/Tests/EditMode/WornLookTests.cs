@@ -25,6 +25,18 @@ namespace Clube.Core.Tests
         }
 
         [Test]
+        public void Nothing_OnTheChest_DropsThePackAndItsStraps()
+        {
+            FigureLook body = FigureLooks.Of(FigurePreset.Player);
+            Assert.IsTrue(body.Has(FigureOutfit.Backpack));
+            FigureLook bare = WornLook.Dress(body, slot => null);
+            Assert.IsFalse(bare.Has(FigureOutfit.Backpack));
+            Assert.IsFalse(bare.Has(FigureOutfit.Belt));
+            FigureLook ragged = WornLook.Dress(body, slot => slot == WearSlot.Chest ? Item("Rags") : null);
+            Assert.IsTrue(ragged.Has(FigureOutfit.Backpack));
+        }
+
+        [Test]
         public void Rags_AreTornInTheirColour_LegsStillWrapped()
         {
             ItemDefinition rags = Item("Rags");

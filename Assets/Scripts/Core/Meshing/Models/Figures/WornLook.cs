@@ -21,7 +21,7 @@ namespace Clube.Core
         public static FigureLook Dress(FigureLook body, Func<WearSlot, ItemDefinition> worn)
         {
             FigureLook look = body;
-            look.Outfit = body.Outfit & FigureOutfit.Backpack;
+            look.Outfit = FigureOutfit.None;
             look.Prop = FigureProp.None;
             look.Wrap = Color.clear;
             look.Bracers = Color.clear;
@@ -36,7 +36,9 @@ namespace Clube.Core
             {
                 look.Shirt = Opaque(chest.IconTint);
                 look.Accent = Shade(look.Shirt, 0.8f);
-                look.Outfit |= FigureOutfit.Belt;
+                // The body's pack (the player's, with its straps over the shoulders) is carried over the shirt only (GL882):
+                // with nothing on the chest the straps would sit on bare skin like suspenders.
+                look.Outfit |= FigureOutfit.Belt | (body.Outfit & FigureOutfit.Backpack);
                 if (chest.OutfitPoints <= 0)
                 {
                     look.Outfit |= FigureOutfit.Patched;
