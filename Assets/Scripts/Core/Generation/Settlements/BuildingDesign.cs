@@ -64,6 +64,8 @@ namespace Clube.Core
 
         /// <summary>GL715: built all of stone (a castle, a guard tower) rather than boards over a stone plinth.</summary>
         public bool Masonry;
+        /// <summary>GL874: its stone is laid as cobblestone (the guard tower) rather than the settlement's dressed stone.</summary>
+        public bool Cobblestone;
         /// <summary>GL715: a flat stone roof walled round by a crenellated parapet, in place of a gable roof.</summary>
         public bool Battlements;
         /// <summary>GL715: the side of a square turret at each corner, rising over the parapet, in metres (0: none).</summary>
@@ -216,7 +218,7 @@ namespace Clube.Core
                 // main stone guard tower." Built only where a settlement type names them. ---
                 new BuildingDesign { Id = "castle", Name = "Castle", Width = 8f, Depth = 8f, Stories = 3, StoryHeight = 3.5f, Masonry = true,
                     Battlements = true, Turrets = 2f, Landmark = true, Types = new[] { "capital" }, Weight = 0f },
-                new BuildingDesign { Id = "guard-tower", Name = "Guard tower", Width = 4.5f, Depth = 4.5f, Stories = 3, StoryHeight = 4f, Masonry = true,
+                new BuildingDesign { Id = "guard-tower", Name = "Guard tower", Width = 4.5f, Depth = 4.5f, Stories = 3, StoryHeight = 4f, Masonry = true, Cobblestone = true,
                     Battlements = true, Landmark = true, Types = new[] { "city", "capital" }, Weight = 0f },
             };
         }

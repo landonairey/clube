@@ -68,6 +68,7 @@ namespace Clube.Core
             float ridge = RoofAt(design, pitch, voxel, 0f);
             float yardFront = d + (design.YardWalls ? design.YardDepth : 0f);
             float h = voxel * 0.5f;
+            BuildingStairs stairs = BuildingStairs.For(design, voxel);
             for (float z = -d - eave + h; z < yardFront; z += voxel)
             {
                 for (float x = -w - voxel + h; x < w + voxel; x += voxel)
@@ -116,6 +117,19 @@ namespace Clube.Core
                         {
                             // The gable ends fill up under the roof.
                             part = TownStructures.ShopPart.Boards;
+                        }
+                        if (stairs != null && inside)
+                        {
+                            // GL873: the stairs' treads, and the floors and roof cut away over them.
+                            BuildingStairs.Cell stair = stairs.At(x, y, z);
+                            if (stair == BuildingStairs.Cell.Tread)
+                            {
+                                part = TownStructures.ShopPart.Boards;
+                            }
+                            else if (stair == BuildingStairs.Cell.Headroom)
+                            {
+                                part = null;
+                            }
                         }
                         if (part.HasValue)
                         {
@@ -296,12 +310,18 @@ namespace Clube.Core
 
         /// <summary>
         /// A building's voxels in the world, by voxel (its lowest corner, a global sample), with the material of each:
-        /// stone for plinth and posts, <paramref name="boards"/> for floor, walls and roof, <paramref name="trim"/> for the rest.
+        /// stone for plinth and posts, <paramref name="boards"/> for floor, walls, stairs and roof, <paramref name="trim"/> for the rest.
         /// </summary>
         /// <param name="slice">Which slice across its width to give (0 to <paramref name="slices"/> - 1), for building it a part at a time.</param>
-        public static Dictionary<Vector3Int, byte> Blocks(SettlementBuilding building, float voxel, byte stone, byte boards, byte trim, int slice = 0, int slices = 1)
+        /// <param name="cobble">GL874: the stone of a <see cref="BuildingDesign.Cobblestone"/> building; null keeps <paramref name="stone"/>.</param>
+        public static Dictionary<Vector3Int, byte> Blocks(SettlementBuilding building, float voxel, byte stone, byte boards, byte trim, int slice = 0, int slices = 1,
+            byte? cobble = null)
         {
             BuildingDesign design = DesignOf(building);
+            if (design.Cobblestone && cobble.HasValue)
+            {
+                stone = cobble.Value;
+            }
             List<(Vector3 Centre, TownStructures.ShopPart Part)> cells = Voxels(design, building.Pitch, voxel);
             var blocks = new Dictionary<Vector3Int, byte>(cells.Count / Mathf.Max(1, slices) + 16);
             float width = design.Width + 4f * voxel;

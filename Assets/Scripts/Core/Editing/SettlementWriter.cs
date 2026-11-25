@@ -47,6 +47,8 @@ namespace Clube.Core
             public VoxelMaterial Stone;
             /// <summary>The two kinds of boards: a building's walls are one and its trim the other, turn about.</summary>
             public VoxelMaterial Boards, Trim;
+            /// <summary>GL874: the cobblestone of a <see cref="BuildingDesign.Cobblestone"/> building (the guard tower); null: its stone.</summary>
+            public VoxelMaterial Cobble;
         }
 
         private readonly List<Piece> pieces = new List<Piece>();
@@ -473,7 +475,7 @@ namespace Clube.Core
                     }
                     bool turnAbout = piece.Index % 2 == 1;
                     yield return SquareVoxels.BuildSteps(world, SettlementStructures.Blocks(site.Buildings[piece.Index], world.Grid.VoxelSize, materials.Stone.Id,
-                        (turnAbout ? materials.Trim : materials.Boards).Id, (turnAbout ? materials.Boards : materials.Trim).Id, piece.Part, BuildingSlices), iso);
+                        (turnAbout ? materials.Trim : materials.Boards).Id, (turnAbout ? materials.Boards : materials.Trim).Id, piece.Part, BuildingSlices, materials.Cobble != null ? materials.Cobble.Id : (byte?)null), iso);
                     // GL711: the roof's top drawn as a slant over its square steps.
                     yield return SquareVoxels.ShapeSteps(world, SettlementStructures.RoofSkin(site.Buildings[piece.Index], world.Grid.VoxelSize, piece.Part, BuildingSlices),
                         (turnAbout ? materials.Trim : materials.Boards).Id);
