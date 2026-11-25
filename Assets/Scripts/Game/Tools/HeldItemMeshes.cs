@@ -56,7 +56,7 @@ namespace Clube.Game
                 return new HeldItem(Shrunk(DroppedItemMeshes.Bag(), 0.6f, Quaternion.identity, Color.white, Lump, false, out _), null, 1f);
             }
             ItemIconShape shape = ItemIconShapes.Resolve(item, materials);
-            float longest = shape == ItemIconShape.Stick || shape == ItemIconShape.Boards || shape == ItemIconShape.Log ? Long : Lump;
+            float longest = shape == ItemIconShape.Stick || shape == ItemIconShape.Bone || shape == ItemIconShape.Boards || shape == ItemIconShape.Log ? Long : Lump;
             Mesh mesh = Shrunk(model.Mesh, 1f, model.Turn, model.Tint, longest, model.Albedo != null, out float scale);
             // The icon lays the texture TextureZoom times larger than its one-unit model; the held model is smaller by scale.
             float tiling = 1f / (Mathf.Max(0.01f, model.TextureZoom) * scale);

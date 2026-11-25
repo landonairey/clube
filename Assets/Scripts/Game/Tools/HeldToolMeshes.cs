@@ -28,6 +28,7 @@ namespace Clube.Game
         private static readonly Color Wood = new Color(0.42f, 0.28f, 0.15f);
         private static readonly Color WoodHead = new Color(0.5f, 0.35f, 0.2f);
         private static readonly Color Stone = new Color(0.5f, 0.5f, 0.52f);
+        private static readonly Color Bone = new Color(0.86f, 0.82f, 0.7f);
         private static readonly Color Flint = new Color(0.36f, 0.35f, 0.38f);
         private static readonly Color Bronze = new Color(0.72f, 0.46f, 0.2f);
         private static readonly Color Iron = new Color(0.55f, 0.57f, 0.6f);
@@ -38,10 +39,11 @@ namespace Clube.Game
         private static readonly Color Charcoal = new Color(0.12f, 0.11f, 0.1f);
         // Alpha 0: Clube/Held Item draws it glowing, unlit (GL294).
 
-        // A tool made of stone (a stone pick, hatchet or hammer), as against bronze or iron.
+        // A tool made of stone or bone (a stone pick, hatchet or hammer, a bone pick; GL877), as against bronze or iron.
         private static bool IsStone(ToolDefinition tool)
         {
-            return tool != null && tool.DisplayName.ToLowerInvariant().Contains("stone");
+            string name = tool != null ? tool.DisplayName.ToLowerInvariant() : string.Empty;
+            return name.Contains("stone") || name.Contains("bone");
         }
 
         /// <summary>The shape a tool is drawn as, by its name; the hand when there's none.</summary>
@@ -109,6 +111,7 @@ namespace Clube.Game
             new HeadMaterial("steel", Steel, 1f, 1), // GL624: paler and bluer than iron
             new HeadMaterial("copper", Copper, 0.45f, 2), // GL523: the copper pick's head is copper (with its patina)
             IronHead,
+            new HeadMaterial("bone", Bone, 0f, 2), // GL877: pale ivory, before "hand axe" so the bone hand axe is bone, not flint
             new HeadMaterial("hand axe", Flint, 0.12f, 3),
             new HeadMaterial("stone", Stone, 0f, 3),
             new HeadMaterial("shovel", WoodHead, 0f, 1), // GL695: the plain shovel is all wood, as its recipe is

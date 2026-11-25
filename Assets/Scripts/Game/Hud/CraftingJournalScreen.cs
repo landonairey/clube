@@ -180,7 +180,7 @@ namespace Clube.Game
                 "Whittle sticks, make the first tools, build a campfire and, later, furnaces.");
             yield return new Entry(PlaceSketch.Boulder, "Stone boulder",
                 "Rock too big to pick up. Aim at it and use the right mouse button:\n" +
-                "a stone in hand is knocked into a hand axe;\n" +
+                "a stone or a bone in hand is knocked into a hand axe;\n" +
                 "hold with raw ore to crush it (from Mining 2), an item every 0.25 s;\n" +
                 "hold with a mixed stack, like clay with dirt in it, to pick it over.\n" +
                 "Chisel its top flat for a flat rock, a better worktop.");

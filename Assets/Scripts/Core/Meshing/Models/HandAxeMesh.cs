@@ -3,9 +3,9 @@ using UnityEngine;
 namespace Clube.Core
 {
     /// <summary>
-    /// A knapped hand axe (GL875), low-poly: an almond outline with a rounded, thick butt for the hand, narrowing to a
-    /// crude point; both faces covered in shallow scooped flake scars (each a small dished fan of facets) and a wavy
-    /// edge where the flakes met. Built in its own frame: the butt at the origin, the point up +Y, width along X and
+    /// A knapped hand axe (GL875), low-poly: an almond outline with a rounded, thick butt for the hand, ending in a broad, blunt
+    /// rounded arc (GL884); both faces covered in shallow scooped flake scars (each a small dished fan of facets) and a wavy
+    /// edge where the flakes met. Built in its own frame: the butt at the origin, the working end up +Y, width along X and
     /// thickness along Z; callers place it with <see cref="LowPolyMeshBuilder.Placement"/>. One colour in, every
     /// shade derived from it, so another material (bone, GL877) is the same call with another colour.
     /// </summary>
@@ -139,22 +139,23 @@ namespace Clube.Core
         /// <summary>The outline's half width at a fraction <paramref name="s"/> up the length, the widest being 1.</summary>
         public static float HalfWidth(float s)
         {
-            const float widest = 0.3f;
+            const float widest = 0.36f;
             if (s <= widest)
             {
                 // The butt: a round end.
                 float t = (widest - s) / widest;
                 return Mathf.Sqrt(Mathf.Max(0f, 1f - t * t));
             }
-            // The working end: tapering, a little hollow-sided, to the point.
-            return Mathf.Pow((1f - s) / (1f - widest), 1.15f);
+            // The working end (GL884): a broad rounded arc, not a spike; still nearly full width a long way up, closing over a blunt tip.
+            float u = (s - widest) / (1f - widest);
+            return Mathf.Pow(Mathf.Max(0f, 1f - Mathf.Pow(u, 2.4f)), 0.5f);
         }
 
         /// <summary>The middle's half thickness at a fraction up the length, the thickest being 1: thick in the hand,
         /// thin at the point.</summary>
         public static float Thickness(float s)
         {
-            return s < 0.22f ? Mathf.Lerp(0.82f, 1f, s / 0.22f) : Mathf.Lerp(1f, 0.16f, Mathf.Pow((s - 0.22f) / 0.78f, 0.9f));
+            return s < 0.22f ? Mathf.Lerp(0.82f, 1f, s / 0.22f) : Mathf.Lerp(1f, 0.42f, Mathf.Pow((s - 0.22f) / 0.78f, 1.4f));
         }
 
         // How blunt (rounded cortex) the edge is at a height: all of it at the butt, none from a third of the way up.

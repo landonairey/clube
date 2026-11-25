@@ -141,6 +141,22 @@ MonoBehaviour:
     Coins: 12
     Units: 1
     ByVolume: 0
+  - Item: {fileID: 11400000, guid: 36f13f2b96d44752a41d55a0676b7158, type: 2}
+    Coins: 2
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 1608d7cd1b7b4d6aa9b2c5a00c46f57e, type: 2}
+    Coins: 4
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 18408a857f4d41f4bb1bd1602466824f, type: 2}
+    Coins: 15
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 0ccf4994b50e4420922300a384d1c2e4, type: 2}
+    Coins: 15
+    Units: 1
+    ByVolume: 0
   - Item: {fileID: 11400000, guid: 9a2549f6e31e233418cbffff678c20ea, type: 2}
     Coins: 10
     Units: 1

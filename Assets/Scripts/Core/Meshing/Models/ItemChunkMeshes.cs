@@ -66,6 +66,9 @@ namespace Clube.Core
                 case ItemIconShape.Stick:
                     Stick(model, tint);
                     break;
+                case ItemIconShape.Bone:
+                    Bone(model, tint);
+                    break;
                 case ItemIconShape.Coil:
                     Coil(model, tint);
                     break;
@@ -392,6 +395,25 @@ namespace Clube.Core
             model.Prism(new Vector3(0.03f, 0.55f, 0f), new Vector3(-0.02f, 1f, 0.01f), 0.035f, 0.025f, 5, Shade(wood, 1.06f));
             model.Prism(new Vector3(0.03f, 0.55f, 0f), new Vector3(0.14f, 0.68f, 0.02f), 0.02f, 0.012f, 4, Shade(wood, 0.9f));
             model.Surface = Vector2.zero;
+        }
+
+        /// <summary>
+        /// A bone (GL877), an animal's long bone: a pale ivory shaft, thinner in the middle, with a pair of rounded knobs at
+        /// each end and a little shade in the hollow between them. Stands along y like a stick; the icon lays it across.
+        /// </summary>
+        private static void Bone(LowPolyMeshBuilder model, Color ivory)
+        {
+            Color shaft = Shade(ivory, 0.97f);
+            model.Prism(new Vector3(0f, 0.12f, 0f), new Vector3(0.01f, 0.5f, 0f), 0.075f, 0.052f, 6, shaft);
+            model.Prism(new Vector3(0.01f, 0.5f, 0f), new Vector3(0f, 0.88f, 0.005f), 0.052f, 0.075f, 6, Shade(ivory, 1.04f));
+            for (int end = 0; end < 2; end++)
+            {
+                float y = end == 0 ? 0.1f : 0.9f;
+                float away = end == 0 ? -1f : 1f;
+                Color knob = Shade(ivory, end == 0 ? 0.92f : 1.08f);
+                model.Blob(new Vector3(-0.07f, y + away * 0.04f, 0.01f), new Vector3(0.09f, 0.075f, 0.08f), Quaternion.Euler(0f, 20f * away, 0f), knob, 6, 3);
+                model.Blob(new Vector3(0.075f, y + away * 0.05f, -0.01f), new Vector3(0.085f, 0.07f, 0.08f), Quaternion.Euler(0f, -25f * away, 0f), Shade(knob, 0.95f), 6, 3);
+            }
         }
 
         // A block standing on y = 0: its foot and top given as half-sizes across x and z.

@@ -30,7 +30,7 @@ namespace Clube.Game
         // More than one mix ever gives: every material in the registry could come out of it.
         private const int OutputCapacity = 24;
 
-        private static readonly string[] RecipeNames = { "Refine material", "Hand axe (from Stone)" };
+        private static readonly string[] RecipeNames = { "Refine material", "Hand axe (from Stone or Bone)" };
 
         private readonly Inventory input = new Inventory(1);
         private readonly Inventory output = new Inventory(OutputCapacity);
@@ -254,7 +254,7 @@ namespace Clube.Game
             float y = area.y;
             GUI.Label(new Rect(x, y, area.width, 26f), Refines
                 ? "Pick the impurities out of a mixed stack, a pass at a time"
-                : "Knock one stone into a hand axe");
+                : "Knock one stone or bone into a hand axe");
             y += 30f;
 
             GUI.Label(new Rect(x, y, slot, 22f), "Input");
