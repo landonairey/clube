@@ -121,6 +121,10 @@ namespace Clube.Game
         [SerializeField]
         private string bankMaterial = "Loose stone";
 
+        [Tooltip("GL874: the cobblestone the guard towers are laid of (the cobbles of the paved cart paths and the towns' paths).")]
+        [SerializeField]
+        private string cobbleMaterial = "Loose stone";
+
         [Tooltip("Items a merchant offers beside its settlement's other shops.")]
         [SerializeField, Range(1, 16)]
         private int merchantVariety = 8;
@@ -645,6 +649,7 @@ namespace Clube.Game
                 Stone = registry != null ? registry.Find("Stone") : null,
                 Boards = registry != null ? registry.Find("Oak boards") : null,
                 Trim = registry != null ? registry.Find("Maple boards") : null,
+                Cobble = registry != null ? registry.Find(cobbleMaterial) : null,
             };
             // While the area loads in bulk the ground is waiting to be shown: more of the frame goes to writing it.
             float budget = view.IsLoadingInSight ? Mathf.Max(writeBudgetMilliseconds, view.Hurry ? HurryBudgetMilliseconds : loadingWriteBudgetMilliseconds) : writeBudgetMilliseconds;
