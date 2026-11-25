@@ -74,10 +74,13 @@ namespace Clube.Core
             return rise <= DownhillRise ? 0f : Mathf.Max(0f, speed) * deltaTime;
         }
 
-        /// <summary>True when the slide ends: down to a crouch walk, its level distance used up, or ground rising too steeply.</summary>
-        public static bool Ends(in Tuning t, float speed, float distance, float rise)
+        /// <summary>
+        /// True when the slide ends: down to a crouch walk or its level distance used up. A rise doesn't end it on the spot
+        /// (a bump in the voxel ground did, dropping a fast slide to the crouch walk): <see cref="Step"/> slows it uphill.
+        /// </summary>
+        public static bool Ends(in Tuning t, float speed, float distance)
         {
-            return speed <= t.CrouchSpeed || distance >= t.MaxDistance || rise > t.SteepestRise;
+            return speed <= t.CrouchSpeed || distance >= t.MaxDistance;
         }
     }
 }

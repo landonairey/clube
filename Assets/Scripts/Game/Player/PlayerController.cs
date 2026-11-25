@@ -463,7 +463,10 @@ namespace Clube.Game
             }
             InputAction crouch = Crouch;
             bool crouchHeld = crouch != null && !isInMenu && !InputLocked && crouch.IsPressed();
-            float speed = walkSpeed * (IsCrouching ? crouchSpeedMultiplier : isSprinting ? sprintMultiplier : 1f);
+            // The crouch walk is slow only on the ground: crouched in the air (Crouch held for a slide on landing), Move
+            // steers towards the sprint as usual, so the run-up isn't bled away before the slide (GL872).
+            bool crouchSlows = IsCrouching && Body.isGrounded;
+            float speed = walkSpeed * (crouchSlows ? crouchSpeedMultiplier : isSprinting ? sprintMultiplier : 1f);
             Vector3 walk = (transform.right * input.x + transform.forward * input.y) * speed;
             if (walk.sqrMagnitude > speed * speed)
             {
@@ -553,14 +556,26 @@ namespace Clube.Game
                 }
                 // In the air the run-up carries on; Move only nudges it, so there's no
                 // turning around on a dime. Letting go keeps the momentum.
+                // A run-up faster than Move's own speed (a jump out of a slide) is turned, not slowed, so chained slides
+                // keep their speed (GL872).
                 if (walk != Vector3.zero)
                 {
-                    velocity = Vector3.MoveTowards(velocity, walk, airAcceleration * Time.deltaTime);
+                    Vector3 target = walk.normalized * Mathf.Max(walk.magnitude, velocity.magnitude);
+                    velocity = Vector3.MoveTowards(velocity, target, airAcceleration * Time.deltaTime);
                 }
                 fallSpeed += Gravity * Time.deltaTime;
             }
 
             CollisionFlags hits = Body.Move((velocity + Vector3.down * fallSpeed) * Time.deltaTime);
+
+            // A slide into a wall ends there (a rise only slows it, GL872): a side hit that held it to under half its speed,
+            // so a small step in the voxel ground, which the controller climbs, doesn't.
+            Vector3 movedFlat = Vector3.ProjectOnPlane(Body.velocity, Vector3.up);
+            if (IsSliding && (hits & CollisionFlags.Sides) != 0 && movedFlat.magnitude < slideSpeed * 0.5f)
+            {
+                slideSpeed = 0f;
+                slideSpent = true;
+            }
 
             // Running into a wall in the air stops the part of the momentum going into it.
             if (!Body.isGrounded && (hits & CollisionFlags.Sides) != 0)
@@ -691,7 +706,7 @@ namespace Clube.Game
             slideSpeed = SlideMotion.Step(tuning, slideSpeed, slideStartSpeed, rise, Time.deltaTime);
             velocity = slideDirection * Mathf.Max(0f, slideSpeed);
             slideDistance += SlideMotion.CountedDistance(slideSpeed, rise, Time.deltaTime);
-            if (SlideMotion.Ends(tuning, slideSpeed, slideDistance, rise))
+            if (SlideMotion.Ends(tuning, slideSpeed, slideDistance))
             {
                 slideSpeed = 0f;
                 slideSpent = true;

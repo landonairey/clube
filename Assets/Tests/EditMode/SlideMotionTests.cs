@@ -70,7 +70,7 @@ namespace Clube.Core.Tests
                 {
                     speed = SlideMotion.Step(T, speed, start, rise, dt);
                     distance += SlideMotion.CountedDistance(speed, rise, dt);
-                    Assert.IsFalse(SlideMotion.Ends(T, speed, distance, rise), $"slide {slide} ended downhill at frame {frame}");
+                    Assert.IsFalse(SlideMotion.Ends(T, speed, distance), $"slide {slide} ended downhill at frame {frame}");
                 }
                 Assert.LessOrEqual(speed, T.TopSpeed + 1e-4f);
                 // A jump out keeps the speed as the run-up for the next slide.
@@ -85,7 +85,7 @@ namespace Clube.Core.Tests
         {
             float start = SlideMotion.StartSpeed(T, 7f), speed = start, distance = 0f;
             int frames = 0;
-            while (!SlideMotion.Ends(T, speed, distance, 0f) && frames < 1000)
+            while (!SlideMotion.Ends(T, speed, distance) && frames < 1000)
             {
                 speed = SlideMotion.Step(T, speed, start, 0f, 1f / 60f);
                 distance += SlideMotion.CountedDistance(speed, 0f, 1f / 60f);
@@ -93,6 +93,18 @@ namespace Clube.Core.Tests
             }
             Assert.Less(speed, start);
             Assert.GreaterOrEqual(distance, T.MaxDistance - 0.2f);
+        }
+
+        [Test]
+        public void ABumpInTheGround_SlowsAFastSlide_ButDoesNotEndIt()
+        {
+            float start = 12f, speed = start;
+            for (int frame = 0; frame < 6; frame++)
+            {
+                speed = SlideMotion.Step(T, speed, start, 0.5f, 1f / 60f);
+            }
+            Assert.Less(speed, start);
+            Assert.IsFalse(SlideMotion.Ends(T, speed, 1f));
         }
     }
 }
