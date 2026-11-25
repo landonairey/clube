@@ -169,6 +169,20 @@ namespace Clube.Core
             Regrow();
         }
 
+        /// <summary>Lets picked cells grow again (reeds coming back, GL879): they are no longer gone, and the chunks find their bushes again.</summary>
+        public void Release(IEnumerable<Vector2Int> cells)
+        {
+            bool any = false;
+            foreach (Vector2Int cell in cells)
+            {
+                any |= removed.Remove(cell);
+            }
+            if (any)
+            {
+                Regrow();
+            }
+        }
+
         /// <summary>Finds every chunk's bushes again (after a change to <see cref="Growth"/>).</summary>
         public void Regrow()
         {
