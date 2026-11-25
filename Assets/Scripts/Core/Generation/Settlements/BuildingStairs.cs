@@ -16,8 +16,11 @@ namespace Clube.Core
     {
         /// <summary>Metres across a flight and a landing.</summary>
         public const float Width = 1f;
-        /// <summary>Metres of headroom kept clear over every tread.</summary>
-        public const float Headroom = 2.25f;
+        /// <summary>
+        /// Metres of headroom kept clear over every tread: the player (1.8 m) lifting by its step (0.4 m) over the tread
+        /// before, which its capsule still overhangs (2.25 m stuck the player under the floor's edge).
+        /// </summary>
+        public const float Headroom = 2.75f;
         /// <summary>How thick a tread's boards are under its top, in metres.</summary>
         public const float Thickness = 0.5f;
 
@@ -45,10 +48,13 @@ namespace Clube.Core
         private readonly List<Tread> treads;
         // The band the spiral runs round in (outside the well in its middle), for a quick answer away from it.
         private readonly Rect outer, well;
+        // Nothing is cut away from here up: a gable roof stays whole over the top storey.
+        private readonly float ceiling;
 
-        private BuildingStairs(List<Tread> treads, float cx, float cz)
+        private BuildingStairs(List<Tread> treads, float cx, float cz, float ceiling)
         {
             this.treads = treads;
+            this.ceiling = ceiling;
             outer = Rect.MinMaxRect(-cx - Width * 0.5f, -cz - Width * 0.5f, cx + Width * 0.5f, cz + Width * 0.5f);
             well = Rect.MinMaxRect(-cx + Width * 0.5f, -cz + Width * 0.5f, cx - Width * 0.5f, cz - Width * 0.5f);
         }
@@ -82,9 +88,9 @@ namespace Clube.Core
             }
             float rise = voxel;
             float run = 2f * voxel;
-            // The spiral's centre line: half a stair in from the walls' inner faces (or from the turrets).
-            float cx = design.Width * 0.5f - voxel - design.Turrets - Width * 0.5f;
-            float cz = design.Depth * 0.5f - voxel - design.Turrets - Width * 0.5f;
+            // The spiral's centre line: half a stair in from the walls' inner faces, or from where the turrets begin.
+            float cx = Mathf.Min(design.Width * 0.5f - voxel, design.Width * 0.5f - design.Turrets) - Width * 0.5f;
+            float cz = Mathf.Min(design.Depth * 0.5f - voxel, design.Depth * 0.5f - design.Turrets) - Width * 0.5f;
             Vector2[] corners = { new Vector2(cx, cz), new Vector2(cx, -cz), new Vector2(-cx, -cz), new Vector2(-cx, cz) };
             int[] steps = new int[4];
             int lap = 0;
@@ -124,7 +130,8 @@ namespace Clube.Core
                     treads.Add(new Tread(Landing(to), surface));
                 }
             }
-            return new BuildingStairs(treads, cx, cz);
+            float ceiling = design.Battlements ? float.PositiveInfinity : TownLayout.FloorHeight + Mathf.Clamp(design.Stories, 1, 3) * design.StoryHeight;
+            return new BuildingStairs(treads, cx, cz, ceiling);
         }
 
         /// <summary>What the stairs make of a point in the building's frame: a tread's boards win over another's headroom.</summary>
@@ -132,7 +139,7 @@ namespace Clube.Core
         {
             var point = new Vector2(x, z);
             Cell cell = Cell.None;
-            if (!outer.Contains(point) || well.Contains(point) || y > Top + Headroom)
+            if (!outer.Contains(point) || well.Contains(point) || y > Top + Headroom || y > ceiling)
             {
                 return cell;
             }

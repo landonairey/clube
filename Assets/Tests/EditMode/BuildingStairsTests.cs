@@ -50,8 +50,8 @@ namespace Clube.Core.Tests
                     Assert.IsTrue(touch, $"{design.Id} tread {i} follows on from the last");
                     Assert.GreaterOrEqual(Mathf.Max(b.width, b.height), BuildingStairs.Width - 1e-4f, $"{design.Id} tread {i} is a stair wide");
                     // Inside the walls (and clear of any turret).
-                    float inside = design.Width * 0.5f - Voxel - design.Turrets;
-                    float deep = design.Depth * 0.5f - Voxel - design.Turrets;
+                    float inside = Mathf.Min(design.Width * 0.5f - Voxel, design.Width * 0.5f - design.Turrets);
+                    float deep = Mathf.Min(design.Depth * 0.5f - Voxel, design.Depth * 0.5f - design.Turrets);
                     Assert.IsTrue(b.xMin >= -inside - 1e-4f && b.xMax <= inside + 1e-4f && b.yMin >= -deep - 1e-4f && b.yMax <= deep + 1e-4f, $"{design.Id} tread {i} inside");
                 }
                 // Every storey's floor is reached on the way.
@@ -71,6 +71,7 @@ namespace Clube.Core.Tests
             {
                 Dictionary<Vector3Int, TownStructures.ShopPart> solid = Solid(design);
                 IReadOnlyList<BuildingStairs.Tread> treads = BuildingStairs.For(design, Voxel).Treads;
+                float ceiling = TownLayout.FloorHeight + design.Stories * design.StoryHeight;
                 foreach (BuildingStairs.Tread tread in treads)
                 {
                     for (float x = tread.Area.xMin + Voxel * 0.5f; x < tread.Area.xMax; x += Voxel)
@@ -79,7 +80,10 @@ namespace Clube.Core.Tests
                         {
                             Assert.IsTrue(solid.TryGetValue(Index(x, tread.Surface - Voxel * 0.5f, z), out TownStructures.ShopPart part), $"{design.Id}: a tread at {x}, {tread.Surface}, {z}");
                             Assert.AreEqual(TownStructures.ShopPart.Boards, part, $"{design.Id}: wooden treads");
-                            for (float y = tread.Surface + Voxel * 0.5f; y < tread.Surface + 2f; y += Voxel)
+                            // Room to step up from it to the next tread (the player 1.8 m, its step 0.4 m), under a gable roof
+                            // as far as the top storey's ceiling.
+                            float clear = design.Battlements ? 2.5f : Mathf.Min(2.5f, ceiling - tread.Surface);
+                            for (float y = tread.Surface + Voxel * 0.5f; y < tread.Surface + clear; y += Voxel)
                             {
                                 Assert.IsFalse(solid.ContainsKey(Index(x, y, z)), $"{design.Id}: headroom at {x}, {y}, {z} over a tread at {tread.Surface}");
                             }

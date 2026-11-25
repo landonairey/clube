@@ -6263,6 +6263,7 @@ MonoBehaviour:
   writeBudgetMilliseconds: 3
   loadingWriteBudgetMilliseconds: 14
   bankMaterial: Loose stone
+  cobbleMaterial: Loose stone
   merchantVariety: 8
   rules:
     RowDepth: 18
@@ -6304,6 +6305,7 @@ MonoBehaviour:
       YardDepth: 2.6
       Fixtures: []
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6327,6 +6329,7 @@ MonoBehaviour:
       YardDepth: 2.6
       Fixtures: []
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6349,6 +6352,7 @@ MonoBehaviour:
       YardDepth: 2.6
       Fixtures: []
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6373,6 +6377,7 @@ MonoBehaviour:
       YardDepth: 2.6
       Fixtures: []
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6396,6 +6401,7 @@ MonoBehaviour:
       YardDepth: 2.6
       Fixtures: []
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6420,6 +6426,7 @@ MonoBehaviour:
       YardDepth: 2.6
       Fixtures: []
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6450,6 +6457,7 @@ MonoBehaviour:
         Duties: []
         Stand: {x: 0, y: 4.25}
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6473,6 +6481,7 @@ MonoBehaviour:
       YardDepth: 2.6
       Fixtures: []
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6522,6 +6531,7 @@ MonoBehaviour:
         Duties: []
         Stand: {x: 2.7, y: 3.45}
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6570,6 +6580,7 @@ MonoBehaviour:
         Duties: []
         Stand: {x: 2.6, y: 3.55}
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6613,6 +6624,7 @@ MonoBehaviour:
         - spin
         Stand: {x: 2, y: 4.15}
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6649,6 +6661,7 @@ MonoBehaviour:
         - tan
         Stand: {x: 1.6, y: 4.15}
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6690,6 +6703,7 @@ MonoBehaviour:
         Duties: []
         Stand: {x: 2.7, y: 3.45}
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6729,6 +6743,7 @@ MonoBehaviour:
         Duties: []
         Stand: {x: -2.4, y: 3.55}
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6753,6 +6768,7 @@ MonoBehaviour:
       YardDepth: 2.6
       Fixtures: []
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6773,6 +6789,7 @@ MonoBehaviour:
       YardDepth: 2.6
       Fixtures: []
       Masonry: 0
+      Cobblestone: 0
       Battlements: 0
       Turrets: 0
       Landmark: 0
@@ -6794,6 +6811,7 @@ MonoBehaviour:
       YardDepth: 2.6
       Fixtures: []
       Masonry: 1
+      Cobblestone: 0
       Battlements: 1
       Turrets: 2
       Landmark: 1
@@ -6816,6 +6834,7 @@ MonoBehaviour:
       YardDepth: 2.6
       Fixtures: []
       Masonry: 1
+      Cobblestone: 1
       Battlements: 1
       Turrets: 0
       Landmark: 1
@@ -7385,6 +7404,7 @@ MonoBehaviour:
   slideDrag: 3
   maxSlideDistance: 8
   steepestSlideRise: 0.2
+  slideTopSpeed: 2.5
   swimSpeed: 2.2
   swimRise: 2.4
   swimAcceleration: 6

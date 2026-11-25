@@ -418,13 +418,13 @@ flowchart LR
   specialties it is for), picked by `BuildingDesign.Choose`; places keep the catalog's largest footprint.
   `SettlementStructures.Voxels` builds any row as square blocks; `RoofSkin` gives the samples within a voxel of the
   roof's plane their plane density, written after the blocks by `SquareVoxels.Shape`, so the roof's top is one slant
-  over steps that stay square inside. Work-yard fixtures (`YardFixture`) are Game meshes (`YardFixtureMeshes`, stood by
+  over steps that stay square inside. A row of two or more storeys, or with `Battlements`, gets `BuildingStairs` (GL873, GL874): a square spiral of board treads round the inside of the walls (inside the turrets), from the door corner up to the top floor or the flat roof, with floors and roof cut away over it for headroom; `Voxels` asks it per interior sample. Work-yard fixtures (`YardFixture`) are Game meshes (`YardFixtureMeshes`, stood by
   `MapSettlements.FitYard`; a kind with a `YardStationPrefab` row shows the player's own station instead, GL833); `BuildingDesign.StationFor` stations a shop's yard workers at them (GL713, GL714). Streets
   wander and climbs bend (GL712), straight only where lanes join.
   Landmarks, walls, lights (GL715-GL717): a type's `Landmarks` (landmark `BuildingDesign` rows, never picked by
   `Choose`: the capital's castle and guard tower, a city's guard tower) take the first places after its shops; landmark
   rows widen the places only in types that build them. `Masonry`/`Battlements`/`Turrets` make a row stone with a flat
-  crenellated roof (no `RoofSkin`). A type with `Walls` gets a ring (`SettlementSite.Wall`, `SettlementLayout.PlanWall`)
+  crenellated roof (no `RoofSkin`); `Cobblestone` (the guard tower) lays its stone as `SettlementWriter.Materials.Cobble` (Loose stone, `MapSettlements.cobbleMaterial`). A type with `Walls` gets a ring (`SettlementSite.Wall`, `SettlementLayout.PlanWall`)
   that `SettlementWriter` writes as 4 m `Wall` pieces after everything under them (`SettlementWalls.Blocks`: stone
   following the ground, merlons, corner towers, gateways where roads or lanes cross). `SettlementLights.Plan` puts a
   type's light rules (`SettlementLightRule`, kinds `SettlementLightKind`) beside building fronts on free terrace ground;
@@ -1113,7 +1113,7 @@ Allocations (GL778): `-walkbench` prints "allocation by system" (KB a frame by `
   specialties it is for), picked by `BuildingDesign.Choose`; places keep the catalog's largest footprint.
   `SettlementStructures.Voxels` builds any row as square blocks; `RoofSkin` gives the samples within a voxel of the
   roof's plane their plane density, written after the blocks by `SquareVoxels.Shape`, so the roof's top is one slant
-  over steps that stay square inside. Work-yard fixtures (`YardFixture`) are Game meshes (`YardFixtureMeshes`, stood by
+  over steps that stay square inside. A row of two or more storeys, or with `Battlements`, gets `BuildingStairs` (GL873, GL874): a square spiral of board treads round the inside of the walls (inside the turrets), from the door corner up to the top floor or the flat roof, with floors and roof cut away over it for headroom; `Voxels` asks it per interior sample. Work-yard fixtures (`YardFixture`) are Game meshes (`YardFixtureMeshes`, stood by
   `MapSettlements.FitYard`; a kind with a `YardStationPrefab` row shows the player's own station instead, GL833); `BuildingDesign.StationFor` stations a shop's yard workers at them (GL713, GL714). Streets
   wander and climbs bend (GL712), straight only where lanes join.
 - *HUD and IMGUI (GL777):* the always-on HUD (hotbar, coins, skills, quest boxes, minimap) is on one uGUI canvas, `HudCanvas`, with parts built once and updated on change; a new always-on HUD part goes there, not into an `OnGUI`. Screens and short-lived notices implement `IGuiDrawer` and register with `GuiHost` in `OnEnable`/`OnDisable` (no component has its own `OnGUI`, except `MainMenu`); `GuiHost` is created before the first scene loads (creating it mid-load crashed the IL2CPP player). IMGUI draws over a canvas, so screens cover the HUD.
