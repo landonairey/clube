@@ -42,6 +42,7 @@ namespace Clube.Game
             if (name.Contains("tin") || name.Contains("cassiterite")) return new Color(0.55f, 0.52f, 0.48f);
             if (name.Contains("charcoal")) return new Color(0.12f, 0.11f, 0.1f);
             // Iron and steel, their two ores and coal (GL621-GL624); charcoal is caught above, before "coal".
+            if (name == "bone") return new Color(0.88f, 0.84f, 0.73f);
             if (name.Contains("steel")) return new Color(0.7f, 0.74f, 0.8f);
             if (name.Contains("magnetite")) return new Color(0.15f, 0.21f, 0.33f);
             if (name.Contains("hematite")) return new Color(0.55f, 0.2f, 0.16f);
@@ -101,6 +102,16 @@ namespace Clube.Game
             else if (name.Contains("wood") || name.Contains("charcoal"))
             {
                 model.Prism(new Vector3(-0.15f, 0.06f, 0f), new Vector3(0.15f, 0.06f, 0f), 0.06f, 0.055f, 6, colour);
+            }
+            else if (name == "bone")
+            {
+                // GL877: a shaft lying down with a pair of knobs at each end.
+                model.Prism(new Vector3(-0.1f, 0.025f, 0f), new Vector3(0.1f, 0.025f, 0f), 0.02f, 0.02f, 6, colour);
+                foreach (float side in new[] { -1f, 1f })
+                {
+                    model.Diamond(new Vector3(side * 0.125f, 0.028f, 0.015f), new Vector3(0.028f, 0.026f, 0.026f), colour * 1.05f);
+                    model.Diamond(new Vector3(side * 0.125f, 0.028f, -0.015f), new Vector3(0.028f, 0.026f, 0.026f), colour * 0.95f);
+                }
             }
             else if (name.Contains("stick"))
             {

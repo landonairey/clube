@@ -78,7 +78,8 @@ namespace Clube.Core.Tests
                     Assert.IsNotNull(item.Icon, drop.ItemId + " has an icon");
                     Assert.IsTrue(prices.TryGetLot(item, out int coins, out int _), drop.ItemId + " has a price");
                     Assert.That(coins, Is.GreaterThan(0));
-                    Assert.IsTrue(seen.Add(drop.ItemId), drop.ItemId + " comes from one species only");
+                    // Bones (GL877) are every species' second drop; the furs, wools and hides are each one species'.
+                    Assert.IsTrue(drop.ItemId == AnimalSpeciesTable.BoneId || seen.Add(drop.ItemId), drop.ItemId + " comes from one species only");
                     Assert.That(drop.Max, Is.GreaterThanOrEqualTo(1));
                 }
             }

@@ -63,5 +63,8 @@ namespace Clube.Core
 
         /// <summary>An iron bloom (GL876): a lumpy, spongy mass of dark iron, pitted with pores and crusted with slag.</summary>
         Bloom = 18,
+
+        /// <summary>An animal bone (GL877): a pale shaft with a pair of knobs at each end, laid across the icon.</summary>
+        Bone = 19,
     }
 }

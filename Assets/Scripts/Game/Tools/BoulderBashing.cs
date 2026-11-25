@@ -73,6 +73,18 @@ namespace Clube.Game
         [SerializeField]
         private float[] handAxeDurabilityByGrade = (float[])ToolDurability.DefaultByGrade.Clone();
 
+        [Header("Bone hand axe (GL877)")]
+        [Tooltip("What's bashed into a bone hand axe, as a stone is into a hand axe: the bones animals leave.")]
+        [SerializeField]
+        private ItemDefinition bone;
+
+        [SerializeField]
+        private ToolDefinition boneHandAxe;
+
+        [Tooltip("The bone hand axe's starting durability: a bone has no grade, so one share for all, between a poor and a good stone's.")]
+        [SerializeField, Range(0.01f, 1f)]
+        private float boneHandAxeDurability = 0.7f;
+
         [Header("Crushing ore (GL148)")]
         [SerializeField]
         private List<Crush> crushes = new List<Crush>();
@@ -368,7 +380,7 @@ namespace Clube.Game
             }
             Inventory items = inventory.Inventory;
             ItemStack held = items[slot];
-            if (held.Item == stone)
+            if (HandAxeFor(held.Item) != null)
             {
                 return KnapStone(slot);
             }
@@ -438,22 +450,42 @@ namespace Clube.Game
         private bool KnapStone(Inventory items, int slot, Inventory outputs)
         {
             ItemStack held = items[slot];
-            MaterialRegistry materials = worldView != null && worldView.Config != null ? worldView.Config.Materials : null;
-            float purity = held.Quality;
-            if (purity >= 0.995f && purity <= 1.005f && held.Contents != null && materials != null)
+            ToolDefinition axe = HandAxeFor(held.Item);
+            float durability = boneHandAxeDurability;
+            if (held.Item == stone)
             {
-                purity = materials.Quality(held.Contents, held.Item);
+                MaterialRegistry materials = worldView != null && worldView.Config != null ? worldView.Config.Materials : null;
+                float purity = held.Quality;
+                if (purity >= 0.995f && purity <= 1.005f && held.Contents != null && materials != null)
+                {
+                    purity = materials.Quality(held.Contents, held.Item);
+                }
+                durability = ToolDurability.FromGrade(purity, handAxeDurabilityByGrade);
             }
-            float durability = ToolDurability.FromGrade(purity, handAxeDurabilityByGrade);
+            string raw = held.Item == stone ? "stone" : "bone";
             items.RemoveAt(slot, 1);
-            if (outputs == null || outputs.Add(handAxe, 1, null, 0, durability) > 0)
+            if (outputs == null || outputs.Add(axe, 1, null, 0, durability) > 0)
             {
-                inventory.GiveOrDrop(handAxe, 1, null, 0, durability);
+                inventory.GiveOrDrop(axe, 1, null, 0, durability);
             }
             skills?.Skills.Award(SkillType.Crafting, handAxeExperience);
-            Message?.Invoke($"Knocked the stone into a {handAxe.DisplayName.ToLowerInvariant()}");
+            Message?.Invoke($"Knocked the {raw} into a {axe.DisplayName.ToLowerInvariant()}");
             HandAxeMade?.Invoke();
             return true;
+        }
+
+        // The hand axe an item is knapped into: a stone's, a bone's (GL877); null for anything else.
+        private ToolDefinition HandAxeFor(ItemDefinition item)
+        {
+            if (item == null)
+            {
+                return null;
+            }
+            if (item == stone)
+            {
+                return handAxe;
+            }
+            return item == bone ? boneHandAxe : null;
         }
 
         // A stone with a mix in it, held: a tap knaps it into a hand axe, holding picks it over instead (GL767).
@@ -482,6 +514,10 @@ namespace Clube.Game
             if (item == null)
             {
                 return false;
+            }
+            if (item == bone && boneHandAxe != null && !HandAxeDisabled)
+            {
+                return stack.Count > 0;
             }
             if (item == stone && handAxe != null && !HandAxeDisabled && !(worldView != null && worldView.IsReady && Refining.CanRefine(stack, worldView.Config.Materials)))
             {
@@ -534,7 +570,7 @@ namespace Clube.Game
         /// <summary>Whether a stack can be knapped into a hand axe here (the boulder's screen, item 9): a stone, mixed or clean.</summary>
         public bool CanKnap(ItemStack stack)
         {
-            return !stack.IsEmpty && stack.Item == stone && stack.Count > 0 && handAxe != null && !HandAxeDisabled;
+            return !stack.IsEmpty && stack.Count > 0 && HandAxeFor(stack.Item) != null && !HandAxeDisabled;
         }
 
         /// <summary>

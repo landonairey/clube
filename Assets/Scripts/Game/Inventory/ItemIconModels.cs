@@ -170,6 +170,7 @@ namespace Clube.Game
                 case ItemIconShape.Boards:
                     return Quaternion.Euler(-20f, 0f, -52f);
                 case ItemIconShape.Stick:
+                case ItemIconShape.Bone:
                     return Quaternion.Euler(0f, 0f, -45f);
                 case ItemIconShape.Leaves:
                     return Quaternion.Euler(-10f, 0f, -24f);
@@ -190,6 +191,7 @@ namespace Clube.Game
             {
                 case ItemIconShape.Hide:
                 case ItemIconShape.Stick:
+                case ItemIconShape.Bone:
                 case ItemIconShape.Leaves:
                 case ItemIconShape.Boards:
                     return ToolView;

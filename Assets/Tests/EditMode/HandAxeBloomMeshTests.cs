@@ -27,7 +27,7 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void HandAxeRunsFromButtToPoint()
+        public void HandAxeRunsFromButtToWorkingEnd()
         {
             Vector3[] vertices = HandAxe(Color.grey);
             Assert.That(vertices.Min(v => v.y), Is.EqualTo(0f).Within(1e-4f));
@@ -35,12 +35,13 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void HandAxeIsThickAndRoundAtTheButtAndNarrowsToAPoint()
+        public void HandAxeIsThickAndRoundAtTheButtAndBluntAtTheWorkingEnd()
         {
             Vector3[] vertices = HandAxe(Color.grey);
             Vector2 butt = Extent(vertices, 0.1f, 0.35f), point = Extent(vertices, 0.8f, 1f);
-            Assert.That(point.x, Is.LessThan(butt.x * 0.5f), "narrow at the point");
-            Assert.That(point.y, Is.LessThan(butt.y * 0.5f), "thin at the point");
+            Assert.That(point.x, Is.GreaterThan(butt.x * 0.65f), "GL884: still broad near the tip, a rounded arc and no spike");
+            Assert.That(point.y, Is.GreaterThan(butt.y * 0.25f), "and not a needle edge-on");
+            Assert.That(HandAxeMesh.HalfWidth(0.6f), Is.GreaterThan(0.85f), "most of its width well up the working end");
             Assert.That(butt.y, Is.GreaterThan(butt.x * 0.3f), "a thick butt to hold");
             // The butt's end is blunt: the rim there has thickness, where the sides meet in an edge.
             Assert.That(Extent(vertices, 0f, 0.02f).y, Is.GreaterThan(Length * 0.05f));
