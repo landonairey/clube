@@ -10,7 +10,7 @@ namespace Clube.Game
     /// door after closing; asleep on the roll at night. They keep to their shop: the work NPCs do out in the world is
     /// GL615's. Where they are follows from the clock, so nothing is saved.
     /// </summary>
-    public class SettlementKeeper : MonoBehaviour, IClosableInteractable, ITrader
+    public class SettlementKeeper : MonoBehaviour, IClosableInteractable, ITrader, IParcelSeller
     {
         private const float WalkSpeed = 1.4f;
 
@@ -73,6 +73,9 @@ namespace Clube.Game
         public Disposition Disposition => trade.Disposition;
 
         public ITraderDeal Deal => null;
+
+        /// <summary>GL863: the settlement's land, which a Merchant sells; null for every other keeper.</summary>
+        public SettlementLand Land { get; set; }
 
         public bool IsTrading => AtCounter;
 
