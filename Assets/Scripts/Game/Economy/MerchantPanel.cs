@@ -111,6 +111,10 @@ namespace Clube.Game
             {
                 return;
             }
+            if (Current.Disposition != null)
+            {
+                Current.Disposition.Bonus = 0;
+            }
             Current = null;
             if (player != null)
             {
@@ -153,6 +157,12 @@ namespace Clube.Game
             if (closePressed || tooFar || !Current.IsTrading || (player != null && !player.enabled))
             {
                 Close();
+                return;
+            }
+            // Item 20: what the player wears moves the keeper's prices while they trade (and only then: Close clears it).
+            if (Current.Disposition != null)
+            {
+                Current.Disposition.Bonus = OutfitBonus;
             }
         }
 
@@ -340,16 +350,20 @@ namespace Clube.Game
             }
         }
 
+        // Item 20: the disposition the player's outfit adds with a keeper.
+        private int OutfitBonus => Outfit.DispositionBonus(inventory.OutfitPoints);
+
         // How the trader feels about the player (GL471) and what it does to their prices.
         private static string DispositionText(Disposition disposition)
         {
-            if (disposition.Value >= Disposition.Max)
+            string value = disposition.Bonus > 0 ? $"{disposition.Value}+{disposition.Bonus}" : disposition.Value.ToString();
+            if (disposition.Effective >= Disposition.Max)
             {
-                return $"Disposition {disposition.Value}/{Disposition.Max}: fair prices.";
+                return $"Disposition {value}/{Disposition.Max}: fair prices.";
             }
-            int points = Disposition.Max - disposition.Value;
+            int points = Disposition.Max - disposition.Effective;
             float toNext = Disposition.CoinsForPoint(disposition.Value) - disposition.Carried;
-            return $"Disposition {disposition.Value}/{Disposition.Max}: prices {points}% against you; {Wallet.Format(toNext)} more trade raises it (a level costs {Wallet.Format(Disposition.CoinsForPoint(disposition.Value))}).";
+            return $"Disposition {value}/{Disposition.Max}: prices {points}% against you; {Wallet.Format(toNext)} more trade raises it (a level costs {Wallet.Format(Disposition.CoinsForPoint(disposition.Value))}).";
         }
 
         // Coins to two places at most: "50c", "0.1c", "0.001c".
@@ -770,6 +784,10 @@ namespace Clube.Game
             {
                 GUI.Label(new Rect(right.x, rightY, half, 28f), DispositionText(disposition));
                 rightY += 30f;
+                // Item 20: what the outfit adds while trading.
+                int outfitPoints = inventory.OutfitPoints;
+                GUI.Label(new Rect(right.x, rightY, half, 28f), $"Your outfit: +{OutfitBonus} disposition ({Outfit.Describe(outfitPoints)})");
+                rightY += 30f;
             }
             ITraderDeal deal = Current.Deal != null && Current.Deal.IsOffered(wallet.Wallet) ? Current.Deal : null;
             if (deal != null)
@@ -794,7 +812,7 @@ namespace Clube.Game
             float cartTop = panel.yMax - Padding - Mathf.Clamp(panel.height * 0.36f, 280f, 420f);
             var playerArea = new Rect(left.x, y, half, cartTop - 8f - y);
             playerList.Value = slot => EachPrice(items[slot]);
-            playerList.Equipped = inventory.IsHandSlot;
+            playerList.Equipped = inventory.IsEquippedSlot;
             playerList.Include = slot => !cart.Contains(MerchantCart.Side.Sell, slot);
             ListResult picked = playerList.Draw(playerArea, items);
             if (picked.Kind == InventoryDragKind.Clicked && picked.Row != null)

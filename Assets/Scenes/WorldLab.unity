@@ -6738,7 +6738,9 @@ MonoBehaviour:
   backpackSlots: 18
   listLayout: 1
   bagSlots: 120
-  startingItems: []
+  startingItems:
+  - Item: {fileID: 11400000, guid: 905d737921da3ec4d84776a45828effa, type: 2}
+    Count: 1
   tools: {fileID: 1697135569}
 --- !u!114 &1697135573
 MonoBehaviour:
@@ -7205,6 +7207,20 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2f2e8808d61f59549a0331d7d86525b1, type: 2}
   - {fileID: 11400000, guid: 08594d0fdd8ba66419aaffeb6ae837d5, type: 2}
   - {fileID: 11400000, guid: 7e1df8bcb8715c04bbf01821f8b05e0e, type: 2}
+  - {fileID: 11400000, guid: 00214e1ffbe786a468ebec2438cbc68f, type: 2}
+  - {fileID: 11400000, guid: 7ed2fed265e55b94aae282d260782fe9, type: 2}
+  - {fileID: 11400000, guid: 98e32ff58292ba14ab0f41e2f689d1a7, type: 2}
+  - {fileID: 11400000, guid: 631a0b8f4c4f3ec449c95178b4988ef9, type: 2}
+  - {fileID: 11400000, guid: 930249684069b624bad464ce968ad6cf, type: 2}
+  - {fileID: 11400000, guid: 2d694560d77702a4bb61b4fc5d0a6cfc, type: 2}
+  - {fileID: 11400000, guid: c6d34a998ad01684986acefcd778614a, type: 2}
+  - {fileID: 11400000, guid: 8d1f113a2260abe469f027dec2034966, type: 2}
+  - {fileID: 11400000, guid: 90065317c985fbf40af5d211ccb8cc78, type: 2}
+  - {fileID: 11400000, guid: 6768c578ada275a489d20032ead9878a, type: 2}
+  - {fileID: 11400000, guid: af8de659a063f8940bf94de8f16d72eb, type: 2}
+  - {fileID: 11400000, guid: 4512a31267eaa024db562af6528a2dfd, type: 2}
+  - {fileID: 11400000, guid: e1476a965d0fed9429a617daafe4a886, type: 2}
+  - {fileID: 11400000, guid: 551294c8825f29647a66f82d6d09346c, type: 2}
 --- !u!114 &1697135589
 MonoBehaviour:
   m_ObjectHideFlags: 0

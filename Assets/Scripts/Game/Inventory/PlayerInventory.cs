@@ -86,6 +86,61 @@ namespace Clube.Game
         /// <summary>List inventory: true for a hand's slot, which the list shows highlighted as equipped.</summary>
         public bool IsHandSlot(int slot) => UsesList && slot >= bagSlots && slot < bagSlots + HandSlots * 2;
 
+        /// <summary>List inventory: the body's slots (items 18, 19), one per <see cref="WearSlot"/> after None; after the hands'.</summary>
+        public const int BodySlots = 6;
+
+        /// <summary>List inventory: the inventory slot worn on <paramref name="part"/>; each takes only what's worn there.</summary>
+        public int BodySlot(WearSlot part) => bagSlots + HandSlots * 2 + (int)part - 1;
+
+        /// <summary>List inventory: true for a body slot (something worn).</summary>
+        public bool IsBodySlot(int slot) => UsesList && slot >= bagSlots + HandSlots * 2 && slot < bagSlots + HandSlots * 2 + BodySlots;
+
+        /// <summary>List inventory: true for a hand's or the body's slot, which the list shows highlighted as equipped.</summary>
+        public bool IsEquippedSlot(int slot) => IsHandSlot(slot) || IsBodySlot(slot);
+
+        /// <summary>
+        /// Puts on what's in <paramref name="slot"/> (items 18, 19): one of it goes to its body slot, and whatever was worn
+        /// there comes back to the bag. False for something not worn, or no room for what comes off.
+        /// </summary>
+        public bool Wear(int slot)
+        {
+            Inventory items = Inventory;
+            if (!UsesList || slot < 0 || slot >= items.SlotCount || items[slot].IsEmpty || !items[slot].Item.IsWorn || IsBodySlot(slot))
+            {
+                return false;
+            }
+            int body = BodySlot(items[slot].Item.WornOn);
+            if (!items[body].IsEmpty)
+            {
+                items.MoveInto(body, 0, bagSlots);
+                if (!items[body].IsEmpty)
+                {
+                    return false;
+                }
+            }
+            items.Move(slot, body, 1);
+            return !items[body].IsEmpty;
+        }
+
+        /// <summary>Item 20: the outfit's points, worn items' <see cref="ItemDefinition.OutfitPoints"/> together; 0 outside the list inventory.</summary>
+        public int OutfitPoints
+        {
+            get
+            {
+                if (!UsesList)
+                {
+                    return 0;
+                }
+                int points = 0;
+                for (int part = 1; part <= BodySlots; part++)
+                {
+                    ItemStack worn = listItems[BodySlot((WearSlot)part)];
+                    points += worn.IsEmpty ? 0 : worn.Item.OutfitPoints;
+                }
+                return points;
+            }
+        }
+
         /// <summary>True while the tool-slot inventory is the one in use; the lab panel switches it.</summary>
         public bool UsesToolSlot
         {
@@ -103,7 +158,11 @@ namespace Clube.Game
             {
                 Accepts = (slot, item) => slot != ToolSlot || item is ToolDefinition,
             };
-            listItems = new Inventory(bagSlots + HandSlots * 2);
+            listItems = new Inventory(bagSlots + HandSlots * 2 + BodySlots)
+            {
+                // A body slot takes only what's worn there (items 18, 19).
+                Accepts = (slot, item) => slot < bagSlots + HandSlots * 2 || (int)item.WornOn == slot - (bagSlots + HandSlots * 2) + 1,
+            };
             int hand = 0;
             foreach (StartingItem start in startingItems)
             {
@@ -111,8 +170,14 @@ namespace Clube.Game
                 {
                     classic.Add(start.Item, Mathf.Max(1, start.Count));
                     toolSlotItems.Add(start.Item, Mathf.Max(1, start.Count));
-                    // The list inventory starts its tools in the right hand, as the hotbar had them in its first slots.
-                    if (start.Item is ToolDefinition && hand < HandSlots)
+                    // The list inventory starts its tools in the right hand, as the hotbar had them in its first slots, and
+                    // puts on what's worn (item 5: the rags the player starts in).
+                    if (start.Item.IsWorn && listItems[BodySlot(start.Item.WornOn)].IsEmpty)
+                    {
+                        listItems.Set(BodySlot(start.Item.WornOn), new ItemStack(start.Item, 1));
+                        listItems.Add(start.Item, Mathf.Max(1, start.Count) - 1);
+                    }
+                    else if (start.Item is ToolDefinition && hand < HandSlots)
                     {
                         listItems.Set(RightHandSlot(hand++), new ItemStack(start.Item, 1));
                         listItems.Add(start.Item, Mathf.Max(1, start.Count) - 1);

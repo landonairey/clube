@@ -64,8 +64,30 @@ namespace Clube.Core
         /// <summary>Coins traded towards the next point (which costs <see cref="CoinsForPoint"/> of the current value).</summary>
         public float Carried { get; private set; }
 
+        /// <summary>
+        /// Points added for the moment, not earned or saved (item 20: the player's outfit while they trade). Prices follow
+        /// <see cref="Effective"/>; trade still raises <see cref="Value"/> at its own cost.
+        /// </summary>
+        public int Bonus
+        {
+            get => bonus;
+            set
+            {
+                if (value != bonus)
+                {
+                    bonus = value;
+                    Changed?.Invoke();
+                }
+            }
+        }
+
+        /// <summary>The value with the bonus, 0 to 100: what the prices follow.</summary>
+        public int Effective => Mathf.Clamp(Value + bonus, 0, Max);
+
+        private int bonus;
+
         /// <summary>The share of a fair price added to what they sell, and taken off what they pay: 0.9 at 10, 0 at 100.</summary>
-        public float Markup => (Max - Value) / (float)Max;
+        public float Markup => (Max - Effective) / (float)Max;
 
         /// <summary>The share of an item's listed price they pay for it: 0.1 at 10, 1 at 100.</summary>
         public float PayShare => 1f - Markup;

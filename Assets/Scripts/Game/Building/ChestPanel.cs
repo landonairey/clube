@@ -227,19 +227,19 @@ namespace Clube.Game
                 }
             }
             GUI.Label(new Rect(right.x, y, half - 130f, 28f), "Your items: click to store (Shift half, Ctrl one)");
-            // Everything listed goes in (only the filtered type when the Type column filters); what's in your hands stays.
+            // Everything listed goes in (only the filtered type when the Type column filters); what's in your hands or worn stays.
             if (GameUi.Button(new Rect(right.xMax - 120f, y - 2f, 120f, 28f), "Place all"))
             {
                 for (int slot = 0; slot < items.SlotCount; slot++)
                 {
-                    if (!items[slot].IsEmpty && !inventory.IsHandSlot(slot) && itemList.Shows(items, slot))
+                    if (!items[slot].IsEmpty && !inventory.IsEquippedSlot(slot) && itemList.Shows(items, slot))
                     {
                         items.MoveTo(slot, chest);
                     }
                 }
             }
 
-            itemList.Equipped = inventory.IsHandSlot;
+            itemList.Equipped = inventory.IsEquippedSlot;
             ListResult fromChest = chestList.Draw(left, chest);
             ListResult fromItems = itemList.Draw(right, items);
             Move(fromChest, chest, items, right, panel, true);

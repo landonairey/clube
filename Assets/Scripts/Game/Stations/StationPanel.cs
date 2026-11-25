@@ -272,7 +272,7 @@ namespace Clube.Game
             const float trashHeight = 52f;
             var listArea = new Rect(x, y, ListWidth, panel.yMax - Padding - trashHeight - 8f - y);
             var trash = new Rect(x, listArea.yMax + 8f, ListWidth, trashHeight);
-            itemList.Equipped = inventory.IsHandSlot;
+            itemList.Equipped = inventory.IsEquippedSlot;
             ListResult picked = itemList.Draw(listArea, items);
             bool over = itemList.IsDragging && trash.Contains(Event.current.mousePosition);
             ItemSlotGui.Fill(trash, over ? new Color(0.6f, 0.15f, 0.1f, 0.6f) : new Color(0f, 0f, 0f, 0.35f));

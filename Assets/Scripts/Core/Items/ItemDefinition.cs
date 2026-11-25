@@ -89,6 +89,14 @@ namespace Clube.Core
         [SerializeField]
         private DropForm dropForm = DropForm.ByKind;
 
+        [Tooltip("Items 18-20: where it's worn (a shirt on the chest, leather boots on the feet); None for anything not worn.")]
+        [SerializeField]
+        private WearSlot wornOn;
+
+        [Tooltip("Item 20: what it adds to the outfit, worn: each point is a point of disposition with shopkeepers (rags 0, cloth 2, leather 3).")]
+        [SerializeField, Min(0)]
+        private int outfitPoints;
+
         /// <summary>
         /// What it turns into when dropped (GL610, GL611): the asset's choice, or its kind's. An item that piles but that no
         /// material is placed from (an ingot, a hide) goes in a bag: the dropper's call, as it knows the materials.
@@ -231,6 +239,23 @@ namespace Clube.Core
         public ItemDefinition WithContentsAs(VoxelMaterial material)
         {
             contentsAs = material;
+            return this;
+        }
+
+        /// <summary>Where it's worn (items 18, 19); <see cref="WearSlot.None"/> for anything not worn.</summary>
+        public WearSlot WornOn => wornOn;
+
+        /// <summary>True for something worn on the body (a garment, armor).</summary>
+        public bool IsWorn => wornOn != WearSlot.None;
+
+        /// <summary>What it adds to the outfit while worn (item 20): points of disposition with shopkeepers.</summary>
+        public int OutfitPoints => outfitPoints;
+
+        /// <summary>Sets where it's worn and its outfit points, for items made in code (tests, tools).</summary>
+        public ItemDefinition WithWear(WearSlot slot, int points = 0)
+        {
+            wornOn = slot;
+            outfitPoints = Mathf.Max(0, points);
             return this;
         }
 

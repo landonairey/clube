@@ -8,7 +8,8 @@ namespace Clube.Game
     /// Head, Chest, Arms, Hands, Legs and Feet beside it, the left hand's five slots down the left and the right hand's down
     /// the right, and under them what the outfit is worth and its bonuses. A click on a hand's slot makes it the one held,
     /// a right click puts it back in the bag, and a drag moves it to another hand slot or off the panel (the screen decides).
-    /// Clothing doesn't exist yet: the body slots are drawn empty.
+    /// The body slots hold what's worn (items 18, 19): a right click takes it off, a drag moves it, and the outfit's points
+    /// show as its disposition bonus with shopkeepers (item 20).
     /// </summary>
     public sealed class EquipmentPanelGui
     {
@@ -17,11 +18,11 @@ namespace Clube.Game
         private const float Gap = 8f;
         private const float DragDistance = 6f;
 
-        private static readonly string[] BodySlots = { "Head", "Chest", "Arms", "Hands", "Legs", "Feet" };
-
         private readonly CharacterPreview preview = new CharacterPreview();
         private readonly Rect[] leftSlots = new Rect[PlayerInventory.HandSlots];
         private readonly Rect[] rightSlots = new Rect[PlayerInventory.HandSlots];
+        // Head, Chest, Arms down the figure's left; Hands, Legs, Feet down its right (WearSlot order after None).
+        private readonly Rect[] bodySlots = new Rect[PlayerInventory.BodySlots];
         private int pressedSlot = -1;
         private Vector2 pressedAt;
         private bool dragging;
@@ -30,12 +31,19 @@ namespace Clube.Game
         /// <summary>Height the panel wants, for a screen laying it out.</summary>
         public static float PreferredHeight => 40f + 30f + HandSide * PlayerInventory.HandSlots + Gap * (PlayerInventory.HandSlots - 1) + 16f + 90f;
 
-        /// <summary>A hand slot is being dragged.</summary>
+        /// <summary>A hand or body slot is being dragged.</summary>
         public bool IsDragging => dragging && pressedSlot >= 0;
 
-        /// <summary>The inventory slot of the hand slot under <paramref name="point"/>, or -1.</summary>
-        public int HandSlotAt(PlayerInventory inventory, Vector2 point)
+        /// <summary>The inventory slot of the hand or body slot under <paramref name="point"/>, or -1.</summary>
+        public int SlotAt(PlayerInventory inventory, Vector2 point)
         {
+            for (int i = 0; i < PlayerInventory.BodySlots; i++)
+            {
+                if (bodySlots[i].Contains(point))
+                {
+                    return inventory.BodySlot((WearSlot)(i + 1));
+                }
+            }
             for (int i = 0; i < PlayerInventory.HandSlots; i++)
             {
                 if (leftSlots[i].Contains(point))
@@ -74,6 +82,16 @@ namespace Clube.Game
                 rightSlots[i] = new Rect(rightX, y + i * (HandSide + Gap), HandSide, HandSide);
             }
 
+            // The figure between the hands, the body slots in two columns either side of it.
+            float centreX = leftX + HandSide + 16f;
+            float centreWidth = rightX - 16f - centreX;
+            float bodyLeft = centreX, bodyRight = centreX + centreWidth - BodySide;
+            float bodyStep = (columnHeight - BodySide) / 2f;
+            for (int i = 0; i < PlayerInventory.BodySlots; i++)
+            {
+                bodySlots[i] = new Rect(i < 3 ? bodyLeft : bodyRight, y + (i % 3) * bodyStep, BodySide, BodySide);
+            }
+
             InventoryDragResult result = HandleMouse(inventory, hotbar);
 
             for (int i = 0; i < PlayerInventory.HandSlots; i++)
@@ -82,32 +100,42 @@ namespace Clube.Game
                 DrawHand(rightSlots[i], items[inventory.RightHandSlot(i)], inventory.RightHandSlot(i) == hotbar.SelectedSlot, (i + 1).ToString());
             }
 
-            // The figure between the hands, the body slots in two columns either side of it.
-            float centreX = leftX + HandSide + 16f;
-            float centreWidth = rightX - 16f - centreX;
-            float bodyLeft = centreX, bodyRight = centreX + centreWidth - BodySide;
             var figure = new Rect(bodyLeft + BodySide + Gap, y, centreWidth - (BodySide + Gap) * 2f, columnHeight);
             preview.Draw(figure);
             GUI.Label(new Rect(figure.x, figure.yMax - 26f, figure.width, 24f), "Drag to turn", bodyStyle);
-            float bodyStep = (columnHeight - BodySide) / 2f;
-            for (int i = 0; i < BodySlots.Length; i++)
+            for (int i = 0; i < PlayerInventory.BodySlots; i++)
             {
-                float bx = i < 3 ? bodyLeft : bodyRight;
-                var slot = new Rect(bx, y + (i % 3) * bodyStep, BodySide, BodySide);
-                ItemSlotGui.Draw(slot, ItemStack.Empty, false);
-                GUI.Label(slot, BodySlots[i], bodyStyle);
+                var part = (WearSlot)(i + 1);
+                ItemStack worn = items[inventory.BodySlot(part)];
+                ItemSlotGui.Draw(bodySlots[i], worn, false);
+                if (worn.IsEmpty)
+                {
+                    GUI.Label(bodySlots[i], part.ToString(), bodyStyle);
+                }
+                else if (bodySlots[i].Contains(Event.current.mousePosition) && !IsDragging)
+                {
+                    InventoryGridGui.Hover(worn);
+                }
             }
             y += columnHeight + 16f;
 
-            // What the outfit is worth and what it gives. Clothing comes later (disposition, mining bonuses).
+            // What the outfit is worth, and what it gives (item 20: disposition with shopkeepers).
             float worth = 0f;
             for (int i = 0; i < PlayerInventory.HandSlots; i++)
             {
                 worth += StackWorth(items[inventory.LeftHandSlot(i)]) + StackWorth(items[inventory.RightHandSlot(i)]);
             }
+            for (int i = 0; i < PlayerInventory.BodySlots; i++)
+            {
+                worth += StackWorth(items[inventory.BodySlot((WearSlot)(i + 1))]);
+            }
             GUI.Label(new Rect(x, y, area.width - 24f, 28f), $"Outfit value: {ListColumns.Coins(worth)}", titleStyle);
             y += 32f;
-            GUI.Label(new Rect(x, y, area.width - 24f, 50f), "Active bonuses: none. (Clothing will add disposition and mining bonuses later.)", smallStyle);
+            int bonus = Outfit.DispositionBonus(inventory.OutfitPoints);
+            string bonuses = bonus > 0
+                ? $"Active bonuses: +{bonus} disposition with shopkeepers ({Outfit.Describe(inventory.OutfitPoints)})."
+                : "Active bonuses: none. Cloth and leather clothing raise shopkeepers' disposition.";
+            GUI.Label(new Rect(x, y, area.width - 24f, 50f), bonuses, smallStyle);
 
             if (IsDragging && pressedSlot < items.SlotCount && !items[pressedSlot].IsEmpty)
             {
@@ -154,7 +182,7 @@ namespace Clube.Game
             Event current = Event.current;
             Inventory items = inventory.Inventory;
             var none = new InventoryDragResult(InventoryDragKind.None, -1, 0, current.mousePosition);
-            int over = HandSlotAt(inventory, current.mousePosition);
+            int over = SlotAt(inventory, current.mousePosition);
             switch (current.type)
             {
                 case EventType.MouseDown when over >= 0:

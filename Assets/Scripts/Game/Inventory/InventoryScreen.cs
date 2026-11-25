@@ -238,13 +238,13 @@ namespace Clube.Game
             // The details window shows only once an item is clicked (closed with its button, or a second click).
             bool showDetails = list.Selected != null;
             float listWidth = (showDetails ? detailsArea.x - Padding : panel.xMax - Padding) - listX;
-            GUI.Label(new Rect(listX, panel.y + Padding, listWidth, 30f), "Inventory (E to close): click for details, right-click to hold in your right hand, drag to a hand, onto a stack to combine, or off the screen to drop");
+            GUI.Label(new Rect(listX, panel.y + Padding, listWidth, 30f), "Inventory (E to close): click for details, right-click to hold in your right hand or wear clothing, drag to a hand or body slot, onto a stack to combine, or off the screen to drop");
             const float trashHeight = 56f;
             var listArea = new Rect(listX, panel.y + Padding + 36f, listWidth, panel.height - Padding * 2f - 36f - trashHeight - 8f);
             var trash = new Rect(listX, listArea.yMax + 8f, listWidth, trashHeight);
 
             equipment ??= new EquipmentPanelGui();
-            list.Equipped = inventory.IsHandSlot;
+            list.Equipped = inventory.IsEquippedSlot;
             list.HoverTooltips = false;
             ListResult picked = list.Draw(listArea, items);
             InventoryDragResult fromHand = equipment.Draw(equipmentArea, inventory, hotbar);
@@ -254,10 +254,14 @@ namespace Clube.Game
             switch (picked.Kind)
             {
                 case InventoryDragKind.RightClicked:
-                    // Right click equips; on something already in a hand it goes back in the bag.
-                    if (inventory.IsHandSlot(picked.Slot) && !picked.Row.IsCollection)
+                    // Right click equips (puts on what's worn); on something already in a hand or worn it goes back in the bag.
+                    if (inventory.IsEquippedSlot(picked.Slot) && !picked.Row.IsCollection)
                     {
                         items.MoveInto(picked.Slot, 0, inventory.BagSlots);
+                    }
+                    else if (items[picked.Slot].Item.IsWorn)
+                    {
+                        inventory.Wear(picked.Slot);
                     }
                     else
                     {
@@ -265,7 +269,7 @@ namespace Clube.Game
                     }
                     break;
                 case InventoryDragKind.DroppedOutside:
-                    int hand = equipment.HandSlotAt(inventory, picked.Position);
+                    int hand = equipment.SlotAt(inventory, picked.Position);
                     if (hand >= 0)
                     {
                         items.Move(picked.Slot, hand, picked.Count);
@@ -346,7 +350,22 @@ namespace Clube.Game
             {
                 return;
             }
-            if (!inventory.IsHandSlot(row.Slot))
+            if (stack.Item.IsWorn && !inventory.IsEquippedSlot(row.Slot))
+            {
+                if (GameUi.Button(new Rect(inner.x, y, inner.width, 36f), $"Wear on {stack.Item.WornOn}"))
+                {
+                    inventory.Wear(row.Slot);
+                }
+                y += 42f;
+            }
+            if (inventory.IsBodySlot(row.Slot))
+            {
+                if (GameUi.Button(new Rect(inner.x, y, inner.width, 36f), "Take off"))
+                {
+                    items.MoveInto(row.Slot, 0, inventory.BagSlots);
+                }
+            }
+            else if (!inventory.IsHandSlot(row.Slot))
             {
                 if (GameUi.Button(new Rect(inner.x, y, inner.width, 36f), "Hold in right hand"))
                 {
