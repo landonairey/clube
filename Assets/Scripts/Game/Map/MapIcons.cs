@@ -31,6 +31,8 @@ namespace Clube.Game
                 Box(-0.6f, -0.8f, 0.6f, 0.2f), Box(-1.1f, -0.8f, -0.6f, 0.7f), Box(0.6f, -0.8f, 1.1f, 0.7f),
                 Box(-1.1f, 0.7f, -0.95f, 0.95f), Box(-0.75f, 0.7f, -0.6f, 0.95f), Box(0.6f, 0.7f, 0.75f, 0.95f), Box(0.95f, 0.7f, 1.1f, 0.95f),
                 Box(-0.2f, 0.2f, 0.2f, 0.75f), Triangle(-0.3f, 0.75f, 0.3f, 0.75f, 0f, 1.15f)),
+            // GL866: a dropped waypoint pin: a round head over a point.
+            ["pin"] = Join(Triangle(-0.55f, 0.15f, 0.55f, 0.15f, 0f, -1f), Circle(0f, 0.35f, 0.62f, 12)),
         };
 
         private static readonly Vector2[] Diamond = Join(Triangle(-0.8f, 0f, 0f, -0.8f, 0.8f, 0f), Triangle(-0.8f, 0f, 0.8f, 0f, 0f, 0.8f));
@@ -59,6 +61,19 @@ namespace Clube.Game
                 new Vector2(left, bottom), new Vector2(right, bottom), new Vector2(right, top),
                 new Vector2(left, bottom), new Vector2(right, top), new Vector2(left, top),
             };
+        }
+
+        private static Vector2[] Circle(float x, float y, float radius, int segments)
+        {
+            var points = new Vector2[segments * 3];
+            for (int i = 0; i < segments; i++)
+            {
+                float a = i * Mathf.PI * 2f / segments, b = (i + 1) * Mathf.PI * 2f / segments;
+                points[i * 3] = new Vector2(x, y);
+                points[i * 3 + 1] = new Vector2(x + Mathf.Cos(a) * radius, y + Mathf.Sin(a) * radius);
+                points[i * 3 + 2] = new Vector2(x + Mathf.Cos(b) * radius, y + Mathf.Sin(b) * radius);
+            }
+            return points;
         }
 
         private static Vector2[] Join(params Vector2[][] parts)
