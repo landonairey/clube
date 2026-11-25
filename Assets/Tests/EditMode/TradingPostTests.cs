@@ -95,17 +95,17 @@ namespace Clube.Core.Tests
         }
 
         [Test]
-        public void Disposition_EachPointUnderHundred_IsAPointOfMarkupAndAPointOffWhatTheyPay()
+        public void Disposition_EachPointUnderHundred_IsAPointOfMarkup_AndHalfAPointOffWhatTheyPay()
         {
             var cold = new Disposition(10);
             Assert.AreEqual(190, cold.SellingPrice(100));
-            Assert.AreEqual(0.1f, cold.PayShare, 1e-5f);
+            Assert.AreEqual(0.55f, cold.PayShare, 1e-5f); // sales: 1 - (100 - D)/200
             var fair = new Disposition(100);
             Assert.AreEqual(100, fair.SellingPrice(100));
             Assert.AreEqual(1f, fair.PayShare, 1e-5f);
             var warm = new Disposition(75);
             Assert.AreEqual(63, warm.SellingPrice(50)); // 62.5 rounds up
-            Assert.AreEqual(0.75f, warm.PayShare, 1e-5f);
+            Assert.AreEqual(0.875f, warm.PayShare, 1e-5f);
         }
 
         [Test]
@@ -113,7 +113,13 @@ namespace Clube.Core.Tests
         {
             Assert.AreEqual(6f, Disposition.CoinsForPoint(0), "round(5.619 * exp(0)) (GL854)");
             var keeper = new Disposition(0);
-            Assert.AreEqual(0f, keeper.PayShare);
+            Assert.AreEqual(0.5f, keeper.PayShare, 1e-5f);
+            var hundred = ScriptableObject.CreateInstance<ItemDefinition>();
+            var big = new Inventory(4);
+            big.Add(hundred, 1);
+            var coins = new Wallet();
+            PriceList.Create(new ItemPrice(hundred, 100)).Scaled(keeper.PayShare).Sell(hundred, 1, big, coins);
+            Assert.AreEqual(50f, coins.Coins, 1e-3f, "a 100c item sells for 50c at disposition 0");
             var item = ScriptableObject.CreateInstance<ItemDefinition>();
             PriceList paid = PriceList.Create(new ItemPrice(item, 1)).Scaled(keeper.PayShare);
             var inventory = new Inventory(4);

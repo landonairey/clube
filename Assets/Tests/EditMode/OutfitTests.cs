@@ -25,12 +25,12 @@ namespace Clube.Core.Tests
             keeper.Bonus = 18;
             Assert.AreEqual(10, keeper.Value);
             Assert.AreEqual(28, keeper.Effective);
-            Assert.AreEqual(0.28f, keeper.PayShare, 1e-5f);
+            Assert.AreEqual(0.64f, keeper.PayShare, 1e-5f); // 1 - (100 - 28)/200
             Assert.AreEqual(1, changes);
             keeper.Bonus = 18;
             Assert.AreEqual(1, changes, "the same bonus again changes nothing");
             keeper.Bonus = 0;
-            Assert.AreEqual(0.1f, keeper.PayShare, 1e-5f);
+            Assert.AreEqual(0.55f, keeper.PayShare, 1e-5f); // 1 - (100 - 10)/200
         }
 
         [Test]
