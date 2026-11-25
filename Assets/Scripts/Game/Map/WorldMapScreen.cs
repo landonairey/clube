@@ -810,7 +810,7 @@ namespace Clube.Game
 
         /// <summary>The waypoint's colour on the map and the minimap (GL866): a bright cyan nothing else on the map uses.</summary>
         public static readonly Color WaypointColour = new Color(0.25f, 0.95f, 1f);
-        private const float PinSize = 10f;
+        private const float PinSize = 13f;
 
         // A dropped pin with its point on the place: the pin shape in the waypoint colour with a dark edge.
         private static void PinBadge(Vector2 at, float size)
