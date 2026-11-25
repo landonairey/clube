@@ -61,24 +61,114 @@ namespace Clube.Core
             {
                 // The hub's route out to the open sea, for ports beyond the map (GL725: its vessels sail on past the edge).
                 // With nowhere on the map to sail to it runs to the farthest edge; beside routes on the map, to the nearest.
-                int edge = home;
-                float best = none ? -1f : float.MaxValue;
-                for (int i = 0; i < context.Cells.Length; i++)
+                // 2026-11-24b item 4: an edge on a sea side when one is reached, so every map with a sea side has one.
+                List<MapSide> seaSides = SeaSides();
+                int edge = OpenSeaEdge(home, none, seaSides, null);
+                if (edge < 0)
                 {
-                    int x = i % context.Size, z = i / context.Size;
-                    bool onEdge = x == 0 || z == 0 || x == context.Size - 1 || z == context.Size - 1;
-                    float distance = (context.Centre(i) - context.Centre(home)).sqrMagnitude;
-                    if (context.Reached(i) && onEdge && (none ? distance > best : distance < best))
-                    {
-                        best = distance;
-                        edge = i;
-                    }
+                    edge = OpenSeaEdge(home, none, null, null);
                 }
-                if (edge != home)
+                if (edge >= 0 && edge != home)
                 {
                     plan.WaterRoutes.Add(Route(WaterRouteKind.Sea, hub, null, context.PathTo(edge)));
+                    MapSide first = context.SideOf(context.Centre(edge));
+                    ExtraSeaRoutes(plan, coastal, hub, seaSides, first);
                 }
             }
+        }
+
+        // 2026-11-24b item 4: "likelihood for more depends on how many edges are ocean". Each other sea side gets a route out
+        // by chance, from a port picked leaning to the larger and the nearer that side, to the nearest edge there it reaches.
+        private void ExtraSeaRoutes(WorldPlan plan, List<PlannedSettlement> coastal, PlannedSettlement hub, List<MapSide> seaSides, MapSide first)
+        {
+            float chance = Mathf.Clamp01(context.Rules.ExtraSeaRouteChance * seaSides.Count);
+            Rect area = context.Survey.Area;
+            foreach (MapSide side in seaSides)
+            {
+                if (side == first || context.Hash01((int)side, 0, 7501) >= chance)
+                {
+                    continue;
+                }
+                var ports = coastal.FindAll(settlement => settlement == hub || settlement.Type.MinimumRoad != RoadClass.None);
+                var weights = new List<float>();
+                float total = 0f;
+                foreach (PlannedSettlement port in ports)
+                {
+                    float toSide = side switch
+                    {
+                        MapSide.West => port.Position.x - area.xMin,
+                        MapSide.East => area.xMax - port.Position.x,
+                        MapSide.South => port.Position.y - area.yMin,
+                        _ => area.yMax - port.Position.y,
+                    };
+                    float near = 1f / (1f + toSide / 1500f);
+                    weights.Add(Mathf.Max(0.5f, port.Type.Parcels) * near * near);
+                    total += weights[weights.Count - 1];
+                }
+                float roll = context.Hash01((int)side, 1, 7502) * total;
+                PlannedSettlement from = null;
+                for (int i = 0; i < ports.Count && from == null; i++)
+                {
+                    roll -= weights[i];
+                    from = roll < 0f || i == ports.Count - 1 ? ports[i] : null;
+                }
+                if (from == null)
+                {
+                    continue;
+                }
+                int harbour = Cell(from.Harbour.Value);
+                context.Search(harbour, (a, to, metres) => context.IsSea(to) ? metres : -1f, null);
+                int edge = OpenSeaEdge(harbour, false, null, side);
+                if (edge >= 0 && edge != harbour)
+                {
+                    plan.WaterRoutes.Add(Route(WaterRouteKind.Sea, from, null, context.PathTo(edge)));
+                    plan.Notes.Add($"A sea route also leaves the map to the {side.ToString().ToLowerInvariant()}, from {from.Name}.");
+                }
+            }
+        }
+
+        // The sides of the map with the sea past them; empty when the map has no layout (the labs).
+        private List<MapSide> SeaSides()
+        {
+            var sides = new List<MapSide>();
+            MapLayout layout = context.Survey.Layout;
+            for (var side = MapSide.West; layout != null && side <= MapSide.North; side++)
+            {
+                if (layout.Boundary(side) != null && layout.Boundary(side).IsOcean)
+                {
+                    sides.Add(side);
+                }
+            }
+            return sides;
+        }
+
+        // The edge cell of the last search reached nearest (or, with farthest, farthest from) a cell: on one of the sides
+        // given (null for any), or on the one side given; -1 when none is reached.
+        private int OpenSeaEdge(int home, bool farthest, List<MapSide> sides, MapSide? only)
+        {
+            int edge = -1;
+            float best = farthest ? -1f : float.MaxValue;
+            for (int i = 0; i < context.Cells.Length; i++)
+            {
+                int x = i % context.Size, z = i / context.Size;
+                bool onEdge = x == 0 || z == 0 || x == context.Size - 1 || z == context.Size - 1;
+                if (!onEdge || !context.Reached(i))
+                {
+                    continue;
+                }
+                MapSide side = context.SideOf(context.Centre(i));
+                if ((sides != null && !sides.Contains(side)) || (only.HasValue && side != only.Value))
+                {
+                    continue;
+                }
+                float distance = (context.Centre(i) - context.Centre(home)).sqrMagnitude;
+                if (farthest ? distance > best : distance < best)
+                {
+                    best = distance;
+                    edge = i;
+                }
+            }
+            return edge;
         }
 
         private void RiverRoutes(WorldPlan plan, List<PlannedSettlement> onRivers)

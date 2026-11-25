@@ -101,6 +101,41 @@ namespace Clube.Core
             return type.Site == SiteRule.AllResources ? AreaCells : NearCells;
         }
 
+        /// <summary>
+        /// True for mountain ground: at or above <see cref="WorldPlanRules.MountainHeight"/>, or in the alpine biome. No trade
+        /// route off the map crosses it (2026-11-24b item 4).
+        /// </summary>
+        public bool IsMountain(int cell)
+        {
+            if (alpineBiome == -2)
+            {
+                alpineBiome = -1;
+                IReadOnlyList<BiomeDefinition> biomes = Survey.Biomes;
+                for (int b = 0; biomes != null && b < biomes.Count; b++)
+                {
+                    if (biomes[b] != null && biomes[b].Name == BiomeDefinition.AlpineName)
+                    {
+                        alpineBiome = b;
+                    }
+                }
+            }
+            SurveyCell at = Cells[cell];
+            return !IsSea(cell) && (at.Height >= Rules.MountainHeight || (alpineBiome >= 0 && at.Biome == alpineBiome));
+        }
+
+        private int alpineBiome = -2;
+
+        /// <summary>The side of the map a point lies towards, as the sides share the land (corners split on the diagonals).</summary>
+        public MapSide SideOf(Vector2 point)
+        {
+            Vector2 local = point - Survey.Area.center;
+            if (Mathf.Abs(local.x) >= Mathf.Abs(local.y))
+            {
+                return local.x < 0f ? MapSide.West : MapSide.East;
+            }
+            return local.y < 0f ? MapSide.South : MapSide.North;
+        }
+
         /// <summary>A number from 0 to 1 that depends only on the seed and three integers.</summary>
         public float Hash01(int a, int b, int c)
         {

@@ -251,7 +251,8 @@ namespace Clube.Core
         public float RiverReach = 120f;
         /// <summary>
         /// GL725: "trade routes go off the map bounds to simulate trading with a larger world": each land side that is
-        /// neither sea nor the void gets a trade road off the map, from the settlement on the roads nearest it; false for none.
+        /// neither sea, the void nor a mountain ridge may get trade roads off the map (by chance, <see cref="LandRouteChance"/>);
+        /// false for none.
         /// </summary>
         public bool ExitRoads = true;
         /// <summary>GL726, GL753: the docks by settlement type, and the class of road that leads down to each.</summary>
@@ -263,6 +264,31 @@ namespace Clube.Core
         /// the open sea even when it has ports on the map to trade with; false for only where it has none.
         /// </summary>
         public bool OpenSeaRoutes = true;
+        /// <summary>
+        /// 2026-11-24b item 4: "likelihood for more depends on how many edges are ocean". Beside the one route out to the open
+        /// sea every map with a sea side gets, each other sea side gets a route of its own with this chance times the number
+        /// of sea sides (two sides 40%, three 60%, four 80% each).
+        /// </summary>
+        public float ExtraSeaRouteChance = 0.2f;
+        /// <summary>
+        /// 2026-11-24b item 4: land trade routes off the map "more likely with more map edges being land based". The chance
+        /// of a side's first trade road is <see cref="LandRouteChance"/> plus <see cref="LandRouteChancePerSide"/> for each
+        /// side a road can leave by (one side 70%, two 85%, three certain); each further road on that side has half the chance
+        /// of the one before, up to <see cref="LandRoutesPerSide"/>.
+        /// </summary>
+        public float LandRouteChance = 0.55f, LandRouteChancePerSide = 0.15f;
+        /// <summary>The most trade roads that leave the map by one side.</summary>
+        public int LandRoutesPerSide = 2;
+        /// <summary>
+        /// Metres a land trade road's settlement may lie from its side and still count as near it: the pick leans to the
+        /// larger settlements ("more likely to connect to larger settlements"), and to those nearer the side.
+        /// </summary>
+        public float LandRouteReach = 1500f;
+        /// <summary>
+        /// 2026-11-24b item 4: "no trade routes go through mountains". Survey ground this high (world y, metres) or in the
+        /// alpine biome is mountain: no trade road off the map crosses it, and none leaves by a mountain ridge side.
+        /// </summary>
+        public float MountainHeight = 200f;
         /// <summary>Towns nearest the capital that get a paved road to it, beside the cities.</summary>
         public int PavedTownsFromCapital = 2;
         /// <summary>Thieves keep between these distances of the nearest settlement, in metres.</summary>

@@ -371,6 +371,8 @@ namespace Clube.Core.Tests
             List<WaterRoute> sea = plan.WaterRoutes.Where(route => route.Kind == WaterRouteKind.Sea).ToList();
 
             Assert.That(sea.Any(route => route.From == plan.Capital.Index || route.To == plan.Capital.Index), "the capital has a sea route");
+            // 2026-11-24b item 4: every side is sea here, so there is at least one route out to the open sea.
+            Assert.That(sea.Any(route => route.To < 0), "a sea side always gets a route off the map");
             foreach (WaterRoute route in plan.WaterRoutes)
             {
                 Assert.That(route.Points.Count, Is.GreaterThanOrEqualTo(1));
@@ -626,7 +628,26 @@ namespace Clube.Core.Tests
             var map = (BoundedMapGenerator)TerrainGenerators.Create(settings);
             MapLayout layout = map.Layout;
             ResourceSurvey natural = ResourceSurvey.Build(settings, map, null, null, 40f);
-            WorldPlan world = WorldPlanner.Build(natural, settings.Seed);
+            // 2026-11-24b item 4: with its land side made certain, the desert gets a trade road; none leaves by the mountain
+            // ridge, and none crosses mountain ground on the way (checked on the planned cells, before the roads are refined).
+            var landCertain = new WorldPlanRules { LandRouteChance = 1f };
+            WorldPlan world = WorldPlanner.Build(natural, settings.Seed, landCertain);
+            int alpine = -1;
+            for (int b = 0; b < natural.Biomes.Count; b++)
+            {
+                alpine = natural.Biomes[b].Name == BiomeDefinition.AlpineName ? b : alpine;
+            }
+            foreach (PlannedRoad road in world.Roads.Where(road => road.LeavesMap))
+            {
+                Assert.AreNotEqual(MapSide.East, road.ExitSide, "no trade road leaves by the mountain ridge");
+                foreach (Vector2 p in road.Points)
+                {
+                    Assert.IsTrue(natural.TryCell(p, out Vector2Int at));
+                    SurveyCell cell = natural.Cell(at.x, at.y);
+                    Assert.IsFalse(cell.Height >= landCertain.MountainHeight || cell.Biome == alpine, $"trade road {road.Index} crosses mountain ground at {p}");
+                }
+            }
+            Assert.IsTrue(world.WaterRoutes.Any(route => route.Kind == WaterRouteKind.Sea && route.To < 0), "a sea side always gets a route off the map");
             WorldRoads.Finish(world, map);
             System.Func<float, float, RoadWater> waterAt = WorldRoads.WaterOf(map.Water);
             UnityEngine.Debug.Log($"Natural map: {world.Settlements.Count} settlements, {world.Roads.Count} roads; {world.Timings}; "
@@ -636,7 +657,7 @@ namespace Clube.Core.Tests
             // GL725: a trade road runs off the map into the desert; none into the sea.
             PlannedRoad exit = world.Roads.FirstOrDefault(road => road.LeavesMap && road.ExitSide == MapSide.North);
             Assert.IsNotNull(exit, string.Join(" | ", world.Notes.Where(note => note.Contains("trade road"))));
-            Assert.IsFalse(world.Roads.Any(road => road.LeavesMap && road.ExitSide != MapSide.North && road.ExitSide != MapSide.East), "no trade road runs into the sea");
+            Assert.IsFalse(world.Roads.Any(road => road.LeavesMap && road.ExitSide != MapSide.North), "no trade road runs into the sea or over the ridge");
             Assert.AreEqual(-1, exit.To);
             Vector2 end = exit.Points[exit.Points.Count - 1];
             Vector2 past = end + layout.OutwardAt(end.x, end.y) * 80f;
