@@ -104,6 +104,7 @@ Core/
                  sunset's colour and each day's cloud cover, GL262, GL263)
   Fauna/         BirdFlock (a group of birds flying a pattern, then leaving, GL250); AnimalSpecies, HerdSites, AnimalBrain
                  (the animals as data, where herds live, one animal's decisions, GL602-GL606)
+  Motion/        SlideMotion (the player's slide: when it starts, its speed on a slope, when it ends; read by PlayerController, GL872)
   Population/    the people of settlements as data (GL615, GL616): Duty and Occupation rows, DutyShift (a week of duties),
                  SettlementRoster (who lives where), SettlementWalks (the ways through the lanes), DigPlan (a pit or a
                  tunnel, voxel by voxel), SettlementWorks, DigSite, DutyHours, WorkRate, WorkLand (work off screen and
