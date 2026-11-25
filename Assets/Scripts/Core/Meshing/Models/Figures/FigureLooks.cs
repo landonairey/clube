@@ -17,6 +17,7 @@ namespace Clube.Core
         Carter,
         Player,
         Sailor,
+        Sherpa,
     }
 
     /// <summary>
@@ -181,6 +182,19 @@ namespace Clube.Core
                     look.HatStyle = FigureHat.Cap;
                     look.Outfit = FigureOutfit.Belt | FigureOutfit.BareArms;
                     break;
+                case FigurePreset.Sherpa:
+                    // A travelling sherpa (GL868): sturdy, a warm red-brown coat, a scarf and a knit cap, a walking staff;
+                    // the big pack of goods is built on by the sherpa (it is a container, not cloth).
+                    look.Build = 1.08f;
+                    look.Shirt = new Color(0.52f, 0.26f, 0.18f);
+                    look.Trousers = new Color(0.3f, 0.26f, 0.2f);
+                    look.Accent = new Color(0.78f, 0.62f, 0.22f);
+                    look.Hair = new Color(0.12f, 0.1f, 0.08f);
+                    look.Hat = new Color(0.64f, 0.5f, 0.2f);
+                    look.HatStyle = FigureHat.Cap;
+                    look.Outfit = FigureOutfit.Coat | FigureOutfit.Scarf | FigureOutfit.Belt;
+                    look.Prop = FigureProp.Staff;
+                    break;
                 default:
                     // The player: the blue-grey sleeve of the first-person arm, a pack on the back.
                     look.Shirt = new Color(0.24f, 0.28f, 0.36f);
@@ -219,7 +233,7 @@ namespace Clube.Core
                 look.Hair = HairTones[hair];
                 look.Outfit = beard ? look.Outfit | FigureOutfit.Beard : look.Outfit & ~FigureOutfit.Beard;
             }
-            else if (preset == FigurePreset.Carter || preset == FigurePreset.Thief || preset == FigurePreset.Sailor)
+            else if (preset == FigurePreset.Carter || preset == FigurePreset.Thief || preset == FigurePreset.Sailor || preset == FigurePreset.Sherpa)
             {
                 look.Hair = HairTones[hair];
             }

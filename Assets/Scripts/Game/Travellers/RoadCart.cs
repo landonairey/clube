@@ -10,7 +10,7 @@ namespace Clube.Game
     /// between the shafts and the carter leading it. <see cref="MapCarts"/> says where along the road it is; this puts
     /// it on the ground there (on the deck over a bridge) and loads its crates for each trip.
     /// </summary>
-    public class RoadCart : MonoBehaviour
+    public class RoadCart : RoadTraveller
     {
         // Metres ahead of the axle the horse's middle is, and the carter leading it.
         private const float HorseAhead = 2.5f;
@@ -22,31 +22,23 @@ namespace Clube.Game
         private int loadedTrip = int.MinValue;
         private bool porting;
 
-        public CartRun Run { get; private set; }
-
-        /// <summary>GL725: how much of it is still here on its way off the map.</summary>
-        public OffMapPresence Presence { get; private set; }
-
         /// <summary>The crates on the bed.</summary>
-        public IReadOnlyList<StorageChest> Crates => model.Crates;
+        public override IReadOnlyList<StorageChest> Crates => model.Crates;
 
         /// <summary>The one-way trip its crates were last loaded for.</summary>
         public int LoadedTrip => loadedTrip;
 
-        /// <summary>GL729: the player closed one of its crates having taken goods from it.</summary>
-        public event System.Action<IReadOnlyList<(ItemDefinition Item, float Amount)>> Robbed;
-
-        public void Build(CartRun run, Material material, GameObject cratePrefab)
+        public override void Build(CartRun run, TravellerKit kit)
         {
             Run = run;
             int seed = run.Index * 7919 + 5;
+            material = kit.Material;
             model = gameObject.AddComponent<TradeCartModel>();
-            model.Build(material, cratePrefab, seed);
-            this.material = material;
+            model.Build(material, kit.CratePrefab, seed);
             cargo = new CrateCargo(model.Crates);
             foreach (StorageChest crate in model.Crates)
             {
-                crate.gameObject.AddComponent<CargoCrate>().Taken += taken => Robbed?.Invoke(taken);
+                crate.gameObject.AddComponent<CargoCrate>().Taken += ReportRobbed;
             }
             if (run.Kind.HorseDrawn)
             {
@@ -75,7 +67,7 @@ namespace Clube.Game
         /// Puts the cart <paramref name="along"/> metres down its road (and on past its end, <paramref name="beyond"/>, for a
         /// road that leaves the map, GL725), heading the way it goes.
         /// </summary>
-        public void Place(WorldView view, RoadLine line, IReadOnlyList<RouteBridges.Span> bridges, RoadLine beyond, float along, RunPlace state)
+        public override void Place(WorldView view, RoadLine line, IReadOnlyList<RouteBridges.Span> bridges, RoadLine beyond, float along, RunPlace state)
         {
             // It stops short of each end by its own length, so whoever pulls it is still on the road; off the map's far end it is gone.
             float lead = horse != null ? HorseAhead + CartHorse.HalfLength + 0.5f : TradeCartModel.CarterAhead;
@@ -96,7 +88,7 @@ namespace Clube.Game
         }
 
         /// <summary>Fills the crates for a trip, once: a few kinds of the goods given, the trip picking which.</summary>
-        public void Load(int trip, IReadOnlyList<ItemDefinition> goods, int seed)
+        public override void Load(int trip, IReadOnlyList<ItemDefinition> goods, int seed)
         {
             loadedTrip = trip;
             cargo.Show(0, cargo.Count, trip, goods, CargoSeed(seed));
@@ -112,7 +104,7 @@ namespace Clube.Game
         /// (<paramref name="arrivedTrip"/>, <paramref name="arrived"/>) and filled with its next load one by one, the
         /// carter carrying each between the cart's tail and <paramref name="door"/> (world space) while it stands.
         /// </summary>
-        public void Stop(StopPlace place, int arrivedTrip, IReadOnlyList<ItemDefinition> arrived, int nextTrip, IReadOnlyList<ItemDefinition> next,
+        public override void Stop(StopPlace place, int arrivedTrip, IReadOnlyList<ItemDefinition> arrived, int nextTrip, IReadOnlyList<ItemDefinition> next,
             int seed, Vector3 door)
         {
             TradeStop.CratesHeld(place, cargo.Count, out int first, out int last, out bool came);
@@ -135,38 +127,6 @@ namespace Clube.Game
         private int CargoSeed(int seed)
         {
             return unchecked(seed * 31 + Run.Index * 977);
-        }
-
-        // The road's surface at a distance along it, in the world's own metres: a bridge's deck, else the terrain, else the line;
-        // past the end of a road that leaves the map, the land on the way on (GL725).
-        private static Vector3 Surface(WorldView view, RoadLine line, IReadOnlyList<RouteBridges.Span> bridges, RoadLine beyond, float distance)
-        {
-            if (beyond != null && distance > line.Length)
-            {
-                distance -= line.Length;
-                line = beyond;
-                bridges = null;
-            }
-            distance = Mathf.Clamp(distance, 0f, line.Length);
-            Vector2 flat = line.Flat(distance);
-            if (bridges != null)
-            {
-                for (int s = 0; s < bridges.Count; s++)
-                {
-                    RouteBridges.Span span = bridges[s];
-                    if (distance >= span.Start && distance <= span.End)
-                    {
-                        float t = Mathf.InverseLerp(span.Start, span.End, distance);
-                        return new Vector3(flat.x, span.HeightAt(t), flat.y);
-                    }
-                }
-            }
-            float height = line.HeightAlong(distance);
-            if (GroundProbe.TryGround(view, flat.x, flat.y, height + 0.8f, out float ground))
-            {
-                height = ground;
-            }
-            return new Vector3(flat.x, height, flat.y);
         }
     }
 }

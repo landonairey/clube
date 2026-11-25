@@ -46,7 +46,8 @@ namespace Clube.Game
         private readonly Dictionary<int, SettlementWalks> walks = new Dictionary<int, SettlementWalks>();
         private MapSettlements settlements;
         private List<CartRun> runs = new List<CartRun>();
-        private RoadCart[] carts = System.Array.Empty<RoadCart>();
+        private RoadTraveller[] carts = System.Array.Empty<RoadTraveller>();
+        private Disposition[] moods = System.Array.Empty<Disposition>();
         private double[] delays = System.Array.Empty<double>(), heldUntil = System.Array.Empty<double>();
         private double lastSeconds;
         private DayNightCycle clock;
@@ -65,7 +66,7 @@ namespace Clube.Game
         /// <summary>The cart of a run, when it is in the world; null otherwise.</summary>
         public RoadCart CartOf(int run)
         {
-            return run >= 0 && run < carts.Length ? carts[run] : null;
+            return run >= 0 && run < carts.Length ? carts[run] as RoadCart : null;
         }
 
         /// <summary>Real seconds since the clock started, at its normal rate: what the carts' timetables run on.</summary>
@@ -125,7 +126,8 @@ namespace Clube.Game
                     Hide(i);
                     continue;
                 }
-                RunPlace state = run.At(seconds - delays[i]);
+                RunPlace timed = run.At(seconds - delays[i]);
+                RunPlace state = timed;
                 if (held)
                 {
                     state = new RunPlace(state.Fraction, state.Outbound, false, state.Trip, state.Rested);
@@ -139,8 +141,9 @@ namespace Clube.Game
                 {
                     var body = new GameObject($"{run.Kind.Name} on road {run.Road}");
                     body.transform.SetParent(root, false);
-                    carts[i] = body.AddComponent<RoadCart>();
-                    carts[i].Build(run, material, cratePrefab);
+                    // GL868: a kind on foot is a sherpa with a pack, every other kind a cart.
+                    carts[i] = run.Kind.OnFoot ? body.AddComponent<Sherpa>() : body.AddComponent<RoadCart>();
+                    carts[i].Build(run, KitFor(i));
                     int robbed = i;
                     carts[i].Robbed += taken => Robbed(robbed, taken);
                     Showing++;
@@ -152,7 +155,8 @@ namespace Clube.Game
                 if (carts[i] != null)
                 {
                     // GL726: standing at a settlement, it draws up to the shop that matches its goods, unloads, loads and goes.
-                    int at = state.Moving ? -1 : state.Outbound ? run.To : run.From;
+                    // One held on the road (stopped by thieves, or trading, GL868) stays on the road.
+                    int at = timed.Moving ? -1 : state.Outbound ? run.To : run.From;
                     TownWay way = at >= 0 ? WayTo(run, at, line) : null;
                     if (way != null)
                     {
@@ -188,6 +192,20 @@ namespace Clube.Game
             int boundFor = TradeStop.GoodsBoundFor(run.At(Seconds - delays[index]), run.Kind.RestSeconds, run.From, run.To);
             int cameFrom = boundFor == run.To ? run.From : boundFor == run.From ? run.To : -1;
             CargoTheft.Report(settlements, session.Plan, boundFor, cameFrom, taken);
+        }
+
+        // What a run's traveller is built with; its disposition lasts while the map does (GL868: a sherpa remembers a theft).
+        private TravellerKit KitFor(int index)
+        {
+            moods[index] ??= new Disposition();
+            return new TravellerKit
+            {
+                Material = material,
+                CratePrefab = cratePrefab,
+                Prices = settlements != null ? settlements.Prices : null,
+                Disposition = moods[index],
+                Hold = seconds => HoldFor(index, seconds),
+            };
         }
 
         private void Hide(int index)
@@ -230,7 +248,8 @@ namespace Clube.Game
                 }
             }
             runs = CartRuns.Plan(session.Plan, kinds, session.Plan.Seed, road => offMapPaths.TryGetValue(road.Index, out OffMapPath path) ? path.Length : 0f);
-            carts = new RoadCart[runs.Count];
+            carts = new RoadTraveller[runs.Count];
+            moods = new Disposition[runs.Count];
             delays = new double[runs.Count];
             heldUntil = new double[runs.Count];
             Showing = 0;
