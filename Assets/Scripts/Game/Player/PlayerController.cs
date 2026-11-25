@@ -1,3 +1,4 @@
+using Clube.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -5,7 +6,8 @@ namespace Clube.Game
 {
     /// <summary>
     /// First-person walking (M6): Move walks, Sprint runs, Crouch (C) crouches, lowering the head and slowing the
-    /// walk, and pressed while sprinting slides on while held, up to a set distance (GL219, GL247); Jump jumps (keeping its run-up:
+    /// walk, and held while sprinting (pressed, or still held on landing) slides on with the speed carried, up to a set
+    /// distance on level ground (GL219, GL247, GL872; the rules are <see cref="SlideMotion"/>); Jump jumps (keeping its run-up:
     /// in the air Move only steers a little; held against a steep face it climbs, GL467), Look turns the body left and right and tilts
     /// the head up and down. A <see cref="CharacterController"/>
     /// collides with the terrain's chunk colliders (<see cref="Clube.Core.ChunkCollider"/>);
@@ -103,6 +105,10 @@ namespace Clube.Game
         [SerializeField, Range(0f, 1f)]
         private float steepestSlideRise = 0.2f;
 
+        [Tooltip("The fastest a slide goes, chained or not, as a share of the sprint (GL872): jumps and slides chained downhill gain speed up to this.")]
+        [SerializeField, Range(1f, 4f)]
+        private float slideTopSpeed = 2.5f;
+
         // How long a slide carries on over a bump or a dip it leaves the ground on, in seconds (GL247).
         [Tooltip("Swimming speed (GL316), metres per second; Sprint swims faster.")]
         [SerializeField, Min(0.5f)]
@@ -138,9 +144,6 @@ namespace Clube.Game
 
         private const float SlideAirTime = 0.25f;
 
-        // A slide never goes faster than this many times its start (downhill).
-        private const float SlideTopSpeed = 1.6f;
-
         // How fast the capsule and head go down and up, in metres per second.
         private const float CrouchRate = 6f;
 
@@ -153,6 +156,9 @@ namespace Clube.Game
         private float slideSpeed;
         private float slideStartSpeed;
         private float slideDistance;
+        // True once a slide ended on the ground with Crouch still held, until Crouch is let go or the player leaves the
+        // ground, so holding Crouch doesn't start slide after slide (GL872).
+        private bool slideSpent;
         private float yaw;
         private float pitch;
         private float fallSpeed;
@@ -456,7 +462,6 @@ namespace Clube.Game
                 return;
             }
             InputAction crouch = Crouch;
-            bool crouchPressed = crouch != null && !isInMenu && !InputLocked && crouch.WasPressedThisFrame();
             bool crouchHeld = crouch != null && !isInMenu && !InputLocked && crouch.IsPressed();
             float speed = walkSpeed * (IsCrouching ? crouchSpeedMultiplier : isSprinting ? sprintMultiplier : 1f);
             Vector3 walk = (transform.right * input.x + transform.forward * input.y) * speed;
@@ -465,17 +470,27 @@ namespace Clube.Game
                 walk = walk.normalized * speed;
             }
 
-            // Crouch pressed while sprinting slides on, faster at first (GL219), for as long as it's held up to
-            // maxSlideDistance (GL247). Running downhill the controller is often a frame off the ground, so a press just
-            // after leaving it counts; level ground, downhill and a gentle rise slide, a steeper rise doesn't.
+            // Crouch held while sprinting slides on (GL219) for as long as it's held, up to maxSlideDistance on level
+            // ground (GL247). It starts on the press or, held through a jump or a hop down a slope, on landing, from the
+            // speed the player carries, never the crouch walk (GL872). Running downhill the controller is often a frame
+            // off the ground, so just after leaving it counts; level ground, downhill and a gentle rise slide.
             bool nearGround = Body.isGrounded || Time.time - lastGroundedTime <= CoyoteTime;
-            if (crouchPressed && isSprinting && !IsSliding && nearGround && walk.sqrMagnitude > walkSpeed * walkSpeed
-                && RiseAlong(walk.normalized) <= steepestSlideRise)
+            if (!crouchHeld || !nearGround)
             {
-                slideDirection = walk.normalized;
-                slideSpeed = walk.magnitude * slideBoost;
-                slideStartSpeed = slideSpeed;
-                slideDistance = 0f;
+                slideSpent = false;
+            }
+            if (!IsSliding && Time.time >= knockbackUntil)
+            {
+                Vector3 carried = velocity.sqrMagnitude >= walk.sqrMagnitude ? velocity : walk;
+                Vector3 heading = carried.sqrMagnitude > 0.0001f ? carried.normalized : transform.forward;
+                SlideMotion.Tuning tuning = SlideTuning;
+                if (SlideMotion.Starts(tuning, crouchHeld, slideSpent, nearGround, isSprinting, carried.magnitude, RiseAlong(heading)))
+                {
+                    slideDirection = heading;
+                    slideSpeed = SlideMotion.StartSpeed(tuning, carried.magnitude);
+                    slideStartSpeed = slideSpeed;
+                    slideDistance = 0f;
+                }
             }
             if (IsSliding && !crouchHeld)
             {
@@ -671,16 +686,30 @@ namespace Clube.Game
         // ends when it's down to a crouch, has gone its full distance, or meets a rise too steep.
         private void SlideOn()
         {
+            SlideMotion.Tuning tuning = SlideTuning;
             float rise = RiseAlong(slideDirection);
-            float slowing = slideDrag + Gravity * rise;
-            slideSpeed = Mathf.Min(slideStartSpeed * SlideTopSpeed, slideSpeed - slowing * Time.deltaTime);
+            slideSpeed = SlideMotion.Step(tuning, slideSpeed, slideStartSpeed, rise, Time.deltaTime);
             velocity = slideDirection * Mathf.Max(0f, slideSpeed);
-            slideDistance += Mathf.Max(0f, slideSpeed) * Time.deltaTime;
-            if (slideSpeed <= walkSpeed * crouchSpeedMultiplier || slideDistance >= maxSlideDistance || rise > steepestSlideRise)
+            slideDistance += SlideMotion.CountedDistance(slideSpeed, rise, Time.deltaTime);
+            if (SlideMotion.Ends(tuning, slideSpeed, slideDistance, rise))
             {
                 slideSpeed = 0f;
+                slideSpent = true;
             }
         }
+
+        private SlideMotion.Tuning SlideTuning => new SlideMotion.Tuning
+        {
+            WalkSpeed = walkSpeed,
+            SprintSpeed = walkSpeed * sprintMultiplier,
+            CrouchSpeed = walkSpeed * crouchSpeedMultiplier,
+            Boost = slideBoost,
+            Drag = slideDrag,
+            Gravity = Gravity,
+            SteepestRise = steepestSlideRise,
+            MaxDistance = maxSlideDistance,
+            TopSpeed = walkSpeed * sprintMultiplier * slideTopSpeed,
+        };
 
         // How steeply the ground under the feet rises going this way, in metres per metre: negative downhill, 0 with no
         // ground found.
