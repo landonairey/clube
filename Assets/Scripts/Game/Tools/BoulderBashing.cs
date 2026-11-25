@@ -293,7 +293,9 @@ namespace Clube.Game
             items.Replace(slot, refined);
             foreach (Content picked in pickedOut)
             {
-                ItemDefinition drop = picked.Material != null ? picked.Material.FinalDrop : null;
+                // The stone in crushed ore comes out as Crushed stone (GL881).
+                VoxelMaterial pickedAs = Refining.PickedAs(picked.Material, prospecting, materials);
+                ItemDefinition drop = pickedAs != null ? pickedAs.FinalDrop : null;
                 if (drop == null)
                 {
                     continue;
@@ -304,7 +306,7 @@ namespace Clube.Game
                     drop = CrushedFormOf(drop);
                 }
                 int whole = (int)(picked.Fraction + 1e-4f);
-                Composition contents = Composition.From(new Content(picked.Material, 1f));
+                Composition contents = Composition.From(new Content(pickedAs, 1f));
                 float part = Mathf.Max(0f, picked.Fraction - whole);
                 if (outputs != null && outputs.Add(drop, whole, contents, 0, 1f, part) == 0)
                 {

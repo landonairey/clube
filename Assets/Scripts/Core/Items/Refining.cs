@@ -51,6 +51,25 @@ namespace Clube.Core
             return TopFailChance;
         }
 
+        /// <summary>The material plain stone is picked out as when it comes out of crushed ore (GL881).</summary>
+        public const string StoneName = "Stone";
+
+        /// <summary>The material crushed ore gives its stone as (GL881).</summary>
+        public const string CrushedStoneName = "Crushed stone";
+
+        /// <summary>
+        /// What a piece picked out of a stack turns into (GL881): the stone in crushed ore comes out as Crushed stone, not
+        /// Stone, since it is gravel already. Every other material, and anything out of other stacks, comes out as itself.
+        /// </summary>
+        public static VoxelMaterial PickedAs(VoxelMaterial picked, bool fromCrushedOre, MaterialRegistry materials)
+        {
+            if (!fromCrushedOre || picked == null || materials == null || picked.DisplayName != StoneName)
+            {
+                return picked;
+            }
+            return materials.Find(CrushedStoneName) ?? picked;
+        }
+
         /// <summary>True for a stack with a mix to pick over: gathered material that isn't all its own material.</summary>
         public static bool CanRefine(ItemStack stack, MaterialRegistry materials)
         {
