@@ -73,6 +73,15 @@ namespace Clube.Core
         public FigureOutfit Outfit;
         public FigureProp Prop;
 
+        /// <summary>A cloth wrapped round the hips over bare legs (item 5: the player with nothing on); none when transparent.</summary>
+        public Color Wrap;
+
+        /// <summary>Bracers on the forearms (item 5: worn leather bracers); none when transparent.</summary>
+        public Color Bracers;
+
+        /// <summary>Gloves over the hands (item 5); bare hands when transparent.</summary>
+        public Color Gloves;
+
         /// <summary>True when the outfit has a piece.</summary>
         public readonly bool Has(FigureOutfit piece)
         {
@@ -86,7 +95,13 @@ namespace Clube.Core
         public readonly string MeshKey()
         {
             return $"{Mathf.RoundToInt(Build * 100f)}/{Mathf.RoundToInt(HeadSize * 100f)}/{Hex(Skin)}{Hex(Hair)}{Hex(Shirt)}{Hex(Trousers)}{Hex(Boots)}"
-                + $"{Hex(Accent)}{Hex(Hat)}/{(int)HatStyle}/{(int)Outfit}";
+                + $"{Hex(Accent)}{Hex(Hat)}/{(int)HatStyle}/{(int)Outfit}/{Worn(Wrap)}{Worn(Bracers)}{Worn(Gloves)}";
+        }
+
+        // A worn piece's colour, or "-" when it isn't worn.
+        private static string Worn(Color color)
+        {
+            return color.a > 0f ? Hex(color) : "-";
         }
 
         private static string Hex(Color color)

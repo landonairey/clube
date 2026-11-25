@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 1563410560035697831}
   - component: {fileID: 1858761931908942510}
   - component: {fileID: 471292153033285965}
+  - component: {fileID: 7307588041849503104}
   m_Layer: 0
   m_Name: Spinning Wheel
   m_TagString: Untagged
@@ -126,3 +127,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f9ac7f3ada9279a43b1664ce88831890, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Clube.Game::Clube.Game.PlacedObject
+--- !u!114 &7307588041849503104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1349733099842882072}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 414ac35aef9d5794381230eecbca8d50, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.StationObject
+  displayName: Spinning wheel
+  kind: 2
+  recipes:
+  - {fileID: 11400000, guid: 98e32ff58292ba14ab0f41e2f689d1a7, type: 2}
+  - {fileID: 11400000, guid: 631a0b8f4c4f3ec449c95178b4988ef9, type: 2}
+  - {fileID: 11400000, guid: f73ddd69582e574439276a70d914bfe9, type: 2}
+  - {fileID: 11400000, guid: 930249684069b624bad464ce968ad6cf, type: 2}
+  - {fileID: 11400000, guid: e44a299b055fc03459708c15eeb03b87, type: 2}
+  burnsFuel: 0
+  heat: 1
+  recovery: 1

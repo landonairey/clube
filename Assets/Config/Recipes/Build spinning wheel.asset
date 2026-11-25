@@ -28,14 +28,18 @@ MonoBehaviour:
   experienceSkill: 1
   experience: 60
   unlockSkill: 1
-  unlockLevel: 4
+  unlockLevel: 1
   qualityFactor: 1
   extracts: {fileID: 0}
   typicalGrade: 0.2
   takesIngotForms: 0
+  swapsListedApart: 0
   swapInput: {fileID: 11400000, guid: 9e0d59d866801a2468af3467350c41bf, type: 2}
   swapFor:
   - {fileID: 11400000, guid: da0b784ad94952d4599252d63b6e3eae, type: 2}
+  swapQualityFactors: []
+  swapOutputs: []
+  keepsWear: 0
   swapInput2: {fileID: 11400000, guid: ab2efbb25daf4e04c8f44170ff7dae48, type: 2}
   swapFor2:
   - {fileID: 11400000, guid: 2d9217f697d4a54488fe12358e8ee519, type: 2}

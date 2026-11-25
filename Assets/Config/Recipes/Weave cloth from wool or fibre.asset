@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb68c50b39e0a91499017be61cd90094, type: 3}
+  m_Name: Weave cloth from wool or fibre
+  m_EditorClassIdentifier: Clube.Core::Clube.Core.Recipe
+  station: 2
+  inputs:
+  - Item: {fileID: 11400000, guid: ab2efbb25daf4e04c8f44170ff7dae48, type: 2}
+    Count: 8
+  output:
+    Item: {fileID: 11400000, guid: a04660ce3b204894a919eb2951429d82, type: 2}
+    Count: 1
+  work: 1
+  amount: 6
+  experienceSkill: 1
+  experience: 3
+  unlockSkill: 0
+  unlockLevel: 0
+  qualityFactor: 1
+  extracts: {fileID: 0}
+  typicalGrade: 0.2
+  takesIngotForms: 0
+  swapsListedApart: 0
+  swapInput: {fileID: 11400000, guid: ab2efbb25daf4e04c8f44170ff7dae48, type: 2}
+  swapFor:
+  - {fileID: 11400000, guid: 2d9217f697d4a54488fe12358e8ee519, type: 2}
+  - {fileID: 11400000, guid: 2596e97d9ef555d40b4e53a5ae8babb1, type: 2}
+  - {fileID: 11400000, guid: 45adfaf20f54aa9409398b39ee430604, type: 2}
+  - {fileID: 11400000, guid: 127445957827d4e4eb3df4a5852eff05, type: 2}
+  swapQualityFactors: []
+  swapOutputs: []
+  keepsWear: 0
+  swapInput2: {fileID: 0}
+  swapFor2: []

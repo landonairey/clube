@@ -29,7 +29,8 @@ namespace Clube.Debug.Editor
         private const string Items = "Assets/Config/Items/";
 
         private const int Boards = 10, Ingots = 5, Wool = 5;
-        private const int UnlockLevel = 4;
+        /// <summary>The crafting level that unlocks it: 1, so the workbench lists it from the start (20261124b item 11).</summary>
+        public const int UnlockLevel = 1;
 
         [MenuItem("Clube/Models/Build spinning wheel")]
         public static void Build()
@@ -136,6 +137,11 @@ namespace Clube.Debug.Editor
                 box.center = new Vector3(0.1f, 0.68f, 0f);
                 box.size = new Vector3(1.2f, 1.36f, 0.4f);
                 root.AddComponent<PlacedObject>();
+                // A station (20261124b item 11): ClothingGoods.SetUpSpinningWheel gives it its recipes.
+                var station = new SerializedObject(root.AddComponent<StationObject>());
+                station.FindProperty("displayName").stringValue = "Spinning wheel";
+                station.FindProperty("kind").intValue = (int)StationKind.Worktop;
+                station.ApplyModifiedPropertiesWithoutUndo();
                 return PrefabUtility.SaveAsPrefabAsset(root, Prefab);
             }
             finally

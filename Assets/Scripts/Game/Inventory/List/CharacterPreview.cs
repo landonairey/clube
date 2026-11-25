@@ -20,6 +20,9 @@ namespace Clube.Game
         private readonly Camera camera;
         private RenderTexture texture;
         private float yaw;
+        private FigureRig rig;
+        private Material material;
+        private string dressedKey;
 
         public CharacterPreview()
         {
@@ -33,8 +36,9 @@ namespace Clube.Game
             {
                 var figure = new GameObject("Figure");
                 figure.transform.SetParent(turntable, false);
-                var rig = figure.AddComponent<FigureRig>();
-                rig.Build(FigureLooks.Of(FigurePreset.Player), new Material(shader) { name = "Preview figure" }, 0);
+                rig = figure.AddComponent<FigureRig>();
+                material = new Material(shader) { name = "Preview figure" };
+                rig.Build(FigureLooks.Of(FigurePreset.Player), material, 0);
                 rig.Pose = FigureAction.Stand;
                 // Seen close up by its own camera: the distance level of detail would measure from the main camera (GL662).
                 if (figure.TryGetComponent(out FigureLod lod))
@@ -98,6 +102,43 @@ namespace Clube.Game
             }
             camera.enabled = true;
             GUI.DrawTexture(area, texture, ScaleMode.StretchToFill, false);
+        }
+
+        /// <summary>
+        /// Puts on what <paramref name="worn"/> gives for each body slot (item 5, <see cref="WornLook"/>); rebuilds the
+        /// figure only when that changes how it looks.
+        /// </summary>
+        public void Dress(System.Func<WearSlot, ItemDefinition> worn)
+        {
+            if (rig == null)
+            {
+                return;
+            }
+            FigureLook look = WornLook.Dress(FigureLooks.Of(FigurePreset.Player), worn);
+            string key = look.MeshKey();
+            if (key == dressedKey)
+            {
+                return;
+            }
+            dressedKey = key;
+            // Build destroys the old body only at the end of the frame: hide it now so the two never draw together.
+            Transform old = rig.transform.Find("Body");
+            if (old != null)
+            {
+                old.gameObject.SetActive(false);
+            }
+            rig.Build(look, material, 0);
+            rig.Pose = FigureAction.Stand;
+            // Build adds the distance level of detail and the body's collider again; neither belongs here.
+            if (rig.TryGetComponent(out FigureLod lod))
+            {
+                Object.Destroy(lod);
+            }
+            rig.Detail = FigureDetail.Full;
+            foreach (Collider body in rig.GetComponentsInChildren<Collider>())
+            {
+                Object.Destroy(body);
+            }
         }
 
         /// <summary>Stops rendering (the screen closed).</summary>

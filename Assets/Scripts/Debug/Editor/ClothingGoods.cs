@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Clube.Core;
+using Clube.Game;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -24,6 +25,7 @@ namespace Clube.Debug.Editor
         private const string PricesPath = "Assets/Config/Economy/Merchant prices.asset";
         private const string CampfirePrefab = "Assets/Prefabs/Stations/Campfire.prefab";
         private const string BenchPrefab = "Assets/Prefabs/Stations/Workbench.prefab";
+        private const string WheelPrefab = "Assets/Prefabs/Stations/Spinning Wheel.prefab";
         private const int Size = 64;
 
         // What a garment's icon shows.
@@ -106,10 +108,6 @@ namespace Clube.Debug.Editor
             {
                 // Item 17: any tanned hide cuts into leather at the workbench.
                 WriteRecipe("Cut leather", StationKind.Worktop, RecipeWork.Strikes, 3f, I("Leather"), 2, 3f, (tanned[0], 1), Swaps(tanned, null)),
-                // Item 18: any wool spins into yarn, fibre into string; either weaves into cloth.
-                WriteRecipe("Spin yarn", StationKind.Worktop, RecipeWork.Strikes, 2f, I("Yarn"), 1, 2f, (wools[0], 2), Swaps(wools, null)),
-                WriteRecipe("Spin string", StationKind.Worktop, RecipeWork.Strikes, 2f, I("String"), 1, 2f, (I("Plant fibre"), 3), null),
-                WriteRecipe("Weave cloth", StationKind.Worktop, RecipeWork.Strikes, 4f, I("Cloth"), 1, 3f, (I("Yarn"), 4), Swaps(new[] { I("Yarn"), I("String") }, null)),
                 WriteRecipe("Sew shirt", StationKind.Worktop, RecipeWork.Strikes, 4f, I("Shirt"), 1, 4f, (I("Cloth"), 3), null),
                 WriteRecipe("Sew pants", StationKind.Worktop, RecipeWork.Strikes, 4f, I("Pants"), 1, 4f, (I("Cloth"), 3), null),
                 WriteRecipe("Sew foot wraps", StationKind.Worktop, RecipeWork.Strikes, 2f, I("Foot wraps"), 1, 2f, (I("Cloth"), 1), null),
@@ -126,8 +124,93 @@ namespace Clube.Debug.Editor
             AssetDatabase.SaveAssets();
             var all = new List<Recipe>(campfire);
             all.AddRange(bench);
+            all.AddRange(SetUpSpinningWheel());
             UnityEngine.Debug.Log($"Clothing goods: {Goods.Length} items, {all.Count} recipes. Add the rags to each scene's player and the recipes to its journal.");
             return all;
+        }
+
+        /// <summary>
+        /// 20261124b item 11: the spinning wheel becomes a station of its own (a <c>StationObject</c> on its prefab) with
+        /// the spinning and weaving: yarn from any wool, string from plant fibre, twine from string or any wool, cloth from
+        /// yarn or string, or from any wool or plant fibre. The workbench stops offering them. Safe to run again.
+        /// </summary>
+        [MenuItem("Clube/Items/Set up spinning wheel")]
+        public static void SetUpSpinningWheelMenu()
+        {
+            SetUpSpinningWheel();
+        }
+
+        /// <summary>Does the work of <see cref="SetUpSpinningWheelMenu"/>; returns the wheel's recipes.</summary>
+        public static List<Recipe> SetUpSpinningWheel()
+        {
+            ItemDefinition I(string name) => AssetDatabase.LoadAssetAtPath<ItemDefinition>($"{ItemFolder}/{name}.asset");
+            ItemDefinition[] wools = { I("Sheep wool"), I("Goat wool"), I("Yak wool"), I("Alpaca wool") };
+            ItemDefinition fibre = I("Plant fibre");
+            var wheel = new List<Recipe>
+            {
+                WriteRecipe("Spin yarn", StationKind.Worktop, RecipeWork.Strikes, 2f, I("Yarn"), 1, 2f, (wools[0], 2), Swaps(wools, null)),
+                WriteRecipe("Spin string", StationKind.Worktop, RecipeWork.Strikes, 2f, I("String"), 1, 2f, (fibre, 3), null),
+                WriteRecipe("Spin twine", StationKind.Worktop, RecipeWork.Strikes, 2f, I("Twine"), 1, 2f, (I("String"), 2),
+                    Swaps(new[] { I("String"), wools[0], wools[1], wools[2], wools[3] }, null)),
+                WriteRecipe("Weave cloth", StationKind.Worktop, RecipeWork.Strikes, 4f, I("Cloth"), 1, 3f, (I("Yarn"), 4), Swaps(new[] { I("Yarn"), I("String") }, null)),
+                // Straight from the raw stuff: twice as much, as spinning it first would have taken.
+                WriteRecipe("Weave cloth from wool or fibre", StationKind.Worktop, RecipeWork.Strikes, 6f, I("Cloth"), 1, 3f, (wools[0], 8),
+                    Swaps(new[] { wools[0], wools[1], wools[2], wools[3], fibre }, null)),
+            };
+            EnsureStation(WheelPrefab, "Spinning wheel", StationKind.Worktop);
+            Offer(WheelPrefab, wheel);
+            Withdraw(BenchPrefab, wheel);
+            // Listed (locked) on the workbench from the start, not hidden until crafting 3 (GL450).
+            var build = new SerializedObject(AssetDatabase.LoadAssetAtPath<Recipe>($"{RecipeFolder}/Build spinning wheel.asset"));
+            build.FindProperty("unlockLevel").intValue = SpinningWheelModel.UnlockLevel;
+            build.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.SaveAssets();
+            return wheel;
+        }
+
+        // Gives a placeable's prefab a StationObject when it has none.
+        private static void EnsureStation(string prefab, string name, StationKind kind)
+        {
+            GameObject root = PrefabUtility.LoadPrefabContents(prefab);
+            try
+            {
+                if (root.GetComponent<StationObject>() == null)
+                {
+                    var serialized = new SerializedObject(root.AddComponent<StationObject>());
+                    serialized.FindProperty("displayName").stringValue = name;
+                    serialized.FindProperty("kind").intValue = (int)kind;
+                    serialized.ApplyModifiedPropertiesWithoutUndo();
+                    PrefabUtility.SaveAsPrefabAsset(root, prefab);
+                }
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        // Takes recipes off a station prefab's list.
+        private static void Withdraw(string prefab, List<Recipe> recipes)
+        {
+            GameObject root = PrefabUtility.LoadPrefabContents(prefab);
+            try
+            {
+                var serialized = new SerializedObject(root.GetComponent<StationObject>());
+                SerializedProperty list = serialized.FindProperty("recipes");
+                for (int i = list.arraySize - 1; i >= 0; i--)
+                {
+                    if (recipes.Contains(list.GetArrayElementAtIndex(i).objectReferenceValue as Recipe))
+                    {
+                        list.DeleteArrayElementAtIndex(i);
+                    }
+                }
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                PrefabUtility.SaveAsPrefabAsset(root, prefab);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
         }
 
         // The swap list of a recipe whose first input is items[0]: the rest, each making outputs[i] (null: the same output).

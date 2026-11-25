@@ -101,6 +101,8 @@ namespace Clube.Game
             }
 
             var figure = new Rect(bodyLeft + BodySide + Gap, y, centreWidth - (BodySide + Gap) * 2f, columnHeight);
+            // The figure wears what's in the body slots (item 5): rags when rags are on, a loin wrap with nothing.
+            preview.Dress(part => items[inventory.BodySlot(part)].Item);
             preview.Draw(figure);
             GUI.Label(new Rect(figure.x, figure.yMax - 26f, figure.width, 24f), "Drag to turn", bodyStyle);
             for (int i = 0; i < PlayerInventory.BodySlots; i++)
