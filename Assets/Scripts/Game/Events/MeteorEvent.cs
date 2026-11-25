@@ -4,23 +4,24 @@ using UnityEngine;
 namespace Clube.Game
 {
     /// <summary>
-    /// The meteor event (GL736, first pass of WE1): a glowing rock falls out of the sky along a <see cref="MeteorPlan"/>,
-    /// and where it lands a crater is cut with a large brush edit and lined with lumps of magnetite, the richest iron ore
-    /// the game has. <see cref="Call"/> brings one down at a place; the debug menu calls it at the player. Nothing yet
-    /// calls it by chance (WE1 proper: how rare, the sound, the sky), so it is only ever called on purpose.
+    /// The meteor event (GL736, revamped by GL869–GL871): a burning stone (<see cref="MeteorFireball"/>) comes slowly down
+    /// out of the far sky along a <see cref="MeteorPlan"/>, with its flyby sound as it nears (<see cref="MeteorSounds"/>);
+    /// where it lands the impact sounds, the crash site is cut (<see cref="MeteorCrashSite"/>: gouge, crater, ore ball and
+    /// scattered pieces) once the chunks it touches are loaded, and the crater sizzles a while (<see cref="MeteorSizzle"/>).
+    /// <see cref="Call"/> brings one down at a place; the debug menu calls it at the player. Nothing yet calls it by
+    /// chance (WE1 proper), so it is only ever called on purpose.
     /// </summary>
     public class MeteorEvent : MonoBehaviour
     {
-        private const string OreName = "Magnetite";
-
         private WorldView worldView;
         private MeteorPlan plan;
         private float age;
-        private float azimuth;
-        private GameObject rock;
+        private MeteorFireball fireball;
+        private bool flybyStarted;
+        private bool cutPending;
 
         /// <summary>True while a meteor is falling.</summary>
-        public bool IsFalling => rock != null;
+        public bool IsFalling => fireball != null;
 
         /// <summary>Strikes counted since the world loaded (tests and the lab).</summary>
         public int Landed { get; private set; }
@@ -44,69 +45,62 @@ namespace Clube.Game
         }
 
         /// <summary>
-        /// Brings a meteor down on a spot: the surface under (x, z), searched from a little over <paramref name="near"/>.
-        /// False when no terrain is loaded there or one is already falling.
+        /// Brings a meteor down on a spot: the surface under (x, z), searched from a little over <paramref name="target"/>.
+        /// False when no terrain is loaded there or one is already falling or landing.
         /// </summary>
         public bool Call(Vector3 target)
         {
-            if (rock != null || worldView == null || !worldView.IsReady
+            if (fireball != null || cutPending || worldView == null || !worldView.IsReady
                 || !GroundProbe.TryGround(worldView, target.x, target.z, target.y, out float ground))
             {
                 return false;
             }
-            azimuth = Random.value * 360f;
-            plan = new MeteorPlan(new Vector3(target.x, ground, target.z), azimuth);
+            plan = new MeteorPlan(new Vector3(target.x, ground, target.z), Random.value * 360f);
             age = 0f;
-            rock = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            rock.name = "Meteor";
-            Destroy(rock.GetComponent<Collider>());
-            rock.transform.SetParent(transform, true);
-            rock.transform.localScale = Vector3.one * 3f;
-            rock.transform.position = plan.Start;
-            Tint(rock, new Color(1f, 0.55f, 0.15f));
+            flybyStarted = false;
+            fireball = MeteorFireball.Make(transform, plan.Start);
             return true;
         }
 
         private void Update()
         {
-            if (rock == null)
+            if (cutPending && MeteorCrashSite.IsReady(worldView, plan))
+            {
+                cutPending = false;
+                MeteorCrashSite.Cut(worldView, plan);
+                Landed++;
+            }
+            if (fireball == null)
             {
                 return;
             }
             age += Time.deltaTime;
             float t = age / MeteorPlan.FallSeconds;
-            // Gathers speed as it falls.
-            rock.transform.position = plan.At(t * t);
+            fireball.transform.position = plan.At(t);
+            MeteorSounds sounds = MeteorSounds.Load();
+            // The flyby is timed to end as the meteor lands (or starts at once when it is longer than the fall).
+            if (!flybyStarted && sounds != null && MeteorPlan.FallSeconds - age <= sounds.FlybySeconds)
+            {
+                flybyStarted = true;
+                sounds.PlayFlyby(fireball.gameObject);
+            }
             if (t >= 1f)
             {
-                Destroy(rock);
-                rock = null;
-                Land();
+                Land(sounds);
             }
         }
 
-        private void Land()
+        private void Land(MeteorSounds sounds)
         {
-            Vector3 at = plan.Impact;
-            worldView.ApplyBrush(at + Vector3.up, new BrushSettings(MeteorPlan.CraterRadius), BrushOperation.Remove);
-            VoxelMaterial ore = worldView.Config.Materials != null ? worldView.Config.Materials.Find(OreName) : null;
-            if (ore != null)
+            fireball.BurnOut();
+            fireball = null;
+            if (sounds != null)
             {
-                for (int i = 0; i < MeteorPlan.Lumps; i++)
-                {
-                    float radius = i == 0 ? 1.5f : 0.9f;
-                    worldView.ApplyBrush(at + MeteorPlan.LumpOffset(i, azimuth), new BrushSettings(radius, material: ore.Id), BrushOperation.Add);
-                }
+                sounds.PlayImpact(transform, plan.Impact);
             }
-            Landed++;
-        }
-
-        private static void Tint(GameObject target, Color colour)
-        {
-            var block = new MaterialPropertyBlock();
-            block.SetColor("_BaseColor", colour);
-            block.SetColor("_EmissionColor", colour * 4f);
-            target.GetComponent<Renderer>().SetPropertyBlock(block);
+            MeteorSizzle.Make(transform, plan.Impact + plan.Ball.Offset + Vector3.up * MeteorPlan.BallRadius, MeteorPlan.CraterRadius * 0.6f);
+            // The edits wait for every chunk they touch (A14; a chunk loaded later would miss its part).
+            cutPending = true;
         }
     }
 }
