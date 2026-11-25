@@ -1,3 +1,4 @@
+using Clube.Core;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Rendering.Universal;
@@ -41,6 +42,11 @@ namespace Clube.Game
         private RectTransform frame;
         private RawImage arrowImage;
         private Image markerEdge, markerFill;
+        private PlayerWaypoint waypoint;
+        private RawImage waypointImage;
+        private Texture2D waypointIcon;
+        private int waypointShown = -1;
+        private const float WaypointIconSize = 22f;
         private float nextDraw;
         private bool drawnThisFrame;
 
@@ -50,6 +56,7 @@ namespace Clube.Game
         private void Awake()
         {
             player = GetComponent<PlayerController>();
+            waypoint = GetComponent<PlayerWaypoint>();
         }
 
         private void OnEnable()
@@ -103,6 +110,10 @@ namespace Clube.Game
             {
                 Destroy(arrow);
             }
+            if (waypointIcon != null)
+            {
+                Destroy(waypointIcon);
+            }
         }
 
         private void LateUpdate()
@@ -144,6 +155,7 @@ namespace Clube.Game
             }
             arrowImage.rectTransform.localRotation = Quaternion.Euler(0f, 0f, -transform.eulerAngles.y);
             ShowMarker();
+            ShowWaypoint();
             HudLayout.ReportMinimap(Margin + size + 3f);
         }
 
@@ -168,6 +180,42 @@ namespace Clube.Game
             markerFill = HudCanvas.Fill(markerEdge.transform, "Marker", new Color(1f, 0.85f, 0.15f));
             HudCanvas.Place(markerFill.rectTransform, 2f, 2f, 10f, 10f);
             markerEdge.rectTransform.sizeDelta = new Vector2(14f, 14f);
+            waypointImage = HudCanvas.Picture(frame, "Waypoint");
+            waypointImage.rectTransform.sizeDelta = new Vector2(WaypointIconSize, WaypointIconSize);
+        }
+
+        // GL867: the map waypoint (GL866) as its highlighted icon, the settlement's badge or the pin: at its real spot
+        // when the map reaches it, otherwise on the map's rim along the bearing from the player, so it moves round the
+        // rim as the player walks and shows which way to go. The map is north up, like the world map.
+        private void ShowWaypoint()
+        {
+            waypoint ??= GetComponent<PlayerWaypoint>();
+            MapSession session = MapSession.Current;
+            bool on = waypoint != null && waypoint.Current.IsSet && session != null && session.IsReady;
+            HudCanvas.SetShown(waypointImage.gameObject, on);
+            if (!on)
+            {
+                return;
+            }
+            if (waypointShown != waypoint.Version)
+            {
+                waypointShown = waypoint.Version;
+                if (waypointIcon != null)
+                {
+                    Destroy(waypointIcon);
+                }
+                PlannedSettlement settlement = waypoint.SettlementIn(session.Plan);
+                string icon = settlement != null ? settlement.Type.Icon : "pin";
+                Color shape = settlement != null ? new Color(0.78f, 0.80f, 0.84f) : WorldMapScreen.WaypointColour;
+                waypointIcon = MapIconTexture.Paint(icon, 44, new Color(0.17f, 0.10f, 0.06f), WorldMapScreen.WaypointColour, shape);
+                waypointImage.texture = waypointIcon;
+            }
+            Vector2 position = waypoint.Current.Position;
+            Vector3 world = session.WorldView.transform.TransformPoint(new Vector3(position.x, 0f, position.y));
+            Vector3 offset = world - transform.position;
+            Vector2 at = MapWaypoint.OnMinimap(new Vector2(offset.x, offset.z), radius, size * 0.5f, WaypointIconSize * 0.5f, out _);
+            float x = 3f + size * 0.5f + at.x, y = 3f + size * 0.5f + at.y;
+            HudCanvas.Place(waypointImage.rectTransform, x - WaypointIconSize * 0.5f, y - WaypointIconSize * 0.5f, WaypointIconSize, WaypointIconSize);
         }
 
         // The quest marker: a yellow square where it is, held at the map's edge when it's further than the map shows.

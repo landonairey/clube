@@ -13,6 +13,7 @@ namespace Clube.Game
     /// icon (<see cref="MapIcons"/>) with its name below, the player, and a legend of them all (<see cref="MapLegend"/>, GL635).
     /// The wheel zooms on the pointer and a drag pans. The lab layer adds a resource of the survey and, under the
     /// pointer, why a site and its shops were picked (ST7). In a scene with no map session the key does nothing.
+    /// A left click sets the waypoint (<see cref="PlayerWaypoint"/>, GL866) on a settlement or as a pin; a right click removes it.
     /// </summary>
     public class WorldMapScreen : MonoBehaviour, IGuiDrawer
     {
@@ -32,6 +33,10 @@ namespace Clube.Game
 
         private PlayerController player;
         private PlayerParcels parcels;
+        private PlayerWaypoint waypoint;
+        private Vector2 pressedAt;
+        private bool pressed, dragged;
+        private Rect area;
         private bool legendHasHome;
         private bool hasPauseMenu;
         private Texture2D picture;
@@ -79,6 +84,12 @@ namespace Clube.Game
         {
             player = GetComponent<PlayerController>();
             parcels = GetComponent<PlayerParcels>();
+            // GL866: the waypoint lives on the player beside the map; scenes set up before it get one here.
+            waypoint = GetComponent<PlayerWaypoint>();
+            if (waypoint == null)
+            {
+                waypoint = gameObject.AddComponent<PlayerWaypoint>();
+            }
         }
 
         private void Start()
@@ -311,10 +322,11 @@ namespace Clube.Game
             GameUi.Apply();
             EnsureStyles();
             Rect area = session.Layout.Bounds;
+            this.area = area;
 
             float side = Mathf.Min(Screen.height * 0.9f, Screen.width * 0.9f);
             view = new Rect((Screen.width - side) * 0.5f, (Screen.height - side) * 0.5f, side, side);
-            HandleInput();
+            HandleInput(session);
 
             GUI.color = new Color(0f, 0f, 0f, 0.75f);
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
@@ -344,9 +356,37 @@ namespace Clube.Game
             DrawNotes(session, hovered);
         }
 
-        private void HandleInput()
+        private void HandleInput(MapSession session)
         {
             Event e = Event.current;
+            // GL866: a left click (a press and release without a drag) sets the waypoint: the settlement under the
+            // pointer, or a pin where it is; a right click anywhere removes it.
+            if (e.type == EventType.MouseDown && e.button == 0 && view.Contains(e.mousePosition))
+            {
+                pressed = true;
+                dragged = false;
+                pressedAt = e.mousePosition;
+            }
+            else if (e.type == EventType.MouseUp && e.button == 0 && pressed)
+            {
+                pressed = false;
+                if (!dragged && view.Contains(e.mousePosition))
+                {
+                    SetWaypointAt(session, e.mousePosition);
+                    e.Use();
+                    return;
+                }
+            }
+            else if (e.type == EventType.MouseDown && e.button == 1)
+            {
+                waypoint.Clear();
+                e.Use();
+                return;
+            }
+            if (e.type == EventType.MouseDrag && e.button == 0 && (e.mousePosition - pressedAt).sqrMagnitude > ClickSlop * ClickSlop)
+            {
+                dragged = true;
+            }
             if (e.type == EventType.ScrollWheel && view.Contains(e.mousePosition))
             {
                 // Zoom about the pointer: the place under it stays under it.
@@ -357,13 +397,50 @@ namespace Clube.Game
                 ClampCentre();
                 e.Use();
             }
-            else if (e.type == EventType.MouseDrag && e.button == 0)
+            else if (e.type == EventType.MouseDrag && e.button == 0 && dragged)
             {
                 centre.x -= e.delta.x / (view.width * zoom);
                 centre.y += e.delta.y / (view.height * zoom);
                 ClampCentre();
                 e.Use();
             }
+        }
+
+        private const float ClickSlop = 4f;
+
+        private void SetWaypointAt(MapSession session, Vector2 pointer)
+        {
+            PlannedSettlement settlement = SettlementUnder(session, pointer);
+            if (settlement != null)
+            {
+                waypoint.SetSettlement(settlement);
+                return;
+            }
+            Vector2 fraction = ToFraction(pointer);
+            waypoint.SetPin(new Vector2(area.xMin + fraction.x * area.width, area.yMin + fraction.y * area.height));
+        }
+
+        // The settlement whose icon is under the pointer (the nearest when they overlap); null for none.
+        private PlannedSettlement SettlementUnder(MapSession session, Vector2 pointer)
+        {
+            PlannedSettlement under = null;
+            float scale = view.width / 750f;
+            float nearest = float.MaxValue;
+            foreach (PlannedSettlement settlement in session.Plan.Settlements)
+            {
+                Vector2 at = ToScreen(area, settlement.Position);
+                if (!view.Contains(at))
+                {
+                    continue;
+                }
+                float distance = Vector2.Distance(pointer, at);
+                if (distance < IconSize(settlement) * scale * 1.5f && distance < nearest)
+                {
+                    nearest = distance;
+                    under = settlement;
+                }
+            }
+            return under;
         }
 
         // ---- Shapes: roads, routes, icons, the player, drawn with GL over the picture ----
@@ -419,10 +496,20 @@ namespace Clube.Game
                     continue;
                 }
                 float size = IconSize(settlement) * scale;
+                if (waypoint.Current.IsSet && waypoint.Current.Settlement == settlement.Index)
+                {
+                    // GL866: the waypoint's settlement glows in the waypoint colour round its badge.
+                    Disc(at, size * 1.3f + 5.5f * scale, Color.black);
+                    Disc(at, size * 1.3f + 4.5f * scale, WaypointColour);
+                }
                 Vector2[] icon = MapIcons.Triangles(settlement.Type.Icon);
                 Badge(icon, at, size, 1.5f * scale, settlement.Type);
             }
             DrawVessels(area, scale);
+            if (waypoint.Current.IsPin && view.Contains(ToScreen(area, waypoint.Current.Position)))
+            {
+                PinBadge(ToScreen(area, waypoint.Current.Position), PinSize * scale);
+            }
             if (TryGetHome(out Vector2 home) && view.Contains(ToScreen(area, home)))
             {
                 HomeBadge(ToScreen(area, home), HomeIconSize * scale, 2f * scale);
@@ -721,6 +808,18 @@ namespace Clube.Game
             Shape(MapIcons.Triangles("home"), at, size * 0.85f, 0f, BadgeWood);
         }
 
+        /// <summary>The waypoint's colour on the map and the minimap (GL866): a bright cyan nothing else on the map uses.</summary>
+        public static readonly Color WaypointColour = new Color(0.25f, 0.95f, 1f);
+        private const float PinSize = 10f;
+
+        // A dropped pin with its point on the place: the pin shape in the waypoint colour with a dark edge.
+        private static void PinBadge(Vector2 at, float size)
+        {
+            Vector2 head = at - new Vector2(0f, size);
+            Shape(MapIcons.Triangles("pin"), head, size * 1.25f, 0f, Color.black);
+            Shape(MapIcons.Triangles("pin"), head, size, 0f, WaypointColour);
+        }
+
         // The family's parcel, once there is one (the tutorial has no parcels).
         private bool TryGetHome(out Vector2 position)
         {
@@ -779,10 +878,8 @@ namespace Clube.Game
 
         private PlannedSettlement DrawNames(MapSession session, Rect area)
         {
-            PlannedSettlement hovered = null;
+            PlannedSettlement hovered = SettlementUnder(session, Event.current.mousePosition);
             float scale = view.width / 750f;
-            Vector2 pointer = Event.current.mousePosition;
-            float nearest = float.MaxValue;
             foreach (PlannedSettlement settlement in session.Plan.Settlements)
             {
                 Vector2 at = ToScreen(area, settlement.Position);
@@ -791,12 +888,6 @@ namespace Clube.Game
                     continue;
                 }
                 float size = IconSize(settlement) * scale;
-                float distance = Vector2.Distance(pointer, at);
-                if (distance < size * 1.5f && distance < nearest)
-                {
-                    nearest = distance;
-                    hovered = settlement;
-                }
                 // Every place is named under its icon; the smallest in smaller letters until zoomed in, so the whole map stays readable.
                 bool small = settlement.Type.Parcels < 4f && zoom < 2f;
                 GameUi.OutlinedLabel(new Rect(at.x - 120f, at.y + size * 1.3f + 1f, 240f, GameUi.Font(14) * 2f), settlement.Name, small ? smallNameStyle : nameStyle);
@@ -806,6 +897,11 @@ namespace Clube.Game
                 Vector2 at = ToScreen(area, home);
                 GameUi.OutlinedLabel(new Rect(at.x - 120f, at.y + HomeIconSize * scale * 1.3f + 1f, 240f, GameUi.Font(14) * 2f), "Home", nameStyle);
             }
+            if (waypoint.Current.IsPin && view.Contains(ToScreen(area, waypoint.Current.Position)))
+            {
+                Vector2 at = ToScreen(area, waypoint.Current.Position);
+                GameUi.OutlinedLabel(new Rect(at.x - 120f, at.y + 2f, 240f, GameUi.Font(14) * 2f), "Waypoint", smallNameStyle);
+            }
             return hovered;
         }
 
@@ -814,7 +910,7 @@ namespace Clube.Game
             float hintHeight = noteStyle.lineHeight + 8f;
             var hint = new Rect(view.xMin, Mathf.Min(view.yMax + 2f, Screen.height - hintHeight), view.width, hintHeight);
             noteStyle.alignment = TextAnchor.UpperCenter;
-            GUI.Label(hint, "M or Esc: close  ·  wheel: zoom  ·  drag: pan", noteStyle);
+            GUI.Label(hint, "M or Esc: close  ·  wheel: zoom  ·  drag: pan  ·  left click: waypoint  ·  right click: clear it", noteStyle);
             noteStyle.alignment = TextAnchor.UpperLeft;
 
             if (labLayer && resources != null)
