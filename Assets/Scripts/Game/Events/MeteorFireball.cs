@@ -11,8 +11,8 @@ namespace Clube.Game
         /// <summary>Core and fire size, metres.</summary>
         private const float CoreSize = 3.5f, FireSize = 9f;
 
-        /// <summary>The glow is never smaller on screen than this fraction of the distance (about 0.8 degrees).</summary>
-        private const float LeastAngularSize = 0.014f;
+        /// <summary>The glow is never smaller on screen than this fraction of the distance (about 1.3 degrees).</summary>
+        private const float LeastAngularSize = 0.022f;
 
         private TrailRenderer trail;
         private ParticleSystem fire;
@@ -126,8 +126,9 @@ namespace Clube.Game
         private static TrailRenderer MakeTrail(GameObject on)
         {
             var trail = on.AddComponent<TrailRenderer>();
-            trail.sharedMaterial = MeteorFx.Glow;
-            trail.time = 5f;
+            trail.sharedMaterial = MeteorFx.Streak;
+            trail.textureMode = LineTextureMode.Stretch;
+            trail.time = 6f;
             trail.minVertexDistance = 4f;
             trail.widthMultiplier = FireSize * 0.8f;
             trail.widthCurve = AnimationCurve.EaseInOut(0f, 1f, 1f, 0f);

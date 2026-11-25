@@ -45,13 +45,13 @@ namespace Clube.Game
         }
 
         /// <summary>
-        /// Brings a meteor down on a spot: the surface under (x, z), searched from a little over <paramref name="target"/>.
+        /// Brings a meteor down on a spot: the surface under (x, z), searched over a wide band round <paramref name="target"/>'s height.
         /// False when no terrain is loaded there or one is already falling or landing.
         /// </summary>
         public bool Call(Vector3 target)
         {
             if (fireball != null || cutPending || worldView == null || !worldView.IsReady
-                || !GroundProbe.TryGround(worldView, target.x, target.z, target.y, out float ground))
+                || !MeteorCrashSite.TryGround(worldView, target.x, target.z, target.y, out float ground))
             {
                 return false;
             }

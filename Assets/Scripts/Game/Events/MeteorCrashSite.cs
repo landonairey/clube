@@ -70,19 +70,29 @@ namespace Clube.Game
             }
         }
 
-        // The ground under (x, z), searched over a wide band round the impact's height (hills along the gouge).
+        // The ground under (x, z), or the given height when none is found.
         private static float Ground(WorldView view, float x, float z, float near)
         {
-            for (int step = 0; step < 9; step++)
+            return TryGround(view, x, z, near, out float height) ? height : near;
+        }
+
+        /// <summary>
+        /// The ground under (x, z), searched over a wide band (about 80 m) round <paramref name="near"/>: hills along the
+        /// gouge, or a target called from high ground. False where none is loaded.
+        /// </summary>
+        public static bool TryGround(WorldView view, float x, float z, float near, out float height)
+        {
+            for (int step = 0; step < 11; step++)
             {
                 // 0, +8, -8, +16, -16 ...
                 float offset = ((step + 1) / 2) * GroundProbe.Depth * (step % 2 == 1 ? 1f : -1f);
-                if (GroundProbe.TryGround(view, x, z, near + offset, out float height))
+                if (GroundProbe.TryGround(view, x, z, near + offset, out height))
                 {
-                    return height;
+                    return true;
                 }
             }
-            return near;
+            height = near;
+            return false;
         }
     }
 }
