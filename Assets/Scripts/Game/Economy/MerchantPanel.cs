@@ -471,6 +471,7 @@ namespace Clube.Game
             {
                 Current.Purse?.Earn(offer.Coins);
                 Current.Disposition?.Record(offer.Coins);
+                (Current as IStockedTrader)?.SoldToPlayer(offer.Item, lot);
                 return true;
             }
             inventory.Inventory.Remove(offer.Item, lot);
@@ -703,7 +704,9 @@ namespace Clube.Game
         // How much of an offer is still for sale today.
         private float LeftToday(int offer)
         {
-            return Mathf.Max(0f, SupplyOf(offer) - BoughtToday()[offer]);
+            float left = Mathf.Max(0f, SupplyOf(offer) - BoughtToday()[offer]);
+            // GL868: a trader who carries their goods sells no more than they hold.
+            return Current is IStockedTrader stocked ? Mathf.Min(left, stocked.StockOf(Current.Offers[offer].Item)) : left;
         }
 
         // How much of each offer the player bought from the open trader today (Shelf() turns the day).
@@ -977,6 +980,7 @@ namespace Clube.Game
                     if (offer)
                     {
                         BoughtToday()[slot] += added;
+                        (Current as IStockedTrader)?.SoldToPlayer(stack.Item, added);
                     }
                     else
                     {
