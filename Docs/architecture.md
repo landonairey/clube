@@ -1074,7 +1074,7 @@ settlements of `Generation/`); the bodies are Game (`Game/People/`, `Game/Travel
 
 ### Clams and meteors (GL735, GL736)
 
-Both are made at run time, no scene holds them. `ClamBedsStarter` (scene load) adds `ClamBeds` and a `ClamPanel` on the player; `ClamBeds` asks `ClamScatter` (Core, pure) for hashed cells and keeps a `Clam` on those whose spot is under water. `MeteorEvent.Find()` makes the event on first call (debug cheat); the shape is `MeteorPlan` (Core), the crater a normal `ApplyBrush` pair of edits. GL808: the clam is `ClamMeshes` (Core/Meshing/Models, two half shells and a pearl); what a clam closed with the Close button still holds is kept in `ClamBeds`, and taking from it plays `ClamBubbles` (Game) and destroys it.
+Both are made at run time, no scene holds them. `ClamBedsStarter` (scene load) adds `ClamBeds` and a `ClamPanel` on the player; `ClamBeds` asks `ClamScatter` (Core, pure) for hashed cells and keeps a `Clam` on those whose spot is under water. `MeteorEvent.Find()` makes the event on first call (debug cheat); the shape is `MeteorPlan` (Core: the fall path, gouge cuts, crater, ore ball with inclusions, scattered pieces); GL869–GL871 split the Game side into `MeteorFireball` (the seen meteor), `MeteorCrashSite` (the `WorldView.ApplyBrush` edits, held until `IsSettledAround` covers `MeteorPlan.Reach`), `MeteorSizzle` and `MeteorSounds` (a `Resources/Meteor` asset); `MeteorFx` holds the run-time materials. GL808: the clam is `ClamMeshes` (Core/Meshing/Models, two half shells and a pearl); what a clam closed with the Close button still holds is kept in `ClamBeds`, and taking from it plays `ClamBubbles` (Game) and destroys it.
 
 ## 7. Where the next systems plug in
 

@@ -26,6 +26,15 @@ free for commercial use, no credit required. Downloaded 2026-10-28.
 | `Actions/Place` | placing | Impact Sounds | `impactWood_heavy_000-004` |
 | `Actions/Parcel` | buying land | [Interface Sounds](https://kenney.nl/assets/interface-sounds), RPG Audio | `confirmation_002`, `handleCoins2` (played together) |
 
+## Meteor (GL870)
+
+| Path | Used for | Source | Licence |
+|---|---|---|---|
+| `Resources/Meteor/Meteor flyby.wav` | a meteor coming in | **placeholder**, synthesised (2026-11-25). Wanted: [meteor flyby](https://pixabay.com/sound-effects/film-special-effects-meteor-flyby-14766/) by freesound_community | Pixabay Content License |
+| `Resources/Meteor/Meteor impact.wav` | its impact | **placeholder**, synthesised (2026-11-25). Wanted: the middle of [Meteor Impact Sound Effect](https://pixabay.com/sound-effects/film-special-effects-meteor-impact-sound-effect-sound-effects-224185/) by Alice_soundz (set the window with `impactStart` / `impactLength` on `Resources/Meteor/MeteorSounds.asset`) | Pixabay Content License |
+
+Pixabay Content License: free to use, also commercially, no credit required (credited here anyway). The automatic download was blocked, so the placeholders stand until the clips are dropped in: download each, put it in `Assets/Resources/Meteor/` and assign it on `MeteorSounds.asset` (or replace the placeholder file of the same name).
+
 Wanted, not in these packs: fire or bellows for smelting, a grittier rock-pick strike, dirt digging.
 
 ## Fonts

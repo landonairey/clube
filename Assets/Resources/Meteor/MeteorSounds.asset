@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba6d6647452955b408e0eec7e74c2585, type: 3}
+  m_Name: MeteorSounds
+  m_EditorClassIdentifier: Clube.Game::Clube.Game.MeteorSounds
+  flyby: {fileID: 8300000, guid: 5eab46107aa6eb241bd0cb2439ca5dc0, type: 3}
+  flybyVolume: 0.8
+  flybyNear: 300
+  flybyFar: 4000
+  impact: {fileID: 8300000, guid: 2cb272dc45691eb49bcffa254f7f9a90, type: 3}
+  impactVolume: 1
+  impactStart: 0
+  impactLength: 0
+  impactNear: 80
+  impactFar: 2500
