@@ -122,5 +122,27 @@ namespace Clube.Core.Tests
                 Object.DestroyImmediate(bucket);
             }
         }
+
+        [Test]
+        public void TheStoneRefinedOutOfCrushedOre_IsCrushedStone_AndNoStone()
+        {
+            VoxelMaterial stone = VoxelMaterial.Create(0, "Stone");
+            VoxelMaterial gravel = VoxelMaterial.Create(30, "Crushed stone");
+            VoxelMaterial other = VoxelMaterial.Create(40, "Malachite");
+            MaterialRegistry registry = MaterialRegistry.Create(stone, gravel, other);
+            try
+            {
+                Assert.AreEqual(gravel, Refining.PickedAs(stone, true, registry), "Stone out of crushed ore is gravel.");
+                Assert.AreEqual(stone, Refining.PickedAs(stone, false, registry), "Other stacks still give Stone.");
+                Assert.AreEqual(other, Refining.PickedAs(other, true, registry));
+            }
+            finally
+            {
+                Object.DestroyImmediate(registry);
+                Object.DestroyImmediate(stone);
+                Object.DestroyImmediate(gravel);
+                Object.DestroyImmediate(other);
+            }
+        }
     }
 }

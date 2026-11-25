@@ -79,6 +79,13 @@ namespace Clube.Game
 
             if (spreads > 1)
             {
+                // The mouse wheel turns pages like the buttons (GL880): down to the next, up to the previous.
+                Event current = Event.current;
+                if (current != null && current.type == EventType.ScrollWheel && current.delta.y != 0f)
+                {
+                    spread = Mathf.Clamp(spread + (current.delta.y > 0f ? 1 : -1), 0, spreads - 1);
+                    current.Use();
+                }
                 GUI.enabled = spread > 0;
                 if (GameUi.Button(new Rect(book.x, book.yMax + 14f, 90f, 26f), "< Back"))
                 {

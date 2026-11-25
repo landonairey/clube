@@ -40,6 +40,11 @@ namespace Clube.Game
         private void Awake()
         {
             tools = GetComponent<PlayerToolUser>();
+            // Picked reeds grow back (GL879); added here so no prefab needs editing.
+            if (!TryGetComponent(out ReedRegrower _))
+            {
+                gameObject.AddComponent<ReedRegrower>();
+            }
         }
 
         private void OnEnable()
