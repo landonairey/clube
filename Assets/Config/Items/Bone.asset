@@ -15,7 +15,7 @@ MonoBehaviour:
   itemType: 2
   id: bone
   displayName: Bone
-  icon: {fileID: 0}
+  icon: {fileID: 2800000, guid: 346906a4c73cd324293d235df7fbe608, type: 3}
   iconShape: 19
   iconTint: {r: 0.88, g: 0.84, b: 0.73, a: 1}
   iconTextureZoom: 1
@@ -28,8 +28,11 @@ MonoBehaviour:
   hidesContents: 0
   qualityAsGrade: 0
   contentsAs: {fileID: 0}
+  namedByMaterial: 0
   ingotForm: {fileID: 0}
   upgrade:
     Station: 4
     StrikePower: 1
   dropForm: 0
+  wornOn: 0
+  outfitPoints: 0
