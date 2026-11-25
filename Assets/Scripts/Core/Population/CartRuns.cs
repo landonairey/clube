@@ -35,7 +35,22 @@ namespace Clube.Core
         /// </summary>
         public int PavedCount = 1;
 
-        /// <summary>The two kinds the user named: a hand cart on every cart path, horse carts on the paved ones (two each, GL728) and on some dirt ones.</summary>
+        /// <summary>
+        /// GL868: true for a traveller on foot (a sherpa) rather than a cart: they walk the road with their goods in a
+        /// pack on their back.
+        /// </summary>
+        public bool OnFoot;
+
+        /// <summary>
+        /// GL868: the chance that a road this kind is drawn for really gets one (1: every road). Thins the walkers out so
+        /// not every footpath has its own.
+        /// </summary>
+        public float RoadChance = 1f;
+
+        /// <summary>
+        /// The two kinds the user named: a hand cart on every cart path, horse carts on the paved ones (two each, GL728)
+        /// and on some dirt ones; and the sherpa on foot on about half the footpaths (GL868).
+        /// </summary>
         public static List<CartKind> Defaults()
         {
             return new List<CartKind>
@@ -49,6 +64,12 @@ namespace Clube.Core
                 {
                     Id = "horse-cart", Name = "Horse cart", HorseDrawn = true, Speed = 2.1f, RestSeconds = 180f,
                     Roads = new[] { RoadClass.DirtCartPath, RoadClass.PavedCartPath }, DirtShare = 0.4f, PavedCount = 2,
+                },
+                // GL868: "traveling sherpas that come into towns on footpaths to trade goods".
+                new CartKind
+                {
+                    Id = "sherpa", Name = "Sherpa", OnFoot = true, Speed = 1.1f, RestSeconds = 150f,
+                    Roads = new[] { RoadClass.Footpath }, RoadChance = 0.5f,
                 },
             };
         }
@@ -200,6 +221,11 @@ namespace Clube.Core
                     continue;
                 }
                 CartKind drawn = Draw(kinds, road.Class, random);
+                // GL868: a kind found only on some of its roads (the sherpas) rolls for this one.
+                if (drawn != null && drawn.RoadChance < 1f && random.NextDouble() >= drawn.RoadChance)
+                {
+                    drawn = null;
+                }
                 if (drawn != null)
                 {
                     runs.Add(Run(runs.Count, road, drawn, beyond, random));

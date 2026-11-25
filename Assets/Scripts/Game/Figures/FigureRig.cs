@@ -82,6 +82,9 @@ namespace Clube.Game
         /// <summary>The right palm: held things are parented here, -y along the forearm and +z out of the fist.</summary>
         public Transform Hand => hand;
 
+        /// <summary>GL868: the torso, which leans and sways with the pose: where something worn on the back is hung.</summary>
+        public Transform Torso => torso;
+
         /// <summary>Where the mining swing is, 0 to 1: the pick lands on the face as it passes <see cref="MineImpact"/> (GL552).</summary>
         public float MineBeat => FigurePoses.MineBeat(Time.time + phase);
 

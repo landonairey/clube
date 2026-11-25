@@ -40,8 +40,29 @@ namespace Clube.Core.Tests
             Assert.AreEqual(1, runs.Count(r => r.Road == 1));
             Assert.AreEqual(1, runs.Count(r => r.Road == 2));
             Assert.AreEqual(0, runs.Count(r => r.Road == 3), "too short to be worth a trip");
-            Assert.AreEqual(0, runs.Count(r => r.Road == 4), "no carts on a footpath");
+            Assert.IsFalse(runs.Any(r => r.Road == 4 && !r.Kind.OnFoot), "no carts on a footpath");
             CollectionAssert.AreEqual(Enumerable.Range(0, runs.Count), runs.Select(r => r.Index));
+        }
+
+        [Test]
+        public void Sherpas_WalkAboutHalfTheFootpaths_AndNeverACartPath()
+        {
+            int walked = 0;
+            for (int seed = 0; seed < 200; seed++)
+            {
+                List<CartRun> runs = CartRuns.Plan(Plan(), CartKind.Defaults(), seed);
+                Assert.IsFalse(runs.Any(r => r.Kind.OnFoot && r.Road != 4), "GL868: sherpas keep to the footpaths");
+                List<CartRun> onFoot = runs.Where(r => r.Road == 4).ToList();
+                Assert.LessOrEqual(onFoot.Count, 1);
+                if (onFoot.Count == 1)
+                {
+                    Assert.AreEqual("sherpa", onFoot[0].Kind.Id);
+                    Assert.AreEqual(5, onFoot[0].From);
+                    Assert.AreEqual(0, onFoot[0].To, "into a town");
+                    walked++;
+                }
+            }
+            Assert.That(walked, Is.InRange(70, 130), "RoadChance 0.5");
         }
 
         [Test]
