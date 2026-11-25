@@ -6,7 +6,7 @@ namespace Clube.Core
     /// <summary>
     /// The low-poly models inventory icons are pictures of (GL612), for items with no model of their own: "a small low
     /// poly chunk of the stuff". A faceted lump like the loose stones on the ground for stone and ores, a mound for
-    /// soil, and a shape apiece for the made things (log, boards, ingot, bun, brick, hide, tuft, stick). Each is about
+    /// soil, and a shape apiece for the made things (log, boards, ingot, bun, iron bloom, brick, hide, tuft, stick). Each is about
     /// one unit across, standing on y = 0, coloured by vertex in the tint given; a material's drop is built white and
     /// wears the material's texture instead. Tools and placeables are drawn from the game's own models.
     /// </summary>
@@ -50,6 +50,9 @@ namespace Clube.Core
                     break;
                 case ItemIconShape.Bun:
                     Bun(model, tint);
+                    break;
+                case ItemIconShape.Bloom:
+                    Bloom(model, tint);
                     break;
                 case ItemIconShape.Brick:
                     Brick(model, tint);
@@ -229,6 +232,54 @@ namespace Clube.Core
                     new Vector2(0.18f, 0.17f), new Vector2(0.03f, 0.03f),
                 }, 8, metal);
             model.Surface = Vector2.zero;
+        }
+
+        // GL876: the bloom's body, fused lumps (centre, radii, seed); the first is the main mass the pores are set in.
+        private static readonly (Vector3 Centre, Vector3 Radii, int Seed)[] BloomLumps =
+        {
+            (new Vector3(0f, 0.3f, 0f), new Vector3(0.4f, 0.29f, 0.36f), 11),
+            (new Vector3(0.22f, 0.36f, 0.13f), new Vector3(0.24f, 0.21f, 0.22f), 12),
+            (new Vector3(-0.25f, 0.25f, -0.09f), new Vector3(0.25f, 0.22f, 0.24f), 13),
+            (new Vector3(0.04f, 0.47f, -0.17f), new Vector3(0.2f, 0.16f, 0.19f), 14),
+            (new Vector3(-0.12f, 0.2f, 0.26f), new Vector3(0.22f, 0.17f, 0.18f), 15),
+            (new Vector3(0.28f, 0.17f, -0.22f), new Vector3(0.17f, 0.14f, 0.16f), 16),
+        };
+
+        private const int BloomPores = 96;
+
+        /// <summary>
+        /// An iron bloom (GL876), as a bloomery leaves it: a lumpy mass of a few fused lumps, dull and dark, pitted all over
+        /// with near-black pores (the sponge the slag ran out of) and crusted here and there with rusty brown slag.
+        /// </summary>
+        private static void Bloom(LowPolyMeshBuilder model, Color iron)
+        {
+            Color body = Color.Lerp(Shade(iron, 0.42f), new Color(0.2f, 0.13f, 0.09f, iron.a), 0.25f);
+            Color pore = Shade(iron, 0.08f);
+            Color slag = Color.Lerp(body, new Color(0.42f, 0.24f, 0.13f, iron.a), 0.6f);
+            model.Surface = new Vector2(LowPolyMeshBuilder.MetalSurface, 0.05f);
+            foreach ((Vector3 centre, Vector3 radii, int seed) in BloomLumps)
+            {
+                Lump(model, centre, radii, seed * 41f, Shade(body, 0.92f + 0.16f * Hash(seed, 3)), seed);
+            }
+            model.Surface = Vector2.zero;
+            // Pores and slag over the lumps: spread evenly round a sphere (a Fibonacci spiral), each set on the lump
+            // it lands nearest the outside of, just proud of it.
+            for (int i = 0; i < BloomPores; i++)
+            {
+                float y = 1f - 2f * (i + 0.5f) / BloomPores;
+                float around = i * 2.399963f + Hash(21, i);
+                float ring = Mathf.Sqrt(1f - y * y);
+                var direction = new Vector3(Mathf.Cos(around) * ring, y, Mathf.Sin(around) * ring);
+                if (direction.y < -0.45f)
+                {
+                    continue; // the underside it sits on
+                }
+                (Vector3 centre, Vector3 radii, int _) = BloomLumps[i % BloomLumps.Length];
+                Vector3 at = centre + Vector3.Scale(direction, radii) * 0.97f;
+                bool isSlag = Hash(23, i) < 0.14f;
+                float size = isSlag ? 0.045f + 0.035f * Hash(25, i) : 0.035f + 0.04f * Hash(27, i);
+                Lump(model, at, new Vector3(size, size * 0.8f, size), i * 29f, isSlag ? slag : pore, 40 + i);
+            }
         }
 
         // A fired brick.

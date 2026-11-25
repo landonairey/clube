@@ -69,6 +69,16 @@ namespace Clube.Game
                 model.Box(new Vector3(0f, 0.035f, 0f), new Vector3(0.22f, 0.07f, 0.09f), Quaternion.identity, colour);
                 model.Box(new Vector3(0f, 0.075f, 0f), new Vector3(0.18f, 0.02f, 0.07f), Quaternion.identity, colour * 1.1f);
             }
+            else if (name.Contains("bloom"))
+            {
+                // GL876: a lumpy, dark, pitted mass, a few fused lumps.
+                Color iron = colour * 0.75f;
+                model.Diamond(new Vector3(0f, 0.045f, 0f), new Vector3(0.075f, 0.045f, 0.065f), iron);
+                model.Diamond(new Vector3(0.045f, 0.06f, 0.025f), new Vector3(0.045f, 0.035f, 0.04f), iron * 0.9f);
+                model.Diamond(new Vector3(-0.04f, 0.04f, -0.03f), new Vector3(0.045f, 0.035f, 0.045f), iron * 1.08f);
+                model.Diamond(new Vector3(0.01f, 0.085f, -0.01f), new Vector3(0.012f, 0.008f, 0.012f), iron * 0.3f);
+                model.Diamond(new Vector3(-0.05f, 0.07f, 0.02f), new Vector3(0.01f, 0.008f, 0.01f), iron * 0.3f);
+            }
             else if (name.Contains("bun") || name.Contains("button"))
             {
                 model.Prism(new Vector3(0f, 0f, 0f), new Vector3(0f, 0.06f, 0f), 0.08f, 0.05f, 8, colour);
@@ -118,7 +128,9 @@ namespace Clube.Game
             switch (HeldToolMeshes.ShapeOf(tool))
             {
                 case HeldShape.HandAxe:
-                    model.Diamond(new Vector3(0f, 0.035f, 0f), new Vector3(0.09f, 0.035f, 0.06f), head);
+                    // GL875: lying on a face, butt to -x, point to +x.
+                    HeldToolMeshes.AddHandAxe(model, Matrix4x4.TRS(new Vector3(-HeldToolMeshes.HandAxeLength * 0.5f, HeldToolMeshes.HandAxeLength * 0.13f, 0f),
+                        Quaternion.LookRotation(Vector3.up, Vector3.right), Vector3.one), head);
                     return;
                 case HeldShape.Shovel:
                     model.Prism(new Vector3(-0.35f, y, 0f), new Vector3(0.15f, y, 0f), 0.017f, 0.016f, 5, Wood);
