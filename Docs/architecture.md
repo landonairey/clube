@@ -1003,8 +1003,13 @@ settlements of `Generation/`); the bodies are Game (`Game/People/`, `Game/Travel
 - **Carts.** `CartRuns.Plan(plan, kinds, seed)` gives each cart path its `CartRun`s; `CartRun.At(seconds)` is a
   `RunPlace` (fraction along the road, outbound or not, moving or standing, the trip's number) from the clock alone.
   `MapCarts` asks `MapRoads.TryLine(road)` for the `RoadLine` and bridge spans of roads worked out near the viewer and
-  keeps a `RoadCart` for each cart within `showRange`; `RoadCart` sets `TradeCartModel` (and a `CartHorse`) on the
-  ground with `GroundProbe`, on a bridge between the deck's end heights.
+  keeps a `RoadTraveller` for each run within `showRange`; `RoadCart` sets `TradeCartModel` (and a `CartHorse`) on the
+  ground with `GroundProbe`, on a bridge between the deck's end heights. GL868: a `CartKind` row with `OnFoot` (the
+  sherpa, on footpaths, `RoadChance` 0.5) gets a `Sherpa` instead: a `FigureRig` with a `SherpaPack` (a `StorageChest`
+  with a `CargoCrate`, its collider behind the figure's) and a `SherpaTrader` (`ITrader` + `IStockedTrader`, which
+  `MerchantPanel` uses to sell no more than the pack holds and to take sales out of it). `MapCarts` builds either from a
+  `TravellerKit` (material, crate, prices, the run's session-long `Disposition`, a `HoldFor` callback). A held run stays
+  on the road (`timed.Moving`), it no longer jumps to its town stop.
 - **Boats (GL618).** A vessel class is a `VesselClass` row (the water it sails, speed, rest, the hull's measures and
   fittings, crew and crates); `BoatRuns.Plan(plan, classes, seed)` gives each `WaterRoute` its `BoatRun`s (a river boat
   on a river route, a sea trader on a sea route, and a route's `NamedVessel` in the class its row names: the *Edmund
