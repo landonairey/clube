@@ -12,15 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b52a02d234816184ab26033bd6eb47c4, type: 3}
   m_Name: Maple boards
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
+  itemType: 2
   id: maple-boards
   displayName: Maple boards
   icon: {fileID: 2800000, guid: 19c3ad00c3dd833449b1b3b1292a54c1, type: 3}
   iconShape: 7
   iconTint: {r: 0.52, g: 0.33, b: 0.21, a: 1}
+  iconTextureZoom: 1
+  iconVividness: 0
   maxStack: 256
   unitVolume: 1
   burnSeconds: 20
   fuelQuality: 0.85
   purityAs: {fileID: 0}
   hidesContents: 0
+  qualityAsGrade: 0
+  contentsAs: {fileID: 0}
+  ingotForm: {fileID: 0}
+  upgrade:
+    Station: 4
+    StrikePower: 1
   dropForm: 0

@@ -10,6 +10,10 @@ namespace Clube.Core
     [CreateAssetMenu(fileName = "Item", menuName = "Clube/Item")]
     public class ItemDefinition : ScriptableObject
     {
+        [Tooltip("What kind of thing it is, as its description says (list inventory prototype): Earth, Liquid, Organism, Tool, Weapon, Armor, Clothing, Jewelry or Smelt.")]
+        [SerializeField]
+        private ItemType itemType;
+
         [Tooltip("Stable id used in saves and recipes, e.g. \"copper-ore\". Never change it once used.")]
         [SerializeField]
         private string id = "item";
@@ -69,6 +73,10 @@ namespace Clube.Core
         [SerializeField]
         private VoxelMaterial contentsAs;
 
+        [Tooltip("Item 11: takes the material of what it's made from (sticks of birch, maple or pine wood). Stacks only with the same material, reads \"Birch Stick\" and is drawn in the material's crafted tint; still one collection in the list inventory. Its icon is baked white for the tint.")]
+        [SerializeField]
+        private bool namedByMaterial;
+
         [Tooltip("A bun's ingot (GL700): what hammering it makes. A furnace alloying with the bun takes the ingot in its place, and makes the lesser of the two forms. Empty for everything that has no ingot form (coal).")]
         [SerializeField]
         private ItemDefinition ingotForm;
@@ -80,6 +88,14 @@ namespace Clube.Core
         [Tooltip("What it turns into when dropped (GL610, GL611). By kind: a tool, torch or bucket drops as its model, a placeable (campfire, furnace) as a canvas bag, the rest into the ground as their material. Set Bag for anything too small to find again (a pearl, a gem).")]
         [SerializeField]
         private DropForm dropForm = DropForm.ByKind;
+
+        [Tooltip("Items 18-20: where it's worn (a shirt on the chest, leather boots on the feet); None for anything not worn.")]
+        [SerializeField]
+        private WearSlot wornOn;
+
+        [Tooltip("Item 20: what it adds to the outfit, worn: each point is a point of disposition with shopkeepers (rags 0, cloth 2, leather 3).")]
+        [SerializeField, Min(0)]
+        private int outfitPoints;
 
         /// <summary>
         /// What it turns into when dropped (GL610, GL611): the asset's choice, or its kind's. An item that piles but that no
@@ -137,6 +153,15 @@ namespace Clube.Core
         public string Id => id;
 
         public string DisplayName => displayName;
+
+        /// <summary>What kind of thing it is (Earth, Organism, Tool...).</summary>
+        public ItemType Type => itemType;
+
+        /// <summary>The type of this stack: the item's own, except where what it holds changes it (a bucket with water is a Liquid).</summary>
+        public virtual ItemType TypeOf(ItemStack stack)
+        {
+            return itemType;
+        }
 
         public Texture2D Icon => icon;
 
@@ -214,6 +239,33 @@ namespace Clube.Core
         public ItemDefinition WithContentsAs(VoxelMaterial material)
         {
             contentsAs = material;
+            return this;
+        }
+
+        /// <summary>Where it's worn (items 18, 19); <see cref="WearSlot.None"/> for anything not worn.</summary>
+        public WearSlot WornOn => wornOn;
+
+        /// <summary>True for something worn on the body (a garment, armor).</summary>
+        public bool IsWorn => wornOn != WearSlot.None;
+
+        /// <summary>What it adds to the outfit while worn (item 20): points of disposition with shopkeepers.</summary>
+        public int OutfitPoints => outfitPoints;
+
+        /// <summary>Sets where it's worn and its outfit points, for items made in code (tests, tools).</summary>
+        public ItemDefinition WithWear(WearSlot slot, int points = 0)
+        {
+            wornOn = slot;
+            outfitPoints = Mathf.Max(0, points);
+            return this;
+        }
+
+        /// <summary>True for an item that takes the material it's made from as its own (item 11: a Birch Stick).</summary>
+        public bool NamedByMaterial => namedByMaterial;
+
+        /// <summary>Sets <see cref="NamedByMaterial"/>, for items made in code (tests).</summary>
+        public ItemDefinition WithNamedByMaterial()
+        {
+            namedByMaterial = true;
             return this;
         }
 

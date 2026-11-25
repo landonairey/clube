@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b52a02d234816184ab26033bd6eb47c4, type: 3}
   m_Name: Black pearl
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
+  itemType: 7
   id: black-pearl
   displayName: Black pearl
   icon: {fileID: 2800000, guid: ac9aa24103dd1504eb47cb35805ea07a, type: 3}
@@ -25,6 +26,8 @@ MonoBehaviour:
   fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  qualityAsGrade: 0
+  contentsAs: {fileID: 0}
   ingotForm: {fileID: 0}
   upgrade:
     Station: 4

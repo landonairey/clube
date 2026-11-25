@@ -28,3 +28,14 @@ MonoBehaviour:
   qualityFactor: 1
   extracts: {fileID: 0}
   typicalGrade: 0.2
+  takesIngotForms: 0
+  swapsListedApart: 0
+  swapInput: {fileID: 11400000, guid: ce1c9585acf5fc14f848a8b43eddc45d, type: 2}
+  swapFor:
+  - {fileID: 11400000, guid: 8864539802b2d884296933ec2cccedf1, type: 2}
+  swapQualityFactors: []
+  swapOutputs:
+  - {fileID: 11400000, guid: da0b784ad94952d4599252d63b6e3eae, type: 2}
+  keepsWear: 0
+  swapInput2: {fileID: 0}
+  swapFor2: []

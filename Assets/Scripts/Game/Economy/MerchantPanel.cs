@@ -12,7 +12,7 @@ namespace Clube.Game
     /// Interact (E) closes it, as does walking away.
     /// </summary>
     [RequireComponent(typeof(PlayerInventory), typeof(PlayerWallet))]
-    public class MerchantPanel : MonoBehaviour, IGuiDrawer
+    public class MerchantPanel : MonoBehaviour, IGuiDrawer, MerchantCart.ISource
     {
         private const float Padding = 12f;
         private const float RowHeight = 34f;
@@ -41,6 +41,21 @@ namespace Clube.Game
         private Vector2 offerScroll;
         private string refusal;
         private float refusalUntil;
+        // The list inventory (prototype): your list on the left, the trader's stock on the right; what you sold them today
+        // waits on their shelf to be bought back until the day turns.
+        private readonly InventoryListGui playerList = new InventoryListGui();
+        private readonly InventoryListGui stockList = new InventoryListGui();
+        private readonly System.Collections.Generic.Dictionary<ITrader, Inventory> shelves = new System.Collections.Generic.Dictionary<ITrader, Inventory>();
+        private Inventory stock;
+        private int shelfDay = -1;
+        private DayNightCycle dayNight;
+        private PlayerName playerName;
+        private const int ShelfSlots = 64;
+        // What the player picked to sell and to buy, and how much of each offer they bought today, per trader.
+        private readonly MerchantCart cart = new MerchantCart();
+        private readonly System.Collections.Generic.Dictionary<ITrader, float[]> boughtToday = new System.Collections.Generic.Dictionary<ITrader, float[]>();
+        // A trader has this many lots of each thing they sell a day, at most (fewer when a lot won't stack that high).
+        private const int LotsADay = 5;
 
         /// <summary>The trader being used, or null when closed.</summary>
         public ITrader Current { get; private set; }
@@ -59,6 +74,7 @@ namespace Clube.Game
             wallet = GetComponent<PlayerWallet>();
             player = GetComponent<PlayerController>();
             skills = GetComponent<PlayerSkills>();
+            playerName = GetComponent<PlayerName>();
         }
 
         private void OnEnable()
@@ -78,6 +94,9 @@ namespace Clube.Game
             Current = table;
             selected = -1;
             group.Clear();
+            playerList.Reset();
+            stockList.Reset();
+            cart.Clear();
             offerScroll = Vector2.zero;
             openedFrame = Time.frameCount;
             if (player != null)
@@ -91,6 +110,10 @@ namespace Clube.Game
             if (Current == null)
             {
                 return;
+            }
+            if (Current.Disposition != null)
+            {
+                Current.Disposition.Bonus = 0;
             }
             Current = null;
             if (player != null)
@@ -134,6 +157,12 @@ namespace Clube.Game
             if (closePressed || tooFar || !Current.IsTrading || (player != null && !player.enabled))
             {
                 Close();
+                return;
+            }
+            // Item 20: what the player wears moves the keeper's prices while they trade (and only then: Close clears it).
+            if (Current.Disposition != null)
+            {
+                Current.Disposition.Bonus = OutfitBonus;
             }
         }
 
@@ -149,6 +178,11 @@ namespace Clube.Game
 
             Inventory items = inventory.Inventory;
             PriceList prices = Current.Prices;
+            if (inventory.UsesList)
+            {
+                DrawListTrade(items, prices);
+                return;
+            }
             float width = InventoryGridGui.RowWidth + Padding * 2f;
             float offerRows = OffersHeight() + TrainingHeight();
             Disposition disposition = Current.Disposition;
@@ -316,16 +350,20 @@ namespace Clube.Game
             }
         }
 
+        // Item 20: the disposition the player's outfit adds with a keeper.
+        private int OutfitBonus => Outfit.DispositionBonus(inventory.OutfitPoints);
+
         // How the trader feels about the player (GL471) and what it does to their prices.
         private static string DispositionText(Disposition disposition)
         {
-            if (disposition.Value >= Disposition.Max)
+            string value = disposition.Bonus > 0 ? $"{disposition.Value}+{disposition.Bonus}" : disposition.Value.ToString();
+            if (disposition.Effective >= Disposition.Max)
             {
-                return $"Disposition {disposition.Value}/{Disposition.Max}: fair prices.";
+                return $"Disposition {value}/{Disposition.Max}: fair prices.";
             }
-            int points = Disposition.Max - disposition.Value;
+            int points = Disposition.Max - disposition.Effective;
             float toNext = Disposition.CoinsForPoint(disposition.Value) - disposition.Carried;
-            return $"Disposition {disposition.Value}/{Disposition.Max}: prices {points}% against you; {Wallet.Format(toNext)} more trade raises it (a level costs {Wallet.Format(Disposition.CoinsForPoint(disposition.Value))}).";
+            return $"Disposition {value}/{Disposition.Max}: prices {points}% against you; {Wallet.Format(toNext)} more trade raises it (a level costs {Wallet.Format(Disposition.CoinsForPoint(disposition.Value))}).";
         }
 
         // Coins to two places at most: "50c", "0.1c", "0.001c".
@@ -385,25 +423,31 @@ namespace Clube.Game
             return y + shown + 4f;
         }
 
-        // Pays for one lot and puts it in the inventory; a full inventory refuses the sale.
-        private void Buy(ItemPrice offer)
+        // Pays for one lot and puts it in the inventory; a full inventory refuses the sale. True when it was bought. Bought
+        // material comes pure, made of its own material, so it reads and stacks like gathered material.
+        private bool Buy(ItemPrice offer)
         {
             int lot = offer.Lot;
-            int left = inventory.Inventory.Add(offer.Item, lot);
+            Composition contents = PureContents(offer.Item);
+            int left = inventory.Inventory.Add(offer.Item, lot, contents);
             if (left > 0)
             {
                 inventory.Inventory.Remove(offer.Item, lot - left);
-                return;
+                return false;
             }
             if (wallet.Wallet.Spend(offer.Coins))
             {
                 Current.Purse?.Earn(offer.Coins);
                 Current.Disposition?.Record(offer.Coins);
+                return true;
             }
-            else
-            {
-                inventory.Inventory.Remove(offer.Item, lot);
-            }
+            inventory.Inventory.Remove(offer.Item, lot);
+            return false;
+        }
+
+        private static Composition PureContents(ItemDefinition item)
+        {
+            return ItemSlotGui.Materials != null ? ItemSlotGui.Materials.PureContents(item) : null;
         }
 
         // Lessons (GL402): one button per skill the trader teaches, raising it a level for coins in proportion to the
@@ -452,6 +496,7 @@ namespace Clube.Game
                 return;
             }
             items.TakeAll(slot);
+            Shelve(stack, stack.Amount);
             Pay(earned);
             Sold?.Invoke(Mathf.Max(1, stack.Count));
             selected = -1;
@@ -571,6 +616,7 @@ namespace Clube.Game
                 return;
             }
             sold = items.RemoveAmount(slot, sold);
+            Shelve(stack, sold);
             Pay(earned);
             if (sold > 0f)
             {
@@ -580,6 +626,369 @@ namespace Clube.Game
             {
                 selected = -1;
             }
+        }
+
+        // ---- The list inventory's trade screen (prototype) ----
+
+        // What was sold goes on the trader's shelf for the rest of the day, to be bought back.
+        private void Shelve(ItemStack stack, float amount)
+        {
+            if (!inventory.UsesList || stack.IsEmpty || amount <= ItemStack.PartEpsilon || Current == null)
+            {
+                return;
+            }
+            int whole = Mathf.FloorToInt(amount + ItemStack.PartEpsilon);
+            float part = Mathf.Max(0f, amount - whole);
+            Shelf().Add(stack.Item, whole, stack.Contents, stack.Wear, stack.Quality, part);
+        }
+
+        private Inventory Shelf()
+        {
+            int day = Today();
+            if (day != shelfDay)
+            {
+                // A new day: what was sold yesterday is gone from every shelf, and every trader has their full stock again.
+                shelves.Clear();
+                boughtToday.Clear();
+                shelfDay = day;
+            }
+            if (!shelves.TryGetValue(Current, out Inventory shelf))
+            {
+                shelf = new Inventory(ShelfSlots);
+                shelves.Add(Current, shelf);
+            }
+            return shelf;
+        }
+
+        // How much of an offer the trader has a day: up to LotsADay lots, never more than one slot holds.
+        private float SupplyOf(int offer)
+        {
+            ItemPrice price = Current.Offers[offer];
+            int lot = Mathf.Max(1, price.Lot);
+            return price.Item == null ? 0f : Mathf.Clamp(price.Item.MaxStack / lot, 1, LotsADay) * lot;
+        }
+
+        // How much of an offer is still for sale today.
+        private float LeftToday(int offer)
+        {
+            return Mathf.Max(0f, SupplyOf(offer) - BoughtToday()[offer]);
+        }
+
+        // How much of each offer the player bought from the open trader today (Shelf() turns the day).
+        private float[] BoughtToday()
+        {
+            Shelf();
+            int offers = Current.Offers.Count;
+            if (!boughtToday.TryGetValue(Current, out float[] bought) || bought.Length != offers)
+            {
+                bought = new float[offers];
+                boughtToday[Current] = bought;
+            }
+            return bought;
+        }
+
+        // Coins an offer asks for one item: its lot's price shared out.
+        private float OfferEach(int offer)
+        {
+            ItemPrice price = Current.Offers[offer];
+            return price.Lot > 0 ? price.Coins / (float)price.Lot : price.Coins;
+        }
+
+        private int Today()
+        {
+            if (dayNight == null)
+            {
+                dayNight = FindFirstObjectByType<DayNightCycle>();
+            }
+            return dayNight != null ? dayNight.Day : 1;
+        }
+
+        // The trader's list: what's left today of each thing they sell, then their shelf of what was sold to them today.
+        private void RefreshStock(Inventory shelf)
+        {
+            int offers = Current.Offers.Count;
+            if (stock == null || stock.SlotCount != offers + shelf.SlotCount)
+            {
+                stock = new Inventory(offers + shelf.SlotCount);
+            }
+            for (int i = 0; i < offers; i++)
+            {
+                ItemPrice offer = Current.Offers[i];
+                float left = offer.Item != null ? LeftToday(i) : 0f;
+                int whole = Mathf.FloorToInt(left + ItemStack.PartEpsilon);
+                float part = Mathf.Max(0f, left - whole);
+                stock.Set(i, left > ItemStack.PartEpsilon ? new ItemStack(offer.Item, whole, PureContents(offer.Item), 0, 1f, part > ItemStack.PartEpsilon ? part : 0f) : ItemStack.Empty);
+            }
+            for (int i = 0; i < shelf.SlotCount; i++)
+            {
+                stock.Set(offers + i, shelf[i]);
+            }
+        }
+
+        // Coins one item costs from the trader: an offer's lot price shared out, or what they paid for what's on the shelf.
+        private float StockValue(int slot)
+        {
+            int offers = Current.Offers.Count;
+            if (slot < offers)
+            {
+                return OfferEach(slot);
+            }
+            return EachPrice(stock[slot]);
+        }
+
+        // What the trader pays for one item of a stack; 0 when they don't buy it.
+        private float EachPrice(ItemStack stack)
+        {
+            if (stack.IsEmpty || !Current.Prices.TryGetLot(stack.Item, out _, out _))
+            {
+                return 0f;
+            }
+            float one = Mathf.Min(1f, stack.Amount);
+            return one > 0f ? Current.Prices.PriceOf(stack, one) / one : 0f;
+        }
+
+        // Left: your name and coins in bold over your list, and the sale of what's picked under it. Right: the trader's
+        // name and coins over what they sell (and what you sold them today), buying under it, then their lessons.
+        private void DrawListTrade(Inventory items, PriceList prices)
+        {
+            Inventory shelf = Shelf();
+            if (Event.current.type == EventType.Layout || stock == null)
+            {
+                RefreshStock(shelf);
+            }
+            float width = Mathf.Min(Screen.width - 40f, 2000f);
+            float half = (width - Padding * 3f) * 0.5f;
+            float height = Mathf.Clamp(Screen.height - 280f, 600f, 1150f);
+            var panel = new Rect((Screen.width - width) * 0.5f, Mathf.Max(10f, (Screen.height - height) * 0.5f - 60f), width, height);
+            InventoryGridGui.SolidPanel(panel);
+            float top = panel.y + Padding;
+            var left = new Rect(panel.x + Padding, top, half, panel.height - Padding * 2f);
+            var right = new Rect(left.xMax + Padding, top, half, left.height);
+
+            var bold = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold, fontSize = GameUi.Font(18), alignment = TextAnchor.MiddleLeft };
+            var gold = new GUIStyle(bold) { alignment = TextAnchor.MiddleRight };
+            gold.normal.textColor = new Color(1f, 0.85f, 0.35f);
+            string me = playerName != null && !string.IsNullOrEmpty(playerName.Name) ? playerName.Name : "You";
+            GUI.Label(new Rect(left.x, top, half * 0.6f, 36f), me, bold);
+            GUI.Label(new Rect(left.x + half * 0.4f, top, half * 0.6f, 36f), $"{Wallet.Format(wallet.Wallet.Coins)} COINS", gold);
+            GUI.Label(new Rect(right.x, top, half * 0.6f, 36f), $"{Current.DisplayName}   (E to close)", bold);
+            GUI.Label(new Rect(right.x + half * 0.4f, top, half * 0.6f, 36f),
+                Current.Purse != null ? $"{Wallet.Format(Current.Purse.Coins)} COINS" : "Buys without limit", gold);
+            float y = top + 42f;
+
+            string note = Time.unscaledTime < refusalUntil ? refusal : "Click your items to sell them; Val is what they pay for one.";
+            GUI.Label(new Rect(left.x, y, half, 28f), note);
+            float rightY = y;
+            Disposition disposition = Current.Disposition;
+            if (disposition != null)
+            {
+                GUI.Label(new Rect(right.x, rightY, half, 28f), DispositionText(disposition));
+                rightY += 30f;
+                // Item 20: what the outfit adds while trading.
+                int outfitPoints = inventory.OutfitPoints;
+                GUI.Label(new Rect(right.x, rightY, half, 28f), $"Your outfit: +{OutfitBonus} disposition ({Outfit.Describe(outfitPoints)})");
+                rightY += 30f;
+            }
+            ITraderDeal deal = Current.Deal != null && Current.Deal.IsOffered(wallet.Wallet) ? Current.Deal : null;
+            if (deal != null)
+            {
+                if (GameUi.Button(new Rect(right.x, rightY, half, RowHeight), deal.Label)
+                    && !deal.Accept(wallet.Wallet) && deal.RefusalText(wallet.Wallet) is string why)
+                {
+                    refusal = why;
+                    refusalUntil = Time.unscaledTime + 3f;
+                }
+                rightY += RowHeight + 6f;
+            }
+            if (disposition == null && deal == null)
+            {
+                GUI.Label(new Rect(right.x, rightY, half, 28f), "Click something of theirs to buy it.");
+                rightY += 30f;
+            }
+            y += 30f;
+
+            // Both lists over the one cart along the bottom: a click puts a stack (or every stack of a collection) in the cart,
+            // and it leaves its list until it comes out of the cart or the trade is made.
+            float cartTop = panel.yMax - Padding - Mathf.Clamp(panel.height * 0.36f, 280f, 420f);
+            var playerArea = new Rect(left.x, y, half, cartTop - 8f - y);
+            playerList.Value = slot => EachPrice(items[slot]);
+            playerList.Equipped = inventory.IsEquippedSlot;
+            playerList.Include = slot => !cart.Contains(MerchantCart.Side.Sell, slot);
+            ListResult picked = playerList.Draw(playerArea, items);
+            if (picked.Kind == InventoryDragKind.Clicked && picked.Row != null)
+            {
+                cart.Add(MerchantCart.Side.Sell, picked.Row.Slots, picked.Row.Item, picked.Row.Amount);
+                playerList.ClearSelection();
+            }
+
+            float training = TrainingHeight();
+            var stockArea = new Rect(right.x, rightY, half, cartTop - 8f - training - rightY);
+            stockList.Value = StockValue;
+            stockList.Include = slot => !cart.Contains(MerchantCart.Side.Buy, slot);
+            ListResult bought = stockList.Draw(stockArea, stock);
+            if ((bought.Kind == InventoryDragKind.Clicked || bought.Kind == InventoryDragKind.RightClicked) && bought.Row != null)
+            {
+                float first = 0f;
+                foreach (int slot in bought.Row.Slots)
+                {
+                    first += BuyFirst(slot);
+                }
+                cart.Add(MerchantCart.Side.Buy, bought.Row.Slots, bought.Row.Item, first);
+                stockList.ClearSelection();
+            }
+            DrawTraining(right.x, stockArea.yMax + 8f, half);
+
+            if (cart.Draw(new Rect(panel.x + Padding, cartTop, panel.width - Padding * 2f, panel.yMax - Padding - cartTop), this))
+            {
+                MakeTrade(items, shelf);
+            }
+            InventoryGridGui.DrawTooltip();
+        }
+
+        // What a click on the trader's list puts in the cart: one lot of an offer (or what's left of it), all of a shelf stack.
+        private float BuyFirst(int slot)
+        {
+            ItemStack stack = stock[slot];
+            int offers = Current.Offers.Count;
+            return slot < offers ? Mathf.Min(stack.Amount, Mathf.Max(1, Current.Offers[slot].Lot)) : stack.Amount;
+        }
+
+        // What the trader pays for an amount of a stack; 0 when they don't buy it.
+        private static float SalePrice(PriceList prices, ItemStack stack, float amount)
+        {
+            return !stack.IsEmpty && prices.TryGetLot(stack.Item, out _, out _) ? prices.PriceOf(stack, amount) : 0f;
+        }
+
+        ItemStack MerchantCart.ISource.StackOf(MerchantCart.Side side, int slot)
+        {
+            Inventory from = side == MerchantCart.Side.Sell ? inventory.Inventory : stock;
+            return from != null && slot >= 0 && slot < from.SlotCount ? from[slot] : ItemStack.Empty;
+        }
+
+        float MerchantCart.ISource.CoinsFor(MerchantCart.Side side, int slot, float amount)
+        {
+            ItemStack stack = ((MerchantCart.ISource)this).StackOf(side, slot);
+            if (stack.IsEmpty)
+            {
+                return 0f;
+            }
+            if (side == MerchantCart.Side.Sell)
+            {
+                return SalePrice(Current.Prices, stack, amount);
+            }
+            // An offer at its lot's price shared out; a shelf stack back at what they paid for it.
+            return slot < Current.Offers.Count ? amount * OfferEach(slot) : Current.Prices.PriceOf(stack, amount);
+        }
+
+        // The whole cart as one trade: refused when the side that comes out behind can't pay the net. What's sold goes
+        // first (making room), then what's bought, as much as fits; the coins settle on the net of what actually moved.
+        private void MakeTrade(Inventory items, Inventory shelf)
+        {
+            var source = (MerchantCart.ISource)this;
+            float net = cart.Net(source);
+            if (net < 0f && wallet.Wallet.Coins + 1e-3f < -net)
+            {
+                refusal = "You don't have the coins for that";
+                refusalUntil = Time.unscaledTime + 3f;
+                return;
+            }
+            if (net > 0f && !CanPay(net))
+            {
+                return;
+            }
+            var lines = new System.Collections.Generic.List<MerchantCart.Line>(cart.Lines);
+            float got = 0f, paid = 0f;
+            foreach (MerchantCart.Line line in lines)
+            {
+                if (line.Side != MerchantCart.Side.Sell)
+                {
+                    continue;
+                }
+                foreach (var part in MerchantCart.Allocate(line, source))
+                {
+                    ItemStack stack = items[part.Key];
+                    if (stack.IsEmpty || !Current.Prices.TryGetLot(stack.Item, out _, out _))
+                    {
+                        continue;
+                    }
+                    float sold = part.Value >= stack.Amount - ItemStack.PartEpsilon ? TakeWhole(items, part.Key) : items.RemoveAmount(part.Key, part.Value);
+                    Shelve(stack, sold);
+                    got += Current.Prices.PriceOf(stack, sold);
+                    Sold?.Invoke(Mathf.Max(1, Mathf.FloorToInt(sold)));
+                }
+            }
+            bool full = false;
+            foreach (MerchantCart.Line line in lines)
+            {
+                if (line.Side != MerchantCart.Side.Buy)
+                {
+                    continue;
+                }
+                foreach (var part in MerchantCart.Allocate(line, source))
+                {
+                    int slot = part.Key;
+                    ItemStack stack = source.StackOf(MerchantCart.Side.Buy, slot);
+                    if (stack.IsEmpty)
+                    {
+                        continue;
+                    }
+                    bool offer = slot < Current.Offers.Count;
+                    float amount = Mathf.Min(part.Value, stack.Amount);
+                    float added = AddToItems(items, stack, amount);
+                    full |= added < amount - ItemStack.PartEpsilon;
+                    if (added <= ItemStack.PartEpsilon)
+                    {
+                        continue;
+                    }
+                    paid += source.CoinsFor(MerchantCart.Side.Buy, slot, added);
+                    if (offer)
+                    {
+                        BoughtToday()[slot] += added;
+                    }
+                    else
+                    {
+                        shelf.RemoveAmount(slot - Current.Offers.Count, added);
+                    }
+                }
+            }
+            float settle = got - paid;
+            if (settle > 0f)
+            {
+                Pay(settle);
+            }
+            else if (settle < 0f)
+            {
+                wallet.Wallet.Spend(Mathf.Min(-settle, wallet.Wallet.Coins));
+                Current.Purse?.Earn(-settle);
+                Current.Disposition?.Record(-settle);
+            }
+            if (full)
+            {
+                refusal = "Your inventory is full: not everything bought fit";
+                refusalUntil = Time.unscaledTime + 3f;
+            }
+            cart.Clear();
+            RefreshStock(shelf);
+        }
+
+        private static float TakeWhole(Inventory items, int slot)
+        {
+            float amount = items[slot].Amount;
+            items.TakeAll(slot);
+            return amount;
+        }
+
+        // Puts an amount of a stack (whole items and a part) in the player's items; returns how much went in.
+        private static float AddToItems(Inventory items, ItemStack stack, float amount)
+        {
+            int whole = Mathf.FloorToInt(amount + ItemStack.PartEpsilon);
+            float part = Mathf.Max(0f, amount - whole);
+            if (part <= ItemStack.PartEpsilon)
+            {
+                part = 0f;
+            }
+            int left = items.Add(stack.Item, whole, stack.Contents, stack.Wear, stack.Quality, part);
+            return whole - left + (left == 0 ? part : 0f);
         }
     }
 }

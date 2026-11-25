@@ -24,6 +24,7 @@ namespace Clube.Game
         private readonly RaycastHit[] hits = new RaycastHit[8];
         private PlayerController player;
         private StumpWorktops stumps;
+        private BoulderWorksites boulders;
         private PlayerParcels parcels;
         private GUIStyle promptStyle;
 
@@ -32,9 +33,11 @@ namespace Clube.Game
 
         /// <summary>
         /// True when the target is built into the ground (a furnace or campfire, a <see cref="TerrainStructure"/>,
-        /// GL141): tools still work on it, since mining its body is how it's broken.
+        /// GL141), or a boulder or unclaimed stump (<see cref="IGroundInteractable"/>): tools still work on it, since mining its body
+        /// is how it's broken.
         /// </summary>
-        public bool TargetIsGround => Target is Component component && component.GetComponentInParent<TerrainStructure>() != null;
+        public bool TargetIsGround => Target is IGroundInteractable
+            || (Target is Component component && component.GetComponentInParent<TerrainStructure>() != null);
 
         public float Reach => reach;
 
@@ -88,7 +91,9 @@ namespace Clube.Game
                     // The ground samples of a campfire or furnace are the station too (GL391).
                     TerrainStructure structure = TerrainStructure.FindAt(hit.collider.GetComponentInParent<WorldView>(), hit.point);
                     Target = structure != null ? structure.GetComponent<IInteractable>() : null;
-                    Target ??= stumps?.Find(hit) ?? parcels?.Find(hit);
+                    // A boulder: claimed, its screen; not yet, the claim notice (prototype, items 8 and 9).
+                    boulders ??= GetComponent<BoulderWorksites>();
+                    Target ??= stumps?.Find(hit) ?? (boulders != null ? boulders.Find() : null) ?? parcels?.Find(hit);
                 }
             }
 
@@ -127,6 +132,11 @@ namespace Clube.Game
         {
             GameUi.Apply();
             if (Target == null || !player.enabled || player.IsCursorFree)
+            {
+                return;
+            }
+            // An unclaimed stump or boulder has no prompt (backlog 2026-11-24b item 1).
+            if (string.IsNullOrEmpty(Target.Prompt))
             {
                 return;
             }

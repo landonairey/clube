@@ -27,5 +27,22 @@ namespace Clube.Core
         {
             return day > ArrivalDay || (day == ArrivalDay && hour >= sunsetHour);
         }
+
+        /// <summary>Nights between visits: they come on the fifth night, then every fifth night after.</summary>
+        public const int NightsBetween = 5;
+
+        /// <summary>
+        /// True while their fire burns: from sunset on every <see cref="NightsBetween"/>th day (5, 10, 15...) until the
+        /// next sunrise (<paramref name="sunriseHour"/>), when they move on.
+        /// </summary>
+        public static bool IsHere(int day, float hour, float sunsetHour, float sunriseHour)
+        {
+            if (day >= ArrivalDay && day % NightsBetween == 0 && hour >= sunsetHour)
+            {
+                return true;
+            }
+            int before = day - 1;
+            return before >= ArrivalDay && before % NightsBetween == 0 && hour < sunriseHour;
+        }
     }
 }

@@ -60,6 +60,17 @@ namespace Clube.Game
 
         private PlayerController player;
         private BoulderBashing bashing;
+        private WorksiteClaimer claimer;
+
+        // Right click on an unclaimed stump or boulder claims it (prototype, item 8), and adds no ground.
+        private bool IsClaiming()
+        {
+            if (claimer == null)
+            {
+                TryGetComponent(out claimer);
+            }
+            return claimer != null && (claimer.CanClaim || claimer.ClaimedThisFrame);
+        }
         private ToolCursor cursor;
         private Texture2D dot;
         private PlayerParcels parcels;
@@ -126,7 +137,7 @@ namespace Clube.Game
             FindTarget();
             bool digging = !ToolHeld;
             // Place bashes a stone or ore on a boulder instead, when it can (GL146, GL148).
-            bool placing = placesGround && (bashing == null || !bashing.CanBash);
+            bool placing = placesGround && (bashing == null || !bashing.CanBash) && !IsClaiming();
             HeldOperation = digging && IsHeld(digAction) ? BrushOperation.Remove : placing && IsHeld(placeAction) ? BrushOperation.Add : (BrushOperation?)null;
 
             if (digging && ShouldApply(digAction))

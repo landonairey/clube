@@ -53,6 +53,17 @@ namespace Clube.Game
         private OreKnowledge knowledge;
         private ToolHint hint;
         private BoulderBashing bashing;
+        private WorksiteClaimer claimer;
+
+        // Right click on an unclaimed stump or boulder claims it (prototype, item 8): no prospecting or licking with it.
+        private bool IsClaiming()
+        {
+            if (claimer == null)
+            {
+                TryGetComponent(out claimer);
+            }
+            return claimer != null && (claimer.CanClaim || claimer.ClaimedThisFrame);
+        }
         private WorldView worldView;
 
         // Samples already prospected for xp.
@@ -87,7 +98,7 @@ namespace Clube.Game
                 worldView = FindFirstObjectByType<WorldView>();
             }
             if (player == null || !player.enabled || player.IsInMenu || player.IsCursorFree || placeAction == null
-                || worldView == null || !worldView.IsReady || !placeAction.action.WasPressedThisFrame())
+                || worldView == null || !worldView.IsReady || !placeAction.action.WasPressedThisFrame() || IsClaiming())
             {
                 return;
             }

@@ -16,10 +16,10 @@ namespace Clube.Debug.Editor
     /// </summary>
     /// <remarks>
     /// Just before building it writes the build's version into <c>Resources/BuildInfo.txt</c> from git
-    /// (GL201): the tag on the commit if it has one, else the project version with the commit count and
-    /// short hash, e.g. "v0.2.1312 (e84d3c5)" (GL790: <c>v0.&lt;demo&gt;.&lt;build&gt;</c>; the demo number is
-    /// <c>PlayerSettings.bundleVersion</c> = "0.&lt;demo&gt;", raised by hand when a new demo goes to playtesters; the build is
-    /// the commit count). The file is gitignored and removed again after the
+    /// (GL201): the tag on the commit if it has one, else the project version with the day's patch number and
+    /// short hash, e.g. "v0.2.3FC042 (e84d3c5)" (see <see cref="BuildVersion"/>: major.minor is
+    /// <c>PlayerSettings.bundleVersion</c>, raised by hand; the patch is the day as YYMMDD in hex plus that day's build
+    /// number, counted in <c>Builds/DayBuild.txt</c>). The file is gitignored and removed again after the
     /// build, so the Editor shows its own "Editor" version.
     /// </remarks>
     public static class DemoBuild
@@ -45,6 +45,9 @@ namespace Clube.Debug.Editor
         private const string MapGenOutput = "Builds/MapGen/clube.exe";
 
         private const string BuildInfoAsset = "Assets/Resources/BuildInfo.txt";
+
+        // The last build's day (YYMMDD) and its number that day, so each build of a day gets the next patch (gitignored).
+        private const string DayBuildFile = "Builds/DayBuild.txt";
 
         // Keeps step-through recording in the exe (see MeshingRecorder).
         private const string LabBuildSymbol = "CLUBE_LAB_BUILD";
@@ -121,8 +124,26 @@ namespace Clube.Debug.Editor
         {
             string hash = Git("rev-parse --short HEAD");
             string tag = hash != null ? Git("describe --tags --exact-match HEAD") : null;
-            string count = hash != null ? Git("rev-list --count HEAD") : null;
-            return BuildVersion.Format(PlayerSettings.bundleVersion, count, hash, tag);
+            return BuildVersion.Format(PlayerSettings.bundleVersion, NextDayPatch(), hash, tag);
+        }
+
+        // Counts this build in Builds/DayBuild.txt ("<yymmdd> <n>"): the day's first build is 1, each later one adds 1.
+        private static string NextDayPatch()
+        {
+            System.DateTime today = System.DateTime.Now;
+            string day = today.ToString("yyMMdd");
+            int n = 1;
+            if (File.Exists(DayBuildFile))
+            {
+                string[] parts = File.ReadAllText(DayBuildFile).Trim().Split(' ');
+                if (parts.Length == 2 && parts[0] == day && int.TryParse(parts[1], out int last))
+                {
+                    n = last + 1;
+                }
+            }
+            Directory.CreateDirectory(Path.GetDirectoryName(DayBuildFile));
+            File.WriteAllText(DayBuildFile, $"{day} {n}");
+            return BuildVersion.DayPatch(today, n);
         }
 
         // One git command's output, trimmed; null when it fails.

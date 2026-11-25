@@ -73,10 +73,7 @@ MonoBehaviour:
   kind: 2
   recipes:
   - {fileID: 11400000, guid: 3b915b6e75ae6fe4883f76455350ed82, type: 2}
-  - {fileID: 11400000, guid: 842c5ed4148bf74499b40ca377984edd, type: 2}
   - {fileID: 11400000, guid: ab98c97052db20042ae1ed986472066f, type: 2}
-  - {fileID: 11400000, guid: ce272991d7e38a645a6a4134ffda0a02, type: 2}
-  - {fileID: 11400000, guid: da26a46a7696a7043a748dc7ee6a36c0, type: 2}
   - {fileID: 11400000, guid: e45a586bfc9bf8948954718730748a0a, type: 2}
   - {fileID: 11400000, guid: fba474c782c476f4f993a45cd39a1374, type: 2}
   - {fileID: 11400000, guid: 4718a79fc1c2a81438a065cf5434da28, type: 2}
@@ -99,6 +96,16 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5ec8e0ac578bb0e4db7dae5132312b4d, type: 2}
   - {fileID: 11400000, guid: c0499a102e899a447869d596d28626f8, type: 2}
   - {fileID: 11400000, guid: 7e1df8bcb8715c04bbf01821f8b05e0e, type: 2}
+  - {fileID: 11400000, guid: 7ed2fed265e55b94aae282d260782fe9, type: 2}
+  - {fileID: 11400000, guid: 2d694560d77702a4bb61b4fc5d0a6cfc, type: 2}
+  - {fileID: 11400000, guid: c6d34a998ad01684986acefcd778614a, type: 2}
+  - {fileID: 11400000, guid: 8d1f113a2260abe469f027dec2034966, type: 2}
+  - {fileID: 11400000, guid: 90065317c985fbf40af5d211ccb8cc78, type: 2}
+  - {fileID: 11400000, guid: 6768c578ada275a489d20032ead9878a, type: 2}
+  - {fileID: 11400000, guid: af8de659a063f8940bf94de8f16d72eb, type: 2}
+  - {fileID: 11400000, guid: 4512a31267eaa024db562af6528a2dfd, type: 2}
+  - {fileID: 11400000, guid: e1476a965d0fed9429a617daafe4a886, type: 2}
+  - {fileID: 11400000, guid: 551294c8825f29647a66f82d6d09346c, type: 2}
   burnsFuel: 0
   heat: 1
   recovery: 0.75

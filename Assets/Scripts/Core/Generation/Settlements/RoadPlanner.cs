@@ -182,15 +182,19 @@ namespace Clube.Core
             }
         }
 
-        // GL725: a trade road off the map on each land side that is neither sea nor the void, from the settlement on the
-        // roads farthest towards that side to the nearest edge of the free ground there. Its carts go on past the edge.
+        // GL725, 2026-11-24b item 4: trade roads off the map over land. Each side a road can leave by (land, neither sea, the
+        // void nor a mountain ridge) gets one by chance, likelier the more such sides the map has, and a further one at half
+        // the chance of the one before. Each starts at a settlement on the cart roads picked at random, leaning to the larger
+        // and the nearer that side, and runs to the nearest edge of the free ground there, never over mountain ground.
         private void ExitRoads(WorldPlan plan, List<PlannedSettlement> onRoads)
         {
             MapLayout layout = context.Survey.Layout;
-            if (!context.Rules.ExitRoads || layout == null)
+            WorldPlanRules rules = context.Rules;
+            if (!rules.ExitRoads || layout == null)
             {
                 return;
             }
+            var open = new List<MapSide>();
             for (var side = MapSide.West; side <= MapSide.North; side++)
             {
                 MapBoundaryType boundary = layout.Boundary(side);
@@ -198,60 +202,116 @@ namespace Clube.Core
                 {
                     continue;
                 }
-                Vector2 outward = Outward(side);
-                PlannedSettlement start = null;
-                foreach (PlannedSettlement settlement in onRoads)
+                if (boundary.HasRange)
                 {
-                    if (network[CellOf(settlement)] >= RoadClass.DirtCartPath
-                        && (start == null || Vector2.Dot(settlement.Position, outward) > Vector2.Dot(start.Position, outward)))
+                    plan.Notes.Add($"No trade road leaves the map to the {side.ToString().ToLowerInvariant()}: a mountain ridge lies past that edge.");
+                    continue;
+                }
+                open.Add(side);
+            }
+            float first = Mathf.Clamp01(rules.LandRouteChance + rules.LandRouteChancePerSide * open.Count);
+            foreach (MapSide side in open)
+            {
+                var used = new HashSet<PlannedSettlement>();
+                int laid = 0;
+                float chance = first;
+                for (int n = 0; n < rules.LandRoutesPerSide; n++, chance *= 0.5f)
+                {
+                    if (context.Hash01((int)side, n, 7301) >= chance || !ExitRoad(plan, onRoads, side, n, used))
                     {
-                        start = settlement;
+                        break;
                     }
+                    laid++;
                 }
-                if (start == null)
+                if (laid == 0)
                 {
-                    continue;
+                    plan.Notes.Add($"No trade road leaves the map to the {side.ToString().ToLowerInvariant()} on this map.");
                 }
-                RoadClass roadClass = network[CellOf(start)] >= RoadClass.PavedCartPath ? RoadClass.PavedCartPath : RoadClass.DirtCartPath;
-                RoadClassDefinition definition = context.Rules.Road(roadClass);
-                MapSide wanted = side;
-                int goal = context.Search(CellOf(start), (from, to, metres) => StepCost(definition, from, to, metres), cell => IsEdge(cell, wanted));
-                if (goal < 0 || goal == CellOf(start))
-                {
-                    plan.Notes.Add($"No trade road leaves the map to the {side.ToString().ToLowerInvariant()}: no way by land from {start.Name} to that edge.");
-                    continue;
-                }
-                var road = new PlannedRoad { Index = plan.Roads.Count, Class = roadClass, From = start.Index, LeavesMap = true, ExitSide = side };
-                // Only where a cart can go: an edge up a mountain range has no gentle way out, and gets no trade road.
-                bool laid = Lay(plan, road, context.PathTo(goal), definition, networkAt[CellOf(start)],
-                    made => made.SteepLength <= made.Length * context.Rules.ExitRoadSteepShare && made.SteepestSlope < definition.MaxSlope * 4f);
-                plan.Notes.Add(laid
-                    ? $"A trade road leaves the map to the {side.ToString().ToLowerInvariant()} from {start.Name} ({road.Length:0} m to the edge)."
-                    : $"No trade road leaves the map to the {side.ToString().ToLowerInvariant()}: the way from {start.Name} is too steep for carts.");
             }
         }
 
-        // The way out of the map from a side's middle.
-        private static Vector2 Outward(MapSide side)
+        // One trade road off the map by a side, from a settlement picked by size and nearness (tried in turn until one has a
+        // way there that a cart can take and that crosses no mountain). False when none has.
+        private bool ExitRoad(WorldPlan plan, List<PlannedSettlement> onRoads, MapSide side, int n, HashSet<PlannedSettlement> used)
         {
+            WorldPlanRules rules = context.Rules;
+            var candidates = new List<PlannedSettlement>();
+            var weights = new List<float>();
+            foreach (PlannedSettlement settlement in onRoads)
+            {
+                if (used.Contains(settlement) || settlement.Type.Hostile || network[CellOf(settlement)] < RoadClass.DirtCartPath
+                    || context.IsMountain(CellOf(settlement)))
+                {
+                    continue;
+                }
+                float near = 1f / (1f + DistanceToSide(settlement.Position, side) / Mathf.Max(1f, rules.LandRouteReach * context.Scale));
+                candidates.Add(settlement);
+                weights.Add(Mathf.Max(0.5f, settlement.Type.Parcels) * near * near);
+            }
+            string sideName = side.ToString().ToLowerInvariant();
+            for (int attempt = 0; attempt < 3 && candidates.Count > 0; attempt++)
+            {
+                float total = 0f;
+                foreach (float weight in weights)
+                {
+                    total += weight;
+                }
+                float roll = context.Hash01((int)side, n, 7400 + attempt) * total;
+                int pick = candidates.Count - 1;
+                for (int i = 0; i < candidates.Count; i++)
+                {
+                    roll -= weights[i];
+                    if (roll < 0f)
+                    {
+                        pick = i;
+                        break;
+                    }
+                }
+                PlannedSettlement start = candidates[pick];
+                candidates.RemoveAt(pick);
+                weights.RemoveAt(pick);
+                used.Add(start);
+                RoadClass roadClass = network[CellOf(start)] >= RoadClass.PavedCartPath ? RoadClass.PavedCartPath : RoadClass.DirtCartPath;
+                RoadClassDefinition definition = rules.Road(roadClass);
+                int goal = context.Search(CellOf(start),
+                    (from, to, metres) => context.IsMountain(to) ? -1f : StepCost(definition, from, to, metres), cell => IsEdge(cell, side));
+                if (goal < 0 || goal == CellOf(start))
+                {
+                    plan.Notes.Add($"No trade road leaves the map to the {sideName} from {start.Name}: no way by land round the mountains to that edge.");
+                    continue;
+                }
+                var road = new PlannedRoad { Index = plan.Roads.Count, Class = roadClass, From = start.Index, LeavesMap = true, ExitSide = side };
+                // Only where a cart can go: a way out with long steep stretches gets no trade road.
+                bool laid = Lay(plan, road, context.PathTo(goal), definition, networkAt[CellOf(start)],
+                    made => made.SteepLength <= made.Length * rules.ExitRoadSteepShare && made.SteepestSlope < definition.MaxSlope * 4f);
+                plan.Notes.Add(laid
+                    ? $"A trade road leaves the map to the {sideName} from {start.Name} ({road.Length:0} m to the edge)."
+                    : $"No trade road leaves the map to the {sideName} from {start.Name}: the way is too steep for carts.");
+                if (laid)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Metres from a point to a side's edge of the map.
+        private float DistanceToSide(Vector2 point, MapSide side)
+        {
+            Rect area = context.Survey.Area;
             return side switch
             {
-                MapSide.West => Vector2.left,
-                MapSide.East => Vector2.right,
-                MapSide.South => Vector2.down,
-                _ => Vector2.up,
+                MapSide.West => point.x - area.xMin,
+                MapSide.East => area.xMax - point.x,
+                MapSide.South => point.y - area.yMin,
+                _ => area.yMax - point.y,
             };
         }
 
         // The side a point of the map lies towards, as the sides share the land.
         private MapSide SideOf(Vector2 point)
         {
-            Vector2 local = point - context.Survey.Area.center;
-            if (Mathf.Abs(local.x) >= Mathf.Abs(local.y))
-            {
-                return local.x < 0f ? MapSide.West : MapSide.East;
-            }
-            return local.y < 0f ? MapSide.South : MapSide.North;
+            return context.SideOf(point);
         }
 
         // A dry cell of the free ground on the side wanted, beside a cell past the edge that is land too.

@@ -12,6 +12,7 @@ namespace Clube.Game
     /// (GL270). Between swings it sways gently with breathing (quicker after running) and with the player's movement, which
     /// it trails a little. Hidden while a
     /// placeable is held or a screen is open. At dawn a note says tools are quicker (the early bird's bonus).
+    /// In the list inventory the left hand's item is drawn too, mirrored on the left; it sways but never swings.
     /// </summary>
     public class HeldToolView : MonoBehaviour, IGuiDrawer
     {
@@ -108,6 +109,12 @@ namespace Clube.Game
         private FlameCluster flame;
         private ItemDefinition shown;
         private Hotbar hotbar;
+        private PlayerInventory inventory;
+        private GameObject leftHeld;
+        private MeshFilter leftFilter;
+        private Material leftInstance;
+        private FlameCluster leftFlame;
+        private ItemDefinition leftShown;
         private BoulderBashing bashing;
         private WorldView worldView;
         private bool shownSet;
@@ -136,6 +143,7 @@ namespace Clube.Game
             body = GetComponent<CharacterController>();
             view = GetComponentInChildren<Camera>(true);
             hotbar = GetComponent<Hotbar>();
+            inventory = GetComponent<PlayerInventory>();
             bashing = GetComponent<BoulderBashing>();
         }
 
@@ -175,6 +183,10 @@ namespace Clube.Game
             {
                 held.SetActive(false);
             }
+            if (leftHeld != null)
+            {
+                leftHeld.SetActive(false);
+            }
         }
 
         private void OnDestroy()
@@ -186,6 +198,10 @@ namespace Clube.Game
             if (instance != null)
             {
                 Destroy(instance);
+            }
+            if (leftInstance != null)
+            {
+                Destroy(leftInstance);
             }
         }
 
@@ -252,29 +268,10 @@ namespace Clube.Game
             ToolDefinition tool = toolUser.Current;
             // A torch or a bucket selected is held in place of the hand (GL287, GL319).
             ItemDefinition selected = hotbar != null ? hotbar.SelectedStack.Item : null;
-            bool carried = selected is TorchDefinition || selected is BucketDefinition || HeldItemMeshes.IsHeldAsModel(selected);
-            bool visible = (tool != null || carried) && player != null && player.enabled && !player.IsInMenu;
+            bool carried = IsCarried(selected);
+            bool playing = player != null && player.enabled && !player.IsInMenu;
+            bool visible = (tool != null || carried) && playing;
             held.SetActive(visible);
-            if (!visible)
-            {
-                return;
-            }
-            ItemDefinition item = carried ? selected : tool;
-            if (!shownSet || item != shown)
-            {
-                shown = item;
-                shownSet = true;
-                filter.sharedMesh = MeshFor(item);
-                ShowFlame(item is TorchDefinition lit && lit.IsLit);
-            }
-
-            // The swing, eased between its keyframes.
-            Vector3 offset = Vector3.zero, turn = Vector3.zero;
-            if (swing != null && swingTime < 1f)
-            {
-                swingTime = Mathf.Min(1f, swingTime + Time.deltaTime / swingSeconds);
-                Sample(swing, swingTime, out offset, out turn);
-            }
 
             // Sway: breathing (slow when still, quicker and deeper after running), the step's bob while moving, and a
             // lag against the way the player moves, so the tool trails a little behind.
@@ -286,18 +283,89 @@ namespace Clube.Game
             bobPhase += Time.deltaTime * Mathf.Lerp(0f, 10f, pace);
             float breath = Mathf.Sin(breathPhase) * Mathf.Lerp(0.004f, 0.009f, exertion);
             float step = Mathf.Lerp(0f, 0.013f, pace);
-            offset += new Vector3(Mathf.Cos(bobPhase * 0.5f) * step * 0.7f, breath + Mathf.Sin(bobPhase) * step, 0f);
+            Vector3 sway = new Vector3(Mathf.Cos(bobPhase * 0.5f) * step * 0.7f, breath + Mathf.Sin(bobPhase) * step, 0f);
             Vector3 local = view.transform.InverseTransformDirection(velocity);
             lag = Vector3.Lerp(lag, local, 1f - Mathf.Exp(-6f * Time.deltaTime));
-            offset -= new Vector3(lag.x, lag.y, lag.z * 0.5f) * 0.006f;
-            turn += new Vector3(-lag.y * 0.8f + breath * 120f, 0f, lag.x * 1.5f);
+            sway -= new Vector3(lag.x, lag.y, lag.z * 0.5f) * 0.006f;
+            Vector3 swayTurn = new Vector3(-lag.y * 0.8f + breath * 120f, 0f, lag.x * 1.5f);
+
+            UpdateLeft(playing, sway, swayTurn);
+            if (!visible)
+            {
+                return;
+            }
+            ItemDefinition item = carried ? selected : tool;
+            if (!shownSet || item != shown)
+            {
+                shown = item;
+                shownSet = true;
+                filter.sharedMesh = MeshFor(item, instance);
+                ShowFlame(item is TorchDefinition lit && lit.IsLit);
+            }
+
+            // The swing, eased between its keyframes.
+            Vector3 offset = Vector3.zero, turn = Vector3.zero;
+            if (swing != null && swingTime < 1f)
+            {
+                swingTime = Mathf.Min(1f, swingTime + Time.deltaTime / swingSeconds);
+                Sample(swing, swingTime, out offset, out turn);
+            }
 
             Transform t = held.transform;
-            t.localPosition = restPosition + offset;
-            t.localRotation = Quaternion.Euler(restTurn + turn);
+            t.localPosition = restPosition + offset + sway;
+            t.localRotation = Quaternion.Euler(restTurn + turn + swayTurn);
             if (flame != null && flame.Shown && hotbar != null && hotbar.SelectedStack.Item is TorchDefinition burning)
             {
                 flame.Animate(Mathf.Lerp(0.55f, 1f, burning.Left(hotbar.SelectedStack) * 4f));
+            }
+        }
+
+        private static bool IsCarried(ItemDefinition item)
+        {
+            return item is TorchDefinition || item is BucketDefinition || HeldItemMeshes.IsHeldAsModel(item);
+        }
+
+        // The list inventory's left hand (prototype): what it holds, drawn mirrored on the left of the view. It only shows;
+        // it never swings, since tools work from the right hand. A torch there burns and lights the way (TorchBurner).
+        private void UpdateLeft(bool playing, Vector3 sway, Vector3 swayTurn)
+        {
+            ItemDefinition item = hotbar != null && inventory != null && inventory.UsesList ? hotbar.LeftStack.Item : null;
+            bool visible = playing && (item is ToolDefinition || IsCarried(item));
+            if (!visible)
+            {
+                if (leftHeld != null)
+                {
+                    leftHeld.SetActive(false);
+                }
+                return;
+            }
+            if (leftHeld == null)
+            {
+                leftInstance = new Material(material) { name = material.name + " (left)" };
+                leftHeld = NewHeldObject("Held left", leftInstance, out leftFilter);
+            }
+            leftHeld.SetActive(true);
+            if (item != leftShown)
+            {
+                leftShown = item;
+                leftFilter.sharedMesh = MeshFor(item, leftInstance);
+                bool lit = item is TorchDefinition torch && torch.IsLit;
+                if (lit && leftFlame == null)
+                {
+                    leftFlame = new FlameCluster(leftHeld.transform, new Vector3(0.006f, 0.405f, 0.035f), 0.085f, leftInstance);
+                }
+                if (leftFlame != null)
+                {
+                    leftFlame.Shown = lit;
+                }
+            }
+            var mirror = new Vector3(-1f, 1f, 1f);
+            Transform t = leftHeld.transform;
+            t.localPosition = Vector3.Scale(restPosition + sway, mirror);
+            t.localRotation = Quaternion.Euler(restTurn.x + swayTurn.x, -(restTurn.y + swayTurn.y), -(restTurn.z + swayTurn.z));
+            if (leftFlame != null && leftFlame.Shown && hotbar.LeftStack.Item is TorchDefinition burning)
+            {
+                leftFlame.Animate(Mathf.Lerp(0.55f, 1f, burning.Left(hotbar.LeftStack) * 4f));
             }
         }
 
@@ -325,15 +393,21 @@ namespace Clube.Game
                 return;
             }
             instance = new Material(material) { name = material.name + " (held)" };
-            held = new GameObject("Held tool");
-            held.transform.SetParent(view.transform, false);
-            filter = held.AddComponent<MeshFilter>();
-            var renderer = held.AddComponent<MeshRenderer>();
-            renderer.sharedMaterial = instance;
+            held = NewHeldObject("Held tool", instance, out filter);
+        }
+
+        private GameObject NewHeldObject(string name, Material shared, out MeshFilter meshFilter)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(view.transform, false);
+            meshFilter = go.AddComponent<MeshFilter>();
+            var renderer = go.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = shared;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
             renderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
             renderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+            return go;
         }
 
         // A lit torch's flame: the dancing cluster on the torch head (GL314), in the held material (vertex alpha 0 glows).
@@ -349,7 +423,7 @@ namespace Clube.Game
             }
         }
 
-        private Mesh MeshFor(ItemDefinition item)
+        private Mesh MeshFor(ItemDefinition item, Material target)
         {
             if (!meshes.TryGetValue(item, out Mesh mesh))
             {
@@ -369,8 +443,8 @@ namespace Clube.Game
             }
             // The texture a lump of ore or stone wears (GL754); the rest of the held things are vertex-coloured.
             bool textured = lumps.TryGetValue(item, out HeldItemMeshes.HeldItem lump) && lump.Texture != null;
-            instance.SetTexture(MainTex, textured ? lump.Texture : Texture2D.whiteTexture);
-            instance.SetFloat(Tiling, textured ? lump.Tiling : 1f);
+            target.SetTexture(MainTex, textured ? lump.Texture : Texture2D.whiteTexture);
+            target.SetFloat(Tiling, textured ? lump.Tiling : 1f);
             return mesh;
         }
 

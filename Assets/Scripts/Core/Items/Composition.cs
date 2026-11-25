@@ -106,6 +106,12 @@ namespace Clube.Core
             return From(shares);
         }
 
+        /// <summary>The material with the largest share (item 11: a birch stick's birch wood), or null for no contents.</summary>
+        public static VoxelMaterial MainMaterial(Composition contents)
+        {
+            return contents != null && contents.parts.Length > 0 ? contents.parts[0].Material : null;
+        }
+
         /// <summary>The share of a material, 0 when it has none.</summary>
         public float FractionOf(VoxelMaterial material)
         {

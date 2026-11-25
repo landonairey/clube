@@ -222,7 +222,8 @@ namespace Clube.Core
                 {
                     Id = "jeweler", Trains = new[] { SkillType.Goldsmithing, SkillType.Prospecting },
                     Name = "Jeweler", Chain = SupplyChains.Ore, Kind = ShopKind.Prospector, CraftLevel = 2,
-                    Needs = new[] { "precious-ore" }, Buys = Goods(Later("Gems", "Pearls")), Sells = Goods(Later("Cut gems", "Pearls")),
+                    Needs = new[] { "precious-ore" }, Buys = Goods(new[] { "pearl", "black-pearl", "tin-bun", "tin-ingot", "silver-bun", "silver-ingot", "gold-bun", "gold-ingot", "stone-hammer", "anvil" }, Later("Gems")),
+                    Sells = Goods(Later("Cut gems", "Pearls")),
                 },
 
                 // Aggregate.

@@ -130,6 +130,12 @@ namespace Clube.Game
             : hotbar.ToolStack.Item is ToolDefinition tool ? tool
             : hand;
 
+        /// <summary>
+        /// True when a real tool is in hand (a pick, axe, shovel, chisel...), not the bare hand or a non-tool item: then a
+        /// right click on an unclaimed stump or boulder leaves it alone (backlog 2026-11-24b item 1).
+        /// </summary>
+        public bool HoldsTool => Current != null && Current != hand;
+
         /// <summary>The material under the dot when the last hit landed, or null (for its sound).</summary>
         public VoxelMaterial HitMaterial { get; private set; }
 

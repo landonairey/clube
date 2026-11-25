@@ -393,6 +393,74 @@ MonoBehaviour:
     Coins: 400
     Units: 1
     ByVolume: 0
+  - Item: {fileID: 11400000, guid: 00caec203c8453b40890f6cd14fcb5fd, type: 2}
+    Coins: 30
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 4eea0e04bec0e054192529d13dc247aa, type: 2}
+    Coins: 18
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 2f187e8e658aa074ab6af7c09a5f92cd, type: 2}
+    Coins: 15
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: f7fbd08cdc28e4649b801a36b7f56a3d, type: 2}
+    Coins: 24
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 9e1ce6fe984da8e46be463f0a26c4882, type: 2}
+    Coins: 12
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 8fdfb37ac7d17554ca7683125af02244, type: 2}
+    Coins: 6
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 68a003eaf529fe54699de4cbc1909219, type: 2}
+    Coins: 2
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: a04660ce3b204894a919eb2951429d82, type: 2}
+    Coins: 10
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: a69eebb675fcfd745a86f66274299319, type: 2}
+    Coins: 35
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 7b53be6d2a0ff974c84193c9ea0a8e9a, type: 2}
+    Coins: 35
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: ef64342fe76fd49469b10658ed19aa53, type: 2}
+    Coins: 12
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 430fcec506b2a98429d6dae985219e80, type: 2}
+    Coins: 30
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 1edec59d814e52a4ab8b044684970558, type: 2}
+    Coins: 15
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 021b95808a369d44aa1d974dd8321632, type: 2}
+    Coins: 60
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: f6ace9858e5f06a47908b8d9242c3ef8, type: 2}
+    Coins: 15
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: a99fd2f2d1d094541aa9058ebba769c6, type: 2}
+    Coins: 30
+    Units: 1
+    ByVolume: 0
+  - Item: {fileID: 11400000, guid: 7ec7568fb3aa0b34f8c1e93e1ce93d36, type: 2}
+    Coins: 45
+    Units: 1
+    ByVolume: 0
   soldEverywhere:
   - {fileID: 11400000, guid: 2c26c5c4f4a60ca449a71671d88094ad, type: 2}
   - {fileID: 11400000, guid: ce1c9585acf5fc14f848a8b43eddc45d, type: 2}

@@ -104,6 +104,22 @@ namespace Clube.Game
             purityStyle.normal.textColor = PurityColour;
         }
 
+        /// <summary>
+        /// Draws a stack's icon in its <see cref="ItemStack.IconTint"/> (item 11: a birch stick pale, a maple one red-brown);
+        /// most stacks draw as their icon is.
+        /// </summary>
+        public static void DrawIcon(Rect rect, ItemStack stack)
+        {
+            if (stack.IsEmpty || stack.Item.Icon == null)
+            {
+                return;
+            }
+            Color previous = GUI.color;
+            GUI.color = previous * stack.IconTint;
+            GUI.DrawTexture(rect, stack.Item.Icon, ScaleMode.ScaleToFit);
+            GUI.color = previous;
+        }
+
         /// <param name="corner">Small text for the lower left, e.g. a merchant's price; null for none.</param>
         public static void Draw(Rect rect, ItemStack stack, bool selected, string key = null, string corner = null)
         {
@@ -116,11 +132,11 @@ namespace Clube.Game
                 Rect inner = Inset(rect, 6f);
                 if (stack.Item.Icon != null)
                 {
-                    GUI.DrawTexture(inner, stack.Item.Icon, ScaleMode.ScaleToFit);
+                    DrawIcon(inner, stack);
                 }
                 else
                 {
-                    GUI.Label(inner, stack.Item.DisplayName, nameStyle);
+                    GUI.Label(inner, stack.Name, nameStyle);
                 }
                 string countText = CountLabel(stack);
                 if (countText != null)
@@ -170,7 +186,7 @@ namespace Clube.Game
         /// An item drawn greyed out over an empty slot (GL58): what a station is about to make.
         /// Draw it after the slot itself.
         /// </summary>
-        public static void Ghost(Rect rect, ItemDefinition item, int count)
+        public static void Ghost(Rect rect, ItemDefinition item, int count, Color? tint = null)
         {
             if (item == null)
             {
@@ -178,7 +194,7 @@ namespace Clube.Game
             }
             EnsureStyles();
             Color previous = GUI.color;
-            GUI.color = new Color(0.6f, 0.6f, 0.6f, 0.4f);
+            GUI.color = new Color(0.6f, 0.6f, 0.6f, 0.4f) * (tint ?? Color.white);
             Rect inner = Inset(rect, 6f);
             if (item.Icon != null)
             {

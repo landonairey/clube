@@ -119,6 +119,12 @@ namespace Clube.Core
             return HasSea && Kind[cell] == (byte)WaterKind.Lake && Surface[cell] <= SeaLevel + 0.01f;
         }
 
+        /// <summary>True at a position over the sea (item 14: a bucket filled there holds salt water); false off a map with none.</summary>
+        public bool IsSeaAt(float x, float z)
+        {
+            return TryCell(new float2(x, z), out int cell) && IsSea(cell);
+        }
+
         /// <summary>How far the ground is cut down at a position, smoothly between cells.</summary>
         public float CarveAt(float x, float z)
         {

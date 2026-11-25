@@ -42,6 +42,19 @@ namespace Clube.Game
             }
         }
 
+        /// <summary>Moves the fire, in its parent's frame (a torch held in the other hand).</summary>
+        public Vector3 Position
+        {
+            get => holder != null ? holder.transform.localPosition : Vector3.zero;
+            set
+            {
+                if (holder != null)
+                {
+                    holder.transform.localPosition = value;
+                }
+            }
+        }
+
         public bool Shown
         {
             get => holder != null && holder.activeSelf;

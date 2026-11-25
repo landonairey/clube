@@ -57,12 +57,13 @@ namespace Clube.Game
             view?.Destroy();
         }
 
-        int IGuiDrawer.GuiDepth => -50;
+        // Behind the screens (list inventory prototype): an open screen covers it, as it covers the rest of the HUD.
+        int IGuiDrawer.GuiDepth => 50;
 
         void IGuiDrawer.DrawGui()
         {
             GameUi.Apply();
-            // While a screen is open it stays up, drawn over it (GL437): IMGUI is drawn over a canvas, so this one draws then, and the
+            // While a screen is open it stays up, drawn behind it (GL437, then the list inventory prototype): IMGUI is drawn over a canvas, so this one draws then, and the
             // canvas box (below) is hidden.
             if (Event.current.type != EventType.Repaint || player == null || !player.enabled || !player.IsInMenu)
             {

@@ -30,8 +30,24 @@ namespace Clube.Game
         /// <summary>Raised when a torch burns out.</summary>
         public event Action<TorchDefinition> BurntOut;
 
-        /// <summary>True while a lit torch is in the hand.</summary>
-        public bool HoldingLit => hotbar != null && hotbar.SelectedStack.Item is TorchDefinition torch && torch.IsLit;
+        /// <summary>True while a lit torch is in a hand (either one in the list inventory).</summary>
+        public bool HoldingLit => LitHeld(out _);
+
+        // The hand holding a lit torch: the right first, then the left (list inventory); false when neither does.
+        private bool LitHeld(out bool left)
+        {
+            left = false;
+            if (hotbar == null)
+            {
+                return false;
+            }
+            if (hotbar.SelectedStack.Item is TorchDefinition right && right.IsLit)
+            {
+                return true;
+            }
+            left = hotbar.LeftStack.Item is TorchDefinition other && other.IsLit;
+            return left;
+        }
 
         private void Awake()
         {
@@ -51,18 +67,20 @@ namespace Clube.Game
             {
                 return;
             }
-            LightSelected();
+            LightIn(hotbar.SelectedSlot);
+            LightIn(hotbar.LeftSlot);
             Burn(ticks.WholeSeconds());
             ShowLight();
         }
 
-        private void LightSelected()
+        // An unlit torch in a hand lights: the right hand's, or the left's in the list inventory, which holds a torch beside
+        // whatever the right hand holds.
+        private void LightIn(int slot)
         {
-            if (player != null && player.IsInMenu)
+            if (slot < 0 || (player != null && player.IsInMenu))
             {
                 return;
             }
-            int slot = hotbar.SelectedSlot;
             Inventory items = inventory.Inventory;
             ItemStack stack = items[slot];
             if (!(stack.Item is TorchDefinition torch) || torch.IsLit || torch.Lit == null)
@@ -126,7 +144,7 @@ namespace Clube.Game
 
         private void ShowLight()
         {
-            bool shown = HoldingLit && player != null && player.enabled;
+            bool shown = LitHeld(out bool left) && player != null && player.enabled;
             if (shown && flame == null)
             {
                 Transform head = player.Head != null ? player.Head : transform;
@@ -139,8 +157,10 @@ namespace Clube.Game
             flame.Shown = shown;
             if (shown)
             {
-                var torch = (TorchDefinition)hotbar.SelectedStack.Item;
-                flame.Flicker(Mathf.Lerp(0.55f, 1f, torch.Left(hotbar.SelectedStack) * 4f));
+                flame.Position = new Vector3(left ? -0.3f : 0.3f, 0.12f, 0.55f);
+                ItemStack held = left ? hotbar.LeftStack : hotbar.SelectedStack;
+                var torch = (TorchDefinition)held.Item;
+                flame.Flicker(Mathf.Lerp(0.55f, 1f, torch.Left(held) * 4f));
             }
         }
     }

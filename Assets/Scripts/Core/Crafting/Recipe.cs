@@ -119,6 +119,18 @@ namespace Clube.Core
         [SerializeField]
         private List<ItemDefinition> swapFor = new List<ItemDefinition>();
 
+        [Tooltip("Item 11: the quality factor of each Swap For item's variant, in the same order (maple whittles into sticks at 1.4). Missing or 0: the recipe's own.")]
+        [SerializeField]
+        private List<float> swapQualityFactors = new List<float>();
+
+        [Tooltip("Item 11: what each Swap For item's variant makes, in the same order (maple wood saws into maple boards). Missing or empty: the recipe's own output.")]
+        [SerializeField]
+        private List<ItemDefinition> swapOutputs = new List<ItemDefinition>();
+
+        [Tooltip("Item 14: the output is its first input changed, and keeps that input's wear and quality: a bucket of salt water boiled on a fire comes out a bucket of as much fresh water.")]
+        [SerializeField]
+        private bool keepsWear;
+
         [Tooltip("A second input other items may replace (GL833: boards of any wood and wool from any animal in one recipe). The station derives a variant for every combination.")]
         [SerializeField]
         private ItemDefinition swapInput2;
@@ -128,6 +140,59 @@ namespace Clube.Core
 
         /// <summary>The recipe this one was derived from by swapping an input (GL858), null for any other. Lists show the parent only.</summary>
         public Recipe SwapParent { get; private set; }
+
+        /// <summary>
+        /// The short names of the items it takes in its swap slots (item 11), for a station's choice of wood: "Birch" for the
+        /// plain stick recipe, "Maple" for its maple variant, "Maple, Alpaca" with two swaps. Empty for a recipe with no swaps.
+        /// </summary>
+        public string VariantLabel => variantLabel ?? LabelOf(swapInput, swapInput2);
+
+        // Set on a swap variant: the items it takes. Not serialized, so a copy starts without it.
+        [NonSerialized]
+        private string variantLabel;
+
+        /// <summary>True when the output keeps its first input's wear and quality (item 14: boiling salt water in its bucket).</summary>
+        public bool KeepsWear => keepsWear;
+
+        /// <summary>Sets <see cref="KeepsWear"/>, for recipes made in code (tests).</summary>
+        public Recipe WithKeepsWear()
+        {
+            keepsWear = true;
+            return this;
+        }
+
+        private static string LabelOf(ItemDefinition one, ItemDefinition two)
+        {
+            string label = one != null ? VoxelMaterial.ShortName(one.DisplayName) : "";
+            if (two != null)
+            {
+                label += (label.Length > 0 ? ", " : "") + VoxelMaterial.ShortName(two.DisplayName);
+            }
+            return label;
+        }
+
+        /// <summary>
+        /// Lets <c>other</c> replace <c>input</c> making <paramref name="output"/> at <paramref name="qualityFactor"/> (item 11),
+        /// for recipes made in code (tests). 0 and null keep the recipe's own.
+        /// </summary>
+        public Recipe WithSwap(ItemDefinition input, ItemDefinition other, float qualityFactor, ItemDefinition output = null)
+        {
+            WithSwap(input, other);
+            if (swapInput == input)
+            {
+                while (swapQualityFactors.Count < swapFor.Count - 1)
+                {
+                    swapQualityFactors.Add(0f);
+                }
+                while (swapOutputs.Count < swapFor.Count - 1)
+                {
+                    swapOutputs.Add(null);
+                }
+                swapQualityFactors.Add(qualityFactor);
+                swapOutputs.Add(output);
+            }
+            return this;
+        }
 
         /// <summary>
         /// The recipes that take another item where this one takes <c>swapInput</c> or <c>swapInput2</c> (GL813-GL816,
@@ -158,6 +223,19 @@ namespace Clube.Core
                     variant.swapFor = new List<ItemDefinition>();
                     variant.swapInput2 = null;
                     variant.swapFor2 = new List<ItemDefinition>();
+                    variant.swapQualityFactors = new List<float>();
+                    variant.swapOutputs = new List<ItemDefinition>();
+                    variant.variantLabel = LabelOf(one, two);
+                    // Item 11: each wood its own quality (maple sticks at 1.4) and, where it differs, its own output.
+                    int at = one != swapInput ? swapFor.IndexOf(one) : -1;
+                    if (at >= 0 && at < swapQualityFactors.Count && swapQualityFactors[at] > 0f)
+                    {
+                        variant.qualityFactor = swapQualityFactors[at];
+                    }
+                    if (at >= 0 && at < swapOutputs.Count && swapOutputs[at] != null)
+                    {
+                        variant.output = new ItemAmount(swapOutputs[at], output.Count);
+                    }
                     string label = "";
                     for (int i = 0; i < variant.inputs.Count; i++)
                     {

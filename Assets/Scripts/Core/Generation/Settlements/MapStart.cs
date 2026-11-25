@@ -30,6 +30,9 @@ namespace Clube.Core
         /// <summary>GL803: birch trees the family's parcel is given, whatever the seed grew there.</summary>
         public const int StartBirches = 2;
 
+        /// <summary>Item 8: how big the parcel's birches grow against a full-grown tree (smaller tree sizes).</summary>
+        public const float StartBirchSize = 0.5f;
+
         /// <summary>GL803: true where at least <see cref="BirchBiomeShare"/> of the trees grow as birch; for <see cref="Home"/>'s <c>suits</c>.</summary>
         public static Func<Vector2, bool> BirchBiome(TreeGeneration trees)
         {

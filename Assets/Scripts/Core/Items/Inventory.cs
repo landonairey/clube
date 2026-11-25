@@ -54,7 +54,8 @@ namespace Clube.Core
             return !stack.IsEmpty && stack.Item == item
                 && (stack.Contents != null || contents != null || Math.Abs(stack.Quality - quality) < SameQuality)
                 && !(IsPure(stack) && quality < stack.Quality - SameQuality)
-                && !(IsPure(contents, quality) && !IsPure(stack));
+                && !(IsPure(contents, quality) && !IsPure(stack))
+                && SameNamedMaterial(stack, item, contents);
         }
 
         // True for gathered material, by its contents and quality, that is all itself (GL840).
@@ -76,27 +77,36 @@ namespace Clube.Core
         /// True when items taken out of a crafting station go onto the stack (GL256): only one of the same item at the
         /// same quality, so refined clay pulled back out of a station doesn't blend into a dirtier stack.
         /// </summary>
-        public static bool StacksApart(ItemStack stack, ItemDefinition item, float quality)
+        public static bool StacksApart(ItemStack stack, ItemDefinition item, float quality, Composition contents)
         {
-            return !stack.IsEmpty && stack.Item == item && Math.Abs(stack.Quality - quality) < SameQuality;
+            return !stack.IsEmpty && stack.Item == item && Math.Abs(stack.Quality - quality) < SameQuality && SameNamedMaterial(stack, item, contents);
         }
 
         /// <summary>
         /// True when a stack dropped on another by hand joins it (GL256): the same item, any quality (it blends by
         /// count); not single items such as tools.
         /// </summary>
-        public static bool Combines(ItemStack stack, ItemDefinition item)
+        public static bool Combines(ItemStack stack, ItemDefinition item, Composition contents)
         {
-            return !stack.IsEmpty && stack.Item == item && item.MaxStack > 1;
+            return !stack.IsEmpty && stack.Item == item && item.MaxStack > 1 && SameNamedMaterial(stack, item, contents);
         }
 
         private static bool Joins(ItemStack stack, ItemDefinition item, Composition contents, float quality, bool keepApart, bool anyQuality = false)
         {
             if (anyQuality)
             {
-                return Combines(stack, item);
+                return Combines(stack, item, contents);
             }
-            return keepApart ? StacksApart(stack, item, quality) : Stacks(stack, item, contents, quality);
+            return keepApart ? StacksApart(stack, item, quality, contents) : Stacks(stack, item, contents, quality);
+        }
+
+        /// <summary>
+        /// True unless the item is named by its material (item 11) and the two differ: birch sticks never join maple sticks,
+        /// though both are Stick and list under one collection.
+        /// </summary>
+        public static bool SameNamedMaterial(ItemStack stack, ItemDefinition item, Composition contents)
+        {
+            return item == null || !item.NamedByMaterial || Composition.MainMaterial(stack.Contents) == Composition.MainMaterial(contents);
         }
 
         /// <summary>
@@ -278,7 +288,7 @@ namespace Clube.Core
                 target.slots[targetSlot] = new ItemStack(stack.Item, moved, stack.Contents, stack.Wear, stack.Quality, whole ? stack.Part : 0f);
                 slots[slot] = whole ? ItemStack.Empty : stack.WithCount(stack.Count - moved);
             }
-            else if (Combines(there, stack.Item) && RoomFor(there) > ItemStack.PartEpsilon)
+            else if (Combines(there, stack.Item, stack.Contents) && RoomFor(there) > ItemStack.PartEpsilon)
             {
                 float offered = whole ? stack.Amount : count;
                 float taken = Math.Min(offered, RoomFor(there));
@@ -468,7 +478,7 @@ namespace Clube.Core
 
             ItemStack moving = slots[from];
             float room = RoomFor(slots[to]);
-            if (Combines(slots[to], moving.Item) && room > ItemStack.PartEpsilon)
+            if (Combines(slots[to], moving.Item, moving.Contents) && room > ItemStack.PartEpsilon)
             {
                 // By amount, parts included (GL390): 1.05 buns dropped on 15.24 fill it to 16 and leave 0.29 behind.
                 ItemStack target = slots[to];
@@ -523,7 +533,7 @@ namespace Clube.Core
                 moved = count;
                 slots[to] = new ItemStack(moving.Item, count, moving.Contents, moving.Wear, moving.Quality);
             }
-            else if (Combines(slots[to], moving.Item) && slots[to].Space > 0)
+            else if (Combines(slots[to], moving.Item, moving.Contents) && slots[to].Space > 0)
             {
                 moved = Math.Min(count, slots[to].Space);
                 slots[to] = TopUp(slots[to], moved, moving.Contents, moving.Quality);

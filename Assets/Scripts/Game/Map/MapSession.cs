@@ -252,7 +252,7 @@ namespace Clube.Game
             var parcel = new Rect(corner, new Vector2(size, size));
             worldView.Trees.EnsureTrees(parcel, StartParcelTrees);
             // GL803: two of them birch (kind 0), so the first tools can be made.
-            worldView.Trees.EnsureKind(parcel, 0, MapStart.StartBirches);
+            worldView.Trees.EnsureKind(parcel, 0, MapStart.StartBirches, MapStart.StartBirchSize);
         }
 
         private void PlacePlayer()

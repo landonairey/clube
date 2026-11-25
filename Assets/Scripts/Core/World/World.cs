@@ -395,6 +395,17 @@ namespace Clube.Core
         /// </summary>
         public int SetDensity(Vector3Int sample, float density)
         {
+            return SetDensity(sample, density, true);
+        }
+
+        /// <summary>
+        /// As <see cref="SetDensity(Vector3Int, float)"/>, raising <see cref="DensityChanged"/> only when
+        /// <paramref name="tell"/>. For a big edit's inner samples (each one's neighbours all edited too): what listens wakes
+        /// the samples beside a change, and the edit's outer samples already wake all of those (tree felling: telling every
+        /// sample of a crown cost more than the edit).
+        /// </summary>
+        public int SetDensity(Vector3Int sample, float density, bool tell)
+        {
             float? before = anyCarved ? GetDensity(sample) : null;
             Grid.ChunksContainingSample(sample, scratchChunks);
             int changed = 0;
@@ -418,7 +429,7 @@ namespace Clube.Core
             {
                 UncarveAround(sample);
             }
-            if (changed > 0)
+            if (changed > 0 && tell)
             {
                 DensityChanged?.Invoke(sample);
             }

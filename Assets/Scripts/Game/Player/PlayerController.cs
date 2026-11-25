@@ -210,6 +210,15 @@ namespace Clube.Game
         /// <summary>True while walking, jumping, sprinting and crouching are off, so typing in a box can't move the player (GL519).</summary>
         public bool InputLocked { get; set; }
 
+        /// <summary>
+        /// True while something else moves the body (climbing aboard a boat, <see cref="PlayerBoarding"/>): the player still
+        /// looks about, but neither walks, falls nor swims.
+        /// </summary>
+        public bool Held { get; set; }
+
+        /// <summary>True on the frame Jump was pressed, unless input is locked or a menu is open.</summary>
+        public bool JumpPressedThisFrame => !InputLocked && !isInMenu && jumpAction != null && jumpAction.action.WasPressedThisFrame();
+
         /// <summary>True while climbing a steep face (GL467).</summary>
         public bool IsClimbing { get; private set; }
 
@@ -378,6 +387,10 @@ namespace Clube.Game
             {
                 gameObject.AddComponent<PlatformRider>(); // rides carts and boats it stands on (GL727)
             }
+            if (!TryGetComponent(out PlayerBoarding _))
+            {
+                gameObject.AddComponent<PlayerBoarding>(); // climbs aboard boats from the water
+            }
         }
 
         private void OnEnable()
@@ -412,6 +425,12 @@ namespace Clube.Game
             if (!IsCursorFree)
             {
                 Look(Read<Vector2>(lookAction));
+            }
+            if (Held)
+            {
+                velocity = Vector3.zero;
+                fallSpeed = 0f;
+                return;
             }
             Move(InputLocked ? Vector2.zero : Read<Vector2>(moveAction));
         }

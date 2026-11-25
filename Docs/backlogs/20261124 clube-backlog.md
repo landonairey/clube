@@ -1,0 +1,22 @@
+# 2026-11-24 clube backlog (playtest of proto/list-inventory, round 5)
+
+1. When equipping an item from my inventory within a collection it moves position in the collection list. Don't change the collection list order just because something is equipped or not.
+2. Bug when clicking on a collection item in the inventory the more info panel shows the incorrect quality and quantity in the item slot on the right. However the additional info is correct with the total amount, average value per and average quality.
+3. bug, when refining a stack of material on a boulder, I gain Xp even when I find nothing. Have it only give Xp when the player finds something to remove and thus purify the mixture. Also when refining I notice that Crafting, Blacksmithing, and Prospecting all go up. Only have Prospecting go increase for this activity
+4. bug, I placed Med qual grass in the campfire for fuel and then click and dragged Pure grass over on top of it but it would not stack. Enable manually stacking in other buildable inventories like this
+5. Have the player spawn with only rags on that are worthless.
+6. in the selling cart, add collections of items there as well. I went to sell a collection of 54 hand axes and in the cart there were 54 line items that I wished I could collapse into one line for better readability
+7. When trading with a shop put the net total of the sell/buying of a cart on the bottom right of the cart panel.
+8. Add behavior to the Stump and Boulder that before using them you have to Claim them. Similar to how making a Flat Rock changes the surface to a darker tone, Right Clicking a Stump and Boulder for the first time Claims them and they change appearance. The Stump gets a higher and lower set of twine wrapped around it and the top becomes flat. The Boulder gets cracks in it and some lighter stone color on the top "working surface"
+9. Boulder now allows you to press E to enter it's UI and you can select "Recipes" of refining material or the recipe to make a hand axe from Stone. You can still do this without the UI by walking up to it and pressing right click with a Stone out in hand.
+10. change the yield of smelting in equipment, the Campfire should be the worst, here is the order: Campfire < Stone Furnace < Clay Furnace < Brick Furnace < Firebrick Furnace
+11. bug, the recipes still have duplicate entries for different types of Wood. Do NOT have "Stick (Birchwood)" separately from "Stick (Maple Wood". Have one recipe for Stick and when you click it a drop down for Birch/ Maple/ Pine pops up. Alternatively you can manually place in a Birch Wood or Maple Wood or Pine Wood directly into the input slot and the output Stick should appear. Change the Stick's appearance to reflect the Wood Type. We should have Sticks of material type Birch, Pine, and Maple. These can all collapse under the one Stick item type in an inventory collection because Wood is a Secondary material. If you click on the sub stack of Birch Sticks the more info panel should list it's material type as Birch. The name also says Birch Stick. But make 3 distinct colors of these sticks that reflect the tree colors.
+12. Have the Lone Adventurer show up every 5 nights.
+13. Change Coffee to Type Consumable.
+14. Bucket with Water is considered Type Liquid. Also change water gathered from the Ocean to be considered Salt Water. Boiling this on a Campfire or any Furnace yields normal Water
+15. change the twine icon and 3d model to look like a coil of twine rope
+16. When swimming up to a Boat press Space to grab onto the hull and begin climbing up. Ensure that the player can ride on the side and stand on top of the boat without falling off even when the boat makes turns.
+17. Add tanned versions of Hides that you can make on Campfires. The Crafting Bench can turn tanned hides into Leather.
+18. All types of wool can be spun into yarn which can be spun/crafted into Cloth, and fibers can be spun into string and then spun/crafted into cloth. Cloth can be used for basic cloth garments Shirt, Pants, Foot Wraps. These can be equipped on the Chest, Legs, Feet respectively
+19. Leather can be turned into Leather Helmet, Leather Gloves, Leather Cuirass, Leather Bracers, Leather Boots, Leather Leggings. These can be equipped on the appropriate body part in the player equipment UI.
+20. Wearing better clothing gives a buff to disposition when talking to shop keepers. naked/rags < cloth < leather in this case. Come up with the placeholder outfit values and disposition buff for now to try out.

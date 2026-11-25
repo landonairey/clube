@@ -13,7 +13,7 @@ namespace Clube.Game
     /// picking an item slot that holds a tool by its number swaps it into the tool slot.
     /// </summary>
     [RequireComponent(typeof(PlayerInventory))]
-    public class Hotbar : MonoBehaviour
+    public class Hotbar : MonoBehaviour, IGuiDrawer
     {
         private const float SlotSize = GameUi.SlotSize;
         private const float Gap = GameUi.SlotGap;
@@ -34,22 +34,75 @@ namespace Clube.Game
         private PlayerInventory inventory;
         private PlayerController player;
         private HotbarView view;
+        private HandSlotsView handsView;
 
-        /// <summary>The selected slot, 0-based.</summary>
+        /// <summary>The selected slot, 0-based; in the list inventory, the right hand's slot (0-4).</summary>
         public int Selected { get; private set; }
 
-        /// <summary>The inventory slot that's selected (the same as <see cref="Selected"/>).</summary>
-        public int SelectedSlot => Selected;
+        /// <summary>List inventory: the left hand's selected slot (0-4), stepped with Ctrl and the wheel.</summary>
+        public int LeftSelected { get; private set; }
+
+        /// <summary>The inventory slot that's selected: the right hand's in the list inventory, else <see cref="Selected"/>.</summary>
+        public int SelectedSlot => inventory.UsesList ? inventory.RightHandSlot(Selected) : Selected;
+
+        /// <summary>List inventory: the inventory slot the left hand holds.</summary>
+        public int LeftSlot => inventory.UsesList ? inventory.LeftHandSlot(LeftSelected) : -1;
 
         /// <summary>What the selected slot holds; empty for an empty slot.</summary>
-        public ItemStack SelectedStack => StackIn(Selected);
+        public ItemStack SelectedStack => StackIn(SelectedSlot);
+
+        /// <summary>List inventory: what the left hand holds.</summary>
+        public ItemStack LeftStack => StackIn(LeftSlot);
 
         /// <summary>
         /// Where the tool in hand is: the selected slot in the classic inventory. In the tool-slot inventory,
         /// the selected slot when it holds a tool (scrolled onto, not swapped in), which then wears there,
         /// else the tool slot.
         /// </summary>
-        public int ToolSlot => !inventory.UsesToolSlot || SelectedStack.Item is ToolDefinition ? Selected : PlayerInventory.ToolSlot;
+        public int ToolSlot => !inventory.UsesToolSlot || SelectedStack.Item is ToolDefinition ? SelectedSlot : PlayerInventory.ToolSlot;
+
+        /// <summary>List inventory: when the wheel last stepped a hand, and which, so the HUD shows that hand's other slots a moment.</summary>
+        public float LastStepTime { get; private set; } = -10f;
+
+        /// <summary>List inventory: true when the last step was the left hand's.</summary>
+        public bool LastStepLeft { get; private set; }
+
+        /// <summary>
+        /// List inventory: puts a slot's stack in a right hand slot (a right click in the list): the first empty one, or
+        /// when all five are full, the selected one, swapping out what was there.
+        /// </summary>
+        public void EquipRight(int slot)
+        {
+            Inventory items = inventory.Inventory;
+            if (!inventory.UsesList || slot < 0 || slot >= items.SlotCount || items[slot].IsEmpty || IsRightHand(slot))
+            {
+                return;
+            }
+            int hand = SelectedSlot;
+            for (int i = 0; i < PlayerInventory.HandSlots; i++)
+            {
+                if (items[inventory.RightHandSlot(i)].IsEmpty)
+                {
+                    hand = inventory.RightHandSlot(i);
+                    break;
+                }
+            }
+            items.Move(slot, hand);
+        }
+
+        private bool IsRightHand(int slot)
+        {
+            return slot >= inventory.RightHandSlot(0) && slot < inventory.RightHandSlot(PlayerInventory.HandSlots);
+        }
+
+        /// <summary>List inventory: selects a left hand slot (0-4).</summary>
+        public void SelectLeft(int index)
+        {
+            if (index >= 0 && index < PlayerInventory.HandSlots)
+            {
+                LeftSelected = index;
+            }
+        }
 
         /// <summary>The tool in hand's stack (see <see cref="ToolSlot"/>).</summary>
         public ItemStack ToolStack => StackIn(ToolSlot);
@@ -108,8 +161,14 @@ namespace Clube.Game
             }
         }
 
+        private void OnDisable()
+        {
+            GuiHost.Remove(this);
+        }
+
         private void OnEnable()
         {
+            GuiHost.Add(this);
             slotAction?.action.Enable();
             scrollAction?.action.Enable();
             nextAction?.action.Enable();
@@ -126,6 +185,11 @@ namespace Clube.Game
             if (Selected >= count)
             {
                 Selected = 0;
+            }
+            if (inventory.UsesList)
+            {
+                UpdateHands(count);
+                return;
             }
             if (slotAction != null && slotAction.action.WasPressedThisFrame()
                 && int.TryParse(slotAction.action.activeControl?.name, out int key) && key >= 1 && key <= count)
@@ -153,18 +217,90 @@ namespace Clube.Game
             Selected = ((Selected + by) % count + count) % count;
         }
 
-        // The bar is on the HUD canvas (GL777), refreshed after the frame's input and edits.
+        // List inventory (prototype): the number keys and the wheel pick the right hand's slot, Ctrl and the wheel the left's.
+        private void UpdateHands(int count)
+        {
+            if (slotAction != null && slotAction.action.WasPressedThisFrame()
+                && int.TryParse(slotAction.action.activeControl?.name, out int key) && key >= 1 && key <= count)
+            {
+                Select(key - 1);
+                MarkStep(false);
+            }
+            bool left = Keyboard.current != null && Keyboard.current.ctrlKey.isPressed;
+            float scroll = scrollAction != null ? scrollAction.action.ReadValue<float>() : 0f;
+            if (scroll != 0f)
+            {
+                int by = scroll < 0f ? 1 : -1;
+                if (left)
+                {
+                    LeftSelected = ((LeftSelected + by) % count + count) % count;
+                }
+                else
+                {
+                    Step(by, count);
+                }
+                MarkStep(left);
+            }
+            if (nextAction != null && nextAction.action.WasPressedThisFrame())
+            {
+                Step(1, count);
+                MarkStep(false);
+            }
+        }
+
+        private void MarkStep(bool left)
+        {
+            LastStepTime = Time.unscaledTime;
+            LastStepLeft = left;
+        }
+
+        // The bar is on the HUD canvas (GL777), refreshed after the frame's input and edits; the list inventory shows its
+        // two hands in the lower right instead (prototype).
         private void LateUpdate()
         {
+            bool visible = player == null || player.enabled;
+            if (inventory.UsesList)
+            {
+                view?.Destroy();
+                view = null;
+                handsView ??= new HandSlotsView();
+                handsView.Refresh(this, inventory, visible);
+                return;
+            }
+            handsView?.Destroy();
+            handsView = null;
             view ??= new HotbarView();
-            string name = !SelectedStack.IsEmpty ? SelectedStack.Item.DisplayName
+            string name = !SelectedStack.IsEmpty ? SelectedStack.Name
                 : inventory.UsesToolSlot && Selected == PlayerInventory.ToolSlot ? "Tool slot (empty: bare hands)" : null;
-            view.Refresh(inventory, CellCount, Selected, name, player == null || player.enabled);
+            view.Refresh(inventory, CellCount, Selected, name, visible);
         }
 
         private void OnDestroy()
         {
             view?.Destroy();
+            handsView?.Destroy();
+        }
+
+        int IGuiDrawer.GuiDepth => -5;
+
+        // The hands' popups when the cursor is free (a screen open): the same description the inventory's tooltip gives.
+        void IGuiDrawer.DrawGui()
+        {
+            if (handsView == null || player == null || !player.IsCursorFree || !player.enabled)
+            {
+                return;
+            }
+            Vector2 mouse = Event.current.mousePosition;
+            if (handsView.RightRect.Contains(mouse) && !SelectedStack.IsEmpty)
+            {
+                InventoryGridGui.Hover(SelectedStack);
+                InventoryGridGui.DrawTooltip();
+            }
+            else if (handsView.LeftRect.Contains(mouse) && !LeftStack.IsEmpty)
+            {
+                InventoryGridGui.Hover(LeftStack);
+                InventoryGridGui.DrawTooltip();
+            }
         }
     }
 }

@@ -78,6 +78,13 @@ namespace Clube.Core
                 Rings(model, Shade(look.Shirt, 0.95f), (-0.4f, 0.24f * b, 0.19f, 0f), (0.03f, 0.175f * b, 0.12f, 0f));
                 Rings(model, look.Accent, (-0.44f, 0.245f * b, 0.195f, 0f), (-0.4f, 0.245f * b, 0.195f, 0f));
             }
+            if (look.Wrap.a > 0f)
+            {
+                // A loin wrap over bare legs (item 5): a band round the hips and a short flap at the front and back.
+                Rings(model, look.Wrap, (-0.15f, 0.125f * b, 0.095f, 0f), (-0.05f, 0.177f * b, 0.122f, 0f), (0.05f, 0.172f * b, 0.117f, 0f));
+                model.Box(new Vector3(0f, -0.2f, 0.1f), new Vector3(0.12f * b, 0.12f, 0.015f), Quaternion.identity, Shade(look.Wrap, 0.92f));
+                model.Box(new Vector3(0f, -0.2f, -0.09f), new Vector3(0.12f * b, 0.12f, 0.015f), Quaternion.identity, Shade(look.Wrap, 0.88f));
+            }
             if (look.Has(FigureOutfit.Patched))
             {
                 // A ragged hem: torn tails of the shirt hanging over the hips.
@@ -236,8 +243,14 @@ namespace Clube.Core
                 // A rolled sleeve at the elbow.
                 Rings(model, Shade(look.Shirt, 0.94f), (-0.05f, 0.06f * w, 0.062f * w, 0f), (0.03f, 0.056f * w, 0.058f * w, 0f));
             }
-            model.Blob(new Vector3(0f, -0.285f, 0.005f), new Vector3(0.045f, 0.062f, 0.07f), Upright, look.Skin, 5, 3);
-            model.Prism(new Vector3(0f, -0.26f, 0.035f), new Vector3(0f, -0.31f, 0.07f), 0.02f, 0.012f, 4, Shade(look.Skin, 0.93f));
+            if (look.Bracers.a > 0f)
+            {
+                // Bracers from the wrist to below the elbow (item 5).
+                Rings(model, look.Bracers, (-0.225f, 0.048f * w, 0.05f * w, 0f), (-0.06f, 0.06f * w, 0.062f * w, 0f));
+            }
+            Color hand = look.Gloves.a > 0f ? look.Gloves : look.Skin;
+            model.Blob(new Vector3(0f, -0.285f, 0.005f), new Vector3(0.045f, 0.062f, 0.07f), Upright, hand, 5, 3);
+            model.Prism(new Vector3(0f, -0.26f, 0.035f), new Vector3(0f, -0.31f, 0.07f), 0.02f, 0.012f, 4, Shade(hand, 0.93f));
             return model.Make("Figure forearm");
         }
 

@@ -140,7 +140,7 @@ namespace Clube.Core
 
         /// <summary>Adds the parts of the tree rooted at <paramref name="root"/> (on the ground) to <paramref name="parts"/>.</summary>
         /// <param name="cell">The tree's cell: with the seed, it picks every number.</param>
-        public static void Build(int seed, Vector2Int cell, float3 root, TreeGeneration settings, List<TreePart> parts, int kindOverride = -1)
+        public static void Build(int seed, Vector2Int cell, float3 root, TreeGeneration settings, List<TreePart> parts, int kindOverride = -1, float sizeOverride = -1f)
         {
             var dice = new Dice(seed, cell);
             // Its kind (GL150, GL721), by its own roll so the shape's numbers stay as they were.
@@ -150,7 +150,7 @@ namespace Clube.Core
             byte stump = kind.Stump.Id;
             float minRadius = settings.MinBranchRadius;
             // Its age scales the whole tree (GL165), by its own roll so the shape's numbers stay as they were.
-            float size = TreeForests.SizeOf(seed, cell, settings);
+            float size = sizeOverride > 0f ? sizeOverride : TreeForests.SizeOf(seed, cell, settings);
             // Each kind has its own full-grown height and trunk (GL166).
             float full = FullHeight(ref dice, kind.Height);
             float height = full * size;

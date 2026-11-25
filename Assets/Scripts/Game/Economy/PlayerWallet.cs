@@ -17,6 +17,8 @@ namespace Clube.Game
         private PlayerController player;
         private Text text;
         private float shownCoins = -1f;
+        private PlayerInventory inventory;
+        private bool laidOutForHands;
 
         public Wallet Wallet { get; private set; }
 
@@ -25,6 +27,7 @@ namespace Clube.Game
             // Plus the tutorial's wages (GL514), carried over from its scene.
             Wallet = new Wallet(startingCoins + GameSession.TakeCarriedCoins());
             player = GetComponent<PlayerController>();
+            inventory = GetComponent<PlayerInventory>();
         }
 
         private void OnEnable()
@@ -54,10 +57,17 @@ namespace Clube.Game
                 Layout();
             }
             HudCanvas.SetShown(text.gameObject, visible);
+            bool hands = inventory != null && inventory.UsesList;
+            if (hands != laidOutForHands)
+            {
+                laidOutForHands = hands;
+                shownCoins = -1f;
+                Layout();
+            }
             if (visible && shownCoins != Wallet.Coins)
             {
                 shownCoins = Wallet.Coins;
-                text.text = $"{Wallet.Format(Wallet.Coins)} coins";
+                text.text = laidOutForHands ? $"{Wallet.Format(Wallet.Coins)} COINS" : $"{Wallet.Format(Wallet.Coins)} coins";
             }
         }
 
@@ -65,6 +75,13 @@ namespace Clube.Game
         {
             if (text == null)
             {
+                return;
+            }
+            // Under the two hands in the list inventory (prototype).
+            if (laidOutForHands)
+            {
+                Rect coins = HandSlotsView.CoinsRect();
+                HudCanvas.Place(text.rectTransform, coins.x, coins.y, coins.width, coins.height);
                 return;
             }
             // Above the right end of the 9-slot hotbar.

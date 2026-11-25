@@ -53,6 +53,15 @@ namespace Clube.Game
             return true;
         }
 
+        /// <summary>A screen's background with nothing showing through (list inventory prototype): the HUD behind it stays hidden.</summary>
+        public static void SolidPanel(Rect area)
+        {
+            Color previous = GUI.color;
+            GUI.color = new Color(PanelColor.r, PanelColor.g, PanelColor.b, 1f);
+            GUI.DrawTexture(area, Texture2D.whiteTexture);
+            GUI.color = previous;
+        }
+
         /// <summary>A screen's background: nearly opaque, so the world doesn't show through the slots.</summary>
         public static void Panel(Rect area)
         {
@@ -259,6 +268,15 @@ namespace Clube.Game
         private static ItemStack hovered;
         private static GUIStyle tooltipStyle;
 
+        /// <summary>Marks a stack as under the mouse, for the next <see cref="DrawTooltip"/>: list rows and the hands' HUD slots (list inventory prototype).</summary>
+        public static void Hover(ItemStack stack)
+        {
+            if (Event.current != null && Event.current.type == EventType.Repaint && !stack.IsEmpty)
+            {
+                hovered = stack;
+            }
+        }
+
         /// <summary>
         /// Describes the stack under the mouse beside it (GL32, GL33): its count and volume, what
         /// it's made of, how long it burns. Call after drawing a screen's slots.
@@ -295,7 +313,13 @@ namespace Clube.Game
 
         public static string Describe(ItemStack stack)
         {
-            string text = stack.Count > 1 ? $"{stack.Item.DisplayName} ×{stack.Count}" : stack.Item.DisplayName;
+            string text = stack.Count > 1 ? $"{stack.Name} ×{stack.Count}" : stack.Name;
+            text += $"\nType: {stack.Item.TypeOf(stack)}";
+            if (stack.NamedMaterial != null)
+            {
+                // Item 11: a birch stick lists its wood as its material.
+                text += $"\nMaterial: {stack.NamedMaterial.MaterialWord}";
+            }
             // Volume only for what has one (GL122): mined material, or a product with a set unit volume (a bun);
             // not tools or sticks.
             bool hasVolume = !(stack.Item is ToolDefinition) && !(stack.Item is PlaceableDefinition)
@@ -304,7 +328,7 @@ namespace Clube.Game
             {
                 text += $"\nVolume {stack.Volume:0.##}";
             }
-            if (ItemSlotGui.ReadsAsGrades(stack) && !stack.Item.HidesContents)
+            if (ItemSlotGui.ReadsAsGrades(stack) && !stack.Item.HidesContents && stack.NamedMaterial == null)
             {
                 // Below Prospecting 10 (GL457): grades for the shares, the stack's own material first, one more component a
                 // level, the rest a question mark.

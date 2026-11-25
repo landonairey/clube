@@ -116,12 +116,13 @@ namespace Clube.Game
             if (picture != null)
             {
                 icon.texture = picture;
+                icon.color = stack.IconTint;
                 Fit(picture);
             }
             HudCanvas.SetShown(nameText.gameObject, has && picture == null);
             if (has && picture == null)
             {
-                nameText.text = stack.Item.DisplayName;
+                nameText.text = stack.Name;
             }
 
             string count = has ? ItemSlotGui.CountLabel(stack) : null;

@@ -126,7 +126,8 @@ namespace Clube.Game
             {
                 return;
             }
-            Store(bucket, stack, bucket.WaterIn(stack) + taken);
+            // Item 14: water out of the sea is salt water; lakes and rivers give fresh.
+            inventory.Inventory.Set(hotbar.SelectedSlot, bucket.WithWater(stack, bucket.WaterIn(stack) + taken, IsSea(waterAt)));
             Wake();
             Moved?.Invoke(taken);
         }
@@ -153,6 +154,14 @@ namespace Clube.Game
         private void Store(BucketDefinition bucket, ItemStack stack, int units)
         {
             inventory.Inventory.Set(hotbar.SelectedSlot, bucket.WithWater(stack, units));
+        }
+
+        // True where the world's water map marks the sea, as against an inland lake or a river (item 14).
+        private bool IsSea(Vector3 local)
+        {
+            WaterMap map = water != null && water.Map.IsCreated ? water.Map
+                : worldView.Generator is HeightfieldGenerator heightfield ? heightfield.Water : WaterMap.None;
+            return map.IsSeaAt(local.x, local.z);
         }
 
         private void Wake()

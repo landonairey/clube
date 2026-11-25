@@ -183,7 +183,11 @@ namespace Clube.Core.Tests
                 Assert.IsNotNull(item.Icon, item.DisplayName + " has an icon");
                 if (ItemIconShapes.Resolve(item, materials) == ItemIconShape.Painted)
                 {
-                    painted.Add(item.DisplayName);
+                    // Garments and armor (list inventory prototype, items 18, 19) are painted until worn items get models.
+                    if (!item.IsWorn)
+                    {
+                        painted.Add(item.DisplayName);
+                    }
                 }
                 else
                 {

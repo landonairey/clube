@@ -141,11 +141,32 @@ namespace Clube.Game
 
         private bool knapOnRelease;
 
+        /// <summary>The world boulders are found in.</summary>
+        public WorldView World => worldView;
+
+        private BoulderWorksites worksites;
+        private WorksiteClaimer claimer;
+
         private void Awake()
         {
             player = GetComponent<PlayerController>();
             inventory = GetComponent<PlayerInventory>();
             skills = GetComponent<PlayerSkills>();
+            // Claiming and the boulder's screen (prototype, items 8 and 9) come with bashing, so every scene's player has them.
+            // (TryGetComponent: in the Editor GetComponent hands back a fake null that ?? takes for a component.)
+            if (!TryGetComponent(out worksites))
+            {
+                worksites = gameObject.AddComponent<BoulderWorksites>();
+            }
+            if (!TryGetComponent(out claimer))
+            {
+                claimer = gameObject.AddComponent<WorksiteClaimer>();
+            }
+            claimer.Init(placeAction);
+            if (!TryGetComponent(out BoulderPanel _))
+            {
+                gameObject.AddComponent<BoulderPanel>();
+            }
         }
 
         private void OnEnable()
@@ -162,7 +183,8 @@ namespace Clube.Game
                 refineProgress = 0f;
                 return;
             }
-            bool pressed = placeAction.action.WasPressedThisFrame();
+            // The right click that claimed a stump or boulder does nothing else (prototype, item 8).
+            bool pressed = placeAction.action.WasPressedThisFrame() && !claimer.ClaimedThisFrame;
             if (pressed && HoldsSomethingToBash(out _, out Crush crush) && AimsAtBoulder())
             {
                 // A stone becomes a hand axe at once; ore is crushed while Place is held (GL221).
@@ -229,9 +251,12 @@ namespace Clube.Game
         private int ProspectingLevel => skills != null ? skills.Skills.Level(SkillType.Prospecting) : 0;
 
         // One pass, false when there was nothing to refine or nothing is left: the stack keeps its slot, smaller and purer; what came out goes back as stacks of its own materials.
-        private bool RefinePass(int slot)
+        private bool RefinePass(int slot) => RefinePass(inventory.Inventory, slot, null);
+
+        // The same on a slot of any inventory (the boulder screen's input slot, backlog 2026-11-24b item 7): what comes out goes
+        // into <paramref name="outputs"/>, a stack of its own per material, or to the player's items without them.
+        private bool RefinePass(Inventory items, int slot, Inventory outputs)
         {
-            Inventory items = inventory.Inventory;
             MaterialRegistry materials = worldView.Config.Materials;
             ItemStack held = items[slot];
             if (held.IsEmpty || !Refining.CanRefine(held, materials))
@@ -241,14 +266,12 @@ namespace Clube.Game
             pickedOut.Clear();
             RefinePassed?.Invoke();
             ItemStack refined = Refining.Pass(held, materials, refineVolume, pickedOut, UnityEngine.Random.value, UnityEngine.Random.value, out bool failed);
-            // Any refining trains Prospecting (GL697); anything but crushed ore (GL388) trains Crafting too.
+            // Only a pass that picks something out trains Prospecting, and nothing else (batch 2, item 3).
             bool prospecting = held.Item.PurityAs != null;
-            skills?.Skills.Award(SkillType.Prospecting, refineProspectingExperience);
-            if (!prospecting)
+            if (!failed && pickedOut.Count > 0)
             {
-                skills?.Skills.Award(SkillType.Crafting, refineExperience);
+                skills?.Skills.Award(SkillType.Prospecting, refineProspectingExperience);
             }
-            skills?.Skills.Award(SkillType.Blacksmithing, refineSmithingExperience);
             if (failed)
             {
                 // The purer the stack, the more passes find nothing to pick out (GL386).
@@ -269,7 +292,13 @@ namespace Clube.Game
                     drop = CrushedFormOf(drop);
                 }
                 int whole = (int)(picked.Fraction + 1e-4f);
-                inventory.GiveOrDrop(drop, whole, Composition.From(new Content(picked.Material, 1f)), 0, 1f, Mathf.Max(0f, picked.Fraction - whole));
+                Composition contents = Composition.From(new Content(picked.Material, 1f));
+                float part = Mathf.Max(0f, picked.Fraction - whole);
+                if (outputs != null && outputs.Add(drop, whole, contents, 0, 1f, part) == 0)
+                {
+                    continue;
+                }
+                inventory.GiveOrDrop(drop, whole, contents, 0, 1f, part);
                 inventory.Notify(drop, picked.Fraction);
             }
             Message?.Invoke(refined.IsEmpty
@@ -403,9 +432,12 @@ namespace Clube.Game
         }
 
         // One stone off the stack becomes a hand axe, mixed or clean; its durability comes from the stone's grade (GL794).
-        private bool KnapStone(int slot)
+        private bool KnapStone(int slot) => KnapStone(inventory.Inventory, slot, null);
+
+        // The same from a slot of any inventory, the hand axe going into <paramref name="outputs"/> when given (item 7).
+        private bool KnapStone(Inventory items, int slot, Inventory outputs)
         {
-            ItemStack held = inventory.Inventory[slot];
+            ItemStack held = items[slot];
             MaterialRegistry materials = worldView != null && worldView.Config != null ? worldView.Config.Materials : null;
             float purity = held.Quality;
             if (purity >= 0.995f && purity <= 1.005f && held.Contents != null && materials != null)
@@ -413,8 +445,11 @@ namespace Clube.Game
                 purity = materials.Quality(held.Contents, held.Item);
             }
             float durability = ToolDurability.FromGrade(purity, handAxeDurabilityByGrade);
-            inventory.Inventory.RemoveAt(slot, 1);
-            inventory.GiveOrDrop(handAxe, 1, null, 0, durability);
+            items.RemoveAt(slot, 1);
+            if (outputs == null || outputs.Add(handAxe, 1, null, 0, durability) > 0)
+            {
+                inventory.GiveOrDrop(handAxe, 1, null, 0, durability);
+            }
             skills?.Skills.Award(SkillType.Crafting, handAxeExperience);
             Message?.Invoke($"Knocked the stone into a {handAxe.DisplayName.ToLowerInvariant()}");
             HandAxeMade?.Invoke();
@@ -471,10 +506,56 @@ namespace Clube.Game
             return TryGetAimedBoulder(out _);
         }
 
-        // Boulder material, or the flat rock (GL454).
+        // Boulder material, a claimed boulder's marks (prototype, item 8), or the flat rock (GL454).
         private bool IsWorkSurface(VoxelMaterial material)
         {
-            return material != null && (boulderMaterials.Contains(material) || material == flatRock);
+            return material != null && (boulderMaterials.Contains(material) || IsClaimMark(material) || material == flatRock);
+        }
+
+        // A claimed boulder's cracks or worked top: only ever on a boulder, so never a loose stone.
+        private bool IsClaimMark(VoxelMaterial material)
+        {
+            return material != null && (material.DisplayName == BoulderWorksites.CrackName || material.DisplayName == BoulderWorksites.WorkedName);
+        }
+
+        /// <summary>Whether a material id is boulder rock, its claim marks included, for finding a boulder's piece (not the flat rock).</summary>
+        public bool IsBoulderRock(byte id)
+        {
+            VoxelMaterial material = worldView != null && worldView.IsReady ? worldView.Config.Materials.Get(id) : null;
+            return material != null && (boulderMaterials.Contains(material) || IsClaimMark(material));
+        }
+
+        /// <summary>Whether a stack can be refined here (the boulder's screen, item 9): a mixed stack, a stone with a mix in it too.</summary>
+        public bool CanRefine(ItemStack stack)
+        {
+            return !stack.IsEmpty && worldView != null && worldView.IsReady && Refining.CanRefine(stack, worldView.Config.Materials);
+        }
+
+        /// <summary>Whether a stack can be knapped into a hand axe here (the boulder's screen, item 9): a stone, mixed or clean.</summary>
+        public bool CanKnap(ItemStack stack)
+        {
+            return !stack.IsEmpty && stack.Item == stone && stack.Count > 0 && handAxe != null && !HandAxeDisabled;
+        }
+
+        /// <summary>
+        /// One refining pass on the boulder screen's input slot (backlog 2026-11-24b item 7): the mix stays in it, purer, and
+        /// what is picked out goes into <paramref name="outputs"/>. False when nothing happened or nothing is left.
+        /// </summary>
+        public bool RefineIn(Inventory input, int slot, Inventory outputs)
+        {
+            return slot >= 0 && slot < input.SlotCount && CanRefine(input[slot]) && RefinePass(input, slot, outputs);
+        }
+
+        /// <summary>Knaps one stone of the boulder screen's input slot into a hand axe in <paramref name="outputs"/> (item 7). False when it can't.</summary>
+        public bool KnapIn(Inventory input, int slot, Inventory outputs)
+        {
+            return slot >= 0 && slot < input.SlotCount && CanKnap(input[slot]) && KnapStone(input, slot, outputs);
+        }
+
+        /// <summary>A stack's quality as the player can read it (a grade word below exact Prospecting).</summary>
+        public string QualityOf(ItemStack stack)
+        {
+            return ProspectReading.QualityAt(stack.Quality, ProspectingLevel);
         }
 
         // The crosshair on the flat rock (GL454), where crushing and refining go two batches a cycle.
@@ -494,7 +575,52 @@ namespace Clube.Game
         /// </summary>
         public bool TryGetAimedBoulder(out Vector3Int boulder)
         {
+            // A boulder is claimed before it can be worked (prototype, item 8); the flat rock needs no claim.
+            return TryGetAimedRock(out boulder, out bool isFlatRock) && (isFlatRock || worksites == null || worksites.IsClaimed(boulder));
+        }
+
+        /// <summary>
+        /// The boulder or flat rock sample under the crosshair within reach, claimed or not; <paramref name="isFlatRock"/>
+        /// says which.
+        /// </summary>
+        public bool TryGetAimedRock(out Vector3Int boulder, out bool isFlatRock)
+        {
+            isFlatRock = false;
+            if (aimFrame == Time.frameCount)
+            {
+                boulder = aimSample;
+                isFlatRock = aimFlat;
+                return aimFound;
+            }
+            aimFrame = Time.frameCount;
+            aimFound = FindAimedRock(out aimSample);
+            boulder = aimSample;
+            if (aimFound)
+            {
+                byte? id = worldView.World.GetMaterial(aimSample);
+                aimFlat = flatRock != null && id.HasValue && worldView.Config.Materials.Get(id.Value) == flatRock;
+            }
+            else
+            {
+                aimFlat = false;
+            }
+            isFlatRock = aimFlat;
+            return aimFound;
+        }
+
+        // The aim, worked out once a frame: several components ask each frame.
+        private int aimFrame = -1;
+        private bool aimFound;
+        private bool aimFlat;
+        private Vector3Int aimSample;
+
+        private bool FindAimedRock(out Vector3Int boulder)
+        {
             boulder = default;
+            if (worldView == null || !worldView.IsReady)
+            {
+                return false;
+            }
             Transform head = player.Head != null ? player.Head : transform;
             if (!worldView.Raycast(new Ray(head.position, head.forward), out WorldHit hit)
                 || (worldView.transform.TransformPoint(hit.Point) - head.position).sqrMagnitude > reach * reach)
@@ -524,7 +650,8 @@ namespace Clube.Game
                     found = sample;
                 }
             }
-            if (!found.HasValue || ToolStrike.IsSmallPiece(world, found.Value, world.GetMaterial(found.Value).Value, loosePieceSize, iso))
+            if (!found.HasValue || (!IsClaimMark(materials.Get(world.GetMaterial(found.Value).Value))
+                && ToolStrike.IsSmallPiece(world, found.Value, world.GetMaterial(found.Value).Value, loosePieceSize, iso)))
             {
                 return false;
             }

@@ -140,6 +140,13 @@ namespace Clube.Game
             {
                 return;
             }
+            // M over the inventory, the field log, a station, a chest or a trader closes it and opens the map (prototype).
+            if (ScreenSwitch.AnyOpen(gameObject, this))
+            {
+                ScreenSwitch.CloseOthers(gameObject, this);
+                Open();
+                return;
+            }
             // One screen at a time.
             if (player != null && (player.IsInMenu || player.MenuClosedThisFrame))
             {

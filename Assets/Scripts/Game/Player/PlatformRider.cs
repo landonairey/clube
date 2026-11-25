@@ -23,6 +23,9 @@ namespace Clube.Game
         // More than this many metres in one frame is a teleport or a respawn, not a ride.
         private const float MostShift = 5f;
 
+        // Metres a standing rider is pressed onto the deck with the carry, to stay grounded.
+        private const float GroundPress = 0.05f;
+
         private PlayerController player;
         private Transform platform;
         private Matrix4x4 lastToLocal;
@@ -44,7 +47,8 @@ namespace Clube.Game
         private void LateUpdate()
         {
             CharacterController body = player.Body;
-            if (!player.enabled || body == null || !body.enabled)
+            // Held (climbing aboard, PlayerBoarding): whatever holds the player moves it.
+            if (!player.enabled || player.Held || body == null || !body.enabled)
             {
                 platform = null;
                 return;
@@ -56,7 +60,13 @@ namespace Clube.Game
                 Vector3 shift = target - position;
                 if (shift.sqrMagnitude > 1e-10f && shift.sqrMagnitude < MostShift * MostShift)
                 {
-                    body.Move(shift);
+                    // The deck moved by its transform since physics last saw it: bring its collider up to date first.
+                    Physics.SyncTransforms();
+                    // This move is the controller's last of the frame, so it sets isGrounded for the next: a player standing
+                    // on the deck is pressed onto it as well, or a rising deck would read as being in the air (walking then
+                    // only steers, and a held Jump doesn't jump).
+                    bool standing = body.isGrounded;
+                    body.Move(standing ? shift + Vector3.down * GroundPress : shift);
                 }
                 float turn = Mathf.DeltaAngle(lastYaw, platform.eulerAngles.y);
                 if (Mathf.Abs(turn) > 1e-4f && Mathf.Abs(turn) < 45f)

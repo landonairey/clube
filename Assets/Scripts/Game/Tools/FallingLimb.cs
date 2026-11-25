@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Clube.Core;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Clube.Game
@@ -40,12 +41,25 @@ namespace Clube.Game
         private float elapsed;
         private bool landed;
         private Quaternion fullTurn;
+        // The limb's voxels still being taken out (a slice a frame); it falls once they're gone.
+        private LimbRemoval removal;
+        private float removalBudget;
+        // Its voxels being put back down after it hit the ground, and where they went.
+        private IEnumerator<int> landing;
+        private readonly List<Vector3Int> landedWood = new List<Vector3Int>();
+        private readonly List<Vector3Int> landedLeaves = new List<Vector3Int>();
+
+        // A falling limb's main-thread time (taking out its voxels, landing) in the profiler, per frame.
+        private static readonly ProfilerMarker UpdateMarker = new ProfilerMarker("FallingLimb.Update");
 
         /// <summary>Starts the fall. <paramref name="origin"/> is where the mesh's corner sits, in the world view's space.</summary>
         public void Begin(
             WorldView view, FelledLimb felled, TreeMaterials treeMaterials, Mesh limbMesh, Vector3 origin, Material[] materials,
-            Vector3Int fallDirection, Material dust, Color dustTint, Material burst, System.Action<List<Vector3Int>, List<Vector3Int>> onLanded = null)
+            Vector3Int fallDirection, Material dust, Color dustTint, Material burst, System.Action<List<Vector3Int>, List<Vector3Int>> onLanded = null,
+            LimbRemoval removing = null, float removalMilliseconds = 3f)
         {
+            removal = removing;
+            removalBudget = removalMilliseconds;
             worldView = view;
             limb = felled;
             trees = treeMaterials;
@@ -68,6 +82,19 @@ namespace Clube.Game
             var meshRenderer = body.gameObject.AddComponent<MeshRenderer>();
             meshRenderer.sharedMaterials = materials;
 
+            if (removal == null || removal.Step(removalBudget))
+            {
+                removal = null;
+                PlanFall();
+            }
+        }
+
+        // Where and how long it falls. Reads the ground round the stump, so only once the limb is out of the world.
+        private void PlanFall()
+        {
+            WorldGrid grid = worldView.World.Grid;
+            WorldView view = worldView;
+
             // Tipped over: what pointed up points along the fall direction.
             Vector3 along = direction;
             fullTurn = Quaternion.AngleAxis(90f, Vector3.Cross(Vector3.up, along));
@@ -83,14 +110,37 @@ namespace Clube.Game
 
         private void Update()
         {
+            using (UpdateMarker.Auto())
+            {
+                Tick();
+            }
+        }
+
+        private void Tick()
+        {
             if (worldView == null || limb == null)
             {
                 Destroy(gameObject);
                 return;
             }
+            if (removal != null)
+            {
+                // Still standing where the tree was, over the voxels being taken out beneath it.
+                if (!removal.Step(removalBudget))
+                {
+                    return;
+                }
+                removal = null;
+                PlanFall();
+            }
             elapsed += Time.deltaTime;
             if (landed)
             {
+                if (landing != null)
+                {
+                    StepLanding(removalBudget);
+                    return;
+                }
                 if (elapsed > duration + Overlap)
                 {
                     Destroy(gameObject);
@@ -112,18 +162,38 @@ namespace Clube.Game
             }
         }
 
+        // Puts it back as voxels, a slice a frame under the dust (a big crown's landing once stalled a frame by 80 ms); the
+        // mesh stays until it's all down.
         private void Land()
         {
             landed = true;
-            var wood = new List<Vector3Int>();
-            var leaves = new List<Vector3Int>();
-            TreeFelling.Land(worldView.World, limb, direction, trees, worldView.Config.IsoLevel, landedWood: wood, landedLeaves: leaves, outward: outward);
-            onLandedCallback?.Invoke(wood, leaves);
+            landedWood.Clear();
+            landedLeaves.Clear();
+            landing = TreeFelling.LandSteps(
+                worldView.World, limb, direction, trees, worldView.Config.IsoLevel, landedWood: landedWood, landedLeaves: landedLeaves,
+                outward: outward).GetEnumerator();
             if (!dustStarted)
             {
                 Dust();
             }
             Burst();
+            StepLanding(removalBudget);
+        }
+
+        private void StepLanding(double milliseconds)
+        {
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            while (watch.Elapsed.TotalMilliseconds < milliseconds)
+            {
+                if (!landing.MoveNext())
+                {
+                    landing = null;
+                    // The overlap counts from here: the landed chunks still have to be drawn.
+                    elapsed = Mathf.Min(elapsed, duration);
+                    onLandedCallback?.Invoke(landedWood, landedLeaves);
+                    return;
+                }
+            }
         }
 
         // A big cloud along where the limb will lie: soft puffs that billow out and up and fade. Thick from the start and
@@ -237,6 +307,15 @@ namespace Clube.Game
 
         private void OnDestroy()
         {
+            // Never leave half a tree standing, or half of one lying (unless the world itself is going).
+            if (worldView != null && worldView.World != null)
+            {
+                removal?.Finish();
+                if (landing != null)
+                {
+                    StepLanding(double.PositiveInfinity);
+                }
+            }
             if (mesh != null)
             {
                 Destroy(mesh);

@@ -107,6 +107,10 @@ namespace Clube.Core
         [SerializeField]
         private Color debugColor = Color.grey;
 
+        [Tooltip("The colour of things made from it that take it as their material (list inventory prototype, item 11: birch, maple and pine sticks), on their icons. Clear (alpha 0): the debug colour.")]
+        [SerializeField]
+        private Color craftedTint = Color.clear;
+
         [Tooltip("How hard it is to extract, relative to dirt = 1: how many hits of a tool it takes to break (GL3): each hit adds the tool's power, and it breaks once that reaches its hardness.")]
         [SerializeField, Min(0f)]
         private float hardness = 1f;
@@ -218,6 +222,34 @@ namespace Clube.Core
 
         public Color DebugColor => debugColor;
 
+        /// <summary>The colour of items made from it that are named by their material (item 11: a birch stick is pale), on their icons.</summary>
+        public Color CraftedTint => craftedTint.a > 0f ? craftedTint : debugColor;
+
+        /// <summary>Sets <see cref="CraftedTint"/>, for materials made in code (tests).</summary>
+        public VoxelMaterial WithCraftedTint(Color tint)
+        {
+            craftedTint = tint;
+            return this;
+        }
+
+        /// <summary>
+        /// Its name as a word before an item's (item 11): "Birch wood" makes a "Birch Stick". A name of several words drops
+        /// its last, the kind of stuff it is; a one-word name stays.
+        /// </summary>
+        public string MaterialWord => ShortName(displayName);
+
+        /// <summary>A name without its last word when it has more than one ("Maple wood" to "Maple", "Alpaca wool" to "Alpaca").</summary>
+        public static string ShortName(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return name;
+            }
+            string trimmed = name.TrimEnd();
+            int space = trimmed.LastIndexOf(' ');
+            return space > 0 ? trimmed.Substring(0, space) : trimmed;
+        }
+
         /// <summary>
         /// GL757: the colour it looks from far off, in linear space as shaders take it: its texture's mean, or its
         /// <see cref="DebugColor"/> without a readable texture. The debug colour is only a marker, far lighter than most textures.
@@ -279,6 +311,12 @@ namespace Clube.Core
 
         /// <summary>True for soft ground (GL39): tools made for hard material only hit one voxel of it.</summary>
         public bool IsSoft => isSoft;
+
+        /// <summary>
+        /// True when tools treat it as wood (item 2): the plants themselves, and the boards a house is built of (the square
+        /// voxels), so a pick is no better at a wall than at a trunk and a hatchet no worse.
+        /// </summary>
+        public bool WorksAsWood => category == VoxelMaterialCategory.Plant || buildsSquare;
 
         /// <summary>Which kind of ground it is (GL114): plants by category, soil when soft, otherwise rock.</summary>
         public MaterialKind Kind => category == VoxelMaterialCategory.Plant ? MaterialKind.Plant : isSoft ? MaterialKind.Soil : MaterialKind.Rock;

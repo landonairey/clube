@@ -51,6 +51,43 @@ namespace Clube.Core
         /// <summary>What each item is made of by volume (GL32), or null for items that are just themselves.</summary>
         public Composition Contents { get; }
 
+        /// <summary>
+        /// The material it's named by (item 11): the main material of an item <see cref="ItemDefinition.NamedByMaterial"/>
+        /// (birch wood for a birch stick), null for any other or when it carries none.
+        /// </summary>
+        public VoxelMaterial NamedMaterial => Item != null && Item.NamedByMaterial ? Composition.MainMaterial(Contents) : null;
+
+        /// <summary>What it's called (item 11): "Birch Stick" for an item named by its material, else the item's name.</summary>
+        public string Name
+        {
+            get
+            {
+                if (Item == null)
+                {
+                    return "";
+                }
+                VoxelMaterial material = NamedMaterial;
+                return material != null ? $"{material.MaterialWord} {Item.DisplayName}" : Item.DisplayName;
+            }
+        }
+
+        /// <summary>
+        /// The colour its icon is drawn in (item 11): an item named by its material takes the material's crafted tint (its
+        /// icon is baked white), or the item's own tint without one; white for everything else, whose icon has its colour.
+        /// </summary>
+        public UnityEngine.Color IconTint
+        {
+            get
+            {
+                if (Item == null || !Item.NamedByMaterial)
+                {
+                    return UnityEngine.Color.white;
+                }
+                VoxelMaterial material = NamedMaterial;
+                return material != null ? material.CraftedTint : Item.IconTint;
+            }
+        }
+
         /// <summary>Hits a tool has taken (GL37); 0 for new tools and for everything that doesn't wear out.</summary>
         public int Wear { get; }
 

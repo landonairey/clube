@@ -17,6 +17,7 @@ MonoBehaviour:
   category: 2
   albedo: {fileID: 2800000, guid: 7d30fa514ef41634e937cd477cdef04a, type: 3}
   debugColor: {r: 0.32, g: 0.23, b: 0.16, a: 1}
+  craftedTint: {r: 0.88, g: 0.66, b: 0.34, a: 1}
   hardness: 2
   drop: {fileID: 11400000, guid: 19b75261872b4e44281a898de0be8aa8, type: 2}
   pileShape: 1

@@ -55,6 +55,7 @@ namespace Clube.Core
 
         // GL803: cells whose tree is made a given kind (and standing), whatever its own roll gave.
         private readonly Dictionary<Vector2Int, int> forcedKinds = new Dictionary<Vector2Int, int>();
+        private readonly Dictionary<Vector2Int, float> forcedSizes = new Dictionary<Vector2Int, float>();
 
         public TreeField(TreeGeneration settings, int seed, ITerrainGenerator generator, StartArea start = null)
         {
@@ -215,12 +216,14 @@ namespace Clube.Core
         /// of other kinds rooted in it are made that kind first, then more are grown in its empty cells. Call before the area's
         /// chunks generate.
         /// </summary>
-        public void EnsureKind(Rect area, int kind, int minTrees)
+        /// <param name="size">Item 8: when above 0, the size those trees grow to against a full-grown one (the parcel's birches are small).</param>
+        public void EnsureKind(Rect area, int kind, int minTrees, float size = -1f)
         {
             StockStartArea();
             int count = CountKind(area, kind);
             var others = new List<Vector2Int>();
             var empty = new List<Vector2Int>();
+            var standing = new List<Vector2Int>();
             ForCellsIn(area, cell =>
             {
                 Tree tree = TreeIn(cell);
@@ -233,7 +236,21 @@ namespace Clube.Core
                 {
                     others.Add(cell);
                 }
+                else
+                {
+                    standing.Add(cell);
+                }
             });
+            if (size > 0f)
+            {
+                // The birches already there that the parcel counts on are made small too.
+                for (int i = 0; i < standing.Count && i < minTrees; i++)
+                {
+                    forcedKinds[standing[i]] = kind;
+                    forcedSizes[standing[i]] = size;
+                    cells.Remove(standing[i]);
+                }
+            }
             foreach (Vector2Int cell in others)
             {
                 if (count >= minTrees)
@@ -241,6 +258,10 @@ namespace Clube.Core
                     return;
                 }
                 forcedKinds[cell] = kind;
+                if (size > 0f)
+                {
+                    forcedSizes[cell] = size;
+                }
                 cells.Remove(cell);
                 count++;
             }
@@ -252,6 +273,10 @@ namespace Clube.Core
                 }
                 forced[cell] = area;
                 forcedKinds[cell] = kind;
+                if (size > 0f)
+                {
+                    forcedSizes[cell] = size;
+                }
                 cells.Remove(cell);
                 if (TreeIn(cell).Parts != null)
                 {
@@ -261,6 +286,7 @@ namespace Clube.Core
                 {
                     forced.Remove(cell);
                     forcedKinds.Remove(cell);
+                    forcedSizes.Remove(cell);
                     cells.Remove(cell);
                 }
             }
@@ -435,7 +461,7 @@ namespace Clube.Core
             scratch.Clear();
             if (forcedKinds.TryGetValue(cell, out int kind))
             {
-                TreeShape.Build(seed, cell, root, settings, scratch, kind);
+                TreeShape.Build(seed, cell, root, settings, scratch, kind, forcedSizes.TryGetValue(cell, out float forcedSize) ? forcedSize : -1f);
             }
             else if (TreeForests.IsFallen(seed, cell, settings))
             {

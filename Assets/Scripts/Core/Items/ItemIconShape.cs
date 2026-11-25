@@ -57,5 +57,8 @@ namespace Clube.Core
 
         /// <summary>Charred branch ends in a pile (GL818): burnt wood, not a stone.</summary>
         Charcoal = 16,
+
+        /// <summary>A coil of rope: twine wound in rings, its loose end hanging.</summary>
+        Coil = 17,
     }
 }

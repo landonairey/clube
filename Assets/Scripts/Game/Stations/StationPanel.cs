@@ -44,6 +44,9 @@ namespace Clube.Game
         private GUIStyle countStyle;
         private Vector2 listScroll;
         private readonly InventoryDrag drag = new InventoryDrag();
+        // The list inventory (prototype): your items as a list to the right of the station.
+        private readonly InventoryListGui itemList = new InventoryListGui();
+        private const float ListWidth = 900f;
         // The station's own rows drag too (GL792): input, output, fuel and the fitted slot, each its own drag.
         private readonly InventoryDrag inputDrag = new InventoryDrag();
         private readonly InventoryDrag outputDrag = new InventoryDrag();
@@ -57,6 +60,9 @@ namespace Clube.Game
         public StationObject Current { get; private set; }
 
         public bool IsOpen => Current != null;
+
+        /// <summary>The key that closes a station's screen (E), shared with the boulder's (<see cref="BoulderPanel"/>).</summary>
+        public InputActionReference CloseAction => closeAction;
 
         private void Awake()
         {
@@ -178,11 +184,26 @@ namespace Clube.Game
             float rightHeight = 34f + 34f + slot + 8f + 60f + fuelRow;
             // The trash slot (GL224) sits in a row under your items.
             float height = Padding * 2f + 32f + rightHeight + 12f + 30f + InventoryGridGui.PlayerHeight(inventory) + InventoryGridGui.RowGap + slot;
+            bool listed = inventory.UsesList;
+            if (listed)
+            {
+                // The station on the left, your items' list on the right: no grid under the station.
+                height = Padding * 2f + 32f + rightHeight + 12f;
+                height = Mathf.Max(height, Mathf.Min(Screen.height - 280f, 900f));
+                width += ListWidth + Padding;
+            }
             var panel = new Rect((Screen.width - width) * 0.5f, Mathf.Max(0f, (Screen.height - height) * 0.5f), width, height);
             panelRect = panel;
             carriedDrag = null;
             carriedRow = null;
-            InventoryGridGui.Panel(panel);
+            if (listed)
+            {
+                InventoryGridGui.SolidPanel(panel);
+            }
+            else
+            {
+                InventoryGridGui.Panel(panel);
+            }
             float x = panel.x + Padding;
             float y = panel.y + Padding;
             // How well it was built and what that works on (GL135): a furnace's heat and yield.
@@ -194,6 +215,12 @@ namespace Clube.Game
             var right = new Rect(x + listWidth + 16f, y, inner - listWidth - 16f, rightHeight);
             DrawActive(right, station, items, out Rect inputSlots, out Rect fuelSlots, out Rect upgradeSlot);
             y += rightHeight + 12f;
+
+            if (listed)
+            {
+                DrawItemList(panel, station, items, inputSlots, fuelSlots, upgradeSlot);
+                return;
+            }
 
             GUI.Label(new Rect(x, y, inner, 28f), "Your items: click to load (Shift half, Ctrl one), drag onto a slot, right-click to split");
             y += 30f;
@@ -223,6 +250,51 @@ namespace Clube.Game
             if (drag.IsDragging)
             {
                 drag.DrawCarried(items);
+            }
+            else if (carriedDrag != null)
+            {
+                carriedDrag.DrawCarried(carriedRow);
+            }
+            else
+            {
+                InventoryGridGui.DrawTooltip();
+            }
+        }
+
+        // The list inventory's half of the screen (prototype): a click loads a stack into the station as the grid's click
+        // did, a drag onto the station's slots loads it there, onto the trash destroys it, and off the screen drops it.
+        private void DrawItemList(Rect panel, CraftingStation station, Inventory items, Rect inputSlots, Rect fuelSlots, Rect upgradeSlot)
+        {
+            float x = panel.xMax - Padding - ListWidth;
+            float y = panel.y + Padding;
+            GUI.Label(new Rect(x, y, ListWidth, 28f), "Your items: click to load (Shift half, Ctrl one), drag onto a slot");
+            y += 32f;
+            const float trashHeight = 52f;
+            var listArea = new Rect(x, y, ListWidth, panel.yMax - Padding - trashHeight - 8f - y);
+            var trash = new Rect(x, listArea.yMax + 8f, ListWidth, trashHeight);
+            itemList.Equipped = inventory.IsEquippedSlot;
+            ListResult picked = itemList.Draw(listArea, items);
+            bool over = itemList.IsDragging && trash.Contains(Event.current.mousePosition);
+            ItemSlotGui.Fill(trash, over ? new Color(0.6f, 0.15f, 0.1f, 0.6f) : new Color(0f, 0f, 0f, 0.35f));
+            GUI.Label(trash, "Trash: drop a stack here to destroy it", new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter });
+            if (picked.Kind == InventoryDragKind.Clicked)
+            {
+                LoadClicked(station, items, picked.Slot, picked.Count);
+            }
+            else if (picked.Kind == InventoryDragKind.DroppedOutside && !InventoryGridGui.Trash(items, picked.AsDrag, trash))
+            {
+                if (!panel.Contains(picked.Position))
+                {
+                    inventory.DropFromSlot(picked.Slot, picked.Count);
+                }
+                else
+                {
+                    DropOnStation(station, items, picked.AsDrag, inputSlots, fuelSlots, upgradeSlot);
+                }
+            }
+            if (itemList.IsDragging)
+            {
+                itemList.DrawCarried(items);
             }
             else if (carriedDrag != null)
             {
@@ -264,6 +336,11 @@ namespace Clube.Game
                 if (recipe.IsInSightFor(station.Learner))
                 {
                     shown++;
+                    // The chosen recipe's row of woods (item 11) takes a row of its own.
+                    if (IsChosen(station, recipe) && station.Choices(recipe).Count > 1)
+                    {
+                        shown++;
+                    }
                 }
             }
             const float rowHeight = 30f;
@@ -286,26 +363,57 @@ namespace Clube.Game
                 }
                 else
                 {
-                    bool chosen = station.Chosen == recipe || (station.Chosen != null && station.Chosen.SwapParent == recipe);
+                    bool chosen = IsChosen(station, recipe);
                     if (GameUi.Button(row, (chosen ? "▶ " : "   ") + name, recipeStyle))
                     {
                         // One entry for every wood (GL858): the variant the player's items can fill is the one made.
                         Recipe variant = chosen ? null : station.VariantFor(recipe, items);
-                        station.Chosen = variant;
-                        if (!chosen)
+                        Choose(station, variant, items);
+                    }
+                    var choices = chosen ? station.Choices(recipe) : null;
+                    if (choices != null && choices.Count > 1)
+                    {
+                        // Item 11: the woods (or wools) it can be made from, one button each; the one in use marked.
+                        y += rowHeight;
+                        float indent = 18f;
+                        float width = (view.width - indent) / choices.Count;
+                        for (int i = 0; i < choices.Count; i++)
                         {
-                            // What the last recipe made goes to the inventory, so it can't block the new one (GL444).
-                            if (!station.Output[0].IsEmpty)
+                            Recipe choice = choices[i];
+                            var cell = new Rect(indent + i * width, y, width - 2f, rowHeight - 4f);
+                            string label = (station.Chosen == choice ? "● " : "") + choice.VariantLabel;
+                            if (GameUi.Button(cell, label) && station.Chosen != choice)
                             {
-                                station.Output.MoveTo(0, items, keepApart: true);
+                                Choose(station, choice, items);
                             }
-                            station.LoadFor(variant, items);
                         }
                     }
                 }
                 y += rowHeight;
             }
             GUI.EndScrollView();
+        }
+
+        // True when the listed recipe, or one of its swap variants, is the one picked.
+        private static bool IsChosen(CraftingStation station, Recipe listed)
+        {
+            return station.Chosen != null && (station.Chosen == listed || station.Chosen.SwapParent == listed);
+        }
+
+        // Picks a recipe (null: any may start) and, for a new pick, clears the output and loads one batch from the player's items.
+        private static void Choose(CraftingStation station, Recipe recipe, Inventory items)
+        {
+            bool changed = station.Chosen != recipe;
+            station.Chosen = recipe;
+            if (recipe != null && changed)
+            {
+                // What the last recipe made goes to the inventory, so it can't block the new one (GL444).
+                if (!station.Output[0].IsEmpty)
+                {
+                    station.Output.MoveTo(0, items, keepApart: true);
+                }
+                station.LoadFor(recipe, items);
+            }
         }
 
         // The right half (GL448): the recipe being made, its inputs, the work and the output, then the fuel. Missing
@@ -321,7 +429,7 @@ namespace Clube.Game
             float x = area.x;
             float y = area.y;
             Recipe shown = station.Chosen ?? station.Upcoming;
-            string title = shown == null ? "Pick a recipe on the left" : shown.Output.Item != null ? shown.Output.Item.DisplayName : "?";
+            string title = shown == null ? "Pick a recipe on the left" : shown.Output.Item != null ? ResultName(station, shown) : "?";
             GUI.Label(new Rect(x, y, area.width, 32f), title, titleStyle);
             y += 34f;
             // What it takes and, for the loaded ore, what it yields (GL127, GL128).
@@ -348,7 +456,7 @@ namespace Clube.Game
             Recipe upcoming = station.Upcoming;
             if (upcoming != null && station.Output[0].IsEmpty)
             {
-                ItemSlotGui.Ghost(new Rect(outputAt.x, outputAt.y, slot, slot), upcoming.Output.Item, upcoming.Output.Count);
+                ItemSlotGui.Ghost(new Rect(outputAt.x, outputAt.y, slot, slot), upcoming.Output.Item, upcoming.Output.Count, station.ResultPreview(upcoming).IconTint);
             }
             y += slot + 8f;
             // Why it can't start: ingredients missing (GL449), or a different result in the output slot (GL61).
@@ -456,6 +564,15 @@ namespace Clube.Game
                 return "?";
             }
             string name = $"{recipe.Output.Count} {recipe.Output.Item.DisplayName}";
+            foreach (Recipe choice in station.Choices(recipe))
+            {
+                if (choice.Output.Item != recipe.Output.Item)
+                {
+                    // Item 11: each wood saws into its own boards, so the entry names what they share: "4 Boards".
+                    string kind = LastWord(recipe.Output.Item.DisplayName);
+                    return $"{recipe.Output.Count} {char.ToUpperInvariant(kind[0])}{kind.Substring(1)}";
+                }
+            }
             foreach (Recipe other in station.ListedRecipes())
             {
                 if (other != recipe && other.Output.Item == recipe.Output.Item && other.IsInSightFor(station.Learner))
@@ -465,6 +582,24 @@ namespace Clube.Game
                 }
             }
             return name;
+        }
+
+        private static string LastWord(string text)
+        {
+            string trimmed = text.TrimEnd();
+            int space = trimmed.LastIndexOf(' ');
+            return space >= 0 ? trimmed.Substring(space + 1) : trimmed;
+        }
+
+        // What the recipe makes, by name (item 11): "Maple Stick" with maple wood loaded or the maple variant picked.
+        private static string ResultName(CraftingStation station, Recipe recipe)
+        {
+            ItemStack preview = station.ResultPreview(recipe);
+            if (preview.NamedMaterial == null && recipe.Output.Item.NamedByMaterial && recipe.VariantLabel.Length > 0)
+            {
+                return $"{recipe.VariantLabel} {recipe.Output.Item.DisplayName}";
+            }
+            return preview.Name;
         }
 
         // A padlock, drawn once (GL450).
@@ -568,7 +703,7 @@ namespace Clube.Game
                 // Let go on a stack of the same item, whatever its quality, it combines with that stack (GL845), as a drag
                 // between your own slots does; anywhere else on the row it loads as before.
                 int target = InventoryGridGui.GridSlotNear(inputRow.position, station.Input, drop.Position, InventoryGridGui.RowGap * 0.5f);
-                if (target >= 0 && Inventory.Combines(station.Input[target], stack.Item))
+                if (target >= 0 && Inventory.Combines(station.Input[target], stack.Item, stack.Contents))
                 {
                     items.MoveToSlot(drop.Slot, station.Input, target, drop.Count);
                     return;
@@ -577,6 +712,20 @@ namespace Clube.Game
             }
             else if (station.BurnsFuel && stack.Item.IsFuel && fuelRow.Contains(drop.Position))
             {
+                // Same as the input row: dropped on a fuel stack of the same item, any quality, it combines with that stack.
+                int fuelAt = -1;
+                for (int i = 0; i < station.Fuel.SlotCount && fuelAt < 0; i++)
+                {
+                    if (Inventory.Combines(station.Fuel[i], stack.Item, stack.Contents))
+                    {
+                        fuelAt = i;
+                    }
+                }
+                if (fuelAt >= 0)
+                {
+                    items.MoveToSlot(drop.Slot, station.Fuel, fuelAt, drop.Count);
+                    return;
+                }
                 items.MoveTo(drop.Slot, station.Fuel, drop.Count);
             }
             else if (station.Upgrades != null && upgradeSlot.Contains(drop.Position) && station.Upgrades.Accepts(0, stack.Item))

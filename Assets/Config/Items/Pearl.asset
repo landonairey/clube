@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b52a02d234816184ab26033bd6eb47c4, type: 3}
   m_Name: Pearl
   m_EditorClassIdentifier: Clube.Core::Clube.Core.ItemDefinition
+  itemType: 7
   id: pearl
   displayName: Pearl
   icon: {fileID: 2800000, guid: e44bfb3d0ae0b8e44b7a08acb44b0e06, type: 3}
@@ -25,6 +26,8 @@ MonoBehaviour:
   fuelQuality: 1
   purityAs: {fileID: 0}
   hidesContents: 0
+  qualityAsGrade: 0
+  contentsAs: {fileID: 0}
   ingotForm: {fileID: 0}
   upgrade:
     Station: 4

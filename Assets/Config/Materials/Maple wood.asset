@@ -17,6 +17,7 @@ MonoBehaviour:
   category: 2
   albedo: {fileID: 2800000, guid: 92032cbdcd3390d4c95f46f7ab11e79c, type: 3}
   debugColor: {r: 0.38, g: 0.22, b: 0.12, a: 1}
+  craftedTint: {r: 0.7, g: 0.38, b: 0.24, a: 1}
   hardness: 2
   drop: {fileID: 11400000, guid: 8864539802b2d884296933ec2cccedf1, type: 2}
   pileShape: 1
@@ -26,7 +27,14 @@ MonoBehaviour:
   toolTier: 3
   requiredSkill: 2
   requiredLevel: 3
+  windSway: 0
+  fallenForm: {fileID: 0}
+  shine: 0
+  sketchStyle: 0
+  fall: 0
+  stabilityLoss: 100
   breaksInto: {fileID: 0}
+  buildsSquare: 0
   isWorktop: 0
   isSoft: 0
   driesInto: {fileID: 0}
