@@ -89,8 +89,11 @@ namespace Clube.Core
         /// <summary>The share of a fair price added to what they sell, and taken off what they pay: 0.9 at 10, 0 at 100.</summary>
         public float Markup => (Max - Effective) / (float)Max;
 
-        /// <summary>The share of an item's listed price they pay for it: 0.1 at 10, 1 at 100.</summary>
-        public float PayShare => 1f - Markup;
+        /// <summary>
+        /// The share of an item's listed price they pay for it: itemValue - (100 - Disposition)/2 read as a percentage, so
+        /// 0.5 at 0, 0.55 at 10, 1 at 100.
+        /// </summary>
+        public float PayShare => 1f - Markup * 0.5f;
 
         /// <summary>What they ask for something listed at <paramref name="coins"/>, in whole coins, rounded up.</summary>
         public int SellingPrice(int coins)

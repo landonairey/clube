@@ -185,48 +185,34 @@ namespace Clube.Debug.Editor
             var serialized = new SerializedObject(item);
             serialized.FindProperty("id").stringValue = "workbench";
             serialized.FindProperty("displayName").stringValue = "Workbench";
+            serialized.FindProperty("iconShape").enumValueIndex = (int)ItemIconShape.Painted;
             serialized.FindProperty("icon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Texture2D>(Icon);
             serialized.FindProperty("prefab").objectReferenceValue = AssetDatabase.LoadAssetAtPath<GameObject>(Prefab);
             serialized.ApplyModifiedPropertiesWithoutUndo();
             return item;
         }
 
-        // A plain icon: a plank-topped table on four legs, outlined.
+        // The icon is a picture of the table itself (item 12): its samples as 0.25 m boards, drawn with the icon renderer,
+        // and marked Painted so the model baker leaves it alone.
         private static void PaintIcon()
         {
-            const int size = 128;
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            var wood = new Color(0.66f, 0.47f, 0.28f);
-            var dark = new Color(0.36f, 0.24f, 0.13f);
-            var outline = new Color(0.12f, 0.08f, 0.05f);
-            for (int y = 0; y < size; y++)
+            var builder = new LowPolyMeshBuilder();
+            var top = new Color(0.66f, 0.47f, 0.28f);
+            var leg = new Color(0.5f, 0.35f, 0.2f);
+            foreach (Vector3Int part in Parts())
             {
-                for (int x = 0; x < size; x++)
-                {
-                    bool top = x >= 12 && x <= 115 && y >= 66 && y <= 86;
-                    bool topEdge = top && (x <= 14 || x >= 113 || y <= 68 || y >= 84);
-                    bool plankLine = top && (y == 76 || x == 46 || x == 81) && !topEdge;
-                    bool leg = y >= 22 && y < 66 && ((x >= 20 && x <= 31) || (x >= 96 && x <= 107));
-                    bool legEdge = leg && (x == 20 || x == 31 || x == 96 || x == 107 || y <= 24);
-                    bool rail = y >= 40 && y <= 46 && x > 31 && x < 96;
-                    Color colour = Color.clear;
-                    if (topEdge || legEdge || plankLine)
-                    {
-                        colour = outline;
-                    }
-                    else if (top)
-                    {
-                        colour = wood;
-                    }
-                    else if (leg || rail)
-                    {
-                        colour = dark;
-                    }
-                    texture.SetPixel(x, y, colour);
-                }
+                builder.Box((new Vector3(part.x, part.y, part.z) + new Vector3(0.5f, 0.5f, 0.5f)) * 0.25f, Vector3.one * 0.25f, Quaternion.identity,
+                    part.y >= LegHeight ? top : leg);
             }
-            File.WriteAllBytes(Icon, texture.EncodeToPNG());
-            Object.DestroyImmediate(texture);
+            UnityEngine.Mesh mesh = builder.Make("Workbench icon");
+            Texture2D picture;
+            using (var renderer = new ItemIconRenderer())
+            {
+                picture = renderer.Render(new ItemIconModel(mesh, null, null, Color.white, Quaternion.identity, IconFraming.ThreeQuarter), ItemIconBaker.Size);
+            }
+            Object.DestroyImmediate(mesh);
+            File.WriteAllBytes(Icon, picture.EncodeToPNG());
+            Object.DestroyImmediate(picture);
             AssetDatabase.ImportAsset(Icon);
             var importer = (TextureImporter)AssetImporter.GetAtPath(Icon);
             importer.alphaIsTransparency = true;

@@ -203,7 +203,7 @@ namespace Clube.Game
         private void Rebuild(Inventory items)
         {
             Func<int, float> value = Value ?? (slot => ListColumns.ValueOf(items[slot]));
-            rows = InventoryListing.Build(items, slot => Shows(items, slot), value, slot => ListColumns.QualityOf(items[slot]), expanded, sort, descending, Equipped);
+            rows = InventoryListing.Build(items, slot => Shows(items, slot), value, slot => ListColumns.QualityOf(items[slot]), expanded, sort, descending, Equipped, slot => ListColumns.SortQualityOf(items[slot]));
         }
 
         private int RowAt(Rect list, Vector2 point)

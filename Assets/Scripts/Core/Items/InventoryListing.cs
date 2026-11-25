@@ -18,8 +18,9 @@ namespace Clube.Core
     /// </summary>
     public sealed class ListRow
     {
-        internal ListRow(ItemDefinition item, List<int> slots, bool isCollection, bool isChild, float value, float quality, float amount, bool expanded, bool equipped)
+        internal ListRow(ItemDefinition item, List<int> slots, bool isCollection, bool isChild, float value, float quality, float amount, bool expanded, bool equipped, float sortQuality = float.NaN)
         {
+            SortQuality = float.IsNaN(sortQuality) ? quality : sortQuality;
             Item = item;
             Slots = slots;
             IsCollection = isCollection;
@@ -51,6 +52,9 @@ namespace Clube.Core
         /// <summary>Quality as a fraction; a collection's is the average over its items, by amount.</summary>
         public float Quality { get; }
 
+        /// <summary>What Qual sorts by: Quality, except word grades stand in as the midpoint of their range (item 14).</summary>
+        public float SortQuality { get; }
+
         /// <summary>How many: a stack's amount, or the collection's total.</summary>
         public float Amount { get; }
 
@@ -74,7 +78,7 @@ namespace Clube.Core
         /// <param name="expanded">Items whose collection is shown opened.</param>
         /// <param name="equipped">Which slots are equipped; null for none.</param>
         public static List<ListRow> Build(Inventory items, Func<int, bool> include, Func<int, float> value, Func<int, float> quality,
-            ICollection<ItemDefinition> expanded, ListSort sort, bool descending, Func<int, bool> equipped = null)
+            ICollection<ItemDefinition> expanded, ListSort sort, bool descending, Func<int, bool> equipped = null, Func<int, float> sortQuality = null)
         {
             var groups = new Dictionary<ItemDefinition, List<int>>();
             var order = new List<ItemDefinition>();
@@ -101,10 +105,10 @@ namespace Clube.Core
                 List<int> slots = groups[item];
                 if (slots.Count == 1)
                 {
-                    tops.Add(Single(items, slots[0], value, quality, equipped, false));
+                    tops.Add(Single(items, slots[0], value, quality, sortQuality, equipped, false));
                     continue;
                 }
-                float total = 0f, coins = 0f, made = 0f;
+                float total = 0f, coins = 0f, made = 0f, madeSort = 0f;
                 bool anyEquipped = false;
                 var rows = new List<ListRow>(slots.Count);
                 foreach (int slot in slots)
@@ -113,12 +117,13 @@ namespace Clube.Core
                     total += amount;
                     coins += value(slot) * amount;
                     made += quality(slot) * amount;
+                    madeSort += (sortQuality ?? quality)(slot) * amount;
                     anyEquipped |= equipped != null && equipped(slot);
-                    rows.Add(Single(items, slot, value, quality, equipped, true));
+                    rows.Add(Single(items, slot, value, quality, sortQuality, equipped, true));
                 }
                 bool open = expanded != null && expanded.Contains(item);
                 float share = total > 0f ? 1f / total : 0f;
-                var collection = new ListRow(item, slots, true, false, coins * share, made * share, total, open, anyEquipped);
+                var collection = new ListRow(item, slots, true, false, coins * share, made * share, total, open, anyEquipped, madeSort * share);
                 tops.Add(collection);
                 if (open)
                 {
@@ -140,10 +145,10 @@ namespace Clube.Core
             return result;
         }
 
-        private static ListRow Single(Inventory items, int slot, Func<int, float> value, Func<int, float> quality, Func<int, bool> equipped, bool child)
+        private static ListRow Single(Inventory items, int slot, Func<int, float> value, Func<int, float> quality, Func<int, float> sortQuality, Func<int, bool> equipped, bool child)
         {
             return new ListRow(items[slot].Item, new List<int> { slot }, false, child, value(slot), quality(slot), items[slot].Amount, false,
-                equipped != null && equipped(slot));
+                equipped != null && equipped(slot), sortQuality != null ? sortQuality(slot) : float.NaN);
         }
 
         // Ties fall back to the name, then the slot, so the order never jumps between frames.
@@ -152,7 +157,7 @@ namespace Clube.Core
             int by = sort switch
             {
                 ListSort.Value => a.Value.CompareTo(b.Value),
-                ListSort.Quality => a.Quality.CompareTo(b.Quality),
+                ListSort.Quality => a.SortQuality.CompareTo(b.SortQuality),
                 ListSort.Quantity => a.Amount.CompareTo(b.Amount),
                 _ => string.Compare(a.Item.DisplayName, b.Item.DisplayName, StringComparison.OrdinalIgnoreCase),
             };

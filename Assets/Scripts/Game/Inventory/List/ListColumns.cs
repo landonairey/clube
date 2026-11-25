@@ -41,6 +41,27 @@ namespace Clube.Game
             return stack.Quality;
         }
 
+        /// <summary>
+        /// What Qual sorts by (item 14): a stack shown as a word grade stands in as the midpoint of its range (Pure 100%, High
+        /// 94.5%, Good 82%, Medium 62%, Poor 24.5%), among stacks with a % quality.
+        /// </summary>
+        public static float SortQualityOf(ItemStack stack)
+        {
+            float quality = QualityOf(stack);
+            if (stack.IsEmpty || stack.Item is ToolDefinition || !(ItemSlotGui.ReadsAsGrades(stack) || stack.Item.QualityAsGrade))
+            {
+                return quality;
+            }
+            switch (ProspectReading.GradeOf(quality))
+            {
+                case Grade.Pure: return 1f;
+                case Grade.HighGrade: return 0.945f;
+                case Grade.Good: return 0.82f;
+                case Grade.Medium: return 0.62f;
+                default: return 0.245f;
+            }
+        }
+
         /// <summary>A row's Qual text and its colour: a stack's corner label (grades below Prospecting 10), a collection's average.</summary>
         public static string QualityLabel(ListRow row, Inventory items, out Color colour)
         {

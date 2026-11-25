@@ -156,9 +156,9 @@ namespace Clube.Core
                 case ReachOn.Soft:
                     return aimed != null && aimed.IsSoft;
                 case ReachOn.Hard:
-                    return aimed == null || (!aimed.IsSoft && aimed.Category != VoxelMaterialCategory.Plant);
+                    return aimed == null || (!aimed.IsSoft && !aimed.WorksAsWood);
                 case ReachOn.Wood:
-                    return aimed != null && aimed.Category == VoxelMaterialCategory.Plant;
+                    return aimed != null && aimed.WorksAsWood;
                 default:
                     return true;
             }

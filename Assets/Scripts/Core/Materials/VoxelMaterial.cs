@@ -312,6 +312,12 @@ namespace Clube.Core
         /// <summary>True for soft ground (GL39): tools made for hard material only hit one voxel of it.</summary>
         public bool IsSoft => isSoft;
 
+        /// <summary>
+        /// True when tools treat it as wood (item 2): the plants themselves, and the boards a house is built of (the square
+        /// voxels), so a pick is no better at a wall than at a trunk and a hatchet no worse.
+        /// </summary>
+        public bool WorksAsWood => category == VoxelMaterialCategory.Plant || buildsSquare;
+
         /// <summary>Which kind of ground it is (GL114): plants by category, soil when soft, otherwise rock.</summary>
         public MaterialKind Kind => category == VoxelMaterialCategory.Plant ? MaterialKind.Plant : isSoft ? MaterialKind.Soil : MaterialKind.Rock;
 
