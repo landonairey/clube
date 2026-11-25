@@ -6,9 +6,9 @@ namespace Clube.Core
 {
     /// <summary>
     /// Claiming a stump or a boulder before it can be worked (prototype, backlog 2026-11-24 item 8). A claim is written
-    /// into the terrain itself, as making a Flat Rock is (GL88), so it is saved with the chunks: a claimed stump gets a
-    /// flat top and two bands of twine round it, one higher and one lower; a claimed boulder gets cracks down its sides
-    /// and a lighter worked stone on its top. Whether a piece is claimed is read back from those materials.
+    /// into the terrain itself, as making a Flat Rock is (GL88), so it is saved with the chunks: a claimed stump keeps its
+    /// wood and gets a row of twine (bark with loops of twine in its texture) round its middle; a claimed boulder gets a few thin cracks down
+    /// one side and a gently lighter worked patch in the middle of its top (backlog 2026-11-24b items 6 and 13). Whether a piece is claimed is read back from those materials.
     /// </summary>
     public static class WorksiteClaim
     {
@@ -43,8 +43,10 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Claims a stump, given its samples: everything over its lowest column top is cleared so the top is flat, and the
-        /// outside samples of two rows, a third and two thirds of the way up from the ground, take the twine material.
+        /// Claims a stump, given its samples (backlog 2026-11-24b item 13): the wood is left as it is, and the outside samples
+        /// of one row, halfway up from the ground to the lowest column top, take the twine material, whose texture is bark
+        /// with thin loops of twine round it. One row only: the terrain blends a sample's material over its neighbours, so
+        /// a row is already a band about half a metre tall, most of a stump's height.
         /// </summary>
         public static void ClaimStump(World world, IReadOnlyCollection<Vector3Int> piece, float iso, byte twine)
         {
@@ -64,31 +66,16 @@ namespace Clube.Core
             {
                 return;
             }
-            // The flat top: the lowest column top, but never so low that the bands have no room.
-            int flat = int.MaxValue;
+            // The loops stay under the lowest column top, so none hangs past a slanted top.
+            int lowestTop = int.MaxValue;
             foreach (int top in tops.Values)
             {
-                flat = Mathf.Min(flat, top);
+                lowestTop = Mathf.Min(lowestTop, top);
             }
-            int highest = int.MinValue;
-            foreach (int top in tops.Values)
-            {
-                highest = Mathf.Max(highest, top);
-            }
-            flat = Mathf.Clamp(Mathf.Max(flat, ground + 3), ground, highest);
+            int row = Mathf.Min(lowestTop, ground + Mathf.Max(1, (lowestTop - ground) / 2));
             foreach (Vector3Int sample in piece)
             {
-                if (sample.y > flat)
-                {
-                    world.SetDensity(sample, 0f);
-                }
-            }
-            int height = flat - ground;
-            int low = ground + Mathf.Max(1, height / 3);
-            int high = Mathf.Max(low + 1, ground + (height * 2) / 3);
-            foreach (Vector3Int sample in piece)
-            {
-                if ((sample.y == low || sample.y == high) && sample.y < flat && IsOpenAcross(world, sample, iso))
+                if (sample.y == row && IsOpenAcross(world, sample, iso))
                 {
                     world.SetMaterial(sample, twine);
                 }
@@ -131,62 +118,162 @@ namespace Clube.Core
         }
 
         /// <summary>
-        /// Claims a boulder, given its samples: the outside samples open to the sky become worked stone (its working
-        /// surface), and outside samples on two crossing sets of slanted lines down its sides become cracks.
+        /// Claims a boulder, given its samples (backlog 2026-11-24b item 6): only the middle of its top becomes worked stone,
+        /// a gently lighter working surface, and a few thin cracks run down the side facing <paramref name="toward"/> (x, z),
+        /// after the boulder sketch in the hand-axe quest (<c>PlaceSketch.Boulder</c>): one crack from the top edge that
+        /// forks halfway down, and two short ledges beside it. The crack material is stone with a hairline in it, so a
+        /// crack sample reads as a slight crack, not a dark band.
         /// </summary>
-        public static void ClaimBoulder(World world, List<Vector3Int> piece, float iso, byte crack, byte worked)
+        public static void ClaimBoulder(World world, List<Vector3Int> piece, float iso, byte crack, byte worked, Vector2 toward = default)
         {
-            // The sides (outside, not open to the sky), and which of the crack lines' offsets crosses most of them: a
-            // small, half-buried boulder has only a few side samples, and they must still show a crack.
+            // The outside samples: the top (open to the sky) and the sides.
+            var tops = new List<Vector3Int>();
             var sides = new List<Vector3Int>();
-            var counts = new int[CrackSpacing];
+            Vector2 centre = Vector2.zero;
+            int highest = int.MinValue, lowest = int.MaxValue;
             foreach (Vector3Int sample in piece)
             {
                 if (!IsExposed(world, sample, iso))
                 {
                     continue;
                 }
-                if (IsOpen(world, sample + Vector3Int.up, iso))
-                {
-                    world.SetMaterial(sample, worked);
-                    continue;
-                }
-                sides.Add(sample);
-                counts[Mod(sample.x + sample.y + sample.z, CrackSpacing)]++;
+                (IsOpen(world, sample + Vector3Int.up, iso) ? tops : sides).Add(sample);
+                centre += new Vector2(sample.x, sample.z);
+                highest = Mathf.Max(highest, sample.y);
+                lowest = Mathf.Min(lowest, sample.y);
             }
-            int offset = 0;
-            for (int i = 1; i < CrackSpacing; i++)
+            int outside = tops.Count + sides.Count;
+            if (outside == 0)
             {
-                if (counts[i] > counts[offset])
-                {
-                    offset = i;
-                }
+                return;
+            }
+            centre /= outside;
+            float reach = 0f;
+            foreach (Vector3Int sample in tops)
+            {
+                reach = Mathf.Max(reach, Vector2.Distance(new Vector2(sample.x, sample.z), centre));
             }
             foreach (Vector3Int sample in sides)
             {
-                if (IsCrack(sample, offset))
+                reach = Mathf.Max(reach, Vector2.Distance(new Vector2(sample.x, sample.z), centre));
+            }
+
+            // The worked top: the highest top samples near the middle, never the edges.
+            float middle = Mathf.Max(1f, reach * WorkedShare);
+            bool anyWorked = false;
+            foreach (Vector3Int sample in tops)
+            {
+                if (sample.y >= highest - 2 && Vector2.Distance(new Vector2(sample.x, sample.z), centre) <= middle)
+                {
+                    world.SetMaterial(sample, worked);
+                    anyWorked = true;
+                }
+            }
+            if (!anyWorked && tops.Count > 0)
+            {
+                // A boulder with no top sample near its middle: the highest one.
+                Vector3Int best = tops[0];
+                foreach (Vector3Int sample in tops)
+                {
+                    if (sample.y > best.y)
+                    {
+                        best = sample;
+                    }
+                }
+                world.SetMaterial(best, worked);
+            }
+
+            // The cracks, on the side facing the claimer: down the sides and over the top's edge, never across the worked
+            // middle. On a rounded boulder most of the upper shell is open to the sky, so the top edge carries the crack's start.
+            var outer = new List<Vector3Int>(sides);
+            foreach (Vector3Int sample in tops)
+            {
+                if (world.GetMaterial(sample) != worked)
+                {
+                    outer.Add(sample);
+                }
+            }
+            float facing = toward.sqrMagnitude > 0f ? Mathf.Atan2(toward.y, toward.x) * Mathf.Rad2Deg : 0f;
+            float span = Mathf.Max(1f, highest - lowest);
+            Vector3Int nearest = outer.Count > 0 ? outer[0] : default;
+            float nearestGap = float.PositiveInfinity;
+            bool anyCrack = false;
+            foreach (Vector3Int sample in outer)
+            {
+                Vector2 flat = new Vector2(sample.x, sample.z) - centre;
+                float radius = flat.magnitude;
+                float angle = Mathf.DeltaAngle(facing, Mathf.Atan2(flat.y, flat.x) * Mathf.Rad2Deg) * Mathf.Deg2Rad;
+                float height = (sample.y - lowest) / span;
+                if (IsCrack(angle, height, radius, span))
                 {
                     world.SetMaterial(sample, crack);
+                    anyCrack = true;
                 }
+                float gap = Mathf.Abs(angle) + Mathf.Abs(height - 0.6f);
+                if (gap < nearestGap)
+                {
+                    nearestGap = gap;
+                    nearest = sample;
+                }
+            }
+            if (!anyCrack && outer.Count > 0)
+            {
+                // A small, half-buried boulder whose few side samples miss the lines: one crack facing the claimer.
+                world.SetMaterial(nearest, crack);
             }
         }
 
-        // Samples between crack lines.
-        private const int CrackSpacing = 4;
+        // How far out from the middle of a boulder's top the worked stone reaches, as a share of the boulder's half-width.
+        private const float WorkedShare = 0.35f;
+
+        // Half a crack's width, in samples.
+        private const float CrackHalfWidth = 0.75f;
+
+        // The cracks running down, as (height from, angle at it, height to, angle at it): height 0 at the ground and 1 at the
+        // top, angle in radians round the boulder from the side facing the claimer. After the sketch: a crack from the top
+        // edge to halfway, forking into a longer and a shorter branch.
+        private static readonly Vector4[] CrackLines =
+        {
+            new Vector4(1.0f, -0.05f, 0.62f, 0.05f),
+            new Vector4(0.62f, 0.05f, 0.3f, -0.1f),
+            new Vector4(0.62f, 0.05f, 0.42f, 0.4f),
+        };
+
+        // The ledges running across, as (height, angle from, angle to): two short ones to either side of the crack.
+        private static readonly Vector3[] Ledges =
+        {
+            new Vector3(0.55f, -0.8f, -0.4f),
+            new Vector3(0.35f, 0.75f, 1.1f),
+        };
 
         /// <summary>
-        /// Whether a side sample lies on a crack line: slanted planes <see cref="CrackSpacing"/> samples apart (a metre),
-        /// shifted by <paramref name="offset"/>, and a sparser crossing set.
+        /// Whether a side sample lies on one of the crack lines or ledges: within about half a sample of one, measured round
+        /// the boulder (<paramref name="angle"/>, radians from the side facing the claimer, times <paramref name="radius"/>)
+        /// or up it (<paramref name="height"/>, 0 at the ground and 1 at the top, <paramref name="span"/> samples apart).
         /// </summary>
-        public static bool IsCrack(Vector3Int sample, int offset)
+        public static bool IsCrack(float angle, float height, float radius, float span)
         {
-            return Mod(sample.x + sample.y + sample.z, CrackSpacing) == offset || Mod(sample.x - sample.z - 2 * sample.y, 13) == 0;
-        }
-
-        private static int Mod(int value, int by)
-        {
-            int left = value % by;
-            return left < 0 ? left + by : left;
+            float round = Mathf.Max(radius, 1f);
+            foreach (Vector4 line in CrackLines)
+            {
+                if (height > line.x + 0.04f || height < line.z - 0.04f)
+                {
+                    continue;
+                }
+                float along = Mathf.Clamp01((line.x - height) / (line.x - line.z));
+                if (Mathf.Abs(angle - Mathf.Lerp(line.y, line.w, along)) * round <= CrackHalfWidth)
+                {
+                    return true;
+                }
+            }
+            foreach (Vector3 ledge in Ledges)
+            {
+                if (angle >= ledge.y && angle <= ledge.z && Mathf.Abs(height - ledge.x) * span <= 0.5f)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private static bool IsRock(World world, Vector3Int sample, float iso, Func<byte, bool> isRock)

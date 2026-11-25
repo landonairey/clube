@@ -251,9 +251,12 @@ namespace Clube.Game
         private int ProspectingLevel => skills != null ? skills.Skills.Level(SkillType.Prospecting) : 0;
 
         // One pass, false when there was nothing to refine or nothing is left: the stack keeps its slot, smaller and purer; what came out goes back as stacks of its own materials.
-        private bool RefinePass(int slot)
+        private bool RefinePass(int slot) => RefinePass(inventory.Inventory, slot, null);
+
+        // The same on a slot of any inventory (the boulder screen's input slot, backlog 2026-11-24b item 7): what comes out goes
+        // into <paramref name="outputs"/>, a stack of its own per material, or to the player's items without them.
+        private bool RefinePass(Inventory items, int slot, Inventory outputs)
         {
-            Inventory items = inventory.Inventory;
             MaterialRegistry materials = worldView.Config.Materials;
             ItemStack held = items[slot];
             if (held.IsEmpty || !Refining.CanRefine(held, materials))
@@ -289,7 +292,13 @@ namespace Clube.Game
                     drop = CrushedFormOf(drop);
                 }
                 int whole = (int)(picked.Fraction + 1e-4f);
-                inventory.GiveOrDrop(drop, whole, Composition.From(new Content(picked.Material, 1f)), 0, 1f, Mathf.Max(0f, picked.Fraction - whole));
+                Composition contents = Composition.From(new Content(picked.Material, 1f));
+                float part = Mathf.Max(0f, picked.Fraction - whole);
+                if (outputs != null && outputs.Add(drop, whole, contents, 0, 1f, part) == 0)
+                {
+                    continue;
+                }
+                inventory.GiveOrDrop(drop, whole, contents, 0, 1f, part);
                 inventory.Notify(drop, picked.Fraction);
             }
             Message?.Invoke(refined.IsEmpty
@@ -423,9 +432,12 @@ namespace Clube.Game
         }
 
         // One stone off the stack becomes a hand axe, mixed or clean; its durability comes from the stone's grade (GL794).
-        private bool KnapStone(int slot)
+        private bool KnapStone(int slot) => KnapStone(inventory.Inventory, slot, null);
+
+        // The same from a slot of any inventory, the hand axe going into <paramref name="outputs"/> when given (item 7).
+        private bool KnapStone(Inventory items, int slot, Inventory outputs)
         {
-            ItemStack held = inventory.Inventory[slot];
+            ItemStack held = items[slot];
             MaterialRegistry materials = worldView != null && worldView.Config != null ? worldView.Config.Materials : null;
             float purity = held.Quality;
             if (purity >= 0.995f && purity <= 1.005f && held.Contents != null && materials != null)
@@ -433,8 +445,11 @@ namespace Clube.Game
                 purity = materials.Quality(held.Contents, held.Item);
             }
             float durability = ToolDurability.FromGrade(purity, handAxeDurabilityByGrade);
-            inventory.Inventory.RemoveAt(slot, 1);
-            inventory.GiveOrDrop(handAxe, 1, null, 0, durability);
+            items.RemoveAt(slot, 1);
+            if (outputs == null || outputs.Add(handAxe, 1, null, 0, durability) > 0)
+            {
+                inventory.GiveOrDrop(handAxe, 1, null, 0, durability);
+            }
             skills?.Skills.Award(SkillType.Crafting, handAxeExperience);
             Message?.Invoke($"Knocked the stone into a {handAxe.DisplayName.ToLowerInvariant()}");
             HandAxeMade?.Invoke();
@@ -522,16 +537,19 @@ namespace Clube.Game
             return !stack.IsEmpty && stack.Item == stone && stack.Count > 0 && handAxe != null && !HandAxeDisabled;
         }
 
-        /// <summary>One refining pass on a slot's stack, from the boulder's screen (item 9). False when nothing happened.</summary>
-        public bool RefineAt(int slot)
+        /// <summary>
+        /// One refining pass on the boulder screen's input slot (backlog 2026-11-24b item 7): the mix stays in it, purer, and
+        /// what is picked out goes into <paramref name="outputs"/>. False when nothing happened or nothing is left.
+        /// </summary>
+        public bool RefineIn(Inventory input, int slot, Inventory outputs)
         {
-            return slot >= 0 && slot < inventory.Inventory.SlotCount && CanRefine(inventory.Inventory[slot]) && RefinePass(slot);
+            return slot >= 0 && slot < input.SlotCount && CanRefine(input[slot]) && RefinePass(input, slot, outputs);
         }
 
-        /// <summary>Knaps one stone of a slot into a hand axe, from the boulder's screen (item 9). False when it can't.</summary>
-        public bool KnapAt(int slot)
+        /// <summary>Knaps one stone of the boulder screen's input slot into a hand axe in <paramref name="outputs"/> (item 7). False when it can't.</summary>
+        public bool KnapIn(Inventory input, int slot, Inventory outputs)
         {
-            return slot >= 0 && slot < inventory.Inventory.SlotCount && CanKnap(inventory.Inventory[slot]) && KnapStone(slot);
+            return slot >= 0 && slot < input.SlotCount && CanKnap(input[slot]) && KnapStone(input, slot, outputs);
         }
 
         /// <summary>A stack's quality as the player can read it (a grade word below exact Prospecting).</summary>

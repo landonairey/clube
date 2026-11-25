@@ -14,12 +14,18 @@ namespace Clube.Game
         private InputActionReference placeAction;
         private PlayerController player;
         private PlayerInteractor interactor;
+        private PlayerToolUser tools;
         private int claimedFrame = -1;
         private string notice;
         private float noticeUntil;
 
-        /// <summary>True when Place would claim something this frame: an unclaimed stump or boulder is targeted.</summary>
-        public bool CanClaim => interactor != null && interactor.enabled && interactor.Target is UnclaimedWorksite;
+        /// <summary>
+        /// True when Place would claim something this frame: an unclaimed stump or boulder is targeted and no tool is in
+        /// hand (an empty hand or a non-tool item, such as a stone). With a pick, axe or other tool, its own use comes first
+        /// (backlog 2026-11-24b item 1).
+        /// </summary>
+        public bool CanClaim => interactor != null && interactor.enabled && interactor.Target is UnclaimedWorksite
+            && (tools == null || !tools.HoldsTool);
 
         /// <summary>True on the frame a claim was made, so the same right click does nothing else.</summary>
         public bool ClaimedThisFrame => claimedFrame == Time.frameCount;
@@ -35,6 +41,7 @@ namespace Clube.Game
         {
             player = GetComponent<PlayerController>();
             interactor = GetComponent<PlayerInteractor>();
+            tools = GetComponent<PlayerToolUser>();
         }
 
         private void OnEnable()
@@ -53,7 +60,7 @@ namespace Clube.Game
             {
                 return;
             }
-            if (interactor != null && interactor.Target is UnclaimedWorksite site)
+            if (CanClaim && interactor.Target is UnclaimedWorksite site)
             {
                 site.Claim();
                 claimedFrame = Time.frameCount;

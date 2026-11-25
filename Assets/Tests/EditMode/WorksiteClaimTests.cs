@@ -16,7 +16,7 @@ namespace Clube.Core.Tests
         private const byte Worked = 44;
 
         [Test]
-        public void ClaimStump_FlattensTheTopAndWrapsTwoBands()
+        public void ClaimStump_KeepsTheWoodAndWrapsItsMiddle()
         {
             World world = EmptyWorld();
             var piece = new List<Vector3Int>();
@@ -24,7 +24,7 @@ namespace Clube.Core.Tests
             {
                 for (int x = 3; x <= 4; x++)
                 {
-                    // One column stands higher: the flat top cuts it down to the others.
+                    // One column stands higher: it is left as it is (backlog 2026-11-24b item 13).
                     int top = x == 4 && z == 4 ? 8 : 7;
                     for (int y = 1; y <= top; y++)
                     {
@@ -39,8 +39,8 @@ namespace Clube.Core.Tests
 
             WorksiteClaim.ClaimStump(world, piece, Iso, Twine);
 
-            Assert.Less(world.GetDensity(new Vector3Int(4, 8, 4)).Value, Iso, "The high column is cut to the flat top.");
-            Assert.GreaterOrEqual(world.GetDensity(new Vector3Int(4, 7, 4)).Value, Iso);
+            Assert.GreaterOrEqual(world.GetDensity(new Vector3Int(4, 8, 4)).Value, Iso, "The wood is not cut.");
+            Assert.AreEqual(Wood, world.GetMaterial(new Vector3Int(4, 8, 4)), "The top keeps its wood.");
             var bands = new HashSet<int>();
             foreach (Vector3Int sample in piece)
             {
@@ -49,7 +49,8 @@ namespace Clube.Core.Tests
                     bands.Add(sample.y);
                 }
             }
-            Assert.AreEqual(2, bands.Count, "A higher and a lower band of twine.");
+            Assert.AreEqual(1, bands.Count, "One row of twine (bark with loops of twine in its texture).");
+            Assert.IsTrue(bands.Contains(4), "Halfway up the stump.");
             Assert.IsTrue(WorksiteClaim.IsClaimed(world, piece, Twine, Twine));
         }
 
@@ -74,9 +75,10 @@ namespace Clube.Core.Tests
             Assert.AreEqual(216, piece.Count);
             Assert.IsFalse(WorksiteClaim.IsClaimed(world, piece, Crack, Worked));
 
-            WorksiteClaim.ClaimBoulder(world, piece, Iso, Crack, Worked);
+            WorksiteClaim.ClaimBoulder(world, piece, Iso, Crack, Worked, Vector2.right);
 
             Assert.AreEqual(Worked, world.GetMaterial(new Vector3Int(3, 6, 3)), "The top is worked stone.");
+            Assert.AreEqual(Rock, world.GetMaterial(new Vector3Int(1, 6, 1)), "Only the middle of the top is worked (backlog 2026-11-24b item 6).");
             Assert.AreEqual(Rock, world.GetMaterial(new Vector3Int(3, 3, 3)), "The inside is left alone.");
             int cracks = 0;
             foreach (Vector3Int sample in piece)
@@ -84,10 +86,12 @@ namespace Clube.Core.Tests
                 if (world.GetMaterial(sample) == Crack)
                 {
                     cracks++;
-                    Assert.AreNotEqual(6, sample.y, "Cracks run down the sides, not across the worked top.");
+                    bool middleOfTop = sample.y == 6 && Mathf.Abs(sample.x - 3.5f) <= 1f && Mathf.Abs(sample.z - 3.5f) <= 1f;
+                    Assert.IsFalse(middleOfTop, "Cracks run down the sides and over the edge, not across the worked middle.");
                 }
             }
             Assert.Greater(cracks, 0, "Cracks down the sides.");
+            Assert.Less(cracks, 24, "A few thin cracks, not lines all round.");
             Assert.IsTrue(WorksiteClaim.IsClaimed(world, piece, Crack, Worked));
         }
 

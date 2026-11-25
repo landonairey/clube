@@ -87,7 +87,7 @@ namespace Clube.Game
             return IsClaimed(sample) ? site : notice;
         }
 
-        // Claims the boulder under the crosshair: cracks down its sides and a lighter worked top.
+        // Claims the boulder under the crosshair: a few thin cracks on the side facing the player and a lighter middle of its top.
         private void ClaimAimed()
         {
             if (!bashing.TryGetAimedRock(out Vector3Int sample, out bool flatRock) || flatRock || IsClaimed(sample)
@@ -97,13 +97,15 @@ namespace Clube.Game
             }
             WorldView view = bashing.World;
             WorksiteClaim.FindBoulder(view.World, sample, view.Config.IsoLevel, bashing.IsBoulderRock, piece);
-            WorksiteClaim.ClaimBoulder(view.World, piece, view.Config.IsoLevel, crack.Id, worked.Id);
+            // The cracks face the claimer (backlog 2026-11-24b item 6).
+            Vector3 toward = view.transform.InverseTransformDirection(transform.position - view.transform.TransformPoint(view.World.Grid.SampleToWorld(sample)));
+            WorksiteClaim.ClaimBoulder(view.World, piece, view.Config.IsoLevel, crack.Id, worked.Id, new Vector2(toward.x, toward.z));
             claimed.Clear();
             Claimed?.Invoke();
         }
 
-        /// <summary>A claimed boulder under the crosshair: E opens its screen.</summary>
-        private sealed class BoulderSite : IInteractable
+        /// <summary>A claimed boulder under the crosshair: E opens its screen, and tools still mine it (backlog 2026-11-24b item 1).</summary>
+        private sealed class BoulderSite : IGroundInteractable
         {
             private readonly BoulderWorksites owner;
 

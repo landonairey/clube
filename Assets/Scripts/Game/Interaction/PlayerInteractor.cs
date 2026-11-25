@@ -33,9 +33,11 @@ namespace Clube.Game
 
         /// <summary>
         /// True when the target is built into the ground (a furnace or campfire, a <see cref="TerrainStructure"/>,
-        /// GL141): tools still work on it, since mining its body is how it's broken.
+        /// GL141), or a boulder or unclaimed stump (<see cref="IGroundInteractable"/>): tools still work on it, since mining its body
+        /// is how it's broken.
         /// </summary>
-        public bool TargetIsGround => Target is Component component && component.GetComponentInParent<TerrainStructure>() != null;
+        public bool TargetIsGround => Target is IGroundInteractable
+            || (Target is Component component && component.GetComponentInParent<TerrainStructure>() != null);
 
         public float Reach => reach;
 
@@ -130,6 +132,11 @@ namespace Clube.Game
         {
             GameUi.Apply();
             if (Target == null || !player.enabled || player.IsCursorFree)
+            {
+                return;
+            }
+            // An unclaimed stump or boulder has no prompt (backlog 2026-11-24b item 1).
+            if (string.IsNullOrEmpty(Target.Prompt))
             {
                 return;
             }

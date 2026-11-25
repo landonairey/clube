@@ -60,6 +60,10 @@ namespace Clube.Debug.Editor
             Planks,
             /// <summary>Coarse interlocking mineral grains (GL755): the base, mix and fleck colours are its three minerals.</summary>
             Grains,
+            /// <summary>Stone with thin, faint hairline cracks: a claimed boulder's crack lines (backlog 2026-11-24b item 6).</summary>
+            Hairline,
+            /// <summary>Bark with thin loops of twine round it: a claimed stump's twine (backlog 2026-11-24b item 13).</summary>
+            Rope,
         }
 
         private static readonly Color StoneBase = new Color(0.45f, 0.45f, 0.47f);
@@ -137,9 +141,11 @@ namespace Clube.Debug.Editor
                 { "granite", (new Color(0.48f, 0.43f, 0.41f), new Color(0.55f, 0.54f, 0.52f), new Color(0.33f, 0.31f, 0.31f), Wear.Grains) },
                 // Claimed worksites (prototype, backlog 2026-11-24 item 8): a stump's twine bands, a boulder's cracks and its lighter
                 // worked top. Added last, so no seed moves.
-                { "stump twine", (new Color(0.88f, 0.8f, 0.56f), new Color(0.95f, 0.88f, 0.66f), null, Wear.Whole) },
-                { "boulder crack", (new Color(0.12f, 0.12f, 0.13f), new Color(0.22f, 0.22f, 0.23f), null, Wear.Cracked) },
-                { "worked stone", (new Color(0.68f, 0.67f, 0.65f), new Color(0.78f, 0.77f, 0.75f), null, Wear.Whole) },
+                // Backlog 2026-11-24b items 6 and 13: bark with thin loops of twine; stone with hairline cracks, not a dark band (after the
+                // quest's boulder sketch); and a worked top only gently lighter than stone.
+                { "stump twine", (new Color(0.4f, 0.31f, 0.22f), new Color(0.52f, 0.42f, 0.31f), null, Wear.Rope) },
+                { "boulder crack", (StoneBase, StoneMix, null, Wear.Hairline) },
+                { "worked stone", (new Color(0.5f, 0.5f, 0.52f), new Color(0.65f, 0.65f, 0.67f), null, Wear.Whole) },
             };
 
         [MenuItem("Clube/Materials/Build texture array")]
@@ -503,6 +509,14 @@ namespace Clube.Debug.Editor
             {
                 PaintGrains(texture, random, baseColor, mix, fleck ?? baseColor);
             }
+            else if (wear == Wear.Hairline)
+            {
+                PaintHairlines(texture, random);
+            }
+            else if (wear == Wear.Rope)
+            {
+                PaintRope(texture, random);
+            }
             texture.Apply();
             return texture;
         }
@@ -599,6 +613,72 @@ namespace Clube.Debug.Editor
             }
         }
 
+        // A claimed boulder's crack (backlog 2026-11-24b item 6): thin, faint hairline cracks wandering down the tile, like the
+        // ink lines on the quest's boulder sketch, some forking. The terrain repeats a texture every 2 m, so a crack sample
+        // (0.25 m) shows an eighth of the tile: the cracks are about that far apart, so every crack sample shows one. Only a
+        // little darker than the stone round them, with a faint light edge, so they read as slight cracks, not dark bands.
+        private static void PaintHairlines(Texture2D texture, System.Random random)
+        {
+            int size = texture.width;
+            float scale = size / (float)PlaceholderSize;
+            Color[] original = texture.GetPixels();
+            const int cracks = 8;
+            for (int crack = 0; crack < cracks; crack++)
+            {
+                var from = new Vector2((crack + 0.25f + 0.5f * (float)random.NextDouble()) * size / cracks, size * (float)random.NextDouble());
+                float angle = -Mathf.PI * 0.5f + ((float)random.NextDouble() - 0.5f) * 0.5f;
+                float width = 0.45f * scale;
+                const int segments = 10;
+                for (int segment = 0; segment < segments; segment++)
+                {
+                    angle = Mathf.Clamp(angle + ((float)random.NextDouble() - 0.5f) * 0.7f, -Mathf.PI * 0.75f, -Mathf.PI * 0.25f);
+                    Vector2 to = from + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * size * 0.1f;
+                    PaintGroove(texture, original, from, to, width, 0.5f, 1.12f);
+                    if (random.NextDouble() < 0.12)
+                    {
+                        // A fork: a short branch off to one side.
+                        float side = angle + (random.NextDouble() < 0.5 ? -0.7f : 0.7f);
+                        Vector2 next = from + new Vector2(Mathf.Cos(side), Mathf.Sin(side)) * size * 0.06f;
+                        PaintGroove(texture, original, from, next, width * 0.8f, 0.6f, 1.1f);
+                    }
+                    from = to;
+                }
+            }
+        }
+
+        // Twine round a stump (backlog 2026-11-24b item 13): bark, with thin loops of twine running round (texture rows are
+        // world heights on the terrain's sides), a little apart so a row of twine samples shows a couple of loops on bark.
+        private static void PaintRope(Texture2D texture, System.Random random)
+        {
+            PaintBark(texture, random);
+            int size = texture.width;
+            Color[] pixels = texture.GetPixels();
+            // Loops every 0.19 m of the 2 m tile, each about 7 cm thick, with strands slanting across them.
+            int period = size / 10;
+            int thick = Mathf.Max(4, size / 28);
+            for (int y = 0; y < size; y++)
+            {
+                int within = y % period;
+                if (within >= thick)
+                {
+                    continue;
+                }
+                // Round over the loop: shaded at its top and bottom edges.
+                float round = Mathf.Sin((within + 0.5f) / thick * Mathf.PI);
+                for (int x = 0; x < size; x++)
+                {
+                    float strand = ((x + within * 2f) / (thick * 1.5f)) % 1f;
+                    float shade = (0.6f + 0.4f * round) * (0.82f + 0.18f * Mathf.Sin(strand * Mathf.PI));
+                    Color colour = TwineColour * shade;
+                    colour.a = 1f;
+                    pixels[y * size + x] = colour;
+                }
+            }
+            texture.SetPixels(pixels);
+        }
+
+        private static readonly Color TwineColour = new Color(0.9f, 0.82f, 0.6f);
+
         // One fracture: straight segments, kinking up to ±0.5 rad, thinning as it goes.
         private static void PaintFracture(
             Texture2D texture, Color[] original, System.Random random, Vector2 from, float angle, int segments, float width, float scale)
@@ -620,13 +700,13 @@ namespace Clube.Debug.Editor
         }
 
         // A light bevel offset by a pixel, then the dark groove over it.
-        private static void PaintGroove(Texture2D texture, Color[] original, Vector2 from, Vector2 to, float width)
+        private static void PaintGroove(Texture2D texture, Color[] original, Vector2 from, Vector2 to, float width, float dark = 0.18f, float light = 1.35f)
         {
             int steps = Mathf.CeilToInt(Vector2.Distance(from, to) * 2f);
             for (int pass = 0; pass < 2; pass++)
             {
                 Vector2 offset = pass == 0 ? new Vector2(1f, -1f) : Vector2.zero;
-                float factor = pass == 0 ? 1.35f : 0.18f;
+                float factor = pass == 0 ? light : dark;
                 float radius = pass == 0 ? width * 0.6f : width * 0.5f;
                 for (int step = 0; step <= steps; step++)
                 {
