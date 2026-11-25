@@ -464,20 +464,19 @@ namespace Clube.Game
             {
                 return;
             }
-            // GL734: the quarry's parcels reach over its pit, to its wall.
-            Rect area = site.Quarry != null ? site.Bounds : site.Footprint;
-            for (float z = area.yMin; z < area.yMax + parcels.Size; z += parcels.Size)
+            foreach (Vector2Int parcel in parcels.ParcelsCovering(LandArea(site)))
             {
-                for (float x = area.xMin; x < area.xMax + parcels.Size; x += parcels.Size)
+                if (!parcels.IsOwned(parcel))
                 {
-                    var at = new Vector3(Mathf.Min(x, area.xMax), 0f, Mathf.Min(z, area.yMax));
-                    Vector2Int parcel = parcels.ParcelAt(at);
-                    if (!parcels.IsOwned(parcel))
-                    {
-                        parcels.Lock(parcel);
-                    }
+                    parcels.Lock(parcel);
                 }
             }
+        }
+
+        // The ground a settlement's parcels cover. GL734: the quarry's reach over its pit, to its wall.
+        private static Rect LandArea(SettlementSite site)
+        {
+            return site.Quarry != null ? site.Bounds : site.Footprint;
         }
 
         // How far from the viewer pieces are written: at least the whole loaded area, so nothing loaded is left held.
@@ -781,6 +780,11 @@ namespace Clube.Game
                 SettlementKeeper keeper = keeperObject.AddComponent<SettlementKeeper>();
                 keeper.Setup(specialty, prices, hours, clock, shop, material, seed, dailyCoins,
                     Dispositions.Of(index, settlement.Shops.IndexOf(building.Shop)), bed);
+                // GL863: the Merchant also sells the settlement's land and the parcels round it.
+                if (building.Shop.Specialty.Chain == SupplyChains.Merchant)
+                {
+                    keeper.Land = new SettlementLand(settlement.Name, settlement.Type.Name, LandArea(made.Site), settlement.Type.SalePrice);
+                }
                 keepers.Add(keeper);
                 ShopsFitted++;
             }

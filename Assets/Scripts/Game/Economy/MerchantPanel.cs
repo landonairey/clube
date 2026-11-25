@@ -50,6 +50,9 @@ namespace Clube.Game
         private int shelfDay = -1;
         private DayNightCycle dayNight;
         private PlayerName playerName;
+        // GL863: buying land from a Merchant, and where the trade screen was last drawn (its button goes under it).
+        private ParcelPurchaseView landView;
+        private Rect tradePanel;
         private const int ShelfSlots = 64;
         // What the player picked to sell and to buy, and how much of each offer they bought today, per trader.
         private readonly MerchantCart cart = new MerchantCart();
@@ -75,6 +78,7 @@ namespace Clube.Game
             player = GetComponent<PlayerController>();
             skills = GetComponent<PlayerSkills>();
             playerName = GetComponent<PlayerName>();
+            landView = GetComponent<ParcelPurchaseView>();
         }
 
         private void OnEnable()
@@ -175,7 +179,34 @@ namespace Clube.Game
             {
                 return;
             }
+            DrawTrade();
+            if (Current != null)
+            {
+                DrawParcelButton();
+            }
+        }
 
+        // GL863: the Merchant also sells land. Its button stands on its own under the trade screen, apart from the trade buttons.
+        private void DrawParcelButton()
+        {
+            if (landView == null || !(Current is IParcelSeller seller) || seller.Land == null)
+            {
+                return;
+            }
+            var button = new Rect((Screen.width - 300f) * 0.5f, Mathf.Min(tradePanel.yMax + 16f, Screen.height - RowHeight - 8f), 300f, RowHeight + 8f);
+            if (GameUi.Button(button, "Purchase Parcel"))
+            {
+                // The disposition the screen shows (with the outfit), taken before closing, which drops the outfit's part.
+                int disposition = Current.Disposition != null ? Current.Disposition.Effective : 0;
+                string name = Current.DisplayName;
+                Vector3 shop = Current.Position;
+                Close();
+                landView.Open(seller.Land, name, disposition, shop);
+            }
+        }
+
+        private void DrawTrade()
+        {
             Inventory items = inventory.Inventory;
             PriceList prices = Current.Prices;
             if (inventory.UsesList)
@@ -192,6 +223,7 @@ namespace Clube.Game
             height += deal != null ? RowHeight + 6f : 0f;
             var panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             InventoryGridGui.Panel(panel);
+            tradePanel = panel;
             float x = panel.x + Padding;
             float y = panel.y + Padding;
             GUI.Label(new Rect(x, y, width - Padding * 2f, 28f), $"{Current.DisplayName}   (E to close)");
@@ -761,6 +793,7 @@ namespace Clube.Game
             float height = Mathf.Clamp(Screen.height - 280f, 600f, 1150f);
             var panel = new Rect((Screen.width - width) * 0.5f, Mathf.Max(10f, (Screen.height - height) * 0.5f - 60f), width, height);
             InventoryGridGui.SolidPanel(panel);
+            tradePanel = panel;
             float top = panel.y + Padding;
             var left = new Rect(panel.x + Padding, top, half, panel.height - Padding * 2f);
             var right = new Rect(left.xMax + Padding, top, half, left.height);

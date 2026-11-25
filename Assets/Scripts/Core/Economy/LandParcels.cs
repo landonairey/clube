@@ -171,6 +171,64 @@ namespace Clube.Core
             return true;
         }
 
+        /// <summary>
+        /// The parcels an area touches (x, z, metres from the world origin), its far edges included: the land a settlement stands
+        /// on (GL408, GL864).
+        /// </summary>
+        public List<Vector2Int> ParcelsCovering(Rect area)
+        {
+            Vector2Int min = ParcelAt(new Vector3(area.xMin, 0f, area.yMin));
+            Vector2Int max = ParcelAt(new Vector3(area.xMax, 0f, area.yMax));
+            var parcels = new List<Vector2Int>((max.x - min.x + 1) * (max.y - min.y + 1));
+            for (int z = min.y; z <= max.y; z++)
+            {
+                for (int x = min.x; x <= max.x; x++)
+                {
+                    parcels.Add(new Vector2Int(x, z));
+                }
+            }
+            return parcels;
+        }
+
+        /// <summary>
+        /// GL865: buys any parcel for sale at a price set by the seller (a Merchant's ring price), touching the player's land or
+        /// not. False, changing nothing, when it is owned, locked, outside <see cref="SaleArea"/>, or the wallet is short.
+        /// </summary>
+        public bool TryBuyAt(Vector2Int parcel, int price, Wallet wallet)
+        {
+            if (owned.Contains(parcel) || locked.Contains(parcel) || !IsInSaleArea(parcel) || wallet == null || !wallet.Spend(price))
+            {
+                return false;
+            }
+            owned.Add(parcel);
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>
+        /// GL865: buys a whole settlement's land at one price: its locked parcels are freed and every one not owned yet becomes
+        /// the player's. False, changing nothing, when all are owned already or the wallet is short.
+        /// </summary>
+        public bool TryBuyAll(IReadOnlyCollection<Vector2Int> parcels, int price, Wallet wallet)
+        {
+            bool any = false;
+            foreach (Vector2Int parcel in parcels)
+            {
+                any |= !owned.Contains(parcel);
+            }
+            if (!any || wallet == null || !wallet.Spend(price))
+            {
+                return false;
+            }
+            foreach (Vector2Int parcel in parcels)
+            {
+                locked.Remove(parcel);
+                owned.Add(parcel);
+            }
+            Changed?.Invoke();
+            return true;
+        }
+
         /// <summary>Buys a buyable parcel at <see cref="NextPrice"/>. False, changing nothing, when it isn't buyable or the wallet is short.</summary>
         public bool TryBuy(Vector2Int parcel, Wallet wallet)
         {

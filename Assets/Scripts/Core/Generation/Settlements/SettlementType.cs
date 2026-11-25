@@ -193,6 +193,12 @@ namespace Clube.Core
         /// <summary>GL716: its light sources, by kind (<see cref="SettlementLightKind.Id"/>).</summary>
         public List<SettlementLightRule> Lights = new List<SettlementLightRule>();
 
+        /// <summary>
+        /// GL864: coins its Merchant sells the whole settlement's land for, before the disposition (0: not for sale). The
+        /// user's prices: Camp 1,000, Outpost 10,000, Village 20,000, Town 50,000, City 100,000, Capital 1,000,000.
+        /// </summary>
+        public int SalePrice;
+
         /// <summary>The seven types and their numbers, exactly as GL593's table has them.</summary>
         public static List<SettlementType> Defaults()
         {
@@ -200,7 +206,7 @@ namespace Clube.Core
             {
                 new SettlementType
                 {
-                    Id = "camp", Name = "Camp", Icon = "tent", MinimumRoad = RoadClass.None, ParcelSize = "<1", Parcels = 0.5f,
+                    Id = "camp", SalePrice = 1000, Name = "Camp", Icon = "tent", MinimumRoad = RoadClass.None, ParcelSize = "<1", Parcels = 0.5f,
                     PopulationMin = 1, PopulationMax = 1, Count = 12, Shops = 1, CraftLevel = 0, Spacing = 220f, Site = SiteRule.OneResource, Street = "Dead Grass",
                     Lights = { SettlementLightRule.Fixed("torch", 2) },
                 },
@@ -212,31 +218,31 @@ namespace Clube.Core
                 },
                 new SettlementType
                 {
-                    Id = "outpost", Name = "Outpost", Icon = "house", MinimumRoad = RoadClass.Footpath, ParcelSize = "~1", Parcels = 1f,
+                    Id = "outpost", SalePrice = 10000, Name = "Outpost", Icon = "house", MinimumRoad = RoadClass.Footpath, ParcelSize = "~1", Parcels = 1f,
                     PopulationMin = 2, PopulationMax = 4, Count = 12, Shops = 1, CraftLevel = 0, Spacing = 300f, Site = SiteRule.OneResource, Street = "Dead Grass",
                     Lights = { SettlementLightRule.Fixed("torch", 2) },
                 },
                 new SettlementType
                 {
-                    Id = "village", Name = "Village", Icon = "houses", MinimumRoad = RoadClass.DirtCartPath, ParcelSize = "~4", Parcels = 4f,
+                    Id = "village", SalePrice = 20000, Name = "Village", Icon = "houses", MinimumRoad = RoadClass.DirtCartPath, ParcelSize = "~4", Parcels = 4f,
                     PopulationMin = 4, PopulationMax = 8, Count = 10, Shops = 2, CraftLevel = 1, Spacing = 450f, Site = SiteRule.SeveralResources, Street = "Dirt",
                     Lights = { SettlementLightRule.Every("torch", 2), SettlementLightRule.Fixed("bonfire", 1) },
                 },
                 new SettlementType
                 {
-                    Id = "town", Name = "Town", Icon = "town-hall", MinimumRoad = RoadClass.DirtCartPath, ParcelSize = "~9", Parcels = 9f,
+                    Id = "town", SalePrice = 50000, Name = "Town", Icon = "town-hall", MinimumRoad = RoadClass.DirtCartPath, ParcelSize = "~9", Parcels = 9f,
                     PopulationMin = 8, PopulationMax = 16, Count = 8, Shops = 3, CraftLevel = 2, Spacing = 600f, Site = SiteRule.SeveralResources,
                     Lights = { SettlementLightRule.Every("torch", 2), SettlementLightRule.Fixed("bonfire", 2) },
                 },
                 new SettlementType
                 {
-                    Id = "city", Name = "City", Icon = "tower", MinimumRoad = RoadClass.PavedCartPath, ParcelSize = "~16", Parcels = 16f,
+                    Id = "city", SalePrice = 100000, Name = "City", Icon = "tower", MinimumRoad = RoadClass.PavedCartPath, ParcelSize = "~16", Parcels = 16f,
                     PopulationMin = 16, PopulationMax = 24, Count = 4, Shops = 5, CraftLevel = 2, Spacing = 800f, Site = SiteRule.AllResources,
                     Landmarks = new[] { "guard-tower" }, HorseHire = true, Lights = { SettlementLightRule.Every("lantern", 1) },
                 },
                 new SettlementType
                 {
-                    Id = "capital", Name = "Capital", Icon = "castle", MinimumRoad = RoadClass.PavedCartPath, NeedsOcean = true, ParcelSize = ">16",
+                    Id = "capital", SalePrice = 1000000, Name = "Capital", Icon = "castle", MinimumRoad = RoadClass.PavedCartPath, NeedsOcean = true, ParcelSize = ">16",
                     Parcels = 25f, PopulationMin = 24, PopulationMax = 32, Count = 1, Shops = 8, CraftLevel = 2, Spacing = 900f,
                     Site = SiteRule.AllResources, Landmarks = new[] { "castle", "guard-tower" }, Walls = true, HorseHire = true,
                     Lights = { SettlementLightRule.Every("lantern", 1) },

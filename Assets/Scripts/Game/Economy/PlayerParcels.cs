@@ -87,6 +87,8 @@ namespace Clube.Game
             {
                 foreach (Vector2Int parcel in restoring)
                 {
+                    // GL865: a bought settlement's land was locked town land; owned in the save, it is the player's again.
+                    Parcels.Unlock(parcel);
                     Parcels.Grant(parcel);
                 }
                 restoring = null;
@@ -145,6 +147,43 @@ namespace Clube.Game
             return offer;
         }
 
+
+        /// <summary>
+        /// GL865: buys a parcel from a settlement's Merchant at their price (it needn't touch the player's land). Raises
+        /// <see cref="Bought"/> (the coin sound); false when it isn't for sale or the coins fall short.
+        /// </summary>
+        public bool BuyAt(Vector2Int parcel, int price)
+        {
+            if (Parcels == null || !Parcels.TryBuyAt(parcel, price, wallet.Wallet))
+            {
+                return false;
+            }
+            Bought?.Invoke(parcel);
+            return true;
+        }
+
+        /// <summary>GL865: buys a whole settlement's land at one price; <see cref="Bought"/> is raised once, with its first parcel.</summary>
+        public bool BuyAll(IReadOnlyList<Vector2Int> parcels, int price)
+        {
+            if (Parcels == null || parcels.Count == 0 || !Parcels.TryBuyAll(parcels, price, wallet.Wallet))
+            {
+                return false;
+            }
+            Bought?.Invoke(parcels[0]);
+            return true;
+        }
+
+        /// <summary>A world-space point relative to the world's origin, as parcels are numbered.</summary>
+        public Vector3 ToLocal(Vector3 worldPoint)
+        {
+            return Local(worldPoint);
+        }
+
+        /// <summary>A point relative to the world's origin back in world space.</summary>
+        public Vector3 ToWorld(Vector3 local)
+        {
+            return worldView != null ? worldView.transform.TransformPoint(local) : local;
+        }
         private Vector3 Local(Vector3 worldPoint)
         {
             return worldView != null ? worldView.transform.InverseTransformPoint(worldPoint) : worldPoint;
