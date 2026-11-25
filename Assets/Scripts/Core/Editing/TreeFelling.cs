@@ -169,9 +169,6 @@ namespace Clube.Core
         /// </remarks>
         public const int MaxLeafReach = 128;
 
-        /// <summary>Samples past the limb a sweep looks for leaves with nothing holding them up (GL820).</summary>
-        public const int OrphanMargin = 6;
-
         /// <summary>Most leaves one leftover clump may hold and still count as hanging in the air.</summary>
         public const int MaxOrphanClump = 40000;
 
@@ -194,9 +191,21 @@ namespace Clube.Core
 
         /// <summary>
         /// The limb cut off by a chop round <paramref name="from"/>-<paramref name="to"/> (global samples), or null when every
-        /// piece of wood there still reaches the ground through wood.
+        /// piece of wood there still reaches the ground through wood. All at once; <see cref="SeveredSearch"/> does the same
+        /// a slice at a time, so a big crown doesn't stall a frame.
         /// </summary>
         public static FelledLimb FindSevered(World world, Vector3Int from, Vector3Int to, TreeMaterials trees, float iso)
+        {
+            return new SeveredSearch(world, from, to, trees, iso).Finish();
+        }
+
+        /// <summary>Samples a search visits between the points where it can stop for the frame.</summary>
+        internal const int SliceVisits = 256;
+
+        // FindSevered's work, stopping (yield) every SliceVisits samples or so, for SeveredSearch; the limb, or null when
+        // nothing was cut off, goes to found.Limb.
+        internal static IEnumerable<int> FindSeveredSteps(
+            WorldSampleReader world, Vector3Int from, Vector3Int to, TreeMaterials trees, float iso, SeveredSearch found)
         {
             var standing = new HashSet<Vector3Int>();
             var fallingWood = new HashSet<Vector3Int>();
@@ -217,40 +226,71 @@ namespace Clube.Core
                         }
                         bool anchored = Search(world, seed, trees, iso, component, stack);
                         (anchored ? standing : fallingWood).UnionWith(component);
+                        yield return 0;
                     }
                 }
             }
             if (fallingWood.Count == 0)
             {
-                return null;
+                yield break;
             }
 
             var limb = new FelledLimb();
             var included = new HashSet<Vector3Int>();
+            int visits = 0;
             foreach (Vector3Int sample in fallingWood)
             {
                 limb.Solid.Add(new FelledSample(sample, world.GetMaterial(sample) ?? 0, world.GetDensity(sample) ?? 1f, true));
                 included.Add(sample);
+                if (++visits % SliceVisits == 0)
+                {
+                    yield return 0;
+                }
             }
             limb.WoodCount = fallingWood.Count;
-            foreach (Vector3Int leaf in HangingLeaves(world, fallingWood, trees, iso))
+            var leaves = new List<Vector3Int>();
+            foreach (int step in HangingLeaves(world, fallingWood, trees, iso, leaves))
             {
-                limb.Solid.Add(new FelledSample(leaf, world.GetMaterial(leaf) ?? 0, world.GetDensity(leaf) ?? 1f, false));
-                included.Add(leaf);
+                yield return step;
             }
-            foreach (Vector3Int leaf in OrphanLeaves(world, included, trees, iso))
+            foreach (int step in AddLeaves(world, limb, included, leaves))
             {
-                limb.Solid.Add(new FelledSample(leaf, world.GetMaterial(leaf) ?? 0, world.GetDensity(leaf) ?? 1f, false));
-                included.Add(leaf);
+                yield return step;
             }
-            AddFringe(world, limb, included, trees, iso);
+            leaves.Clear();
+            foreach (int step in OrphanLeaves(world, included, trees, iso, leaves))
+            {
+                yield return step;
+            }
+            foreach (int step in AddLeaves(world, limb, included, leaves))
+            {
+                yield return step;
+            }
+            foreach (int step in AddFringe(world, limb, included, trees, iso))
+            {
+                yield return step;
+            }
             limb.Pivot = Nearest(fallingWood, (Vector3)(from + to) * 0.5f);
-            return limb;
+            found.Limb = limb;
+        }
+
+        private static IEnumerable<int> AddLeaves(WorldSampleReader world, FelledLimb limb, HashSet<Vector3Int> included, List<Vector3Int> leaves)
+        {
+            for (int i = 0; i < leaves.Count; i++)
+            {
+                Vector3Int leaf = leaves[i];
+                limb.Solid.Add(new FelledSample(leaf, world.GetMaterial(leaf) ?? 0, world.GetDensity(leaf) ?? 1f, false));
+                included.Add(leaf);
+                if ((i + 1) % SliceVisits == 0)
+                {
+                    yield return 0;
+                }
+            }
         }
 
         // Follows wood from a seed. True as soon as it touches ground (anything solid that isn't tree: soil, rock, a stump)
         // or unloaded land, or grows past MaxWood: the wood stands. False when it's all been followed and holds nothing up.
-        private static bool Search(World world, Vector3Int seed, TreeMaterials trees, float iso, HashSet<Vector3Int> found, Stack<Vector3Int> stack)
+        private static bool Search(WorldSampleReader world, Vector3Int seed, TreeMaterials trees, float iso, HashSet<Vector3Int> found, Stack<Vector3Int> stack)
         {
             found.Clear();
             stack.Clear();
@@ -295,12 +335,15 @@ namespace Clube.Core
             return false;
         }
 
-        // The leaves that hang from the felled wood: reached through leaves (within MaxLeafReach) sooner from it than from any
-        // solid that stays (standing wood, ground). Ties stay.
-        private static List<Vector3Int> HangingLeaves(World world, HashSet<Vector3Int> wood, TreeMaterials trees, float iso)
+        // The leaves that hang from the felled wood, into hanging: reached through leaves (within MaxLeafReach) sooner from
+        // it than from any solid that stays (standing wood, ground). Ties stay.
+        private static IEnumerable<int> HangingLeaves(
+            WorldSampleReader world, HashSet<Vector3Int> wood, TreeMaterials trees, float iso, List<Vector3Int> hanging)
         {
+            var woodMask = new SampleMask(wood);
             var fromLimb = new Dictionary<Vector3Int, int>();
             var queue = new Queue<Vector3Int>();
+            int visits = 0;
             foreach (Vector3Int sample in wood)
             {
                 foreach (Vector3Int step in Around)
@@ -311,6 +354,10 @@ namespace Clube.Core
                         fromLimb[next] = 1;
                         queue.Enqueue(next);
                     }
+                }
+                if (++visits % SliceVisits == 0)
+                {
+                    yield return 0;
                 }
             }
             while (queue.Count > 0)
@@ -330,6 +377,10 @@ namespace Clube.Core
                         queue.Enqueue(next);
                     }
                 }
+                if (++visits % SliceVisits == 0)
+                {
+                    yield return 0;
+                }
             }
 
             // The same through the leaves found, from whatever solid stays beside them.
@@ -339,7 +390,7 @@ namespace Clube.Core
                 foreach (Vector3Int step in Around)
                 {
                     Vector3Int next = leaf + step;
-                    if (wood.Contains(next) || fromLimb.ContainsKey(next))
+                    if (woodMask.Contains(next) || fromLimb.ContainsKey(next))
                     {
                         continue;
                     }
@@ -350,6 +401,10 @@ namespace Clube.Core
                         queue.Enqueue(leaf);
                         break;
                     }
+                }
+                if (++visits % SliceVisits == 0)
+                {
+                    yield return 0;
                 }
             }
             while (queue.Count > 0)
@@ -365,9 +420,12 @@ namespace Clube.Core
                         queue.Enqueue(next);
                     }
                 }
+                if (++visits % SliceVisits == 0)
+                {
+                    yield return 0;
+                }
             }
 
-            var hanging = new List<Vector3Int>();
             foreach (KeyValuePair<Vector3Int, int> leaf in fromLimb)
             {
                 if (!fromStanding.TryGetValue(leaf.Key, out int stay) || leaf.Value < stay)
@@ -375,111 +433,137 @@ namespace Clube.Core
                     hanging.Add(leaf.Key);
                 }
             }
-            return hanging;
         }
 
         // GL820: leaves near the limb that nothing holds up once it is gone: clumps (touching one another through any face,
         // edge or corner) with no solid beside them but the limb's own samples, e.g. a pine's tier joined to the rest only
         // diagonally. A clump beside ground, standing wood or land that isn't loaded stays.
-        private static List<Vector3Int> OrphanLeaves(World world, HashSet<Vector3Int> included, TreeMaterials trees, float iso)
+        // Only clumps touching the limb can lose their hold to it, so the search starts from the leaves beside it (sweeping
+        // the limb's whole box read a million samples on a big crown: 1.5 s). A clump stops being followed the moment
+        // something holds it up; a later start that runs into its samples knows the clump stays.
+        private static IEnumerable<int> OrphanLeaves(
+            WorldSampleReader world, HashSet<Vector3Int> included, TreeMaterials trees, float iso, List<Vector3Int> orphans)
         {
-            var orphans = new List<Vector3Int>();
             if (included.Count == 0)
             {
-                return orphans;
+                yield break;
             }
-            Vector3Int min = Vector3Int.one * int.MaxValue;
-            Vector3Int max = Vector3Int.one * int.MinValue;
-            foreach (Vector3Int sample in included)
-            {
-                min = Vector3Int.Min(min, sample);
-                max = Vector3Int.Max(max, sample);
-            }
-            min -= Vector3Int.one * OrphanMargin;
-            max += Vector3Int.one * OrphanMargin;
-            long volume = (long)(max.x - min.x + 1) * (max.y - min.y + 1) * (max.z - min.z + 1);
-            if (volume > 8000000L)
-            {
-                return orphans;
-            }
-            var seen = new HashSet<Vector3Int>();
+            var limb = new SampleMask(included);
+            var clumpOf = new Dictionary<Vector3Int, int>();
             var clump = new List<Vector3Int>();
             var stack = new Stack<Vector3Int>();
-            for (int z = min.z; z <= max.z; z++)
+            int clumps = 0;
+            int members = 0;
+            foreach (Vector3Int member in included)
             {
-                for (int y = min.y; y <= max.y; y++)
+                if (++members % (SliceVisits / 8) == 0)
                 {
-                    for (int x = min.x; x <= max.x; x++)
+                    yield return 0;
+                }
+                for (int i = 0; i < Neighbours.Length; i++)
+                {
+                    Vector3Int start = member + Neighbours[i];
+                    if (limb.Contains(start) || clumpOf.ContainsKey(start) || !IsLeaves(world, start, trees, iso))
                     {
-                        var start = new Vector3Int(x, y, z);
-                        if (included.Contains(start) || seen.Contains(start) || !IsLeaves(world, start, trees, iso))
+                        continue;
+                    }
+                    int id = ++clumps;
+                    bool held = false;
+                    clump.Clear();
+                    stack.Clear();
+                    clumpOf[start] = id;
+                    stack.Push(start);
+                    while (stack.Count > 0 && !held)
+                    {
+                        Vector3Int sample = stack.Pop();
+                        clump.Add(sample);
+                        if (clump.Count % (SliceVisits / 8) == 0)
                         {
-                            continue;
+                            yield return 0;
                         }
-                        bool held = false;
-                        clump.Clear();
-                        seen.Add(start);
-                        stack.Push(start);
-                        while (stack.Count > 0)
+                        if (clump.Count > MaxOrphanClump)
                         {
-                            Vector3Int sample = stack.Pop();
-                            clump.Add(sample);
-                            for (int dz = -1; dz <= 1; dz++)
+                            held = true;
+                            break;
+                        }
+                        for (int n = 0; n < Neighbours.Length; n++)
+                        {
+                            Vector3Int next = sample + Neighbours[n];
+                            if (limb.Contains(next))
                             {
-                                for (int dy = -1; dy <= 1; dy++)
-                                {
-                                    for (int dx = -1; dx <= 1; dx++)
-                                    {
-                                        Vector3Int next = sample + new Vector3Int(dx, dy, dz);
-                                        if (next == sample || included.Contains(next))
-                                        {
-                                            continue;
-                                        }
-                                        float? density = world.GetDensity(next);
-                                        if (!density.HasValue)
-                                        {
-                                            held = true;
-                                        }
-                                        else if (density.Value >= iso)
-                                        {
-                                            if (!IsLeaves(world, next, trees, iso))
-                                            {
-                                                held = true;
-                                            }
-                                            else if (seen.Add(next))
-                                            {
-                                                stack.Push(next);
-                                            }
-                                        }
-                                    }
-                                }
+                                continue;
                             }
-                            if (clump.Count > MaxOrphanClump)
+                            if (clumpOf.TryGetValue(next, out int other))
+                            {
+                                // A sample of an earlier clump that was cut short because something held it up.
+                                if (other != id)
+                                {
+                                    held = true;
+                                    break;
+                                }
+                                continue;
+                            }
+                            if (!world.TryRead(next, out float density, out byte material))
                             {
                                 held = true;
                                 break;
                             }
+                            if (density < iso)
+                            {
+                                continue;
+                            }
+                            if (!trees.IsLeaves(material))
+                            {
+                                held = true;
+                                break;
+                            }
+                            clumpOf[next] = id;
+                            stack.Push(next);
                         }
-                        stack.Clear();
-                        if (!held)
+                    }
+                    if (!held)
+                    {
+                        orphans.AddRange(clump);
+                    }
+                }
+            }
+        }
+
+        // The 26 samples touching one through a face, edge or corner.
+        private static readonly Vector3Int[] Neighbours = BuildNeighbours();
+
+        private static Vector3Int[] BuildNeighbours()
+        {
+            var steps = new List<Vector3Int>(26);
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        if (dx != 0 || dy != 0 || dz != 0)
                         {
-                            orphans.AddRange(clump);
+                            steps.Add(new Vector3Int(dx, dy, dz));
                         }
                     }
                 }
             }
-            return orphans;
+            return steps.ToArray();
         }
 
         // The not-solid tree samples beside the limb, so its mesh keeps the tree's smooth surface and none of it is left
         // behind as a film.
-        private static void AddFringe(World world, FelledLimb limb, HashSet<Vector3Int> included, TreeMaterials trees, float iso)
+        private static IEnumerable<int> AddFringe(WorldSampleReader world, FelledLimb limb, HashSet<Vector3Int> included, TreeMaterials trees, float iso)
         {
             Vector3Int min = Vector3Int.one * int.MaxValue;
             Vector3Int max = Vector3Int.one * int.MinValue;
             int count = limb.Solid.Count;
             for (int i = 0; i < count; i++)
             {
+                if ((i + 1) % (SliceVisits / 4) == 0)
+                {
+                    yield return 0;
+                }
                 Vector3Int sample = limb.Solid[i].Sample;
                 min = Vector3Int.Min(min, sample);
                 max = Vector3Int.Max(max, sample);
@@ -527,22 +611,20 @@ namespace Clube.Core
             return (world.GetDensity(sample) ?? 0f) >= iso && trees.IsWood(world.GetMaterial(sample) ?? 0);
         }
 
-        private static bool IsLeaves(World world, Vector3Int sample, TreeMaterials trees, float iso)
+        private static bool IsWood(WorldSampleReader world, Vector3Int sample, TreeMaterials trees, float iso)
         {
-            return (world.GetDensity(sample) ?? 0f) >= iso && trees.IsLeaves(world.GetMaterial(sample) ?? 0);
+            return world.TryRead(sample, out float density, out byte material) && density >= iso && trees.IsWood(material);
         }
 
-        /// <summary>Takes the limb out of the world: every sample of it, fringe included, becomes air.</summary>
+        private static bool IsLeaves(WorldSampleReader world, Vector3Int sample, TreeMaterials trees, float iso)
+        {
+            return world.TryRead(sample, out float density, out byte material) && density >= iso && trees.IsLeaves(material);
+        }
+
+        /// <summary>Takes the limb out of the world: every sample of it, fringe included, becomes air. All at once; <see cref="LimbRemoval"/> does the same a slice at a time.</summary>
         public static void Remove(World world, FelledLimb limb)
         {
-            foreach (FelledSample sample in limb.Solid)
-            {
-                world.SetDensity(sample.Sample, 0f);
-            }
-            foreach (FelledSample sample in limb.Fringe)
-            {
-                world.SetDensity(sample.Sample, 0f);
-            }
+            new LimbRemoval(world, limb).Finish();
         }
 
         /// <summary>
@@ -691,9 +773,31 @@ namespace Clube.Core
             World world, FelledLimb limb, Vector3Int direction, TreeMaterials trees, float iso, int searchDepth = 160,
             float leafPacking = LeafPacking, List<Vector3Int> landedWood = null, List<Vector3Int> landedLeaves = null, int outward = 0)
         {
+            var placed = new int[1];
+            foreach (int step in LandSteps(world, limb, direction, trees, iso, searchDepth, leafPacking, landedWood, landedLeaves, outward, placed))
+            {
+            }
+            return placed[0];
+        }
+
+        /// <summary>
+        /// <see cref="Land"/> a slice at a time: it stops (yields) every few hundred samples, so a big crown can be put down
+        /// over a few frames. The samples placed are counted into <paramref name="placed"/>[0] when given.
+        /// </summary>
+        public static IEnumerable<int> LandSteps(
+            World world, FelledLimb limb, Vector3Int direction, TreeMaterials trees, float iso, int searchDepth = 160,
+            float leafPacking = LeafPacking, List<Vector3Int> landedWood = null, List<Vector3Int> landedLeaves = null, int outward = 0,
+            int[] placed = null)
+        {
+            var read = new WorldSampleReader(world);
             var columns = new Dictionary<Vector2Int, List<(int Y, bool Wood, byte Material, float Density)>>();
+            int visits = 0;
             foreach (FelledSample sample in limb.Solid)
             {
+                if (++visits % SliceVisits == 0)
+                {
+                    yield return 0;
+                }
                 Vector3Int turned = limb.Pivot + Turn(sample.Sample - limb.Pivot, direction) + direction * outward;
                 var column = new Vector2Int(turned.x, turned.z);
                 if (!columns.TryGetValue(column, out List<(int, bool, byte, float)> list))
@@ -704,9 +808,14 @@ namespace Clube.Core
                 list.Add((turned.y, sample.IsWood, sample.Material, sample.Density));
             }
 
-            int placed = 0;
             foreach (KeyValuePair<Vector2Int, List<(int Y, bool Wood, byte Material, float Density)>> pair in columns)
             {
+                if (++visits % 8 == 0)
+                {
+                    yield return 0;
+                    // Chunks may have loaded or dropped meanwhile.
+                    read.Forget();
+                }
                 List<(int Y, bool Wood, byte Material, float Density)> list = pair.Value;
                 // Wood first, then leaves; each kept in its order from the bottom of the turned limb.
                 list.Sort((a, b) => a.Wood != b.Wood ? (a.Wood ? -1 : 1) : a.Y.CompareTo(b.Y));
@@ -715,7 +824,7 @@ namespace Clube.Core
                 {
                     top = Mathf.Max(top, y);
                 }
-                if (!FindGround(world, pair.Key, top + 2, searchDepth, trees, iso, out int ground))
+                if (!FindGround(read, pair.Key, top + 2, searchDepth, trees, iso, out int ground))
                 {
                     continue;
                 }
@@ -743,26 +852,28 @@ namespace Clube.Core
                     }
                     var sample = new Vector3Int(pair.Key.x, at, pair.Key.y);
                     // Through standing trees: their wood is stepped over, their leaves give way.
-                    while ((world.GetDensity(sample) ?? 0f) >= iso && trees.IsWood(world.GetMaterial(sample) ?? 0))
+                    while ((read.GetDensity(sample) ?? 0f) >= iso && trees.IsWood(read.GetMaterial(sample) ?? 0))
                     {
                         sample.y++;
                     }
-                    if (world.GetDensity(sample) == null)
+                    if (read.GetDensity(sample) == null)
                     {
                         break;
                     }
                     world.SetDensity(sample, Mathf.Max(iso, density));
                     world.SetMaterial(sample, wood ? material : trees.FallenFor(material));
                     (wood ? landedWood : landedLeaves)?.Add(sample);
-                    placed++;
+                    if (placed != null)
+                    {
+                        placed[0]++;
+                    }
                     at = sample.y + 1;
                 }
             }
-            return placed;
         }
 
         // The highest sample of a column that's solid and not tree, searched down from a height.
-        private static bool FindGround(World world, Vector2Int column, int from, int depth, TreeMaterials trees, float iso, out int ground)
+        private static bool FindGround(WorldSampleReader world, Vector2Int column, int from, int depth, TreeMaterials trees, float iso, out int ground)
         {
             for (int y = from; y > from - depth; y--)
             {
