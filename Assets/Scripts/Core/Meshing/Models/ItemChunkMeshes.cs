@@ -6,7 +6,7 @@ namespace Clube.Core
     /// <summary>
     /// The low-poly models inventory icons are pictures of (GL612), for items with no model of their own: "a small low
     /// poly chunk of the stuff". A faceted lump like the loose stones on the ground for stone and ores, a mound for
-    /// soil, and a shape apiece for the made things (log, boards, ingot, bun, brick, hide, tuft, stick). Each is about
+    /// soil, and a shape apiece for the made things (log, boards, ingot, bun, iron bloom, brick, hide, tuft, stick). Each is about
     /// one unit across, standing on y = 0, coloured by vertex in the tint given; a material's drop is built white and
     /// wears the material's texture instead. Tools and placeables are drawn from the game's own models.
     /// </summary>
@@ -50,6 +50,9 @@ namespace Clube.Core
                     break;
                 case ItemIconShape.Bun:
                     Bun(model, tint);
+                    break;
+                case ItemIconShape.Bloom:
+                    Bloom(model, tint);
                     break;
                 case ItemIconShape.Brick:
                     Brick(model, tint);
@@ -229,6 +232,78 @@ namespace Clube.Core
                     new Vector2(0.18f, 0.17f), new Vector2(0.03f, 0.03f),
                 }, 8, metal);
             model.Surface = Vector2.zero;
+        }
+
+        // GL876: the bloom's body, fused lumps (centre, radii, seed).
+        private static readonly (Vector3 Centre, Vector3 Radii, int Seed)[] BloomLumps =
+        {
+            (new Vector3(0f, 0.3f, 0f), new Vector3(0.4f, 0.29f, 0.36f), 11),
+            (new Vector3(0.22f, 0.36f, 0.13f), new Vector3(0.24f, 0.21f, 0.22f), 12),
+            (new Vector3(-0.25f, 0.25f, -0.09f), new Vector3(0.25f, 0.22f, 0.24f), 13),
+            (new Vector3(0.04f, 0.47f, -0.17f), new Vector3(0.2f, 0.16f, 0.19f), 14),
+            (new Vector3(-0.12f, 0.2f, 0.26f), new Vector3(0.22f, 0.17f, 0.18f), 15),
+        };
+
+        // The share of the lumps' facets sunk into pores, and of the rest crusted with slag.
+        private const float BloomPoreShare = 0.3f;
+        private const float BloomSlagShare = 0.1f;
+
+        /// <summary>
+        /// An iron bloom (GL876), as a bloomery leaves it: a lumpy mass of a few fused lumps, dull and dark, spongy with
+        /// pores (the holes the slag ran out of: facets sunk into a near-black pit) and crusted here and there with rusty
+        /// brown slag.
+        /// </summary>
+        private static void Bloom(LowPolyMeshBuilder model, Color iron)
+        {
+            Color body = Color.Lerp(Shade(iron, 0.5f), new Color(0.2f, 0.13f, 0.09f, iron.a), 0.25f);
+            Color pore = Shade(iron, 0.1f);
+            Color slag = Color.Lerp(body, new Color(0.42f, 0.24f, 0.13f, iron.a), 0.65f);
+            model.Surface = new Vector2(LowPolyMeshBuilder.MetalSurface, 0.05f);
+            foreach ((Vector3 centre, Vector3 radii, int seed) in BloomLumps)
+            {
+                Quaternion spin = Quaternion.Euler(seed * 37f % 23f, seed * 41f, seed * 53f % 19f);
+                var points = new Vector3[Corners.Length];
+                for (int i = 0; i < points.Length; i++)
+                {
+                    Vector3 p = spin * (Corners[i].normalized * (0.8f + 0.36f * Hash(seed, i)));
+                    p.y = Mathf.Max(p.y, -0.62f);
+                    points[i] = centre + Vector3.Scale(p, radii);
+                }
+                for (int f = 0; f < Faces.Length; f += 3)
+                {
+                    // Each facet split in four, its edges' middles pushed out a little to round it, so the pores are small.
+                    Vector3 a = points[Faces[f]], b = points[Faces[f + 1]], c = points[Faces[f + 2]];
+                    Vector3 ab = Rounded(a, b, centre), bc = Rounded(b, c, centre), ca = Rounded(c, a, centre);
+                    BloomFacet(model, a, ab, ca, centre, seed, f * 4, body, pore, slag);
+                    BloomFacet(model, ab, b, bc, centre, seed, f * 4 + 1, body, pore, slag);
+                    BloomFacet(model, ca, bc, c, centre, seed, f * 4 + 2, body, pore, slag);
+                    BloomFacet(model, ab, bc, ca, centre, seed, f * 4 + 3, body, pore, slag);
+                }
+            }
+            model.Surface = Vector2.zero;
+        }
+
+        private static Vector3 Rounded(Vector3 a, Vector3 b, Vector3 centre)
+        {
+            return centre + ((a + b) * 0.5f - centre) * 1.07f;
+        }
+
+        // One small facet of the bloom: plain iron, a crust of slag, or a pore (sunk to a pit towards the lump's
+        // centre, its three walls dark, one catching a little light so it reads as a hole).
+        private static void BloomFacet(LowPolyMeshBuilder model, Vector3 a, Vector3 b, Vector3 c, Vector3 centre, int seed, int index,
+            Color body, Color pore, Color slag)
+        {
+            float roll = Hash(seed + 31, index);
+            if (roll >= BloomPoreShare)
+            {
+                Color facet = roll < BloomPoreShare + BloomSlagShare ? slag : body;
+                model.Triangle(a, b, c, centre, Shade(facet, 0.88f + 0.2f * Hash(seed + 7, index)));
+                return;
+            }
+            Vector3 pit = Vector3.Lerp((a + b + c) / 3f, centre, 0.32f);
+            model.Triangle(a, b, pit, centre, pore);
+            model.Triangle(b, c, pit, centre, Shade(pore, 1.4f));
+            model.Triangle(c, a, pit, centre, Shade(pore, 2.2f));
         }
 
         // A fired brick.

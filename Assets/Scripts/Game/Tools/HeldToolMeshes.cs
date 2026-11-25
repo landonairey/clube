@@ -201,10 +201,9 @@ namespace Clube.Game
                     model.Prism(new Vector3(-0.042f, 0.012f, -0.015f), new Vector3(-0.03f, 0.03f, 0.055f), 0.017f, 0.011f, 4, Shade(Skin, 0.92f));
                     break;
                 case HeldShape.HandAxe:
-                    // A knapped stone, pointed end forward, held in the fist.
+                    // GL875: a knapped hand axe, its rounded butt in the fist and its point forward, a face turned up.
                     model.Surface = headSurface;
-                    model.Diamond(new Vector3(0f, 0.04f, 0.09f), new Vector3(0.05f, 0.085f, 0.11f), head);
-                    // No flake scars or cracks: they read as dark nubs (GL694).
+                    AddHandAxe(model, HandAxeInHand, head);
                     break;
                 case HeldShape.Pick when IsStone(tool):
                     // A primitive pick (as its icon): a rough stick, and a pointed stone lashed across its top,
@@ -372,6 +371,24 @@ namespace Clube.Game
             model.Prism(new Vector3(0f, -0.33f, 0.02f), new Vector3(0f, -0.31f, 0.02f), 0.092f, 0.093f, 8, Charcoal);
             model.Prism(new Vector3(0f, -0.18f, 0.02f), new Vector3(0f, -0.16f, 0.02f), 0.102f, 0.103f, 8, Charcoal);
             return model.Make("Held bucket");
+        }
+
+        /// <summary>The hand axe's length, butt to point (GL875).</summary>
+        public const float HandAxeLength = 0.21f;
+
+        // The hand axe in the fist: its point (its own +Y) forward and a little up, its faces (its Z) to the sides,
+        // rolled so the upper face shows; the butt just behind the knuckles.
+        private static readonly Matrix4x4 HandAxeInHand = Matrix4x4.TRS(new Vector3(0f, -0.012f, -0.045f),
+            Quaternion.Euler(-22f, 0f, 0f) * Quaternion.Euler(0f, 0f, 32f) * Quaternion.LookRotation(Vector3.right, Vector3.forward), Vector3.one);
+
+        /// <summary>Adds the hand axe (<see cref="HandAxeMesh"/>) in a colour, placed by <paramref name="place"/> (GL875):
+        /// the held model, the dropped one, a shop's display.</summary>
+        public static void AddHandAxe(LowPolyMeshBuilder model, Matrix4x4 place, Color head)
+        {
+            Matrix4x4 before = model.Placement;
+            model.Placement = before * place;
+            HandAxeMesh.Add(model, HandAxeLength, head);
+            model.Placement = before;
         }
 
         // The player's forearm and fist (GL608), in the figures' look: a tapered six-sided sleeve from the bottom right of

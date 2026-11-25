@@ -914,7 +914,7 @@ Data and decisions are Core (`Core/Fauna/`), bodies are Game (`Game/Fauna/`):
 ### Tool models and dropped items (GL609-GL611)
 
 - `HeldToolMeshes` (Game) builds every tool model in code from `LowPolyMeshBuilder` parts, with or without the hand; a
-  tool's head is a `HeadMaterial` row (colour, shine, wear) found by a word in its name. It needs no scene, so an
+  tool's head is a `HeadMaterial` row (colour, shine, wear) found by a word in its name. The hand axe is `HandAxeMesh` (Core, `Meshing/Models/`, GL875) in the head's colour, placed by `HeldToolMeshes.AddHandAxe`. It needs no scene, so an
   editor tool can build a model to draw an icon. `LowPolyMeshBuilder.Surface` writes what each part is made of (wood,
   metal and how much it shines) into the mesh's first UV; only `Clube/Held Item` reads it (grain, glint, gleam).
   Other meshes leave it unset and get no UV channel.
@@ -942,7 +942,7 @@ Icons are pictures of the 3D models, baked in the Editor and read by the invento
   drop is a `Chunk` (rock) or `Mound` (soil) of the material found by `MaterialOf` (a crushed ore's is its ore's,
   through `PurityAs`); an item of no material is a chunk in its tint. A new item needs no code.
 - **The models** with no model of their own are `ItemChunkMeshes` (Core, `Meshing/Models/`): chunk, mound, gravel,
-  log, leaves, boards, ingot, bun, brick, hide, tuft, stick, each about a unit across from `LowPolyMeshBuilder` parts.
+  log, leaves, boards, ingot, bun, iron bloom (GL876), brick, hide, tuft, stick, each about a unit across from `LowPolyMeshBuilder` parts.
   `ItemIconModels` (Game) puts it together: mesh or prefab, the terrain texture it wears, how it is turned and viewed.
 - **The camera** is `IconFraming` (Core): an orthographic view that holds the model's corners, centred, with a margin;
   pure arithmetic, tested without a camera.

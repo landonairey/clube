@@ -71,6 +71,9 @@ namespace Clube.Game
         // A tool is framed on its head and the upper part of its handle.
         private const float ToolKeep = 0.62f;
 
+        // The hand axe's held model (point forward, a little up) turned side-on and stood up on the diagonal (GL875).
+        private static readonly Quaternion HandAxeTurn = Quaternion.Euler(0f, 0f, 36f) * Quaternion.Euler(0f, 90f, 0f);
+
         /// <summary>The model of an item's icon; empty (<see cref="ItemIconModel.IsEmpty"/>) when it has none.</summary>
         /// <param name="white">Item 11: build a made thing white, for an item named by its material whose icon is tinted as it's drawn.</param>
         public static ItemIconModel For(ItemDefinition item, MaterialRegistry materials, bool white = false)
@@ -119,6 +122,11 @@ namespace Clube.Game
             else if (item is ToolDefinition tool && HeldToolMeshes.ShapeOf(tool) != HeldShape.Hand)
             {
                 mesh = HeldToolMeshes.Build(tool, withHand: false);
+                if (HeldToolMeshes.ShapeOf(tool) == HeldShape.HandAxe)
+                {
+                    // GL875: the whole stone, its round butt low and its point up to the right, a face to the camera.
+                    return new ItemIconModel(mesh, null, null, Color.white, HandAxeTurn, ToolView, keep: 1f);
+                }
             }
             // A head that reaches forward (a pick, a hatchet) is turned side-on, or only its edge would show.
             bool reachesForward = mesh != null && mesh.bounds.size.z > mesh.bounds.size.x * 1.2f;

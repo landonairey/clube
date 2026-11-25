@@ -60,5 +60,8 @@ namespace Clube.Core
 
         /// <summary>A coil of rope: twine wound in rings, its loose end hanging.</summary>
         Coil = 17,
+
+        /// <summary>An iron bloom (GL876): a lumpy, spongy mass of dark iron, pitted with pores and crusted with slag.</summary>
+        Bloom = 18,
     }
 }
